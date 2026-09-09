@@ -14,8 +14,8 @@ import { getRenderer, listTypes } from './core/registry.js'
 
 // 可切换的示例（v0 硬编码；将来由用户导入 JSON）
 const EXAMPLES = [
-  { label: '电梯劝烟案（双主体单线）', path: '/examples/fact-电梯劝烟案.json' },
-  { label: '电梯劝烟案（单主体分侧）', path: '/examples/fact-电梯劝烟案-单主体.json' },
+  { label: '电梯劝烟案（单线纵向）', path: '/examples/fact-电梯劝烟案.json' },
+  { label: '人脸识别第一案（单主体分侧）', path: '/examples/fact-人脸识别第一案-单主体.json' },
 ]
 
 export default function App() {
