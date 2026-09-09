@@ -23,7 +23,7 @@ function validateEnvelope(spec) {
 /** 校验 fact 内容层（v0 按 fact-schema-draft 的字段规则） */
 function validateFact(spec) {
   const errors = []
-  const { events, actors = [], sources = [] } = spec
+  const { events, actors = [], sources = [], groups = [] } = spec
 
   if (!Array.isArray(events)) {
     errors.push('`events` 必须是数组')
@@ -33,6 +33,7 @@ function validateFact(spec) {
 
   const actorIds = new Set(actors.map((a) => a?.id).filter(Boolean))
   const sourceIds = new Set(sources.map((s) => s?.id).filter(Boolean))
+  const groupIds = new Set(groups.map((g) => g?.id).filter(Boolean))
 
   events.forEach((e, i) => {
     const at = `events[${i}]${e?.id ? ` (${e.id})` : ''}`
@@ -54,12 +55,21 @@ function validateFact(spec) {
     ;(e.sourceIds || []).forEach((id) => {
       if (!sourceIds.has(id)) errors.push(`${at}: sourceIds 引用了不存在的 source "${id}"`)
     })
+    if (e.groupId && !groupIds.has(e.groupId)) {
+      errors.push(`${at}: groupId 引用了不存在的 group "${e.groupId}"`)
+    }
   })
 
   // 主体清单自身的完整性
   actors.forEach((a, i) => {
     if (!a?.id) errors.push(`actors[${i}]: 缺少必填字段 \`id\``)
     if (!a?.name) errors.push(`actors[${i}]: 缺少必填字段 \`name\``)
+  })
+
+  // 分组清单自身的完整性
+  groups.forEach((g, i) => {
+    if (!g?.id) errors.push(`groups[${i}]: 缺少必填字段 \`id\``)
+    if (!g?.label) errors.push(`groups[${i}]: 缺少必填字段 \`label\``)
   })
 
   return errors

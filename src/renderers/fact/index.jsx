@@ -2,10 +2,11 @@
 //  src/renderers/fact/index.jsx —— fact（事实图）渲染器
 //
 //  输入：通过校验的 fact 规范
-//  输出：时间轴线图
+//  输出：时间图
 //
-//  v0：单线时间轴（layout: "timeline"）
-//  将来：bilateral（按 actors 分列）/ lanes（多泳道）
+//  布局自动选择：
+//   - 有 groups → 单主体横向时间轴，按 groups 分上下两侧
+//   - 否则 → 单线纵向时间轴
 // ============================================================
 
 import { useMemo } from 'react'
@@ -19,15 +20,14 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import EventNode, { formatDate } from './EventNode.jsx'
-import { buildTimeline } from './timelineLayout.js'
+import AxisNode from './AxisNode.jsx'
+import { buildFactGraph } from './timelineLayout.js'
 
-const nodeTypes = { event: EventNode }
+const nodeTypes = { event: EventNode, axis: AxisNode }
 
 export default function FactRenderer({ spec }) {
-  const layout = spec.layout || 'timeline'
-
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => buildTimeline(spec),
+    () => buildFactGraph(spec),
     [spec],
   )
 
@@ -35,6 +35,7 @@ export default function FactRenderer({ spec }) {
   const [edges, , onEdgesChange] = useEdgesState(initialEdges)
 
   const approxCount = spec.events.filter((e) => e.approx).length
+  const hasGroups = Array.isArray(spec.groups) && spec.groups.length > 0
 
   return (
     <div className="antu-fact">
@@ -43,10 +44,24 @@ export default function FactRenderer({ spec }) {
           <h1 className="antu-fact-title">{spec.title}</h1>
           <div className="antu-fact-meta">
             {spec.events.length} 个事件 · {spec.actors?.length || 0} 个主体 ·{' '}
-            {spec.sources?.length || 0} 个来源 · 布局 {layout}
+            {spec.sources?.length || 0} 个来源
+            {hasGroups && ` · 分组：${spec.groups.map((g) => g.label).join(' / ')}`}
             {approxCount > 0 && ` · ${approxCount} 个近似时间`}
           </div>
         </div>
+
+        {/* 分组图例（顺序即上下位置） */}
+        {hasGroups && (
+          <div className="antu-legend">
+            {spec.groups.map((g, i) => (
+              <span key={g.id} className="antu-legend-item">
+                <i className={`antu-legend-dot g${i}`} />
+                {g.label}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="antu-fact-range">
           {formatDate(spec.events[0]?.date)} ～{' '}
           {formatDate(spec.events[spec.events.length - 1]?.date)}
@@ -61,8 +76,8 @@ export default function FactRenderer({ spec }) {
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{ padding: 0.15 }}
-          minZoom={0.2}
+          fitViewOptions={{ padding: 0.12 }}
+          minZoom={0.15}
         >
           <Background gap={20} color="#e2e8f0" />
           <Controls />

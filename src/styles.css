@@ -68,6 +68,28 @@
 
 .antu-fact-canvas { flex: 1 1 auto; min-height: 0; }
 
+/* ---------- 时间轴线（装饰节点） ---------- */
+.antu-axis {
+  height: 2px;
+  background: linear-gradient(90deg, #cbd5e1 0%, #94a3b8 100%);
+  position: relative;
+}
+.antu-axis-arrow {
+  position: absolute;
+  right: -14px;
+  top: -11px;
+  color: #94a3b8;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ---------- 分组图例 ---------- */
+.antu-legend { display: flex; gap: 14px; font-size: 12px; color: #475569; }
+.antu-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.antu-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.antu-legend-dot.g0 { background: #2f6fed; }
+.antu-legend-dot.g1 { background: #e5484d; }
+
 /* ---------- 事件节点 ---------- */
 .antu-event-node {
   width: 320px;

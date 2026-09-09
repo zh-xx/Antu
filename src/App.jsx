@@ -14,14 +14,19 @@ import { getRenderer, listTypes } from './core/registry.js'
 
 // 可切换的示例（v0 硬编码；将来由用户导入 JSON）
 const EXAMPLES = [
-  { label: '电梯劝烟案（事实图）', path: '/examples/fact-电梯劝烟案.json' },
+  { label: '电梯劝烟案（双主体单线）', path: '/examples/fact-电梯劝烟案.json' },
+  { label: '电梯劝烟案（单主体分侧）', path: '/examples/fact-电梯劝烟案-单主体.json' },
 ]
 
 export default function App() {
   const [spec, setSpec] = useState(null)
   const [errors, setErrors] = useState([])
   const [loading, setLoading] = useState(false)
-  const [current, setCurrent] = useState(EXAMPLES[0])
+  // 支持 ?example=1 直接打开某个示例（便于分享与测试）
+  const [current, setCurrent] = useState(() => {
+    const idx = Number(new URLSearchParams(window.location.search).get('example'))
+    return EXAMPLES[idx] || EXAMPLES[0]
+  })
 
   // 加载 + 校验
   useEffect(() => {
