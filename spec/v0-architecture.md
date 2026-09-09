@@ -75,7 +75,8 @@
 - **结构化定位（已定）**：source 的 loc 按 type 走**结构化定位字段**（如 statute → lawName+article；case → caseNo+court），可校验、可跳转、可反查原始材料——地基稳定优先；
 - **引用而非复制（零冗余的多对多）**：source 表存一份，多个表达引用同一 id；一个表达也可引用多个 source。冗余来自内嵌复制，不来自多对多；
 - **多对多的成本在引擎**（校验 id 存在性、渲染时解析回内容），不在 JSON 本体——JSON 反而更小更干净；
-- source 带 `type` 枚举（evidence / statute / case / document / contract / …），且 source 本身应携带出处信息（名称、原文定位如页码）——溯源到原始材料；
+- source 带 `type` 枚举（statute / case / contract / evidence / document / web / other），且 source 本身应携带出处信息（名称、原文定位如页码）——溯源到原始材料；7 类字段一览见 source-schema-draft §4；
+- type 判定规则：看"来源在当前案子里的角色"不看获取途径（在线公示若提交为证据 → evidence；仅案外引用 → web）；
 - 将来若出现"来源间印证/矛盾关系展示"（质证），在 **justification 家族内部扩展**，不新增顶层类型。
 
 ## 5. JSON 结构分层
@@ -147,20 +148,20 @@ JSON (信封) ──> [校验门卫] ──> type 路由 ──> 渲染器注册
 - [x] 防过度设计：最小可跑优先；先 relationship 三件套跑通
 - [x] 顶层类型不建"子类型树"：差异分流为 渲染参数 / 预设配置 / 受控枚举；新顶层类型唯一判据 = 元素结构装不进现有类型
 - [x] 命名：中文"案图"，代号 `antu`；发包名暂定 `antu-viz`（未占用，已验证）
+- [x] source 规范定稿：7 类（statute/case/contract/evidence/document/web/other）字段全部精雕完成（见 source-schema-draft.md）
 
 ### 待定（动手前确认）
 - [ ] `specVersion` 的形态（有无必要、怎么演进）
-- [ ] source 各 type 的 loc 字段逐个精雕（statute → case → contract/document → evidence → other）
-- [ ] 各类型内容层 schema 字段细节（用真实示例数据反推）
+- [ ] 各图类型内容层 schema 字段细节（fact 进行中；用真实示例数据反推）
 - [ ] 校验层报错信息的形态（面向 agent 可自改）
 - [ ] 信封层可选元数据范围
 - [ ] 插件壳（dsh 插件 / MCP / 独立网页）——推迟到核心成熟后
 
 ## 8. 近期路线（建议顺序，随时可调整）
 
-1. **规范 v0 定稿**：信封层 + relationship schema（最小：type/id/label/links）+ 校验规则
-2. **引擎原型**：信封解析 + 注册表骨架 + relationship 渲染器（最小可跑）
-3. **fact 类型**：schema + 渲染器
+1. **规范 v0 定稿**：source 机制已完成（7 类）；继续 fact 内容层 schema 精雕 + 校验规则
+2. **引擎原型**：信封解析 + 注册表骨架 + fact 渲染器（最小可跑）
+3. **relationship 类型**：schema + 渲染器
 4. **procedure 类型**：schema + 渲染器
 5. **回顾前三类**，再启动 justification
 6. 数据管线（agent 侧，文书 → JSON）与插件壳：另行规划

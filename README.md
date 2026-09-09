@@ -18,12 +18,13 @@
 ## 当前状态
 
 - [x] 方向讨论与架构共识（见 `spec/v0-architecture.md`）
-- [ ] 规范文档 v0 定稿
-- [ ] **fact（事实图）schema 草案**（进行中，见 `spec/fact-schema-draft.md`，发起人最关注）
-- [ ] fact 渲染器
+- [x] **source（来源/溯源）规范**：7 类字段全部精雕定稿（见 `spec/source-schema-draft.md`）
+- [ ] **fact（事实图）schema**（草案 v0.2，无 kind；见 `spec/fact-schema-draft.md`，发起人最关注）
+- [ ] 真实案件贯通验证（examples/，规范验证闭环）
+- [ ] 最小引擎原型（信封解析 + 注册表 + fact 渲染器）
 - [ ] relationship 渲染器
 - [ ] procedure 渲染器
-- [ ] type：justification 渲染器（搁置，其余类型成熟后再做）
+- [ ] justification 渲染器（搁置，其余类型成熟后再做）
 - [ ] 校验层
 - [ ] 插件壳（未定，后议）
 
@@ -32,7 +33,10 @@
 ```
 antu/
 ├── README.md
-└── spec/
-    ├── v0-architecture.md   ← 架构共识（讨论成果）
-    └── fact-schema-draft.md ← fact 类型 schema 草案（进行中）
+├── spec/
+│   ├── v0-architecture.md      ← 架构共识（讨论成果）
+│   ├── source-schema-draft.md  ← source 7 类字段（已定稿）
+│   └── fact-schema-draft.md    ← fact 类型 schema（草案 v0.2）
+└── examples/
+    └── README.md               ← 示例 JSON 目录（待补真实案例）
 ```
