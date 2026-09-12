@@ -5,23 +5,79 @@
 //   1. 加载一份规范 JSON
 //   2. 过校验门卫
 //   3. 按 type 从注册表取渲染器并渲染
-//  核心不认识"事实图/关系图"的业务语义，只认 type。
+//  核心不认识“事实图/关系图”的业务语义，只认 type。
+//
+//  布局：左边一条信息栏（AppRail），右边整块交给渲染器。
+//  渲染器不可用时（加载中／校验没过／类型没实现），信息栏由 App 自己
+//  撑起来，这样示例切换永远可用，不会因为一个坏文件就把人困住。
 // ============================================================
 
 import { useEffect, useState } from 'react'
 import { validateSpec } from './core/validate.js'
 import { getRenderer, listTypes } from './core/registry.js'
+import { GRAPH_TYPE_LABELS, labelOf } from './core/labels.js'
+import AppRail from './shell/AppRail.jsx'
 
 // 可切换的示例（v0 硬编码；将来由用户导入 JSON）
 const EXAMPLES = [
-  { label: '电梯劝烟案（单线纵向）', path: '/examples/fact-电梯劝烟案.json' },
-  { label: '人脸识别第一案（单主体分侧）', path: '/examples/fact-人脸识别第一案-单主体.json' },
+  { label: '人脸识别第一案（单主体）', path: '/examples/fact-人脸识别第一案-单主体.json' },
+  { label: '电梯劝烟案（双主体 · 并排）', path: '/examples/fact-电梯劝烟案.json' },
+  { label: '示例 · 同侧两个主体（看引线）', path: '/examples/fact-示例-同侧双主体.json' },
 ]
+
+/** 渲染器不可用时的兜底说明 */
+function FallbackInfo({ loading, errors, spec, hasRenderer }) {
+  if (loading) return <div className="antu-info-msg">加载中…</div>
+
+  if (errors.length > 0) {
+    return (
+      <div className="antu-error">
+        <div className="antu-error-title">规范校验未通过（{errors.length} 处问题）</div>
+        <ul>
+          {errors.map((e, i) => (
+            <li key={i}>{e}</li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
+  if (spec && !hasRenderer) {
+    return (
+      <div className="antu-error">
+        <div className="antu-error-title">没有为 type = "{spec.type}" 注册渲染器</div>
+        <div className="antu-error-hint">
+          已注册：{listTypes().map((t) => labelOf(GRAPH_TYPE_LABELS, t)).join(' / ') || '（无）'}
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
 
 export default function App() {
   const [spec, setSpec] = useState(null)
   const [errors, setErrors] = useState([])
   const [loading, setLoading] = useState(false)
+  // 显示格线是全局偏好，不能放在渲染器里：
+  // 切换示例时渲染器会带着 key 一起重挂载，放里面就会被重置掉。
+  // 顺便记到本地，刷新页面后也还在。
+  const [showGrid, setShowGrid] = useState(() => {
+    try {
+      return window.localStorage.getItem('antu.showGrid') === '1'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('antu.showGrid', showGrid ? '1' : '0')
+    } catch {
+      /* 隐私模式下写不进去，忽略即可 */
+    }
+  }, [showGrid])
   // 支持 ?example=1 直接打开某个示例（便于分享与测试）
   const [current, setCurrent] = useState(() => {
     const idx = Number(new URLSearchParams(window.location.search).get('example'))
@@ -58,50 +114,50 @@ export default function App() {
   }, [current])
 
   const Renderer = spec ? getRenderer(spec.type) : null
+  const ready = !loading && errors.length === 0 && Renderer
+
+  // 示例切换与应用级信息，交给信息栏的 nav 插槽
+  const nav = (
+    <nav className="antu-rail-nav">
+      <div className="antu-rail-label">示例</div>
+      {EXAMPLES.map((ex) => (
+        <button
+          key={ex.path}
+          className={`antu-nav-btn${ex.path === current.path ? ' active' : ''}`}
+          onClick={() => setCurrent(ex)}
+        >
+          {ex.label}
+        </button>
+      ))}
+      <div className="antu-rail-note">
+        图形类型：{listTypes().map((t) => labelOf(GRAPH_TYPE_LABELS, t)).join(' / ') || '（无）'}
+      </div>
+    </nav>
+  )
 
   return (
     <div className="antu-app">
-      <nav className="antu-nav">
-        <span className="antu-brand">案图 antu</span>
-        {EXAMPLES.map((ex) => (
-          <button
-            key={ex.path}
-            className={`antu-nav-btn ${ex.path === current.path ? 'active' : ''}`}
-            onClick={() => setCurrent(ex)}
-          >
-            {ex.label}
-          </button>
-        ))}
-        <span className="antu-nav-info">
-          已注册类型：{listTypes().join(' / ') || '（无）'}
-        </span>
-      </nav>
-
-      {loading && <div className="antu-msg">加载中…</div>}
-
-      {!loading && errors.length > 0 && (
-        <div className="antu-error">
-          <div className="antu-error-title">⚠️ 规范校验未通过（{errors.length} 处问题）</div>
-          <ul>
-            {errors.map((e, i) => (
-              <li key={i}>{e}</li>
-            ))}
-          </ul>
-        </div>
+      {ready ? (
+        <Renderer
+          key={current.path}
+          spec={spec}
+          nav={nav}
+          showGrid={showGrid}
+          onToggleGrid={setShowGrid}
+        />
+      ) : (
+        <AppRail
+          nav={nav}
+          info={
+            <FallbackInfo
+              loading={loading}
+              errors={errors}
+              spec={spec}
+              hasRenderer={!!Renderer}
+            />
+          }
+        />
       )}
-
-      {!loading && !errors.length && spec && !Renderer && (
-        <div className="antu-error">
-          <div className="antu-error-title">
-            ⚠️ 没有为 type = "{spec.type}" 注册渲染器
-          </div>
-          <div className="antu-error-hint">
-            已注册：{listTypes().join(' / ') || '（无）'}
-          </div>
-        </div>
-      )}
-
-      {!loading && !errors.length && Renderer && <Renderer spec={spec} />}
     </div>
   )
 }

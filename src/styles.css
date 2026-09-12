@@ -1,150 +1,343 @@
-/* ===== 案图渲染内核 · 基础样式 ===== */
+/* ===== 案图渲染内核 · 样式 =====================================
+   配色走「素净」：白底、细灰线、小圆角、几乎不用阴影。
+   颜色只用来做标记：第 1 侧蓝、第 2 侧红、轴线灰。
+   ============================================================== */
+
+:root {
+  --antu-line: #e8ebef;
+  --antu-line-soft: #eef1f5;
+  --antu-text: #0f172a;
+  --antu-text-2: #475569;
+  --antu-text-3: #7b8794;
+  --antu-text-4: #94a3b8;
+  --antu-chip: #f1f4f8;
+  --antu-canvas: #fbfcfd;
+  --antu-radius: 8px;
+  --antu-side1: #2f6fed;
+  --antu-side2: #e5484d;
+  --antu-axis: #94a3b8;
+}
 
 * { box-sizing: border-box; }
 
 .antu-app {
   height: 100vh;
+  display: flex;              /* 横向排布：左边信息栏，右边画布 */
+  background: #fff;
+}
+.antu-app > * { flex: 1 1 auto; min-width: 0; }
+
+/* ---------- 左侧信息栏 ----------
+   为什么在左边而不在顶上：这张图竖着长，垂直空间才是稀缺资源，
+   而屏幕一般是宽屏、横向富余。控制挪到横向上，等于白赚 17% 的放大。 */
+.antu-rail {
+  flex: 0 0 240px;
   display: flex;
   flex-direction: column;
-  background: #f7f8fa;
+  background: #fff;
+  border-right: 1px solid var(--antu-line);
+  /* 关键：外框收缩时把内容裁掉，而不是让它按新宽度重新折行。
+     否则动画每一帧文字都在重排，看起来像被挤来挤去。 */
+  overflow: hidden;
+  transition: flex-basis .2s ease-out;
 }
+.antu-rail.is-collapsed { flex-basis: 56px; }
 
-/* ---------- 顶部导航 ---------- */
-.antu-nav {
+/* 头部的两个元素互不干扰：品牌绝对定位在左，按钮贴着右边缘。
+   这样收缩时按钮跟着右边缘一起平滑左移，不会中途跳位。 */
+.antu-rail-head {
+  position: relative;
   flex: 0 0 auto;
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  gap: 10px;
-  padding: 10px 18px;
-  background: #0f172a;
-  color: #e2e8f0;
-  font-size: 13px;
+  padding: 14px 16px 10px;
+  white-space: nowrap;
 }
-.antu-brand { font-weight: 700; letter-spacing: .5px; margin-right: 8px; }
-.antu-nav-btn {
-  padding: 5px 12px;
-  border: 1px solid #334155;
-  border-radius: 999px;
-  background: transparent;
-  color: #cbd5e1;
-  font-size: 12px;
+.antu-rail-brand {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--antu-text);
+  transition: opacity .12s ease-out;
+}
+.antu-rail.is-collapsed .antu-rail-brand { opacity: 0; }
+
+.antu-rail-content {
+  flex: 1 1 auto;
+  /* 固定宽度：外框收缩时内容不重排，只是被裁掉 */
+  width: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 0 16px 18px;
+  opacity: 1;
+  transition: opacity .15s ease-out;
+}
+/* 收起：淡出，而不是硬切；结束后再彻底隐藏，免得还被键盘聚焦到 */
+.antu-rail.is-collapsed .antu-rail-content {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .1s ease-out, visibility 0s linear .1s;
+}
+
+/* 收起/展开按钮：做成看得见的方按钮，别只放一个浅色箭头 */
+.antu-rail-toggle {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #e4e8ee;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--antu-text-2);
+  font-size: 15px;
+  line-height: 1;
   cursor: pointer;
 }
-.antu-nav-btn.active { background: #2f6fed; border-color: #2f6fed; color: #fff; }
-.antu-nav-info { margin-left: auto; color: #94a3b8; font-size: 12px; }
+.antu-rail-toggle:hover { background: #f7f9fb; border-color: #d8dee6; }
 
-/* ---------- 校验错误面板 ---------- */
-.antu-msg { padding: 24px; color: #64748b; }
+.antu-rail-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--antu-text-4);
+  margin-bottom: 2px;
+}
+.antu-rail-note { margin-top: 10px; font-size: 11px; color: var(--antu-text-4); line-height: 1.6; }
+
+/* 示例切换：竖向列表比横排按钮省地方，也更好读 */
+.antu-rail-nav { display: flex; flex-direction: column; gap: 6px; }
+.antu-nav-btn {
+  padding: 6px 10px;
+  border: 1px solid #e4e8ee;
+  border-radius: var(--antu-radius);
+  background: #fff;
+  color: var(--antu-text-2);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+}
+.antu-nav-btn:hover { background: #f7f9fb; }
+.antu-nav-btn.active {
+  background: var(--antu-chip);
+  border-color: var(--antu-chip);
+  color: var(--antu-text);
+  font-weight: 600;
+}
+
+/* ---------- 校验错误面板（现在住在信息栏里） ---------- */
+.antu-info-msg { color: var(--antu-text-3); font-size: 12px; }
 .antu-error {
-  margin: 24px;
-  padding: 16px 20px;
+  padding: 12px 14px;
   background: #fef2f2;
   border: 1px solid #fecaca;
-  border-left: 4px solid #e5484d;
-  border-radius: 8px;
+  border-left: 3px solid var(--antu-side2);
+  border-radius: var(--antu-radius);
   color: #7f1d1d;
-  font-size: 14px;
-  overflow: auto;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
-.antu-error-title { font-weight: 700; margin-bottom: 8px; }
-.antu-error ul { margin: 0; padding-left: 20px; line-height: 1.8; }
-.antu-error-hint { color: #991b1b; }
+.antu-error-title { font-weight: 700; margin-bottom: 6px; }
+.antu-error ul { margin: 0; padding-left: 18px; line-height: 1.7; }
+.antu-error-hint { color: #991b1b; margin-top: 6px; }
 
-/* ---------- fact 渲染器 ---------- */
-.antu-fact { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+/* ============================================================
+   fact 渲染器
+   ============================================================ */
 
-.antu-fact-header {
-  flex: 0 0 auto;
+.antu-fact { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
+
+/* ---------- 信息栏里的图级信息 ---------- */
+.antu-info { display: flex; flex-direction: column; gap: 9px; }
+.antu-info-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.45;
+  color: var(--antu-text);
+}
+.antu-info-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.antu-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--antu-chip);
+  color: #5b6b7f;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.antu-info-legend { display: flex; flex-direction: column; gap: 6px; }
+.antu-legend-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 20px;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #5b6b7f;
+}
+.antu-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; margin-top: 4px; }
+.antu-legend-dot.g0 { background: var(--antu-side1); }
+.antu-legend-dot.g1 { background: var(--antu-side2); }
+.antu-legend-dot.g2 { background: var(--antu-axis); }
+
+/* ---------- 画布 ---------- */
+.antu-fact-body { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
+.antu-fact-canvas {
+  position: relative;      /* 抽屉的定位基准 */
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--antu-canvas);
+}
+
+/* 控件与小地图统一改成素净样式 */
+.react-flow__controls {
+  box-shadow: none;
+  border: 1px solid #e4e8ee;
+  border-radius: var(--antu-radius);
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  width: 28px;
+  height: 28px;
   background: #fff;
-  border-bottom: 1px solid #e3e6ea;
+  border-bottom: 1px solid var(--antu-line-soft);
 }
-.antu-fact-title { margin: 0 0 4px; font-size: 16px; font-weight: 600; color: #0f172a; }
-.antu-fact-meta { font-size: 12px; color: #64748b; }
-.antu-fact-range { font-size: 12px; color: #475569; font-variant-numeric: tabular-nums; }
+.react-flow__controls-button:last-child { border-bottom: none; }
+.react-flow__controls-button:hover { background: #f7f9fb; }
+.react-flow__controls-button svg { fill: var(--antu-text-2); max-width: 12px; max-height: 12px; }
 
-.antu-fact-canvas { flex: 1 1 auto; min-height: 0; }
-
-/* ---------- 时间轴线（装饰节点） ---------- */
-.antu-axis {
-  height: 2px;
-  background: linear-gradient(90deg, #cbd5e1 0%, #94a3b8 100%);
-  position: relative;
+.react-flow__minimap {
+  background: #fff;
+  border: 1px solid #e4e8ee;
+  border-radius: var(--antu-radius);
+  overflow: hidden;
+  transition: opacity .16s ease-out;
 }
-.antu-axis-arrow {
+
+/* ---------- 列标题 ---------- */
+.antu-colhead { padding: 8px 16px; text-align: center; }
+.antu-colhead-side { font-size: 12px; font-weight: 700; color: var(--antu-text-2); }
+.antu-colhead-actor { font-size: 11px; color: var(--antu-text-3); margin-top: 2px; }
+.antu-colhead.g0 .antu-colhead-side { color: var(--antu-side1); }
+.antu-colhead.g1 .antu-colhead-side { color: var(--antu-side2); }
+.antu-colhead.g2 .antu-colhead-side { color: #64748b; }
+
+/* ---------- 轴线与轴点 ---------- */
+.antu-axis-line { width: 2px; background: #cbd5e1; position: relative; pointer-events: none; }
+.antu-axis-dot {
   position: absolute;
-  right: -14px;
-  top: -11px;
-  color: #94a3b8;
-  font-size: 16px;
-  line-height: 1;
+  left: -4px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--antu-axis);
+}
+.antu-axis-arrow { position: absolute; bottom: -16px; left: -5px; color: var(--antu-axis); font-size: 11px; line-height: 1; }
+
+/* ---------- 引线层 ---------- */
+.antu-link-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+.antu-link { position: absolute; border-top: 1px solid #cbd5e1; pointer-events: none; }
+
+/* ---------- 格子层（虚线矩形，默认隐藏） ----------
+   整张图本来就是一堆矩形拼出来的，把它显出来便于核对排布。
+   用 SVG 画，线宽与虚线间隔由组件按缩放反向补偿。 */
+.antu-cells {
+  position: absolute;
+  display: none;
+  overflow: visible;
+  pointer-events: none;
+}
+.antu-fact-canvas.show-grid .antu-cells { display: block; }
+.antu-cell {
+  fill: none;
+  stroke: #cbd5e1;   /* 与轴线、引线同色，整张图的辅助线是一套 */
 }
 
-/* ---------- 分组图例 ---------- */
-.antu-legend { display: flex; gap: 14px; font-size: 12px; color: #475569; }
-.antu-legend-item { display: inline-flex; align-items: center; gap: 5px; }
-.antu-legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.antu-legend-dot.g0 { background: #2f6fed; }
-.antu-legend-dot.g1 { background: #e5484d; }
-
-/* ---------- 事件节点 ---------- */
-.antu-event-node {
-  width: 320px;
+/* ---------- 信息栏里的开关 ---------- */
+.antu-switch {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--antu-text-2);
+  cursor: pointer;
+  user-select: none;
+}
+.antu-switch input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--antu-side1);
+  cursor: pointer;
+}
+
+/* ---------- 事件卡片 ---------- */
+.antu-card {
+  position: relative;
+  width: 320px;
+  height: 112px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 10px 12px;
   background: #fff;
-  border: 1.5px solid #93c5fd;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, .08);
+  border: 1px solid #e3e6ea;
+  border-left: 4px solid var(--antu-side1);
+  border-radius: var(--antu-radius);
   font-size: 12px;
-  color: #0f172a;
+  color: var(--antu-text);
+  cursor: pointer;
+  transition: box-shadow .15s ease-out, transform .15s ease-out, border-color .15s ease-out;
 }
-.antu-event-time {
-  flex: 0 0 auto;
-  width: 86px;
-  font-variant-numeric: tabular-nums;
-  color: #2563eb;
+.antu-card.g0 { border-left-color: var(--antu-side1); }
+.antu-card.g1 { border-left-color: var(--antu-side2); }
+.antu-card.g2 { border-left-color: var(--antu-axis); }
+/* 悬停时轻微浮起；详情浮层见下方 .antu-preview */
+.antu-card:hover { box-shadow: 0 4px 14px rgba(15, 23, 42, .10); }
+/* 选中的卡片由 React Flow 在节点包裹层加 selected 类 */
+.react-flow__node.selected .antu-card {
+  border-color: #c7d3e0;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, .12);
+  transform: scale(1.02);
+}
+
+.antu-card-top { display: flex; justify-content: space-between; align-items: center; }
+.antu-card-time {
+  font-size: 11px;
   font-weight: 600;
-  font-size: 11px;
-  line-height: 1.5;
+  color: #2563eb;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.antu-event-duration { color: #64748b; font-weight: 400; }
-.antu-event-body { flex: 1 1 auto; min-width: 0; }
-.antu-event-label { font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
-.antu-event-actors { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
-.antu-actor-tag {
-  padding: 1px 7px;
-  background: #eef4ff;
-  color: #2f6fed;
-  border-radius: 999px;
-  font-size: 10px;
-}
-.antu-event-detail {
-  color: #475569;
-  line-height: 1.5;
-  font-size: 11px;
+.antu-card-flags { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+
+.antu-card-label {
+  font-weight: 600;
+  line-height: 1.4;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 时间轴连接点：隐藏外观，只用于边连接 */
-.antu-handle {
-  opacity: 0;
-  pointer-events: none;
-  width: 1px;
-  height: 1px;
-  min-width: 0;
-  min-height: 0;
-  border: none;
-  background: transparent;
+
+.antu-card-actors { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; }
+.antu-actor-tag {
+  padding: 1px 7px;
+  background: #eef4ff;
+  color: var(--antu-side1);
+  border-radius: 999px;
+  font-size: 10px;
 }
 
-.antu-event-meta { display: flex; gap: 6px; margin-top: 6px; }
 .antu-badge-approx {
   padding: 1px 6px;
   background: #fff7e6;
@@ -155,8 +348,143 @@
 }
 .antu-badge-source {
   padding: 1px 6px;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--antu-chip);
+  color: var(--antu-text-2);
   border-radius: 4px;
   font-size: 10px;
+}
+
+/* ---------- 卡片旁的详情浮层（覆盖式，不改变画布尺寸） ---------- */
+.antu-preview {
+  position: absolute;
+  left: 0;
+  width: 320px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #e3e6ea;
+  border-radius: var(--antu-radius);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .14);
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--antu-text-2);
+  z-index: 20;
+  pointer-events: none;
+}
+.antu-preview.above { bottom: calc(100% + 10px); }
+.antu-preview.below { top: calc(100% + 10px); }
+
+/* 悬停态：detail 只露三行 */
+.antu-preview:not(.pinned) .antu-preview-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 钉住态：全文可滚动，可交互 */
+.antu-preview.pinned {
+  max-height: 420px;
+  overflow-y: auto;
+  overscroll-behavior: contain;   /* 滚到头不要带着画布一起动 */
+  pointer-events: auto;
+  cursor: default;
+}
+
+.antu-preview-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: none;
+  background: transparent;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--antu-text-4);
+  cursor: pointer;
+}
+.antu-preview-close:hover { color: var(--antu-text-2); }
+.antu-preview-time {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  font-variant-numeric: tabular-nums;
+}
+.antu-preview-title { margin: 2px 22px 6px 0; font-size: 13px; font-weight: 650; line-height: 1.4; color: var(--antu-text); }
+.antu-preview-actors { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
+.antu-preview-text { color: var(--antu-text-2); }
+.antu-preview-note {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: #fff7e6;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: #8a5200;
+}
+.antu-preview-sub { margin: 10px 0 6px; font-size: 11px; font-weight: 700; color: var(--antu-text-2); }
+.antu-preview-hint { margin-top: 6px; font-size: 10.5px; color: var(--antu-text-4); }
+.antu-source {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  background: #f7f9fb;
+  border: 1px solid var(--antu-line);
+  border-radius: var(--antu-radius);
+}
+.antu-source-name { font-size: 12px; font-weight: 600; color: var(--antu-text); }
+.antu-source-type {
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: var(--antu-chip);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 400;
+  color: #5b6b7f;
+}
+.antu-source-quote { margin-top: 4px; font-size: 12px; line-height: 1.65; color: var(--antu-text-2); }
+
+/* ---------- 无障碍：关了动效就不过渡 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .antu-card,
+  .antu-preview,
+  .antu-rail,
+  .react-flow__minimap { transition: none; }
+}
+
+/* ---------- 窄屏：左栏折回顶部横条，默认收起 ----------
+   窗口窄到 1080 以下时，240px 的左栏开始挤压画布，
+   这时把信息栏翻成横的一条。它展开时比原来的两条顶栏还高，
+   所以 AppRail 在窄屏下默认收起，只剩品牌那一行。 */
+@media (max-width: 1080px) {
+  .antu-fact { flex-direction: column; }
+  .antu-rail {
+    flex: 0 0 auto;
+    max-height: 42vh;
+    border-right: none;
+    border-bottom: 1px solid var(--antu-line);
+  }
+  .antu-rail.is-collapsed { flex-basis: auto; }
+  /* 横条模式下收起，也把品牌留着，让人一眼看出这是什么、按钮在哪 */
+  .antu-rail.is-collapsed .antu-rail-brand { opacity: 1; }
+  /* 横条这里没有高度动画，收起就必须真的不占位。
+     只把它设成 visibility:hidden 的话，那 270 多像素的空白照样留着。 */
+  .antu-rail.is-collapsed .antu-rail-content { display: none; }
+  .antu-rail-head { padding: 8px 16px; }
+  .antu-rail-content {
+    width: auto;              /* 折成横条时不再固定宽度 */
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 0 16px 12px;
+  }
+  .antu-rail-nav { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .antu-rail-nav .antu-rail-label { flex-basis: 100%; margin-bottom: 0; }
+  .antu-rail-note { flex-basis: 100%; margin-top: 0; }
+  .antu-info { flex: 1 1 260px; }
+  /* 标题只留一行，避免把顶部条撑高 */
+  .antu-info-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .antu-info-legend { flex-direction: row; flex-wrap: wrap; gap: 10px 16px; }
 }
