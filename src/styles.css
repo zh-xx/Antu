@@ -5,10 +5,10 @@
 
 :root {
   --antu-line: #e8ebef;
-  --antu-line-soft: #eef1f5;
+  --antu-line-soft: #e8ebef;
   --antu-text: #0f172a;
   --antu-text-2: #475569;
-  --antu-text-3: #7b8794;
+  --antu-text-3: #64748b;
   --antu-text-4: #94a3b8;
   --antu-chip: #f1f4f8;
   --antu-canvas: #fbfcfd;
@@ -58,6 +58,10 @@
   position: absolute;
   left: 16px;
   top: 14px;
+  /* 它是定位元素，而按钮是普通流内元素；定位元素默认画在上面。
+     所以收起后品牌虽然已经淡到看不见，仍然会压住按钮、把点击吃掉。
+     它只是两个字，永远不该接收点击。 */
+  pointer-events: none;
   font-weight: 700;
   letter-spacing: .3px;
   color: var(--antu-text);
@@ -93,7 +97,7 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid #e4e8ee;
+  border: 1px solid #e8ebef;
   border-radius: 6px;
   background: #fff;
   color: var(--antu-text-2);
@@ -101,7 +105,7 @@
   line-height: 1;
   cursor: pointer;
 }
-.antu-rail-toggle:hover { background: #f7f9fb; border-color: #d8dee6; }
+.antu-rail-toggle:hover { background: #f1f4f8; border-color: #cbd5e1; }
 
 .antu-rail-label {
   font-size: 10.5px;
@@ -116,7 +120,7 @@
 .antu-rail-nav { display: flex; flex-direction: column; gap: 6px; }
 .antu-nav-btn {
   padding: 6px 10px;
-  border: 1px solid #e4e8ee;
+  border: 1px solid #e8ebef;
   border-radius: var(--antu-radius);
   background: #fff;
   color: var(--antu-text-2);
@@ -125,7 +129,7 @@
   text-align: left;
   cursor: pointer;
 }
-.antu-nav-btn:hover { background: #f7f9fb; }
+.antu-nav-btn:hover { background: #f1f4f8; }
 .antu-nav-btn.active {
   background: var(--antu-chip);
   border-color: var(--antu-chip);
@@ -141,7 +145,7 @@
   border: 1px solid #fecaca;
   border-left: 3px solid var(--antu-side2);
   border-radius: var(--antu-radius);
-  color: #7f1d1d;
+  color: #991b1b;
   font-size: 12px;
   line-height: 1.6;
   overflow-wrap: anywhere;
@@ -170,7 +174,7 @@
   padding: 2px 9px;
   border-radius: 999px;
   background: var(--antu-chip);
-  color: #5b6b7f;
+  color: #64748b;
   font-size: 11px;
   white-space: nowrap;
 }
@@ -181,7 +185,7 @@
   gap: 6px;
   font-size: 11.5px;
   line-height: 1.5;
-  color: #5b6b7f;
+  color: #64748b;
 }
 .antu-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; margin-top: 4px; }
 .antu-legend-dot.g0 { background: var(--antu-side1); }
@@ -200,7 +204,7 @@
 /* 控件与小地图统一改成素净样式 */
 .react-flow__controls {
   box-shadow: none;
-  border: 1px solid #e4e8ee;
+  border: 1px solid #e8ebef;
   border-radius: var(--antu-radius);
   overflow: hidden;
 }
@@ -211,27 +215,44 @@
   border-bottom: 1px solid var(--antu-line-soft);
 }
 .react-flow__controls-button:last-child { border-bottom: none; }
-.react-flow__controls-button:hover { background: #f7f9fb; }
+.react-flow__controls-button:hover { background: #f1f4f8; }
 .react-flow__controls-button svg { fill: var(--antu-text-2); max-width: 12px; max-height: 12px; }
 
 .react-flow__minimap {
   background: #fff;
-  border: 1px solid #e4e8ee;
+  border: 1px solid #e8ebef;
   border-radius: var(--antu-radius);
   overflow: hidden;
   transition: opacity .16s ease-out;
 }
 
+/* 布局变化时滑动过去，而不是瞬移。
+   这条只影响节点自己的 transform；画布的平移与缩放动的是视口那一层，不受影响。 */
+.react-flow__node { transition: transform .25s ease-out; }
+/* 轴线和引线也要跟着滑，否则卡片在动、它们却在跳 */
+/* 轴线：外层被测量（不动），里层的线自己做高度过渡 */
+.antu-axis-wrap { position: relative; width: 2px; pointer-events: none; }
+.antu-axis-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  background: #b2c0d0;
+  pointer-events: none;
+  transition: height .25s ease-out;
+}
+.antu-axis-dot { transition: top .25s ease-out; }
+.antu-link { transition: top .25s ease-out; }
+
 /* ---------- 列标题 ---------- */
 .antu-colhead { padding: 8px 16px; text-align: center; }
-.antu-colhead-side { font-size: 12px; font-weight: 700; color: var(--antu-text-2); }
-.antu-colhead-actor { font-size: 11px; color: var(--antu-text-3); margin-top: 2px; }
+.antu-colhead-side { font-size: 14px; font-weight: 700; color: var(--antu-text-2); line-height: 1.4; }
+.antu-colhead-actor { font-size: 12px; color: var(--antu-text-3); margin-top: 3px; }
 .antu-colhead.g0 .antu-colhead-side { color: var(--antu-side1); }
 .antu-colhead.g1 .antu-colhead-side { color: var(--antu-side2); }
 .antu-colhead.g2 .antu-colhead-side { color: #64748b; }
 
 /* ---------- 轴线与轴点 ---------- */
-.antu-axis-line { width: 2px; background: #cbd5e1; position: relative; pointer-events: none; }
 .antu-axis-dot {
   position: absolute;
   left: -4px;
@@ -239,11 +260,27 @@
   background: #fff;
   border: 2px solid var(--antu-axis);
 }
-.antu-axis-arrow { position: absolute; bottom: -16px; left: -5px; color: var(--antu-axis); font-size: 11px; line-height: 1; }
+/* 箭头用 CSS 三角画，不用「▼」字符：
+   字符有字体边距，框的中心和字形的中心不是一回事，怎么调都会偏一两像素。
+   CSS 三角的几何是确定的：left 50% + translateX(-50%) 必然落在轴线中心。 */
+.antu-axis-arrow {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--antu-axis);
+}
 
 /* ---------- 引线层 ---------- */
 .antu-link-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
-.antu-link { position: absolute; border-top: 1px solid #cbd5e1; pointer-events: none; }
+/* 引线：卡片到轴点的连接件。
+   层次：卡片边框 #8291a6 > 标记与引线 #94a3b8 > 轴线 #b2c0d0 > 格线 #cbd5e1。
+   四者逐级变浅，相邻两级都差 30 上下，看得出来。 */
+.antu-link { position: absolute; border-top: 1px solid #94a3b8; pointer-events: none; }
 
 /* ---------- 格子层（虚线矩形，默认隐藏） ----------
    整张图本来就是一堆矩形拼出来的，把它显出来便于核对排布。
@@ -257,7 +294,7 @@
 .antu-fact-canvas.show-grid .antu-cells { display: block; }
 .antu-cell {
   fill: none;
-  stroke: #cbd5e1;   /* 与轴线、引线同色，整张图的辅助线是一套 */
+  stroke: #cbd5e1;   /* 辅助线里最浅的一级，退到背景里 */
 }
 
 /* ---------- 信息栏里的开关 ---------- */
@@ -281,59 +318,107 @@
 /* ---------- 事件卡片 ---------- */
 .antu-card {
   position: relative;
-  width: 320px;
-  height: 112px;
+  /* 宽高由渲染层按 layout 常量内联给出（见 timelineLayout.js 的 CARD_W / CARD_H），
+     样式里不再写第二遍，避免两处数字对不上 */
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px 12px;
+  /* 内边距来自 core/cardGeometry.js（经 CSS 变量传入）：
+     它同时决定「摘要一行能放几个字」，不能在这里另写一个数 */
+  padding: var(--antu-card-pad-y, 11px) var(--antu-card-pad-x, 13px);
   background: #fff;
-  border: 1px solid #e3e6ea;
-  border-left: 4px solid var(--antu-side1);
+  /* 一整圈边框，不用左侧那根彩色细条：
+     那种做法太像模板拼出来的东西了，而且把圆角矩形切掉了一块。
+     边框比所有辅助线都深（引线 #94a3b8、轴线 #b2c0d0、格线 #cbd5e1），
+     卡片才是图里的主角。 */
+  border: 1.5px solid #8291a6;
   border-radius: var(--antu-radius);
   font-size: 12px;
   color: var(--antu-text);
   cursor: pointer;
   transition: box-shadow .15s ease-out, transform .15s ease-out, border-color .15s ease-out;
 }
-.antu-card.g0 { border-left-color: var(--antu-side1); }
-.antu-card.g1 { border-left-color: var(--antu-side2); }
-.antu-card.g2 { border-left-color: var(--antu-axis); }
+/* 悬停中的卡片连同它的浮层一起抬到最上层。
+   React Flow 给每个节点都设了内联的 z-index: 0，谁在后面谁盖住谁；
+   而浮层是长在卡片节点里面的，出不去这个层叠上下文。
+   不加这一条，第一行往下冒的浮层就会被第二行的卡片压住。
+   !important 是为了压过那条内联样式。 */
+.react-flow__node-card:hover { z-index: 10 !important; }
+
 /* 悬停时轻微浮起；详情浮层见下方 .antu-preview */
 .antu-card:hover { box-shadow: 0 4px 14px rgba(15, 23, 42, .10); }
 /* 选中的卡片由 React Flow 在节点包裹层加 selected 类 */
 .react-flow__node.selected .antu-card {
-  border-color: #c7d3e0;
-  box-shadow: 0 0 0 3px rgba(47, 111, 237, .12);
+  border-color: #6d86a8;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, .16);
   transform: scale(1.02);
 }
 
-.antu-card-top { display: flex; justify-content: space-between; align-items: center; }
-.antu-card-time {
-  font-size: 11px;
-  font-weight: 600;
-  color: #2563eb;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.antu-card-flags { display: inline-flex; gap: 4px; flex: 0 0 auto; }
-
+/* 卡片内容：标题在上、时间在下，中间用 margin-top:auto 顶开 */
 .antu-card-label {
+  /* 字号来自 core/cardGeometry.js：它是算「一行放几个字」的除数 */
+  font-size: var(--antu-label-font, 13px);
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.45;
+  color: var(--antu-text);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* 详情摘要（一行截断）与主体标签（可开关的两块） */
+.antu-card-snippet {
+  /* 字号来自 core/cardGeometry.js：它就是算字数上限的除数 */
+  font-size: var(--antu-snippet-font, 11.5px);
+  line-height: 1.55;
+  color: var(--antu-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.antu-card-actors { display: flex; flex-wrap: wrap; gap: 4px; }
 
-.antu-card-actors { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; }
+/* 底部一行：左边时间，右边来源的有无 */
+.antu-card-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.antu-card-time {
+  font-size: 11.5px;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 有来源：实心点；没列来源：空心点。区别靠虚实，不靠颜色喊。 */
+.antu-card-src {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: #64748b;
+  white-space: nowrap;
+}
+.antu-src-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64748b;
+}
+.antu-card-src.is-none { color: var(--antu-text-4); }
+.antu-card-src.is-none .antu-src-dot {
+  background: transparent;
+  border: 1px solid var(--antu-text-4);
+}
 .antu-actor-tag {
   padding: 1px 7px;
-  background: #eef4ff;
-  color: var(--antu-side1);
+  background: #f1f4f8;
+  color: #64748b;
   border-radius: 999px;
   font-size: 10px;
 }
@@ -353,18 +438,25 @@
   border-radius: 4px;
   font-size: 10px;
 }
+/* 注：这两个徽章目前只在浮层里用得上，卡片上不放了 */
 
 /* ---------- 卡片旁的详情浮层（覆盖式，不改变画布尺寸） ---------- */
 .antu-preview {
   position: absolute;
   left: 0;
-  width: 320px;
-  padding: 10px 12px;
+  /* 跟着卡片宽度走，卡片改宽改窄不用动这里 */
+  width: 100%;
+  /* 与卡片同一套内边距：浮层和卡片上下对齐，改一处两处一起动 */
+  padding: var(--antu-card-pad-y, 11px) var(--antu-card-pad-x, 13px);
   background: #fff;
-  border: 1px solid #e3e6ea;
+  /* 浮层压在卡片上面，边框必须比卡片更实，否则“浮”不起来 */
+  border: 1px solid #8291a6;
   border-radius: var(--antu-radius);
-  box-shadow: 0 10px 26px rgba(15, 23, 42, .14);
-  font-size: 11.5px;
+  /* 两层阴影：近处一层勾边，远处一层拉开高度 */
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, .10),
+    0 14px 34px rgba(15, 23, 42, .18);
+  font-size: 12px;
   line-height: 1.65;
   color: var(--antu-text-2);
   z-index: 20;
@@ -405,7 +497,7 @@
 .antu-preview-time {
   font-size: 11px;
   font-weight: 600;
-  color: #2563eb;
+  color: #64748b;
   font-variant-numeric: tabular-nums;
 }
 .antu-preview-title { margin: 2px 22px 6px 0; font-size: 13px; font-weight: 650; line-height: 1.4; color: var(--antu-text); }
@@ -418,14 +510,14 @@
   border-radius: 6px;
   font-size: 11px;
   line-height: 1.55;
-  color: #8a5200;
+  color: #b26a00;
 }
 .antu-preview-sub { margin: 10px 0 6px; font-size: 11px; font-weight: 700; color: var(--antu-text-2); }
 .antu-preview-hint { margin-top: 6px; font-size: 10.5px; color: var(--antu-text-4); }
 .antu-source {
   margin-bottom: 8px;
   padding: 8px 10px;
-  background: #f7f9fb;
+  background: #f1f4f8;
   border: 1px solid var(--antu-line);
   border-radius: var(--antu-radius);
 }
@@ -437,7 +529,7 @@
   border-radius: 999px;
   font-size: 10px;
   font-weight: 400;
-  color: #5b6b7f;
+  color: #64748b;
 }
 .antu-source-quote { margin-top: 4px; font-size: 12px; line-height: 1.65; color: var(--antu-text-2); }
 

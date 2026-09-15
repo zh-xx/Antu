@@ -12,8 +12,14 @@ const AxisLineNode = memo(function AxisLineNode({ data }) {
   const { height, dotYs, dotSize } = data
 
   return (
-    <div className="antu-axis-line" style={{ height }}>
-      <span className="antu-axis-arrow">▼</span>
+    // 外层只负责“被测量”：高度立即到位、不加过渡。
+    // React Flow 靠它量出节点尺寸来算 fitView 的边界与居中；
+    // 如果让被测量的元素自己做高度过渡，它量到的会是过渡中间的旧值，
+    // 缩放和位置就都会算错（实测过：全关字段后图会浮在上方、下面空一大块）。
+    <div className="antu-axis-wrap" style={{ height }}>
+      <div className="antu-axis-line" style={{ height }}>
+        <span className="antu-axis-arrow" />
+      </div>
       {dotYs.map((y, i) => (
         <span
           key={i}

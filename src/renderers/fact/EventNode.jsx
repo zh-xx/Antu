@@ -12,7 +12,7 @@
 
 import { memo, useContext } from 'react'
 import { PreviewContext } from './previewContext.js'
-import { SOURCE_TYPE_LABELS, labelOf } from '../../core/labels.js'
+import { SOURCE_TYPE_LABELS, SOURCE_WORD, labelOf } from '../../core/labels.js'
 
 /** 把 ISO 8601 时间转成便于阅读的显示文本 */
 export function formatDate(date, approx) {
@@ -25,7 +25,7 @@ export function formatDate(date, approx) {
 }
 
 const EventNode = memo(function EventNode({ data }) {
-  const { event, actorNames, sources, sourceCount, groupIndex, row } = data
+  const { event, actorNames, sources, groupIndex, row, cardW, cardH, labelLines, fields = {} } = data
   const { hoveredId, pinnedId, unpin } = useContext(PreviewContext)
 
   const isPinned = pinnedId === event.id
@@ -34,27 +34,41 @@ const EventNode = memo(function EventNode({ data }) {
   const open = isPinned || showPreview
 
   return (
-    <div className={`antu-card g${groupIndex}`}>
-      <div className="antu-card-top">
-        <span className="antu-card-time">{formatDate(event.date, event.approx)}</span>
-        <span className="antu-card-flags">
-          {event.approx && (
-            <span className="antu-badge-approx" title={event.dateNote || ''}>
-              约
-            </span>
-          )}
-          {sourceCount > 0 && <span className="antu-badge-source">📎 {sourceCount}</span>}
-        </span>
+    <div className={`antu-card g${groupIndex}`} style={{ width: cardW, height: cardH }}>
+      {/* 卡片内容按开关决定。标题与时间不给关：
+          没标题认不出是什么事，没时间在轴上就没有锚点。
+          标题的截断行数跟着卡片实际留的行数走，不多留也不截早。 */}
+      <div
+        className="antu-card-label"
+        style={{ WebkitLineClamp: labelLines, lineClamp: labelLines }}
+      >
+        {event.label}
       </div>
 
-      <div className="antu-card-label">{event.label}</div>
+      {fields.summary && event.summary && (
+        <div className="antu-card-snippet">{event.summary}</div>
+      )}
 
-      <div className="antu-card-actors">
-        {actorNames.map((n) => (
-          <span key={n} className="antu-actor-tag">
-            {n}
+      {fields.actors && actorNames.length > 0 && (
+        <div className="antu-card-actors">
+          {actorNames.map((n) => (
+            <span key={n} className="antu-actor-tag">
+              {n}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="antu-card-foot">
+        <span className="antu-card-time" title={event.dateNote || ''}>
+          {formatDate(event.date, event.approx)}
+        </span>
+        {fields.sources && (
+          <span className={`antu-card-src${sources.length ? '' : ' is-none'}`}>
+            <i className="antu-src-dot" />
+            {sources.length ? `${SOURCE_WORD} ${sources.length}` : `未列${SOURCE_WORD}`}
           </span>
-        ))}
+        )}
       </div>
 
       {open && (
@@ -109,7 +123,9 @@ const EventNode = memo(function EventNode({ data }) {
 
           {isPinned && sources.length > 0 && (
             <>
-              <div className="antu-preview-sub">依据（{sources.length}）</div>
+              <div className="antu-preview-sub">
+                {SOURCE_WORD}（{sources.length}）
+              </div>
               {sources.map((s) => (
                 <div key={s.id} className="antu-source">
                   <div className="antu-source-name">

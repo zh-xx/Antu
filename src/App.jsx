@@ -25,6 +25,34 @@ const EXAMPLES = [
   { label: '示例 · 同侧两个主体（看引线）', path: '/examples/fact-示例-同侧双主体.json' },
 ]
 
+/**
+ * 卡片可选字段的默认值。
+ * 标题与时间不在此列，它们固定在卡上。
+ */
+const FIELD_DEFAULTS = { sources: false, actors: false, summary: true }
+
+/**
+ * 本地偏好的读写。关键点：**只在用户真的动过开关时才写入**。
+ * 如果一进来就把默认值整份写进去，那份记录就会压过默认值，
+ * 以后改默认值（比如把摘要改成默认显示）谁都不会生效。
+ */
+function readPref(key) {
+  try {
+    const raw = window.localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function writePref(key, patch) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify({ ...readPref(key), ...patch }))
+  } catch {
+    /* 隐私模式下写不进去，忽略即可 */
+  }
+}
+
 /** 渲染器不可用时的兜底说明 */
 function FallbackInfo({ loading, errors, spec, hasRenderer }) {
   if (loading) return <div className="antu-info-msg">加载中…</div>
@@ -60,24 +88,26 @@ export default function App() {
   const [spec, setSpec] = useState(null)
   const [errors, setErrors] = useState([])
   const [loading, setLoading] = useState(false)
-  // 显示格线是全局偏好，不能放在渲染器里：
-  // 切换示例时渲染器会带着 key 一起重挂载，放里面就会被重置掉。
-  // 顺便记到本地，刷新页面后也还在。
-  const [showGrid, setShowGrid] = useState(() => {
-    try {
-      return window.localStorage.getItem('antu.showGrid') === '1'
-    } catch {
-      return false
-    }
-  })
+  // 显示格线：全局偏好，不能放在渲染器里（切换示例时渲染器会带着 key
+  // 重挂载，放里面会被重置）。用户动过才记到本地。
+  const [showGrid, setShowGrid] = useState(() => readPref('antu.prefs').showGrid === true)
 
-  useEffect(() => {
-    try {
-      window.localStorage.setItem('antu.showGrid', showGrid ? '1' : '0')
-    } catch {
-      /* 隐私模式下写不进去，忽略即可 */
-    }
-  }, [showGrid])
+  const toggleGrid = (value) => {
+    setShowGrid(value)
+    writePref('antu.prefs', { showGrid: value })
+  }
+
+  // 卡片上显示哪些可选字段。同样只记用户动过的那几个，
+  // 没动过的继续跟随 FIELD_DEFAULTS。
+  const [fields, setFields] = useState(() => ({
+    ...FIELD_DEFAULTS,
+    ...readPref('antu.prefs').fields,
+  }))
+
+  const toggleField = (key, value) => {
+    setFields((f) => ({ ...f, [key]: value }))
+    writePref('antu.prefs', { fields: { ...readPref('antu.prefs').fields, [key]: value } })
+  }
   // 支持 ?example=1 直接打开某个示例（便于分享与测试）
   const [current, setCurrent] = useState(() => {
     const idx = Number(new URLSearchParams(window.location.search).get('example'))
@@ -143,7 +173,9 @@ export default function App() {
           spec={spec}
           nav={nav}
           showGrid={showGrid}
-          onToggleGrid={setShowGrid}
+          onToggleGrid={toggleGrid}
+          fields={fields}
+          onToggleField={toggleField}
         />
       ) : (
         <AppRail

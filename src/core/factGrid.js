@@ -12,6 +12,8 @@
 //   - 距离按侧内主体次序
 // ============================================================
 
+import { SUMMARY_MAX } from './cardGeometry.js'
+
 export const SIDE = { SIDE1: 'side1', AXIS: 'axis', SIDE2: 'side2' }
 
 /** 组数上限：轴只有两侧加轴线三个位置 */
@@ -150,6 +152,17 @@ export function buildGrid(spec) {
         errors.push(`${eAt}: \`date\` 不符合 ISO 8601（如 2017-05-02T09:24:03），实际为 "${e.date}"`)
       }
       if (!e.label) errors.push(`${eAt}: 缺少必填字段 \`label\``)
+
+      // summary 是卡片上的一行补充，超过一行卡片就放不下了
+      if (e.summary !== undefined && e.summary !== null) {
+        if (typeof e.summary !== 'string') {
+          errors.push(`${eAt}: \`summary\` 必须是字符串`)
+        } else if ([...e.summary].length > SUMMARY_MAX) {
+          errors.push(
+            `${eAt}: \`summary\` 超过 ${SUMMARY_MAX} 字（实际 ${[...e.summary].length} 字），卡片一行放不下；要么缩短，要么改写成 detail`,
+          )
+        }
+      }
 
       const ids = Array.isArray(e.actorIds) ? e.actorIds : []
       ids.forEach((id) => {

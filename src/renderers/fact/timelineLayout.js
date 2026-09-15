@@ -12,14 +12,33 @@
 // ============================================================
 
 import { buildGrid, SIDE } from '../../core/factGrid.js'
-import { SIDE_LABELS } from '../../core/labels.js'
+import {
+  CARD_W,
+  LABEL_LINE_CAP,
+  TITLE_LINES,
+  cardHeightOf,
+} from '../../core/cardGeometry.js'
 
-/** 一个格子的尺寸 */
-export const CELL_W = 384
-export const CELL_H = 176
-/** 卡片尺寸（格子减去四周留白） */
-export const CARD_W = 320
-export const CARD_H = 112
+/**
+ * 全图标题实际要几行（取最大值，因为同一张图里卡片必须一样高）。
+ * 按码点数估算：汉字按 1em 算，是最宽的情况，所以只会估多、不会估少，
+ * 估多了顶多留一点余量，估少了标题会被截断。估出的行数封顶在 TITLE_LINES。
+ */
+function labelLinesOf(grid) {
+  let max = 1
+  for (const row of grid.rows) {
+    row.cells.forEach((event) => {
+      const n = [...(event.label || '')].length
+      max = Math.max(max, Math.min(TITLE_LINES, Math.ceil(n / LABEL_LINE_CAP)))
+    })
+  }
+  return max
+}
+
+/** 格子横宽与留白 */
+export const CELL_W = 316
+/** 卡片与格子之间的留白（纵向也用它） */
+export const CELL_GAP = 28
 /** 列标题占的高度 */
 export const HEADER_H = 96
 
@@ -32,11 +51,14 @@ export function groupIndexOf(side) {
   return 2
 }
 
+/**
+ * 列标题：只写这一列的组名，不写“第 N 侧 / 轴线”这类位置描述。
+ * 位置看图就知道，写在标题里只是占地方。
+ * 组名本身才是信息（“正常（按约定履行）”），没有组就留空。
+ */
 function sideTitleOf(side, groups) {
   const groupIndex = side === SIDE.SIDE1 ? 0 : side === SIDE.SIDE2 ? 1 : 2
-  const group = groups[groupIndex]
-  const sideName = SIDE_LABELS[side] ?? side
-  return group ? `${sideName} · ${group.label}` : sideName
+  return groups[groupIndex]?.label ?? ''
 }
 
 function toCardData(event, grid, rowIndex) {
@@ -59,7 +81,7 @@ function toCardData(event, grid, rowIndex) {
  * 把一份已通过校验的 fact 规范算成 React Flow 的节点。
  * edges 恒为空；卡片到轴点的引线由单独的“引线层”节点承担。
  */
-export function buildFactGraph(spec) {
+export function buildFactGraph(spec, fields = {}) {
   const grid = buildGrid(spec)
   const groups = Array.isArray(spec.groups) ? spec.groups : []
 
@@ -68,9 +90,15 @@ export function buildFactGraph(spec) {
   const side1Count = grid.columns.filter((c) => c.side === SIDE.SIDE1).length
   const side2Count = grid.columns.filter((c) => c.side === SIDE.SIDE2).length
 
+  // 卡片高度由「要显示哪些字段」和「标题实际几行」算出来，
+  // 格子高度再跟着卡片走。两处都跟着内容走，卡片才不会空出一块。
+  const labelLines = labelLinesOf(grid)
+  const cardH = cardHeightOf(fields, labelLines)
+  const cellH = cardH + CELL_GAP
+
   const axisX = grid.axisColumnIndex * CELL_W + CELL_W / 2
   const gridTop = HEADER_H
-  const gridBottom = gridTop + rowCount * CELL_H
+  const gridBottom = gridTop + rowCount * cellH
 
   const nodes = []
 
@@ -85,7 +113,7 @@ export function buildFactGraph(spec) {
     // visibility:hidden，装饰层本来就是 0×0，不声明就一个像素都看不见。
     width: 0,
     height: 0,
-    data: { cols: colCount, rows: rowCount, cellW: CELL_W, cellH: CELL_H, top: gridTop },
+    data: { cols: colCount, rows: rowCount, cellW: CELL_W, cellH, top: gridTop },
     draggable: false,
     selectable: false,
     connectable: false,
@@ -114,9 +142,11 @@ export function buildFactGraph(spec) {
     })
   })
 
-  // ---------- 轴线（含每个槽的轴点） ----------
-  const dotYs = grid.rows.map((r) => r.index * CELL_H + CELL_H / 2 - DOT_SIZE / 2)
-  nodes.push({
+  // ---------- 轴线（含每个槽的轴点）----------
+  // 先算好，等引线入列之后再放进去：轴点必须压在引线上面。
+  // 反过来的话，引线会一直画到轴点的圆心，把那个白心的圆圈戳穿。
+  const dotYs = grid.rows.map((r) => r.index * cellH + cellH / 2 - DOT_SIZE / 2)
+  const axisNode = {
     id: '__axis__',
     type: 'axis',
     position: { x: axisX - 1, y: gridTop },
@@ -125,7 +155,7 @@ export function buildFactGraph(spec) {
     selectable: false,
     connectable: false,
     focusable: false,
-  })
+  }
 
   // ---------- 算卡片位置，顺手收集引线 ----------
   const cardNodes = []
@@ -137,8 +167,8 @@ export function buildFactGraph(spec) {
       if (col < 0) return
 
       const cardX = col * CELL_W + (CELL_W - CARD_W) / 2
-      const cardY = gridTop + row.index * CELL_H + (CELL_H - CARD_H) / 2
-      const centerY = cardY + CARD_H / 2
+      const cardY = gridTop + row.index * cellH + (cellH - cardH) / 2
+      const centerY = cardY + cardH / 2
 
       // 卡片靠轴的一侧拉一条引线到轴点；卡片本就在轴线列时不画
       if (col < grid.axisColumnIndex) {
@@ -155,12 +185,20 @@ export function buildFactGraph(spec) {
         data: {
           ...toCardData(event, grid, row.index),
           groupIndex: groupIndexOf(grid.columns[col].side),
+          // 尺寸的唯一来源：样式里不再写宽高
+          cardW: CARD_W,
+          cardH,
+          labelLines,
+          fields,
         },
       })
     })
   })
 
-  // ---------- 引线层：排在卡片之前，好让卡片压住引线 ----------
+  // ---------- 引线层 ----------
+  // 层级自上而下：轴点 → 引线 → 卡片。
+  // 引线排在轴之后，轴点才能盖住线的末端（线就不会插进圆圈里）；
+  // 卡片排在最后，压住引线（线横穿中间列时不会压到卡片上）。
   if (linkSegments.length) {
     nodes.push({
       id: '__links__',
@@ -177,6 +215,7 @@ export function buildFactGraph(spec) {
     })
   }
 
+  nodes.push(axisNode)
   nodes.push(...cardNodes)
 
   return {

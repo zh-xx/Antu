@@ -24,6 +24,7 @@ import FactInfo from './FactInfo.jsx'
 import AppRail from '../../shell/AppRail.jsx'
 import { PreviewContext } from './previewContext.js'
 import { buildFactGraph } from './timelineLayout.js'
+import { CARD_PAD_X, CARD_PAD_Y, LABEL_FONT, SNIPPET_FONT } from '../../core/cardGeometry.js'
 import { ARIA_LABEL_CONFIG } from '../../core/labels.js'
 
 const nodeTypes = {
@@ -37,8 +38,16 @@ const nodeTypes = {
 /** fitView 的留白比例，算缩放下限时要用同一个值 */
 const FIT_PADDING = 0.12
 
-export default function FactRenderer({ spec, nav, showGrid = false, onToggleGrid }) {
-  const graph = useMemo(() => buildFactGraph(spec), [spec])
+export default function FactRenderer({
+  spec,
+  nav,
+  showGrid = false,
+  onToggleGrid,
+  fields = {},
+  onToggleField,
+}) {
+  // 字段开关会影响卡片高度，所以它也是排布的输入
+  const graph = useMemo(() => buildFactGraph(spec, fields), [spec, fields])
 
   // 浮层状态：hoveredId 是鼠标划过的卡，pinnedId 是点住不放的卡
   const [hoveredId, setHoveredId] = useState(null)
@@ -53,6 +62,24 @@ export default function FactRenderer({ spec, nav, showGrid = false, onToggleGrid
     setNodes(graph.nodes)
     setEdges(graph.edges)
   }, [graph, setNodes, setEdges])
+
+  // 字段开关会改变卡片高度、进而改变整张图的高度。
+  // 图变了就得重新适配一次视口，否则底部会被切在屏幕外。
+  // fitView 只初始化时跑一次，这里补上后续的；后续的走动画，
+  // 让画面滑过去而不是闪一下（初次打开不做动画，否则一进页面就自己动）。
+  const rfRef = useRef(null)
+  const firstFitRef = useRef(true)
+  useEffect(() => {
+    // 等一帧，让 React Flow 先把新尺寸量出来
+    const id = requestAnimationFrame(() => {
+      rfRef.current?.fitView({
+        padding: FIT_PADDING,
+        duration: firstFitRef.current ? 0 : 300,
+      })
+      firstFitRef.current = false
+    })
+    return () => cancelAnimationFrame(id)
+  }, [graph])
 
   // 画布边界：平移范围限制在内容四周各留 160px，滑到边就停，不会滑进空白。
   const translateExtent = useMemo(() => {
@@ -80,23 +107,21 @@ export default function FactRenderer({ spec, nav, showGrid = false, onToggleGrid
     return () => ro.disconnect()
   }, [])
 
-  // 缩放下限＝刚好装下整张图的倍数，相当于“不允许缩到比全览更小”。
-  // 公式：缩放 = 视口 ÷ (内容 × (1 + 留白比例))，宽高各算一次取小值。
-  // 这条是拿实测反推出来的：视口 857 高时全览为 0.5776，1000 高时为 0.6732，
-  // 两组数据都落在 (视口 ÷ 1487) 上，1487 = 1328 × 1.12。
-  // 若公式与它不一致，缩放下限就会偏离全览，第一次滚动时画面会跳一下。
+  // 缩放下限＝刚好装下整张图的倍数：不允许缩到比全览更小，
+  // 否则会缩成窗口中间一小块，四周全是空白。
+  // 但图很小时全览倍数会超过 1，那时上限就没了空间，所以这里封顶到 1。
   const minZoom = useMemo(() => {
     const { width, height } = canvasSize
     if (!width || !height) return 0.1
     const zx = width / (graph.size.width * (1 + FIT_PADDING))
     const zy = height / (graph.size.height * (1 + FIT_PADDING))
-    return Math.max(Math.min(zx, zy), 0.05)
+    return Math.max(Math.min(zx, zy, 1), 0.05)
   }, [canvasSize, graph])
 
-  // 放大上限＝1 倍（内容原始大小）。字号与间距都按 1 倍设计，
-  // 再放大只是把同样的像素摊大，看不出更多信息。
-  // 图很小时全览倍数会超过 1，那就以全览为准，保证上下限不打架。
-  const maxZoom = useMemo(() => Math.max(1, minZoom), [minZoom])
+  // 放大上限 3 倍。原先定 1:1，理由是「再放大只是把同样的像素摊大」——
+  // 这话对信息量没错，对可读性却是错的：字段全开时字号在屏幕上只有 8px，
+  // 不放大根本读不了。上限只用来防止放大到荒唐的程度。
+  const maxZoom = 3
 
   // 浮层状态通过 Context 传下去，避免写进节点 data 引发整份节点数组重建
   const preview = useMemo(
@@ -129,6 +154,8 @@ export default function FactRenderer({ spec, nav, showGrid = false, onToggleGrid
             chips={chips}
             showGrid={showGrid}
             onToggleGrid={onToggleGrid}
+            fields={fields}
+            onToggleField={onToggleField}
           />
         }
       />
@@ -137,6 +164,15 @@ export default function FactRenderer({ spec, nav, showGrid = false, onToggleGrid
         <main
           className={`antu-fact-canvas${showGrid ? ' show-grid' : ''}`}
           ref={canvasRef}
+          // 卡片内边距与摘要字号由 core/cardGeometry.js 统一给出，样式层通过
+          // CSS 变量取用。否则「卡片宽度/字号」和「摘要字数上限」会各写一份，
+          // 改了一处另一处就悄悄失准。
+          style={{
+            '--antu-card-pad-x': `${CARD_PAD_X}px`,
+            '--antu-card-pad-y': `${CARD_PAD_Y}px`,
+            '--antu-label-font': `${LABEL_FONT}px`,
+            '--antu-snippet-font': `${SNIPPET_FONT}px`,
+          }}
         >
           <PreviewContext.Provider value={preview}>
             <ReactFlow
@@ -160,6 +196,9 @@ export default function FactRenderer({ spec, nav, showGrid = false, onToggleGrid
               zoomOnPinch
               panOnDrag
               translateExtent={translateExtent}
+            onInit={(inst) => {
+              rfRef.current = inst
+            }}
               onNodeMouseEnter={(_, n) => {
                 if (n.type === 'card') setHoveredId(n.id)
               }}

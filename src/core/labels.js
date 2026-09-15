@@ -36,6 +36,14 @@ export const SIDE_LABELS = {
 export const labelOf = (dict, key) => dict[key] ?? key
 
 /**
+ * 界面上对 source 的称呼。
+ * 卡片标记、浮层小标题、左栏开关都用这一个词，改词只改这里。
+ * 用「来源」而不是「依据」：JSON 字段就叫 sources，规范文档里写的也是
+ * 「来源表」，界面跟着用同一个词，全项目一套词汇。
+ */
+export const SOURCE_WORD = '来源'
+
+/**
  * React Flow 的提示语与无障碍文案，整套中文。
  * 键名来自 @xyflow/system 的 defaultAriaLabelConfig，必须一一对应才生效。
  */

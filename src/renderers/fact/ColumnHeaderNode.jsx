@@ -12,7 +12,7 @@ const ColumnHeaderNode = memo(function ColumnHeaderNode({ data }) {
 
   return (
     <div className={`antu-colhead g${groupIndex}`} style={{ width }}>
-      <div className="antu-colhead-side">{sideTitle}</div>
+      {sideTitle && <div className="antu-colhead-side">{sideTitle}</div>}
       {colTitle && <div className="antu-colhead-actor">{colTitle}</div>}
     </div>
   )
