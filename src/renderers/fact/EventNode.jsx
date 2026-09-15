@@ -14,8 +14,8 @@ import { memo, useContext } from 'react'
 import { PreviewContext } from './previewContext.js'
 import { SOURCE_TYPE_LABELS, SOURCE_WORD, labelOf } from '../../core/labels.js'
 
-/** 把 ISO 8601 时间转成便于阅读的显示文本 */
-export function formatDate(date, approx) {
+/** 把 ISO 8601 时间转成便于阅读的显示文本。只在本文件内用，不外导。 */
+function formatDate(date, approx) {
   const [d, t] = String(date).split('T')
   const prefix = approx ? '约 ' : ''
   if (!t) return prefix + d
@@ -37,7 +37,7 @@ function formatEnd(start, end) {
  * 注意这只在文字上表达时段，不在轴上画长度：槽是等距的而真实时间不是，
  * 按真实时长画长度会骗人（电梯案里 4 秒和 264 秒占的图上距离一样）。
  */
-export function formatTimeText(event) {
+function formatTimeText(event) {
   const start = formatDate(event.date, event.approx)
   if (!event.dateEnd) return start
   return `${start} - ${formatEnd(event.date, event.dateEnd)}`
@@ -71,6 +71,8 @@ const EventNode = memo(function EventNode({ data }) {
   // 已经钉住一张时，别的卡不再冒预览，免得两层浮层打架
   const showPreview = !pinnedId && hoveredId === event.id
   const open = isPinned || showPreview
+  // 时长算不出（dateEnd 早于 date 等）时留空，免得浮层出现「持续 」后面什么都没有
+  const duration = event.dateEnd ? formatDuration(event.date, event.dateEnd) : ''
 
   return (
     <div className={`antu-card g${groupIndex}`} style={{ width: cardW, height: cardH }}>
@@ -141,10 +143,8 @@ const EventNode = memo(function EventNode({ data }) {
           {isPinned && (
             <>
               <div className="antu-preview-time">{formatTimeText(event)}</div>
-              {event.dateEnd && (
-                <div className="antu-preview-duration">
-                  持续 {formatDuration(event.date, event.dateEnd)}
-                </div>
+              {isPinned && duration && (
+                <div className="antu-preview-duration">持续 {duration}</div>
               )}
               <div className="antu-preview-title">{event.label}</div>
               {actorNames.length > 0 && (

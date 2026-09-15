@@ -13,9 +13,13 @@
 
 import { buildGrid, SIDE } from '../../core/factGrid.js'
 import {
+  ACTOR_FONT,
+  ACTOR_TAG_GAP,
+  ACTOR_TAG_PAD,
+  CARD_INNER_W,
   CARD_W,
   LABEL_LINE_CAP,
-  TITLE_LINES,
+  MAX_LABEL_LINES,
   cardHeightOf,
 } from '../../core/cardGeometry.js'
 
@@ -29,23 +33,23 @@ function labelLinesOf(grid) {
   for (const row of grid.rows) {
     row.cells.forEach((event) => {
       const n = [...(event.label || '')].length
-      max = Math.max(max, Math.min(TITLE_LINES, Math.ceil(n / LABEL_LINE_CAP)))
+      max = Math.max(max, Math.min(MAX_LABEL_LINES, Math.ceil(n / LABEL_LINE_CAP)))
     })
   }
   return max
 }
 
 /** 格子横宽与留白 */
-export const CELL_W = 316
+const CELL_W = 316
 /** 卡片与格子之间的留白（纵向也用它） */
-export const CELL_GAP = 28
+const CELL_GAP = 28
 /** 列标题占的高度 */
-export const HEADER_H = 96
+const HEADER_H = 96
 
 const DOT_SIZE = 10
 
 /** 侧 → 配色序号（与 CSS 里的 g0 / g1 / g2 对应） */
-export function groupIndexOf(side) {
+function groupIndexOf(side) {
   if (side === SIDE.SIDE1) return 0
   if (side === SIDE.SIDE2) return 1
   return 2
@@ -59,6 +63,30 @@ export function groupIndexOf(side) {
 function sideTitleOf(side, groups) {
   const groupIndex = side === SIDE.SIDE1 ? 0 : side === SIDE.SIDE2 ? 1 : 2
   return groups[groupIndex]?.label ?? ''
+}
+
+/**
+ * 全图主体标签要几行（同样取最大值）。
+ * 标签是可换行的，按一行算的话多出来的高度会从标题和摘要身上扣、把字压变形。
+ * 按名字宽度估：一个汉字约 1em（10px），每个标签另有左右内边距各 7px，
+ * 标签之间留 4px。和标题一样，只会估多不会估少。
+ */
+function actorLinesOf(grid, fields) {
+  if (!fields.actors) return 0
+  let max = 0
+  for (const row of grid.rows) {
+    row.cells.forEach((event) => {
+      const names = (Array.isArray(event.actorIds) ? event.actorIds : []).map(
+        (id) => grid.actorById.get(id)?.name || id,
+      )
+      if (names.length === 0) return
+      const width =
+        names.reduce((n, name) => n + [...name].length * ACTOR_FONT + ACTOR_TAG_PAD, 0) +
+        ACTOR_TAG_GAP * (names.length - 1)
+      max = Math.max(max, Math.ceil(width / CARD_INNER_W))
+    })
+  }
+  return max
 }
 
 function toCardData(event, grid, rowIndex) {
@@ -93,7 +121,8 @@ export function buildFactGraph(spec, fields = {}) {
   // 卡片高度由「要显示哪些字段」和「标题实际几行」算出来，
   // 格子高度再跟着卡片走。两处都跟着内容走，卡片才不会空出一块。
   const labelLines = labelLinesOf(grid)
-  const cardH = cardHeightOf(fields, labelLines)
+  const actorLines = actorLinesOf(grid, fields)
+  const cardH = cardHeightOf(fields, labelLines, actorLines)
   const cellH = cardH + CELL_GAP
 
   const axisX = grid.axisColumnIndex * CELL_W + CELL_W / 2

@@ -59,7 +59,16 @@ export default function FactRenderer({
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges)
 
   useEffect(() => {
-    setNodes(graph.nodes)
+    // 整份替换会把 React Flow 的运行时状态抹掉，其中 selected 必须留下：
+    // 它对选中节点有加权（z-index 1000），抹掉之后钉住的浮层会被邻卡盖住。
+    // measured 故意不保留：卡片高度可能变了，要让它重新量。
+    setNodes((prev) => {
+      const prevById = new Map(prev.map((n) => [n.id, n]))
+      return graph.nodes.map((n) => {
+        const old = prevById.get(n.id)
+        return old?.selected ? { ...n, selected: true } : n
+      })
+    })
     setEdges(graph.edges)
   }, [graph, setNodes, setEdges])
 
@@ -196,9 +205,9 @@ export default function FactRenderer({
               zoomOnPinch
               panOnDrag
               translateExtent={translateExtent}
-            onInit={(inst) => {
-              rfRef.current = inst
-            }}
+              onInit={(inst) => {
+                rfRef.current = inst
+              }}
               onNodeMouseEnter={(_, n) => {
                 if (n.type === 'card') setHoveredId(n.id)
               }}
@@ -214,7 +223,8 @@ export default function FactRenderer({
               minZoom={minZoom}
               maxZoom={maxZoom}
             >
-              <Background gap={20} color="#e9edf2" />
+              {/* 背景点阵用的也是色板里的分隔线色，别引新灰 */}
+              <Background gap={20} color="#e8ebef" />
               <Controls showInteractive={false} />
               <MiniMap pannable zoomable nodeColor="#cbd5e1" />
             </ReactFlow>

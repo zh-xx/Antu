@@ -354,6 +354,14 @@
   transform: scale(1.02);
 }
 
+/* 卡片各行一律不许被压缩。卡片是定高 flex 列，子元素默认可压缩：
+   一旦内容比卡片高，多出来的高度就从标题和摘要身上扣，把字压变形。
+   行数已经按内容估过（标题几行、标签几行），估矮了宁可溢出也不要压扁字。 */
+.antu-card-label,
+.antu-card-snippet,
+.antu-card-actors,
+.antu-card-foot { flex: none; }
+
 /* 卡片内容：标题在上、时间在下，中间用 margin-top:auto 顶开 */
 .antu-card-label {
   /* 字号来自 core/cardGeometry.js：它是算「一行放几个字」的除数 */
@@ -423,22 +431,6 @@
   font-size: 10px;
 }
 
-.antu-badge-approx {
-  padding: 1px 6px;
-  background: #fff7e6;
-  color: #b26a00;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-}
-.antu-badge-source {
-  padding: 1px 6px;
-  background: var(--antu-chip);
-  color: var(--antu-text-2);
-  border-radius: 4px;
-  font-size: 10px;
-}
-/* 注：这两个徽章目前只在浮层里用得上，卡片上不放了 */
 
 /* ---------- 卡片旁的详情浮层（覆盖式，不改变画布尺寸） ---------- */
 .antu-preview {

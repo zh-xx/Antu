@@ -17,9 +17,21 @@ import { SUMMARY_MAX } from './cardGeometry.js'
 export const SIDE = { SIDE1: 'side1', AXIS: 'axis', SIDE2: 'side2' }
 
 /** 组数上限：轴只有两侧加轴线三个位置 */
-export const MAX_GROUPS = 3
+const MAX_GROUPS = 3
 
 const ISO_RE = /^\d{4}(-\d{2}(-\d{2}(T\d{2}(:\d{2}(:\d{2})?)?)?)?)?$/
+
+/**
+ * 两个 ISO 时间谁在前。
+ * 比到两者共同的长度为止：ISO 8601 的字符串按字典序比就是按时间比，
+ * 但精度可能不同（一个到秒、一个只到日），只比共同部分才不会误判。
+ * 例如 "2017-05-02" 与 "2017-05-02T09:24:16" 共同部分相等，不算谁早。
+ */
+function isBefore(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false
+  const n = Math.min(a.length, b.length)
+  return a.slice(0, n) < b.slice(0, n)
+}
 
 const SIDE_BY_GROUP_INDEX = [SIDE.SIDE1, SIDE.SIDE2, SIDE.AXIS]
 
@@ -152,6 +164,17 @@ export function buildGrid(spec) {
         errors.push(`${eAt}: \`date\` 不符合 ISO 8601（如 2017-05-02T09:24:03），实际为 "${e.date}"`)
       }
       if (!e.label) errors.push(`${eAt}: 缺少必填字段 \`label\``)
+
+      // dateEnd 是可选字段，但一旦写了就必须合法，否则卡片上那行时间会显示乱码
+      if (e.dateEnd !== undefined && e.dateEnd !== null) {
+        if (typeof e.dateEnd !== 'string' || !ISO_RE.test(e.dateEnd)) {
+          errors.push(
+            `${eAt}: \`dateEnd\` 不符合 ISO 8601（如 2017-05-02T09:26:24），实际为 "${e.dateEnd}"`,
+          )
+        } else if (isBefore(e.dateEnd, e.date)) {
+          errors.push(`${eAt}: \`dateEnd\` (${e.dateEnd}) 早于 \`date\` (${e.date})，时段不能倒着走`)
+        }
+      }
 
       // summary 是卡片上的一行补充，超过一行卡片就放不下了
       if (e.summary !== undefined && e.summary !== null) {
