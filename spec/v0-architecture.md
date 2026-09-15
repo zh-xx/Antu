@@ -131,7 +131,9 @@ JSON (信封) ──> [校验门卫] ──> type 路由 ──> 渲染器注册
 
 - 每种类型：schema 校验规则 + 一个渲染器；
 - 新增图类型 = 新增 schema + 注册渲染器，**核心本体不动**；
-- 底层渲染技术：React Flow（已选定），布局用 dagre；
+- 底层渲染技术：React Flow（已选定，事实图已在用）。
+- 布局：**各类型自负**，不用统一布局库。事实图自己算网格（`src/core/factGrid.js`）；
+  关系图、程序图计划用 dagre 或 elkjs（**尚未安装**，`package.json` 里目前只有 React Flow）。
 - 渲染器内部负责"语义 → React Flow nodes/edges"的翻译（翻译发生在渲染器内，不在规范内）。
 
 ## 7. 已确认 / 待定清单
@@ -152,16 +154,17 @@ JSON (信封) ──> [校验门卫] ──> type 路由 ──> 渲染器注册
 
 ### 待定（动手前确认）
 - [ ] `specVersion` 的形态（有无必要、怎么演进）
-- [ ] 各图类型内容层 schema 字段细节（fact 进行中；用真实示例数据反推）
-- [ ] 校验层报错信息的形态（面向 agent 可自改）
+- [x] fact 内容层 schema：**已定稿**（含 label / summary / detail 的分工，见 `fact-schema-draft.md`）。其余类型未开始
+- [ ] 其余类型（relationship / procedure）内容层 schema 字段细节
+- [x] 校验层报错信息的形态：**已实现**。每条错误带字段路径与事件 id（如 `slots[0].events[1] (ev-2)`），说明哪里不对、怎么改
 - [ ] 信封层可选元数据范围
 - [ ] 插件壳（dsh 插件 / MCP / 独立网页）——推迟到核心成熟后
 
 ## 8. 近期路线（建议顺序，随时可调整）
 
-1. **规范 v0 定稿**：source 机制已完成（7 类）；继续 fact 内容层 schema 精雕 + 校验规则
-2. **引擎原型**：信封解析 + 注册表骨架 + fact 渲染器（最小可跑）
-3. **relationship 类型**：schema + 渲染器
+1. [x] **规范 v0 定稿**：source 机制 7 类全部精雕完成；fact 内容层 schema 已定稿
+2. [x] **引擎原型**：信封解析 + 注册表骨架 + fact 渲染器。**已完成**，事实图可跑（排布、卡片、交互、配色、校验）
+3. **relationship 类型**：schema + 渲染器 ← **下一步**。这一类图里 `edges` 就是主要内容，画布的边能力在这里才真正用上
 4. **procedure 类型**：schema + 渲染器
 5. **回顾前三类**，再启动 justification
 6. 数据管线（agent 侧，文书 → JSON）与插件壳：另行规划
