@@ -24,6 +24,45 @@ export function formatDate(date, approx) {
   return `${prefix}${d} ${hhmm}${parts[2] ? ':' + parts[2] : ''}`
 }
 
+/** 结束时刻的显示文本：同一天就只写时刻，跨天才写完整日期 */
+function formatEnd(start, end) {
+  const full = formatDate(end)
+  const sameDay = String(start).split('T')[0] === String(end).split('T')[0]
+  return sameDay && String(end).includes('T') ? full.split(' ').pop() : full
+}
+
+/**
+ * 卡片上那一行时间。
+ * 有 dateEnd（持续事件）就写成「起 - 止」，这样它和瞬时事件一眼分得开。
+ * 注意这只在文字上表达时段，不在轴上画长度：槽是等距的而真实时间不是，
+ * 按真实时长画长度会骗人（电梯案里 4 秒和 264 秒占的图上距离一样）。
+ */
+export function formatTimeText(event) {
+  const start = formatDate(event.date, event.approx)
+  if (!event.dateEnd) return start
+  return `${start} - ${formatEnd(event.date, event.dateEnd)}`
+}
+
+/** 时长的人类可读写法，给浮层用（卡片那行放不下） */
+function formatDuration(start, end) {
+  const a = Date.parse(start)
+  const b = Date.parse(end)
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return ''
+  let s = Math.round((b - a) / 1000)
+  const d = Math.floor(s / 86400)
+  s -= d * 86400
+  const h = Math.floor(s / 3600)
+  s -= h * 3600
+  const m = Math.floor(s / 60)
+  s -= m * 60
+  const parts = []
+  if (d) parts.push(`${d} 天`)
+  if (h) parts.push(`${h} 小时`)
+  if (m) parts.push(`${m} 分`)
+  if (s || !parts.length) parts.push(`${s} 秒`)
+  return parts.join(' ')
+}
+
 const EventNode = memo(function EventNode({ data }) {
   const { event, actorNames, sources, groupIndex, row, cardW, cardH, labelLines, fields = {} } = data
   const { hoveredId, pinnedId, unpin } = useContext(PreviewContext)
@@ -61,7 +100,7 @@ const EventNode = memo(function EventNode({ data }) {
 
       <div className="antu-card-foot">
         <span className="antu-card-time" title={event.dateNote || ''}>
-          {formatDate(event.date, event.approx)}
+          {formatTimeText(event)}
         </span>
         {fields.sources && (
           <span className={`antu-card-src${sources.length ? '' : ' is-none'}`}>
@@ -101,7 +140,12 @@ const EventNode = memo(function EventNode({ data }) {
 
           {isPinned && (
             <>
-              <div className="antu-preview-time">{formatDate(event.date, event.approx)}</div>
+              <div className="antu-preview-time">{formatTimeText(event)}</div>
+              {event.dateEnd && (
+                <div className="antu-preview-duration">
+                  持续 {formatDuration(event.date, event.dateEnd)}
+                </div>
+              )}
               <div className="antu-preview-title">{event.label}</div>
               {actorNames.length > 0 && (
                 <div className="antu-preview-actors">
@@ -136,6 +180,16 @@ const EventNode = memo(function EventNode({ data }) {
                 </div>
               ))}
             </>
+          )}
+
+          {/* 悬停时就给一行来源。依据是这张图的立身之本，
+              不该藏到「点开」之后：最轻的动作也要能看到个大概。 */}
+          {!isPinned && (
+            <div className={`antu-preview-src${sources.length ? '' : ' is-none'}`}>
+              {sources.length
+                ? `${SOURCE_WORD} ${sources.length} 项：${sources.map((s) => s.name).join(' · ')}`
+                : `未列${SOURCE_WORD}`}
+            </div>
           )}
 
           {showPreview && <div className="antu-preview-hint">点击卡片查看全文</div>}

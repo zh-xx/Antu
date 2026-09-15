@@ -512,6 +512,21 @@
   line-height: 1.55;
   color: #b26a00;
 }
+/* 悬停浮层里的来源行：只给名称，不展开摘录（摘录留给点开之后） */
+.antu-preview-src {
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid #e8ebef;
+  font-size: 11px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.antu-preview-src.is-none { color: var(--antu-text-4); }
+/* 时段：点开后写清持续多久，卡片那行放不下 */
+.antu-preview-duration { font-size: 11px; color: #64748b; margin-top: 1px; }
+
 .antu-preview-sub { margin: 10px 0 6px; font-size: 11px; font-weight: 700; color: var(--antu-text-2); }
 .antu-preview-hint { margin-top: 6px; font-size: 10.5px; color: var(--antu-text-4); }
 .antu-source {
