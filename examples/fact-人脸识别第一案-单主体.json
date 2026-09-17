@@ -13,6 +13,11 @@
     { "id": "g-3", "label": "客观经过（不涉及当事人）" }
   ],
 
+  "views": [
+    { "label": "按履约情况", "splitBy": "group" },
+    { "label": "只看时间先后", "splitBy": "actor", "side1": { "actors": [] }, "side2": { "actors": [] } }
+  ],
+
   "sources": [
     {
       "id": "s-1",

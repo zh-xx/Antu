@@ -118,6 +118,31 @@
 
 /* 示例切换：竖向列表比横排按钮省地方，也更好读 */
 .antu-rail-nav { display: flex; flex-direction: column; gap: 6px; }
+/* 视角切换：一排按钮，和示例列表同一套样式感 */
+.antu-view-list { display: flex; flex-direction: column; gap: 4px; }
+/* 方向只有两项，横着排省地方（左栏内容已经很长了） */
+.antu-view-list.is-row { flex-direction: row; }
+.antu-view-list.is-row .antu-view-btn { flex: 1 1 0; text-align: center; }
+.antu-view-btn {
+  padding: 5px 9px;
+  border: 1px solid #e8ebef;
+  border-radius: var(--antu-radius);
+  background: #fff;
+  color: var(--antu-text-2);
+  font-size: 11.5px;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+}
+.antu-view-btn:hover:not(:disabled) { background: #f1f4f8; }
+.antu-view-btn:disabled { color: var(--antu-text-4); cursor: not-allowed; }
+.antu-view-btn.active {
+  background: var(--antu-chip);
+  border-color: var(--antu-chip);
+  color: var(--antu-text);
+  font-weight: 600;
+}
+
 .antu-nav-btn {
   padding: 6px 10px;
   border: 1px solid #e8ebef;
@@ -242,10 +267,40 @@
   transition: height .25s ease-out;
 }
 .antu-axis-dot { transition: top .25s ease-out; }
+/* 横向：轴线躺下，轴点沿横向排 */
+.antu-axis-wrap.is-h { height: 2px; }
+.antu-axis-wrap.is-h .antu-axis-line {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 2px;
+  transition: width .25s ease-out;
+}
+.antu-axis-wrap.is-h .antu-axis-dot { transition: left .25s ease-out; }
+.antu-axis-wrap.is-h .antu-axis-arrow {
+  left: auto;
+  right: -6px;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+  border-left: 6px solid var(--antu-axis);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 0;
+}
 .antu-link { transition: top .25s ease-out; }
 
 /* ---------- 列标题 ---------- */
 .antu-colhead { padding: 8px 16px; text-align: center; }
+/* 横向：标题在网格左侧一列，靠右贴住网格，纵向居中 */
+.antu-colhead.is-h {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  text-align: right;
+  padding: 0 12px 0 0;
+}
 .antu-colhead-side { font-size: 14px; font-weight: 700; color: var(--antu-text-2); line-height: 1.4; }
 .antu-colhead-actor { font-size: 12px; color: var(--antu-text-3); margin-top: 3px; }
 .antu-colhead.g0 .antu-colhead-side { color: var(--antu-side1); }
@@ -281,6 +336,7 @@
    层次：卡片边框 #8291a6 > 标记与引线 #94a3b8 > 轴线 #b2c0d0 > 格线 #cbd5e1。
    四者逐级变浅，相邻两级都差 30 上下，看得出来。 */
 .antu-link { position: absolute; border-top: 1px solid #94a3b8; pointer-events: none; }
+.antu-link.is-h { border-top: 0; border-left: 1px solid #94a3b8; }
 
 /* ---------- 格子层（虚线矩形，默认隐藏） ----------
    整张图本来就是一堆矩形拼出来的，把它显出来便于核对排布。
@@ -456,6 +512,20 @@
 }
 .antu-preview.above { bottom: calc(100% + 10px); }
 .antu-preview.below { top: calc(100% + 10px); }
+/* 横向：往卡片的左右冒，纵向居中 */
+.antu-preview.right {
+  left: calc(100% + 10px);
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+.antu-preview.left {
+  right: calc(100% + 10px);
+  left: auto;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
 
 /* 悬停态：detail 只露三行 */
 .antu-preview:not(.pinned) .antu-preview-text {

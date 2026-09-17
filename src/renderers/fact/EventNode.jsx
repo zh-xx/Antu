@@ -64,7 +64,7 @@ function formatDuration(start, end) {
 }
 
 const EventNode = memo(function EventNode({ data }) {
-  const { event, actorNames, sources, groupIndex, row, cardW, cardH, labelLines, fields = {} } = data
+  const { event, actorNames, sources, groupIndex, row, cardW, cardH, labelLines, fields = {}, isH } = data
   const { hoveredId, pinnedId, unpin } = useContext(PreviewContext)
 
   const isPinned = pinnedId === event.id
@@ -121,7 +121,9 @@ const EventNode = memo(function EventNode({ data }) {
             // 浮层里的长文就永远滚不动。
             'nowheel',
             'nopan',
-            row === 0 ? 'below' : 'above', // 第一行上方没地方，改往下冒
+            // 第一个时间点没地方往时间轴的负方向冒（竖向是上方、横向是左侧），
+            // 所以它反过来冒；其余都朝负方向冒，免得盖住后面的事件
+            isH ? (row === 0 ? 'right' : 'left') : row === 0 ? 'below' : 'above',
             isPinned ? 'pinned' : '',
           ]
             .filter(Boolean)

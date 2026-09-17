@@ -43,8 +43,10 @@ function labelLinesOf(grid) {
 const CELL_W = 316
 /** 卡片与格子之间的留白（纵向也用它） */
 const CELL_GAP = 28
-/** 列标题占的高度 */
+/** 标题区：竖向在上方留高度，横向在左侧留宽度。
+ *  横向留得比竖向宽，因为标题文字要在一列里放得下（"双方共同或客观经过"约需 126px）。 */
 const HEADER_H = 96
+const HEADER_W = 150
 
 const DOT_SIZE = 10
 
@@ -53,16 +55,6 @@ function groupIndexOf(side) {
   if (side === SIDE.SIDE1) return 0
   if (side === SIDE.SIDE2) return 1
   return 2
-}
-
-/**
- * 列标题：只写这一列的组名，不写“第 N 侧 / 轴线”这类位置描述。
- * 位置看图就知道，写在标题里只是占地方。
- * 组名本身才是信息（“正常（按约定履行）”），没有组就留空。
- */
-function sideTitleOf(side, groups) {
-  const groupIndex = side === SIDE.SIDE1 ? 0 : side === SIDE.SIDE2 ? 1 : 2
-  return groups[groupIndex]?.label ?? ''
 }
 
 /**
@@ -109,9 +101,10 @@ function toCardData(event, grid, rowIndex) {
  * 把一份已通过校验的 fact 规范算成 React Flow 的节点。
  * edges 恒为空；卡片到轴点的引线由单独的“引线层”节点承担。
  */
-export function buildFactGraph(spec, fields = {}) {
-  const grid = buildGrid(spec)
-  const groups = Array.isArray(spec.groups) ? spec.groups : []
+export function buildFactGraph(spec, fields = {}, view, orientation = 'vertical') {
+  const isH = orientation === 'horizontal'
+  // 视角也是排布的输入：它决定分侧依据、有哪些列
+  const grid = buildGrid(spec, view)
 
   const colCount = grid.columns.length
   const rowCount = grid.rows.length
@@ -125,9 +118,31 @@ export function buildFactGraph(spec, fields = {}) {
   const cardH = cardHeightOf(fields, labelLines, actorLines)
   const cellH = cardH + CELL_GAP
 
-  const axisX = grid.axisColumnIndex * CELL_W + CELL_W / 2
-  const gridTop = HEADER_H
-  const gridBottom = gridTop + rowCount * cellH
+  // ---------- 方向无关的坐标映射 ----------
+  // 一个时间点占的长度、一条车道占的长度。这两组数字本身不随方向变，
+  // 只是挂在不同的轴上：竖向时间沿纵向走，横向时间沿横向走。
+  const slotExtent = isH ? CELL_W : cellH
+  const laneExtent = isH ? cellH : CELL_W
+
+  // 网格起点：竖向在上方留标题区，横向在左侧留标题区
+  const originX = isH ? HEADER_W : 0
+  const originY = isH ? 0 : HEADER_H
+
+  // 一格在屏幕上占的宽高（竖向：宽 = 车道宽、高 = 时间点高；横向互换）
+  const cellBoxW = isH ? slotExtent : laneExtent
+  const cellBoxH = isH ? laneExtent : slotExtent
+
+  // 一个格子左上角在哪。槽沿时间轴走，车道沿车道轴走。
+  const cellAt = (slotIndex, laneIndex) =>
+    isH
+      ? { x: originX + slotIndex * slotExtent, y: laneIndex * laneExtent }
+      : { x: laneIndex * laneExtent, y: originY + slotIndex * slotExtent }
+
+  // 轴线所在车道的中心线（沿车道轴量的坐标）
+  const axisCenter = grid.axisColumnIndex * laneExtent + laneExtent / 2
+
+  const contentW = isH ? originX + rowCount * slotExtent : colCount * laneExtent
+  const contentH = isH ? colCount * laneExtent : originY + rowCount * slotExtent
 
   const nodes = []
 
@@ -142,7 +157,7 @@ export function buildFactGraph(spec, fields = {}) {
     // visibility:hidden，装饰层本来就是 0×0，不声明就一个像素都看不见。
     width: 0,
     height: 0,
-    data: { cols: colCount, rows: rowCount, cellW: CELL_W, cellH, top: gridTop },
+    data: { cols: colCount, rows: rowCount, cellW: cellBoxW, cellH: cellBoxH, originX, originY, isH },
     draggable: false,
     selectable: false,
     connectable: false,
@@ -156,12 +171,15 @@ export function buildFactGraph(spec, fields = {}) {
     nodes.push({
       id: `__head__${col.key}`,
       type: 'colHeader',
-      position: { x: ci * CELL_W, y: 0 },
+      // 竖向：标题在网格上方一行；横向：标题在网格左侧一列
+      position: isH ? { x: 0, y: ci * laneExtent } : { x: ci * laneExtent, y: 0 },
       data: {
-        width: CELL_W,
+        width: isH ? HEADER_W : laneExtent,
+        height: isH ? laneExtent : null,
+        isH,
         side: col.side,
         groupIndex: groupIndexOf(col.side),
-        sideTitle: sideTitleOf(col.side, groups),
+        sideTitle: grid.sideLabels[col.side],
         colTitle: manyCols ? col.actorName : null,
       },
       draggable: false,
@@ -174,12 +192,13 @@ export function buildFactGraph(spec, fields = {}) {
   // ---------- 轴线（含每个槽的轴点）----------
   // 先算好，等引线入列之后再放进去：轴点必须压在引线上面。
   // 反过来的话，引线会一直画到轴点的圆心，把那个白心的圆圈戳穿。
-  const dotYs = grid.rows.map((r) => r.index * cellH + cellH / 2 - DOT_SIZE / 2)
+  // 轴点沿时间轴排，位置是相对轴线节点起点的偏移（竖向是 top，横向是 left）
+  const dotOffsets = grid.rows.map((r) => r.index * slotExtent + slotExtent / 2 - DOT_SIZE / 2)
   const axisNode = {
     id: '__axis__',
     type: 'axis',
-    position: { x: axisX - 1, y: gridTop },
-    data: { height: gridBottom - gridTop, dotSize: DOT_SIZE, dotYs },
+    position: isH ? { x: originX, y: axisCenter - 1 } : { x: axisCenter - 1, y: originY },
+    data: { isH, length: rowCount * slotExtent, dotSize: DOT_SIZE, dotOffsets },
     draggable: false,
     selectable: false,
     connectable: false,
@@ -195,16 +214,28 @@ export function buildFactGraph(spec, fields = {}) {
       const col = grid.columns.findIndex((c) => c.key === key)
       if (col < 0) return
 
-      const cardX = col * CELL_W + (CELL_W - CARD_W) / 2
-      const cardY = gridTop + row.index * cellH + (cellH - cardH) / 2
-      const centerY = cardY + cardH / 2
+      const cell = cellAt(row.index, col)
+      const cardX = cell.x + (cellBoxW - CARD_W) / 2
+      const cardY = cell.y + (cellBoxH - cardH) / 2
 
-      // 卡片靠轴的一侧拉一条引线到轴点；卡片本就在轴线列时不画
-      if (col < grid.axisColumnIndex) {
-        const from = cardX + CARD_W
-        linkSegments.push({ left: from, top: centerY, width: axisX - from })
-      } else if (col > grid.axisColumnIndex) {
-        linkSegments.push({ left: axisX, top: centerY, width: cardX - axisX })
+      // 引线：从卡片靠轴的那条边拉到轴点。卡片本就在轴线车道上时不画。
+      // 竖向走卡片左右两侧的横线，横向走卡片上下两侧的竖线。
+      if (isH) {
+        const cx = cardX + CARD_W / 2
+        if (col < grid.axisColumnIndex) {
+          const from = cardY + cardH // 卡片在轴线上方，从下边往下拉
+          linkSegments.push({ left: cx, top: from, height: axisCenter - from })
+        } else if (col > grid.axisColumnIndex) {
+          linkSegments.push({ left: cx, top: axisCenter, height: cardY - axisCenter })
+        }
+      } else {
+        const cy = cardY + cardH / 2
+        if (col < grid.axisColumnIndex) {
+          const from = cardX + CARD_W
+          linkSegments.push({ left: from, top: cy, width: axisCenter - from })
+        } else if (col > grid.axisColumnIndex) {
+          linkSegments.push({ left: axisCenter, top: cy, width: cardX - axisCenter })
+        }
       }
 
       cardNodes.push({
@@ -219,6 +250,7 @@ export function buildFactGraph(spec, fields = {}) {
           cardH,
           labelLines,
           fields,
+          isH,
         },
       })
     })
@@ -236,7 +268,7 @@ export function buildFactGraph(spec, fields = {}) {
       // 同格子层：不声明尺寸就会被 React Flow 隐藏
       width: 0,
       height: 0,
-      data: { segments: linkSegments },
+      data: { segments: linkSegments, isH },
       draggable: false,
       selectable: false,
       connectable: false,
@@ -248,10 +280,14 @@ export function buildFactGraph(spec, fields = {}) {
   nodes.push(...cardNodes)
 
   return {
+    // 这个视角摆不下的事件会进这里（例如不分侧时同一时间点有多条）。
+    // 必须带出来：不带的话事件会被静默丢掉，界面上看不出少东西。
+    errors: grid.errors,
+    sideLabels: grid.sideLabels,
     nodes,
     edges: [],
     grid,
     layout: 'grid',
-    size: { width: colCount * CELL_W, height: gridBottom },
+    size: { width: contentW, height: contentH },
   }
 }

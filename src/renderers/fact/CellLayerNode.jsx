@@ -20,7 +20,7 @@ import { useStore } from '@xyflow/react'
 const PAD_COLS = 1
 
 const CellLayerNode = memo(function CellLayerNode({ data }) {
-  const { cols, rows, cellW, cellH, top } = data
+  const { cols, rows, cellW, cellH, originX, originY, isH } = data
 
   const zoom = useStore((s) => s.transform[2]) || 1
   const k = 1 / zoom // 反向补偿系数
@@ -29,19 +29,24 @@ const CellLayerNode = memo(function CellLayerNode({ data }) {
   const SCREEN_STROKE = 0.8
   const stroke = SCREEN_STROKE * k
 
-  const totalCols = cols + PAD_COLS * 2
-  const width = totalCols * cellW
-  const height = top + rows * cellH
+  // 沿车道轴多画两列空位，用来显示坐标系的余量。
+  // 竖向时车道是列（左右各多一列），横向时车道是行（上下各多一行）。
+  const totalLanes = cols + PAD_COLS * 2
+  const width = isH ? originX + rows * cellW : totalLanes * cellW
+  const height = isH ? totalLanes * cellH : originY + rows * cellH
 
   const rects = []
   for (let r = 0; r < rows; r += 1) {
-    for (let c = 0; c < totalCols; c += 1) {
+    for (let c = 0; c < totalLanes; c += 1) {
+      // 竖向：槽沿纵向走，车道沿横向走；横向：两者互换
+      const x = (isH ? originX + r * cellW : c * cellW) + stroke / 2
+      const y = (isH ? c * cellH : originY + r * cellH) + stroke / 2
       rects.push(
         <rect
           key={`${r}-${c}`}
           className="antu-cell"
-          x={c * cellW + stroke / 2}
-          y={top + r * cellH + stroke / 2}
+          x={x}
+          y={y}
           width={cellW - stroke}
           height={cellH - stroke}
           strokeWidth={stroke}
@@ -54,7 +59,12 @@ const CellLayerNode = memo(function CellLayerNode({ data }) {
   return (
     <svg
       className="antu-cells"
-      style={{ left: -PAD_COLS * cellW, top: 0, width, height }}
+      style={{
+        left: isH ? 0 : -PAD_COLS * cellW,
+        top: isH ? -PAD_COLS * cellH : 0,
+        width,
+        height,
+      }}
     >
       {rects}
     </svg>

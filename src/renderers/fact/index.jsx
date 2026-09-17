@@ -24,6 +24,7 @@ import FactInfo from './FactInfo.jsx'
 import AppRail from '../../shell/AppRail.jsx'
 import { PreviewContext } from './previewContext.js'
 import { buildFactGraph } from './timelineLayout.js'
+import { viewsOf } from '../../core/factGrid.js'
 import { CARD_PAD_X, CARD_PAD_Y, LABEL_FONT, SNIPPET_FONT } from '../../core/cardGeometry.js'
 import { ARIA_LABEL_CONFIG } from '../../core/labels.js'
 
@@ -45,9 +46,30 @@ export default function FactRenderer({
   onToggleGrid,
   fields = {},
   onToggleField,
+  viewIndex = 0,
+  onSelectView,
+  orientation = 'vertical',
+  onToggleOrientation,
 }) {
-  // 字段开关会影响卡片高度，所以它也是排布的输入
-  const graph = useMemo(() => buildFactGraph(spec, fields), [spec, fields])
+  // 视角和字段开关一样，都是排布的输入：视角决定分侧与有哪些列，
+  // 字段决定卡片放几行。两者一变，整张图重排、视口重新适配。
+  const views = useMemo(() => viewsOf(spec), [spec])
+  // 先把每个视角都试排一遍，标出哪些摆不下（比如不分侧时同一时间点有多条事件）。
+  // 摆不下的视角在切换器里禁用，而不是点进去才发现少了事件。
+  const viewInfos = useMemo(
+    () =>
+      views.map((v) => {
+        const g = buildFactGraph(spec, fields, v, orientation)
+        return { view: v, reason: g.errors.length > 0 ? g.errors[0] : '' }
+      }),
+    [spec, fields, views, orientation],
+  )
+  const active = viewInfos[Math.min(Math.max(viewIndex, 0), viewInfos.length - 1)] || viewInfos[0]
+  const view = active.view
+  const graph = useMemo(
+    () => buildFactGraph(spec, fields, view, orientation),
+    [spec, fields, view, orientation],
+  )
 
   // 浮层状态：hoveredId 是鼠标划过的卡，pinnedId 是点住不放的卡
   const [hoveredId, setHoveredId] = useState(null)
@@ -165,6 +187,12 @@ export default function FactRenderer({
             onToggleGrid={onToggleGrid}
             fields={fields}
             onToggleField={onToggleField}
+            sideLabels={graph.sideLabels}
+            orientation={orientation}
+            onToggleOrientation={onToggleOrientation}
+            viewInfos={viewInfos}
+            view={view}
+            onSelectView={onSelectView}
           />
         }
       />

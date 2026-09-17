@@ -19,6 +19,41 @@ export const SIDE = { SIDE1: 'side1', AXIS: 'axis', SIDE2: 'side2' }
 /** 组数上限：轴只有两侧加轴线三个位置 */
 const MAX_GROUPS = 3
 
+/**
+ * 内置的缺省视角。数据里不写 `views` 时就用它，行为与加视角之前完全一致：
+ * 按分组分侧，不按主体筛。
+ */
+export const DEFAULT_VIEW = { label: '全体', splitBy: 'group' }
+
+/** 这份数据有哪些视角。不写就给一个内置的。 */
+export function viewsOf(spec) {
+  const list = Array.isArray(spec?.views) ? spec.views.filter(isPlainObject) : []
+  return list.length > 0 ? list : [DEFAULT_VIEW]
+}
+
+/** 视角某一侧声明的主体清单（去重保序，只认字符串 id） */
+function viewActors(view, side) {
+  const a = view?.[side]?.actors
+  if (!Array.isArray(a)) return []
+  return [...new Set(a.filter((x) => typeof x === 'string'))]
+}
+
+/** 视角某一侧的标题：按主体分侧时取自视角，按分组分侧时取自 groups */
+function sideLabelsOf(view, groups) {
+  if (view.splitBy === 'actor') {
+    return {
+      [SIDE.SIDE1]: view?.side1?.label ?? '',
+      [SIDE.SIDE2]: view?.side2?.label ?? '',
+      [SIDE.AXIS]: view?.axis?.label ?? '',
+    }
+  }
+  return {
+    [SIDE.SIDE1]: groups[0]?.label ?? '',
+    [SIDE.SIDE2]: groups[1]?.label ?? '',
+    [SIDE.AXIS]: groups[2]?.label ?? '',
+  }
+}
+
 const ISO_RE = /^\d{4}(-\d{2}(-\d{2}(T\d{2}(:\d{2}(:\d{2})?)?)?)?)?$/
 
 /**
@@ -51,7 +86,12 @@ function isPlainObject(v) {
  *   eventCount: number,
  * }}
  */
-export function buildGrid(spec) {
+export function buildGrid(spec, view) {
+  const effectiveView = isPlainObject(view) ? view : viewsOf(spec)[0]
+  const byActor = effectiveView.splitBy === 'actor'
+  const in1 = viewActors(effectiveView, 'side1')
+  const in2 = viewActors(effectiveView, 'side2')
+
   const errors = []
   const actors = Array.isArray(spec?.actors) ? spec.actors : []
   const groups = Array.isArray(spec?.groups) ? spec.groups : []
@@ -60,6 +100,8 @@ export function buildGrid(spec) {
 
   const empty = {
     errors,
+    view: effectiveView,
+    sideLabels: { [SIDE.SIDE1]: '', [SIDE.SIDE2]: '', [SIDE.AXIS]: '' },
     columns: [],
     rows: [],
     placements: new Map(),
@@ -86,6 +128,40 @@ export function buildGrid(spec) {
     actorById.set(a.id, a)
     if (!a.name) errors.push(`actors[${i}] (${a.id}): 缺少必填字段 \`name\``)
   })
+
+  // ---------- 视角清单 ----------
+  // 只校验结构（引用是否存在、两侧是否重叠），不管当前选中哪个视角。
+  // 事件能不能摆下取决于当前视角，那部分在下面按当前视角判。
+  if (spec?.views !== undefined && spec?.views !== null) {
+    if (!Array.isArray(spec.views)) {
+      errors.push('`views` 必须是数组')
+    } else {
+      spec.views.forEach((v, vi) => {
+        const vAt = `views[${vi}]`
+        if (!isPlainObject(v)) {
+          errors.push(`${vAt}: 必须是对象`)
+          return
+        }
+        if (!v.label) errors.push(`${vAt}: 缺少必填字段 \`label\``)
+        if (v.splitBy !== 'actor' && v.splitBy !== 'group') {
+          errors.push(
+            `${vAt}: \`splitBy\` 只能是 "actor"（按主体分侧）或 "group"（按分组分侧），实际为 "${v.splitBy}"`,
+          )
+        }
+        if (v.splitBy === 'actor') {
+          const a1 = viewActors(v, 'side1')
+          const a2 = viewActors(v, 'side2')
+          ;[...a1, ...a2].forEach((id) => {
+            if (!actorById.has(id)) errors.push(`${vAt}: 引用了不存在的 actor "${id}"`)
+          })
+          const both = a1.filter((id) => a2.includes(id))
+          if (both.length > 0) {
+            errors.push(`${vAt}: 主体 ${both.join('、')} 同时出现在两侧，一个主体只能在一侧`)
+          }
+        }
+      })
+    }
+  }
 
   // ---------- 分组清单 ----------
   const groupById = new Map()
@@ -200,9 +276,34 @@ export function buildGrid(spec) {
       })
 
       // ---------- 站位 ----------
+      // 两种看法：
+      //   按主体（视角）：谁做的摆谁那边，跨两侧或一侧多人一起做的落轴线
+      //   按分组（数据）：groupId 指向哪一组就摆哪一侧，涉及 ≥2 主体落轴线
       const gi = e.groupId ? groupIndexById.get(e.groupId) : undefined
       let side
-      if (ids.length >= 2) {
+      let actorId = null
+
+      if (byActor) {
+        // 视角声明了主体，就只显示与这些主体有关的事件（没主体的事件是客观事实，照常显示）。
+        // 视角两侧都空（"只看时间先后"）时不做筛选，全部落轴线。
+        const inScope = [...in1, ...in2]
+        if (
+          inScope.length > 0 &&
+          ids.length > 0 &&
+          !ids.some((id) => inScope.includes(id))
+        ) {
+          return
+        }
+        if (ids.length === 1 && in1.includes(ids[0])) {
+          side = SIDE.SIDE1
+          actorId = ids[0]
+        } else if (ids.length === 1 && in2.includes(ids[0])) {
+          side = SIDE.SIDE2
+          actorId = ids[0]
+        } else {
+          side = SIDE.AXIS // 没主体、跨两侧、或一侧多人一起做的事
+        }
+      } else if (ids.length >= 2) {
         side = SIDE.AXIS // 多主体 → 自动落轴线
         if (gi === 0 || gi === 1) {
           errors.push(
@@ -217,14 +318,14 @@ export function buildGrid(spec) {
         side = SIDE_BY_GROUP_INDEX[gi] ?? SIDE.AXIS // 第 3 组及以后 → 轴线
       }
 
-      if (side !== SIDE.AXIS && ids.length !== 1) {
+      if (!byActor && side !== SIDE.AXIS && ids.length !== 1) {
         errors.push(
           `${eAt}: 写了侧别组 "${e.groupId}"，必须恰好指定 1 个主体（现在是 ${ids.length} 个）；不涉及具体主体的事件请归入轴线组或不写 groupId`,
         )
         return
       }
 
-      const actorId = side !== SIDE.AXIS && ids.length === 1 ? ids[0] : null
+      if (!byActor && side !== SIDE.AXIS && ids.length === 1) actorId = ids[0]
       if (actorId && actorById.has(actorId)) seenActorsOnSide[side].add(actorId)
 
       flat.push({ slotIndex: si, event: e, side, actorId })
@@ -232,11 +333,15 @@ export function buildGrid(spec) {
   })
 
   // ---------- 建列 ----------
-  // 第 1 侧：在这一侧出现过的主体（按 actors 清单顺序，也就是由内到外的距离次序）
-  // 轴线：固定一列（不按主体细分）
-  // 第 2 侧：同第 1 侧
+  // 列的**先后次序一律由图级 actors 清单决定**（靠前的贴近轴线），两个模式都一样。
+  // 视角只回答"谁在哪一侧"，不回答"谁在内谁在外"：一个意思一个地方说。
+  // 按主体分侧时，某一列没有事件也保留（空列本身是信息，这一方在这类事上没有动作）；
+  // 按分组分侧时，列取"在这一侧出现过的主体"。
   const actorOrder = actors.map((a) => (isPlainObject(a) ? a.id : null)).filter(Boolean)
-  const columnsFor = (side) => actorOrder.filter((id) => seenActorsOnSide[side].has(id))
+  const columnsFor = (side) =>
+    byActor
+      ? actorOrder.filter((id) => viewActors(effectiveView, side).includes(id))
+      : actorOrder.filter((id) => seenActorsOnSide[side].has(id))
 
   const columns = []
   // 第 1 侧排在轴线左边：清单里越靠前的主体离轴越近，
@@ -279,6 +384,8 @@ export function buildGrid(spec) {
 
   return {
     errors,
+    view: effectiveView,
+    sideLabels: sideLabelsOf(effectiveView, groups),
     columns,
     rows,
     placements,

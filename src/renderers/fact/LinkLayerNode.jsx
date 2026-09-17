@@ -9,13 +9,16 @@
 import { memo } from 'react'
 
 const LinkLayerNode = memo(function LinkLayerNode({ data }) {
+  const { segments, isH } = data
+
   return (
     <div className="antu-link-layer">
-      {data.segments.map((s, i) => (
+      {segments.map((s, i) => (
         <span
           key={i}
-          className="antu-link"
-          style={{ left: s.left, top: s.top, width: s.width }}
+          // 竖向是横线（border-top），横向是竖线（border-left）
+          className={`antu-link${isH ? ' is-h' : ''}`}
+          style={{ left: s.left, top: s.top, width: s.width, height: s.height }}
         />
       ))}
     </div>

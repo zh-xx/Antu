@@ -14,6 +14,19 @@
     { "id": "g-3", "label": "双方共同或客观经过" }
   ],
 
+  "views": [
+    { "label": "按分组分侧", "splitBy": "group" },
+    { "label": "杨帆 vs 段小立", "splitBy": "actor",
+      "side1": { "label": "杨帆的行为", "actors": ["a-1"] },
+      "side2": { "label": "段小立的行为", "actors": ["a-2"] },
+      "axis": { "label": "双方共同或客观经过" } },
+    { "label": "只看杨帆", "splitBy": "actor",
+      "side1": { "label": "杨帆的行为", "actors": ["a-1"] },
+      "side2": { "actors": [] },
+      "axis": { "label": "其余经过" } },
+    { "label": "只看时间先后", "splitBy": "actor", "side1": { "actors": [] }, "side2": { "actors": [] } }
+  ],
+
   "sources": [
     {
       "id": "s-1",

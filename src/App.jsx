@@ -19,10 +19,15 @@ import { GRAPH_TYPE_LABELS, labelOf } from './core/labels.js'
 import AppRail from './shell/AppRail.jsx'
 
 // 可切换的示例（v0 硬编码；将来由用户导入 JSON）
+// 前两份是真实案例，后三份是示意数据，用来覆盖三形态的各种排布
 const EXAMPLES = [
-  { label: '人脸识别第一案（单主体）', path: '/examples/fact-人脸识别第一案-单主体.json' },
-  { label: '电梯劝烟案（双主体 · 并排）', path: '/examples/fact-电梯劝烟案.json' },
-  { label: '示例 · 同侧两个主体（看引线）', path: '/examples/fact-示例-同侧双主体.json' },
+  { label: '单主体 · 人脸识别案', path: '/examples/fact-人脸识别第一案-单主体.json' },
+  { label: '双主体 · 电梯劝烟案', path: '/examples/fact-电梯劝烟案.json' },
+  { label: '多主体 · 一侧两列', path: '/examples/fact-示例-同侧双主体.json' },
+  { label: '多主体 · 两侧各两列', path: '/examples/fact-示例-两侧各两个主体.json' },
+  { label: '无分组 · 单轴时间线', path: '/examples/fact-示例-无分组.json' },
+  { label: '四方 · 四个时间点', path: '/examples/fact-示例-四方四个时间点.json' },
+  { label: '两方 · 三个时间点', path: '/examples/fact-示例-三个时间点.json' },
 ]
 
 /**
@@ -108,11 +113,36 @@ export default function App() {
     setFields((f) => ({ ...f, [key]: value }))
     writePref('antu.prefs', { fields: { ...readPref('antu.prefs').fields, [key]: value } })
   }
+
+
+  // 视角下标。换图时回到第一个：不同数据的视角清单不一样，留着旧下标没有意义。
+  // 不持久化，因为下标只在当前这份数据里有含义。
+  const [viewIndex, setViewIndex] = useState(0)
+  useEffect(() => {
+    setViewIndex(0)
+  }, [spec])
+
   // 支持 ?example=1 直接打开某个示例（便于分享与测试）
   const [current, setCurrent] = useState(() => {
     const idx = Number(new URLSearchParams(window.location.search).get('example'))
     return EXAMPLES[idx] || EXAMPLES[0]
   })
+
+  // 时间轴方向。**按图记**，不跟着切换示例走：
+  //   手动设过的  → 用记下来的
+  //   没设过的    → 按槽数算默认：槽 ≥ 5 竖向，槽 ≤ 4 横向
+  // 为什么按槽数：横向一格宽 316，一屏减掉标题列只排得下约 3.8 个槽；
+  // 槽到 5 个，横向就明显挤了，竖向开始赢。
+  const [orientationPrefs, setOrientationPrefs] = useState(
+    () => readPref('antu.prefs').orientations || {},
+  )
+  const slotCount = Array.isArray(spec?.slots) ? spec.slots.length : 0
+  const orientation = orientationPrefs[current.path] || (slotCount >= 5 ? 'vertical' : 'horizontal')
+  const toggleOrientation = (next) => {
+    const map = { ...orientationPrefs, [current.path]: next }
+    setOrientationPrefs(map)
+    writePref('antu.prefs', { orientations: map })
+  }
 
   // 加载 + 校验
   useEffect(() => {
@@ -176,6 +206,10 @@ export default function App() {
           onToggleGrid={toggleGrid}
           fields={fields}
           onToggleField={toggleField}
+          viewIndex={viewIndex}
+          onSelectView={setViewIndex}
+          orientation={orientation}
+          onToggleOrientation={toggleOrientation}
         />
       ) : (
         <AppRail

@@ -8,10 +8,13 @@
 import { memo } from 'react'
 
 const ColumnHeaderNode = memo(function ColumnHeaderNode({ data }) {
-  const { width, sideTitle, colTitle, groupIndex } = data
+  const { width, height, isH, side, groupIndex, sideTitle, colTitle } = data
 
   return (
-    <div className={`antu-colhead g${groupIndex}`} style={{ width }}>
+    <div
+      className={`antu-colhead g${groupIndex}${isH ? ' is-h' : ''}`}
+      style={{ width, height: height || undefined }}
+    >
       {sideTitle && <div className="antu-colhead-side">{sideTitle}</div>}
       {colTitle && <div className="antu-colhead-actor">{colTitle}</div>}
     </div>

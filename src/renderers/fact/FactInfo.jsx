@@ -11,8 +11,6 @@
 
 import { SIDE_LABELS, SOURCE_WORD, labelOf } from '../../core/labels.js'
 
-const SIDE_ORDER = ['side1', 'side2', 'axis']
-
 /** 可选的卡片字段（标题与时间不在此列，它们固定显示） */
 const OPTIONAL_FIELDS = [
   { key: 'sources', label: SOURCE_WORD },
@@ -27,8 +25,18 @@ export default function FactInfo({
   onToggleGrid,
   fields = {},
   onToggleField,
+  sideLabels = {},
+  orientation = 'vertical',
+  onToggleOrientation,
+  viewInfos = [],
+  view,
+  onSelectView,
 }) {
-  const groups = Array.isArray(spec.groups) ? spec.groups : []
+  const legendItems = [
+    { side: 'side1', cls: 'g0', label: sideLabels.side1 },
+    { side: 'side2', cls: 'g1', label: sideLabels.side2 },
+    { side: 'axis', cls: 'g2', label: sideLabels.axis },
+  ].filter((it) => it.label)
 
   return (
     <div className="antu-info">
@@ -43,19 +51,43 @@ export default function FactInfo({
         ))}
       </div>
 
-      {groups.length > 0 && (
+      {/* 图例跟着当前视角走，不是固定显示数据里的分组：
+          换了视角，侧名就变了，图例还显示旧名字会自相矛盾 */}
+      {legendItems.length > 0 && (
         <>
           <div className="antu-rail-label">图例</div>
           <div className="antu-info-legend">
-            {groups.map((g, i) => (
-              <span key={g.id} className="antu-legend-item">
-                <i className={`antu-legend-dot g${i}`} />
+            {legendItems.map((it) => (
+              <span key={it.side} className="antu-legend-item">
+                <i className={`antu-legend-dot ${it.cls}`} />
                 <span>
-                  {labelOf(SIDE_LABELS, SIDE_ORDER[i])}
+                  {labelOf(SIDE_LABELS, it.side)}
                   {' · '}
-                  {g.label}
+                  {it.label}
                 </span>
               </span>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* 视角：同一个案件换一种看法。多于一个才显示。
+          摆不下的视角禁用，并说明原因，免得点进去才发现少了事件。 */}
+      {viewInfos.length > 1 && (
+        <>
+          <div className="antu-rail-label">视角</div>
+          <div className="antu-view-list">
+            {viewInfos.map((info, i) => (
+              <button
+                key={`${info.view.label}-${i}`}
+                className={`antu-view-btn${info.view === view ? ' active' : ''}`}
+                disabled={!!info.reason}
+                title={info.reason || ''}
+                onClick={() => onSelectView(i)}
+              >
+                {info.view.label}
+                {info.reason ? '（摆不下）' : ''}
+              </button>
             ))}
           </div>
         </>
@@ -73,6 +105,22 @@ export default function FactInfo({
         </label>
       ))}
       <div className="antu-rail-note">标题与时间固定在卡上，不能关。</div>
+
+      <div className="antu-rail-label">方向</div>
+      <div className="antu-view-list is-row">
+        {[
+          ['vertical', '竖向'],
+          ['horizontal', '横向'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            className={`antu-view-btn${orientation === value ? ' active' : ''}`}
+            onClick={() => onToggleOrientation(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       <div className="antu-rail-label">画布</div>
       <label className="antu-switch">
