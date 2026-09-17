@@ -182,7 +182,9 @@ const maxZoom = 3   // 上限只用来防止放大到荒唐的程度
 | 现象 | 原因 | 解法 |
 |---|---|---|
 | MiniMap 一片空白，一个方块都没有 | 节点尺寸是靠 `onNodesChange` 回写到节点对象上的；只传常量数组就没人接 | 节点放进 `useNodesState`，把 `onNodesChange` 交给 React Flow |
-| 0 尺寸的装饰节点整个看不见（连里面的线一起没） | 另一条独立规则：节点没有尺寸就被设成 `visibility: hidden`；装饰层本来就是 0×0，**`onNodesChange` 修不了它** | 在节点对象上显式写 `width: 0, height: 0`，让它判定为“有尺寸” |
+| 0 尺寸的装饰节点整个看不见（连里面的线一起没） | 另一条独立规则：节点没有尺寸就被设成 `visibility: hidden`；装饰层本来就是 0×0，**`onNodesChange` 修不了它** | 在节点对象上写 `1×1`（别写 0×0，理由见下一条） |
+| **画布上「适应视图」按钮点了没反应** | 装饰层写了 `width: 0, height: 0`，节点**永远拿不到 `measured`**；React Flow 只要发现有一个节点没有 `measured`，就把 `nodesInitialized` 判成 false，而 `fitView` 那条队列路径要求它**必须为 true** 才结算 | 装饰层改成 `width: 1, height: 1`：有尺寸所以可见、也能被量到。1×1 对内容边界的影响可以忽略 |
+| 点了「适应视图」缩放会跳一小下（1.8%） | 该按钮走的是 React Flow 自己的默认留白 0.1，而我们初始化时用的是 0.12 | 把 `fitViewOptions={{ padding: 同一个值 }}` 传给 `<Controls>` |
 | 浮层里的长文滚不动，滚轮在挪画布 | 画布开着 `panOnScroll`，滚轮事件被它截走 | 给浮层加 `nowheel nopan` |
 | 触摸板两指滑动变成缩放 | `zoomOnScroll` 默认是开的，滚轮即缩放 | `panOnScroll` 开、`zoomOnScroll` 关；捏合走 `zoomOnPinch`，与滚轮互不影响 |
 | 缩放下限第一次滚动时画面会跳 | 自己算的公式与它内部实际用的不一致 | 用实测反推的那条：`视口 ÷ (内容 × (1 + 留白比例))`，别照源码字面推 |

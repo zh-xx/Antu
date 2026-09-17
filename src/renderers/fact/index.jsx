@@ -253,7 +253,8 @@ export default function FactRenderer({
             >
               {/* 背景点阵用的也是色板里的分隔线色，别引新灰 */}
               <Background gap={20} color="#e8ebef" />
-              <Controls showInteractive={false} />
+              {/* 留白要和初始适配用同一个值，否则点一次按钮缩放会跳一下 */}
+              <Controls showInteractive={false} fitViewOptions={{ padding: FIT_PADDING }} />
               <MiniMap pannable zoomable nodeColor="#cbd5e1" />
             </ReactFlow>
           </PreviewContext.Provider>

@@ -153,10 +153,15 @@ export function buildFactGraph(spec, fields = {}, view, orientation = 'vertical'
     id: '__cells__',
     type: 'cells',
     position: { x: 0, y: 0 },
-    // 必须显式给出尺寸：React Flow 会把“没有尺寸”的节点整个设成
-    // visibility:hidden，装饰层本来就是 0×0，不声明就一个像素都看不见。
-    width: 0,
-    height: 0,
+    // 装饰层的尺寸要走两条互相打架的规则，所以只能给 1×1：
+    //   不声明  → React Flow 把“没尺寸”的节点整个设成 visibility:hidden，看不见
+    //   声明 0×0 → 它永远拿不到 measured，而只要有一个节点没有 measured，
+    //              React Flow 就把 nodesInitialized 判成 false，
+    //              fitView 的队列路径便永不结算（症状：画布上“适应视图”按钮点了没反应）
+    // 1×1 两条都满足：节点有尺寸所以可见、能被量到；真正画多大由里面的 SVG 决定。
+    width: 1,
+    height: 1,
+    style: { pointerEvents: 'none' },
     data: { cols: colCount, rows: rowCount, cellW: cellBoxW, cellH: cellBoxH, originX, originY, isH },
     draggable: false,
     selectable: false,
@@ -265,9 +270,10 @@ export function buildFactGraph(spec, fields = {}, view, orientation = 'vertical'
       id: '__links__',
       type: 'links',
       position: { x: 0, y: 0 },
-      // 同格子层：不声明尺寸就会被 React Flow 隐藏
-      width: 0,
-      height: 0,
+      // 同格子层：1×1 的理由见上面格子层那段注释
+      width: 1,
+      height: 1,
+      style: { pointerEvents: 'none' },
       data: { segments: linkSegments, isH },
       draggable: false,
       selectable: false,
