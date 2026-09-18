@@ -22,148 +22,149 @@
 
 .antu-app {
   height: 100vh;
-  display: flex;              /* 横向排布：左边信息栏，右边画布 */
+  display: flex;              /* 画布占满，其余都是画布上的浮层 */
   background: #fff;
 }
 .antu-app > * { flex: 1 1 auto; min-width: 0; }
 
-/* ---------- 左侧信息栏 ----------
-   为什么在左边而不在顶上：这张图竖着长，垂直空间才是稀缺资源，
-   而屏幕一般是宽屏、横向富余。控制挪到横向上，等于白赚 17% 的放大。 */
-.antu-rail {
-  flex: 0 0 240px;
+/* 画布底部的控制胶囊：大圆角、半透明毛玻璃 */
+.antu-dock { position: relative; }
+.antu-dock-bar {
   display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-right: 1px solid var(--antu-line);
-  /* 关键：外框收缩时把内容裁掉，而不是让它按新宽度重新折行。
-     否则动画每一帧文字都在重排，看起来像被挤来挤去。 */
-  overflow: hidden;
-  transition: flex-basis .2s ease-out;
-}
-.antu-rail.is-collapsed { flex-basis: 56px; }
-
-/* 头部的两个元素互不干扰：品牌绝对定位在左，按钮贴着右边缘。
-   这样收缩时按钮跟着右边缘一起平滑左移，不会中途跳位。 */
-.antu-rail-head {
-  position: relative;
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: flex-end;
   align-items: center;
-  padding: 14px 16px 10px;
-  white-space: nowrap;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  backdrop-filter: blur(16px) saturate(1.8);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.10), 0 1px 2px rgba(15, 23, 42, 0.06);
 }
-.antu-rail-brand {
-  position: absolute;
-  left: 16px;
-  top: 14px;
-  /* 它是定位元素，而按钮是普通流内元素；定位元素默认画在上面。
-     所以收起后品牌虽然已经淡到看不见，仍然会压住按钮、把点击吃掉。
-     它只是两个字，永远不该接收点击。 */
-  pointer-events: none;
-  font-weight: 700;
-  letter-spacing: .3px;
-  color: var(--antu-text);
-  transition: opacity .12s ease-out;
-}
-.antu-rail.is-collapsed .antu-rail-brand { opacity: 0; }
-
-.antu-rail-content {
-  flex: 1 1 auto;
-  /* 固定宽度：外框收缩时内容不重排，只是被裁掉 */
-  width: 240px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 0 16px 18px;
-  opacity: 1;
-  transition: opacity .15s ease-out;
-}
-/* 收起：淡出，而不是硬切；结束后再彻底隐藏，免得还被键盘聚焦到 */
-.antu-rail.is-collapsed .antu-rail-content {
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity .1s ease-out, visibility 0s linear .1s;
-}
-
-/* 收起/展开按钮：做成看得见的方按钮，别只放一个浅色箭头 */
-.antu-rail-toggle {
-  flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+.antu-dock-chip {
+  /* inline-flex + 居中：里面的箭头才不会跟着基线往下掉 */
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid #e8ebef;
-  border-radius: 6px;
-  background: #fff;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
   color: var(--antu-text-2);
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-}
-.antu-rail-toggle:hover { background: #f1f4f8; border-color: #cbd5e1; }
-
-.antu-rail-label {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  color: var(--antu-text-4);
-  margin-bottom: 2px;
-}
-.antu-rail-note { margin-top: 10px; font-size: 11px; color: var(--antu-text-4); line-height: 1.6; }
-
-/* 示例切换：竖向列表比横排按钮省地方，也更好读 */
-.antu-rail-nav { display: flex; flex-direction: column; gap: 6px; }
-/* 视角切换：一排按钮，和示例列表同一套样式感 */
-.antu-view-list { display: flex; flex-direction: column; gap: 4px; }
-/* 方向只有两项，横着排省地方（左栏内容已经很长了） */
-.antu-view-list.is-row { flex-direction: row; }
-.antu-view-list.is-row .antu-view-btn { flex: 1 1 0; text-align: center; }
-.antu-view-btn {
-  padding: 5px 9px;
-  border: 1px solid #e8ebef;
-  border-radius: var(--antu-radius);
-  background: #fff;
-  color: var(--antu-text-2);
-  font-size: 11.5px;
-  line-height: 1.4;
-  text-align: left;
-  cursor: pointer;
-}
-.antu-view-btn:hover:not(:disabled) { background: #f1f4f8; }
-.antu-view-btn:disabled { color: var(--antu-text-4); cursor: not-allowed; }
-.antu-view-btn.active {
-  background: var(--antu-chip);
-  border-color: var(--antu-chip);
-  color: var(--antu-text);
-  font-weight: 600;
-}
-
-.antu-nav-btn {
-  padding: 6px 10px;
-  border: 1px solid #e8ebef;
-  border-radius: var(--antu-radius);
-  background: #fff;
-  color: var(--antu-text-2);
+  font-family: inherit;
   font-size: 12px;
-  line-height: 1.4;
-  text-align: left;
+  line-height: 1.5;
+  white-space: nowrap;
   cursor: pointer;
 }
-.antu-nav-btn:hover { background: #f1f4f8; }
-.antu-nav-btn.active {
-  background: var(--antu-chip);
-  border-color: var(--antu-chip);
+.antu-dock-chip:hover { background: rgba(15, 23, 42, 0.05); }
+/* 开关打开时的底色要比分段控件的轨道更深一档，
+   否则"这个开关是开的"和"这一段被选中"看着像同一种东西。
+   三层色阶：胶囊底最浅、分段轨道居中、打开的开关最深。 */
+.antu-dock-chip.is-open,
+.antu-dock-chip.is-on {
+  background: rgba(15, 23, 42, 0.12);
   color: var(--antu-text);
   font-weight: 600;
 }
+.antu-dock-sep { width: 1px; height: 14px; background: rgba(15, 23, 42, 0.10); }
+/* 箭头用两条边旋转出来，比用字符好对齐：字符坐在基线上，天生偏下。
+   两条边拼出的角默认朝右下，转 225 度就朝上（菜单是在上方弹出的）。 */
+.antu-dock-caret {
+  width: 5px;
+  height: 5px;
+  margin-left: 6px;
+  border-right: 1.4px solid currentColor;
+  border-bottom: 1.4px solid currentColor;
+  transform: rotate(225deg);
+  opacity: 0.5;
+}
 
+/* 视角的选项列表（选项名长、最多五个，摆不进胶囊） */
+.antu-dock-pop {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 168px;
+  max-width: 320px;
+  padding: 6px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.14);
+}
+.antu-dock-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--antu-text-2);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.antu-dock-opt:hover:not(:disabled) { background: rgba(15, 23, 42, 0.05); }
+.antu-dock-opt.is-on { color: var(--antu-text); font-weight: 600; }
+.antu-dock-opt:disabled { color: var(--antu-text-4); cursor: not-allowed; }
+.antu-dock-tick { width: 12px; flex: none; color: var(--antu-text-2); }
+
+/* 分段控件：一条浅灰轨道，选中的那个是白底凸起 */
+.antu-dock-seg {
+  display: flex;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+}
+.antu-dock-seg-item {
+  padding: 3px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--antu-text-2);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.antu-dock-seg-item:hover { color: var(--antu-text); }
+.antu-dock-seg-item.is-on {
+  background: #fff;
+  color: var(--antu-text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.14);
+}
+
+/* 视角切换：一排按钮，和示例列表同一套样式感 */
+/* 方向只有两项，横着排省地方（左栏内容已经很长了） */
 /* ---------- 校验错误面板（现在住在信息栏里） ---------- */
-.antu-info-msg { color: var(--antu-text-3); font-size: 12px; }
+/* ---------- 卡片：左栏里所有的"面" ---------- */
+/* 整栏只有两种东西：浅灰底、白卡。分组靠卡，不靠线也不靠间距。
+   阴影很轻，只是让卡片离开底色一点点，不要立体感过头。 */
+/* 卡内分块：发丝线隔开，不要每条都包一张卡，那样太碎 */
+.antu-sec + .antu-sec { border-top: 1px solid #f1f4f8; }
+
+/* ---------- 本图信息卡 ---------- */
+.antu-kind-sub { font-size: 11.5px; font-weight: 400; color: var(--antu-text-3); }
+
+/* 不在当前视角里的：整行退到最浅一档，圆点变空心 */
+.antu-party-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.antu-party-name { font-weight: 500; }
+.antu-party-role { font-size: 11px; color: var(--antu-text-4); }
+
 .antu-error {
   padding: 12px 14px;
   background: #fef2f2;
@@ -186,37 +187,6 @@
 .antu-fact { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
 
 /* ---------- 信息栏里的图级信息 ---------- */
-.antu-info { display: flex; flex-direction: column; gap: 9px; }
-.antu-info-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 650;
-  line-height: 1.45;
-  color: var(--antu-text);
-}
-.antu-info-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.antu-chip {
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--antu-chip);
-  color: #64748b;
-  font-size: 11px;
-  white-space: nowrap;
-}
-.antu-info-legend { display: flex; flex-direction: column; gap: 6px; }
-.antu-legend-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: #64748b;
-}
-.antu-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; margin-top: 4px; }
-.antu-legend-dot.g0 { background: var(--antu-side1); }
-.antu-legend-dot.g1 { background: var(--antu-side2); }
-.antu-legend-dot.g2 { background: var(--antu-axis); }
-
 /* ---------- 画布 ---------- */
 .antu-fact-body { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
 .antu-fact-canvas {
@@ -372,6 +342,58 @@
 }
 
 /* ---------- 事件卡片 ---------- */
+/* 悬停中的卡片连同它的浮层一起抬到最上层。
+   React Flow 给每个节点都设了内联的 z-index: 0，谁在后面谁盖住谁；
+   而浮层是长在卡片节点里面的，出不去这个层叠上下文。
+   不加这一条，第一行往下冒的浮层就会被第二行的卡片压住。
+   !important 是为了压过那条内联样式。 */
+.react-flow__node-card:hover { z-index: 10 !important; }
+
+/* 悬停时轻微浮起；详情浮层见下方 .antu-preview */
+/* 选中的卡片由 React Flow 在节点包裹层加 selected 类 */
+.react-flow__node.selected .antu-card {
+  border-color: #6d86a8;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, .16);
+  transform: scale(1.02);
+}
+
+/* 卡片各行一律不许被压缩。卡片是定高 flex 列，子元素默认可压缩：
+   一旦内容比卡片高，多出来的高度就从标题和摘要身上扣，把字压变形。
+   行数已经按内容估过（标题几行、标签几行），估矮了宁可溢出也不要压扁字。 */
+/* 卡片内容：标题在上、时间在下，中间用 margin-top:auto 顶开 */
+/* 详情摘要（一行截断）与主体标签（可开关的两块） */
+.antu-card-actors { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* 底部一行：左边时间，右边来源的有无 */
+.antu-card-time {
+  font-size: 11.5px;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 有来源：实心点；没列来源：空心点。区别靠虚实，不靠颜色喊。 */
+.antu-src-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64748b;
+}
+.antu-card-src.is-none .antu-src-dot {
+  background: transparent;
+  border: 1px solid var(--antu-text-4);
+}
+.antu-actor-tag {
+  padding: 1px 7px;
+  background: #f1f4f8;
+  color: #64748b;
+  border-radius: 999px;
+  font-size: 10px;
+}
+
+
+/* ---------- 卡片旁的详情浮层（覆盖式，不改变画布尺寸） ---------- */
 .antu-card {
   position: relative;
   /* 宽高由渲染层按 layout 常量内联给出（见 timelineLayout.js 的 CARD_W / CARD_H），
@@ -479,16 +501,7 @@
   background: transparent;
   border: 1px solid var(--antu-text-4);
 }
-.antu-actor-tag {
-  padding: 1px 7px;
-  background: #f1f4f8;
-  color: #64748b;
-  border-radius: 999px;
-  font-size: 10px;
-}
 
-
-/* ---------- 卡片旁的详情浮层（覆盖式，不改变画布尺寸） ---------- */
 .antu-preview {
   position: absolute;
   left: 0;
@@ -591,22 +604,13 @@
 
 .antu-preview-sub { margin: 10px 0 6px; font-size: 11px; font-weight: 700; color: var(--antu-text-2); }
 .antu-preview-hint { margin-top: 6px; font-size: 10.5px; color: var(--antu-text-4); }
-.antu-source {
-  margin-bottom: 8px;
-  padding: 8px 10px;
-  background: #f1f4f8;
-  border: 1px solid var(--antu-line);
-  border-radius: var(--antu-radius);
-}
-.antu-source-name { font-size: 12px; font-weight: 600; color: var(--antu-text); }
-.antu-source-type {
-  margin-left: 6px;
-  padding: 1px 6px;
-  background: var(--antu-chip);
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 400;
-  color: #64748b;
+.antu-source-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--antu-text);
 }
 .antu-source-quote { margin-top: 4px; font-size: 12px; line-height: 1.65; color: var(--antu-text-2); }
 
@@ -614,46 +618,35 @@
 @media (prefers-reduced-motion: reduce) {
   .antu-card,
   .antu-preview,
-  .antu-rail,
   .react-flow__minimap { transition: none; }
 }
 
-/* ---------- 窄屏：左栏折回顶部横条，默认收起 ----------
-   窗口窄到 1080 以下时，240px 的左栏开始挤压画布，
-   这时把信息栏翻成横的一条。它展开时比原来的两条顶栏还高，
-   所以 AppRail 在窄屏下默认收起，只剩品牌那一行。 */
-@media (max-width: 1080px) {
-  .antu-fact { flex-direction: column; }
-  .antu-rail {
-    flex: 0 0 auto;
-    max-height: 42vh;
-    border-right: none;
-    border-bottom: 1px solid var(--antu-line);
-  }
-  .antu-rail.is-collapsed { flex-basis: auto; }
-  /* 横条模式下收起，也把品牌留着，让人一眼看出这是什么、按钮在哪 */
-  .antu-rail.is-collapsed .antu-rail-brand { opacity: 1; }
-  /* 横条这里没有高度动画，收起就必须真的不占位。
-     只把它设成 visibility:hidden 的话，那 270 多像素的空白照样留着。 */
-  .antu-rail.is-collapsed .antu-rail-content { display: none; }
-  .antu-rail-head { padding: 8px 16px; }
-  .antu-rail-content {
-    width: auto;              /* 折成横条时不再固定宽度 */
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 0 16px 12px;
-  }
-  .antu-rail-nav { flex-direction: row; flex-wrap: wrap; align-items: center; }
-  .antu-rail-nav .antu-rail-label { flex-basis: 100%; margin-bottom: 0; }
-  .antu-rail-note { flex-basis: 100%; margin-top: 0; }
-  .antu-info { flex: 1 1 260px; }
-  /* 标题只留一行，避免把顶部条撑高 */
-  .antu-info-title {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .antu-info-legend { flex-direction: row; flex-wrap: wrap; gap: 10px 16px; }
+/* ---------- 窄屏 ----------
+   没有侧栏要折，浮层本来就压在画布上，所以这里不需要断点处理。
+   真要腾地方，把浮层做小或让它可收起即可。 */
+
+/* ============================================================
+   画布上的浮层：左上角案件切换器 + 底部控制胶囊
+   两者同一套语言：白色半透、毛玻璃、大圆角、柔和阴影。
+   ============================================================ */
+
+/* ---------- 渲染器不可用时的兜底 ---------- */
+.antu-fallback {
+  position: absolute;
+  top: 62px;
+  left: 14px;
+  z-index: 5;
+  max-width: min(520px, 70vw);
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.12);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--antu-text-2);
 }
+.antu-error-title { font-weight: 600; color: #b91c1c; margin-bottom: 6px; }
+.antu-error-list { margin: 0; padding-left: 18px; color: var(--antu-text-2); }
+.antu-error-hint { color: var(--antu-text-3); }

@@ -1,0 +1,139 @@
+{
+  "specVersion": 1,
+  "type": "fact",
+  "title": "建设工程施工合同纠纷 · 付款与结算时间线（示意数据）",
+
+  "actors": [
+    { "id": "a-1", "name": "建设单位", "role": "发包方" },
+    { "id": "a-2", "name": "监理单位", "role": "受发包方委托" },
+    { "id": "a-3", "name": "总包单位", "role": "承包方" },
+    { "id": "a-4", "name": "分包单位", "role": "受总包委托" }
+  ],
+
+  "groups": [
+    { "id": "g-1", "label": "发包方的行为" },
+    { "id": "g-2", "label": "承包方的行为" },
+    { "id": "g-3", "label": "双方共同或客观经过" }
+  ],
+
+  "views": [
+    { "label": "发包方 vs 承包方", "splitBy": "actor",
+      "side1": { "label": "发包方", "actors": ["a-1", "a-2"] },
+      "side2": { "label": "承包方", "actors": ["a-3", "a-4"] },
+      "axis":  { "label": "双方共同或客观经过" } },
+    { "label": "只看建设单位", "splitBy": "actor",
+      "side1": { "label": "建设单位", "actors": ["a-1"] },
+      "side2": { "actors": [] },
+      "axis":  { "label": "其余经过" } },
+    { "label": "按分组分侧", "splitBy": "group" }
+  ],
+
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "施工合同付款条款",
+      "loc": { "file": "施工合同.pdf", "page": 6 },
+      "quote": "预付款为合同价款的 30%，于开工通知发出后十日内支付；进度款按月计量，经监理确认后支付。"
+    },
+    {
+      "id": "s-2",
+      "type": "document",
+      "name": "监理审核意见",
+      "loc": { "file": "监理月报.pdf", "page": 11 },
+      "quote": "首期进度款申报金额与计量结果一致，同意支付。"
+    },
+    {
+      "id": "s-3",
+      "type": "evidence",
+      "name": "往来函件",
+      "loc": { "file": "往来函件.pdf", "page": 3 },
+      "quote": "因质量整改尚未完成，暂缓支付后续进度款，待复检合格后一并结算。"
+    }
+  ],
+
+  "slots": [
+    {
+      "events": [
+        {
+          "id": "pv-1",
+          "date": "2024-04-10",
+          "label": "建设单位按约支付预付款",
+          "summary": "合同价款的 30%",
+          "actorIds": ["a-1"],
+          "groupId": "g-1",
+          "detail": "建设单位在开工通知发出后第十日支付预付款，为合同价款的 30%。",
+          "sourceIds": ["s-1"]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "pv-2",
+          "date": "2024-05-20",
+          "label": "总包单位报送首期进度款申请",
+          "summary": "按月计量后申报",
+          "actorIds": ["a-3"],
+          "groupId": "g-2",
+          "detail": "总包单位按合同约定的计量周期报送首期进度款申请。",
+          "sourceIds": ["s-1"]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "pv-3",
+          "date": "2024-06-05",
+          "label": "监理单位审核首期进度款",
+          "summary": "申报金额与计量结果一致",
+          "actorIds": ["a-2"],
+          "groupId": "g-1",
+          "detail": "监理单位核对计量结果，认为申报金额一致，出具同意支付意见。",
+          "sourceIds": ["s-2"]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "pv-4",
+          "date": "2024-06-20",
+          "label": "建设单位支付首期进度款",
+          "summary": "按期支付",
+          "actorIds": ["a-1"],
+          "groupId": "g-1",
+          "detail": "建设单位在收到监理审核意见后按约支付首期进度款。"
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "pv-5",
+          "date": "2024-07-28",
+          "label": "分包单位报送第二期进度款",
+          "summary": "经总包单位转报",
+          "actorIds": ["a-4"],
+          "groupId": "g-2",
+          "detail": "分包单位经总包单位向建设单位转报第二期进度款申请。"
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "pv-6",
+          "date": "2024-08-15",
+          "label": "建设单位暂缓支付后续进度款",
+          "summary": "以待整改完成",
+          "actorIds": ["a-1"],
+          "groupId": "g-1",
+          "detail": "建设单位以质量整改尚未完成为由，暂缓支付后续进度款，待复检合格后一并结算。",
+          "sourceIds": ["s-3"]
+        }
+      ]
+    }
+  ]
+}

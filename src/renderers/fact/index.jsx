@@ -13,15 +13,14 @@
 // ============================================================
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ReactFlow, Background, Controls, MiniMap, useNodesState, useEdgesState } from '@xyflow/react'
+import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState, useEdgesState } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import EventNode from './EventNode.jsx'
 import ColumnHeaderNode from './ColumnHeaderNode.jsx'
 import AxisLineNode from './AxisLineNode.jsx'
 import LinkLayerNode from './LinkLayerNode.jsx'
 import CellLayerNode from './CellLayerNode.jsx'
-import FactInfo from './FactInfo.jsx'
-import AppRail from '../../shell/AppRail.jsx'
+import ControlDock from './ControlDock.jsx'
 import { PreviewContext } from './previewContext.js'
 import { buildFactGraph } from './timelineLayout.js'
 import { viewsOf } from '../../core/factGrid.js'
@@ -41,7 +40,6 @@ const FIT_PADDING = 0.12
 
 export default function FactRenderer({
   spec,
-  nav,
   showGrid = false,
   onToggleGrid,
   fields = {},
@@ -54,18 +52,30 @@ export default function FactRenderer({
   // 视角和字段开关一样，都是排布的输入：视角决定分侧与有哪些列，
   // 字段决定卡片放几行。两者一变，整张图重排、视口重新适配。
   const views = useMemo(() => viewsOf(spec), [spec])
-  // 先把每个视角都试排一遍，标出哪些摆不下（比如不分侧时同一时间点有多条事件）。
-  // 摆不下的视角在切换器里禁用，而不是点进去才发现少了事件。
+  // 先把每个视角都试排一遍。**摆不下的不进选项**：一个点了没用的选项是噪音。
+  // 这里保留它在原清单里的下标，选中时按原下标回传，免得过滤后错位。
   const viewInfos = useMemo(
     () =>
-      views.map((v) => {
+      views.map((v, i) => {
         const g = buildFactGraph(spec, fields, v, orientation)
-        return { view: v, reason: g.errors.length > 0 ? g.errors[0] : '' }
+        const reason = g.errors.length > 0 ? g.errors[0] : ''
+        if (reason) {
+          // 摆不下的视角不会出现在选项里，从界面上完全看不出它有问题。
+          // 打一条警告，写数据的人（agent）才找得到。
+          console.warn(`[案图] 视角「${v.label}」摆不下，已从选项中去掉。原因：${reason}`)
+        }
+        return { view: v, index: i, reason }
       }),
     [spec, fields, views, orientation],
   )
-  const active = viewInfos[Math.min(Math.max(viewIndex, 0), viewInfos.length - 1)] || viewInfos[0]
-  const view = active.view
+  const usable = useMemo(() => viewInfos.filter((info) => !info.reason), [viewInfos])
+  // 当前选中的那个也不能是摆不下的（比如数据里第一个视角就摆不下）：
+  // 真遇到就退到第一个能用的。一个能用的都没有时才退回原样，把问题显示出来。
+  const safeIndex =
+    viewInfos[viewIndex] && !viewInfos[viewIndex].reason
+      ? viewIndex
+      : (usable[0]?.index ?? viewIndex)
+  const view = (viewInfos[safeIndex] || viewInfos[0]).view
   const graph = useMemo(
     () => buildFactGraph(spec, fields, view, orientation),
     [spec, fields, view, orientation],
@@ -160,43 +170,10 @@ export default function FactRenderer({
     [hoveredId, pinnedId],
   )
 
-  const eventCount = slots.reduce((n, s) => n + (s?.events?.length || 0), 0)
-  const approxCount = slots.reduce(
-    (n, s) => n + (s?.events || []).filter((e) => e?.approx).length,
-    0,
-  )
-
-  const chips = [
-    `${eventCount} 个事件`,
-    `${slots.length} 个时间点`,
-    `${spec.actors?.length || 0} 个主体`,
-    `${spec.sources?.length || 0} 个来源`,
-    approxCount > 0 ? `${approxCount} 个近似时间` : null,
-  ].filter(Boolean)
-
   return (
     <div className="antu-fact">
-      {/* 标题、统计、图例全部挪到左侧栏，画布顶部一点不占 */}
-      <AppRail
-        nav={nav}
-        info={
-          <FactInfo
-            spec={spec}
-            chips={chips}
-            showGrid={showGrid}
-            onToggleGrid={onToggleGrid}
-            fields={fields}
-            onToggleField={onToggleField}
-            sideLabels={graph.sideLabels}
-            orientation={orientation}
-            onToggleOrientation={onToggleOrientation}
-            viewInfos={viewInfos}
-            view={view}
-            onSelectView={onSelectView}
-          />
-        }
-      />
-
+      {/* 不要左侧栏：画布占满整个窗口，信息与控制都做成画布上的浮层。
+          案件切换在左上角（app 级），显示控制在下方的控制胶囊里。 */}
       <div className="antu-fact-body">
         <main
           className={`antu-fact-canvas${showGrid ? ' show-grid' : ''}`}
@@ -255,6 +232,21 @@ export default function FactRenderer({
               <Background gap={20} color="#e8ebef" />
               {/* 留白要和初始适配用同一个值，否则点一次按钮缩放会跳一下 */}
               <Controls showInteractive={false} fitViewOptions={{ padding: FIT_PADDING }} />
+              {/* 显示类控制浮在画布下方居中：缩放控件在左下、小地图在右下，三个不打架 */}
+              <Panel position="bottom-center">
+                <ControlDock
+                  viewOptions={usable}
+                  viewCount={viewInfos.length}
+                  view={view}
+                  onSelectView={onSelectView}
+                  fields={fields}
+                  onToggleField={onToggleField}
+                  orientation={orientation}
+                  onToggleOrientation={onToggleOrientation}
+                  showGrid={showGrid}
+                  onToggleGrid={onToggleGrid}
+                />
+              </Panel>
               <MiniMap pannable zoomable nodeColor="#cbd5e1" />
             </ReactFlow>
           </PreviewContext.Provider>
