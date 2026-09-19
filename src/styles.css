@@ -142,43 +142,8 @@
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.14);
 }
 
-/* 视角切换：一排按钮，和示例列表同一套样式感 */
-/* 方向只有两项，横着排省地方（左栏内容已经很长了） */
-/* ---------- 校验错误面板（现在住在信息栏里） ---------- */
-/* ---------- 卡片：左栏里所有的"面" ---------- */
-/* 整栏只有两种东西：浅灰底、白卡。分组靠卡，不靠线也不靠间距。
-   阴影很轻，只是让卡片离开底色一点点，不要立体感过头。 */
-/* 卡内分块：发丝线隔开，不要每条都包一张卡，那样太碎 */
-.antu-sec + .antu-sec { border-top: 1px solid #f1f4f8; }
-
-/* ---------- 本图信息卡 ---------- */
-.antu-kind-sub { font-size: 11.5px; font-weight: 400; color: var(--antu-text-3); }
-
-/* 不在当前视角里的：整行退到最浅一档，圆点变空心 */
-.antu-party-dot {
-  flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.antu-party-name { font-weight: 500; }
-.antu-party-role { font-size: 11px; color: var(--antu-text-4); }
-
-.antu-error {
-  padding: 12px 14px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-left: 3px solid var(--antu-side2);
-  border-radius: var(--antu-radius);
-  color: #991b1b;
-  font-size: 12px;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-.antu-error-title { font-weight: 700; margin-bottom: 6px; }
-.antu-error ul { margin: 0; padding-left: 18px; line-height: 1.7; }
-.antu-error-hint { color: #991b1b; margin-top: 6px; }
+.antu-error-title { font-weight: 600; color: #b91c1c; margin-bottom: 6px; }
+.antu-error-hint { color: var(--antu-text-3); }
 
 /* ============================================================
    fact 渲染器
@@ -186,7 +151,6 @@
 
 .antu-fact { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
 
-/* ---------- 信息栏里的图级信息 ---------- */
 /* ---------- 画布 ---------- */
 .antu-fact-body { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
 .antu-fact-canvas {
@@ -629,6 +593,122 @@
    画布上的浮层：左上角案件切换器 + 底部控制胶囊
    两者同一套语言：白色半透、毛玻璃、大圆角、柔和阴影。
    ============================================================ */
+
+/* ---------- 左上角：标签卡（这一页是什么） ---------- */
+/* 绝对不能少这几条：少了 position:absolute，标签卡会变成 flex 里的一项，
+   把画布挤到右边缩成一小块（踩过这个坑）。 */
+.antu-header {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 6;
+}
+
+.antu-header-card {
+  max-width: min(440px, 46vw);
+  padding: 10px 13px 11px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+  backdrop-filter: blur(16px) saturate(1.8);
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.09), 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.antu-header-title {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--antu-text);
+}
+
+.antu-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* 大类：事实图 / 关系图…… 只说明这张图归哪一类 */
+.antu-header-type {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--antu-text-3);
+}
+
+/* 渲染类型：只有一种时是纯文字，多于一种时是可点的芯片 */
+.antu-header-kind {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: #f0f3f7;
+  color: var(--antu-text-3);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+.antu-header-kind.is-btn { cursor: pointer; }
+.antu-header-kind.is-btn:hover { background: #e6ebf2; color: var(--antu-text-2); }
+.antu-header-kind.is-open { background: #e2e8f0; color: var(--antu-text); }
+.antu-header-caret {
+  width: 4px;
+  height: 4px;
+  border-right: 1.3px solid currentColor;
+  border-bottom: 1.3px solid currentColor;
+  transform: rotate(45deg);
+  opacity: 0.5;
+}
+
+.antu-header-info {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--antu-text-4);
+}
+
+/* 渲染类型的下拉面板 */
+.antu-header-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 132px;
+  padding: 6px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.16);
+}
+.antu-header-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--antu-text-2);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.antu-header-opt:hover { background: #f1f4f8; }
+.antu-header-opt.is-on { color: var(--antu-text); font-weight: 600; }
+.antu-header-tick { width: 12px; flex: none; color: var(--antu-side1); }
 
 /* ---------- 渲染器不可用时的兜底 ---------- */
 .antu-fallback {
