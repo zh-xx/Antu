@@ -1,0 +1,256 @@
+#!/usr/bin/env node
+// ============================================================
+//  tools/mcp/server.mjs —— 案图的 MCP 服务端
+//
+//  给 agent 用的入口。设计原则有三条：
+//
+//  1. **引擎不生成 JSON。** 这里没有任何"帮我写一份 JSON"的工具。
+//     读文书、提取事实、写 JSON 是 agent 的职责，服务端只提供
+//     规范、示例、校验、几何、渲染、预览。
+//
+//  2. **让 agent 能"看见"。** 校验全过、排布也合理，图照样可能难看。
+//     antu_preview 把结果截成图片返回，agent 用自己的眼睛检查。
+//     没有这一步，agent 只能盲写。
+//
+//  3. **能在本地跑就不要联网。** 校验和几何是纯 JS，不需要浏览器；
+//     预览复用本机已有的 Chrome。整个服务端不访问网络。
+//
+//  启动：stdio 传输，由 MCP 客户端拉起。也可以直接 `node tools/mcp/server.mjs`
+//  手动跑（它会等 stdin 上的 JSON-RPC）。
+// ============================================================
+
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { z } from 'zod'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import {
+  validate,
+  layoutReport,
+  formatLayoutReport,
+  renderHtml,
+  listExamples,
+  readExample,
+  listSpecs,
+  readSpec,
+} from './engine.mjs'
+import { screenshot, findChrome } from './preview.mjs'
+
+const server = new McpServer({ name: 'antu', version: '0.1.0' })
+
+/** 规范里的 JSON 是任意嵌套结构，这里不重复定义一遍 schema：校验由引擎负责 */
+const specArg = z.looseObject({}).describe('案图的 JSON（信封 + 内容层，见规范资源）')
+
+const OK = (text) => ({ content: [{ type: 'text', text }] })
+const FAIL = (text) => ({ content: [{ type: 'text', text }], isError: true })
+
+// ---------------------------------------------------------------
+// 示例：让 agent 先看"别人是怎么写的"
+// ---------------------------------------------------------------
+server.registerTool(
+  'antu_examples',
+  {
+    title: '看示例数据',
+    description:
+      '列出仓库里的示例 JSON（含两个真实案例：人脸识别第一案、电梯劝烟案）。' +
+      '写自己的 JSON 之前先看一份真实案例怎么写，比只读规范快。不传参数就列清单；' +
+      '传 file 就把那一份的完整内容取回来。',
+    inputSchema: {
+      file: z.string().optional().describe('要取的那一份，如 examples/fact-电梯劝烟案.json。不传则只列清单'),
+    },
+  },
+  async ({ file }) => {
+    if (file) {
+      const one = readExample(file)
+      if (!one) return FAIL(`没找到示例：${file}。先用不带参数的 antu_examples 看清单。`)
+      return OK(`# ${file}\n\n\`\`\`json\n${one.text}\n\`\`\``)
+    }
+    const rows = listExamples()
+    const lines = rows.map(
+      (r) =>
+        `- ${r.file}\n    ${r.title}\n    ${r.events} 条事件 / ${r.slots} 个时间点 / ${r.actors} 个主体\n    视角：${r.views.join('、')}`,
+    )
+    return OK(`示例 ${rows.length} 份：\n\n${lines.join('\n')}`)
+  },
+)
+
+// ---------------------------------------------------------------
+// 规范：资源与工具两条路都给
+// ---------------------------------------------------------------
+// 资源适合"agent 自己按需读"，但有些客户端对资源的支持不好，
+// 所以再给一个工具做保底。内容一样，走哪条都行。
+server.registerTool(
+  'antu_spec',
+  {
+    title: '读规范',
+    description:
+      '取案图的规范文档。**写 JSON 之前至少读 fact-schema-draft 和 fact-timeline-rules 这两份。** ' +
+      '不传 name 就列出有哪些文档。',
+    inputSchema: {
+      name: z
+        .string()
+        .optional()
+        .describe('文档名，如 fact-schema-draft。不传则列出全部'),
+    },
+  },
+  async ({ name }) => {
+    if (!name) {
+      const rows = listSpecs()
+      const lines = rows.map((r) => `- ${r.name}`)
+      return OK(`规范文档 ${rows.length} 份：\n\n${lines.join('\n')}\n\n推荐顺序：v0-architecture → fact-schema-draft → fact-timeline-rules → fact-rendering`)
+    }
+    const text = readSpec(name)
+    if (text === null) return FAIL(`没找到规范：${name}。用不带参数的 antu_spec 看清单。`)
+    return OK(text)
+  },
+)
+
+// ---------------------------------------------------------------
+// 校验：写完先跑这个
+// ---------------------------------------------------------------
+server.registerTool(
+  'antu_validate',
+  {
+    title: '校验 JSON',
+    description:
+      '校验一份案图 JSON 是否合法。返回逐条错误（带字段路径与事件 id，如 slots[0].events[1] (ev-2)）。' +
+      '**写完 JSON 先跑这个，别直接渲染。** 这一步是纯计算，不用浏览器，很快。',
+    inputSchema: { spec: specArg },
+  },
+  async ({ spec }) => {
+    const errors = validate(spec)
+    if (errors.length === 0) return OK('校验通过。下一步可以 antu_layout 看几何，或 antu_preview 看效果。')
+    const lines = errors.map((e, i) => `${i + 1}. ${e}`)
+    return FAIL(`校验未通过，${errors.length} 处问题：\n\n${lines.join('\n')}`)
+  },
+)
+
+// ---------------------------------------------------------------
+// 几何：不渲染就能判断"会不会太宽/太空"
+// ---------------------------------------------------------------
+server.registerTool(
+  'antu_layout',
+  {
+    title: '算一遍几何',
+    description:
+      '不渲染，先把排布算一遍：内容多大、适配缩放多少、该用竖向还是横向、' +
+      '每个视角能不能排下（有几条事件、分了几列）。' +
+      '用来回答"这张图会不会太宽""这个视角是不是摆不下"，比截图快得多。',
+    inputSchema: {
+      spec: specArg,
+      orientation: z.enum(['vertical', 'horizontal']).optional().describe('不传就按槽数规则给建议'),
+      summary: z.boolean().optional().describe('卡片上是否显示摘要（影响卡片高度，进而影响内容尺寸），默认 true'),
+    },
+  },
+  async ({ spec, orientation, summary = true }) => {
+    const errors = validate(spec)
+    if (errors.length > 0) {
+      return FAIL(`JSON 还没通过校验，先修好再看几何：\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`)
+    }
+    const report = layoutReport(spec, { orientation, fields: { summary } })
+    return report.ok ? OK(formatLayoutReport(report)) : FAIL(report.reason)
+  },
+)
+
+// ---------------------------------------------------------------
+// 渲染：出一个自包含 HTML
+// ---------------------------------------------------------------
+server.registerTool(
+  'antu_render',
+  {
+    title: '生成自包含 HTML',
+    description:
+      '把 JSON 变成一份自包含的 HTML：引擎和数据都在这个文件里，不联网、不要服务器、' +
+      '双击就能看，可以直接发给别人或归档（约 420 KB）。' +
+      '**生成前会先校验**，不通过就不出文件。',
+    inputSchema: {
+      spec: specArg,
+      outPath: z.string().optional().describe('输出路径。不传就写到 dist-html/<标题>.html'),
+    },
+  },
+  async ({ spec, outPath }) => {
+    const errors = validate(spec)
+    if (errors.length > 0) {
+      return FAIL(`校验未通过，先修：\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`)
+    }
+    const { path, bytes } = renderHtml(spec, { outPath })
+    return OK(`已生成：${path}\n大小：${Math.round(bytes / 1024)} KB\n双击就能打开，不需要服务器，可以离线看。`)
+  },
+)
+
+// ---------------------------------------------------------------
+// 预览：让 agent 用眼睛看一眼
+// ---------------------------------------------------------------
+server.registerTool(
+  'antu_preview',
+  {
+    title: '截图看效果',
+    description:
+      '把这张图渲染成一张 PNG 返回。**校验通过不等于好看。** ' +
+      '用它检查这些校验查不出来的事：卡片是不是挤在一起、字是不是太小、整张图是不是太空、' +
+      '列标题有没有被截断。不满意就改 JSON 再来一次。' +
+      '需要本机有 Chrome（没有就只用 antu_validate 和 antu_layout）。',
+    inputSchema: {
+      spec: specArg,
+      orientation: z.enum(['vertical', 'horizontal']).optional().describe('不传按槽数规则自动选'),
+      summary: z.boolean().optional().describe('是否显示摘要，默认 true'),
+      actors: z.boolean().optional().describe('是否显示主体标签，默认 false'),
+      sources: z.boolean().optional().describe('是否显示来源标记，默认 false'),
+      view: z.number().int().optional().describe('用第几个视角渲染，默认 0（第一个）'),
+      width: z.number().int().optional().describe('截图宽度，默认 1600'),
+      height: z.number().int().optional().describe('截图高度，默认 900'),
+    },
+  },
+  async ({ spec, orientation, summary = true, actors = false, sources = false, view = 0, width = 1600, height = 900 }) => {
+    const errors = validate(spec)
+    if (errors.length > 0) {
+      return FAIL(`校验未通过，先修再预览：\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`)
+    }
+    if (!findChrome()) {
+      return FAIL('本机没找到 Chrome/Chromium，预览做不了。可以先用 antu_layout 判断几何。')
+    }
+
+    // 预览要能指定方向和字段，所以用一个临时文件 + 预设，
+    // 不改用户已有的偏好（预设只影响这一次渲染）。
+    const dir = mkdtempSync(join(tmpdir(), 'antu-shot-'))
+    const html = join(dir, 'preview.html')
+    try {
+      renderHtml(spec, { outPath: html, preset: { orientation, fields: { summary, actors, sources }, viewIndex: view } })
+      const shot = await screenshot(html, { width, height })
+      const kb = Math.round(shot.data.length * 0.75 / 1024)
+      return {
+        content: [
+          { type: 'text', text: `预览：${shot.cards} 张卡片，${width}×${height}，耗时 ${shot.ms} ms（约 ${kb} KB）` },
+          { type: 'image', data: shot.data, mimeType: shot.mimeType },
+        ],
+      }
+    } catch (e) {
+      return FAIL(`预览失败：${e.message}`)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  },
+)
+
+// ---------------------------------------------------------------
+// 资源：规范文档按需读，不占上下文
+// ---------------------------------------------------------------
+for (const s of listSpecs()) {
+  server.registerResource(
+    s.name,
+    `antu://spec/${s.name}`,
+    {
+      title: s.name,
+      description: `案图规范：${s.name}`,
+      mimeType: 'text/markdown',
+    },
+    async (uri) => ({
+      contents: [{ uri: uri.href, mimeType: 'text/markdown', text: readSpec(s.name) ?? '' }],
+    }),
+  )
+}
+
+const transport = new StdioServerTransport()
+await server.connect(transport)
