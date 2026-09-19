@@ -9,9 +9,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "build:engine": "vite build --config vite.engine.config.js",
-    "diagram": "node tools/make-html.mjs"
+    "diagram": "node tools/make-html.mjs",
+    "mcp": "node tools/mcp/server.mjs",
+    "mcp:test": "node tools/mcp/client-test.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@xyflow/react": "^12.11.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

@@ -76,19 +76,51 @@ antu/
 │   ├── fact-timeline-rules.md      时间图的排布规则
 │   ├── fact-rendering.md           画面元素、可调参数、为什么这么画
 │   ├── source-schema-draft.md      来源的 7 类字段
+│   ├── mcp-server.md               MCP 服务端：给 agent 的入口
 │   └── react-flow-features.md      画布库的用法与踩坑记录
 ├── examples/                   ← 示例数据；raw/ 里是真实案例的原始文书
 ├── src/
 │   ├── core/                       引擎本体：注册表、校验门卫、排布、卡片几何
 │   ├── renderers/fact/             fact 的渲染器（时间图）
 │   └── shell/                      页面外壳：左上角标签卡
-├── tools/make-html.mjs         ← JSON → 自包含 HTML
+├── tools/
+│   ├── make-html.mjs               JSON → 自包含 HTML
+│   └── mcp/                        MCP 服务端（给 agent 用）
 └── assets/screenshot.png
 ```
 
 ## 给 agent 的入口
 
-如果你是要**生成 JSON** 的 agent，按这个顺序读：
+### 路线一：MCP（推荐）
+
+有一个 MCP 服务端，agent 接上它就能读规范、看示例、校验、算几何、出成品，
+**并且截图看效果**——最后这条最重要：校验只能保证"合法"，保证不了"好看"。
+
+```json
+{
+  "mcpServers": {
+    "antu": {
+      "command": "node",
+      "args": ["/绝对路径/antu/tools/mcp/server.mjs"]
+    }
+  }
+}
+```
+
+| 工具 | 干什么 | 要浏览器吗 |
+|---|---|---|
+| `antu_spec` | 读规范 | 不要 |
+| `antu_examples` | 看示例（含两个真实案例） | 不要 |
+| `antu_validate` | 校验 JSON，逐条报错 | 不要 |
+| `antu_layout` | 算几何：多大、该用哪个方向、哪个视角摆不下 | 不要 |
+| `antu_render` | 出成品 HTML | 不要 |
+| `antu_preview` | 截图返回，用眼睛检查 | 要（复用本机 Chrome） |
+
+细节见 `spec/mcp-server.md`。
+
+### 路线二：读文件 + 命令行
+
+不接 MCP 也能用，按这个顺序：
 
 1. `spec/fact-schema-draft.md` —— JSON 长什么样、字段怎么填、什么会报错；
 2. `spec/fact-timeline-rules.md` —— 事件摆在图的哪个位置；
@@ -109,3 +141,5 @@ npm run diagram -- 你的.json
 | `npm run build` | 构建开发版 |
 | `npm run build:engine` | 构建出成品用的引擎（单文件 iife） |
 | `npm run diagram -- x.json [-o y.html]` | 把一份 JSON 变成自包含 HTML，`--rebuild` 强制重建引擎 |
+| `npm run mcp` | 起 MCP 服务端（给 agent 用） |
+| `npm run mcp:test` | 用自带客户端把 MCP 全流程走一遍 |

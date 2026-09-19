@@ -92,6 +92,13 @@ const ALL_DIAGRAMS = CASES.flatMap((c) => c.diagrams.map((d) => ({ ...d, caseNam
 const FIELD_DEFAULTS = { sources: false, actors: false, summary: true }
 
 /**
+ * 外部预设：只有 MCP 的 antu_preview 会用到。
+ * 它要能指定"用哪个方向、开哪些字段、看第几个视角"来截图，
+ * 又不能污染用户自己的偏好，所以走一个一次性的全局，而不是写 localStorage。
+ */
+const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
+
+/**
  * 本地偏好的读写。关键点：**只在用户真的动过开关时才写入**。
  * 如果一进来就把默认值整份写进去，那份记录就会压过默认值，
  * 以后改默认值（比如把摘要改成默认显示）谁都不会生效。
@@ -186,6 +193,7 @@ export default function App() {
   const [fields, setFields] = useState(() => ({
     ...FIELD_DEFAULTS,
     ...readPref('antu.prefs').fields,
+    ...(PRESET?.fields || {}),
   }))
   const toggleField = (key, value) => {
     setFields((f) => ({ ...f, [key]: value }))
@@ -193,9 +201,9 @@ export default function App() {
   }
 
   // 视角下标。换图时回到第一个：不同数据的视角清单不一样，留着旧下标没有意义。
-  const [viewIndex, setViewIndex] = useState(0)
+  const [viewIndex, setViewIndex] = useState(PRESET?.viewIndex ?? 0)
   useEffect(() => {
-    setViewIndex(0)
+    setViewIndex(PRESET?.viewIndex ?? 0)
   }, [spec])
 
   // 支持 ?example=1 直接打开某张图（便于分享与测试）
@@ -212,7 +220,8 @@ export default function App() {
     () => readPref('antu.prefs').orientations || {},
   )
   const slotCount = Array.isArray(spec?.slots) ? spec.slots.length : 0
-  const orientation = orientationPrefs[current.path] || (slotCount >= 5 ? 'vertical' : 'horizontal')
+  const orientation =
+    PRESET?.orientation || orientationPrefs[current.path] || (slotCount >= 5 ? 'vertical' : 'horizontal')
   const toggleOrientation = (next) => {
     const map = { ...orientationPrefs, [current.path]: next }
     setOrientationPrefs(map)
