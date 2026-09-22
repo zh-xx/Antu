@@ -9,20 +9,23 @@
 //  引擎不生成 JSON，那是 agent 的职责。
 // ============================================================
 
-import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { renderToFile, REPO } from '../lib/make-html.mjs'
 
 import { validateSpec } from '../../src/core/validate.js'
 import { viewsOf, buildGrid } from '../../src/core/factGrid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timelineLayout.js'
 
-/** 仓库根目录（服务端可能从任何 cwd 启动，所以一律相对这个位置解析） */
-export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+// 仓库根目录由 tools/lib/make-html.mjs 统一给出（服务端可能从任何 cwd 启动，
+// 所以一律相对那个位置解析），这里直接用它导出的 REPO。
 
 /** 画布尺寸的默认假设：用来算"适配缩放"，和浏览器里实测的画布大小一致 */
 const CANVAS = { width: 1600, height: 857 }
+
+/** 每个大类的默认子类。等注册表能在 Node 里用之后删掉（第 2 条）。 */
+const DEFAULT_KIND = { fact: 'timeline' }
 
 /** 排布函数的分发表。目前只有 fact 的时间图一个子类。 */
 const LAYOUTS = { fact: { timeline: buildFactGraph } }
@@ -54,7 +57,11 @@ export function fitZoom(size, canvas = CANVAS) {
  */
 export function layoutReport(spec, { orientation, fields = { summary: true } } = {}) {
   const type = spec?.type
-  const kind = spec?.kindHint ?? 'timeline'
+  // 目前每个大类只有一个子类，所以直接取默认画法。
+  // 这里原先写的是 spec?.kindHint，而 schema 里根本没有 kindHint 这个字段
+  // （见 known-issues 第 11 条），是凭空加的。等第 2 条把注册表搬到
+  // Node 能用的地方之后，这张表就该删掉，改成问注册表。
+  const kind = DEFAULT_KIND[type] ?? null
   const layout = layoutOf(type, kind)
   if (!layout) {
     return { ok: false, reason: `还没有 type="${type}" 子类 "${kind}" 的几何计算` }
@@ -131,59 +138,15 @@ export function formatLayoutReport(r) {
 }
 
 /**
- * 生成自包含 HTML。复用 tools/make-html.mjs 的逻辑（构建 → 内联）。
- * preset 可选：开局就用指定的方向/字段/视角渲染（MCP 预览要能指定这些）。
+ * 生成自包含 HTML。
+ *
+ * 实现只有一份，在 tools/lib/make-html.mjs —— 命令行工具和这里都调它。
+ * 原先两个文件各有一份（相似度 83%），改一处忘一处，症状是
+ * "某一条路生成出来的 HTML 不对"。见 known-issues 第 9 条。
  */
 export function renderHtml(spec, { outPath, preset } = {}) {
-  const engineJs = join(REPO, 'dist-engine/engine.js')
-  const engineCss = join(REPO, 'dist-engine/engine.css')
-  const needsBuild = !existsSync(engineJs) || !existsSync(engineCss) || newestSourceMtime() > statSync(engineJs).mtimeMs
-  if (needsBuild) {
-    execFileSync('npx', ['vite', 'build', '--config', 'vite.engine.config.js'], { cwd: REPO, stdio: 'pipe' })
-  }
-  const js = readFileSync(engineJs, 'utf8')
-  const css = readFileSync(engineCss, 'utf8')
-  const safeJson = JSON.stringify(spec).replace(/</g, '\\u003c')
-  const safeJs = js.replace(/<\/script/gi, '<\\/script')
-  const title = (spec.title || '案图').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
-  const html = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${title} · 案图</title>
-<style>
-html, body { margin: 0; height: 100%; font-family: system-ui, "Microsoft YaHei", sans-serif; }
-#root { height: 100%; }
-${css}</style>
-</head>
-<body>
-<div id="root"></div>
-<script>window.__ANTU_SPEC__ = ${safeJson};</script>
-${preset ? `<script>window.__ANTU_PRESET__ = ${JSON.stringify(preset).replace(/</g, '\\u003c')};</script>` : ''}
-<script>${safeJs}</script>
-</body>
-</html>
-`
-  const target = resolve(outPath || join(REPO, 'dist-html', `${slug(spec.title || 'antu')}.html`))
-  mkdirSync(dirname(target), { recursive: true })
-  writeFileSync(target, html)
-  return { path: target, bytes: Buffer.byteLength(html) }
+  return renderToFile(spec, { outPath, preset, quiet: true })
 }
-
-function newestSourceMtime() {
-  let newest = 0
-  const walk = (p) => {
-    if (!existsSync(p)) return
-    const st = statSync(p)
-    if (st.isDirectory()) for (const n of readdirSync(p)) walk(join(p, n))
-    else newest = Math.max(newest, st.mtimeMs)
-  }
-  for (const p of ['src', 'vite.engine.config.js']) walk(join(REPO, p))
-  return newest
-}
-
-const slug = (s) => String(s).replace(/[\\/:*?"<>|\s]+/g, '-').slice(0, 60)
 
 /** 示例清单：给 agent 看"别人是怎么写的" */
 export function listExamples() {
