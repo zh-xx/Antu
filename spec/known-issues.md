@@ -95,6 +95,33 @@ fact 的全部校验**就是排布本身**——在 `factGrid.js` 里边排边�
 
 ---
 
+### 5. 画布那套代码还住在渲染器里，没搬到 `shell/` `待修`
+
+**现象。** `spec/fact-rendering.md` §1 明写：
+
+> **画布由引擎统一提供**：缩放、平移、小地图、节点点击这些公共能力只写一次，
+> 每个渲染器不重复实现。
+
+但实际代码里，画布那一套全在 `src/renderers/fact/index.jsx` 里：
+`ReactFlow` 容器、`useNodesState` 与节点回写、`fitView` 与首帧无动画、
+动态 `minZoom`、`translateExtent`、`ResizeObserver`、
+`Background / Controls / MiniMap / Panel` 的摆放。
+
+`src/shell/` 目前只有一个文件、80 行（左上角标签卡），**画布那部分一行都没有**。
+
+**代价。** 加第二个渲染器（泳道图、关系图……）要**把这七八十行复制一遍**，
+而它们和"画什么图"毫无关系。改一处（比如调 fitView 的留白）就得记得改两处——
+正是架构文档 §1 想避免的事。
+
+**在哪。** 拆 `src/renderers/fact/index.jsx`（257 行，其中约 80 行是画布外壳），
+搬进 `src/shell/`。
+
+**建议做法。** 抽一个 `shell/Canvas.jsx`：接 `graph` 和 `children`（渲染器自己的浮层），
+内部管住画布、视口、缩放上下限、平移边界。渲染器只负责"把 JSON 变成 nodes"，
+不再碰 React Flow。**和第 4 条（拆 timelineLayout）是两件事，别混。**
+
+---
+
 ## 反复踩的坑（不是待修项，是规矩）
 
 这三条这个项目已经踩过两三次，写在这里当规矩。
