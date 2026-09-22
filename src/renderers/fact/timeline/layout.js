@@ -1,17 +1,17 @@
 // ============================================================
-//  src/renderers/fact/timelineLayout.js —— fact 布局（网格）
+//  src/renderers/fact/timeline/layout.js —— fact 布局（网格）
 //
 //  行 = 槽（slots 数组下标，自上而下就是时间先后）
 //  列 = 站位 × 主体：第 1 侧各主体、轴线、第 2 侧各主体
 //
-//  排布逻辑全部在 core/factGrid.js，这里只把格子换成像素坐标。
+//  排布逻辑全部在 timeline/grid.js，这里只把格子换成像素坐标。
 //
 //  节点顺序决定绘制层级（后画的压在上面）：
 //     列标题 / 轴线 → 引线层 → 卡片
 //  引线单独成一层，是为了让卡片盖住引线，而不是引线横穿卡片。
 // ============================================================
 
-import { buildGrid, SIDE } from '../../core/factGrid.js'
+import { buildGrid, SIDE } from './grid.js'
 import {
   ACTOR_FONT,
   ACTOR_TAG_GAP,
@@ -21,7 +21,7 @@ import {
   LABEL_LINE_CAP,
   MAX_LABEL_LINES,
   cardHeightOf,
-} from '../../core/cardGeometry.js'
+} from '../cardGeometry.js'
 
 /**
  * 全图标题实际要几行（取最大值，因为同一张图里卡片必须一样高）。

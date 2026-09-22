@@ -14,10 +14,12 @@ import { join } from 'node:path'
 
 import { renderToFile, REPO } from '../lib/make-html.mjs'
 import { fitZoom } from '../../src/core/canvas.js'
+// 登记各大类的知识（纯 JS，不碰组件）。有了它，校验与排布都从注册表取。
+import '../../src/renderers/index.js'
+import { layoutOf as layoutFromRegistry, layoutKindsOf } from '../../src/core/registry.js'
 
 import { validateSpec } from '../../src/core/validate.js'
-import { viewsOf, buildGrid } from '../../src/core/factGrid.js'
-import { buildFactGraph } from '../../src/renderers/fact/timelineLayout.js'
+import { viewsOf, buildGrid } from '../../src/renderers/fact/timeline/grid.js'
 
 // 仓库根目录由 tools/lib/make-html.mjs 统一给出（服务端可能从任何 cwd 启动，
 // 所以一律相对那个位置解析），这里直接用它导出的 REPO。
@@ -25,16 +27,8 @@ import { buildFactGraph } from '../../src/renderers/fact/timelineLayout.js'
 /** 画布尺寸的默认假设：用来算"适配缩放"。和 verify 脚本用的是同一个尺寸 */
 const CANVAS = { width: 1600, height: 900 }
 
-/** 每个大类的默认子类。等注册表能在 Node 里用之后删掉（第 2 条）。 */
-const DEFAULT_KIND = { fact: 'timeline' }
-
-/** 排布函数的分发表。目前只有 fact 的时间图一个子类。 */
-const LAYOUTS = { fact: { timeline: buildFactGraph } }
-
-/** 某大类某子类能不能算几何 */
-export function layoutOf(type, kind) {
-  return LAYOUTS[type]?.[kind] ?? null
-}
+// 排布函数不再自己列表：走注册表（renderers/index.js 登记过）。
+// 原先这里手写了一份 LAYOUTS，和注册表重复，加子类要改两处（known-issues 第 2 条）。
 
 /** 校验。返回逐条错误（已经是给人和 agent 看的中文） */
 export function validate(spec) {
@@ -51,12 +45,10 @@ export function validate(spec) {
  */
 export function layoutReport(spec, { orientation, fields = { summary: true } } = {}) {
   const type = spec?.type
-  // 目前每个大类只有一个子类，所以直接取默认画法。
-  // 这里原先写的是 spec?.kindHint，而 schema 里根本没有 kindHint 这个字段
-  // （见 known-issues 第 11 条），是凭空加的。等第 2 条把注册表搬到
-  // Node 能用的地方之后，这张表就该删掉，改成问注册表。
-  const kind = DEFAULT_KIND[type] ?? null
-  const layout = layoutOf(type, kind)
+  // 问注册表：这个大类有哪几种画法，默认用第一个。
+  // （原先这里读 spec?.kindHint，而 schema 里没有这个字段，见 known-issues 第 11 条。）
+  const kind = layoutKindsOf(type)[0] ?? null
+  const layout = layoutFromRegistry(type, kind)
   if (!layout) {
     return { ok: false, reason: `还没有 type="${type}" 子类 "${kind}" 的几何计算` }
   }

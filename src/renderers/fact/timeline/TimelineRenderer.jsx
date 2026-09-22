@@ -5,7 +5,7 @@
 //  输出：一张网格
 //    行 = 槽（时间点，自上而下）
 //    列 = 第 1 侧各主体 · 轴线 · 第 2 侧各主体
-//  所有位置来自 core/factGrid.js，本文件负责画与交互。
+//  所有位置来自 timeline/grid.js，本文件负责画与交互。
 //
 //  详情不用侧边栏，改为**卡片旁边的浮层**：
 //  悬停露出摘要，点击就地钉住看全文。
@@ -15,18 +15,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState, useEdgesState } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import EventNode from './EventNode.jsx'
+import EventNode from '../EventNode.jsx'
 import ColumnHeaderNode from './ColumnHeaderNode.jsx'
 import AxisLineNode from './AxisLineNode.jsx'
 import LinkLayerNode from './LinkLayerNode.jsx'
 import CellLayerNode from './CellLayerNode.jsx'
-import ControlDock from './ControlDock.jsx'
-import { PreviewContext } from './previewContext.js'
-import { buildFactGraph } from './timelineLayout.js'
-import { FIT_PADDING, fitZoom } from '../../core/canvas.js'
-import { viewsOf } from '../../core/factGrid.js'
-import { CARD_PAD_X, CARD_PAD_Y, LABEL_FONT, SNIPPET_FONT } from '../../core/cardGeometry.js'
-import { ARIA_LABEL_CONFIG } from '../../core/labels.js'
+import ControlDock from '../ControlDock.jsx'
+import { PreviewContext } from '../previewContext.js'
+import { buildFactGraph } from './layout.js'
+import { FIT_PADDING, fitZoom } from '../../../core/canvas.js'
+import { viewsOf } from './grid.js'
+import { CARD_PAD_X, CARD_PAD_Y, LABEL_FONT, SNIPPET_FONT } from '../cardGeometry.js'
+import { ARIA_LABEL_CONFIG } from '../../../core/labels.js'
 
 const nodeTypes = {
   card: EventNode,
@@ -179,7 +179,7 @@ export default function FactRenderer({
         <main
           className={`antu-fact-canvas${showGrid ? ' show-grid' : ''}`}
           ref={canvasRef}
-          // 卡片内边距与摘要字号由 core/cardGeometry.js 统一给出，样式层通过
+          // 卡片内边距与摘要字号由 cardGeometry.js 统一给出，样式层通过
           // CSS 变量取用。否则「卡片宽度/字号」和「摘要字数上限」会各写一份，
           // 改了一处另一处就悄悄失准。
           style={{

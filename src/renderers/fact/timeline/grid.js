@@ -12,7 +12,7 @@
 //   - 距离按侧内主体次序
 // ============================================================
 
-import { SUMMARY_MAX } from './cardGeometry.js'
+import { SUMMARY_MAX } from '../cardGeometry.js'
 
 export const SIDE = { SIDE1: 'side1', AXIS: 'axis', SIDE2: 'side2' }
 

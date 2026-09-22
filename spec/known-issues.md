@@ -14,47 +14,6 @@
 
 ## 待修
 
-### 2. MCP 和注册表各有一份"分发表" `待修`
-
-**现象。** 同一个事实写了两遍：
-
-```js
-// tools/mcp/engine.mjs
-const LAYOUTS = { fact: { timeline: buildFactGraph } }
-
-// src/core/registry.js + src/renderers/fact/register.js
-registerRenderer('fact', 'timeline', FactTimeline, '时间图')
-```
-
-**代价。** 加第二个子类时要记得改两处，漏一处就会出现"界面上能切、MCP 说没有"这种不一致。
-
-**在哪。** `tools/mcp/engine.mjs` 的 `LAYOUTS`。
-
-**根因。** `registry.js` 里注册的是 `.jsx` 组件，Node 里跑不起来，所以 MCP 只能自己硬编一份。
-
-**建议做法。** 把"排布函数"单独注册一次（纯 JS，Node 能用），
-`registry.js` 只管组件。这样两边都从同一份清单取。**这是上一轮加 MCP 时造的。**
-
----
-
-### 3. 校验和排布绑在一起 `待修`
-
-**现象。** `core/validate.js` 只校验信封层（`type`、`title` 是不是字符串），
-fact 的全部校验**就是排布本身**——在 `factGrid.js` 里边排边报错。
-
-**代价。** 做不到"只校验不排布"。排布规则一复杂，"校验"就会被排布的实现细节牵着走；
-将来想在生成前单独跑一遍校验（不改排布）时会别扭。
-
-**在哪。** `src/core/validate.js`、`src/core/factGrid.js`。
-
-**当初为什么这么设计。** 为了"同一份规则不在两处各写一遍、说两套话"。
-这个理由现在仍然成立，所以**不是简单拆开就完了**——要拆得保证规则只有一份。
-
-**建议做法。** 先不动。等排布规则再复杂一档、或者真出现"只校验"的需求时再动，
-那时才看得清该在哪切。
-
----
-
 ### 4. `timelineLayout.js` 一个文件装了四件事 `待修`
 
 **现象。** 299 行里混着：
@@ -98,103 +57,6 @@ fact 的全部校验**就是排布本身**——在 `factGrid.js` 里边排边�
 **建议做法。** 抽一个 `shell/Canvas.jsx`：接 `graph` 和 `children`（渲染器自己的浮层），
 内部管住画布、视口、缩放上下限、平移边界。渲染器只负责"把 JSON 变成 nodes"，
 不再碰 React Flow。**和第 4 条（拆 timelineLayout）是两件事，别混。**
-
----
-
-### 6. `core/` 的定位不清：混了"四类共用"和"只有 fact 用" `待修`
-
-**现象。** `core/` 现有五个文件，实际是两种东西掺在一起：
-
-| 文件 | 谁在用 | 该不该在 core |
-|---|---|---|
-| `registry.js` | 引擎机制，四类共用 | ✅ 是共性 |
-| `validate.js`（信封层部分） | App + MCP，四类共用 | ✅ 是共性 |
-| `labels.js` | 大头共用，但 `SIDE_LABELS`（第几侧/轴线）只有 fact 用 | ⚠️ 一半 |
-| `factGrid.js` | 只有 fact 用（timelineLayout、renderers/fact、MCP） | ❌ 是 fact 专属 |
-| `cardGeometry.js` | 只有 fact 用（事件卡片的几何） | ❌ 是 fact 专属 |
-
-**两种可能的定位，现在没选。**
-
-- **甲：`core/` = 四类图共用的（共性）**。fact 专属的排布规则、卡片几何归渲染器。
-  架构文档 §1 就是这么说的：“布局算法各渲染器自负”。
-- **乙：`core/` = 引擎侧、不含 React 组件的**（不分大类）。那 factGrid 放这儿没问题。
-
-现在代码走的是乙，但文档写的是甲。
-
-**建议走甲。** 理由：
-
-1. 文档已经这么定了；
-2. “有没有 React”是一条**技术约束**（Node 能不能 import），不是**归属标准**。
-   拿它当归宿，`core/` 迟早变成“什么都往里扔的非组件代码”；
-3. 更实际：`core/` 里一旦放了 fact 的东西，第二个大类（关系图）出现时，
-   它会变成 fact 和 relationship 的杂物间。
-
-**它为什么现在在 core 里。** 因为 `core/validate.js` 要调 `factGrid.js` 的校验。
-而这正是第 3 条（校验和排布绑在一起）的另一面，两条要一起动。
-
-**做法。** 等第 3 条理清之后：`core/` 只留跨大类机制；fact 的字段规则、排布、
-卡片几何移进 `renderers/fact/`（保持纯 `.js`，好让 Node 与 MCP 照旧调用）；
-`labels.js` 拆成通用与 fact 两份。
-
-**更正（2026-09，见第 7 条）。** 上面把 `factGrid.js` 写成"fact 专属"不够准。
-它的内容是**行 = 槽、列 = 站位 × 主体**，那是**时间图的网格**，不是事实图级的规则。
-所以它该去的是 `renderers/fact/timeline/`，不是 `renderers/fact/`。
-
----
-
-### 7. `fact` 和它的子类 `timeline` 在目录上没分开 `待修`
-
-**现象。** `timeline` 只是 fact 的一个子类，但代码看起来像 `fact == timeline`。
-`src/renderers/fact/` 下 10 个文件，只有 2 个是事实图级的：
-
-| 文件 | 实际是哪一级 |
-|---|---|
-| `EventNode.jsx` | **fact 级**：事件卡片，任何 fact 子类都要显示事件 |
-| `previewContext.js` | **fact 级**：卡片浮层的悬停/钉住状态 |
-| `ControlDock.jsx` | **混合**：视角与字段是 fact 级；格线是 timeline 级 |
-| `index.jsx` | timeline 级：网格画布组装 |
-| `timelineLayout.js` | timeline 级：排布转坐标 |
-| `AxisLineNode.jsx` | timeline 级：轴线、轴点、箭头 |
-| `ColumnHeaderNode.jsx` | timeline 级：列标题（位置由网格定） |
-| `LinkLayerNode.jsx` | timeline 级：引线 |
-| `CellLayerNode.jsx` | timeline 级：格子层 |
-| `register.js` | 注册（目前只指向 timeline） |
-
-更明显的一处：`src/core/factGrid.js` **名字叫 fact，内容却是时间图的网格**。
-它开头自己写着"行 = 槽（slots 下标）、列 = 站位 × 主体"，这是**排布方式**，
-是子类的选择，不是事实图级的规则。事实图级的规则只有：字段必填、
-类型、`actorIds` / `groupId` / `sourceIds` 的引用完整性。
-
-**代价。** 加第二个子类（泳道图）时立刻暴露：
-
-- 根目录下会出现 `timelineLayout.js` 和 `swimlaneLayout.js` 并排，
-  但 `index.jsx` 只能有一个，两个子类的入口没法区分；
-- 共用件（事件卡片、卡片几何、视角开关）和专属件（网格、轴线、引线）
-  **看不出边界**，新子类该复用哪些、该自己写哪些，靠猜。
-
-**建议做法。** 在 `renderers/fact/` 下加一层放子类，事实图级的东西留在上一层：
-
-```
-src/renderers/fact/              事实图级（所有子类共用）
-├── schema.js                    字段规则、引用完整性校验
-├── EventNode.jsx                事件卡片
-├── cardGeometry.js              卡片几何
-├── ControlDock.jsx              fact 级开关（视角、字段）
-├── previewContext.js
-├── labels.js                    fact 级文案
-└── timeline/                    ← 时间图这一个子类
-    ├── grid.js                  行 = 槽、列 = 站位 × 主体（原 core/factGrid）
-    ├── layout.js                排布转坐标（原 timelineLayout）
-    ├── TimelineRenderer.jsx     组装（原 index.jsx）
-    ├── AxisLineNode.jsx
-    ├── ColumnHeaderNode.jsx
-    ├── LinkLayerNode.jsx
-    ├── CellLayerNode.jsx
-    └── register.js
-```
-
-**什么时候做。** **加第二个子类时必然要动**，那时一起做，不用提前。
-和第 4 条（拆 `timelineLayout.js`）可以合并成一次改动，因为动的都是这批文件。
 
 ---
 
@@ -358,6 +220,12 @@ antu_examples  默认给 agent 那批（小、全、能跑）
 有几次缺陷（适应视图按钮失效、标签卡样式被删导致画布被挤、箭头朝向不对）
 **校验和 DOM 断言全是过的**，只有截图才看得出来。
 
+**六、注册是副作用，忘了就静默失效。**
+知识注册靠 `import '…/renderers/index.js'` 触发。忘了这行，`validateSpec`
+查表查不到就返回"通过"，看起来一切正常，其实校验根本没跑。
+搬文件那次就是这样，靠验证器抓出来的。**任何"靠 import 触发的登记"都要在验证器里
+留一条能失败的断言。**
+
 **五、改代码别用会静默失败的字符串替换。**
 这一轮里用脚本改代码，字符串没匹配上时不报错、直接跳过，
 于是"以为改了、其实没改"，后面实测才发现。踩了四五次（其中一次让键盘功能白做）。
@@ -371,6 +239,61 @@ antu_examples  默认给 agent 那批（小、全、能跑）
 ---
 
 ## 已修
+
+### 注册表拆成"知识"和"组件"两套（已修，见下一提交）
+
+**一次改动同时解决第 2、3、6、7 条**，因为它们是同一个结：
+
+```
+注册表把"知识"和"组件"绑在了一起。
+  registerRenderer('fact','timeline', FactTimeline, '时间图')
+                                        ↑ .jsx，只有浏览器能加载
+  于是 Node 侧的 MCP 想用"fact 怎么校验、怎么排布"，加载不了 → 只能自己硬写一份
+  （第 2 条）；core/validate 想校验 fact，也只能直接 import factGrid（第 3、6 条）；
+  而 factGrid 其实是时间图的网格，却被放在 core 里（第 7 条）。
+```
+
+**改法。**
+
+`core/registry.js` 增加第二张表：`registerKnowledge(type, { validate, layouts })`，
+注册的是**纯 JS 的规则**。`renderers/index.js` 是唯一一份大类清单，
+两个入口各自 import 它：
+
+```
+浏览器  src/main.jsx            知识 + 组件
+Node    tools/mcp/engine.mjs    只加载知识（碰不到 .jsx）
+```
+
+`core/validate.js` 因此不再认识任何一个具体大类，改成按 `type` 查表分发。
+MCP 删掉了手写的 `LAYOUTS` 与 `DEFAULT_KIND`，改问注册表。
+
+**目录同时理清**，`fact` 级与 `timeline` 级分开：
+
+```
+src/core/                       引擎机制（四类共用）
+  registry.js  validate.js  labels.js  canvas.js
+src/renderers/
+  index.js                      大类清单（纯 JS）
+  fact/                         事实图级
+    schema.js                   对外知识：校验 + 有哪些画法
+    EventNode.jsx               事件卡片
+    cardGeometry.js             卡片几何
+    ControlDock.jsx  previewContext.js
+    timeline/                   时间图这一个子类
+      grid.js  layout.js  TimelineRenderer.jsx
+      AxisLineNode.jsx  ColumnHeaderNode.jsx  LinkLayerNode.jsx  CellLayerNode.jsx
+      register.js
+```
+
+**校验规则仍然只有一份**（在 `timeline/grid.js` 里，排的过程中顺手收错误），
+`fact/schema.js` 只是把它包一层对外接口，一行都不重复。
+
+**过程中验证器抓到一个真回归**：搬完之后 `tools/verify/run.mjs` 忘了 import
+知识清单，于是 `validateSpec` 查表查不到、静默返回"通过"，坏数据没被拦下。
+8 份示例那项反而是"空过"（没校验器就等于全通过）。
+**是验证器自己把这件事报出来的**，补上 import 之后 20 项全通。
+这个坑（注册是副作用，忘了就静默失效）记在「反复踩的坑」里。
+
 
 ### 小卫生清完了（已修，见下一提交）
 

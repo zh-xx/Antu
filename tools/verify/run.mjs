@@ -26,9 +26,12 @@ import { join } from 'node:path'
 
 import { REPO, renderToFile } from '../lib/make-html.mjs'
 import { launchBrowser, findChrome } from '../lib/chrome.mjs'
+// 必须先登记各大类的知识（纯 JS），否则 validateSpec 查表查不到、静默返回"通过"。
+// 这个坑真实发生过：搬文件之后忘了这行，坏数据没被拦下，是验证器自己抓出来的。
+import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
-import { viewsOf } from '../../src/core/factGrid.js'
-import { buildFactGraph } from '../../src/renderers/fact/timelineLayout.js'
+import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
+import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 
 const argv = process.argv.slice(2)
 const skipBrowser = argv.includes('--no-browser')
