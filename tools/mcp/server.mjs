@@ -56,7 +56,8 @@ server.registerTool(
     title: '看示例数据',
     description:
       '列示例、或取某一份的完整内容。**不传参数时给的是小示例**' +
-      '（尽量小、且每份只讲一件事，写 JSON 之前先看这个）。' +
+      '（尽量小、且每份只讲一件事）。第一次用建议按这个顺序：' +
+      'antu_schema 看字段 → antu_guide 看机制 → 这里取 1-minimal.json 看实际写法。' +
       '真实案例也可以取（group="real" 列出），但它们长得多，供参考用。',
     inputSchema: {
       file: z.string().optional().describe('要取的那一份，如 examples/agent/1-minimal.json。不传则列清单'),
@@ -101,8 +102,9 @@ server.registerTool(
   {
     title: '字段表',
     description:
-      'fact 的字段清单：哪个必填、什么类型、一句话说明。**写 JSON 之前看这个**，' +
-      '约 1.2k token。跨字段的规则（引用是否悬空、时段是否倒着走等）不在这里，' +
+      'fact 的字段清单：哪个必填、什么类型、一句话说明。**写 JSON 之前先看这个**，' +
+      '约 1.2k token。看完接着调 antu_guide（事件画在哪）和 antu_examples（实际怎么写）。' +
+      '跨字段的规则（引用是否悬空、时段是否倒着走等）不在这张表里，' +
       '写完调 antu_validate 会逐条告诉你。',
     inputSchema: {},
   },
@@ -116,7 +118,7 @@ server.registerTool(
     description:
       '一页讲清"事件画在哪"：slots 定行、groupId 定侧、actorIds 定车道，' +
       '视角怎么换，以及那条"一格一事件"的限制和三种改法。写完 JSON 前看一遍，' +
-      '能省掉几轮校验。',
+      '能省掉几轮校验。字段清单见 antu_schema，照着改的实际例子见 antu_examples。',
     inputSchema: {},
   },
   async () => OK(readSpec('agent-guide') ?? '（找不到 agent-guide.md）'),
@@ -146,7 +148,12 @@ server.registerTool(
     if (!name) {
       const rows = listSpecs()
       const lines = rows.map((r) => `- ${r.name}`)
-      return OK(`规范文档 ${rows.length} 份：\n\n${lines.join('\n')}\n\n推荐顺序：v0-architecture → fact-schema-draft → fact-timeline-rules → fact-rendering`)
+      return OK(
+        `设计文档 ${rows.length} 份：\n\n${lines.join('\n')}\n\n` +
+          '写数据不要从这些开始：先用 antu_schema（字段）、antu_guide（机制）、' +
+          'antu_examples（例子）。\n' +
+          '只有想弄清某条规则背后的理由时，才取 fact-schema-draft 或 fact-timeline-rules。',
+      )
     }
     const text = readSpec(name)
     if (text === null) return FAIL(`没找到规范：${name}。用不带参数的 antu_spec 看清单。`)
@@ -282,15 +289,29 @@ server.registerTool(
 )
 
 // ---------------------------------------------------------------
-// 资源：规范文档按需读，不占上下文
+// 资源：按读者分两个命名空间
 // ---------------------------------------------------------------
+// 分的原因：agent 顺着资源列表一路读下去，会把项目的内部文档也读了，
+// 白烧上下文；其中 known-issues（本项目的待修清单）还会让它误以为数据有问题。
+// 前缀本身就说明该不该读：
+//   antu://spec/…      写数据可能用得上
+//   antu://internal/…  只有改引擎本身才要看（写数据完全不需要）
+const AGENT_SPECS = new Set([
+  'agent-guide',
+  'fact-schema-draft',
+  'fact-timeline-rules',
+  'fact-rendering',
+  'source-schema-draft',
+])
+
 for (const s of listSpecs()) {
+  const forAgent = AGENT_SPECS.has(s.name)
   server.registerResource(
     s.name,
-    `antu://spec/${s.name}`,
+    `antu://${forAgent ? 'spec' : 'internal'}/${s.name}`,
     {
       title: s.name,
-      description: `案图规范：${s.name}`,
+      description: forAgent ? `案图规范：${s.name}` : `案图内部文档（改引擎才要看）：${s.name}`,
       mimeType: 'text/markdown',
     },
     async (uri) => ({

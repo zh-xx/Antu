@@ -57,13 +57,31 @@ agent 和人一样，**看不见自己画出来的东西**。校验全过、几�
 
 合计 **2.3k token** 就能开工，替掉原先"读 schema 文档 8k + 排布规则 3k + 示例 5k"。
 
+**三个工具互相指路**（按使用顺序成链），agent 不必猜下一步该调什么：
+
+```
+antu_schema → antu_guide → antu_examples → antu_validate
+```
+
+每个工具的说明里都写明了前后该看哪个。
+
 ### 给设计者的（理解规则背后的理由时才读）
 
 | 工具 | 干什么 |
 |---|---|
 | `antu_spec` | 读 `spec/` 下的设计文档（八份，合计约 5.7 万字符）。写 JSON 不需要它 |
 
-**十一个资源**：`antu://spec/<名字>`，即 `spec/` 下那几份。
+**资源按读者分两个命名空间**，前缀本身就说明该不该读：
+
+```
+antu://spec/…      写数据可能用得上（agent-guide 与四份 fact 规范）
+antu://internal/…  只有改引擎本身才要看（known-issues、mcp-server、
+                   react-flow-features、v0-architecture）
+```
+
+分的原因是：agent 顺着资源列表一路读下去，会把项目的内部文档也读了，
+白烧上下文；其中 known-issues（本项目的待修清单）还会让它误以为数据有问题。
+验证器里有一条断言守着这件事：写数据那批里不许出现内部文档。
 
 ### 为什么不手抄一份"给 agent 的规范"
 

@@ -164,6 +164,20 @@ function checkData() {
     truthy('agent 示例的视角全部排得下（照抄不会撞到"摆不下"）', blocked === 0)
   }
 
+  // MCP 的资源分两个命名空间：antu://spec（写数据用）与 antu://internal（改引擎用）。
+  // 这条断言防的是"内部文档混进 agent 那批"：agent 顺着列表读下去会白烧上下文，
+  // 其中 known-issues 还会让它误以为数据有问题。
+  const INTERNAL = ['known-issues', 'mcp-server', 'react-flow-features', 'v0-architecture']
+  const serverSrc = readFileSync(join(REPO, 'tools/mcp/server.mjs'), 'utf8')
+  const agentList = serverSrc.slice(
+    serverSrc.indexOf('const AGENT_SPECS'),
+    serverSrc.indexOf('for (const s of listSpecs())'),
+  )
+  const leaked = INTERNAL.filter((n) => agentList.includes(`'${n}'`))
+  truthy('写数据那批资源里没有内部文档', leaked.length === 0)
+  if (leaked.length) console.log('     混进来的：' + leaked.join('、'))
+  truthy('两个命名空间都在用', serverSrc.includes("antu://${forAgent ? 'spec' : 'internal'}"))
+
   // 字段元数据（给 agent 的参考资料）必须和校验器说的是同一件事。
   // 办法：拿一份能过校验的示例，逐个抽掉"必填"的字段，校验器必须报错。
   // 这样字段表就不可能悄悄漂移，而不用把校验规则改写成数据驱动的。
