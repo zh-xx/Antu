@@ -1,6 +1,11 @@
 # fact（事实图）· Schema 草案 v0
 
 > 状态：**草案 v0.2，字段已按发起人决策精简**。字段名/约束均可改。
+
+> **这份是给设计者看的。** agent 写 JSON 用的是另一份：
+> 字段见 MCP 的 `antu_schema`，机制见 `spec/agent/guide.md`。
+> 两份不互抄，分工写在 `spec/agent/README.md`。
+
 > 依据：`v0-architecture.md` 中的公共约定层（id 引用 / 都带 label / 可选宽松）。
 > 范围：fact = 已发生**实体事实**的时间叙事。程序事件（立案/开庭/判决）不属此类 → procedure。
 

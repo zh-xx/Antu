@@ -123,9 +123,9 @@ antu/
 | `antu_layout` | 算几何：多大、该用哪个方向、哪个视角摆不下 | 不要 |
 | `antu_render` | 出成品 HTML | 不要 |
 | `antu_preview` | 截图返回，用眼睛检查 | 要（复用本机 Chrome） |
-| `antu_spec` | 读设计文档（写 JSON 用不上） | 不要 |
 
 **agent 的参考资料只有 2.3k token**（schema + guide），不再需要读那几万字符的人类文档。
+`spec/*.md` 那八份设计文档**不经过 MCP**：它们是给人看的，人直接开文件。
 
 细节见 `spec/mcp-server.md`。
 

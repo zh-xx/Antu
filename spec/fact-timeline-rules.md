@@ -11,6 +11,11 @@
 
 ---
 
+> **这份是给设计者看的。** agent 写 JSON 用的是另一份：
+> 字段见 MCP 的 `antu_schema`，机制见 `spec/agent/guide.md`。
+> 两份不互抄，分工写在 `spec/agent/README.md`。
+
+
 ## 0. 一句话
 
 一张 fact 时间图，就是一条轴线上的一张网格：

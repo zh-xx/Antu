@@ -208,19 +208,29 @@ export function readExample(file) {
   return { path: p, text: readFileSync(p, 'utf8') }
 }
 
-/** 规范文档清单 */
-export function listSpecs() {
-  const dir = join(REPO, 'spec')
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.md'))
-    .sort()
-    .map((f) => ({ name: f.replace(/\.md$/, ''), file: `spec/${f}`, path: join(dir, f) }))
+/**
+ * 给 agent 的规格清单，只扫 `spec/agent/`。
+ *
+ * 上一层 `spec/*.md` 是设计文档（讲"当初为什么这么定"，一份上万字符），
+ * **不在这里**：那份是给人看的，端给 agent 只会白烧上下文。
+ * 两边的分工写在 spec/agent/README.md。
+ */
+export function listAgentSpecs() {
+  const dir = join(REPO, 'spec/agent')
+  return existsSync(dir)
+    ? readdirSync(dir)
+        .filter((f) => f.endsWith('.md') && f !== 'README.md')
+        .sort()
+        .map((f) => ({ name: f.replace(/\.md$/, ''), file: `spec/agent/${f}`, path: join(dir, f) }))
+    : []
 }
 
-export function readSpec(name) {
-  const p = join(REPO, 'spec', `${String(name).replace(/\.md$/, '')}.md`)
+/** 取一份给 agent 的规格。名字传 guide 即可。 */
+export function readAgentSpec(name) {
+  const p = join(REPO, 'spec/agent', `${String(name).replace(/\.md$/, '')}.md`)
   if (!existsSync(p)) return null
   return readFileSync(p, 'utf8')
 }
 
+/** 画布尺寸的默认假设（MCP 报"适配缩放"时用）与字段表生成器，转出去给外部用。 */
 export { CANVAS, describeFactSchema }

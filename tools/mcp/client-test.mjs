@@ -84,12 +84,12 @@ try {
   const tools = await rpc('tools/list', {})
   for (const t of tools.tools) console.log(`  - ${t.name}：${t.title}`)
 
-  step(3, '列资源')
+  step(3, '列资源（只该有给 agent 的那几份）')
   const res = await rpc('resources/list', {})
   for (const r of res.resources) console.log(`  - ${r.uri}`)
 
-  step(4, '读一份规范资源')
-  const spec = await rpc('resources/read', { uri: 'antu://spec/fact-schema-draft' })
+  step(4, '读一份"给 agent 的规格"资源')
+  const spec = await rpc('resources/read', { uri: 'antu://agent/guide' })
   const specText = spec.contents?.[0]?.text ?? ''
   console.log(`  取到 ${specText.length} 字符，开头：${specText.split('\n')[0]}`)
 

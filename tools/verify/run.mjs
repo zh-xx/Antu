@@ -31,7 +31,7 @@ import { launchBrowser, findChrome } from '../lib/chrome.mjs'
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
 import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
-import { readExample, listExamples } from '../mcp/engine.mjs'
+import { readExample, listExamples, listAgentSpecs } from '../mcp/engine.mjs'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 
@@ -165,23 +165,18 @@ function checkData() {
     truthy('agent 示例的视角全部排得下（照抄不会撞到"摆不下"）', blocked === 0)
   }
 
-  // MCP 的资源分两个命名空间：antu://spec（写数据用）与 antu://internal（改引擎用）。
-  // 这条断言防的是"内部文档混进 agent 那批"：agent 顺着列表读下去会白烧上下文，
-  // 其中 known-issues 还会让它误以为数据有问题。
-  const INTERNAL = ['known-issues', 'mcp-server', 'react-flow-features', 'v0-architecture']
+  // 给 agent 的规格与给人的设计文档必须分开。这一条防的是"把人类文档端给 agent"：
+  // 那些文档讲的是"当初为什么这么定"，一份上万字符，agent 读了纯属白烧上下文。
+  // 曾经的做法就是原样挂出去、只加了个"写数据用得上"的标签，等于没分。
   const serverSrc = readFileSync(join(REPO, 'tools/mcp/server.mjs'), 'utf8')
-  const agentList = serverSrc.slice(
-    serverSrc.indexOf('const AGENT_SPECS'),
-    serverSrc.indexOf('for (const s of listSpecs())'),
-  )
-  const leaked = INTERNAL.filter((n) => agentList.includes(`'${n}'`))
-  truthy('写数据那批资源里没有内部文档', leaked.length === 0)
-  if (leaked.length) console.log('     混进来的：' + leaked.join('、'))
-  truthy('两个命名空间都在用', serverSrc.includes("antu://${forAgent ? 'spec' : 'internal'}"))
-
-  // antu_spec 的清单也要分段列（不能只是资源分了、清单还混在一起）。
-  // 这条与上面那条是同一个毛病的两半：上一轮只修了资源那一半。
-  truthy('antu_spec 的清单把内部文档单独标出来了', serverSrc.includes('写数据不要读'))
+  const humanDocs = ['fact-schema-draft', 'fact-timeline-rules', 'fact-rendering',
+    'source-schema-draft', 'v0-architecture', 'known-issues', 'mcp-server', 'react-flow-features']
+  const leaked2 = humanDocs.filter((n) => serverSrc.includes(n))
+  truthy('MCP 里没有任何"给人看的"设计文档', leaked2.length === 0)
+  if (leaked2.length) console.log('     混进来的：' + leaked2.join('、'))
+  truthy('antu_spec 这个工具已撤掉', !serverSrc.includes("'antu_spec'"))
+  truthy('资源只暴露 antu://agent/', serverSrc.includes('antu://agent/'))
+  truthy('agent 规格只有 spec/agent/ 下那几份', listAgentSpecs().length > 0)
 
   // 示例只认三类文件。原先 file 能取到 examples 下任何东西，
   // agent 以为在取示例，结果取回来一整份判决书（3500 字符）。

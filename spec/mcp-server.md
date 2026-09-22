@@ -65,23 +65,24 @@ antu_schema → antu_guide → antu_examples → antu_validate
 
 每个工具的说明里都写明了前后该看哪个。
 
-### 给设计者的（理解规则背后的理由时才读）
+### 给设计者的（**不在 MCP 里**）
 
-| 工具 | 干什么 |
-|---|---|
-| `antu_spec` | 读 `spec/` 下的设计文档（八份，合计约 5.7 万字符）。写 JSON 不需要它 |
+`spec/*.md` 那八份设计文档（约 5.7 万字符）讲的是"当初为什么这么定"，
+**MCP 一个都不暴露。** 原先的做法是原样挂出去、只加了个"写数据用得上"的标签，
+那等于没分：agent 顺着列表读下去,读的就是写给设计者的上万字符。
 
-**资源按读者分两个命名空间**，前缀本身就说明该不该读：
+要读设计理由的是人，人直接开文件，不需要经过 MCP。
+
+**资源只有一个**：
 
 ```
-antu://spec/…      写数据可能用得上（agent-guide 与四份 fact 规范）
-antu://internal/…  只有改引擎本身才要看（known-issues、mcp-server、
-                   react-flow-features、v0-architecture）
+antu://agent/guide    给 agent 的机制说明（就是 spec/agent/guide.md）
 ```
 
-分的原因是：agent 顺着资源列表一路读下去，会把项目的内部文档也读了，
-白烧上下文；其中 known-issues（本项目的待修清单）还会让它误以为数据有问题。
-验证器里有一条断言守着这件事：写数据那批里不许出现内部文档。
+只此一个。`spec/agent/` 下有什么，这里就有什么；上一层的东西一律不出现。
+
+**验证器里有断言守着这条线**：MCP 的服务端代码里不许出现任何一份人类文档的名字
+（fact-schema-draft、fact-timeline-rules、known-issues……）。
 
 ### 为什么不手抄一份"给 agent 的规范"
 
