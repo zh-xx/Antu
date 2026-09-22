@@ -30,8 +30,12 @@ npm run diagram -- examples/fact-电梯劝烟案.json
 ### 本地开发
 
 ```bash
-npm run dev        # → http://localhost:5200
+npm run dev              # → http://localhost:5200，默认打开第一份示例
+npm run dev 后换一份    # 加 ?example=3 按清单取，或 ?spec=examples/某份.json
 ```
+
+开发时数据也走"内联"这条路：`vite.config.js` 里的插件把一份 JSON 注进页面，
+和成品完全一致。示例清单住在那个插件里，**成品里一个字节都不带**。
 
 ## 现在能画什么
 
