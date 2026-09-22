@@ -148,3 +148,5 @@ npm run diagram -- 你的.json
 | `npm run diagram -- x.json [-o y.html]` | 把一份 JSON 变成自包含 HTML，`--rebuild` 强制重建引擎 |
 | `npm run mcp` | 起 MCP 服务端（给 agent 用） |
 | `npm run mcp:test` | 用自带客户端把 MCP 全流程走一遍 |
+| `npm run verify` | **一条命令验完**：构建、lint、数据、渲染、MCP，并出一张截图 |
+| `npm run verify:fast` | 同上，跳过要浏览器的部分（快） |

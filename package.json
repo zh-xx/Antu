@@ -13,7 +13,9 @@
     "mcp": "node tools/mcp/server.mjs",
     "mcp:test": "node tools/mcp/client-test.mjs",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "verify": "node tools/verify/run.mjs",
+    "verify:fast": "node tools/verify/run.mjs --no-browser"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
