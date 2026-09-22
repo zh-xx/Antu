@@ -1,0 +1,47 @@
+name: 验证
+
+# 什么时候跑：推到 main、以及所有 PR。
+# 存在的理由见 spec/known-issues.md 第 16 条：
+# 验证器有了，但只有人想起来才跑；这轮有两条问题正是靠顺手跑才发现的。
+# 没人跑的那次会直接进下一个提交，而且症状往往是"看着正常但其实坏了"。
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # 用 npm ci 而不是 npm install：前者严格按 lockfile 装，
+      # 装不上就说明 lockfile 和 package.json 不同步。
+      # 这一步也顺便验证了"别人 clone 下来能不能跑通"。
+      - name: 安装依赖
+        run: npm ci
+
+      # 不需要浏览器的那部分：构建、lint、数据与排布、agent 示例、
+      # 字段表与校验器是否一致、MCP 的十二步。这一层必过。
+      - name: 验证（不需要浏览器）
+        run: npm run verify:fast
+
+      # 需要浏览器的部分：用 file:// 打开生成的 HTML，断言卡片数、尺寸、
+      # 四块浮层的位置、对外请求数为 0、控制台错误数为 0。
+      # GitHub 的 runner 自带 Chrome（findChrome 认得 /usr/bin/google-chrome）。
+      - name: 验证（含浏览器渲染）
+        run: npm run verify
+
+      # 失败时把截图传上来，好在网页上直接看是哪一步坏了
+      - name: 上传截图
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 截图
+          path: .verify/screenshot.png
+          if-no-files-found: ignore

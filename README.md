@@ -1,5 +1,7 @@
 # 案图 antu
 
+[![验证](https://github.com/zh-xx/antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/antu/actions/workflows/verify.yml)
+
 > 法律可视化渲染内核：**一份 JSON 进去，一个能双击打开的 HTML 出来。**
 
 ![截图](assets/screenshot.png)
@@ -154,3 +156,6 @@ npm run diagram -- 你的.json
 | `npm run mcp:test` | 用自带客户端把 MCP 全流程走一遍 |
 | `npm run verify` | **一条命令验完**：构建、lint、数据、渲染、MCP，并出一张截图 |
 | `npm run verify:fast` | 同上，跳过要浏览器的部分（快） |
+
+推上去之后 CI 会自动跑这两条（见 `.github/workflows/verify.yml`），
+所以"别人 clone 下来能不能跑通"不用靠人说，看徽章就行。

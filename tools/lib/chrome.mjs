@@ -89,24 +89,47 @@ export async function launchBrowser({ width = 1600, height = 900, port } = {}) {
   }
   const debugPort = port ?? 9500 + Math.floor(Math.random() * 400)
   const profile = mkdtempSync(join(tmpdir(), 'antu-chrome-'))
-  const child = spawn(
-    chrome,
-    [
-      '--headless=old',
-      '--disable-gpu',
-      '--no-sandbox',
-      '--no-first-run',
-      '--disable-extensions',
-      '--allow-file-access-from-files',
-      `--user-data-dir=${profile}`,
-      `--remote-debugging-port=${debugPort}`,
-      `--window-size=${width},${height}`,
-      'about:blank',
-    ],
-    { stdio: 'ignore' },
-  )
+  const common = [
+    '--disable-gpu',
+    '--no-sandbox',
+    '--no-first-run',
+    '--disable-extensions',
+    '--allow-file-access-from-files',
+    `--user-data-dir=${profile}`,
+    `--remote-debugging-port=${debugPort}`,
+    `--window-size=${width},${height}`,
+    'about:blank',
+  ]
 
-  const target = await pageTarget(debugPort)
+  // --headless=old 在 Chrome 132 之后被移除了，而 CI 的 runner 版本比本机新。
+  // 所以先按老写法起，起不来再换新写法，最后再试不带参数的。
+  // 这样本机和 CI 都能跑，不必两边各配一套。
+  const variants = [['--headless=old'], ['--headless=new'], []]
+  let child = null
+  let target = null
+  const failures = []
+  for (const variant of variants) {
+    child = spawn(chrome, [...variant, ...common], { stdio: 'ignore' })
+    try {
+      target = await pageTarget(debugPort, 8000)
+      break
+    } catch (e) {
+      failures.push(`${variant.join(' ') || '(不带 headless)'} → ${e.message}`)
+      child.kill()
+      await wait(300)
+      child = null
+      target = null
+    }
+  }
+  if (!target) {
+    child?.kill()
+    rmSync(profile, { recursive: true, force: true })
+    throw new Error(
+      `Chrome 起不来，三种 headless 写法都试过了：\n  ${failures.join('\n  ')}\n` +
+        `Chrome 路径：${chrome}`,
+    )
+  }
+
   const c = cdp(target)
   await c.ready
   await c.send('Page.enable')
