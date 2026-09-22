@@ -1,0 +1,33 @@
+{
+  "type": "fact",
+  "title": "分组：用 groupId 决定事件落在哪一侧",
+  "actors": [
+    { "id": "a-1", "name": "发包方" },
+    { "id": "a-2", "name": "承包方" }
+  ],
+  "groups": [
+    { "id": "g-1", "label": "发包方的行为" },
+    { "id": "g-2", "label": "承包方的行为" },
+    { "id": "g-3", "label": "双方共同或客观经过" }
+  ],
+  "slots": [
+    {
+      "events": [
+        { "id": "ev-1", "date": "2023-05-01", "label": "双方签订施工合同",
+          "groupId": "g-3", "actorIds": ["a-1", "a-2"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-2", "date": "2023-08-20", "label": "承包方提交结算书",
+          "groupId": "g-2", "actorIds": ["a-2"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-3", "date": "2023-09-15", "label": "发包方未在约定期限内审核",
+          "groupId": "g-1", "actorIds": ["a-1"] }
+      ]
+    }
+  ]
+}

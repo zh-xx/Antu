@@ -134,30 +134,54 @@ export function renderHtml(spec, { outPath, preset } = {}) {
   return renderToFile(spec, { outPath, preset, quiet: true })
 }
 
-/** 示例清单：给 agent 看"别人是怎么写的" */
-export function listExamples() {
+/**
+ * 示例清单。
+ *
+ * 分两批，服务两种读者：
+ *   agent  examples/agent/*.json —— 最小、完整、每份只讲一件事，**必须能过校验**
+ *   真实   examples/*.json       —— 真实案例，完整但长，供人和 agent 参考
+ *
+ * 默认给 agent 那批：一份 0.8~1.2 KB，读三份约 3 KB；
+ * 一份真实案例约 7.9 KB，单单读它就顶六份。
+ * （known-issues 第 14 条：给人和给 agent 的示例要分开。）
+ */
+export function listExamples({ group = 'agent' } = {}) {
   const dir = join(REPO, 'examples')
-  return readdirSync(dir)
+  const agentDir = join(dir, 'agent')
+
+  const read = (path, file) => {
+    const spec = JSON.parse(readFileSync(path, 'utf8'))
+    const slots = Array.isArray(spec.slots) ? spec.slots : []
+    return {
+      file,
+      path,
+      title: spec.title,
+      events: slots.reduce((n, s) => n + (s?.events?.length || 0), 0),
+      slots: slots.length,
+      actors: spec.actors?.length ?? 0,
+      bytes: readFileSync(path).length,
+      views: viewsOf(spec).map((v) => v.label),
+    }
+  }
+
+  const agent = existsSync(agentDir)
+    ? readdirSync(agentDir)
+        .filter((f) => f.endsWith('.json'))
+        .sort()
+        .map((f) => read(join(agentDir, f), `examples/agent/${f}`))
+    : []
+  const real = readdirSync(dir)
     .filter((f) => f.endsWith('.json'))
     .sort()
-    .map((f) => {
-      const spec = JSON.parse(readFileSync(join(dir, f), 'utf8'))
-      const slots = Array.isArray(spec.slots) ? spec.slots : []
-      return {
-        file: `examples/${f}`,
-        path: join(dir, f),
-        title: spec.title,
-        events: slots.reduce((n, s) => n + (s?.events?.length || 0), 0),
-        slots: slots.length,
-        actors: spec.actors?.length ?? 0,
-        views: viewsOf(spec).map((v) => v.label),
-      }
-    })
+    .map((f) => read(join(dir, f), `examples/${f}`))
+
+  return group === 'agent' ? agent : real
 }
 
 export function readExample(file) {
-  const name = String(file).split('/').pop()
-  const p = join(REPO, 'examples', name)
+  // 允许 examples/agent/xxx.json 这种带目录的写法，也允许只给文件名
+  const rel = String(file).replace(/^examples\//, '')
+  const p = join(REPO, 'examples', rel)
   if (!existsSync(p)) return null
   return { path: p, text: readFileSync(p, 'utf8') }
 }

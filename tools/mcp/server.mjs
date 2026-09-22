@@ -54,25 +54,37 @@ server.registerTool(
   {
     title: '看示例数据',
     description:
-      '列出仓库里的示例 JSON（含两个真实案例：人脸识别第一案、电梯劝烟案）。' +
-      '写自己的 JSON 之前先看一份真实案例怎么写，比只读规范快。不传参数就列清单；' +
-      '传 file 就把那一份的完整内容取回来。',
+      '列示例、或取某一份的完整内容。**不传参数时给的是小示例**' +
+      '（尽量小、且每份只讲一件事，写 JSON 之前先看这个）。' +
+      '真实案例也可以取（group="real" 列出），但它们长得多，供参考用。',
     inputSchema: {
-      file: z.string().optional().describe('要取的那一份，如 examples/fact-电梯劝烟案.json。不传则只列清单'),
+      file: z.string().optional().describe('要取的那一份，如 examples/agent/1-minimal.json。不传则列清单'),
+      group: z
+        .enum(['agent', 'real'])
+        .optional()
+        .describe('列哪一批：agent（默认，小示例）或 real（真实案例）'),
     },
   },
-  async ({ file }) => {
+  async ({ file, group = 'agent' }) => {
     if (file) {
       const one = readExample(file)
       if (!one) return FAIL(`没找到示例：${file}。先用不带参数的 antu_examples 看清单。`)
       return OK(`# ${file}\n\n\`\`\`json\n${one.text}\n\`\`\``)
     }
-    const rows = listExamples()
+    const rows = listExamples({ group })
     const lines = rows.map(
       (r) =>
-        `- ${r.file}\n    ${r.title}\n    ${r.events} 条事件 / ${r.slots} 个时间点 / ${r.actors} 个主体\n    视角：${r.views.join('、')}`,
+        `- ${r.file}  （${(r.bytes / 1024).toFixed(1)} KB）\n    ${r.title}\n    ${r.events} 条事件 / ${r.slots} 个时间点 / ${r.actors} 个主体\n    视角：${r.views.join('、')}`,
     )
-    return OK(`示例 ${rows.length} 份：\n\n${lines.join('\n')}`)
+    const head =
+      group === 'real'
+        ? `真实案例 ${rows.length} 份（每份 4~8 KB，供参考）：`
+        : `小示例 ${rows.length} 份（每份 1 KB 上下，建议先看 1-minimal）：`
+    const tail =
+      group === 'real'
+        ? ''
+        : '\n\n另有一批真实案例（含人脸识别第一案、电梯劝烟案），用 group="real" 列出。'
+    return OK(`${head}\n\n${lines.join('\n')}${tail}`)
   },
 )
 

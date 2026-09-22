@@ -145,6 +145,24 @@ function checkData() {
   ok(`${files.length} 份示例全部校验通过`)
   ok(`${views} 个视角 × 2 个方向 = ${combos} 种组合都能算`, blocked ? `其中 ${blocked} 种摆不下（预期内）` : '')
 
+  // agent 示例是"能跑的数据"，不是文档：schema 一改它们就会失败。
+  // 这一条是第 14 条那个设计的落点，保证它们不会悄悄漂移。
+  const agentDir = join(REPO, 'examples/agent')
+  if (existsSync(agentDir)) {
+    const files2 = readdirSync(agentDir).filter((f) => f.endsWith('.json'))
+    let bad = 0
+    let blocked = 0
+    for (const f of files2) {
+      const spec = JSON.parse(readFileSync(join(agentDir, f), 'utf8'))
+      if (validateSpec(spec).length) bad += 1
+      for (const v of viewsOf(spec)) {
+        if (buildFactGraph(spec, { summary: true }, v).errors.length) blocked += 1
+      }
+    }
+    truthy(`agent 示例 ${files2.length} 份全部通过校验`, bad === 0)
+    truthy('agent 示例的视角全部排得下（照抄不会撞到"摆不下"）', blocked === 0)
+  }
+
   // 校验错误要说人话：故意造一份坏的，看报错里有没有字段路径
   const broken = { type: 'fact', title: '坏的', slots: [{ id: 's1', events: [{ id: 'e1', label: '没时间' }] }] }
   const errs = validateSpec(broken)
