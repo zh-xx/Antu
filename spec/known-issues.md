@@ -219,41 +219,6 @@ src/renderers/fact/              事实图级（所有子类共用）
 
 ---
 
-### 9. HTML 模板与转义规则写了两份 `待修`
-
-**现象。** 生成自包含 HTML 的那段逻辑（转义规则 + HTML 骨架 + 标题转义）
-在 `tools/make-html.mjs` 和 `tools/mcp/engine.mjs` 里**各有一份**：
-
-```
-make-html 里： 768 字符
-MCP 里：       835 字符
-两段相似度：   83%
-```
-
-**代价。** 改一处忘一处。比如将来要往 HTML 里加 meta、加 favicon、
-或者改 `<script>` 的转义方式，两处会慢慢走偏，而且**症状是"某一条路生成出来的 HTML 不对"**，
-不容易发现。
-
-**建议做法。** 抽一个共用的函数（例如 `tools/lib/make-html.mjs`），两边都调它。
-
----
-
-### 11. 一处引用了不存在的字段 `待修`
-
-**现象。** `tools/mcp/engine.mjs` 第 57 行：
-
-```js
-const kind = spec?.kindHint ?? 'timeline'
-```
-
-`kindHint` **在 schema 里不存在**（`spec/fact-schema-draft.md` 里搜不到），
-是我写 MCP 时凭空加的。现在它永远走 `?? 'timeline'`，所以表现上没错，
-**但它让人以为数据里有个 `kindHint` 字段**。
-
-**建议做法。** 删掉，或换成真的按大类取默认子类（和第 2 条一起做）。
-
----
-
 ### 12. 其他小卫生问题 `待修`
 
 攒在一起，单条都不值得开一条：
@@ -407,6 +372,27 @@ antu_examples  默认给 agent 那批（小、全、能跑）
 ---
 
 ## 已修
+
+### HTML 生成逻辑合成一份（已修，见 73c61d0）
+
+**原问题。** 生成自包含 HTML 的逻辑（转义规则、HTML 骨架、标题转义）
+在 `tools/make-html.mjs` 和 `tools/mcp/engine.mjs` 里各有一份，相似度 83%。
+改一处忘一处，症状是"某一条路生成出来的 HTML 不对"。
+
+**改法。** 抽 `tools/lib/make-html.mjs`，只有这一份实现，两个入口都调它。
+顺带把"引擎该不该重建"的判断也收进去（原先同样是两份）。
+
+**实测。** 两个入口分别生成同一份数据，产物逐字节相同。
+
+### 删掉一个凭空加的字段（已修，见 73c61d0）
+
+**原问题。** `tools/mcp/engine.mjs` 里读 `spec?.kindHint`，而 `kindHint`
+在 schema 里不存在，是写 MCP 时凭空加的。它永远走 `?? 'timeline'`，
+表现上没错，但让人以为数据里有这个字段。
+
+**改法。** 换成本地常量 `DEFAULT_KIND = { fact: 'timeline' }`，
+并注明"等第 2 条把注册表搬到 Node 能用之后删掉这张表"。
+
 
 ### 加了错误边界（已修，见下一提交）
 
