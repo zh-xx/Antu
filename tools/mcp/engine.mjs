@@ -9,7 +9,7 @@
 //  引擎不生成 JSON，那是 agent 的职责。
 // ============================================================
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { renderToFile, REPO } from '../lib/make-html.mjs'
@@ -148,8 +148,6 @@ export function renderHtml(spec, { outPath, preset } = {}) {
  */
 export function listExamples({ group = 'agent' } = {}) {
   const dir = join(REPO, 'examples')
-  const agentDir = join(dir, 'agent')
-
   const read = (path, file) => {
     const spec = JSON.parse(readFileSync(path, 'utf8'))
     const slots = Array.isArray(spec.slots) ? spec.slots : []
@@ -164,24 +162,47 @@ export function listExamples({ group = 'agent' } = {}) {
       views: viewsOf(spec).map((v) => v.label),
     }
   }
+  const jsonIn = (d, prefix) =>
+    existsSync(d)
+      ? readdirSync(d)
+          .filter((f) => f.endsWith('.json'))
+          .sort()
+          .map((f) => read(join(d, f), `${prefix}${f}`))
+      : []
 
-  const agent = existsSync(agentDir)
-    ? readdirSync(agentDir)
-        .filter((f) => f.endsWith('.json'))
-        .sort()
-        .map((f) => read(join(agentDir, f), `examples/agent/${f}`))
-    : []
-  const real = readdirSync(dir)
-    .filter((f) => f.endsWith('.json'))
-    .sort()
-    .map((f) => read(join(dir, f), `examples/${f}`))
-
-  return group === 'agent' ? agent : real
+  if (group === 'raw') {
+    // 原始材料：写数据**不要**拿它当模板，它是"这些示例是怎么做出来的"的底稿
+    const rawDir = join(dir, 'raw')
+    return existsSync(rawDir)
+      ? readdirSync(rawDir)
+          .filter((f) => f.endsWith('.md'))
+          .sort()
+          .map((f) => ({ file: `examples/raw/${f}`, path: join(rawDir, f), bytes: statSync(join(rawDir, f)).size }))
+      : []
+  }
+  // examples/ 根目录下的 JSON 就是真实案例（jsonIn 只列文件，不会走进 agent/ 与 raw/）
+  if (group === 'real') return jsonIn(dir, 'examples/')
+  return jsonIn(join(dir, 'agent'), 'examples/agent/')
 }
 
+/**
+ * 取一份示例的完整内容。
+ *
+ * **只认三类**：examples/agent/*.json（给 agent 的小示例）、
+ * examples/*.json（真实案例）、examples/raw/*.md（原始材料）。
+ * 别的（比如 examples/README.md）一律当"没找到"。
+ *
+ * 为什么要卡这个：原先 file 能取到 examples 下任何文件，
+ * agent 以为在取示例，结果取回来一整份判决书（3500 字符）。
+ * 那不是示例，是"这些示例是怎么做出来的"的底稿，得让它自己说清要看的是什么。
+ */
 export function readExample(file) {
-  // 允许 examples/agent/xxx.json 这种带目录的写法，也允许只给文件名
   const rel = String(file).replace(/^examples\//, '')
+  const ok =
+    /^agent\/[\w.-]+\.json$/.test(rel) ||
+    /^[\w.\u4e00-\u9fff-]+\.json$/.test(rel) ||
+    /^raw\/[\w.\u4e00-\u9fff-]+\.md$/.test(rel)
+  if (!ok) return null
   const p = join(REPO, 'examples', rel)
   if (!existsSync(p)) return null
   return { path: p, text: readFileSync(p, 'utf8') }

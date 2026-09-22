@@ -31,6 +31,7 @@ import { launchBrowser, findChrome } from '../lib/chrome.mjs'
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
 import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
+import { readExample, listExamples } from '../mcp/engine.mjs'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 
@@ -177,6 +178,22 @@ function checkData() {
   truthy('写数据那批资源里没有内部文档', leaked.length === 0)
   if (leaked.length) console.log('     混进来的：' + leaked.join('、'))
   truthy('两个命名空间都在用', serverSrc.includes("antu://${forAgent ? 'spec' : 'internal'}"))
+
+  // antu_spec 的清单也要分段列（不能只是资源分了、清单还混在一起）。
+  // 这条与上面那条是同一个毛病的两半：上一轮只修了资源那一半。
+  truthy('antu_spec 的清单把内部文档单独标出来了', serverSrc.includes('写数据不要读'))
+
+  // 示例只认三类文件。原先 file 能取到 examples 下任何东西，
+  // agent 以为在取示例，结果取回来一整份判决书（3500 字符）。
+  truthy('examples/README.md 取不到（它不是示例）', readExample('examples/README.md') === null)
+  truthy('examples 下越界的路径取不到', readExample('examples/agent/../fact-电梯劝烟案.json') === null)
+  truthy('小示例取得到', readExample('examples/agent/1-minimal.json') !== null)
+  truthy(
+    '示例分三批（agent / real / raw）',
+    listExamples({ group: 'agent' }).length > 0 &&
+      listExamples({ group: 'real' }).length > 0 &&
+      listExamples({ group: 'raw' }).length > 0,
+  )
 
   // 字段元数据（给 agent 的参考资料）必须和校验器说的是同一件事。
   // 办法：拿一份能过校验的示例，逐个抽掉"必填"的字段，校验器必须报错。

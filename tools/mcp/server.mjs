@@ -44,6 +44,15 @@ const server = new McpServer({ name: 'antu', version: '0.1.0' })
 /** 规范里的 JSON 是任意嵌套结构，这里不重复定义一遍 schema：校验由引擎负责 */
 const specArg = z.looseObject({}).describe('案图的 JSON（信封 + 内容层，见规范资源）')
 
+const AGENT_SPECS = new Set([
+  'agent-guide',
+  'fact-schema-draft',
+  'fact-timeline-rules',
+  'fact-rendering',
+  'source-schema-draft',
+])
+
+
 const OK = (text) => ({ content: [{ type: 'text', text }] })
 const FAIL = (text) => ({ content: [{ type: 'text', text }], isError: true })
 
@@ -57,14 +66,19 @@ server.registerTool(
     description:
       '列示例、或取某一份的完整内容。**不传参数时给的是小示例**' +
       '（尽量小、且每份只讲一件事）。第一次用建议按这个顺序：' +
-      'antu_schema 看字段 → antu_guide 看机制 → 这里取 1-minimal.json 看实际写法。' +
-      '真实案例也可以取（group="real" 列出），但它们长得多，供参考用。',
+      'antu_schema 看字段 → antu_guide 看机制 → 这里取 1-minimal.json 看实际写法。\n' +
+      '分三批：agent（默认，1 KB 的小示例，写数据看这个）、' +
+      'real（真实案例，4~8 KB，供参考）、' +
+      'raw（原始裁判文书，**不是示例**，是"这些示例怎么来的"底稿，别拿它当模板）。',
     inputSchema: {
-      file: z.string().optional().describe('要取的那一份，如 examples/agent/1-minimal.json。不传则列清单'),
-      group: z
-        .enum(['agent', 'real'])
+      file: z
+        .string()
         .optional()
-        .describe('列哪一批：agent（默认，小示例）或 real（真实案例）'),
+        .describe('要取的那一份，如 examples/agent/1-minimal.json。不传则列清单'),
+      group: z
+        .enum(['agent', 'real', 'raw'])
+        .optional()
+        .describe('列哪一批：agent（默认，小示例）/ real（真实案例）/ raw（原始材料，不是示例）'),
     },
   },
   async ({ file, group = 'agent' }) => {
@@ -80,12 +94,14 @@ server.registerTool(
     )
     const head =
       group === 'real'
-        ? `真实案例 ${rows.length} 份（每份 4~8 KB，供参考）：`
-        : `小示例 ${rows.length} 份（每份 1 KB 上下，建议先看 1-minimal）：`
+        ? `真实案例 ${rows.length} 份（每份 4~8 KB，供参考，写数据请先用默认那批小示例）：`
+        : group === 'raw'
+          ? `原始裁判文书 ${rows.length} 份（**不是示例**，别拿它当模板；是"这些示例怎么来的"底稿）：`
+          : `小示例 ${rows.length} 份（每份 1 KB 上下，建议先看 1-minimal）：`
     const tail =
-      group === 'real'
-        ? ''
-        : '\n\n另有一批真实案例（含人脸识别第一案、电梯劝烟案），用 group="real" 列出。'
+      group === 'agent'
+        ? '\n\n另有真实案例（group="real"）与原始材料（group="raw"）。'
+        : '\n\n写数据请用默认那批小示例（不传参数）。'
     return OK(`${head}\n\n${lines.join('\n')}${tail}`)
   },
 )
@@ -146,13 +162,18 @@ server.registerTool(
   },
   async ({ name }) => {
     if (!name) {
+      // 清单分两段列。混在一起的时候 agent 会一路读下去，把内部文档也读了
+      // （其中 known-issues 是"本项目有哪些毛病"，读了会以为数据有问题）。
       const rows = listSpecs()
-      const lines = rows.map((r) => `- ${r.name}`)
+      const agent = rows.filter((r) => AGENT_SPECS.has(r.name))
+      const internal = rows.filter((r) => !AGENT_SPECS.has(r.name))
       return OK(
-        `设计文档 ${rows.length} 份：\n\n${lines.join('\n')}\n\n` +
-          '写数据不要从这些开始：先用 antu_schema（字段）、antu_guide（机制）、' +
-          'antu_examples（例子）。\n' +
-          '只有想弄清某条规则背后的理由时，才取 fact-schema-draft 或 fact-timeline-rules。',
+        '写数据用得上的，' +
+          `${agent.length} 份（想看规则背后的理由时才取）：\n` +
+          agent.map((r) => `  - ${r.name}`).join('\n') +
+          `\n\n内部文档，${internal.length} 份（**写数据不要读**，那是改引擎本身才要看的）：\n` +
+          internal.map((r) => `  - ${r.name}`).join('\n') +
+          '\n\n写数据请从这三样开始：antu_schema（字段）→ antu_guide（机制）→ antu_examples（例子）。',
       )
     }
     const text = readSpec(name)
@@ -296,13 +317,6 @@ server.registerTool(
 // 前缀本身就说明该不该读：
 //   antu://spec/…      写数据可能用得上
 //   antu://internal/…  只有改引擎本身才要看（写数据完全不需要）
-const AGENT_SPECS = new Set([
-  'agent-guide',
-  'fact-schema-draft',
-  'fact-timeline-rules',
-  'fact-rendering',
-  'source-schema-draft',
-])
 
 for (const s of listSpecs()) {
   const forAgent = AGENT_SPECS.has(s.name)
