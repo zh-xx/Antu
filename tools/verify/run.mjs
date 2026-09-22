@@ -32,6 +32,7 @@ import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
 import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
 import { readExample, listExamples, listAgentGuides, describeSchema } from '../mcp/engine.mjs'
+import { listKnowledgeTypes } from '../../src/core/registry.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 
@@ -60,6 +61,22 @@ function bad(label, detail = '') {
 
 function section(title) {
   console.log(`\n【${title}】`)
+}
+
+/** 递归列出某个后缀的文件（跳过不该扫的目录） */
+function listFilesUnder(dir, exts) {
+  const out = []
+  const walk = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name)
+      if (e.isDirectory()) {
+        if (['node_modules', '.git', '.verify', 'dist', 'dist-engine', 'dist-html'].includes(e.name)) continue
+        walk(p)
+      } else if (exts.some((x) => e.name.endsWith(x))) out.push(p)
+    }
+  }
+  walk(dir)
+  return out
 }
 
 /** 断言相等，把期望与实际都打出来 */
@@ -112,8 +129,16 @@ function checkLint() {
 // ---------------------------------------------------------------
 function checkData() {
   section('数据与排布')
-  const dir = join(REPO, 'examples')
-  const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort()
+  // 示例按大类分目录：examples/<type>/*.json。每个已登记知识的大类扫一遍。
+  // 加新大类时这里不用改，它会自己多扫一个目录。
+  const files = []
+  for (const { type } of listKnowledgeTypes()) {
+    const dir = join(REPO, 'examples', type)
+    if (!existsSync(dir)) continue
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
+      files.push(`examples/${type}/${f}`)
+    }
+  }
   truthy('找到示例', files.length > 0)
   if (files.length === 0) return { files, sample: null, combos: 0, views: 0 }
 
@@ -121,7 +146,7 @@ function checkData() {
   let combos = 0
   let blocked = 0
   for (const f of files) {
-    const spec = JSON.parse(readFileSync(join(dir, f), 'utf8'))
+    const spec = JSON.parse(readFileSync(join(REPO, f), 'utf8'))
     const errs = validateSpec(spec)
     if (errs.length) {
       bad(`示例 ${f} 校验`, errs[0])
@@ -169,8 +194,10 @@ function checkData() {
   // 那些文档讲的是"当初为什么这么定"，一份上万字符，agent 读了纯属白烧上下文。
   // 曾经的做法就是原样挂出去、只加了个"写数据用得上"的标签，等于没分。
   const serverSrc = readFileSync(join(REPO, 'tools/mcp/server.mjs'), 'utf8')
-  const humanDocs = ['fact-schema-draft', 'fact-timeline-rules', 'fact-rendering',
-    'source-schema-draft', 'v0-architecture', 'known-issues', 'mcp-server', 'react-flow-features']
+  // 用带目录的路径查，避免拿 schema-draft 这种通用词去误判
+  const humanDocs = ['spec/fact/schema-draft', 'spec/fact/timeline-rules', 'spec/fact/rendering',
+    'spec/source-schema-draft', 'spec/v0-architecture', 'spec/known-issues', 'spec/mcp-server',
+    'spec/react-flow-features']
   const leaked2 = humanDocs.filter((n) => serverSrc.includes(n))
   truthy('MCP 里没有任何"给人看的"设计文档', leaked2.length === 0)
   if (leaked2.length) console.log('     混进来的：' + leaked2.join('、'))
@@ -202,6 +229,20 @@ function checkData() {
       listExamples({ group: 'real' }).length > 0 &&
       listExamples({ group: 'raw' }).length > 0,
   )
+
+  // 文档里的路径引用必须指向真实存在的文件。
+  // 这条是补上的：文件搬过几次（core → renderers、fact → fact/timeline、
+  // 根目录 → 按大类分目录），每次都留下没跟上的引用，靠人翻是翻不干净的。
+  const refMissing = []
+  for (const f of listFilesUnder(REPO, ['.md', '.mjs', '.js', '.jsx'])) {
+    if (f.includes('node_modules') || f.includes('/dist')) continue
+    const text = readFileSync(f, 'utf8')
+    for (const m of text.matchAll(/`((?:spec|examples|src|tools)\/[\w./\u4e00-\u9fff-]+\.(?:md|json|js|mjs|jsx))`/g)) {
+      if (!existsSync(join(REPO, m[1]))) refMissing.push(`${f.replace(REPO + '/', '')} → ${m[1]}`)
+    }
+  }
+  truthy('文档里的路径引用都指向真实文件', refMissing.length === 0)
+  for (const r of refMissing.slice(0, 5)) console.log('     ' + r)
 
   // 字段元数据（给 agent 的参考资料）必须和校验器说的是同一件事。
   // 办法：拿一份能过校验的示例，逐个抽掉"必填"的字段，校验器必须报错。
@@ -246,7 +287,7 @@ async function checkRender(sampleFile) {
     return null
   }
 
-  const spec = JSON.parse(readFileSync(join(REPO, 'examples', sampleFile), 'utf8'))
+  const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
   const html = join(OUT, 'render-check.html')
   renderToFile(spec, { outPath: html, quiet: true })
 

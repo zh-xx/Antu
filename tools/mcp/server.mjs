@@ -68,7 +68,7 @@ server.registerTool(
       file: z
         .string()
         .optional()
-        .describe('要取的那一份，如 examples/agent/1-minimal.json。不传则列清单'),
+        .describe('要取的那一份，如 examples/agent/fact/1-minimal.json。不传则列清单'),
       group: z
         .enum(['agent', 'real', 'raw'])
         .optional()

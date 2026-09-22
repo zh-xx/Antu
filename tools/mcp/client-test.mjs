@@ -115,7 +115,7 @@ try {
   console.log('  ' + textOf(bad).split('\n').slice(0, 5).join('\n  '))
 
   step(9, '校验一份真 JSON')
-  const good = JSON.parse(readFileSync(join(REPO, 'examples/fact-电梯劝烟案.json'), 'utf8'))
+  const good = JSON.parse(readFileSync(join(REPO, 'examples/fact/电梯劝烟案.json'), 'utf8'))
   const v = await rpc('tools/call', { name: 'antu_validate', arguments: { spec: good } })
   console.log('  ' + textOf(v))
 

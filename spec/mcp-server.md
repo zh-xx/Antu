@@ -93,7 +93,7 @@ antu://agent/<大类>/guide    那个大类的机制说明（现在只有 antu:/
 只此一个。`spec/agent/` 下有什么，这里就有什么；上一层的东西一律不出现。
 
 **验证器里有断言守着这条线**：MCP 的服务端代码里不许出现任何一份人类文档的名字
-（fact-schema-draft、fact-timeline-rules、known-issues……）。
+（spec/fact/schema-draft.md、spec/known-issues.md……）。
 
 ### 为什么不手抄一份"给 agent 的规范"
 
@@ -110,7 +110,7 @@ MCP 分发表、HTML 模板两份）。再手抄一份规则就是第五次。
 ## 3. agent 的完整流程
 
 ```
-1. antu_spec          → 读 fact-schema-draft、fact-timeline-rules
+1. antu_spec          → 读 spec/fact/schema-draft.md、spec/fact/timeline-rules.md
 2. antu_examples      → 看一份真实案例是怎么写的
 3. 写 JSON            ← agent 自己的活
 4. antu_validate      → 有错就改，循环到通过

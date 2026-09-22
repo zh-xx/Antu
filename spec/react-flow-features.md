@@ -2,7 +2,7 @@
 
 > 用途：查“它有哪些能力、我们现在用没用、打算用在哪”。
 > 版本：`@xyflow/react` 12。官方文档 <https://reactflow.dev>
-> 相关：为什么选它见 `fact-rendering.md` §6。
+> 相关：为什么选它见 `spec/fact/rendering.md` §6。
 
 状态标记：**✅ 已在用** ｜ **计划用** ｜ **用不上**
 
@@ -168,7 +168,7 @@ const maxZoom = 3   // 上限只用来防止放大到荒唐的程度
 |---|---|
 | 节点摆哪里（自动布局） | **不是 React Flow**。用 dagre 或 elkjs，或自己算（fact 图就是自己算的网格） |
 | 导出图片 | React Flow 只提供算范围的工具，真正的截图靠 `html-to-image` |
-| 我们自己的排布规则 | `src/core/factGrid.js`，与 React Flow 无关 |
+| 我们自己的排布规则 | `src/renderers/fact/timeline/grid.js`，与 React Flow 无关 |
 
 ## 九、当前进度备忘
 

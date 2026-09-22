@@ -181,8 +181,8 @@ export function listExamples({ type = 'fact', group = 'agent' } = {}) {
           .map((f) => ({ file: `examples/raw/${f}`, path: join(rawDir, f), bytes: statSync(join(rawDir, f)).size }))
       : []
   }
-  // examples/ 根目录下的 JSON 就是真实案例（jsonIn 只列文件，不会走进 agent/ 与 raw/）
-  if (group === 'real') return jsonIn(dir, 'examples/')
+  // 真实案例也按大类分：examples/<type>/*.json
+  if (group === 'real') return jsonIn(join(dir, String(type)), `examples/${type}/`)
   return jsonIn(join(dir, 'agent', String(type)), `examples/agent/${type}/`)
 }
 

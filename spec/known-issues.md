@@ -164,7 +164,7 @@ agent 示例的视角全部排得下（照抄不会撞到"摆不下"）
 
 **接口变化。** `antu_examples` 不传参数给的就是小示例（并注明真实案例可用
 `group="real"` 列出）；传 `file` 仍可取任意一份，路径现在支持
-`examples/agent/1-minimal.json` 这种写法。
+`examples/agent/fact/1-minimal.json` 这种写法。
 
 **实测体积。** 六份合计 5.5 KB；一份真实案例 7.9 KB。读三份约 3 KB。
 

@@ -27,7 +27,7 @@ import { buildFactGraph } from './timeline/layout.js'
  *
  * 注意：这里只列**字段级**的规则。跨字段的规则（引用完整性、时段不能倒着走、
  * 一个主体只能在一侧、一格一事件）不在这张表里，它们由校验器在运行时逐条报出。
- * 见 spec/agent-guide.md 的说明。
+ * 见 spec/agent/fact/guide.md 的说明。
  */
 export const FACT_FIELDS = {
   信封层: [
