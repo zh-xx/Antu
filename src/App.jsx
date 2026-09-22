@@ -31,6 +31,9 @@ import ErrorBoundary from './shell/ErrorBoundary.jsx'
  */
 const FIELD_DEFAULTS = { sources: false, actors: false, summary: true }
 
+/** 本地偏好的存储键。只此一处，改的时候不用满文件找。 */
+const PREFS_KEY = 'antu.prefs'
+
 /**
  * 外部预设：只有 MCP 的 antu_preview 会用到。
  * 它要能指定"用哪个方向、开哪些字段、看第几个视角"来截图，
@@ -134,21 +137,21 @@ export default function App() {
   }, [])
 
   // 底层格线：全局偏好。用户动过才记到本地。
-  const [showGrid, setShowGrid] = useState(() => readPref('antu.prefs').showGrid === true)
+  const [showGrid, setShowGrid] = useState(() => readPref(PREFS_KEY).showGrid === true)
   const toggleGrid = (value) => {
     setShowGrid(value)
-    writePref('antu.prefs', { showGrid: value })
+    writePref(PREFS_KEY, { showGrid: value })
   }
 
   // 卡片上显示哪些可选字段。同样只记用户动过的那几个。
   const [fields, setFields] = useState(() => ({
     ...FIELD_DEFAULTS,
-    ...readPref('antu.prefs').fields,
+    ...readPref(PREFS_KEY).fields,
     ...(PRESET?.fields || {}),
   }))
   const toggleField = (key, value) => {
     setFields((f) => ({ ...f, [key]: value }))
-    writePref('antu.prefs', { fields: { ...readPref('antu.prefs').fields, [key]: value } })
+    writePref(PREFS_KEY, { fields: { ...readPref(PREFS_KEY).fields, [key]: value } })
   }
 
   // 视角下标。一个页面只有一份数据，所以不需要"换图归零"。
@@ -161,7 +164,7 @@ export default function App() {
   // 时间轴方向。手动设过的按图记住，没设过的按槽数算：
   // 槽 ≥ 5 竖向，槽 ≤ 4 横向。横向一格宽 316，一屏减掉标题列只排得下约 3.8 个槽。
   const [orientationPrefs, setOrientationPrefs] = useState(
-    () => readPref('antu.prefs').orientations || {},
+    () => readPref(PREFS_KEY).orientations || {},
   )
   const slotCount = Array.isArray(spec?.slots) ? spec.slots.length : 0
   const orientation =
@@ -169,18 +172,18 @@ export default function App() {
   const toggleOrientation = (next) => {
     const map = { ...orientationPrefs, [specKey]: next }
     setOrientationPrefs(map)
-    writePref('antu.prefs', { orientations: map })
+    writePref(PREFS_KEY, { orientations: map })
   }
 
   // 子类是渲染层的选择，不在数据里：从注册表按大类查出有哪些画法。
   // 手动选过的按图记着，没选过就用第一个（默认画法）。
   const kinds = useMemo(() => (spec ? listKinds(spec.type) : []), [spec])
-  const [kindPrefs, setKindPrefs] = useState(() => readPref('antu.prefs').kinds || {})
+  const [kindPrefs, setKindPrefs] = useState(() => readPref(PREFS_KEY).kinds || {})
   const kind = kinds.find((k) => k.kind === kindPrefs[specKey])?.kind ?? kinds[0]?.kind ?? null
   const selectKind = (next) => {
     const map = { ...kindPrefs, [specKey]: next }
     setKindPrefs(map)
-    writePref('antu.prefs', { kinds: map })
+    writePref(PREFS_KEY, { kinds: map })
   }
   const Renderer = spec ? getRenderer(spec.type, kind) : null
   const ready = errors.length === 0 && Renderer
@@ -206,8 +209,8 @@ export default function App() {
           onToggleField={toggleField}
           viewIndex={viewIndex}
           onSelectView={setViewIndex}
-            orientation={orientation}
-            onToggleOrientation={toggleOrientation}
+          orientation={orientation}
+          onToggleOrientation={toggleOrientation}
           />
         </ErrorBoundary>
       ) : (

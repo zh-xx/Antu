@@ -403,6 +403,11 @@
 .antu-card-foot { flex: none; }
 
 /* 卡片内容：标题在上、时间在下，中间用 margin-top:auto 顶开 */
+/* 键盘聚焦时给个看得见的圈，否则不知道焦点在哪 */
+.antu-card:focus-visible {
+  outline: 2px solid var(--antu-side1);
+  outline-offset: 2px;
+}
 .antu-card-label {
   /* 字号来自 core/cardGeometry.js：它是算「一行放几个字」的除数 */
   font-size: var(--antu-label-font, 13px);

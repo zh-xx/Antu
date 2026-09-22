@@ -23,7 +23,7 @@ const MAX_GROUPS = 3
  * 内置的缺省视角。数据里不写 `views` 时就用它，行为与加视角之前完全一致：
  * 按分组分侧，不按主体筛。
  */
-export const DEFAULT_VIEW = { label: '全体', splitBy: 'group' }
+const DEFAULT_VIEW = { label: '全体', splitBy: 'group' }
 
 /** 这份数据有哪些视角。不写就给一个内置的。 */
 export function viewsOf(spec) {

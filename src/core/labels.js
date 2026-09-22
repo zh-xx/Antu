@@ -25,14 +25,6 @@ export const GRAPH_TYPE_LABELS = {
   justification: '证成图',
 }
 
-/** 站位（对应 core/factGrid.js 的 SIDE） */
-export const SIDE_LABELS = {
-  side1: '第 1 侧',
-  side2: '第 2 侧',
-  axis: '轴线',
-}
-
-/** 取中文标签，取不到就原样返回（不吞掉未知值，便于发现问题） */
 export const labelOf = (dict, key) => dict[key] ?? key
 
 /**

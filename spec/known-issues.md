@@ -198,20 +198,6 @@ src/renderers/fact/              事实图级（所有子类共用）
 
 ---
 
-### 12. 其他小卫生问题 `待修`
-
-攒在一起，单条都不值得开一条：
-
-| 问题 | 在哪 |
-|---|---|
-| `'antu.prefs'` 这个键名**写死了 8 处** | `src/App.jsx`，该提成常量 |
-| 适配留白的 `1.12` 写了两份（渲染器里是 `FIT_PADDING = 0.12`） | `src/renderers/fact/index.jsx`、`tools/mcp/engine.mjs` |
-| `SIDE_LABELS` 导出了但全项目没人用 | `src/core/labels.js`（也是第 6 条里那半个 fact 专属） |
-| `DEFAULT_VIEW`、`layoutOf`、`fitZoom` 只在文件内用，却写成了导出 | `src/core/factGrid.js`、`tools/mcp/engine.mjs` |
-| 卡片只能鼠标悬停/点击，**键盘聚焦不了** | `EventNode.jsx` 里 `.antu-card` 是个 `div`，没有 `tabIndex` / `role` |
-
----
-
 ### 13. `antu_spec` 端出去的是给人看的规范，不是给 agent 用的 `待修`
 
 **现象。** `antu_spec` 工具（和 `antu://spec/*` 资源）把 `spec/` 下的文档**原样**端给 agent。
@@ -326,6 +312,35 @@ antu_examples  默认给 agent 那批（小、全、能跑）
 
 ---
 
+### 15. `App` 和渲染器之间的接口里混进了具体大类的概念 `待修`
+
+**现象。** `App` 是通用外壳（它只该知道"有一份 spec，按 type 找渲染器"），
+但它传给渲染器的 9 个 props 里，8 个是 fact / timeline 的概念：
+
+```jsx
+<Renderer
+  spec={spec}
+  showGrid={showGrid}          onToggleGrid={toggleGrid}          // 底层格线（timeline）
+  fields={fields}              onToggleField={toggleField}        // 卡片字段（fact）
+  viewIndex={viewIndex}        onSelectView={setViewIndex}        // 视角（fact）
+  orientation={orientation}    onToggleOrientation={...}          // 方向
+/>
+```
+
+`App.jsx` 里那六十来行状态代码（`fields`、`orientation`、`viewIndex`、`showGrid`
+加它们的 localStorage 读写）**全是事实图的呈现状态**。
+
+**代价。** 加第二个大类（关系图）时，`App` 要么给它传一堆用不上的 props，
+要么再加一堆条件分支。而且这些状态本来属于渲染器，放在 `App` 里
+是为了绕开"切换画法时渲染器会重挂载"这个问题（代码里有注释说明），
+属于用错位置的补救。
+
+**建议做法。** 和 `#5`（画布搬到 `shell/`）一起做：把"渲染器边界"一次理清。
+`App` 只传 `spec`；呈现状态归渲染器自己，需要跨重挂载保留的（格线这类）
+放进一个共享的偏好模块（`readPref` / `writePref` 已经在了，把状态也挪过去）。
+
+---
+
 ## 反复踩的坑（不是待修项，是规矩）
 
 这三条这个项目已经踩过两三次，写在这里当规矩。
@@ -343,6 +358,11 @@ antu_examples  默认给 agent 那批（小、全、能跑）
 有几次缺陷（适应视图按钮失效、标签卡样式被删导致画布被挤、箭头朝向不对）
 **校验和 DOM 断言全是过的**，只有截图才看得出来。
 
+**五、改代码别用会静默失败的字符串替换。**
+这一轮里用脚本改代码，字符串没匹配上时不报错、直接跳过，
+于是"以为改了、其实没改"，后面实测才发现。踩了四五次（其中一次让键盘功能白做）。
+要么用会报错的编辑方式，要么替换后断言匹配数量。
+
 **四、生成工具不许"缺了才构建"。**
 `tools/make-html.mjs` 最初写的是"引擎产物不存在才构建"，
 结果改完源码生成出来的还是旧引擎，**不报错、看不出来**。
@@ -351,6 +371,35 @@ antu_examples  默认给 agent 那批（小、全、能跑）
 ---
 
 ## 已修
+
+### 小卫生清完了（已修，见下一提交）
+
+五项逐个说：
+
+| 问题 | 改法 | 实测 |
+|---|---|---|
+| `'antu.prefs'` 写死 8 处 | 提成 `PREFS_KEY` 常量 | 字面量只剩定义那一处 |
+| 适配留白的 `1.12` 写两份 | 抽 `src/core/canvas.js`：`FIT_PADDING` + `fitZoom()`，渲染器与 MCP 共用 | 全项目搜 `1.12` 只剩注释里的一处 |
+| `SIDE_LABELS` 死导出 | 删 | 全项目没人用（lint 也确认了） |
+| `DEFAULT_VIEW` 等只在文件内用却导出 | 改成内部常量、删掉多余的导出 | —— |
+| 卡片键盘不可达 | 卡片加 `role="button"` / `tabIndex` / `aria-label` / `aria-expanded` / `onKeyDown`；Context 增加 `pin`；样式加 `:focus-visible` 轮廓 | 见下 |
+
+**键盘实测**（用 CDP 发真实按键，不是合成 DOM 事件）：
+
+```
+① 卡片可聚焦          true
+② 回车前浮层          false
+③ 回车后浮层          true    aria-expanded 也跟着变 true
+④ Esc 关掉            true
+⑤ 空格也能开          true
+⑥ 聚焦轮廓            2px
+```
+
+**过程中的一个插曲值得记下来。** 第一次实测键盘没反应，插了三次桩才找到原因：
+`pin` 函数在 `index.jsx` 里那处替换**静默失败了**，于是 Provider 没提供 `pin`，
+卡片拿到的是 context 的默认空函数。handler 明明被调用了（计数 1、键名 Enter 对），
+但状态一直不动。**用会静默失败的字符串替换改代码，这一轮里踩了四五次。**
+
 
 ### 验证脚本收进仓库了（已修，见下一提交）
 

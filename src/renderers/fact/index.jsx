@@ -23,6 +23,7 @@ import CellLayerNode from './CellLayerNode.jsx'
 import ControlDock from './ControlDock.jsx'
 import { PreviewContext } from './previewContext.js'
 import { buildFactGraph } from './timelineLayout.js'
+import { FIT_PADDING, fitZoom } from '../../core/canvas.js'
 import { viewsOf } from '../../core/factGrid.js'
 import { CARD_PAD_X, CARD_PAD_Y, LABEL_FONT, SNIPPET_FONT } from '../../core/cardGeometry.js'
 import { ARIA_LABEL_CONFIG } from '../../core/labels.js'
@@ -34,9 +35,6 @@ const nodeTypes = {
   links: LinkLayerNode,
   cells: CellLayerNode,
 }
-
-/** fitView 的留白比例，算缩放下限时要用同一个值 */
-const FIT_PADDING = 0.12
 
 export default function FactRenderer({
   spec,
@@ -152,9 +150,8 @@ export default function FactRenderer({
   const minZoom = useMemo(() => {
     const { width, height } = canvasSize
     if (!width || !height) return 0.1
-    const zx = width / (graph.size.width * (1 + FIT_PADDING))
-    const zy = height / (graph.size.height * (1 + FIT_PADDING))
-    return Math.max(Math.min(zx, zy, 1), 0.05)
+    // 和 fitView 用同一个函数算，两个数不会走偏（见 core/canvas.js）
+    return Math.max(fitZoom(graph.size, { width, height }), 0.05)
   }, [canvasSize, graph])
 
   // 放大上限 3 倍。原先定 1:1，理由是「再放大只是把同样的像素摊大」——
@@ -164,7 +161,13 @@ export default function FactRenderer({
 
   // 浮层状态通过 Context 传下去，避免写进节点 data 引发整份节点数组重建
   const preview = useMemo(
-    () => ({ hoveredId, pinnedId, unpin: () => setPinnedId(null) }),
+    () => ({
+      hoveredId,
+      pinnedId,
+      // 卡片自己也能钉/关（键盘那条路要用）；鼠标那条仍走 React Flow 的 onNodeClick
+      pin: (id) => setPinnedId(id),
+      unpin: () => setPinnedId(null),
+    }),
     [hoveredId, pinnedId],
   )
 

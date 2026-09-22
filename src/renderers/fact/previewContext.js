@@ -15,5 +15,8 @@ import { createContext } from 'react'
 export const PreviewContext = createContext({
   hoveredId: null,
   pinnedId: null,
+  // 卡片原先只能靠鼠标点（React Flow 的 onNodeClick）来钉住，
+  // 键盘用户进不去。这两个函数让卡片自己也能钉/关。
+  pin: () => {},
   unpin: () => {},
 })

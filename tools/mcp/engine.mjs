@@ -13,6 +13,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { renderToFile, REPO } from '../lib/make-html.mjs'
+import { fitZoom } from '../../src/core/canvas.js'
 
 import { validateSpec } from '../../src/core/validate.js'
 import { viewsOf, buildGrid } from '../../src/core/factGrid.js'
@@ -21,8 +22,8 @@ import { buildFactGraph } from '../../src/renderers/fact/timelineLayout.js'
 // 仓库根目录由 tools/lib/make-html.mjs 统一给出（服务端可能从任何 cwd 启动，
 // 所以一律相对那个位置解析），这里直接用它导出的 REPO。
 
-/** 画布尺寸的默认假设：用来算"适配缩放"，和浏览器里实测的画布大小一致 */
-const CANVAS = { width: 1600, height: 857 }
+/** 画布尺寸的默认假设：用来算"适配缩放"。和 verify 脚本用的是同一个尺寸 */
+const CANVAS = { width: 1600, height: 900 }
 
 /** 每个大类的默认子类。等注册表能在 Node 里用之后删掉（第 2 条）。 */
 const DEFAULT_KIND = { fact: 'timeline' }
@@ -42,13 +43,6 @@ export function validate(spec) {
   } catch (e) {
     return [`校验层自己抛错了：${e.message}`]
   }
-}
-
-/** 适配缩放：视口 ÷ (内容 × 1.12)，封顶 1。和渲染器里的算法一致。 */
-export function fitZoom(size, canvas = CANVAS) {
-  const zx = canvas.width / (size.width * 1.12)
-  const zy = canvas.height / (size.height * 1.12)
-  return Math.min(zx, zy, 1)
 }
 
 /**
@@ -90,7 +84,7 @@ export function layoutReport(spec, { orientation, fields = { summary: true } } =
   const byOrientation = {}
   for (const o of ['vertical', 'horizontal']) {
     const g = layout(spec, fields, undefined, o)
-    byOrientation[o] = { size: g.size, fit: Number(fitZoom(g.size).toFixed(3)) }
+    byOrientation[o] = { size: g.size, fit: Number(fitZoom(g.size, CANVAS).toFixed(3)) }
   }
   const slotCount = Array.isArray(spec.slots) ? spec.slots.length : 0
   const suggested = slotCount >= 5 ? 'vertical' : 'horizontal'
