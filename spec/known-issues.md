@@ -131,7 +131,7 @@ fact 的全部校验**就是排布本身**——在 `factGrid.js` 里边排边�
 | `registry.js` | 引擎机制，四类共用 | ✅ 是共性 |
 | `validate.js`（信封层部分） | App + MCP，四类共用 | ✅ 是共性 |
 | `labels.js` | 大头共用，但 `SIDE_LABELS`（第几侧/轴线）只有 fact 用 | ⚠️ 一半 |
-| `factGrid.js` | 只有 fact 用（time与 MCP） | ❌ 是 fact 专属 |
+| `factGrid.js` | 只有 fact 用（timelineLayout、renderers/fact、MCP） | ❌ 是 fact 专属 |
 | `cardGeometry.js` | 只有 fact 用（事件卡片的几何） | ❌ 是 fact 专属 |
 
 **两种可能的定位，现在没选。**
