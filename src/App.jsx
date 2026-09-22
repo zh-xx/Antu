@@ -23,6 +23,7 @@ import { validateSpec } from './core/validate.js'
 import { getRenderer, listKinds, listTypes } from './core/registry.js'
 import { GRAPH_TYPE_LABELS, labelOf } from './core/labels.js'
 import DiagramHeader from './shell/DiagramHeader.jsx'
+import ErrorBoundary from './shell/ErrorBoundary.jsx'
 
 /**
  * 卡片可选字段的默认值。
@@ -196,7 +197,8 @@ export default function App() {
       />
 
       {ready ? (
-        <Renderer
+        <ErrorBoundary>
+          <Renderer
           spec={spec}
           showGrid={showGrid}
           onToggleGrid={toggleGrid}
@@ -204,9 +206,10 @@ export default function App() {
           onToggleField={toggleField}
           viewIndex={viewIndex}
           onSelectView={setViewIndex}
-          orientation={orientation}
-          onToggleOrientation={toggleOrientation}
-        />
+            orientation={orientation}
+            onToggleOrientation={toggleOrientation}
+          />
+        </ErrorBoundary>
       ) : (
         <FallbackInfo errors={errors} spec={spec} hasRenderer={!!Renderer} />
       )}

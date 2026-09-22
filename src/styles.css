@@ -144,6 +144,22 @@
 
 .antu-error-title { font-weight: 600; color: #b91c1c; margin-bottom: 6px; }
 .antu-error-hint { color: var(--antu-text-3); }
+/* 出错时的堆栈：等宽、可横向滚、限高，别把整页撑开 */
+.antu-error-trace {
+  max-height: 240px;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--antu-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--antu-text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 /* ============================================================
    fact 渲染器
@@ -724,3 +740,19 @@
 .antu-error-title { font-weight: 600; color: #b91c1c; margin-bottom: 6px; }
 .antu-error-list { margin: 0; padding-left: 18px; color: var(--antu-text-2); }
 .antu-error-hint { color: var(--antu-text-3); }
+/* 出错时的堆栈：等宽、可横向滚、限高，别把整页撑开 */
+.antu-error-trace {
+  max-height: 240px;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--antu-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--antu-text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
