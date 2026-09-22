@@ -89,7 +89,7 @@ try {
   for (const r of res.resources) console.log(`  - ${r.uri}`)
 
   step(4, '读一份"给 agent 的规格"资源')
-  const spec = await rpc('resources/read', { uri: 'antu://agent/guide' })
+  const spec = await rpc('resources/read', { uri: 'antu://agent/fact/guide' })
   const specText = spec.contents?.[0]?.text ?? ''
   console.log(`  取到 ${specText.length} 字符，开头：${specText.split('\n')[0]}`)
 

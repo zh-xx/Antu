@@ -14,7 +14,7 @@ import { join } from 'node:path'
 
 import { renderToFile, REPO } from '../lib/make-html.mjs'
 import { fitZoom } from '../../src/core/canvas.js'
-import { describeFactSchema } from '../../src/renderers/fact/schema.js'
+import { knowledgeOf, listKnowledgeTypes } from '../../src/core/registry.js'
 // 登记各大类的知识（纯 JS，不碰组件）。有了它，校验与排布都从注册表取。
 import '../../src/renderers/index.js'
 import { layoutOf as layoutFromRegistry, layoutKindsOf } from '../../src/core/registry.js'
@@ -146,7 +146,7 @@ export function renderHtml(spec, { outPath, preset } = {}) {
  * 一份真实案例约 7.9 KB，单单读它就顶六份。
  * （known-issues 第 14 条：给人和给 agent 的示例要分开。）
  */
-export function listExamples({ group = 'agent' } = {}) {
+export function listExamples({ type = 'fact', group = 'agent' } = {}) {
   const dir = join(REPO, 'examples')
   const read = (path, file) => {
     const spec = JSON.parse(readFileSync(path, 'utf8'))
@@ -170,6 +170,7 @@ export function listExamples({ group = 'agent' } = {}) {
           .map((f) => read(join(d, f), `${prefix}${f}`))
       : []
 
+  // 小示例按大类分目录：examples/agent/<type>/*.json
   if (group === 'raw') {
     // 原始材料：写数据**不要**拿它当模板，它是"这些示例是怎么做出来的"的底稿
     const rawDir = join(dir, 'raw')
@@ -182,7 +183,7 @@ export function listExamples({ group = 'agent' } = {}) {
   }
   // examples/ 根目录下的 JSON 就是真实案例（jsonIn 只列文件，不会走进 agent/ 与 raw/）
   if (group === 'real') return jsonIn(dir, 'examples/')
-  return jsonIn(join(dir, 'agent'), 'examples/agent/')
+  return jsonIn(join(dir, 'agent', String(type)), `examples/agent/${type}/`)
 }
 
 /**
@@ -199,7 +200,7 @@ export function listExamples({ group = 'agent' } = {}) {
 export function readExample(file) {
   const rel = String(file).replace(/^examples\//, '')
   const ok =
-    /^agent\/[\w.-]+\.json$/.test(rel) ||
+    /^agent\/[\w-]+\/[\w.-]+\.json$/.test(rel) ||
     /^[\w.\u4e00-\u9fff-]+\.json$/.test(rel) ||
     /^raw\/[\w.\u4e00-\u9fff-]+\.md$/.test(rel)
   if (!ok) return null
@@ -215,22 +216,43 @@ export function readExample(file) {
  * **不在这里**：那份是给人看的，端给 agent 只会白烧上下文。
  * 两边的分工写在 spec/agent/README.md。
  */
-export function listAgentSpecs() {
+export function listAgentGuides() {
   const dir = join(REPO, 'spec/agent')
   return existsSync(dir)
-    ? readdirSync(dir)
-        .filter((f) => f.endsWith('.md') && f !== 'README.md')
+    ? readdirSync(dir, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && existsSync(join(dir, e.name, 'guide.md')))
+        .map((e) => e.name)
         .sort()
-        .map((f) => ({ name: f.replace(/\.md$/, ''), file: `spec/agent/${f}`, path: join(dir, f) }))
     : []
 }
 
-/** 取一份给 agent 的规格。名字传 guide 即可。 */
-export function readAgentSpec(name) {
-  const p = join(REPO, 'spec/agent', `${String(name).replace(/\.md$/, '')}.md`)
-  if (!existsSync(p)) return null
-  return readFileSync(p, 'utf8')
+/**
+ * 取某大类的机制说明。
+ * 一个大类一份：spec/agent/<type>/guide.md。加新大类时加一个目录即可。
+ */
+export function readAgentGuide(type = 'fact') {
+  const p = join(REPO, 'spec/agent', String(type), 'guide.md')
+  return existsSync(p) ? readFileSync(p, 'utf8') : null
 }
 
-/** 画布尺寸的默认假设（MCP 报"适配缩放"时用）与字段表生成器，转出去给外部用。 */
-export { CANVAS, describeFactSchema }
+/** 画布尺寸的默认假设（MCP 报"适配缩放"时用） */
+export { CANVAS, listKnowledgeTypes }
+
+/**
+ * 字段表，**按大类取**。
+ *
+ * 原先这里直接调 describeFactSchema()，等于把 fact 写死在工具里：
+ * 等关系图做出来，整条路要返工。现在从注册表拿，加新大类时工具一行不用改。
+ */
+export function describeSchema(type = 'fact') {
+  const k = knowledgeOf(type)
+  if (!k) return { ok: false, reason: unknownType(type) }
+  return { ok: true, text: k.describe() }
+}
+
+/** 报"你要的这个大类还没有"时统一用的话 */
+function unknownType(type) {
+  const known = listKnowledgeTypes()
+  const list = known.map((t) => `${t.type}（${t.label}）`).join('、')
+  return `还没有 ${type} 这一类的参考资料。目前有：${list || '（一个都没有）'}。`
+}

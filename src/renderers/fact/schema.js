@@ -101,6 +101,18 @@ export function describeFactSchema() {
 }
 
 export const factKnowledge = {
+  /** 大类的名字，工具里报"目前有哪几类"要用 */
+  label: '事实图',
+
+  /**
+   * 字段元数据与它的渲染函数。
+   * 放进 knowledge 而不是各自散着，是为了让注册表能**按大类**取到：
+   * MCP 的 antu_schema 传 type 就能拿到对应大类的字段表，
+   * 不必像原先那样把 fact 写死在工具里。
+   */
+  fields: FACT_FIELDS,
+  describe: describeFactSchema,
+
   /**
    * 校验一份 fact 规范，返回错误数组。
    * 规则在 timeline/grid.js：**校验与排布共用同一份计算**，两处不会各说各话。

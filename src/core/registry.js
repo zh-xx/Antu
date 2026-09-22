@@ -38,7 +38,22 @@ const knowledge = new Map()
 export function registerKnowledge(type, k) {
   if (!type) throw new Error('registerKnowledge: type 不能为空')
   if (!k?.validate) throw new Error('registerKnowledge: 缺少 validate')
+  if (!k?.describe) throw new Error('registerKnowledge: 缺少 describe（给 agent 的字段表）')
   knowledge.set(type, k)
+}
+
+/**
+ * 取某大类的全部知识。
+ * 给 agent 的参考资料都从这里出：字段表（fields/describe）、校验、有哪些画法。
+ * 这样加一个新大类时，工具那边一行都不用改。
+ */
+export function knowledgeOf(type) {
+  return knowledge.get(type)
+}
+
+/** 已登记知识的大类。用于告诉 agent"目前有哪几类"。 */
+export function listKnowledgeTypes() {
+  return [...knowledge.entries()].map(([type, k]) => ({ type, label: k.label ?? type }))
 }
 
 /** 取某大类的校验函数。没注册就返回 undefined（表示不校验）。 */

@@ -31,7 +31,7 @@ import { launchBrowser, findChrome } from '../lib/chrome.mjs'
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
 import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
-import { readExample, listExamples, listAgentSpecs } from '../mcp/engine.mjs'
+import { readExample, listExamples, listAgentGuides, describeSchema } from '../mcp/engine.mjs'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 
@@ -149,7 +149,7 @@ function checkData() {
 
   // agent 示例是"能跑的数据"，不是文档：schema 一改它们就会失败。
   // 这一条是第 14 条那个设计的落点，保证它们不会悄悄漂移。
-  const agentDir = join(REPO, 'examples/agent')
+  const agentDir = join(REPO, 'examples/agent/fact')
   if (existsSync(agentDir)) {
     const files2 = readdirSync(agentDir).filter((f) => f.endsWith('.json'))
     let bad = 0
@@ -176,13 +176,26 @@ function checkData() {
   if (leaked2.length) console.log('     混进来的：' + leaked2.join('、'))
   truthy('antu_spec 这个工具已撤掉', !serverSrc.includes("'antu_spec'"))
   truthy('资源只暴露 antu://agent/', serverSrc.includes('antu://agent/'))
-  truthy('agent 规格只有 spec/agent/ 下那几份', listAgentSpecs().length > 0)
+
+  // 给 agent 的参考资料必须**按大类**分发，不能把 fact 写死在工具里。
+  // 原先 antu_schema 直接调 describeFactSchema()、antu_guide 直接读一个固定文件：
+  // 等关系图做出来整条路要返工。现在三个工具都有 type 入参，从注册表取。
+  const hasTypeArg = (tool) =>
+    new RegExp(`registerTool\\(\\s*'${tool}'[\\s\\S]{0,1500}?type: z`).test(serverSrc)
+  truthy('antu_schema 有 type 入参', hasTypeArg('antu_schema'))
+  truthy('antu_guide 有 type 入参', hasTypeArg('antu_guide'))
+  truthy('antu_examples 有 type 入参', hasTypeArg('antu_examples'))
+  truthy('MCP 里没有写死 factKnowledge 之类', !/from '.*renderers\/fact\/schema\.js'/.test(serverSrc))
+  truthy('字段表按大类取得到', describeSchema('fact').ok === true)
+  truthy('没有的大类会明说"还没有"，不是空表', describeSchema('relationship').ok === false)
+  truthy('机制说明按大类取', listAgentGuides().includes('fact'))
 
   // 示例只认三类文件。原先 file 能取到 examples 下任何东西，
   // agent 以为在取示例，结果取回来一整份判决书（3500 字符）。
   truthy('examples/README.md 取不到（它不是示例）', readExample('examples/README.md') === null)
   truthy('examples 下越界的路径取不到', readExample('examples/agent/../fact-电梯劝烟案.json') === null)
-  truthy('小示例取得到', readExample('examples/agent/1-minimal.json') !== null)
+  truthy('小示例取得到', readExample('examples/agent/fact/1-minimal.json') !== null)
+  truthy('示例按大类分目录', listExamples({ type: 'fact' }).length > 0)
   truthy(
     '示例分三批（agent / real / raw）',
     listExamples({ group: 'agent' }).length > 0 &&

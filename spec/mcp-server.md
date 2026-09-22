@@ -45,11 +45,22 @@ agent 和人一样，**看不见自己画出来的东西**。校验全过、几�
 
 ### 给 agent 的（写 JSON 用的）
 
+**三个参考资料工具都按大类分发**：传 `type` 取哪一类图的东西，不传就是 `fact`。
+目前只有事实图一类，要别的大类会明确回一句"还没有 procedure 这一类"，
+而不是回一份空表（空表会被读成"这一类有，只是为空"）。
+
 | 工具 | 干什么 | 体量 | 要浏览器吗 |
 |---|---|---|---|
 | `antu_schema` | 字段表：哪个必填、什么类型、一句话说明 | 1777 字符 ≈ 1.2k token | 不要 |
 | `antu_guide` | 一页机制说明：事件画在哪、视角怎么换、"一格一事件"那条限制 | 1732 字符 ≈ 1.1k token | 不要 |
-| `antu_examples` | 列示例（默认给 `examples/agent/` 那六份小示例）；传 `file` 取任意一份 | 每份约 1 KB | 不要 |
+| `antu_examples` | 列示例（默认给 `examples/agent/fact/` 那六份小示例）；传 `file` 取任意一份 | 每份约 1 KB | 不要 |
+
+**这么设计是为了加新大类时不用返工。** 原先 `antu_schema` 直接调
+`describeFactSchema()`、`antu_guide` 直接读一个固定文件，等于把 fact 写死在工具里；
+关系图做出来那天，这三个工具全要改。现在字段表、机制说明、示例都按大类分，
+加一个新大类只需要：写它的 `schema.js`（含字段元数据）、
+在 `spec/agent/<大类>/` 放一份 `guide.md`、在 `examples/agent/<大类>/` 放几份小示例。
+**工具那边一行都不用改。**
 | `antu_validate` | 校验，逐条报错（带字段路径与事件 id） | —— | 不要 |
 | `antu_layout` | 算几何：内容尺寸、适配缩放、建议方向、每个视角能不能排下 | —— | 不要 |
 | `antu_render` | 生成自包含 HTML | —— | 不要 |
@@ -76,7 +87,7 @@ antu_schema → antu_guide → antu_examples → antu_validate
 **资源只有一个**：
 
 ```
-antu://agent/guide    给 agent 的机制说明（就是 spec/agent/guide.md）
+antu://agent/<大类>/guide    那个大类的机制说明（现在只有 antu://agent/fact/guide）
 ```
 
 只此一个。`spec/agent/` 下有什么，这里就有什么；上一层的东西一律不出现。

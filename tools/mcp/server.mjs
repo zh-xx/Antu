@@ -27,15 +27,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
-  describeFactSchema,
+  describeSchema,
+  listKnowledgeTypes,
   validate,
   layoutReport,
   formatLayoutReport,
   renderHtml,
   listExamples,
   readExample,
-  listAgentSpecs,
-  readAgentSpec,
+  listAgentGuides,
+  readAgentGuide,
 } from './engine.mjs'
 import { screenshot, findChrome } from './preview.mjs'
 
@@ -72,19 +73,29 @@ server.registerTool(
         .enum(['agent', 'real', 'raw'])
         .optional()
         .describe('列哪一批：agent（默认，小示例）/ real（真实案例）/ raw（原始材料，不是示例）'),
+      type: z.string().optional().describe('哪一类图，默认 fact（事实图）'),
     },
   },
-  async ({ file, group = 'agent' }) => {
+  async ({ file, group = 'agent', type = 'fact' }) => {
+    // 没有这一类的时候要说清"还没做"，不能回一句"0 份"——
+    // 那会被读成"这一类有示例，只是为空"。
+    if (!listKnowledgeTypes().some((t) => t.type === type)) {
+      const known = listKnowledgeTypes().map((t) => `${t.type}（${t.label}）`).join('、')
+      return FAIL(`还没有 ${type} 这一类的示例。目前有：${known || '（一个都没有）'}。`)
+    }
     if (file) {
       const one = readExample(file)
       if (!one) return FAIL(`没找到示例：${file}。先用不带参数的 antu_examples 看清单。`)
       return OK(`# ${file}\n\n\`\`\`json\n${one.text}\n\`\`\``)
     }
-    const rows = listExamples({ group })
+    const rows = listExamples({ type, group })
     const lines = rows.map(
       (r) =>
         `- ${r.file}  （${(r.bytes / 1024).toFixed(1)} KB）\n    ${r.title}\n    ${r.events} 条事件 / ${r.slots} 个时间点 / ${r.actors} 个主体\n    视角：${r.views.join('、')}`,
     )
+    if (rows.length === 0 && group === 'agent') {
+      return OK(`还没有 ${type} 这一类的示例。目前只有 fact。`)
+    }
     const head =
       group === 'real'
         ? `真实案例 ${rows.length} 份（每份 4~8 KB，供参考，写数据请先用默认那批小示例）：`
@@ -111,13 +122,19 @@ server.registerTool(
   {
     title: '字段表',
     description:
-      'fact 的字段清单：哪个必填、什么类型、一句话说明。**写 JSON 之前先看这个**，' +
+      '某一类图的字段清单：哪个必填、什么类型、一句话说明。**写 JSON 之前先看这个**，' +
       '约 1.2k token。看完接着调 antu_guide（事件画在哪）和 antu_examples（实际怎么写）。' +
       '跨字段的规则（引用是否悬空、时段是否倒着走等）不在这张表里，' +
-      '写完调 antu_validate 会逐条告诉你。',
-    inputSchema: {},
+      '写完调 antu_validate 会逐条告诉你。\n' +
+      'type 不传就是事实图。目前只有事实图一类，其余三类还没做。',
+    inputSchema: {
+      type: z.string().optional().describe('哪一类图，默认 fact（事实图）'),
+    },
   },
-  async () => OK(describeFactSchema()),
+  async ({ type = 'fact' }) => {
+    const r = describeSchema(type)
+    return r.ok ? OK(r.text) : FAIL(r.reason)
+  },
 )
 
 server.registerTool(
@@ -127,10 +144,18 @@ server.registerTool(
     description:
       '一页讲清"事件画在哪"：slots 定行、groupId 定侧、actorIds 定车道，' +
       '视角怎么换，以及那条"一格一事件"的限制和三种改法。写完 JSON 前看一遍，' +
-      '能省掉几轮校验。字段清单见 antu_schema，照着改的实际例子见 antu_examples。',
-    inputSchema: {},
+      '能省掉几轮校验。字段清单见 antu_schema，照着改的实际例子见 antu_examples。\n' +
+      'type 不传就是事实图。其余三类还没做。',
+    inputSchema: {
+      type: z.string().optional().describe('哪一类图，默认 fact（事实图）'),
+    },
   },
-  async () => OK(readAgentSpec('guide') ?? '（找不到 spec/agent/guide.md）'),
+  async ({ type = 'fact' }) => {
+    const text = readAgentGuide(type)
+    if (text) return OK(text)
+    const known = listAgentGuides()
+    return FAIL(`还没有 ${type} 这一类的机制说明。目前有：${known.join('、') || '（一个都没有）'}。`)
+  },
 )
 
 // ---------------------------------------------------------------
@@ -267,17 +292,19 @@ server.registerTool(
 // 那是错的：**给人看的文档不该出现在 agent 的选项里**，哪怕标上"内部"也一样——
 // agent 顺着列表读下去就会读，而那是写给设计者的上万字符。
 // 现在只挂 spec/agent/ 下的，前缀也不用分两套：这里只有一种读者。
-for (const s of listAgentSpecs()) {
+// 一个大类一份：antu://agent/<type>/guide
+for (const { type, label } of listKnowledgeTypes()) {
+  if (!readAgentGuide(type)) continue
   server.registerResource(
-    `agent-${s.name}`,
-    `antu://agent/${s.name}`,
+    `${type}-guide`,
+    `antu://agent/${type}/guide`,
     {
-      title: s.name,
-      description: `给 agent 的规格：${s.name}`,
+      title: `${label}的机制说明`,
+      description: `给 agent 的规格：${label}怎么画`,
       mimeType: 'text/markdown',
     },
     async (uri) => ({
-      contents: [{ uri: uri.href, mimeType: 'text/markdown', text: readAgentSpec(s.name) ?? '' }],
+      contents: [{ uri: uri.href, mimeType: 'text/markdown', text: readAgentGuide(type) ?? '' }],
     }),
   )
 }

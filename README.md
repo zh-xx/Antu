@@ -119,6 +119,8 @@ antu/
 | `antu_schema` | 字段表（从代码生成，约 1.2k token） | 不要 |
 | `antu_guide` | 一页机制说明（约 1.1k token） | 不要 |
 | `antu_examples` | 看示例（默认给六份 1 KB 的小示例） | 不要 |
+
+前三个都按大类分发（传 `type`，不传就是 `fact`），所以加新图类型时工具不用改。
 | `antu_validate` | 校验 JSON，逐条报错 | 不要 |
 | `antu_layout` | 算几何：多大、该用哪个方向、哪个视角摆不下 | 不要 |
 | `antu_render` | 出成品 HTML | 不要 |

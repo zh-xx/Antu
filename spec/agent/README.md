@@ -1,20 +1,35 @@
 # 给 agent 的规格
 
-**这个目录里的东西只给 agent 看。** 上一层的 `spec/*.md` 只给设计者看，两者不混。
+**这个目录里的东西只给 agent 看。** 上一层 `spec/*.md` 只给设计者看，两者不混。
 
 ```
-spec/agent/        agent 写 JSON 要用的（短、够用、可执行）
-spec/*.md          设计者的文档（讲"当初为什么这么定"，篇幅大）
+spec/agent/<大类>/guide.md     那个大类的机制说明（短、够用、可执行）
+spec/*.md                      设计者的文档（讲"当初为什么这么定"，篇幅大）
 ```
 
-| 文件 | 是什么 | 谁生成 |
-|---|---|---|
-| `guide.md` | 机制说明：事件画在哪、视角怎么换、"一格一事件"的限制 | 人手写 |
-| （字段表） | 哪个字段必填、什么类型、一句话说明 | **从代码生成**，不落文件 |
+现在只有事实图一类：
 
-字段表不放在这里，是因为它必须和校验器同源：它从
-`src/renderers/fact/schema.js` 的 `FACT_FIELDS` 生成，MCP 的 `antu_schema`
-直接调那个函数。落成文件就会有第二份、就会走偏。
+```
+spec/agent/
+├── README.md
+└── fact/
+    └── guide.md
+```
+
+加一个新大类时，在 `spec/agent/` 下加一个目录、放一份 `guide.md` 就行。
+MCP 那边的资源会自己多出一个 `antu://agent/<大类>/guide`，不用改代码。
+
+## 字段表不在这里
+
+字段表不落文件，因为**它必须和校验器同源**：它从
+`src/renderers/fact/schema.js` 的 `FACT_FIELDS` 生成，
+注册进 `core/registry.js` 的知识表，MCP 的 `antu_schema` 按大类取。
+落成文件就会有第二份、就会走偏。
+
+## 示例也不在这里
+
+给 agent 的示例在 `examples/agent/<大类>/` 下。同样按大类分，
+加新大类时加一个目录即可。
 
 ## 规矩
 
