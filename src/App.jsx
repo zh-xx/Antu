@@ -23,45 +23,8 @@ import { validateSpec } from './core/validate.js'
 import { getRenderer, listKinds, listTypes } from './core/registry.js'
 import { GRAPH_TYPE_LABELS, labelOf } from './core/labels.js'
 import DiagramHeader from './shell/DiagramHeader.jsx'
+import { readPrefs, writePrefs } from './shell/prefs.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
-
-/**
- * 卡片可选字段的默认值。
- * 标题与时间不在此列，它们固定在卡上。
- */
-const FIELD_DEFAULTS = { sources: false, actors: false, summary: true }
-
-/** 本地偏好的存储键。只此一处，改的时候不用满文件找。 */
-const PREFS_KEY = 'antu.prefs'
-
-/**
- * 外部预设：只有 MCP 的 antu_preview 会用到。
- * 它要能指定"用哪个方向、开哪些字段、看第几个视角"来截图，
- * 又不能污染用户自己的偏好，所以走一个一次性的全局，而不是写 localStorage。
- */
-const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
-
-/**
- * 本地偏好的读写。关键点：**只在用户真的动过开关时才写入**。
- * 如果一进来就把默认值整份写进去，那份记录就会压过默认值，
- * 以后改默认值（比如把摘要改成默认显示）谁都不会生效。
- */
-function readPref(key) {
-  try {
-    const raw = window.localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : {}
-  } catch {
-    return {}
-  }
-}
-
-function writePref(key, patch) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify({ ...readPref(key), ...patch }))
-  } catch {
-    /* 隐私模式下写不进去，忽略即可 */
-  }
-}
 
 /** 渲染器不可用时的兜底说明 */
 function FallbackInfo({ errors, spec, hasRenderer }) {
@@ -136,54 +99,19 @@ export default function App() {
     setSpec(errs.length ? null : inline)
   }, [])
 
-  // 底层格线：全局偏好。用户动过才记到本地。
-  const [showGrid, setShowGrid] = useState(() => readPref(PREFS_KEY).showGrid === true)
-  const toggleGrid = (value) => {
-    setShowGrid(value)
-    writePref(PREFS_KEY, { showGrid: value })
-  }
-
-  // 卡片上显示哪些可选字段。同样只记用户动过的那几个。
-  const [fields, setFields] = useState(() => ({
-    ...FIELD_DEFAULTS,
-    ...readPref(PREFS_KEY).fields,
-    ...(PRESET?.fields || {}),
-  }))
-  const toggleField = (key, value) => {
-    setFields((f) => ({ ...f, [key]: value }))
-    writePref(PREFS_KEY, { fields: { ...readPref(PREFS_KEY).fields, [key]: value } })
-  }
-
-  // 视角下标。一个页面只有一份数据，所以不需要"换图归零"。
-  const [viewIndex, setViewIndex] = useState(PRESET?.viewIndex ?? 0)
-
   // 按图记的偏好用**标题**当键：它写在数据里，开发和成品都有，
   // 而且不依赖文件名（成品根本没有文件名）。
   const specKey = spec?.title || ''
 
-  // 时间轴方向。手动设过的按图记住，没设过的按槽数算：
-  // 槽 ≥ 5 竖向，槽 ≤ 4 横向。横向一格宽 316，一屏减掉标题列只排得下约 3.8 个槽。
-  const [orientationPrefs, setOrientationPrefs] = useState(
-    () => readPref(PREFS_KEY).orientations || {},
-  )
-  const slotCount = Array.isArray(spec?.slots) ? spec.slots.length : 0
-  const orientation =
-    PRESET?.orientation || orientationPrefs[specKey] || (slotCount >= 5 ? 'vertical' : 'horizontal')
-  const toggleOrientation = (next) => {
-    const map = { ...orientationPrefs, [specKey]: next }
-    setOrientationPrefs(map)
-    writePref(PREFS_KEY, { orientations: map })
-  }
-
   // 子类是渲染层的选择，不在数据里：从注册表按大类查出有哪些画法。
   // 手动选过的按图记着，没选过就用第一个（默认画法）。
   const kinds = useMemo(() => (spec ? listKinds(spec.type) : []), [spec])
-  const [kindPrefs, setKindPrefs] = useState(() => readPref(PREFS_KEY).kinds || {})
+  const [kindPrefs, setKindPrefs] = useState(() => readPrefs().kinds || {})
   const kind = kinds.find((k) => k.kind === kindPrefs[specKey])?.kind ?? kinds[0]?.kind ?? null
   const selectKind = (next) => {
     const map = { ...kindPrefs, [specKey]: next }
     setKindPrefs(map)
-    writePref(PREFS_KEY, { kinds: map })
+    writePrefs({ kinds: map })
   }
   const Renderer = spec ? getRenderer(spec.type, kind) : null
   const ready = errors.length === 0 && Renderer
@@ -201,17 +129,7 @@ export default function App() {
 
       {ready ? (
         <ErrorBoundary>
-          <Renderer
-          spec={spec}
-          showGrid={showGrid}
-          onToggleGrid={toggleGrid}
-          fields={fields}
-          onToggleField={toggleField}
-          viewIndex={viewIndex}
-          onSelectView={setViewIndex}
-          orientation={orientation}
-          onToggleOrientation={toggleOrientation}
-          />
+          <Renderer spec={spec} />
         </ErrorBoundary>
       ) : (
         <FallbackInfo errors={errors} spec={spec} hasRenderer={!!Renderer} />

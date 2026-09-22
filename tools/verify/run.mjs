@@ -212,6 +212,44 @@ async function checkRender(sampleFile) {
     eq('控制台错误数', browser.errors.length, 0)
     if (browser.errors.length) console.log('     ' + browser.errors.slice(0, 3).join('\n     '))
 
+    // 四块浮层各在应该在的角上。
+    // 这一条防的是"样式基础层丢了"那类问题：卡片、列标题、缩放都还在，
+    // 但全部挤到左上角。数量和内容断言查不出来，只有位置查得出来。
+    // 真实发生过一次：重构成 TimelineRenderer 时弄丢了 React Flow 的基础样式。
+    const boxes = await browser.eval(`(() => {
+      const W = innerWidth, H = innerHeight
+      const box = (sel) => {
+        const e = document.querySelector(sel)
+        if (!e) return null
+        const r = e.getBoundingClientRect()
+        return { l: r.left, t: r.top, w: r.width, h: r.height, cx: r.left + r.width / 2 }
+      }
+      return {
+        视口: { W, H },
+        标签卡: box('.antu-header'),
+        缩放: box('.react-flow__controls'),
+        缩略图: box('.react-flow__minimap'),
+        胶囊: box('.antu-dock'),
+      }
+    })()`)
+    const { W, H } = boxes.视口
+    truthy(
+      '标签卡在左上',
+      boxes.标签卡 && boxes.标签卡.l < W * 0.2 && boxes.标签卡.t < H * 0.2,
+    )
+    truthy(
+      '缩放控件在左下',
+      boxes.缩放 && boxes.缩放.t > H * 0.5 && boxes.缩放.l < W * 0.2,
+    )
+    truthy(
+      '缩略图在右下',
+      boxes.缩略图 && boxes.缩略图.t > H * 0.5 && boxes.缩略图.l > W * 0.5,
+    )
+    truthy(
+      '控制胶囊在下方居中',
+      boxes.胶囊 && boxes.胶囊.t > H * 0.8 && Math.abs(boxes.胶囊.cx - W / 2) < W * 0.1,
+    )
+
     mkdirSync(OUT, { recursive: true })
     await browser.screenshot(SHOT)
     ok('截图已存', SHOT.replace(REPO + '/', ''))

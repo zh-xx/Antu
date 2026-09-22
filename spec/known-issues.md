@@ -14,33 +14,6 @@
 
 ## 待修
 
-### 5. 画布那套代码还住在渲染器里，没搬到 `shell/` `待修`
-
-**现象。** `spec/fact-rendering.md` §1 明写：
-
-> **画布由引擎统一提供**：缩放、平移、小地图、节点点击这些公共能力只写一次，
-> 每个渲染器不重复实现。
-
-但实际代码里，画布那一套全在 `src/renderers/fact/index.jsx` 里：
-`ReactFlow` 容器、`useNodesState` 与节点回写、`fitView` 与首帧无动画、
-动态 `minZoom`、`translateExtent`、`ResizeObserver`、
-`Background / Controls / MiniMap / Panel` 的摆放。
-
-`src/shell/` 目前只有一个文件、80 行（左上角标签卡），**画布那部分一行都没有**。
-
-**代价。** 加第二个渲染器（泳道图、关系图……）要**把这七八十行复制一遍**，
-而它们和"画什么图"毫无关系。改一处（比如调 fitView 的留白）就得记得改两处——
-正是架构文档 §1 想避免的事。
-
-**在哪。** 拆 `src/renderers/fact/index.jsx`（257 行，其中约 80 行是画布外壳），
-搬进 `src/shell/`。
-
-**建议做法。** 抽一个 `shell/Canvas.jsx`：接 `graph` 和 `children`（渲染器自己的浮层），
-内部管住画布、视口、缩放上下限、平移边界。渲染器只负责"把 JSON 变成 nodes"，
-不再碰 React Flow。**和第 4 条（拆 timelineLayout）是两件事，别混。**
-
----
-
 ### 13. `antu_spec` 端出去的是给人看的规范，不是给 agent 用的 `待修`
 
 **现象。** `antu_spec` 工具（和 `antu://spec/*` 资源）把 `spec/` 下的文档**原样**端给 agent。
@@ -155,35 +128,6 @@ antu_examples  默认给 agent 那批（小、全、能跑）
 
 ---
 
-### 15. `App` 和渲染器之间的接口里混进了具体大类的概念 `待修`
-
-**现象。** `App` 是通用外壳（它只该知道"有一份 spec，按 type 找渲染器"），
-但它传给渲染器的 9 个 props 里，8 个是 fact / timeline 的概念：
-
-```jsx
-<Renderer
-  spec={spec}
-  showGrid={showGrid}          onToggleGrid={toggleGrid}          // 底层格线（timeline）
-  fields={fields}              onToggleField={toggleField}        // 卡片字段（fact）
-  viewIndex={viewIndex}        onSelectView={setViewIndex}        // 视角（fact）
-  orientation={orientation}    onToggleOrientation={...}          // 方向
-/>
-```
-
-`App.jsx` 里那六十来行状态代码（`fields`、`orientation`、`viewIndex`、`showGrid`
-加它们的 localStorage 读写）**全是事实图的呈现状态**。
-
-**代价。** 加第二个大类（关系图）时，`App` 要么给它传一堆用不上的 props，
-要么再加一堆条件分支。而且这些状态本来属于渲染器，放在 `App` 里
-是为了绕开"切换画法时渲染器会重挂载"这个问题（代码里有注释说明），
-属于用错位置的补救。
-
-**建议做法。** 和 `#5`（画布搬到 `shell/`）一起做：把"渲染器边界"一次理清。
-`App` 只传 `spec`；呈现状态归渲染器自己，需要跨重挂载保留的（格线这类）
-放进一个共享的偏好模块（`readPref` / `writePref` 已经在了，把状态也挪过去）。
-
----
-
 ## 反复踩的坑（不是待修项，是规矩）
 
 这三条这个项目已经踩过两三次，写在这里当规矩。
@@ -200,6 +144,11 @@ antu_examples  默认给 agent 那批（小、全、能跑）
 **三、改完要看图，不能只看结构。**
 有几次缺陷（适应视图按钮失效、标签卡样式被删导致画布被挤、箭头朝向不对）
 **校验和 DOM 断言全是过的**，只有截图才看得出来。
+
+**七、内容对了不等于样子对了。**
+有一类缺陷是"东西都在、位置全错"：CSS 基础层丢了，卡片照常渲染、数量照常对，
+只是四块浮层挤到左上角。数量与内容断言一条都查不出。
+**验证器要断言位置**：谁在哪个角、谁居中。而且改完必须看图。
 
 **六、注册是副作用，忘了就静默失效。**
 知识注册靠 `import '…/renderers/index.js'` 触发。忘了这行，`validateSpec`
@@ -220,6 +169,41 @@ antu_examples  默认给 agent 那批（小、全、能跑）
 ---
 
 ## 已修
+
+### 画布搬进外壳，App 的接口瘦下来（已修，见下一提交；解决第 5、15 条）
+
+**一次改动解决两条**，因为它们是同一层边界的两面。
+
+**第 5 条。** 画布那一套（React Flow 容器、视口、缩放上下限、平移边界、
+缩略图、尺寸变化时重新适配、节点尺寸回写、装饰节点的 1×1 约定）原先全在
+`TimelineRenderer.jsx` 里，而它们跟"是不是时间图"毫无关系。
+现在搬进 `src/shell/Canvas.jsx`，渲染器只交出一个 `graph` 和它自己的浮层内容，
+**不再 import React Flow**。
+
+**第 15 条。** `App` 原先给渲染器传 9 个 props，其中 8 个是 fact/timeline 的概念
+（字段、视角、方向、格线）。现在**只传 `spec`**。
+呈现状态归渲染器自己管，本地偏好搬到 `src/shell/prefs.js`（键名与"只记动过的"
+这条规矩只有一份）。
+
+```
+App.jsx   217 行 → 139 行
+渲染器     258 行 → 210 行
+新增      shell/Canvas.jsx（画布外壳）、shell/prefs.js（偏好读写）
+```
+
+**过程中验证器漏了一件事，然后把它补上了。**
+
+重构时我改 CSS 顺手删掉了 `.antu-canvas` 的 `position: relative`，
+又丢掉了 React Flow 的基础样式（那行原先在渲染器里 `import`，重构时没了）。
+症状是四块浮层全挤到左上角，但 **25 项断言里没有一条查得出**，因为
+卡片、列标题、缩放、胶囊都还在、数量也对。
+
+看了截图才发现。于是给验证器加了五条**位置断言**：
+标签卡在左上、缩放控件在左下、缩略图在右下、控制胶囊在下方居中。
+
+基础样式改在 `styles.css` 顶部用 `@import` 引入，并注明必须放最前面
+（它是底，下面的覆盖样式要压在它上面）。这件事记进「反复踩的坑」。
+
 
 ### 拆开了 timeline/layout.js（已修，见下一提交）
 
