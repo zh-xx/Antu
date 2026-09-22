@@ -131,8 +131,6 @@ export default function FactRenderer({
     ]
   }, [graph])
 
-  const slots = Array.isArray(spec.slots) ? spec.slots : []
-
   // 量画布容器的实际尺寸，用来算“刚好装下整张图”的缩放倍数
   const canvasRef = useRef(null)
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })

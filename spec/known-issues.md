@@ -219,27 +219,6 @@ src/renderers/fact/              事实图级（所有子类共用）
 
 ---
 
-### 8. 没有 linter，未定义的变量能过构建 `待修`
-
-**现象。** `devDependencies` 只有 `@vitejs/plugin-react` 和 `vite`，没有 eslint 之类的检查，
-也没有 `lint` 脚本。
-
-**实测（往源码里塞一个未定义的变量）：**
-
-```
-在 timelineLayout.js 末尾加一行  const _typo_check = notDefinedAnywhere + 1
-npm run build  →  ✓ built in 91ms        ← 照样通过
-（真正出错要到运行时模块求值，那时表现为整页白屏）
-```
-
-**代价。** 这个项目已经因此白屏过两次：一次是删函数时连带删掉了 `actorLinesOf`，
-一次是 `current.path` 在声明之前被引用（TDZ）。**两次 build 都是过的。**
-
-**建议做法。** 装一个 linter（eslint 或就用 oxc），加 `npm run lint`，
-把 `no-undef`、`no-unused-vars` 打开。成本很低，防的正是上面那类错。
-
----
-
 ### 9. HTML 模板与转义规则写了两份 `待修`
 
 **现象。** 生成自包含 HTML 的那段逻辑（转义规则 + HTML 骨架 + 标题转义）
@@ -441,6 +420,28 @@ antu_examples  默认给 agent 那批（小、全、能跑）
 ---
 
 ## 已修
+
+### 装上了 linter（已修，见下一提交）
+
+**原问题。** `devDependencies` 里没有任何检查工具，`no-undef` 之类一条都没有。
+实测往源码里加一行 `const x = notDefinedAnywhere + 1`，`npm run build` 照样通过，
+直到运行时模块求值才炸，表现为整页白屏。这个项目因此白屏过两次。
+
+**改法。** 装 eslint + `@eslint/js` + `globals`，配 `eslint.config.js`，
+加 `npm run lint` / `lint:fix`。规则只开真能防错的五条（`no-undef`、`no-unused-vars`、
+`no-unused-expressions`、`curly` 关掉、控制台对齐用的全角空格放行），不做风格检查。
+
+**实测。**
+
+```
+第一次跑就抓出 5 处：2 处是全角空格误报（已放行），3 处是真死变量：
+  App.jsx 的 kindLabel、ColumnHeaderNode 的 side、index.jsx 的 slots
+清掉之后 lint 全绿。
+验收：把 notDefinedAnywhere 塞回去 → lint 报 'notDefinedAnywhere' is not defined ✅
+```
+
+**顺带。** 三个死变量清掉后，浏览器实测卡片 9 张、列标题三条正确、缩放 0.851，与改前一致。
+
 
 ### 数据来源的分叉（已修，见 `a934961`）
 

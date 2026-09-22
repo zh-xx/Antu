@@ -181,8 +181,6 @@ export default function App() {
     setKindPrefs(map)
     writePref('antu.prefs', { kinds: map })
   }
-  const kindLabel = kinds.find((k) => k.kind === kind)?.label
-
   const Renderer = spec ? getRenderer(spec.type, kind) : null
   const ready = errors.length === 0 && Renderer
 
