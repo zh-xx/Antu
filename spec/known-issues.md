@@ -157,6 +157,66 @@ fact 的全部校验**就是排布本身**——在 `factGrid.js` 里边排边�
 卡片几何移进 `renderers/fact/`（保持纯 `.js`，好让 Node 与 MCP 照旧调用）；
 `labels.js` 拆成通用与 fact 两份。
 
+**更正（2026-09，见第 7 条）。** 上面把 `factGrid.js` 写成"fact 专属"不够准。
+它的内容是**行 = 槽、列 = 站位 × 主体**，那是**时间图的网格**，不是事实图级的规则。
+所以它该去的是 `renderers/fact/timeline/`，不是 `renderers/fact/`。
+
+---
+
+### 7. `fact` 和它的子类 `timeline` 在目录上没分开 `待修`
+
+**现象。** `timeline` 只是 fact 的一个子类，但代码看起来像 `fact == timeline`。
+`src/renderers/fact/` 下 10 个文件，只有 2 个是事实图级的：
+
+| 文件 | 实际是哪一级 |
+|---|---|
+| `EventNode.jsx` | **fact 级**：事件卡片，任何 fact 子类都要显示事件 |
+| `previewContext.js` | **fact 级**：卡片浮层的悬停/钉住状态 |
+| `ControlDock.jsx` | **混合**：视角与字段是 fact 级；格线是 timeline 级 |
+| `index.jsx` | timeline 级：网格画布组装 |
+| `timelineLayout.js` | timeline 级：排布转坐标 |
+| `AxisLineNode.jsx` | timeline 级：轴线、轴点、箭头 |
+| `ColumnHeaderNode.jsx` | timeline 级：列标题（位置由网格定） |
+| `LinkLayerNode.jsx` | timeline 级：引线 |
+| `CellLayerNode.jsx` | timeline 级：格子层 |
+| `register.js` | 注册（目前只指向 timeline） |
+
+更明显的一处：`src/core/factGrid.js` **名字叫 fact，内容却是时间图的网格**。
+它开头自己写着"行 = 槽（slots 下标）、列 = 站位 × 主体"，这是**排布方式**，
+是子类的选择，不是事实图级的规则。事实图级的规则只有：字段必填、
+类型、`actorIds` / `groupId` / `sourceIds` 的引用完整性。
+
+**代价。** 加第二个子类（泳道图）时立刻暴露：
+
+- 根目录下会出现 `timelineLayout.js` 和 `swimlaneLayout.js` 并排，
+  但 `index.jsx` 只能有一个，两个子类的入口没法区分；
+- 共用件（事件卡片、卡片几何、视角开关）和专属件（网格、轴线、引线）
+  **看不出边界**，新子类该复用哪些、该自己写哪些，靠猜。
+
+**建议做法。** 在 `renderers/fact/` 下加一层放子类，事实图级的东西留在上一层：
+
+```
+src/renderers/fact/              事实图级（所有子类共用）
+├── schema.js                    字段规则、引用完整性校验
+├── EventNode.jsx                事件卡片
+├── cardGeometry.js              卡片几何
+├── ControlDock.jsx              fact 级开关（视角、字段）
+├── previewContext.js
+├── labels.js                    fact 级文案
+└── timeline/                    ← 时间图这一个子类
+    ├── grid.js                  行 = 槽、列 = 站位 × 主体（原 core/factGrid）
+    ├── layout.js                排布转坐标（原 timelineLayout）
+    ├── TimelineRenderer.jsx     组装（原 index.jsx）
+    ├── AxisLineNode.jsx
+    ├── ColumnHeaderNode.jsx
+    ├── LinkLayerNode.jsx
+    ├── CellLayerNode.jsx
+    └── register.js
+```
+
+**什么时候做。** **加第二个子类时必然要动**，那时一起做，不用提前。
+和第 4 条（拆 `timelineLayout.js`）可以合并成一次改动，因为动的都是这批文件。
+
 ---
 
 ## 反复踩的坑（不是待修项，是规矩）
