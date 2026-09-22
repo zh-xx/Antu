@@ -267,14 +267,14 @@ async function checkRender(sampleFile) {
         return { l: r.left, t: r.top, w: r.width, h: r.height, cx: r.left + r.width / 2 }
       }
       return {
-        视口: { W, H },
+        viewport: { W, H },
         标签卡: box('.antu-header'),
         缩放: box('.react-flow__controls'),
         缩略图: box('.react-flow__minimap'),
         胶囊: box('.antu-dock'),
       }
     })()`)
-    const { W, H } = boxes.视口
+    const { W, H } = boxes.viewport
     truthy(
       '标签卡在左上',
       boxes.标签卡 && boxes.标签卡.l < W * 0.2 && boxes.标签卡.t < H * 0.2,
