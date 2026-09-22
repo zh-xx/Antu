@@ -1,5 +1,7 @@
 # 案图 antu
 
+[![验证](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
+
 > 法律可视化渲染内核：**一份 JSON 进去，一个能双击打开的 HTML 出来。**
 
 ![截图](assets/screenshot.png)
@@ -30,8 +32,12 @@ npm run diagram -- examples/fact-电梯劝烟案.json
 ### 本地开发
 
 ```bash
-npm run dev        # → http://localhost:5200
+npm run dev              # → http://localhost:5200，默认打开第一份示例
+npm run dev 后换一份    # 加 ?example=3 按清单取，或 ?spec=examples/某份.json
 ```
+
+开发时数据也走"内联"这条路：`vite.config.js` 里的插件把一份 JSON 注进页面，
+和成品完全一致。示例清单住在那个插件里，**成品里一个字节都不带**。
 
 ## 现在能画什么
 
@@ -77,6 +83,7 @@ antu/
 │   ├── fact-rendering.md           画面元素、可调参数、为什么这么画
 │   ├── source-schema-draft.md      来源的 7 类字段
 │   ├── mcp-server.md               MCP 服务端：给 agent 的入口
+│   ├── known-issues.md             待修清单（发现的问题、反复踩的坑）
 │   └── react-flow-features.md      画布库的用法与踩坑记录
 ├── examples/                   ← 示例数据；raw/ 里是真实案例的原始文书
 ├── src/
@@ -109,12 +116,16 @@ antu/
 
 | 工具 | 干什么 | 要浏览器吗 |
 |---|---|---|
-| `antu_spec` | 读规范 | 不要 |
-| `antu_examples` | 看示例（含两个真实案例） | 不要 |
+| `antu_schema` | 字段表（从代码生成，约 1.2k token） | 不要 |
+| `antu_guide` | 一页机制说明（约 1.1k token） | 不要 |
+| `antu_examples` | 看示例（默认给六份 1 KB 的小示例） | 不要 |
 | `antu_validate` | 校验 JSON，逐条报错 | 不要 |
 | `antu_layout` | 算几何：多大、该用哪个方向、哪个视角摆不下 | 不要 |
 | `antu_render` | 出成品 HTML | 不要 |
 | `antu_preview` | 截图返回，用眼睛检查 | 要（复用本机 Chrome） |
+| `antu_spec` | 读设计文档（写 JSON 用不上） | 不要 |
+
+**agent 的参考资料只有 2.3k token**（schema + guide），不再需要读那几万字符的人类文档。
 
 细节见 `spec/mcp-server.md`。
 
@@ -135,11 +146,16 @@ npm run diagram -- 你的.json
 
 ## 命令
 
-| 命令 | 干什么 |
-|---|---|
-| `npm run dev` | 本地开发服务器（5200 端口） |
-| `npm run build` | 构建开发版 |
-| `npm run build:engine` | 构建出成品用的引擎（单文件 iife） |
+| 命令 | 干什么 | 产物 |
+|---|---|---|
+| `npm run dev` | 本地开发服务器（5200 端口），数据由插件注进页面 | 不产出文件 |
+| `npm run build` | 打一份"普通网站包"，给本机预览或以后托管演示用 | `dist/`（**固定显示第一份示例**，`?example=` 只在开发服务器有效） |
+| `npm run build:engine` | 打成品要用的引擎（单文件 iife，能内联进一个 HTML） | `dist-engine/` |
 | `npm run diagram -- x.json [-o y.html]` | 把一份 JSON 变成自包含 HTML，`--rebuild` 强制重建引擎 |
 | `npm run mcp` | 起 MCP 服务端（给 agent 用） |
 | `npm run mcp:test` | 用自带客户端把 MCP 全流程走一遍 |
+| `npm run verify` | **一条命令验完**：构建、lint、数据、渲染、MCP，并出一张截图 |
+| `npm run verify:fast` | 同上，跳过要浏览器的部分（快） |
+
+推上去之后 CI 会自动跑这两条（见 `.github/workflows/verify.yml`），
+所以"别人 clone 下来能不能跑通"不用靠人说，看徽章就行。

@@ -27,6 +27,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
+  describeFactSchema,
   validate,
   layoutReport,
   formatLayoutReport,
@@ -54,26 +55,71 @@ server.registerTool(
   {
     title: '看示例数据',
     description:
-      '列出仓库里的示例 JSON（含两个真实案例：人脸识别第一案、电梯劝烟案）。' +
-      '写自己的 JSON 之前先看一份真实案例怎么写，比只读规范快。不传参数就列清单；' +
-      '传 file 就把那一份的完整内容取回来。',
+      '列示例、或取某一份的完整内容。**不传参数时给的是小示例**' +
+      '（尽量小、且每份只讲一件事，写 JSON 之前先看这个）。' +
+      '真实案例也可以取（group="real" 列出），但它们长得多，供参考用。',
     inputSchema: {
-      file: z.string().optional().describe('要取的那一份，如 examples/fact-电梯劝烟案.json。不传则只列清单'),
+      file: z.string().optional().describe('要取的那一份，如 examples/agent/1-minimal.json。不传则列清单'),
+      group: z
+        .enum(['agent', 'real'])
+        .optional()
+        .describe('列哪一批：agent（默认，小示例）或 real（真实案例）'),
     },
   },
-  async ({ file }) => {
+  async ({ file, group = 'agent' }) => {
     if (file) {
       const one = readExample(file)
       if (!one) return FAIL(`没找到示例：${file}。先用不带参数的 antu_examples 看清单。`)
       return OK(`# ${file}\n\n\`\`\`json\n${one.text}\n\`\`\``)
     }
-    const rows = listExamples()
+    const rows = listExamples({ group })
     const lines = rows.map(
       (r) =>
-        `- ${r.file}\n    ${r.title}\n    ${r.events} 条事件 / ${r.slots} 个时间点 / ${r.actors} 个主体\n    视角：${r.views.join('、')}`,
+        `- ${r.file}  （${(r.bytes / 1024).toFixed(1)} KB）\n    ${r.title}\n    ${r.events} 条事件 / ${r.slots} 个时间点 / ${r.actors} 个主体\n    视角：${r.views.join('、')}`,
     )
-    return OK(`示例 ${rows.length} 份：\n\n${lines.join('\n')}`)
+    const head =
+      group === 'real'
+        ? `真实案例 ${rows.length} 份（每份 4~8 KB，供参考）：`
+        : `小示例 ${rows.length} 份（每份 1 KB 上下，建议先看 1-minimal）：`
+    const tail =
+      group === 'real'
+        ? ''
+        : '\n\n另有一批真实案例（含人脸识别第一案、电梯劝烟案），用 group="real" 列出。'
+    return OK(`${head}\n\n${lines.join('\n')}${tail}`)
   },
+)
+
+// ---------------------------------------------------------------
+// 给 agent 的参考资料：字段表与机制说明
+// ---------------------------------------------------------------
+// 这两样是**给 agent 的**，和 spec/ 下那几份人类文档不是一回事：
+// 人类文档讲"当初为什么这么定"，agent 只要"怎么填、怎么改"。
+// 字段表从代码里的 FACT_FIELDS 生成（见 renderers/fact/schema.js），
+// 所以不会和校验器各说一套。
+server.registerTool(
+  'antu_schema',
+  {
+    title: '字段表',
+    description:
+      'fact 的字段清单：哪个必填、什么类型、一句话说明。**写 JSON 之前看这个**，' +
+      '约 1.2k token。跨字段的规则（引用是否悬空、时段是否倒着走等）不在这里，' +
+      '写完调 antu_validate 会逐条告诉你。',
+    inputSchema: {},
+  },
+  async () => OK(describeFactSchema()),
+)
+
+server.registerTool(
+  'antu_guide',
+  {
+    title: '机制说明',
+    description:
+      '一页讲清"事件画在哪"：slots 定行、groupId 定侧、actorIds 定车道，' +
+      '视角怎么换，以及那条"一格一事件"的限制和三种改法。写完 JSON 前看一遍，' +
+      '能省掉几轮校验。',
+    inputSchema: {},
+  },
+  async () => OK(readSpec('agent-guide') ?? '（找不到 agent-guide.md）'),
 )
 
 // ---------------------------------------------------------------
@@ -84,10 +130,11 @@ server.registerTool(
 server.registerTool(
   'antu_spec',
   {
-    title: '读规范',
+    title: '读设计文档',
     description:
-      '取案图的规范文档。**写 JSON 之前至少读 fact-schema-draft 和 fact-timeline-rules 这两份。** ' +
-      '不传 name 就列出有哪些文档。',
+      '取 `spec/` 下的设计文档。**写 JSON 不需要读这些**：它们是写给设计者的，' +
+      '讲的是"当初为什么这么定"，篇幅大。要填数据请用 antu_schema 加 antu_guide。' +
+      '只有在需要理解某条规则背后的理由时才用这个工具。不传 name 就列出有哪些文档。',
     inputSchema: {
       name: z
         .string()

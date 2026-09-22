@@ -1,3 +1,8 @@
+/* React Flow 自带的基础样式（缩放控件、缩略图、面板的定位都靠它）。
+   **必须放在最前面**：它是底，下面的覆盖样式要压在它上面。
+   原先这行在渲染器里 import，重构时被弄丢了，症状是四块浮层全挤到左上角。 */
+@import '@xyflow/react/dist/style.css';
+
 /* ===== 案图渲染内核 · 样式 =====================================
    配色走「素净」：白底、细灰线、小圆角、几乎不用阴影。
    颜色只用来做标记：第 1 侧蓝、第 2 侧红、轴线灰。
@@ -144,17 +149,33 @@
 
 .antu-error-title { font-weight: 600; color: #b91c1c; margin-bottom: 6px; }
 .antu-error-hint { color: var(--antu-text-3); }
+/* 出错时的堆栈：等宽、可横向滚、限高，别把整页撑开 */
+.antu-error-trace {
+  max-height: 240px;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--antu-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--antu-text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 /* ============================================================
    fact 渲染器
    ============================================================ */
 
+/* ---------- 画布（外壳提供，见 shell/Canvas.jsx） ---------- */
+/* 渲染器的根容器：只负责把自己撑满，画布本身在外壳里 */
 .antu-fact { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
 
-/* ---------- 画布 ---------- */
-.antu-fact-body { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
-.antu-fact-canvas {
-  position: relative;      /* 抽屉的定位基准 */
+.antu-canvas {
+  position: relative;      /* 必须留：里面的缩放控件、缩略图、控制胶囊都相对它绝对定位 */
   flex: 1 1 auto;
   min-width: 0;
   background: var(--antu-canvas);
@@ -281,7 +302,7 @@
   overflow: visible;
   pointer-events: none;
 }
-.antu-fact-canvas.show-grid .antu-cells { display: block; }
+.antu-canvas.show-grid .antu-cells { display: block; }
 .antu-cell {
   fill: none;
   stroke: #cbd5e1;   /* 辅助线里最浅的一级，退到背景里 */
@@ -387,6 +408,11 @@
 .antu-card-foot { flex: none; }
 
 /* 卡片内容：标题在上、时间在下，中间用 margin-top:auto 顶开 */
+/* 键盘聚焦时给个看得见的圈，否则不知道焦点在哪 */
+.antu-card:focus-visible {
+  outline: 2px solid var(--antu-side1);
+  outline-offset: 2px;
+}
 .antu-card-label {
   /* 字号来自 core/cardGeometry.js：它是算「一行放几个字」的除数 */
   font-size: var(--antu-label-font, 13px);
@@ -724,3 +750,19 @@
 .antu-error-title { font-weight: 600; color: #b91c1c; margin-bottom: 6px; }
 .antu-error-list { margin: 0; padding-left: 18px; color: var(--antu-text-2); }
 .antu-error-hint { color: var(--antu-text-3); }
+/* 出错时的堆栈：等宽、可横向滚、限高，别把整页撑开 */
+.antu-error-trace {
+  max-height: 240px;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--antu-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--antu-text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

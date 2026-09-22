@@ -1,0 +1,43 @@
+{
+  "type": "fact",
+  "title": "视角：同一份数据，两种看法",
+  "actors": [
+    { "id": "a-1", "name": "华远贸易" },
+    { "id": "a-2", "name": "鑫城建材" }
+  ],
+  "groups": [
+    { "id": "g-1", "label": "按约定履行" },
+    { "id": "g-2", "label": "偏离约定" }
+  ],
+  "views": [
+    {
+      "label": "双方对照",
+      "splitBy": "actor",
+      "side1": { "label": "华远贸易", "actors": ["a-1"] },
+      "side2": { "label": "鑫城建材", "actors": ["a-2"] },
+      "axis": { "label": "双方共同" }
+    },
+    { "label": "按性质分侧", "splitBy": "group" },
+    { "label": "只看华远贸易", "splitBy": "actor", "side1": { "actors": ["a-1"] }, "side2": { "actors": [] } }
+  ],
+  "slots": [
+    {
+      "events": [
+        { "id": "ev-1", "date": "2023-03-10", "label": "签订借款合同",
+          "actorIds": ["a-1", "a-2"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-2", "date": "2023-03-12", "label": "华远贸易放款",
+          "groupId": "g-1", "actorIds": ["a-1"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-3", "date": "2024-03-11", "label": "鑫城建材逾期未还",
+          "groupId": "g-2", "actorIds": ["a-2"] }
+      ]
+    }
+  ]
+}

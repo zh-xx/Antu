@@ -65,7 +65,7 @@ function formatDuration(start, end) {
 
 const EventNode = memo(function EventNode({ data }) {
   const { event, actorNames, sources, groupIndex, row, cardW, cardH, labelLines, fields = {}, isH } = data
-  const { hoveredId, pinnedId, unpin } = useContext(PreviewContext)
+  const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
 
   const isPinned = pinnedId === event.id
   // 已经钉住一张时，别的卡不再冒预览，免得两层浮层打架
@@ -75,7 +75,25 @@ const EventNode = memo(function EventNode({ data }) {
   const duration = event.dateEnd ? formatDuration(event.date, event.dateEnd) : ''
 
   return (
-    <div className={`antu-card g${groupIndex}`} style={{ width: cardW, height: cardH }}>
+    <div
+      className={`antu-card g${groupIndex}`}
+      style={{ width: cardW, height: cardH }}
+      // 键盘可达：Tab 能聚焦，回车/空格钉住，Esc 关掉。
+      // 鼠标那条路仍走 React Flow 的 onNodeClick，两边都能用。
+      role="button"
+      tabIndex={0}
+      aria-label={`${event.label}${event.date ? '，' + event.date : ''}`}
+      aria-expanded={open}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          if (isPinned) unpin()
+          else pin(event.id)
+        } else if (e.key === 'Escape') {
+          unpin()
+        }
+      }}
+    >
       {/* 卡片内容按开关决定。标题与时间不给关：
           没标题认不出是什么事，没时间在轴上就没有锚点。
           标题的截断行数跟着卡片实际留的行数走，不多留也不截早。 */}

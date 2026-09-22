@@ -9,28 +9,27 @@
 //  引擎不生成 JSON，那是 agent 的职责。
 // ============================================================
 
-import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { renderToFile, REPO } from '../lib/make-html.mjs'
+import { fitZoom } from '../../src/core/canvas.js'
+import { describeFactSchema } from '../../src/renderers/fact/schema.js'
+// 登记各大类的知识（纯 JS，不碰组件）。有了它，校验与排布都从注册表取。
+import '../../src/renderers/index.js'
+import { layoutOf as layoutFromRegistry, layoutKindsOf } from '../../src/core/registry.js'
 
 import { validateSpec } from '../../src/core/validate.js'
-import { viewsOf, buildGrid } from '../../src/core/factGrid.js'
-import { buildFactGraph } from '../../src/renderers/fact/timelineLayout.js'
+import { viewsOf, buildGrid } from '../../src/renderers/fact/timeline/grid.js'
 
-/** 仓库根目录（服务端可能从任何 cwd 启动，所以一律相对这个位置解析） */
-export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+// 仓库根目录由 tools/lib/make-html.mjs 统一给出（服务端可能从任何 cwd 启动，
+// 所以一律相对那个位置解析），这里直接用它导出的 REPO。
 
-/** 画布尺寸的默认假设：用来算"适配缩放"，和浏览器里实测的画布大小一致 */
-const CANVAS = { width: 1600, height: 857 }
+/** 画布尺寸的默认假设：用来算"适配缩放"。和 verify 脚本用的是同一个尺寸 */
+const CANVAS = { width: 1600, height: 900 }
 
-/** 排布函数的分发表。目前只有 fact 的时间图一个子类。 */
-const LAYOUTS = { fact: { timeline: buildFactGraph } }
-
-/** 某大类某子类能不能算几何 */
-export function layoutOf(type, kind) {
-  return LAYOUTS[type]?.[kind] ?? null
-}
+// 排布函数不再自己列表：走注册表（renderers/index.js 登记过）。
+// 原先这里手写了一份 LAYOUTS，和注册表重复，加子类要改两处（known-issues 第 2 条）。
 
 /** 校验。返回逐条错误（已经是给人和 agent 看的中文） */
 export function validate(spec) {
@@ -41,21 +40,16 @@ export function validate(spec) {
   }
 }
 
-/** 适配缩放：视口 ÷ (内容 × 1.12)，封顶 1。和渲染器里的算法一致。 */
-export function fitZoom(size, canvas = CANVAS) {
-  const zx = canvas.width / (size.width * 1.12)
-  const zy = canvas.height / (size.height * 1.12)
-  return Math.min(zx, zy, 1)
-}
-
 /**
  * 几何报告：不渲染，只算。
  * 这是 agent 判断"这张图会不会太宽/太空"的主要依据。
  */
 export function layoutReport(spec, { orientation, fields = { summary: true } } = {}) {
   const type = spec?.type
-  const kind = spec?.kindHint ?? 'timeline'
-  const layout = layoutOf(type, kind)
+  // 问注册表：这个大类有哪几种画法，默认用第一个。
+  // （原先这里读 spec?.kindHint，而 schema 里没有这个字段，见 known-issues 第 11 条。）
+  const kind = layoutKindsOf(type)[0] ?? null
+  const layout = layoutFromRegistry(type, kind)
   if (!layout) {
     return { ok: false, reason: `还没有 type="${type}" 子类 "${kind}" 的几何计算` }
   }
@@ -83,7 +77,7 @@ export function layoutReport(spec, { orientation, fields = { summary: true } } =
   const byOrientation = {}
   for (const o of ['vertical', 'horizontal']) {
     const g = layout(spec, fields, undefined, o)
-    byOrientation[o] = { size: g.size, fit: Number(fitZoom(g.size).toFixed(3)) }
+    byOrientation[o] = { size: g.size, fit: Number(fitZoom(g.size, CANVAS).toFixed(3)) }
   }
   const slotCount = Array.isArray(spec.slots) ? spec.slots.length : 0
   const suggested = slotCount >= 5 ? 'vertical' : 'horizontal'
@@ -131,84 +125,64 @@ export function formatLayoutReport(r) {
 }
 
 /**
- * 生成自包含 HTML。复用 tools/make-html.mjs 的逻辑（构建 → 内联）。
- * preset 可选：开局就用指定的方向/字段/视角渲染（MCP 预览要能指定这些）。
+ * 生成自包含 HTML。
+ *
+ * 实现只有一份，在 tools/lib/make-html.mjs —— 命令行工具和这里都调它。
+ * 原先两个文件各有一份（相似度 83%），改一处忘一处，症状是
+ * "某一条路生成出来的 HTML 不对"。见 known-issues 第 9 条。
  */
 export function renderHtml(spec, { outPath, preset } = {}) {
-  const engineJs = join(REPO, 'dist-engine/engine.js')
-  const engineCss = join(REPO, 'dist-engine/engine.css')
-  const needsBuild = !existsSync(engineJs) || !existsSync(engineCss) || newestSourceMtime() > statSync(engineJs).mtimeMs
-  if (needsBuild) {
-    execFileSync('npx', ['vite', 'build', '--config', 'vite.engine.config.js'], { cwd: REPO, stdio: 'pipe' })
-  }
-  const js = readFileSync(engineJs, 'utf8')
-  const css = readFileSync(engineCss, 'utf8')
-  const safeJson = JSON.stringify(spec).replace(/</g, '\\u003c')
-  const safeJs = js.replace(/<\/script/gi, '<\\/script')
-  const title = (spec.title || '案图').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
-  const html = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${title} · 案图</title>
-<style>
-html, body { margin: 0; height: 100%; font-family: system-ui, "Microsoft YaHei", sans-serif; }
-#root { height: 100%; }
-${css}</style>
-</head>
-<body>
-<div id="root"></div>
-<script>window.__ANTU_SPEC__ = ${safeJson};</script>
-${preset ? `<script>window.__ANTU_PRESET__ = ${JSON.stringify(preset).replace(/</g, '\\u003c')};</script>` : ''}
-<script>${safeJs}</script>
-</body>
-</html>
-`
-  const target = resolve(outPath || join(REPO, 'dist-html', `${slug(spec.title || 'antu')}.html`))
-  mkdirSync(dirname(target), { recursive: true })
-  writeFileSync(target, html)
-  return { path: target, bytes: Buffer.byteLength(html) }
+  return renderToFile(spec, { outPath, preset, quiet: true })
 }
 
-function newestSourceMtime() {
-  let newest = 0
-  const walk = (p) => {
-    if (!existsSync(p)) return
-    const st = statSync(p)
-    if (st.isDirectory()) for (const n of readdirSync(p)) walk(join(p, n))
-    else newest = Math.max(newest, st.mtimeMs)
-  }
-  for (const p of ['src', 'vite.engine.config.js']) walk(join(REPO, p))
-  return newest
-}
-
-const slug = (s) => String(s).replace(/[\\/:*?"<>|\s]+/g, '-').slice(0, 60)
-
-/** 示例清单：给 agent 看"别人是怎么写的" */
-export function listExamples() {
+/**
+ * 示例清单。
+ *
+ * 分两批，服务两种读者：
+ *   agent  examples/agent/*.json —— 最小、完整、每份只讲一件事，**必须能过校验**
+ *   真实   examples/*.json       —— 真实案例，完整但长，供人和 agent 参考
+ *
+ * 默认给 agent 那批：一份 0.8~1.2 KB，读三份约 3 KB；
+ * 一份真实案例约 7.9 KB，单单读它就顶六份。
+ * （known-issues 第 14 条：给人和给 agent 的示例要分开。）
+ */
+export function listExamples({ group = 'agent' } = {}) {
   const dir = join(REPO, 'examples')
-  return readdirSync(dir)
+  const agentDir = join(dir, 'agent')
+
+  const read = (path, file) => {
+    const spec = JSON.parse(readFileSync(path, 'utf8'))
+    const slots = Array.isArray(spec.slots) ? spec.slots : []
+    return {
+      file,
+      path,
+      title: spec.title,
+      events: slots.reduce((n, s) => n + (s?.events?.length || 0), 0),
+      slots: slots.length,
+      actors: spec.actors?.length ?? 0,
+      bytes: readFileSync(path).length,
+      views: viewsOf(spec).map((v) => v.label),
+    }
+  }
+
+  const agent = existsSync(agentDir)
+    ? readdirSync(agentDir)
+        .filter((f) => f.endsWith('.json'))
+        .sort()
+        .map((f) => read(join(agentDir, f), `examples/agent/${f}`))
+    : []
+  const real = readdirSync(dir)
     .filter((f) => f.endsWith('.json'))
     .sort()
-    .map((f) => {
-      const spec = JSON.parse(readFileSync(join(dir, f), 'utf8'))
-      const slots = Array.isArray(spec.slots) ? spec.slots : []
-      return {
-        file: `examples/${f}`,
-        path: join(dir, f),
-        title: spec.title,
-        events: slots.reduce((n, s) => n + (s?.events?.length || 0), 0),
-        slots: slots.length,
-        actors: spec.actors?.length ?? 0,
-        views: viewsOf(spec).map((v) => v.label),
-      }
-    })
+    .map((f) => read(join(dir, f), `examples/${f}`))
+
+  return group === 'agent' ? agent : real
 }
 
 export function readExample(file) {
-  const name = String(file).split('/').pop()
-  const p = join(REPO, 'examples', name)
+  // 允许 examples/agent/xxx.json 这种带目录的写法，也允许只给文件名
+  const rel = String(file).replace(/^examples\//, '')
+  const p = join(REPO, 'examples', rel)
   if (!existsSync(p)) return null
   return { path: p, text: readFileSync(p, 'utf8') }
 }
@@ -228,4 +202,4 @@ export function readSpec(name) {
   return readFileSync(p, 'utf8')
 }
 
-export { CANVAS }
+export { CANVAS, describeFactSchema }

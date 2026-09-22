@@ -8,7 +8,7 @@
 import { memo } from 'react'
 
 const ColumnHeaderNode = memo(function ColumnHeaderNode({ data }) {
-  const { width, height, isH, side, groupIndex, sideTitle, colTitle } = data
+  const { width, height, isH, groupIndex, sideTitle, colTitle } = data
 
   return (
     <div

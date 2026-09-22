@@ -20,6 +20,46 @@
 const registry = new Map()
 
 /**
+ * 知识注册表：type -> { validate, layouts }。
+ *
+ * 和上面那张表的区别：上面注册的是**组件**（.jsx，只有浏览器能加载），
+ * 这里注册的是**纯 JS 的规则**（怎么校验、怎么排布）。
+ * 分开的原因：Node 侧的 MCP 需要"fact 怎么校验、有哪些画法"，
+ * 但它加载不了 .jsx。原先它只能自己手写一份分发表，于是同一个事实写了两处
+ * （见 known-issues 第 2 条）。现在两边都从这一张表取。
+ */
+const knowledge = new Map()
+
+/**
+ * 注册某大类的知识。
+ * @param type 大类
+ * @param k    { validate(spec) => string[], layouts: { kind: buildGraph } }
+ */
+export function registerKnowledge(type, k) {
+  if (!type) throw new Error('registerKnowledge: type 不能为空')
+  if (!k?.validate) throw new Error('registerKnowledge: 缺少 validate')
+  knowledge.set(type, k)
+}
+
+/** 取某大类的校验函数。没注册就返回 undefined（表示不校验）。 */
+export function validatorOf(type) {
+  return knowledge.get(type)?.validate
+}
+
+/** 取某大类的排布函数。不传 kind（或传了没有的）就给第一个，也就是默认画法。 */
+export function layoutOf(type, kind) {
+  const layouts = knowledge.get(type)?.layouts
+  if (!layouts) return undefined
+  if (kind && layouts[kind]) return layouts[kind]
+  return Object.values(layouts)[0]
+}
+
+/** 某大类有哪几种画法（按注册顺序）。用于 Node 侧报"这个大类有哪些子类"。 */
+export function layoutKindsOf(type) {
+  return Object.keys(knowledge.get(type)?.layouts ?? {})
+}
+
+/**
  * 注册一个子类渲染器。
  * @param type      大类（信封层的 type），如 'fact'
  * @param kind      子类，如 'timeline'
