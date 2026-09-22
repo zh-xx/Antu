@@ -139,11 +139,11 @@ npm run diagram -- 你的.json
 
 ## 命令
 
-| 命令 | 干什么 |
-|---|---|
-| `npm run dev` | 本地开发服务器（5200 端口） |
-| `npm run build` | 构建开发版 |
-| `npm run build:engine` | 构建出成品用的引擎（单文件 iife） |
+| 命令 | 干什么 | 产物 |
+|---|---|---|
+| `npm run dev` | 本地开发服务器（5200 端口），数据由插件注进页面 | 不产出文件 |
+| `npm run build` | 打一份"普通网站包"，给本机预览或以后托管演示用 | `dist/`（**固定显示第一份示例**，`?example=` 只在开发服务器有效） |
+| `npm run build:engine` | 打成品要用的引擎（单文件 iife，能内联进一个 HTML） | `dist-engine/` |
 | `npm run diagram -- x.json [-o y.html]` | 把一份 JSON 变成自包含 HTML，`--rebuild` 强制重建引擎 |
 | `npm run mcp` | 起 MCP 服务端（给 agent 用） |
 | `npm run mcp:test` | 用自带客户端把 MCP 全流程走一遍 |

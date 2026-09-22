@@ -21,7 +21,15 @@ const DEV_EXAMPLES = [
 ]
 
 /**
- * 开发时喂数据：把一份 JSON 注进 index.html。
+ * 往 index.html 里喂数据。
+ *
+ * 两处都靠它，靠的是同一个插件：
+ *   `npm run dev`     开发服务器，每请求一次 index.html 注一次
+ *   `npm run build`   打出 dist/（一份"普通网站包"），构建时注进 dist/index.html
+ *
+ * 为什么构建时也要注：dist/ 不注的话打开是"没有内联数据"的报错页。
+ * 它和交付物不冲突——交付物走的是 dist-engine/，那里根本没有 HTML，
+ * 本插件的 transformIndexHtml 不会被调用，所以演示数据进不了成品。
  *
  * 为什么这么做：**成品是一份自包含的 HTML，数据内联在页面里**
  * （`window.__ANTU_SPEC__`）。开发时也走同一条路，应用代码里就只有一条路径，
@@ -35,7 +43,6 @@ const DEV_EXAMPLES = [
 function antuDevSpec() {
   return {
     name: 'antu-dev-spec',
-    apply: 'serve', // 只在开发服务器里生效，构建时完全不参与
 
     transformIndexHtml: {
       order: 'pre',
