@@ -9,12 +9,12 @@
 //  引擎不生成 JSON，那是 agent 的职责。
 // ============================================================
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { renderToFile, REPO } from '../lib/make-html.mjs'
 import { fitZoom } from '../../src/core/canvas.js'
-import { describeFactSchema } from '../../src/renderers/fact/schema.js'
+import { knowledgeOf, listKnowledgeTypes } from '../../src/core/registry.js'
 // 登记各大类的知识（纯 JS，不碰组件）。有了它，校验与排布都从注册表取。
 import '../../src/renderers/index.js'
 import { layoutOf as layoutFromRegistry, layoutKindsOf } from '../../src/core/registry.js'
@@ -146,10 +146,8 @@ export function renderHtml(spec, { outPath, preset } = {}) {
  * 一份真实案例约 7.9 KB，单单读它就顶六份。
  * （known-issues 第 14 条：给人和给 agent 的示例要分开。）
  */
-export function listExamples({ group = 'agent' } = {}) {
+export function listExamples({ type = 'fact', group = 'agent' } = {}) {
   const dir = join(REPO, 'examples')
-  const agentDir = join(dir, 'agent')
-
   const read = (path, file) => {
     const spec = JSON.parse(readFileSync(path, 'utf8'))
     const slots = Array.isArray(spec.slots) ? spec.slots : []
@@ -164,42 +162,97 @@ export function listExamples({ group = 'agent' } = {}) {
       views: viewsOf(spec).map((v) => v.label),
     }
   }
+  const jsonIn = (d, prefix) =>
+    existsSync(d)
+      ? readdirSync(d)
+          .filter((f) => f.endsWith('.json'))
+          .sort()
+          .map((f) => read(join(d, f), `${prefix}${f}`))
+      : []
 
-  const agent = existsSync(agentDir)
-    ? readdirSync(agentDir)
-        .filter((f) => f.endsWith('.json'))
-        .sort()
-        .map((f) => read(join(agentDir, f), `examples/agent/${f}`))
-    : []
-  const real = readdirSync(dir)
-    .filter((f) => f.endsWith('.json'))
-    .sort()
-    .map((f) => read(join(dir, f), `examples/${f}`))
-
-  return group === 'agent' ? agent : real
+  // 小示例按大类分目录：examples/agent/<type>/*.json
+  if (group === 'raw') {
+    // 原始材料：写数据**不要**拿它当模板，它是"这些示例是怎么做出来的"的底稿
+    const rawDir = join(dir, 'raw')
+    return existsSync(rawDir)
+      ? readdirSync(rawDir)
+          .filter((f) => f.endsWith('.md'))
+          .sort()
+          .map((f) => ({ file: `examples/raw/${f}`, path: join(rawDir, f), bytes: statSync(join(rawDir, f)).size }))
+      : []
+  }
+  // 真实案例也按大类分：examples/<type>/*.json
+  if (group === 'real') return jsonIn(join(dir, String(type)), `examples/${type}/`)
+  return jsonIn(join(dir, 'agent', String(type)), `examples/agent/${type}/`)
 }
 
+/**
+ * 取一份示例的完整内容。
+ *
+ * **只认三类**：examples/agent/*.json（给 agent 的小示例）、
+ * examples/*.json（真实案例）、examples/raw/*.md（原始材料）。
+ * 别的（比如 examples/README.md）一律当"没找到"。
+ *
+ * 为什么要卡这个：原先 file 能取到 examples 下任何文件，
+ * agent 以为在取示例，结果取回来一整份判决书（3500 字符）。
+ * 那不是示例，是"这些示例是怎么做出来的"的底稿，得让它自己说清要看的是什么。
+ */
 export function readExample(file) {
-  // 允许 examples/agent/xxx.json 这种带目录的写法，也允许只给文件名
   const rel = String(file).replace(/^examples\//, '')
+  const ok =
+    /^agent\/[\w-]+\/[\w.-]+\.json$/.test(rel) ||
+    /^[\w.\u4e00-\u9fff-]+\.json$/.test(rel) ||
+    /^raw\/[\w.\u4e00-\u9fff-]+\.md$/.test(rel)
+  if (!ok) return null
   const p = join(REPO, 'examples', rel)
   if (!existsSync(p)) return null
   return { path: p, text: readFileSync(p, 'utf8') }
 }
 
-/** 规范文档清单 */
-export function listSpecs() {
-  const dir = join(REPO, 'spec')
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.md'))
-    .sort()
-    .map((f) => ({ name: f.replace(/\.md$/, ''), file: `spec/${f}`, path: join(dir, f) }))
+/**
+ * 给 agent 的规格清单，只扫 `spec/agent/`。
+ *
+ * 上一层 `spec/*.md` 是设计文档（讲"当初为什么这么定"，一份上万字符），
+ * **不在这里**：那份是给人看的，端给 agent 只会白烧上下文。
+ * 两边的分工写在 spec/agent/README.md。
+ */
+export function listAgentGuides() {
+  const dir = join(REPO, 'spec/agent')
+  return existsSync(dir)
+    ? readdirSync(dir, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && existsSync(join(dir, e.name, 'guide.md')))
+        .map((e) => e.name)
+        .sort()
+    : []
 }
 
-export function readSpec(name) {
-  const p = join(REPO, 'spec', `${String(name).replace(/\.md$/, '')}.md`)
-  if (!existsSync(p)) return null
-  return readFileSync(p, 'utf8')
+/**
+ * 取某大类的机制说明。
+ * 一个大类一份：spec/agent/<type>/guide.md。加新大类时加一个目录即可。
+ */
+export function readAgentGuide(type = 'fact') {
+  const p = join(REPO, 'spec/agent', String(type), 'guide.md')
+  return existsSync(p) ? readFileSync(p, 'utf8') : null
 }
 
-export { CANVAS, describeFactSchema }
+/** 画布尺寸的默认假设（MCP 报"适配缩放"时用） */
+export { CANVAS, listKnowledgeTypes }
+
+/**
+ * 字段表，**按大类取**。
+ *
+ * 原先这里直接调 describeFactSchema()，等于把 fact 写死在工具里：
+ * 等关系图做出来，整条路要返工。现在从注册表拿，加新大类时工具一行不用改。
+ */
+export function describeSchema(type = 'fact') {
+  const k = knowledgeOf(type)
+  if (!k) return { ok: false, reason: unknownType(type) }
+  return { ok: true, text: k.describe() }
+}
+
+/** 报"你要的这个大类还没有"时统一用的话 */
+function unknownType(type) {
+  const known = listKnowledgeTypes()
+  const list = known.map((t) => `${t.type}（${t.label}）`).join('、')
+  return `还没有 ${type} 这一类的参考资料。目前有：${list || '（一个都没有）'}。`
+}

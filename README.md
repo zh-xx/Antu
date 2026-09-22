@@ -22,8 +22,8 @@
 
 ```bash
 npm install
-npm run diagram -- examples/fact-电梯劝烟案.json
-# → examples/fact-电梯劝烟案.html
+npm run diagram -- examples/fact/电梯劝烟案.json
+# → examples/fact/电梯劝烟案.html
 ```
 
 产物是**一个自包含的 HTML**：引擎和数据都在里面，不联网、不要服务器、离线可看（约 420 KB）。
@@ -76,23 +76,29 @@ npm run dev 后换一份    # 加 ?example=3 按清单取，或 ?spec=examples/�
 
 ```
 antu/
-├── spec/                       ← 规范（先读这个）
-│   ├── v0-architecture.md          架构共识：四大类、子类、产物形态
-│   ├── fact-schema-draft.md        fact 的 JSON schema（v1 定稿）
-│   ├── fact-timeline-rules.md      时间图的排布规则
-│   ├── fact-rendering.md           画面元素、可调参数、为什么这么画
-│   ├── source-schema-draft.md      来源的 7 类字段
-│   ├── mcp-server.md               MCP 服务端：给 agent 的入口
-│   ├── known-issues.md             待修清单（发现的问题、反复踩的坑）
-│   └── react-flow-features.md      画布库的用法与踩坑记录
-├── examples/                   ← 示例数据；raw/ 里是真实案例的原始文书
+├── spec/                       ← 设计文档（给人看的）
+│   ├── agent/<大类>/guide.md       给 agent 的机制说明（另一条线，不混）
+│   ├── fact/                       只讲事实图的（schema、排布、渲染）
+│   ├── v0-architecture.md          跨大类：四大类、子类、产物形态
+│   ├── source-schema-draft.md      跨大类：来源的 7 类字段
+│   ├── known-issues.md             待修清单
+│   ├── mcp-server.md               MCP 服务端
+│   └── react-flow-features.md      画布库的用法与踩坑
+├── examples/                   ← 示例（按大类分，每个大类下按读者分）
+│   ├── agent/<大类>/               给 agent 的小示例
+│   ├── <大类>/                     真实案例与示意数据
+│   └── raw/                        原始裁判文书
 ├── src/
-│   ├── core/                       引擎本体：注册表、校验门卫、排布、卡片几何
-│   ├── renderers/fact/             fact 的渲染器（时间图）
-│   └── shell/                      页面外壳：左上角标签卡
+│   ├── core/                       引擎机制：注册表、校验、文案、画布计算
+│   ├── renderers/                  渲染层
+│   │   ├── index.js                    大类清单（纯 JS，两个入口共用）
+│   │   └── fact/                       事实图级（卡片、几何、控制胶囊）
+│   │       └── timeline/               时间图这一个子类
+│   └── shell/                      页面外壳：标签卡、画布、偏好、错误边界
 ├── tools/
-│   ├── make-html.mjs               JSON → 自包含 HTML
-│   └── mcp/                        MCP 服务端（给 agent 用）
+│   ├── lib/                        共用实现：生成 HTML、驱动 Chrome
+│   ├── mcp/                        MCP 服务端
+│   └── verify/                     一条命令验完
 └── assets/screenshot.png
 ```
 
@@ -119,13 +125,15 @@ antu/
 | `antu_schema` | 字段表（从代码生成，约 1.2k token） | 不要 |
 | `antu_guide` | 一页机制说明（约 1.1k token） | 不要 |
 | `antu_examples` | 看示例（默认给六份 1 KB 的小示例） | 不要 |
+
+前三个都按大类分发（传 `type`，不传就是 `fact`），所以加新图类型时工具不用改。
 | `antu_validate` | 校验 JSON，逐条报错 | 不要 |
 | `antu_layout` | 算几何：多大、该用哪个方向、哪个视角摆不下 | 不要 |
 | `antu_render` | 出成品 HTML | 不要 |
 | `antu_preview` | 截图返回，用眼睛检查 | 要（复用本机 Chrome） |
-| `antu_spec` | 读设计文档（写 JSON 用不上） | 不要 |
 
 **agent 的参考资料只有 2.3k token**（schema + guide），不再需要读那几万字符的人类文档。
+`spec/*.md` 那八份设计文档**不经过 MCP**：它们是给人看的，人直接开文件。
 
 细节见 `spec/mcp-server.md`。
 
@@ -133,8 +141,8 @@ antu/
 
 不接 MCP 也能用，按这个顺序：
 
-1. `spec/fact-schema-draft.md` —— JSON 长什么样、字段怎么填、什么会报错；
-2. `spec/fact-timeline-rules.md` —— 事件摆在图的哪个位置；
+1. `spec/fact/schema-draft.md` —— JSON 长什么样、字段怎么填、什么会报错；
+2. `spec/fact/timeline-rules.md` —— 事件摆在图的哪个位置；
 3. `examples/` —— 真实案例是怎么写的（`fact-电梯劝烟案.json` 最短最干净）；
 4. 写完直接生成，**校验不过会告诉你错在哪**：
 

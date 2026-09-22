@@ -31,6 +31,8 @@ import { launchBrowser, findChrome } from '../lib/chrome.mjs'
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
 import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
+import { readExample, listExamples, listAgentGuides, describeSchema } from '../mcp/engine.mjs'
+import { listKnowledgeTypes } from '../../src/core/registry.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 
@@ -59,6 +61,22 @@ function bad(label, detail = '') {
 
 function section(title) {
   console.log(`\n【${title}】`)
+}
+
+/** 递归列出某个后缀的文件（跳过不该扫的目录） */
+function listFilesUnder(dir, exts) {
+  const out = []
+  const walk = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name)
+      if (e.isDirectory()) {
+        if (['node_modules', '.git', '.verify', 'dist', 'dist-engine', 'dist-html'].includes(e.name)) continue
+        walk(p)
+      } else if (exts.some((x) => e.name.endsWith(x))) out.push(p)
+    }
+  }
+  walk(dir)
+  return out
 }
 
 /** 断言相等，把期望与实际都打出来 */
@@ -111,8 +129,16 @@ function checkLint() {
 // ---------------------------------------------------------------
 function checkData() {
   section('数据与排布')
-  const dir = join(REPO, 'examples')
-  const files = readdirSync(dir).filter((f) => f.endsWith('.json')).sort()
+  // 示例按大类分目录：examples/<type>/*.json。每个已登记知识的大类扫一遍。
+  // 加新大类时这里不用改，它会自己多扫一个目录。
+  const files = []
+  for (const { type } of listKnowledgeTypes()) {
+    const dir = join(REPO, 'examples', type)
+    if (!existsSync(dir)) continue
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
+      files.push(`examples/${type}/${f}`)
+    }
+  }
   truthy('找到示例', files.length > 0)
   if (files.length === 0) return { files, sample: null, combos: 0, views: 0 }
 
@@ -120,7 +146,7 @@ function checkData() {
   let combos = 0
   let blocked = 0
   for (const f of files) {
-    const spec = JSON.parse(readFileSync(join(dir, f), 'utf8'))
+    const spec = JSON.parse(readFileSync(join(REPO, f), 'utf8'))
     const errs = validateSpec(spec)
     if (errs.length) {
       bad(`示例 ${f} 校验`, errs[0])
@@ -148,7 +174,7 @@ function checkData() {
 
   // agent 示例是"能跑的数据"，不是文档：schema 一改它们就会失败。
   // 这一条是第 14 条那个设计的落点，保证它们不会悄悄漂移。
-  const agentDir = join(REPO, 'examples/agent')
+  const agentDir = join(REPO, 'examples/agent/fact')
   if (existsSync(agentDir)) {
     const files2 = readdirSync(agentDir).filter((f) => f.endsWith('.json'))
     let bad = 0
@@ -163,6 +189,60 @@ function checkData() {
     truthy(`agent 示例 ${files2.length} 份全部通过校验`, bad === 0)
     truthy('agent 示例的视角全部排得下（照抄不会撞到"摆不下"）', blocked === 0)
   }
+
+  // 给 agent 的规格与给人的设计文档必须分开。这一条防的是"把人类文档端给 agent"：
+  // 那些文档讲的是"当初为什么这么定"，一份上万字符，agent 读了纯属白烧上下文。
+  // 曾经的做法就是原样挂出去、只加了个"写数据用得上"的标签，等于没分。
+  const serverSrc = readFileSync(join(REPO, 'tools/mcp/server.mjs'), 'utf8')
+  // 用带目录的路径查，避免拿 schema-draft 这种通用词去误判
+  const humanDocs = ['spec/fact/schema-draft', 'spec/fact/timeline-rules', 'spec/fact/rendering',
+    'spec/source-schema-draft', 'spec/v0-architecture', 'spec/known-issues', 'spec/mcp-server',
+    'spec/react-flow-features']
+  const leaked2 = humanDocs.filter((n) => serverSrc.includes(n))
+  truthy('MCP 里没有任何"给人看的"设计文档', leaked2.length === 0)
+  if (leaked2.length) console.log('     混进来的：' + leaked2.join('、'))
+  truthy('antu_spec 这个工具已撤掉', !serverSrc.includes("'antu_spec'"))
+  truthy('资源只暴露 antu://agent/', serverSrc.includes('antu://agent/'))
+
+  // 给 agent 的参考资料必须**按大类**分发，不能把 fact 写死在工具里。
+  // 原先 antu_schema 直接调 describeFactSchema()、antu_guide 直接读一个固定文件：
+  // 等关系图做出来整条路要返工。现在三个工具都有 type 入参，从注册表取。
+  const hasTypeArg = (tool) =>
+    new RegExp(`registerTool\\(\\s*'${tool}'[\\s\\S]{0,1500}?type: z`).test(serverSrc)
+  truthy('antu_schema 有 type 入参', hasTypeArg('antu_schema'))
+  truthy('antu_guide 有 type 入参', hasTypeArg('antu_guide'))
+  truthy('antu_examples 有 type 入参', hasTypeArg('antu_examples'))
+  truthy('MCP 里没有写死 factKnowledge 之类', !/from '.*renderers\/fact\/schema\.js'/.test(serverSrc))
+  truthy('字段表按大类取得到', describeSchema('fact').ok === true)
+  truthy('没有的大类会明说"还没有"，不是空表', describeSchema('relationship').ok === false)
+  truthy('机制说明按大类取', listAgentGuides().includes('fact'))
+
+  // 示例只认三类文件。原先 file 能取到 examples 下任何东西，
+  // agent 以为在取示例，结果取回来一整份判决书（3500 字符）。
+  truthy('examples/README.md 取不到（它不是示例）', readExample('examples/README.md') === null)
+  truthy('examples 下越界的路径取不到', readExample('examples/agent/../fact-电梯劝烟案.json') === null)
+  truthy('小示例取得到', readExample('examples/agent/fact/1-minimal.json') !== null)
+  truthy('示例按大类分目录', listExamples({ type: 'fact' }).length > 0)
+  truthy(
+    '示例分三批（agent / real / raw）',
+    listExamples({ group: 'agent' }).length > 0 &&
+      listExamples({ group: 'real' }).length > 0 &&
+      listExamples({ group: 'raw' }).length > 0,
+  )
+
+  // 文档里的路径引用必须指向真实存在的文件。
+  // 这条是补上的：文件搬过几次（core → renderers、fact → fact/timeline、
+  // 根目录 → 按大类分目录），每次都留下没跟上的引用，靠人翻是翻不干净的。
+  const refMissing = []
+  for (const f of listFilesUnder(REPO, ['.md', '.mjs', '.js', '.jsx'])) {
+    if (f.includes('node_modules') || f.includes('/dist')) continue
+    const text = readFileSync(f, 'utf8')
+    for (const m of text.matchAll(/`((?:spec|examples|src|tools)\/[\w./\u4e00-\u9fff-]+\.(?:md|json|js|mjs|jsx))`/g)) {
+      if (!existsSync(join(REPO, m[1]))) refMissing.push(`${f.replace(REPO + '/', '')} → ${m[1]}`)
+    }
+  }
+  truthy('文档里的路径引用都指向真实文件', refMissing.length === 0)
+  for (const r of refMissing.slice(0, 5)) console.log('     ' + r)
 
   // 字段元数据（给 agent 的参考资料）必须和校验器说的是同一件事。
   // 办法：拿一份能过校验的示例，逐个抽掉"必填"的字段，校验器必须报错。
@@ -207,7 +287,7 @@ async function checkRender(sampleFile) {
     return null
   }
 
-  const spec = JSON.parse(readFileSync(join(REPO, 'examples', sampleFile), 'utf8'))
+  const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
   const html = join(OUT, 'render-check.html')
   renderToFile(spec, { outPath: html, quiet: true })
 
@@ -267,14 +347,14 @@ async function checkRender(sampleFile) {
         return { l: r.left, t: r.top, w: r.width, h: r.height, cx: r.left + r.width / 2 }
       }
       return {
-        视口: { W, H },
+        viewport: { W, H },
         标签卡: box('.antu-header'),
         缩放: box('.react-flow__controls'),
         缩略图: box('.react-flow__minimap'),
         胶囊: box('.antu-dock'),
       }
     })()`)
-    const { W, H } = boxes.视口
+    const { W, H } = boxes.viewport
     truthy(
       '标签卡在左上',
       boxes.标签卡 && boxes.标签卡.l < W * 0.2 && boxes.标签卡.t < H * 0.2,

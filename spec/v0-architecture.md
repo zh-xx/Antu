@@ -171,7 +171,7 @@ JSON (信封) ──> [校验门卫] ──> 按大类路由 ──> 注册表�
   大类之下没有"子类型"字段，子类的划分见 §3；
 - 新增画法 = 注册一个子类渲染器，**核心本体不动**；
 - 底层渲染技术：React Flow（已选定，事实图已在用）。
-- 布局：**各子类自负**，不用统一布局库。事实图的时间图自己算网格（`src/core/factGrid.js`）；
+- 布局：**各子类自负**，不用统一布局库。事实图的时间图自己算网格（`src/renderers/fact/timeline/grid.js`）；
   关系图、程序图计划用 dagre 或 elkjs（**尚未安装**，`package.json` 里目前只有 React Flow）。
 - 渲染器内部负责"语义 → React Flow nodes/edges"的翻译（翻译发生在渲染器内，不在规范内）。
 
@@ -226,7 +226,7 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
 - [x] 信封层共享；内容层语义独立；公共约定层规则共享
 - [x] **schema 只到大类**；子类是渲染层的划分，任意合法 JSON 都能用该大类的任意子类渲染（§3）
 - [x] **产物是自包含 HTML**：一个 JSON 一个文件，页面内无网络请求，离线可看（§6.1）
-- [x] **不要侧栏**：画布占满，左上角标签卡 + 底部控制胶囊 + 缩放/缩略图，共四处浮层（`fact-rendering.md` §4）
+- [x] **不要侧栏**：画布占满，左上角标签卡 + 底部控制胶囊 + 缩放/缩略图，共四处浮层（`spec/fact/rendering.md` §4）
 - [x] **来源只标出处、不跳转**；原始材料不打包（§6.1）
 - [x] 取舍原则：业务语言优先于渲染器统一
 - [x] 技术栈：React 19 + Vite + @xyflow/react 12 + dagre，JSX，useState（讨论后沿用）
@@ -237,7 +237,7 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
 
 ### 待定（动手前确认）
 - [ ] `specVersion` 的形态（有无必要、怎么演进）
-- [x] fact 内容层 schema：**已定稿**（含 label / summary / detail 的分工，见 `fact-schema-draft.md`）。其余类型未开始
+- [x] fact 内容层 schema：**已定稿**（含 label / summary / detail 的分工，见 `spec/fact/schema-draft.md`）。其余类型未开始
 - [ ] 其余类型（relationship / procedure）内容层 schema 字段细节
 - [x] 校验层报错信息的形态：**已实现**。每条错误带字段路径与事件 id（如 `slots[0].events[1] (ev-2)`），说明哪里不对、怎么改
 - [ ] 信封层可选元数据范围

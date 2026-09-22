@@ -84,12 +84,12 @@ try {
   const tools = await rpc('tools/list', {})
   for (const t of tools.tools) console.log(`  - ${t.name}：${t.title}`)
 
-  step(3, '列资源')
+  step(3, '列资源（只该有给 agent 的那几份）')
   const res = await rpc('resources/list', {})
   for (const r of res.resources) console.log(`  - ${r.uri}`)
 
-  step(4, '读一份规范资源')
-  const spec = await rpc('resources/read', { uri: 'antu://spec/fact-schema-draft' })
+  step(4, '读一份"给 agent 的规格"资源')
+  const spec = await rpc('resources/read', { uri: 'antu://agent/fact/guide' })
   const specText = spec.contents?.[0]?.text ?? ''
   console.log(`  取到 ${specText.length} 字符，开头：${specText.split('\n')[0]}`)
 
@@ -115,7 +115,7 @@ try {
   console.log('  ' + textOf(bad).split('\n').slice(0, 5).join('\n  '))
 
   step(9, '校验一份真 JSON')
-  const good = JSON.parse(readFileSync(join(REPO, 'examples/fact-电梯劝烟案.json'), 'utf8'))
+  const good = JSON.parse(readFileSync(join(REPO, 'examples/fact/电梯劝烟案.json'), 'utf8'))
   const v = await rpc('tools/call', { name: 'antu_validate', arguments: { spec: good } })
   console.log('  ' + textOf(v))
 

@@ -27,15 +27,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
-  describeFactSchema,
+  describeSchema,
+  listKnowledgeTypes,
   validate,
   layoutReport,
   formatLayoutReport,
   renderHtml,
   listExamples,
   readExample,
-  listSpecs,
-  readSpec,
+  listAgentGuides,
+  readAgentGuide,
 } from './engine.mjs'
 import { screenshot, findChrome } from './preview.mjs'
 
@@ -43,6 +44,8 @@ const server = new McpServer({ name: 'antu', version: '0.1.0' })
 
 /** 规范里的 JSON 是任意嵌套结构，这里不重复定义一遍 schema：校验由引擎负责 */
 const specArg = z.looseObject({}).describe('案图的 JSON（信封 + 内容层，见规范资源）')
+
+
 
 const OK = (text) => ({ content: [{ type: 'text', text }] })
 const FAIL = (text) => ({ content: [{ type: 'text', text }], isError: true })
@@ -56,35 +59,53 @@ server.registerTool(
     title: '看示例数据',
     description:
       '列示例、或取某一份的完整内容。**不传参数时给的是小示例**' +
-      '（尽量小、且每份只讲一件事，写 JSON 之前先看这个）。' +
-      '真实案例也可以取（group="real" 列出），但它们长得多，供参考用。',
+      '（尽量小、且每份只讲一件事）。第一次用建议按这个顺序：' +
+      'antu_schema 看字段 → antu_guide 看机制 → 这里取 1-minimal.json 看实际写法。\n' +
+      '分三批：agent（默认，1 KB 的小示例，写数据看这个）、' +
+      'real（真实案例，4~8 KB，供参考）、' +
+      'raw（原始裁判文书，**不是示例**，是"这些示例怎么来的"底稿，别拿它当模板）。',
     inputSchema: {
-      file: z.string().optional().describe('要取的那一份，如 examples/agent/1-minimal.json。不传则列清单'),
-      group: z
-        .enum(['agent', 'real'])
+      file: z
+        .string()
         .optional()
-        .describe('列哪一批：agent（默认，小示例）或 real（真实案例）'),
+        .describe('要取的那一份，如 examples/agent/fact/1-minimal.json。不传则列清单'),
+      group: z
+        .enum(['agent', 'real', 'raw'])
+        .optional()
+        .describe('列哪一批：agent（默认，小示例）/ real（真实案例）/ raw（原始材料，不是示例）'),
+      type: z.string().optional().describe('哪一类图，默认 fact（事实图）'),
     },
   },
-  async ({ file, group = 'agent' }) => {
+  async ({ file, group = 'agent', type = 'fact' }) => {
+    // 没有这一类的时候要说清"还没做"，不能回一句"0 份"——
+    // 那会被读成"这一类有示例，只是为空"。
+    if (!listKnowledgeTypes().some((t) => t.type === type)) {
+      const known = listKnowledgeTypes().map((t) => `${t.type}（${t.label}）`).join('、')
+      return FAIL(`还没有 ${type} 这一类的示例。目前有：${known || '（一个都没有）'}。`)
+    }
     if (file) {
       const one = readExample(file)
       if (!one) return FAIL(`没找到示例：${file}。先用不带参数的 antu_examples 看清单。`)
       return OK(`# ${file}\n\n\`\`\`json\n${one.text}\n\`\`\``)
     }
-    const rows = listExamples({ group })
+    const rows = listExamples({ type, group })
     const lines = rows.map(
       (r) =>
         `- ${r.file}  （${(r.bytes / 1024).toFixed(1)} KB）\n    ${r.title}\n    ${r.events} 条事件 / ${r.slots} 个时间点 / ${r.actors} 个主体\n    视角：${r.views.join('、')}`,
     )
+    if (rows.length === 0 && group === 'agent') {
+      return OK(`还没有 ${type} 这一类的示例。目前只有 fact。`)
+    }
     const head =
       group === 'real'
-        ? `真实案例 ${rows.length} 份（每份 4~8 KB，供参考）：`
-        : `小示例 ${rows.length} 份（每份 1 KB 上下，建议先看 1-minimal）：`
+        ? `真实案例 ${rows.length} 份（每份 4~8 KB，供参考，写数据请先用默认那批小示例）：`
+        : group === 'raw'
+          ? `原始裁判文书 ${rows.length} 份（**不是示例**，别拿它当模板；是"这些示例怎么来的"底稿）：`
+          : `小示例 ${rows.length} 份（每份 1 KB 上下，建议先看 1-minimal）：`
     const tail =
-      group === 'real'
-        ? ''
-        : '\n\n另有一批真实案例（含人脸识别第一案、电梯劝烟案），用 group="real" 列出。'
+      group === 'agent'
+        ? '\n\n另有真实案例（group="real"）与原始材料（group="raw"）。'
+        : '\n\n写数据请用默认那批小示例（不传参数）。'
     return OK(`${head}\n\n${lines.join('\n')}${tail}`)
   },
 )
@@ -101,12 +122,19 @@ server.registerTool(
   {
     title: '字段表',
     description:
-      'fact 的字段清单：哪个必填、什么类型、一句话说明。**写 JSON 之前看这个**，' +
-      '约 1.2k token。跨字段的规则（引用是否悬空、时段是否倒着走等）不在这里，' +
-      '写完调 antu_validate 会逐条告诉你。',
-    inputSchema: {},
+      '某一类图的字段清单：哪个必填、什么类型、一句话说明。**写 JSON 之前先看这个**，' +
+      '约 1.2k token。看完接着调 antu_guide（事件画在哪）和 antu_examples（实际怎么写）。' +
+      '跨字段的规则（引用是否悬空、时段是否倒着走等）不在这张表里，' +
+      '写完调 antu_validate 会逐条告诉你。\n' +
+      'type 不传就是事实图。目前只有事实图一类，其余三类还没做。',
+    inputSchema: {
+      type: z.string().optional().describe('哪一类图，默认 fact（事实图）'),
+    },
   },
-  async () => OK(describeFactSchema()),
+  async ({ type = 'fact' }) => {
+    const r = describeSchema(type)
+    return r.ok ? OK(r.text) : FAIL(r.reason)
+  },
 )
 
 server.registerTool(
@@ -116,41 +144,17 @@ server.registerTool(
     description:
       '一页讲清"事件画在哪"：slots 定行、groupId 定侧、actorIds 定车道，' +
       '视角怎么换，以及那条"一格一事件"的限制和三种改法。写完 JSON 前看一遍，' +
-      '能省掉几轮校验。',
-    inputSchema: {},
-  },
-  async () => OK(readSpec('agent-guide') ?? '（找不到 agent-guide.md）'),
-)
-
-// ---------------------------------------------------------------
-// 规范：资源与工具两条路都给
-// ---------------------------------------------------------------
-// 资源适合"agent 自己按需读"，但有些客户端对资源的支持不好，
-// 所以再给一个工具做保底。内容一样，走哪条都行。
-server.registerTool(
-  'antu_spec',
-  {
-    title: '读设计文档',
-    description:
-      '取 `spec/` 下的设计文档。**写 JSON 不需要读这些**：它们是写给设计者的，' +
-      '讲的是"当初为什么这么定"，篇幅大。要填数据请用 antu_schema 加 antu_guide。' +
-      '只有在需要理解某条规则背后的理由时才用这个工具。不传 name 就列出有哪些文档。',
+      '能省掉几轮校验。字段清单见 antu_schema，照着改的实际例子见 antu_examples。\n' +
+      'type 不传就是事实图。其余三类还没做。',
     inputSchema: {
-      name: z
-        .string()
-        .optional()
-        .describe('文档名，如 fact-schema-draft。不传则列出全部'),
+      type: z.string().optional().describe('哪一类图，默认 fact（事实图）'),
     },
   },
-  async ({ name }) => {
-    if (!name) {
-      const rows = listSpecs()
-      const lines = rows.map((r) => `- ${r.name}`)
-      return OK(`规范文档 ${rows.length} 份：\n\n${lines.join('\n')}\n\n推荐顺序：v0-architecture → fact-schema-draft → fact-timeline-rules → fact-rendering`)
-    }
-    const text = readSpec(name)
-    if (text === null) return FAIL(`没找到规范：${name}。用不带参数的 antu_spec 看清单。`)
-    return OK(text)
+  async ({ type = 'fact' }) => {
+    const text = readAgentGuide(type)
+    if (text) return OK(text)
+    const known = listAgentGuides()
+    return FAIL(`还没有 ${type} 这一类的机制说明。目前有：${known.join('、') || '（一个都没有）'}。`)
   },
 )
 
@@ -282,19 +286,25 @@ server.registerTool(
 )
 
 // ---------------------------------------------------------------
-// 资源：规范文档按需读，不占上下文
+// 资源：只暴露给 agent 的规格
 // ---------------------------------------------------------------
-for (const s of listSpecs()) {
+// 原先这里把所有 spec/*.md 都挂出来，还分了个 antu://internal/ 给"内部文档"。
+// 那是错的：**给人看的文档不该出现在 agent 的选项里**，哪怕标上"内部"也一样——
+// agent 顺着列表读下去就会读，而那是写给设计者的上万字符。
+// 现在只挂 spec/agent/ 下的，前缀也不用分两套：这里只有一种读者。
+// 一个大类一份：antu://agent/<type>/guide
+for (const { type, label } of listKnowledgeTypes()) {
+  if (!readAgentGuide(type)) continue
   server.registerResource(
-    s.name,
-    `antu://spec/${s.name}`,
+    `${type}-guide`,
+    `antu://agent/${type}/guide`,
     {
-      title: s.name,
-      description: `案图规范：${s.name}`,
+      title: `${label}的机制说明`,
+      description: `给 agent 的规格：${label}怎么画`,
       mimeType: 'text/markdown',
     },
     async (uri) => ({
-      contents: [{ uri: uri.href, mimeType: 'text/markdown', text: readSpec(s.name) ?? '' }],
+      contents: [{ uri: uri.href, mimeType: 'text/markdown', text: readAgentGuide(type) ?? '' }],
     }),
   )
 }

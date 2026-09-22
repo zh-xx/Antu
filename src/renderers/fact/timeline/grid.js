@@ -1,11 +1,11 @@
 // ============================================================
-//  src/core/factGrid.js —— fact 排布的唯一事实来源
+//  src/renderers/fact/timeline/grid.js —— fact 排布的唯一事实来源
 //
 //  把一份 fact 规范算成“哪个事件落在第几行、第几列”。
 //  校验层（validate.js）和渲染层（fact 渲染器）都调用它，
 //  保证“检查的规则”和“画出来的样子”用的是同一套逻辑。
 //
-//  规则见 spec/fact-timeline-rules.md：
+//  规则见 spec/fact/timeline-rules.md：
 //   - 行 = 槽（slots 数组下标）
 //   - 列 = 站位 × 主体：第 1 侧各主体、轴线、第 2 侧各主体
 //   - 站位由 groupId 决定；涉及 ≥2 个主体则落轴线
