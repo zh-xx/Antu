@@ -81,6 +81,7 @@ antu/
 │   ├── fact-rendering.md           画面元素、可调参数、为什么这么画
 │   ├── source-schema-draft.md      来源的 7 类字段
 │   ├── mcp-server.md               MCP 服务端：给 agent 的入口
+│   ├── known-issues.md             待修清单（发现的问题、反复踩的坑）
 │   └── react-flow-features.md      画布库的用法与踩坑记录
 ├── examples/                   ← 示例数据；raw/ 里是真实案例的原始文书
 ├── src/
