@@ -14,6 +14,7 @@ import { join } from 'node:path'
 
 import { renderToFile, REPO } from '../lib/make-html.mjs'
 import { fitZoom } from '../../src/core/canvas.js'
+import { describeFactSchema } from '../../src/renderers/fact/schema.js'
 // 登记各大类的知识（纯 JS，不碰组件）。有了它，校验与排布都从注册表取。
 import '../../src/renderers/index.js'
 import { layoutOf as layoutFromRegistry, layoutKindsOf } from '../../src/core/registry.js'
@@ -201,4 +202,4 @@ export function readSpec(name) {
   return readFileSync(p, 'utf8')
 }
 
-export { CANVAS }
+export { CANVAS, describeFactSchema }

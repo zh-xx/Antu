@@ -93,11 +93,20 @@ try {
   const specText = spec.contents?.[0]?.text ?? ''
   console.log(`  取到 ${specText.length} 字符，开头：${specText.split('\n')[0]}`)
 
-  step(5, '调 antu_examples（列示例）')
+  step(5, '调 antu_schema（字段表，从代码生成）')
+  const sch = await rpc('tools/call', { name: 'antu_schema', arguments: {} })
+  const schText = textOf(sch)
+  console.log(`  ${schText.length} 字符（约 ${Math.round(schText.length * 0.65 / 1000 * 10) / 10}k token），开头：${schText.split('\n')[0]}`)
+
+  step(6, '调 antu_guide（机制说明）')
+  const guide = await rpc('tools/call', { name: 'antu_guide', arguments: {} })
+  console.log(`  ${textOf(guide).length} 字符，开头：${textOf(guide).split('\n').find((l) => l.trim()) ?? ''}`)
+
+  step(7, '调 antu_examples（列示例）')
   const ex = await rpc('tools/call', { name: 'antu_examples', arguments: {} })
   console.log('  ' + textOf(ex).split('\n').slice(0, 6).join('\n  '))
 
-  step(6, '校验一份坏 JSON（故意少字段）')
+  step(8, '校验一份坏 JSON（故意少字段）')
   const bad = await rpc('tools/call', {
     name: 'antu_validate',
     arguments: { spec: { type: 'fact', title: '坏的', slots: [{ events: [{ id: 'e1', label: '没时间' }] }] } },
@@ -105,23 +114,23 @@ try {
   console.log('  isError =', bad.isError)
   console.log('  ' + textOf(bad).split('\n').slice(0, 5).join('\n  '))
 
-  step(7, '校验一份真 JSON')
+  step(9, '校验一份真 JSON')
   const good = JSON.parse(readFileSync(join(REPO, 'examples/fact-电梯劝烟案.json'), 'utf8'))
   const v = await rpc('tools/call', { name: 'antu_validate', arguments: { spec: good } })
   console.log('  ' + textOf(v))
 
-  step(8, '算几何（不渲染）')
+  step(10, '算几何（不渲染）')
   const lay = await rpc('tools/call', { name: 'antu_layout', arguments: { spec: good } })
   console.log('  ' + textOf(lay).split('\n').join('\n  '))
 
-  step(9, '生成自包含 HTML')
+  step(11, '生成自包含 HTML')
   const html = await rpc('tools/call', {
     name: 'antu_render',
     arguments: { spec: good, outPath: '/tmp/mcp-test-out.html' },
   })
   console.log('  ' + textOf(html).split('\n').join('\n  '))
 
-  step(10, '截图预览（这一步要浏览器）')
+  step(12, '截图预览（这一步要浏览器）')
   const pv = await rpc('tools/call', {
     name: 'antu_preview',
     arguments: { spec: good, width: 1400, height: 820 },
@@ -136,7 +145,7 @@ try {
     console.log('  图片：没有')
   }
 
-  console.log('\n✅ 十个步骤全部走通')
+  console.log('\n✅ 十二个步骤全部走通')
   if (stderr.trim()) console.log('\n服务端 stderr：\n' + stderr.trim().split('\n').slice(0, 8).join('\n'))
 } catch (e) {
   console.log('\n❌ 失败：', e.message)

@@ -30,6 +30,7 @@ import { launchBrowser, findChrome } from '../lib/chrome.mjs'
 // 这个坑真实发生过：搬文件之后忘了这行，坏数据没被拦下，是验证器自己抓出来的。
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
+import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 
@@ -163,6 +164,29 @@ function checkData() {
     truthy('agent 示例的视角全部排得下（照抄不会撞到"摆不下"）', blocked === 0)
   }
 
+  // 字段元数据（给 agent 的参考资料）必须和校验器说的是同一件事。
+  // 办法：拿一份能过校验的示例，逐个抽掉"必填"的字段，校验器必须报错。
+  // 这样字段表就不可能悄悄漂移，而不用把校验规则改写成数据驱动的。
+  const base = JSON.parse(readFileSync(join(agentDir, '1-minimal.json'), 'utf8'))
+  const required = []
+  for (const rows of Object.values(FACT_FIELDS)) {
+    for (const r of rows) if (r.req === '是' && r.name) required.push(r.name)
+  }
+  const noop = ['type', 'title'] // 这三个在信封层，抽掉它们报的是别的错，另测
+  let agree = 0
+  let disagree = []
+  for (const name of required) {
+    if (noop.includes(name)) continue
+    const copy = JSON.parse(JSON.stringify(base))
+    const target = name === 'events' ? copy.slots[0] : copy.slots[0].events[0]
+    if (!(name in target)) continue // 示例里没有这个字段，跳过
+    delete target[name]
+    if (validateSpec(copy).length > 0) agree += 1
+    else disagree.push(name)
+  }
+  truthy(`字段表里标"必填"的，抽掉后校验器都报错（验了 ${agree} 个）`, disagree.length === 0)
+  if (disagree.length) console.log('     没报错的：' + disagree.join('、'))
+
   // 校验错误要说人话：故意造一份坏的，看报错里有没有字段路径
   const broken = { type: 'fact', title: '坏的', slots: [{ id: 's1', events: [{ id: 'e1', label: '没时间' }] }] }
   const errs = validateSpec(broken)
@@ -289,8 +313,8 @@ function checkMcp() {
       encoding: 'utf8',
     })
     const line = out.split('\n').find((l) => l.includes('步骤')) || ''
-    if (out.includes('✅')) ok('十个步骤全通', line.trim())
-    else bad('自测未通过', out.split('\n').slice(-4).join(' / '))
+    if (out.includes('✅')) ok('MCP 十二步全通', line.trim())
+    else bad('MCP 自测未通过', out.split('\n').slice(-4).join(' / '))
   } catch (e) {
     bad('自测跑不起来', String(e.stdout || e.message).split('\n').slice(-4).join(' / '))
   }

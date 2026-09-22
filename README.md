@@ -114,12 +114,16 @@ antu/
 
 | 工具 | 干什么 | 要浏览器吗 |
 |---|---|---|
-| `antu_spec` | 读规范 | 不要 |
-| `antu_examples` | 看示例（含两个真实案例） | 不要 |
+| `antu_schema` | 字段表（从代码生成，约 1.2k token） | 不要 |
+| `antu_guide` | 一页机制说明（约 1.1k token） | 不要 |
+| `antu_examples` | 看示例（默认给六份 1 KB 的小示例） | 不要 |
 | `antu_validate` | 校验 JSON，逐条报错 | 不要 |
 | `antu_layout` | 算几何：多大、该用哪个方向、哪个视角摆不下 | 不要 |
 | `antu_render` | 出成品 HTML | 不要 |
 | `antu_preview` | 截图返回，用眼睛检查 | 要（复用本机 Chrome） |
+| `antu_spec` | 读设计文档（写 JSON 用不上） | 不要 |
+
+**agent 的参考资料只有 2.3k token**（schema + guide），不再需要读那几万字符的人类文档。
 
 细节见 `spec/mcp-server.md`。
 
