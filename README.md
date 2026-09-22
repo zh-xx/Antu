@@ -1,6 +1,6 @@
 # 案图 antu
 
-[![验证](https://github.com/zh-xx/antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/antu/actions/workflows/verify.yml)
+[![验证](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
 
 > 法律可视化渲染内核：**一份 JSON 进去，一个能双击打开的 HTML 出来。**
 
