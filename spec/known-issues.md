@@ -219,6 +219,89 @@ src/renderers/fact/              事实图级（所有子类共用）
 
 ---
 
+### 8. 没有 linter，未定义的变量能过构建 `待修`
+
+**现象。** `devDependencies` 只有 `@vitejs/plugin-react` 和 `vite`，没有 eslint 之类的检查，
+也没有 `lint` 脚本。
+
+**实测（往源码里塞一个未定义的变量）：**
+
+```
+在 timelineLayout.js 末尾加一行  const _typo_check = notDefinedAnywhere + 1
+npm run build  →  ✓ built in 91ms        ← 照样通过
+（真正出错要到运行时模块求值，那时表现为整页白屏）
+```
+
+**代价。** 这个项目已经因此白屏过两次：一次是删函数时连带删掉了 `actorLinesOf`，
+一次是 `current.path` 在声明之前被引用（TDZ）。**两次 build 都是过的。**
+
+**建议做法。** 装一个 linter（eslint 或就用 oxc），加 `npm run lint`，
+把 `no-undef`、`no-unused-vars` 打开。成本很低，防的正是上面那类错。
+
+---
+
+### 9. HTML 模板与转义规则写了两份 `待修`
+
+**现象。** 生成自包含 HTML 的那段逻辑（转义规则 + HTML 骨架 + 标题转义）
+在 `tools/make-html.mjs` 和 `tools/mcp/engine.mjs` 里**各有一份**：
+
+```
+make-html 里： 768 字符
+MCP 里：       835 字符
+两段相似度：   83%
+```
+
+**代价。** 改一处忘一处。比如将来要往 HTML 里加 meta、加 favicon、
+或者改 `<script>` 的转义方式，两处会慢慢走偏，而且**症状是"某一条路生成出来的 HTML 不对"**，
+不容易发现。
+
+**建议做法。** 抽一个共用的函数（例如 `tools/lib/make-html.mjs`），两边都调它。
+
+---
+
+### 10. 没有错误边界，渲染器一抛错整页白屏 `待修`
+
+**现象。** 全项目搜不到 `ErrorBoundary` / `componentDidCatch` / `getDerivedStateFromError`。
+`App.jsx` 只处理了"校验不过"和"没有渲染器"，**渲染器自己抛错不在其中**。
+
+**代价。** 用户看到的是**一片白的页面**，没有任何信息。开发时我也只能靠
+Chrome 的控制台反查是哪一行。上面第 8 条那两次白屏就是这么来的。
+
+**建议做法。** 在 `App.jsx` 里包一层错误边界，把白屏换成
+"渲染出错了 + 错误信息 + 可能是数据哪里的问题"。十几行。
+
+---
+
+### 11. 一处引用了不存在的字段 `待修`
+
+**现象。** `tools/mcp/engine.mjs` 第 57 行：
+
+```js
+const kind = spec?.kindHint ?? 'timeline'
+```
+
+`kindHint` **在 schema 里不存在**（`spec/fact-schema-draft.md` 里搜不到），
+是我写 MCP 时凭空加的。现在它永远走 `?? 'timeline'`，所以表现上没错，
+**但它让人以为数据里有个 `kindHint` 字段**。
+
+**建议做法。** 删掉，或换成真的按大类取默认子类（和第 2 条一起做）。
+
+---
+
+### 12. 其他小卫生问题 `待修`
+
+攒在一起，单条都不值得开一条：
+
+| 问题 | 在哪 |
+|---|---|
+| `'antu.prefs'` 这个键名**写死了 8 处** | `src/App.jsx`，该提成常量 |
+| 适配留白的 `1.12` 写了两份（渲染器里是 `FIT_PADDING = 0.12`） | `src/renderers/fact/index.jsx`、`tools/mcp/engine.mjs` |
+| `SIDE_LABELS` 导出了但全项目没人用 | `src/core/labels.js`（也是第 6 条里那半个 fact 专属） |
+| `DEFAULT_VIEW`、`layoutOf`、`fitZoom` 只在文件内用，却写成了导出 | `src/core/factGrid.js`、`tools/mcp/engine.mjs` |
+| 卡片只能鼠标悬停/点击，**键盘聚焦不了** | `EventNode.jsx` 里 `.antu-card` 是个 `div`，没有 `tabIndex` / `role` |
+
+---
+
 ## 反复踩的坑（不是待修项，是规矩）
 
 这三条这个项目已经踩过两三次，写在这里当规矩。
