@@ -449,6 +449,63 @@ async function checkLaunchFailure() {
   eq('失败不留临时 profile 目录', after.length, before.length)
 }
 /**
+ * Chrome 收尾那几百毫秒还在往 profile 里写，也得能删干净。
+ *
+ * CI 上真撞过这一次（known-issues 第 18 条）：
+ *   Error: ENOTEMPTY: directory not empty, rmdir '/tmp/antu-chrome-XXXX/Default'
+ *     at Object.close (tools/lib/chrome.mjs)
+ * 主进程收 SIGTERM 退出了，写 profile 的子进程还活着，`rmSync` 走到最后
+ * 一步 rmdir 时目录又非空了。所以收尾要**连进程组一起杀**，不是只杀主进程。
+ *
+ * 这里用一个假浏览器：它自己起一个**一直往 profile 里写文件**的后台进程，
+ * 然后睡在那儿。只杀主进程的话，那个写手还在，目录删不掉。
+ * 不需要真浏览器，所以能进 verify:fast。
+ */
+async function checkLingeringChrome() {
+  const fake = join(OUT, 'churning-browser.sh')
+  // 写手**每次重写都先 mkdir -p**：目录被删掉了它就再建回来。
+  // 这样"写手还活着"必然表现为"profile 目录还在"，不靠抢时序碰运气。
+  // 写手只活 20 秒，跑完自己会停，不会留个死循环在机器上。
+  // 注意这里**不** trap TERM：要验的正是"连进程组一起杀"，组里写手一起收掉，目录才删得动。
+  writeFileSync(
+    fake,
+    '#!/bin/sh\n' +
+      'PROFILE=""\n' +
+      'for a in "$@"; do\n' +
+      '  case "$a" in --user-data-dir=*) PROFILE="${a#--user-data-dir=}" ;; esac\n' +
+      'done\n' +
+      'i=0\n' +
+      '( while [ $i -lt 2000 ]; do\n' +
+      '    i=$((i + 1))\n' +
+      '    mkdir -p "$PROFILE/Default" 2>/dev/null || exit 0\n' +
+      '    echo x > "$PROFILE/Default/f$i" 2>/dev/null || exit 0\n' +
+      '    sleep 0.01\n' +
+      '  done ) &\n' +
+      'sleep 60\n',
+    { mode: 0o755 },
+  )
+  const prev = process.env.ANTU_CHROME
+  const before = profilesInTmp().length
+  let message
+  try {
+    process.env.ANTU_CHROME = fake
+    try {
+      await launchBrowser({ timeoutMs: 1200 })
+      bad('边写边收尾的假浏览器：居然起来了', '应该报错才对')
+      return
+    } catch (e) {
+      message = e.message
+    }
+  } finally {
+    if (prev === undefined) delete process.env.ANTU_CHROME
+    else process.env.ANTU_CHROME = prev
+  }
+  ok('边写边收尾的假浏览器起不来时抛错', message.split('\n')[0])
+  // 关键那条：写手死了，profile 才删得掉
+  eq('收尾连子进程一起杀掉，profile 删得掉', profilesInTmp().length, before)
+}
+
+/**
  * 导出图片的检查。
  *
  * 四条要害，都是这套机制最容易悄悄坏掉的地方：
@@ -872,6 +929,7 @@ const data = checkData()
 
 checkBrowserLookup()
 await checkLaunchFailure()
+await checkLingeringChrome()
 
 if (!shotOnly && !skipBrowser) {
   const profilesBefore = profilesInTmp().length

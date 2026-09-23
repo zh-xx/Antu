@@ -562,3 +562,33 @@ Chrome 起不来，三种 headless 写法都试过了：
 日志里看不出来（当时的失败信息说明不了）。现在 stderr 会进报错，
 下次再红就能直接读出原因。**没有证实之前不要再改这一块**：
 现在这套是按本地能复现的那条路径修的。
+
+**补记：修完第一次推上去，CI 又红了一次，红在另一个地方（同一个提交 `384d52b`）。**
+这次浏览器起来了，渲染和导出全部通过，死在最后 `close()` 删临时 profile 目录上：
+
+```
+Error: ENOTEMPTY: directory not empty, rmdir '/tmp/antu-chrome-EPzGJe/Default'
+    at rmSync (node:fs:1239:10)
+    at Object.close (file:///home/runner/work/Antu/Antu/tools/lib/chrome.mjs:404:7)
+```
+
+这不是新引入的，是 `close()` 里那句 `rmSync` 一直就有的毛病，这回赶上了：
+**只往主进程发 SIGTERM，写 profile 的子进程还活着**，`rmSync` 走到最后一步 rmdir
+时目录又非空了。跟上面第 2 条是同一个根：杀要杀整个进程组。
+
+改法：起子进程时 `detached` 让它自成一个进程组，收尾 `process.kill(-pid, ...)`
+连组一起收；删目录再重试 5 次（Chrome 收尾那几百毫秒还有零星写入）。
+`killGroup` 里那句平台判断**必须和 spawn 的 detached 用同一个条件**，
+不然 `-pid` 会指到验证进程自己那一组，把自己杀了。
+
+**复现（进了验证，不需要真浏览器）。** 假浏览器自己起一个后台写手，
+每轮先 `mkdir -p` 再写文件，也就是**目录被删掉它就建回来**，
+这样"写手还活着"必然表现为"profile 还在"，不靠抢时序。同一个复现：
+
+| 收尾方式 | 结果 |
+|---|---|
+| 只杀主进程 + 一次 `rmSync`（改前） | 报出和 CI 一模一样的 `ENOTEMPTY ... /Default`，剩 3 个临时目录，退出码 1 |
+| 连进程组一起杀 + 重试（改后） | 0 个残留，绿 |
+
+**这轮之后的分工**：`verify:fast` 里多两条不要浏览器的检查
+（三次尝试各占各的端口与 profile；收尾连子进程一起杀）。

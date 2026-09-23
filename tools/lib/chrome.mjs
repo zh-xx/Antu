@@ -193,8 +193,61 @@ async function waitForExit(child, ms) {
  */
 async function terminate(child, ms = 3000) {
   if (!child || child.exitCode !== null || child.signalCode !== null) return
-  child.kill()
-  if (!(await waitForExit(child, ms))) child.kill('SIGKILL')
+  killGroup(child)
+  if (await waitForExit(child, ms)) return
+  killGroup(child, 'SIGKILL')
+  await waitForExit(child, 1000)
+}
+
+/**
+ * 杀**整个进程组**，不只是主进程。
+ *
+ * 只杀主进程会留下正在写 profile 的子进程，紧接着删目录就会撞上
+ * `ENOTEMPTY: directory not empty` —— CI 上真撞过（见 known-issues 第 18 条）：
+ * 主进程收 SIGTERM 退出了，子进程还在往 profile 里写，
+ * `rmSync` 走到最后一步 rmdir 时目录又非空了。
+ * 起子进程时用 detached 让它自成一个进程组，这里就能连组一起收掉。
+ */
+function killGroup(child, signal = 'SIGTERM') {
+  // **必须和上面 spawn 的 detached 用同一个判断**：只有子进程自成一个进程组时，
+  // 负号才是它的组；没 detached 时 -pid 会指到验证进程自己那一组，把自己一起杀了。
+  if (process.platform === 'win32') {
+    try {
+      child.kill(signal)
+    } catch {
+      /* 已经没了 */
+    }
+    return
+  }
+  try {
+    // 负号 = 整个进程组
+    process.kill(-child.pid, signal)
+  } catch {
+    try {
+      child.kill(signal)
+    } catch {
+      /* 已经没了 */
+    }
+  }
+}
+
+/**
+ * 删掉一份临时 profile 目录。
+ *
+ * 要重试：Chrome 收尾的那几百毫秒里还有零星写入，一次删不干净是常事。
+ * 重试仍然失败就如实返回 false，由调用方决定怎么办（不吞掉、也不抛）。
+ */
+async function removeProfile(dir, attempts = 5) {
+  if (!dir) return true
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      rmSync(dir, { recursive: true, force: true })
+      return true
+    } catch {
+      await wait(200)
+    }
+  }
+  return false
 }
 
 /**
@@ -230,6 +283,8 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
     const c = spawn(chrome, launchArgs({ ...a, width, height }), {
       // stderr 要留着：Chrome 起不来的原因基本只在这里，丢掉就只能猜
       stdio: ['ignore', 'ignore', 'pipe'],
+      // 自成进程组，收尾时才能连子进程一起收掉（见 killGroup）
+      detached: process.platform !== 'win32',
     })
     const readStderr = captureStderr(c)
     let exited = false
@@ -252,7 +307,7 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
   }
   // 没用上的 profile 目录一并清掉，别在 /tmp 里留一堆
   for (const a of attempts) {
-    if (a.profile !== profile) rmSync(a.profile, { recursive: true, force: true })
+    if (a.profile !== profile) await removeProfile(a.profile)
   }
   if (!target) {
     await terminate(child)
@@ -401,7 +456,7 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
     async close() {
       c.close()
       await terminate(child)
-      rmSync(profile, { recursive: true, force: true })
+      await removeProfile(profile)
     },
   }
 
