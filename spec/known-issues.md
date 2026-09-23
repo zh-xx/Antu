@@ -53,8 +53,6 @@
 **顺带一处文档空白**：`validate` 与 `layout` 的分工没写下来。`layout` 是**逐视角**报的
 （`blockedViews`），`validate` 只报第一个。使用者按名字猜，会以为两个都覆盖了全部视角。
 
----
-
 ## 反复踩的坑（不是待修项，是规矩）
 
 这三条这个项目已经踩过两三次，写在这里当规矩。
@@ -488,3 +486,112 @@ src/renderers/
 于是 `dist/index.html` 没有数据，打开是"这份文件里没有内联数据"。
 
 **改法。** 去掉 `apply: 'serve'`（交付走 `dist-engine/`，那里没有 HTML，注入不会被调用）。
+
+### 18. CI 上 Chrome 偶发起不来（已修，见 `384d52b`、`5bbd087`）
+
+**先说结论：不是环境问题，是 `launchBrowser` 自己的三个毛病叠在一起。**
+一开始我把它记成"红的是环境不是代码"，那是错的：真正让失败无法恢复的，
+是三种 headless 写法**共用一份 profile 目录和一个端口**。
+
+**现象。** 同一个提交，`pull_request` 那次红、合并进 `main` 再跑又绿。
+红的那次死在【渲染】开头，三次尝试报同一个端口：
+
+```
+Error: Chrome 起不来，三种 headless 写法都试过了：
+  --headless=old → 浏览器调试端口 9698 没起来
+  --headless=new → 浏览器调试端口 9698 没起来
+  (不带 headless) → 浏览器调试端口 9698 没起来
+Chrome 路径：/usr/bin/google-chrome
+```
+
+单据：run `35867678543`（`66eaad5`，failure）对 run `35867862937`（`main`，success）；
+之后 run `35869370751`（`b8ca672`，只改了一个 .md 文件）也红了一次。
+
+**根因（本地复现出来的，不是猜的）。** 三条，互相加重：
+
+1. **三种写法共用一份 profile 目录。** Chrome 见到同一个 `--user-data-dir`
+   已经有实例，会直接把 `Failed to create SingletonLock: File exists` 写进 stderr，
+   然后 `Failed to create a ProcessSingleton for your profile directory ... Aborting now`
+   自杀退出。所以第一版一旦没起来（或没死透），第二、三版**连启动都做不到**，
+   "三种写法挨个试"的备用链路整个是废的。端口也是共用一个，上一版还活着时下一版绑不上。
+2. **`child.kill()` 只发一次 SIGTERM 就不管了。** 卡住的 Chrome 不走，
+   profile 一直占着；而且那个子进程吊着 Node 的事件循环，
+   **连验证进程本身都退不掉**（复现时卡到外层超时被强杀）。
+3. **`stdio: 'ignore'` 把 Chrome 自己的报错丢掉了**，失败信息只剩"端口没起来"，只能猜。
+
+另外每条只等 8 秒，容器里冷启动建 profile 未必够；也没带
+`--disable-dev-shm-usage`（容器里 `/dev/shm` 小，是 Chrome 起不来的常见原因）。
+
+**复现（本地，脚本在 `/tmp`，写完就删了）。** 用一个假的"浏览器"包一层：
+遇到 `--headless=old` 就起真 Chrome 占住这个 profile 但**不监听调试端口**，
+并且 `trap '' TERM` 不理 SIGTERM。**旧代码在这个复现下打出了和 CI 一模一样的信息**
+（同一个端口报三遍），耗时 25.3 秒，之后连 Node 进程都退不掉：
+
+```
+Chrome 起不来，三种 headless 写法都试过了：
+  --headless=old → 浏览器调试端口 9753 没起来
+  --headless=new → 浏览器调试端口 9753 没起来
+  (不带 headless) → 浏览器调试端口 9753 没起来
+```
+
+**改法**（`tools/lib/chrome.mjs`）：
+
+- 每种写法**各占一个端口和一份 profile 目录**（`attemptPorts` / `launchArgs`）；
+- 失败的那一份用 `terminate()` 收尾：先 SIGTERM，3 秒不走就 SIGKILL，`close()` 也走它；
+- Chrome 的 stderr 收着，起不来时写进报错里；
+- 每条等 30 秒，但**进程一退就立刻放弃**（不再白等满超时）；
+- 补上 `--disable-dev-shm-usage`。
+
+同一个复现，新代码 **7.5 秒起来、会话可用、进程干干净净退出**。
+
+**实测（当时：单元 43 项、验证 86 项。后来分组间距那轮又加了 5 条，
+验证现在是 93 项）。** 单元测试 43 项（新增 8 项钉住"端口和 profile 不许共用"，
+那是纯算术）。验证 86 项，新增 6 项：假浏览器把三次尝试的**完整参数**记下来，
+断言三次各有各的 profile 目录和端口、顺序是"老写法 → 新写法 → 不带参数"、
+失败信息里带 Chrome 自己的报错、失败不留临时 profile 目录；
+再加一条"跑完浏览器不留临时 profile 目录"（覆盖渲染和 MCP 预览两次启动）。
+
+**每条新断言都反着改一遍验过能失败：**
+
+| 故意改坏 | 结果 |
+|---|---|
+| 端口退回"三次共用一个" | 单元测试 2 项失败；验证"每种写法各占一个端口"期望 3 实际 1；退出码 1 |
+| `stdio: 'ignore'`（丢掉 Chrome 的报错） | "失败信息里带上浏览器自己的报错"红；退出码 1 |
+| `close()` 不删 profile 目录 | "浏览器用完清掉临时 profile 目录"期望 0 实际 2；退出码 1 |
+
+**还留着一个不知道。** CI 上那一次的**触发条件**没能从日志里证实
+（当时的失败信息说明不了是第一版卡住、还是 Chrome 根本没起来）。
+能证实的是失败之后**为什么恢复不了**：共用 profile、杀不掉子进程、看不清原因，
+这三条都在本地复现过、也都改了。所以这块不是"不要再改"，
+而是**下次再红先看报错**：现在每次尝试各自的端口和 Chrome 的原话都在里面，
+照着那段话再动手，别凭这一条的结论外推。
+
+**补记：修完第一次推上去，CI 又红了一次，红在另一个地方（同一个提交 `384d52b`）。**
+这次浏览器起来了，渲染和导出全部通过，死在最后 `close()` 删临时 profile 目录上：
+
+```
+Error: ENOTEMPTY: directory not empty, rmdir '/tmp/antu-chrome-EPzGJe/Default'
+    at rmSync (node:fs:1239:10)
+    at Object.close (file:///home/runner/work/Antu/Antu/tools/lib/chrome.mjs:404:7)
+```
+
+这不是新引入的，是 `close()` 里那句 `rmSync` 一直就有的毛病，这回赶上了：
+**只往主进程发 SIGTERM，写 profile 的子进程还活着**，`rmSync` 走到最后一步 rmdir
+时目录又非空了。跟上面第 2 条是同一个根：杀要杀整个进程组。
+
+改法：起子进程时 `detached` 让它自成一个进程组，收尾 `process.kill(-pid, ...)`
+连组一起收；删目录再重试 5 次（Chrome 收尾那几百毫秒还有零星写入）。
+`killGroup` 里那句平台判断**必须和 spawn 的 detached 用同一个条件**，
+不然 `-pid` 会指到验证进程自己那一组，把自己杀了。
+
+**复现（进了验证，不需要真浏览器）。** 假浏览器自己起一个后台写手，
+每轮先 `mkdir -p` 再写文件，也就是**目录被删掉它就建回来**，
+这样"写手还活着"必然表现为"profile 还在"，不靠抢时序。同一个复现：
+
+| 收尾方式 | 结果 |
+|---|---|
+| 只杀主进程 + 一次 `rmSync`（改前） | 报出和 CI 一模一样的 `ENOTEMPTY ... /Default`，剩 3 个临时目录，退出码 1 |
+| 连进程组一起杀 + 重试（改后） | 0 个残留，绿 |
+
+**这轮之后的分工**：`verify:fast` 里多两条不要浏览器的检查
+（三次尝试各占各的端口与 profile；收尾连子进程一起杀）。

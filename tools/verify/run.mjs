@@ -15,9 +15,10 @@
 //    1. 构建        开发构建与引擎构建都能过
 //    2. lint        静态检查（未定义变量、死变量）
 //    3. 数据        每份示例都能校验通过；视角 × 方向全部能排；校验错误本身对得上
-//    4. 浏览器查找  ANTU_CHROME 优先、指错了不瞎返回（不要浏览器，所以在 verify:fast 里）
+//    4. 浏览器查找  ANTU_CHROME 优先、指错了不瞎返回；起不来时报错说明白、
+//                  三次尝试各占各的端口与 profile（不要浏览器，所以在 verify:fast 里）
 //    5. 渲染        用 file:// 打开生成的 HTML，断言卡片数/尺寸/缩放/位置，且零外部请求
-//    6. 导出        点导出真能落盘 PNG；尺寸 = 内容 × 2；不是白图；轴末端有箭头
+//    6. 导出        点导出真能落盘 PNG；尺寸 =（内容 + 留白）× 2；不是白图；四边留白；轴末端有箭头
 //    7. MCP         自带客户端把十二个步骤走一遍
 //    8. 截图        出一张图，供人扫一眼（不能自动判断好看，但要能看）
 // ============================================================
@@ -25,6 +26,7 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 
 import { REPO, renderToFile } from '../lib/make-html.mjs'
 import { launchBrowser, findChrome } from '../lib/chrome.mjs'
@@ -36,6 +38,7 @@ import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
 import { readExample, listExamples, listAgentGuides, describeSchema } from '../mcp/engine.mjs'
 import { listKnowledgeTypes } from '../../src/core/registry.js'
 import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.js'
+import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 
@@ -53,6 +56,15 @@ let passed = 0
 const failures = []
 // 这一轮有没有真出截图。--no-browser 时不能把上一轮残留的那张当成自己的产物报出来。
 let shotWritten = false
+
+/**
+ * 本项目起浏览器时在系统临时目录里建的 profile 目录。
+ * chrome.mjs 的约定是"用完务必 close()，否则进程和临时目录都会留下"，
+ * 这里按这个约定数一数，看有没有人忘了关。
+ */
+function profilesInTmp() {
+  return readdirSync(tmpdir()).filter((n) => n.startsWith('antu-chrome-'))
+}
 
 function ok(label, detail = '') {
   passed += 1
@@ -92,9 +104,16 @@ function eq(label, actual, expected) {
   else bad(label, `期望 ${e}，实际 ${a}`)
 }
 
-function truthy(label, value) {
-  if (value) ok(label)
-  else bad(label)
+/**
+ * value 为真就算过。
+ *
+ * `detail` 一定要带上：全脚本有近二十处调用把"实测到多少"当第三个参数传进来，
+ * 原先这个参数被这里吃掉，于是最要紧的数字（非白像素多少、留白多少、组间几倍）
+ * 既不出现，失败时也看不到，只能重跑一遍去查。
+ */
+function truthy(label, value, detail = '') {
+  if (value) ok(label, detail)
+  else bad(label, detail)
 }
 
 // ---------------------------------------------------------------
@@ -345,15 +364,169 @@ function checkBrowserLookup() {
 }
 
 /**
+ * 起不来的那条路：报错得能说明白，而且三次尝试必须**互不干扰**。
+ *
+ * 这条是 known-issues 第 18 条换来的。CI 上偶发"三种 headless 写法全都没起来"，
+ * 当时有三种毛病叠在一起，全都测不出来：
+ *   1. 三种写法**共用一份 profile**。Chrome 见到 profile 已被占就自杀
+ *      （`Failed to create SingletonLock` / `Aborting now`），于是第一版一旦
+ *      没起来或没死透，后面两版连启动都做不到，备用链路整个是废的；
+ *      端口也是共用一个，上一版还活着时下一版绑不上。
+ *   2. `child.kill()` 只发一次 SIGTERM 就不管了。卡住的 Chrome 不走，
+ *      profile 一直占着，而且子进程还吊着 Node 的事件循环，整个进程跟着挂住。
+ *   3. `stdio: 'ignore'` 把 Chrome 自己的报错丢掉了，失败信息只有"端口没起来"，
+ *      只能猜。
+ *
+ * 这里用一个假的浏览器（把参数记下来就退出）来验，不需要真浏览器，
+ * 所以能进 verify:fast。**真浏览器上的复现**（第一版占着 profile 且不理 SIGTERM，
+ * 旧代码三种写法全灭、25 秒后连进程都退不掉）写在 known-issues 第 18 条里。
+ */
+async function checkLaunchFailure() {
+  const fake = join(OUT, 'fake-browser.sh')
+  const log = join(OUT, 'fake-browser.log')
+  rmSync(log, { force: true })
+  writeFileSync(
+    fake,
+    '#!/bin/sh\n' +
+      'echo "###" >> "$ANTU_FAKE_LOG"\n' +
+      'for a in "$@"; do echo "$a" >> "$ANTU_FAKE_LOG"; done\n' +
+      'echo "假浏览器：我起不来，原因写在这里" >&2\n' +
+      'exit 7\n',
+    { mode: 0o755 },
+  )
+  const prevChrome = process.env.ANTU_CHROME
+  const prevLog = process.env.ANTU_FAKE_LOG
+  const before = readdirSync(tmpdir()).filter((n) => n.startsWith('antu-chrome-'))
+  let message
+  try {
+    process.env.ANTU_CHROME = fake
+    process.env.ANTU_FAKE_LOG = log
+    try {
+      // timeoutMs 给很小：假浏览器立刻退出，实现应当"进程一退就放弃"，不必真等
+      await launchBrowser({ timeoutMs: 1500 })
+      bad('假浏览器：居然起来了', '应该报错才对')
+      return
+    } catch (e) {
+      message = e.message
+    }
+  } finally {
+    if (prevChrome === undefined) delete process.env.ANTU_CHROME
+    else process.env.ANTU_CHROME = prevChrome
+    if (prevLog === undefined) delete process.env.ANTU_FAKE_LOG
+    else process.env.ANTU_FAKE_LOG = prevLog
+  }
+
+  ok('假浏览器起不来时抛错', message.split('\n')[0])
+  // 三种写法都试过，而且**各报各的端口**：端口重复就说明又退回"三次共用一个端口"，
+  // 那样第一版没死透时后面两版绑不上，备用链路是废的。
+  const ports = [...message.matchAll(/端口 (\d+)/g)].map((m) => m[1])
+  eq('三种写法都试过了', ports.length, 3)
+  eq('每种写法各占一个端口', new Set(ports).size, ports.length)
+  // Chrome 自己的话必须带进失败信息，否则下次还是只能猜
+  // detail 只在失败时给：过了就不用把那段原文再抄一遍，日志太吵
+  truthy(
+    '失败信息里带上浏览器自己的报错',
+    message.includes('假浏览器：我起不来，原因写在这里'),
+    message.includes('假浏览器：我起不来，原因写在这里')
+      ? ''
+      : message.split('\n').slice(1, 3).join(' / ').slice(0, 90),
+  )
+  truthy('失败信息里带上浏览器路径', message.includes(fake))
+
+  // 直接看**实际发给 Chrome 的参数**：三次尝试不许有一样的 profile 目录。
+  // 上面那条只看报错里的端口号，看不到 profile（profile 是随机目录名），
+  // 而共用 profile 才是真正让备用链路失效的那一条。
+  const attempts = readFileSync(log, 'utf8')
+    .split('###\n')
+    .filter((t) => t.trim())
+    .map((t) => t.trim().split('\n'))
+  eq('假浏览器被起了三次', attempts.length, 3)
+  const flagOf = (args, name) => args.find((a) => a.startsWith(`${name}=`))
+  const profiles = attempts.map((a) => flagOf(a, '--user-data-dir'))
+  const launchedPorts = attempts.map((a) => flagOf(a, '--remote-debugging-port'))
+  truthy('每次尝试都带了 profile 目录', profiles.every(Boolean), profiles.some((p) => !p) ? profiles.join(' / ') : '')
+  eq('三次尝试各有各的 profile 目录', new Set(profiles).size, profiles.length)
+  eq('三次尝试各有各的调试端口', new Set(launchedPorts).size, launchedPorts.length)
+  truthy(
+    '三次尝试按"老写法 → 新写法 → 不带参数"排',
+    attempts[0].includes('--headless=old') &&
+      attempts[1].includes('--headless=new') &&
+      !attempts[2].some((a) => a.startsWith('--headless')),
+  )
+
+  // 临时 profile 目录不能留在 /tmp 里
+  const after = readdirSync(tmpdir()).filter((n) => n.startsWith('antu-chrome-'))
+  eq('失败不留临时 profile 目录', after.length, before.length)
+}
+/**
+ * Chrome 收尾那几百毫秒还在往 profile 里写，也得能删干净。
+ *
+ * CI 上真撞过这一次（known-issues 第 18 条）：
+ *   Error: ENOTEMPTY: directory not empty, rmdir '/tmp/antu-chrome-XXXX/Default'
+ *     at Object.close (tools/lib/chrome.mjs)
+ * 主进程收 SIGTERM 退出了，写 profile 的子进程还活着，`rmSync` 走到最后
+ * 一步 rmdir 时目录又非空了。所以收尾要**连进程组一起杀**，不是只杀主进程。
+ *
+ * 这里用一个假浏览器：它自己起一个**一直往 profile 里写文件**的后台进程，
+ * 然后睡在那儿。只杀主进程的话，那个写手还在，目录删不掉。
+ * 不需要真浏览器，所以能进 verify:fast。
+ */
+async function checkLingeringChrome() {
+  const fake = join(OUT, 'churning-browser.sh')
+  // 写手**每次重写都先 mkdir -p**：目录被删掉了它就再建回来。
+  // 这样"写手还活着"必然表现为"profile 目录还在"，不靠抢时序碰运气。
+  // 写手只活 20 秒，跑完自己会停，不会留个死循环在机器上。
+  // 注意这里**不** trap TERM：要验的正是"连进程组一起杀"，组里写手一起收掉，目录才删得动。
+  writeFileSync(
+    fake,
+    '#!/bin/sh\n' +
+      'PROFILE=""\n' +
+      'for a in "$@"; do\n' +
+      '  case "$a" in --user-data-dir=*) PROFILE="${a#--user-data-dir=}" ;; esac\n' +
+      'done\n' +
+      'i=0\n' +
+      '( while [ $i -lt 2000 ]; do\n' +
+      '    i=$((i + 1))\n' +
+      '    mkdir -p "$PROFILE/Default" 2>/dev/null || exit 0\n' +
+      '    echo x > "$PROFILE/Default/f$i" 2>/dev/null || exit 0\n' +
+      '    sleep 0.01\n' +
+      '  done ) &\n' +
+      'sleep 60\n',
+    { mode: 0o755 },
+  )
+  const prev = process.env.ANTU_CHROME
+  const before = profilesInTmp().length
+  let message
+  try {
+    process.env.ANTU_CHROME = fake
+    try {
+      await launchBrowser({ timeoutMs: 1200 })
+      bad('边写边收尾的假浏览器：居然起来了', '应该报错才对')
+      return
+    } catch (e) {
+      message = e.message
+    }
+  } finally {
+    if (prev === undefined) delete process.env.ANTU_CHROME
+    else process.env.ANTU_CHROME = prev
+  }
+  ok('边写边收尾的假浏览器起不来时抛错', message.split('\n')[0])
+  // 关键那条：写手死了，profile 才删得掉
+  eq('收尾连子进程一起杀掉，profile 删得掉', profilesInTmp().length, before)
+}
+
+/**
  * 导出图片的检查。
  *
  * 四条要害，都是这套机制最容易悄悄坏掉的地方：
  *   1. 点了按钮真能落盘（浏览器会拦"同一页面的第二次自动下载"，
  *      所以点击要标成用户手势，见 lib/chrome.mjs 的 eval）；
- *   2. 尺寸正好是内容 × 2 —— 多了说明框错了范围（比如用了 getNodesBounds，
- *      会把两个 1×1 的装饰节点算进去）；
+ *   2. 尺寸正好是（内容 + 四周留白）× 2 —— 多了说明框错了范围（比如用了
+ *      getNodesBounds，会把两个 1×1 的装饰节点算进去）；
  *   3. 不是一张白图；
- *   4. **轴末端有箭头**。这条是两个真缺陷换来的：箭头原先用 CSS 边框三角画
+ *   4. **四周真留出白边**：只量总尺寸查不出"留白加在一边"或者"内容被拉伸
+ *      填满了整张图"，所以四条边各采一圈像素，必须全是白的；
+ *   5. **轴末端有箭头**。这条是两个真缺陷换来的：箭头原先用 CSS 边框三角画
  *      （width:0 + 三边 transparent），导出时被整个丢掉；换成内联 SVG 之后
  *      还得把它多占的 6px 算进内容尺寸，否则会被裁在框外。
  *      只量尺寸查不出这两种，所以在箭头应该在的位置采一个像素。
@@ -416,10 +589,11 @@ async function checkExport(browser, spec) {
     viewsOf(spec)[0],
     orientation,
   )
-  eq('尺寸 = 内容 × 2', [shot.width, shot.height], [
-    graph.size.width * 2,
-    graph.size.height * 2,
+  eq('尺寸 = (内容 + 留白) × 2', [shot.width, shot.height], [
+    exportFrame(graph.size.width, graph.size.height).width * 2,
+    exportFrame(graph.size.width, graph.size.height).height * 2,
   ])
+  ok('留白', `每边 ${EXPORT_PAD}px（设计像素）`)
 
   // 采样：一张纯白的图会缩得极小，但那是旁证；这里直接数非白像素。
   const sample = async (x, y) =>
@@ -458,16 +632,70 @@ async function checkExport(browser, spec) {
   )
   truthy('导出图不是一张白纸', ink > 5000, `非白像素 ${ink}`)
 
+  // 留白：四条边各取一圈像素，必须全是白的；同一张图里内容区必须有墨。
+  // 两条要一起看：只看"边上全白"的话，一张整白图也能过；只看"里面有墨"的话，
+  // 留白加在一边、内容被拉满整张图也能过。
+  //
+  // 先判前提再采样：留白为 0 时这四个取像素的矩形会有一条边是 0，
+  // getImageData 直接抛错，症状是一堆堆栈盖住"其实就是留白没了"。
+  const pad = EXPORT_PAD * 2 // 设备像素
+  truthy('每边留白大于 0（设备像素）', pad > 0, `${pad}px`)
+  const bands = !pad
+    ? null
+    : await browser.eval(
+        `(async () => {
+        const img = new Image()
+        img.src = 'data:image/png;base64,${shot.buf.toString('base64')}'
+        await img.decode()
+        const c = document.createElement('canvas')
+        c.width = img.width
+        c.height = img.height
+        const ctx = c.getContext('2d')
+        ctx.drawImage(img, 0, 0)
+        const count = (x, y, w, h) => {
+          const d = ctx.getImageData(x, y, w, h).data
+          let n = 0
+          for (let i = 0; i < d.length; i += 4) if (d[i] < 240 || d[i + 1] < 240 || d[i + 2] < 240) n += 1
+          return n
+        }
+        const p = ${pad}
+        return {
+          w: c.width,
+          h: c.height,
+          top: count(0, 0, c.width, p),
+          bottom: count(0, c.height - p, c.width, p),
+          left: count(0, p, p, c.height - p * 2),
+          right: count(c.width - p, p, p, c.height - p * 2),
+          inner: count(p, p, c.width - p * 2, c.height - p * 2),
+        }
+      })()`,
+        { awaitPromise: true },
+      )
+  // 先确认这四圈确实在图内，别在越界的坐标上"数出 0 个非白像素"
+  truthy(
+    '留白采样范围在导出图之内',
+    !!bands && pad * 2 < bands.w && pad * 2 < bands.h,
+    bands ? `图 ${bands.w}×${bands.h}，每边留白 ${pad}px` : '没有采到像素',
+  )
+  if (bands) {
+    truthy('内容区里有墨', bands.inner > 5000, `内容区非白像素 ${bands.inner}`)
+    eq('上边留白是纯白', bands.top, 0)
+    eq('下边留白是纯白', bands.bottom, 0)
+    eq('左边留白是纯白', bands.left, 0)
+    eq('右边留白是纯白', bands.right, 0)
+  }
+
   // 轴末端那个箭头：算准它该在哪，采一个像素看是不是深色。
   // 竖向：轴在 x = 轴列中心，箭头挂在轴末端下方 ARROW_EXTENT 之内；
   // 横向：轴在 y = 轴行中心，箭头挂在轴右端。
+  // 坐标是内容坐标，成品图上要再加上留白（EXPORT_PAD）。
   const axisAt = graph.grid.axisColumnIndex * CELL_W + CELL_W / 2
   const [px, py] =
     orientation === 'vertical'
       ? [axisAt, graph.size.height - ARROW_EXTENT / 2]
       : [graph.size.width - ARROW_EXTENT / 2, axisAt]
-  const sx = Math.round(px * 2)
-  const sy = Math.round(py * 2)
+  const sx = Math.round((px + EXPORT_PAD) * 2)
+  const sy = Math.round((py + EXPORT_PAD) * 2)
   // 先确认采样点在图内。少了这一步，箭头被裁掉时 getImageData 会返回全黑的全透明像素，
   // 看上去"是深色"就放行了 —— 这条断言本身就抓不住那个 bug（实测过）。
   truthy(
@@ -526,6 +754,133 @@ async function checkRender(sampleFile) {
 
     const dock = await browser.eval(`document.querySelectorAll('.antu-dock-chip').length`)
     truthy('控制胶囊在位', dock > 0)
+
+    // 胶囊里控件的形态规则（rendering §4.2）。这几条都是"看画面也未必看得出、
+    // 但一旦破了整个胶囊就乱"的规则，所以按颜色和样式表查，不靠人看。
+    const shape = await browser.eval(`(() => {
+      const bar = document.querySelector('.antu-dock-bar')
+      if (!bar) return null
+      const btns = [...bar.querySelectorAll('button')]
+      const text = (b) => b.textContent.trim()
+      // 关键：12% 灰的开关按 rgba 读出来也很"深"（15,23,42），但它压在
+      // 近白的胶囊底上，看着是浅的。所以必须按 alpha 合成一次再比亮度，
+      // 不然会把"开着的开关"误判成实心。
+      const lum = (b) => {
+        const m = getComputedStyle(b).backgroundColor.match(/[\\d.]+/g).map(Number)
+        const a = m.length === 4 ? m[3] : 1
+        return a * ((m[0] + m[1] + m[2]) / 3) + (1 - a) * 255
+      }
+      const dark = btns.filter((b) => lum(b) < 128).map(text)
+
+      // 样式表里查按下态与焦点圈：这两个状态没法在静态页面上"采"出来，
+      // 只能查规则在不在。查的是"在不在"，不是"好不好看"。
+      const css = [...document.styleSheets].flatMap((s) => {
+        try {
+          return [...s.cssRules].map((r) => r.selectorText || '')
+        } catch {
+          return []
+        }
+      }).join(' || ')
+      const hasRule = (sel) => css.includes(sel)
+      const classes = ['.antu-dock-chip', '.antu-dock-seg-item', '.antu-dock-action']
+      // 把**所有**带 :focus-visible 的规则合起来看，不是只找动作按钮那一条：
+      // 这几条以后要是被拆成几条规则写，只认一条会误报"开关没有焦点圈"。
+      const focusSel = css
+        .split(' || ')
+        .filter((s) => s.includes(':focus-visible'))
+        .join(' || ')
+
+      const action = bar.querySelector('.antu-dock-action')
+      const icon = action?.querySelector('svg')
+      const r = icon?.getBoundingClientRect()
+      return {
+        total: btns.length,
+        dark,
+        hasIcon: !!icon,
+        iconW: r ? Math.round(r.width) : 0,
+        iconH: r ? Math.round(r.height) : 0,
+        missingActive: classes.filter((c) => !hasRule(c + ':active')),
+        focusCovered: classes.filter((c) => !focusSel.includes(c + ':focus-visible')),
+      }
+    })()`)
+    truthy('量到了胶囊控件的形态', shape)
+    if (shape) {
+      eq('胶囊里只有导出按钮是深底', shape.dark, ['导出图片'])
+      truthy('导出按钮带下载符号', shape.hasIcon)
+      truthy(
+        '下载符号有真实尺寸（不是零尺寸元素，那种导出时会被整个丢掉）',
+        shape.iconW > 0 && shape.iconH > 0,
+        `${shape.iconW}×${shape.iconH}`,
+      )
+      eq('每个控件都有按下态', shape.missingActive, [])
+      eq('每个控件都在统一的焦点圈规则里', shape.focusCovered, [])
+    }
+
+    // 分组靠距离，不靠那根线（rendering §4.2）。
+    // 这条是实测出来的毛病：原先组内组间都是 2px，11 个元素的空隙一模一样，
+    // "五块"这件事全靠一根 1px、10% 不透明度的线扛着，用户分不出来。
+    // 所以断言写成**比例**而不是某个具体像素：组间必须明显宽于组内。
+    const groups = await browser.eval(`(() => {
+      const bar = document.querySelector('.antu-dock-bar')
+      if (!bar) return null
+      const kids = [...bar.children].filter((e) => getComputedStyle(e).display !== 'none')
+      const rect = (e) => e.getBoundingClientRect()
+      const inner = []   // 同一块里两个控件之间的空隙（中间没有分隔符）
+      const outer = []   // 跨过分隔符的空隙：左边距 + 右边距
+      const sides = []   // 每条分隔符两侧，各是多少
+      for (let i = 1; i < kids.length; i += 1) {
+        const prev = kids[i - 1]
+        const cur = kids[i]
+        const gap = +(rect(cur).left - rect(prev).right).toFixed(2)
+        if (cur.classList.contains('antu-dock-sep') || prev.classList.contains('antu-dock-sep')) outer.push(gap)
+        else inner.push(gap)
+      }
+      for (let i = 0; i < kids.length; i += 1) {
+        if (!kids[i].classList.contains('antu-dock-sep')) continue
+        sides.push({
+          left: +(rect(kids[i]).left - rect(kids[i - 1]).right).toFixed(2),
+          right: +(rect(kids[i + 1]).left - rect(kids[i]).right).toFixed(2),
+        })
+      }
+      const sep = bar.querySelector('.antu-dock-sep')
+      const s = sep ? getComputedStyle(sep) : null
+      return {
+        inner: Math.max(...inner),
+        outerTotal: sides.length ? +(sides[0].left + 1 + sides[0].right).toFixed(2) : 0,
+        outerMin: outer.length ? Math.min(...outer) : 0,
+        seps: sides.length,
+        sepH: s ? parseFloat(s.height) : 0,
+        sepAlpha: s ? Number((s.backgroundColor.match(/[\\d.]+/g) || [])[3] ?? 1) : 0,
+      }
+    })()`)
+    truthy('量到了胶囊的分组间距', groups)
+    if (groups) {
+      eq('每两块之间都有一条分隔符', groups.seps, 4)
+      truthy(
+        '组间距离至少是组内的 5 倍（分组要一眼看得出来）',
+        groups.outerTotal >= groups.inner * 5,
+        `组内 ${groups.inner}px，组间 ${groups.outerTotal}px（${(groups.outerTotal / groups.inner).toFixed(1)} 倍）`,
+      )
+      const lopsided = await browser.eval(`(() => {
+        const bar = document.querySelector('.antu-dock-bar')
+        const kids = [...bar.children].filter((e) => getComputedStyle(e).display !== 'none')
+        const rect = (e) => e.getBoundingClientRect()
+        const off = []
+        for (let i = 0; i < kids.length; i += 1) {
+          if (!kids[i].classList.contains('antu-dock-sep')) continue
+          const l = rect(kids[i]).left - rect(kids[i - 1]).right
+          const r = rect(kids[i + 1]).left - rect(kids[i]).right
+          if (Math.abs(l - r) > 0.5) off.push(+Math.abs(l - r).toFixed(2))
+        }
+        return off
+      })()`)
+      eq('分隔符两侧一样宽（不能一边宽一边窄）', lopsided, [])
+      truthy(
+        '分隔符本身看得见（够高、够不透明）',
+        groups.sepH >= 15 && groups.sepAlpha >= 0.1,
+        `高 ${groups.sepH}px，不透明度 ${groups.sepAlpha}`,
+      )
+    }
 
     const title = await browser.eval(`document.querySelector('.antu-header-title')?.textContent`)
     eq('标签卡标题', title, spec.title)
@@ -649,10 +1004,17 @@ if (!shotOnly) {
 const data = checkData()
 
 checkBrowserLookup()
+await checkLaunchFailure()
+await checkLingeringChrome()
 
 if (!shotOnly && !skipBrowser) {
+  const profilesBefore = profilesInTmp().length
   if (data.sample) await checkRender(data.sample)
   checkMcp()
+  // 这一段起了两次浏览器（渲染一次、MCP 预览一次），都得关干净。
+  // 恒等号而不是"等于 0"：本机上可能本来就躺着别的实例留下的目录，
+  // 那是别人的事，这里只负责"这一段没多出来"。
+  eq('浏览器用完清掉临时 profile 目录', profilesInTmp().length, profilesBefore)
 } else if (shotOnly) {
   if (data.sample) await checkRender(data.sample)
 }

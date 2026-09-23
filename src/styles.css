@@ -61,6 +61,9 @@
   white-space: nowrap;
   cursor: pointer;
 }
+/* 按下去要有回响：所有控件都得有 :active，而且要比"开着"更深一档，
+   否则点一个已经开着的开关时，底色反而变浅，看着像没接住这一下。
+   桌面端不缩放（那是 iOS 的做法），只变色。 */
 .antu-dock-chip:hover { background: rgba(15, 23, 42, 0.05); }
 /* 开关打开时的底色要比分段控件的轨道更深一档，
    否则"这个开关是开的"和"这一段被选中"看着像同一种东西。
@@ -71,12 +74,18 @@
   color: var(--antu-text);
   font-weight: 600;
 }
+/* 排在 .is-on 后面：两者特异性一样，写前面的话"开着"的开关按下去没反应 */
+.antu-dock-chip:active { background: rgba(15, 23, 42, 0.16); }
 /* 胶囊里唯一一个**动作**（点了就下文件），不是开关。
    开关的底色最浅是透明、最深是 12% 灰，所以实心那一档只留给动作，
-   一眼就能和"开着"的开关区分开。 */
+   一眼就能和"开着"的开关区分开。
+   里面那枚箭头是下载的通用记号：这一格是动作，别的格子是状态。
+   白字压在深底上会比同字号的深字看着更粗，所以字重只给 500，
+   跟"开着"的开关（600）比不显重、跟没开的（400）比又立得住。 */
 .antu-dock-action {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   padding: 5px 14px;
   border: 0;
   border-radius: 999px;
@@ -84,14 +93,47 @@
   color: #fff;
   font-family: inherit;
   font-size: 12px;
+  font-weight: 500;
   line-height: 1.5;
   white-space: nowrap;
   cursor: pointer;
 }
 .antu-dock-action:hover:not(:disabled) { background: #1e293b; }
-.antu-dock-action:disabled { opacity: 0.55; cursor: default; }
-.antu-dock-action:focus-visible { outline: 2px solid var(--antu-text); outline-offset: 2px; }
-.antu-dock-sep { width: 1px; height: 14px; background: rgba(15, 23, 42, 0.10); }
+.antu-dock-action:active:not(:disabled) { background: #0b1220; }
+.antu-dock-action-icon { flex: none; }
+/* 导出中：不能再用"实心黑压到 55% 透明"，那会糊成一块中间调的灰，
+   看着仍像能点。换成和开关同一层的浅底 + 次要色文字，一眼就是"停用了"。 */
+.antu-dock-action:disabled {
+  background: rgba(15, 23, 42, 0.10);
+  color: var(--antu-text-3);
+  cursor: default;
+}
+/* 焦点圈全胶囊统一。只给动作按钮画的话，键盘走到开关上会掉进浏览器的
+   默认圈（另一套样子），而默认圈里那个蓝跟"第 1 侧"的蓝还会撞。 */
+.antu-dock-chip:focus-visible,
+.antu-dock-opt:focus-visible,
+.antu-dock-seg-item:focus-visible,
+.antu-dock-action:focus-visible {
+  outline: 2px solid var(--antu-text);
+  outline-offset: 2px;
+}
+/* 分隔符＝**一段距离 + 一根细线**，距离是主体，线只是补一笔。
+ *
+ * 原先错在两头都不到位：组内组间都是 2px（量过，11 个元素的空隙全是 2px），
+ * 于是"是不是一组"全靠这根 1px、10% 不透明度、14px 高的线扛着。
+ * 那根线在 28px 高的胶囊里细到看着像渲染瑕疵，用户分不出五块。
+ *
+ * 现在：组内保持 2px（同一个模块的开关要像一件东西），
+ * 组间 21px（容器 2px + 这里 8px + 线 1px + 8px + 2px），是组内的十倍。
+ * 线顺手加高加实一点（16px、12%）：距离已经把分组讲清楚了，
+ * 它就退回去当一个"扫视时能停一下"的记号，不必再喊。
+ * 注意别把这两件事合并成一件：间距对了线可以很淡，间距不对线喊多响都没用。 */
+.antu-dock-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 8px;
+  background: rgba(15, 23, 42, 0.12);
+}
 /* 箭头用两条边旋转出来，比用字符好对齐：字符坐在基线上，天生偏下。
    两条边拼出的角默认朝右下，转 225 度就朝上（菜单是在上方弹出的）。 */
 .antu-dock-caret {
@@ -166,6 +208,8 @@
   font-weight: 600;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.14);
 }
+/* 必须排在 .is-on 后面：两者特异性一样，写前面的话按下去毫无反应 */
+.antu-dock-seg-item:active { background: rgba(15, 23, 42, 0.08); }
 
 .antu-error-title { font-weight: 600; color: #b91c1c; margin-bottom: 6px; }
 .antu-error-hint { color: var(--antu-text-3); }
