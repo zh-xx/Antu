@@ -69,10 +69,16 @@ export function findChrome() {
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
-/** 等调试端口起来，拿到页面目标的 WebSocket 地址 */
-async function pageTarget(port, timeoutMs = 15000) {
+/**
+ * 等调试端口起来，拿到页面目标的 WebSocket 地址。
+ *
+ * `died` 传进来时，进程一退就立刻放弃：等一个已经死掉的浏览器，
+ * 除了把超时时间白白耗完没有别的结果。
+ */
+async function pageTarget(port, timeoutMs = 15000, died = null) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
+    if (died?.()) return null
     try {
       const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()
       const page = list.find((t) => t.type === 'page')
@@ -82,7 +88,7 @@ async function pageTarget(port, timeoutMs = 15000) {
     }
     await wait(200)
   }
-  throw new Error(`浏览器调试端口 ${port} 没起来`)
+  return null
 }
 
 /** 极简 CDP 客户端：够用就好，不做完整实现 */
@@ -120,50 +126,139 @@ function cdp(url) {
  * 起一个 headless Chrome，返回一个会话。
  * 用完务必 close()，否则进程和临时目录都会留下。
  */
-export async function launchBrowser({ width = 1600, height = 900, port } = {}) {
-  const chrome = findChrome()
-  if (!chrome) {
-    throw new Error('没找到 Chrome/Chromium。装一个，或者跳过需要浏览器的检查。')
-  }
-  const debugPort = port ?? 9500 + Math.floor(Math.random() * 400)
-  const profile = mkdtempSync(join(tmpdir(), 'antu-chrome-'))
-  const common = [
+/**
+ * 三种 headless 写法，按"先老后新"的顺序试。
+ *
+ * `--headless=old` 在 Chrome 132 之后被移除，而 CI 的 runner 版本比本机新；
+ * 但老机器上只有这一种，所以三种都留着：本机和 CI 不必各配一套。
+ */
+export const HEADLESS_VARIANTS = [['--headless=old'], ['--headless=new'], []]
+
+/** 每次尝试等调试端口的时限。进程一退就提前放弃，所以给得宽也不拖时间。 */
+const ATTEMPT_TIMEOUT = 30000
+
+/**
+ * 每种写法**各占一个端口**。
+ *
+ * 不能三次共用一个端口：上一版万一还活着，端口还占着，下一版绑不上就退，
+ * 备用链路等于没有。端口错开之后，前一版没死透也不影响后一版起来。
+ */
+export function attemptPorts(basePort, count = HEADLESS_VARIANTS.length) {
+  return Array.from({ length: count }, (_, i) => basePort + i)
+}
+
+/** 一次尝试的完整启动参数。profile 与端口由调用方按尝试分配，不共用。 */
+export function launchArgs({ flags, port, profile, width, height }) {
+  return [
+    ...flags,
     '--disable-gpu',
     '--no-sandbox',
     '--no-first-run',
     '--disable-extensions',
     '--allow-file-access-from-files',
+    // 容器里 /dev/shm 往往很小，Chrome 会因此起不来。CI 上跑得跑这一条
+    '--disable-dev-shm-usage',
     `--user-data-dir=${profile}`,
-    `--remote-debugging-port=${debugPort}`,
+    `--remote-debugging-port=${port}`,
     `--window-size=${width},${height}`,
     'about:blank',
   ]
+}
 
-  // --headless=old 在 Chrome 132 之后被移除了，而 CI 的 runner 版本比本机新。
-  // 所以先按老写法起，起不来再换新写法，最后再试不带参数的。
-  // 这样本机和 CI 都能跑，不必两边各配一套。
-  const variants = [['--headless=old'], ['--headless=new'], []]
+/** 收着 Chrome 自己的 stderr：起不来的时候，原因基本都在这里面 */
+function captureStderr(child, keep = 600) {
+  let buf = ''
+  child.stderr?.on('data', (d) => {
+    buf += String(d)
+    if (buf.length > keep * 4) buf = buf.slice(-keep * 2) // 别让它无限长
+  })
+  return () => buf.slice(-keep).trim()
+}
+
+/** 等一个子进程真的退出，最多等 ms */
+async function waitForExit(child, ms) {
+  if (child.exitCode !== null || child.signalCode !== null) return true
+  return Promise.race([
+    new Promise((r) => child.once('exit', () => r(true))),
+    wait(ms).then(() => false),
+  ])
+}
+
+/**
+ * 先好好请它走，不走就强杀。
+ *
+ * 为什么要强杀：容器的负载一高，Chrome 可能卡住不理 SIGTERM。
+ * 它不走，profile 目录就还占着、临时文件也删不掉，
+ * 而且会一直占着 CPU 影响后面几次尝试。
+ */
+async function terminate(child, ms = 3000) {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return
+  child.kill()
+  if (!(await waitForExit(child, ms))) child.kill('SIGKILL')
+}
+
+/**
+ * 起一个 headless Chrome，返回一个会话。
+ * 用完务必 close()，否则进程和临时目录都会留下。
+ */
+export async function launchBrowser({ width = 1600, height = 900, port, timeoutMs } = {}) {
+  const chrome = findChrome()
+  if (!chrome) {
+    throw new Error('没找到 Chrome/Chromium。装一个，或者跳过需要浏览器的检查。')
+  }
+  const ports = attemptPorts(port ?? 9500 + Math.floor(Math.random() * 400))
+
+  // 每次尝试一份**自己的** profile 目录，这是这个工具踩过的坑：
+  // Chrome 见到同一个 --user-data-dir 已经有实例，会直接
+  //   Failed to create SingletonLock: File exists
+  //   Failed to create a ProcessSingleton for your profile directory ... Aborting now
+  // 自杀退出。共用一份时，第一版一旦没起来（或没死透），后面两版连启动都做不到，
+  // "三种写法挨个试"的备用链路就是废的，症状是三次全报"端口没起来"。
+  // 实测（macOS Chrome 153，占着 profile 起第二份）：第二份 4 秒内退出，端口没人听。
+  const attempts = HEADLESS_VARIANTS.map((flags, i) => ({
+    flags,
+    port: ports[i],
+    profile: mkdtempSync(join(tmpdir(), 'antu-chrome-')),
+  }))
+
+  const delay = timeoutMs ?? ATTEMPT_TIMEOUT
   let child = null
   let target = null
+  let profile = null
   const failures = []
-  for (const variant of variants) {
-    child = spawn(chrome, [...variant, ...common], { stdio: 'ignore' })
-    try {
-      target = await pageTarget(debugPort, 8000)
+  for (const a of attempts) {
+    const c = spawn(chrome, launchArgs({ ...a, width, height }), {
+      // stderr 要留着：Chrome 起不来的原因基本只在这里，丢掉就只能猜
+      stdio: ['ignore', 'ignore', 'pipe'],
+    })
+    const readStderr = captureStderr(c)
+    let exited = false
+    c.on('exit', () => {
+      exited = true
+    })
+    target = await pageTarget(a.port, delay, () => exited)
+    if (target) {
+      child = c
+      profile = a.profile
       break
-    } catch (e) {
-      failures.push(`${variant.join(' ') || '(不带 headless)'} → ${e.message}`)
-      child.kill()
-      await wait(300)
-      child = null
-      target = null
     }
+    const tail = readStderr()
+    const why = exited
+      ? `Chrome 自己退了${tail ? `：${tail.split('\n').slice(-3).join(' / ')}` : '（没留下错误信息）'}`
+      : `${delay / 1000} 秒内端口没起来`
+    failures.push(`${a.flags.join(' ') || '(不带 headless)'}　端口 ${a.port}　${why}`)
+    await terminate(c)
+    target = null
+  }
+  // 没用上的 profile 目录一并清掉，别在 /tmp 里留一堆
+  for (const a of attempts) {
+    if (a.profile !== profile) rmSync(a.profile, { recursive: true, force: true })
   }
   if (!target) {
-    child?.kill()
-    rmSync(profile, { recursive: true, force: true })
+    await terminate(child)
     throw new Error(
-      `Chrome 起不来，三种 headless 写法都试过了：\n  ${failures.join('\n  ')}\n` +
+      `Chrome 起不来，${attempts.length} 种 headless 写法都试过了（每种各占一个端口和一份 profile）：\n  ` +
+        `${failures.join('\n  ')}\n` +
         `Chrome 路径：${chrome}`,
     )
   }
@@ -305,8 +400,7 @@ export async function launchBrowser({ width = 1600, height = 900, port } = {}) {
 
     async close() {
       c.close()
-      child.kill()
-      await wait(200)
+      await terminate(child)
       rmSync(profile, { recursive: true, force: true })
     },
   }

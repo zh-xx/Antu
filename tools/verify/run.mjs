@@ -15,9 +15,10 @@
 //    1. 构建        开发构建与引擎构建都能过
 //    2. lint        静态检查（未定义变量、死变量）
 //    3. 数据        每份示例都能校验通过；视角 × 方向全部能排；校验错误本身对得上
-//    4. 浏览器查找  ANTU_CHROME 优先、指错了不瞎返回（不要浏览器，所以在 verify:fast 里）
+//    4. 浏览器查找  ANTU_CHROME 优先、指错了不瞎返回；起不来时报错说明白、
+//                  三次尝试各占各的端口与 profile（不要浏览器，所以在 verify:fast 里）
 //    5. 渲染        用 file:// 打开生成的 HTML，断言卡片数/尺寸/缩放/位置，且零外部请求
-//    6. 导出        点导出真能落盘 PNG；尺寸 = 内容 × 2；不是白图；轴末端有箭头
+//    6. 导出        点导出真能落盘 PNG；尺寸 =（内容 + 留白）× 2；不是白图；四边留白；轴末端有箭头
 //    7. MCP         自带客户端把十二个步骤走一遍
 //    8. 截图        出一张图，供人扫一眼（不能自动判断好看，但要能看）
 // ============================================================
@@ -25,6 +26,7 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 
 import { REPO, renderToFile } from '../lib/make-html.mjs'
 import { launchBrowser, findChrome } from '../lib/chrome.mjs'
@@ -54,6 +56,15 @@ let passed = 0
 const failures = []
 // 这一轮有没有真出截图。--no-browser 时不能把上一轮残留的那张当成自己的产物报出来。
 let shotWritten = false
+
+/**
+ * 本项目起浏览器时在系统临时目录里建的 profile 目录。
+ * chrome.mjs 的约定是"用完务必 close()，否则进程和临时目录都会留下"，
+ * 这里按这个约定数一数，看有没有人忘了关。
+ */
+function profilesInTmp() {
+  return readdirSync(tmpdir()).filter((n) => n.startsWith('antu-chrome-'))
+}
 
 function ok(label, detail = '') {
   passed += 1
@@ -345,6 +356,98 @@ function checkBrowserLookup() {
   }
 }
 
+/**
+ * 起不来的那条路：报错得能说明白，而且三次尝试必须**互不干扰**。
+ *
+ * 这条是 known-issues 第 18 条换来的。CI 上偶发"三种 headless 写法全都没起来"，
+ * 当时有三种毛病叠在一起，全都测不出来：
+ *   1. 三种写法**共用一份 profile**。Chrome 见到 profile 已被占就自杀
+ *      （`Failed to create SingletonLock` / `Aborting now`），于是第一版一旦
+ *      没起来或没死透，后面两版连启动都做不到，备用链路整个是废的；
+ *      端口也是共用一个，上一版还活着时下一版绑不上。
+ *   2. `child.kill()` 只发一次 SIGTERM 就不管了。卡住的 Chrome 不走，
+ *      profile 一直占着，而且子进程还吊着 Node 的事件循环，整个进程跟着挂住。
+ *   3. `stdio: 'ignore'` 把 Chrome 自己的报错丢掉了，失败信息只有"端口没起来"，
+ *      只能猜。
+ *
+ * 这里用一个假的浏览器（把参数记下来就退出）来验，不需要真浏览器，
+ * 所以能进 verify:fast。**真浏览器上的复现**（第一版占着 profile 且不理 SIGTERM，
+ * 旧代码三种写法全灭、25 秒后连进程都退不掉）写在 known-issues 第 18 条里。
+ */
+async function checkLaunchFailure() {
+  const fake = join(OUT, 'fake-browser.sh')
+  const log = join(OUT, 'fake-browser.log')
+  rmSync(log, { force: true })
+  writeFileSync(
+    fake,
+    '#!/bin/sh\n' +
+      'echo "###" >> "$ANTU_FAKE_LOG"\n' +
+      'for a in "$@"; do echo "$a" >> "$ANTU_FAKE_LOG"; done\n' +
+      'echo "假浏览器：我起不来，原因写在这里" >&2\n' +
+      'exit 7\n',
+    { mode: 0o755 },
+  )
+  const prevChrome = process.env.ANTU_CHROME
+  const prevLog = process.env.ANTU_FAKE_LOG
+  const before = readdirSync(tmpdir()).filter((n) => n.startsWith('antu-chrome-'))
+  let message
+  try {
+    process.env.ANTU_CHROME = fake
+    process.env.ANTU_FAKE_LOG = log
+    try {
+      // timeoutMs 给很小：假浏览器立刻退出，实现应当"进程一退就放弃"，不必真等
+      await launchBrowser({ timeoutMs: 1500 })
+      bad('假浏览器：居然起来了', '应该报错才对')
+      return
+    } catch (e) {
+      message = e.message
+    }
+  } finally {
+    if (prevChrome === undefined) delete process.env.ANTU_CHROME
+    else process.env.ANTU_CHROME = prevChrome
+    if (prevLog === undefined) delete process.env.ANTU_FAKE_LOG
+    else process.env.ANTU_FAKE_LOG = prevLog
+  }
+
+  ok('假浏览器起不来时抛错', message.split('\n')[0])
+  // 三种写法都试过，而且**各报各的端口**：端口重复就说明又退回"三次共用一个端口"，
+  // 那样第一版没死透时后面两版绑不上，备用链路是废的。
+  const ports = [...message.matchAll(/端口 (\d+)/g)].map((m) => m[1])
+  eq('三种写法都试过了', ports.length, 3)
+  eq('每种写法各占一个端口', new Set(ports).size, ports.length)
+  // Chrome 自己的话必须带进失败信息，否则下次还是只能猜
+  truthy(
+    '失败信息里带上浏览器自己的报错',
+    message.includes('假浏览器：我起不来，原因写在这里'),
+    message.split('\n').slice(1, 3).join(' / ').slice(0, 90),
+  )
+  truthy('失败信息里带上浏览器路径', message.includes(fake))
+
+  // 直接看**实际发给 Chrome 的参数**：三次尝试不许有一样的 profile 目录。
+  // 上面那条只看报错里的端口号，看不到 profile（profile 是随机目录名），
+  // 而共用 profile 才是真正让备用链路失效的那一条。
+  const attempts = readFileSync(log, 'utf8')
+    .split('###\n')
+    .filter((t) => t.trim())
+    .map((t) => t.trim().split('\n'))
+  eq('假浏览器被起了三次', attempts.length, 3)
+  const flagOf = (args, name) => args.find((a) => a.startsWith(`${name}=`))
+  const profiles = attempts.map((a) => flagOf(a, '--user-data-dir'))
+  const launchedPorts = attempts.map((a) => flagOf(a, '--remote-debugging-port'))
+  truthy('每次尝试都带了 profile 目录', profiles.every(Boolean), profiles.join(' / '))
+  eq('三次尝试各有各的 profile 目录', new Set(profiles).size, profiles.length)
+  eq('三次尝试各有各的调试端口', new Set(launchedPorts).size, launchedPorts.length)
+  truthy(
+    '三次尝试按"老写法 → 新写法 → 不带参数"排',
+    attempts[0].includes('--headless=old') &&
+      attempts[1].includes('--headless=new') &&
+      !attempts[2].some((a) => a.startsWith('--headless')),
+  )
+
+  // 临时 profile 目录不能留在 /tmp 里
+  const after = readdirSync(tmpdir()).filter((n) => n.startsWith('antu-chrome-'))
+  eq('失败不留临时 profile 目录', after.length, before.length)
+}
 /**
  * 导出图片的检查。
  *
@@ -768,10 +871,16 @@ if (!shotOnly) {
 const data = checkData()
 
 checkBrowserLookup()
+await checkLaunchFailure()
 
 if (!shotOnly && !skipBrowser) {
+  const profilesBefore = profilesInTmp().length
   if (data.sample) await checkRender(data.sample)
   checkMcp()
+  // 这一段起了两次浏览器（渲染一次、MCP 预览一次），都得关干净。
+  // 恒等号而不是"等于 0"：本机上可能本来就躺着别的实例留下的目录，
+  // 那是别人的事，这里只负责"这一段没多出来"。
+  eq('浏览器用完清掉临时 profile 目录', profilesInTmp().length, profilesBefore)
 } else if (shotOnly) {
   if (data.sample) await checkRender(data.sample)
 }
