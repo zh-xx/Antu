@@ -26,8 +26,8 @@ const PIXEL_RATIO = 2
 /** 导出期间加在外壳上的类，样式里用它藏掉会进图的浮层 */
 const EXPORT_CLASS = 'is-exporting'
 
-/** 文件名：标题里不能进文件名的字符换掉 */
-function fileNameOf(title) {
+/** 文件名：标题里不能进文件名的字符换掉。导出给测试用。 */
+export function fileNameOf(title) {
   const base = String(title || '案图')
     .replace(/[\\/:*?"<>|\s]+/g, '-')
     .slice(0, 60)

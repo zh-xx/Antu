@@ -96,10 +96,15 @@ antu/
 │   │   └── fact/                       事实图级（卡片、几何、控制胶囊）
 │   │       └── timeline/               时间图这一个子类
 │   └── shell/                      页面外壳：标签卡、画布、偏好、错误边界
+├── test/                        ← 单元测试（纯函数，Node 自带 runner，零依赖）
+│   ├── metrics.test.mjs            尺寸与坐标（含"箭头那 6px 算进去没有"）
+│   ├── grid.test.mjs               校验与网格
+│   ├── layout.test.mjs             排布、绘制层级、事件不丢
+│   └── exportPng.test.mjs          导出里的纯函数（文件名）
 ├── tools/
 │   ├── lib/                        共用实现：生成 HTML、驱动 Chrome
 │   ├── mcp/                        MCP 服务端
-│   └── verify/                     一条命令验完
+│   └── verify/                     集成测试：一条命令验完
 └── assets/screenshot.png
 ```
 
@@ -156,6 +161,18 @@ antu/
 
 细节见 `spec/mcp-server.md`。
 
+### 测试分两层
+
+| 层 | 在哪 | 管什么 | 快慢 |
+|---|---|---|---|
+| **单元** | `test/*.test.mjs` | 纯函数：尺寸、网格校验、排布、文件名 | 几十毫秒 |
+| **集成** | `tools/verify/run.mjs` | 端到端：起浏览器、`file://` 打开成品、量卡片与浮层位置、点导出真落盘并数像素、MCP 十二步 | 一分钟 |
+
+**分界是"要不要浏览器"，不是"重要不重要"。** 纯函数的问题在单元层一眼钉住，
+不必等到端到端；只有 DOM 形状、真实渲染、导出成图这些才需要浏览器。
+
+新加检查时先问一句：**这件事能不能用纯函数判？** 能就写进 `test/`。
+
 ### 路线二：读文件 + 命令行
 
 不接 MCP 也能用，按这个顺序：
@@ -181,8 +198,9 @@ npm run diagram -- 你的.json
 | `npm run diagram -- x.json [-o y.html]` | 把一份 JSON 变成自包含 HTML，`--rebuild` 强制重建引擎 |
 | `npm run mcp` | 起 MCP 服务端（给 agent 用） |
 | `npm run mcp:test` | 用自带客户端把 MCP 全流程走一遍 |
-| `npm run verify` | **一条命令验完**：构建、lint、数据、浏览器查找、渲染、MCP，并出一张截图 |
+| `npm test` | 单元测试（纯函数，秒级，零依赖，用 Node 自带的 runner） |
+| `npm run verify` | **一条命令验完**：单元测试 + 构建 + lint + 数据 + 浏览器查找 + 渲染 + 导出 + MCP，并出截图 |
 | `npm run verify:fast` | 同上，跳过要浏览器的部分（快） |
 
-推上去之后 CI 会自动跑这两条（见 `.github/workflows/verify.yml`），
+推上去之后 CI 会自动跑（见 `.github/workflows/verify.yml`），
 所以"别人 clone 下来能不能跑通"不用靠人说，看徽章就行。

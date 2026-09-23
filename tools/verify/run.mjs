@@ -130,6 +130,31 @@ function checkLint() {
 }
 
 // ---------------------------------------------------------------
+// 2.5 单元测试（纯 Node，秒级）
+// ---------------------------------------------------------------
+// 集成测试走端到端，慢；单元测试盯纯函数，快。
+// 两边都要：比如"箭头那 6px 有没有算进内容尺寸"是纯函数层面的事，
+// 单元测试一眼钉住，不必等到导出成图再数像素。
+function checkUnit() {
+  section('单元测试')
+  try {
+    const out = execFileSync('node', ['--test', 'test/*.test.mjs'], {
+      cwd: REPO,
+      stdio: 'pipe',
+      encoding: 'utf8',
+    })
+    const pass = out.match(/# pass (\d+)/)?.[1] ?? '?'
+    const fail = out.match(/# fail (\d+)/)?.[1] ?? '?'
+    if (fail === '0') ok(`纯函数测试 ${pass} 项全通`)
+    else bad(`纯函数测试有 ${fail} 项未通过`)
+  } catch (e) {
+    const out = String(e.stdout || e.message)
+    const fails = out.split('\n').filter((l) => l.includes('not ok')).slice(0, 3)
+    bad('单元测试未通过', fails.join(' / '))
+  }
+}
+
+// ---------------------------------------------------------------
 // 3. 数据与排布（纯 Node，不启浏览器）
 // ---------------------------------------------------------------
 function checkData() {
@@ -505,6 +530,31 @@ async function checkRender(sampleFile) {
     const title = await browser.eval(`document.querySelector('.antu-header-title')?.textContent`)
     eq('标签卡标题', title, spec.title)
 
+    // 标签卡常显（「题头」开关已取消，见 rendering §10.2）
+    truthy('屏幕上标签卡常显', await browser.eval(`!!document.querySelector('.antu-header-card')`))
+    truthy(
+      '胶囊里没有「题头」开关了',
+      !(await browser.eval(
+        `[...document.querySelectorAll('.antu-dock-bar button')].some((b) => b.textContent.trim() === '题头')`,
+      )),
+    )
+
+    // 时间轴末端的箭头必须是**有真实尺寸的 SVG**。
+    // 这条防两件事：箭头改回零尺寸的 CSS 边框三角（导出时会被整个丢掉），
+    // 以及"改了源码但没生效"——我犯过一次：报告说改成 SVG 了，文件里还是 span 0×0。
+    const arrow = await browser.eval(`(() => {
+      const el = document.querySelector('.antu-axis-arrow')
+      if (!el) return null
+      const r = el.getBoundingClientRect()
+      return { tag: el.tagName.toLowerCase(), w: r.width, h: r.height, poly: !!el.querySelector('polygon') }
+    })()`)
+    truthy('时间轴末端有箭头', arrow)
+    if (arrow) {
+      eq('箭头是 svg', arrow.tag, 'svg')
+      truthy('箭头有多边形（有真实形状，不是零尺寸边框三角）', arrow.poly)
+      truthy('箭头有真实尺寸', arrow.w > 0 && arrow.h > 0, `${arrow.w}×${arrow.h}`)
+    }
+
     // 最要紧的一条：成品不许对外发请求
     const external = browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://'))
     eq('对外请求数', external.length, 0)
@@ -593,6 +643,7 @@ const started = Date.now()
 if (!shotOnly) {
   checkBuild()
   checkLint()
+  checkUnit()
 }
 
 const data = checkData()

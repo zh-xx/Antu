@@ -15,7 +15,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "verify": "node tools/verify/run.mjs",
-    "verify:fast": "node tools/verify/run.mjs --no-browser"
+    "verify:fast": "node tools/verify/run.mjs --no-browser",
+    "test": "node --test 'test/*.test.mjs'"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
