@@ -49,6 +49,8 @@ const SHOT = join(OUT, 'screenshot.png')
 // ---------------------------------------------------------------
 let passed = 0
 const failures = []
+// 这一轮有没有真出截图。--no-browser 时不能把上一轮残留的那张当成自己的产物报出来。
+let shotWritten = false
 
 function ok(label, detail = '') {
   passed += 1
@@ -275,7 +277,14 @@ function checkData() {
   truthy('报错带字段路径', errs.some((e) => /slots\[\d+\]/.test(e)))
   truthy('报错带事件 id', errs.some((e) => e.includes('e1')))
 
-  return { files, sample: files[0], combos, views }
+  // 渲染检查**固定用这一份**，不用 files[0]。
+  // 原先取"排序后第一份"，于是往 examples/fact/ 里加一份文件名排在前面的示例，
+  // 渲染断言的对象就跟着换了——两次验证的卡片数根本不可比（实测：7 张 vs 12 张）。
+  // 固定之后，"卡片数""标签卡标题"这些断言才说明得了问题。
+  const sample = 'examples/fact/电梯劝烟案.json'
+  truthy('渲染样本存在', existsSync(join(REPO, sample)))
+
+  return { files, sample, combos, views }
 }
 
 // ---------------------------------------------------------------
@@ -405,6 +414,7 @@ async function checkRender(sampleFile) {
 
     mkdirSync(OUT, { recursive: true })
     await browser.screenshot(SHOT)
+    shotWritten = true
     ok('截图已存', SHOT.replace(REPO + '/', ''))
   } finally {
     await browser.close()
@@ -458,7 +468,7 @@ if (!shotOnly && !skipBrowser) {
 console.log('')
 if (failures.length === 0) {
   console.log(`全部通过（${passed} 项，${((Date.now() - started) / 1000).toFixed(1)} 秒）`)
-  if (existsSync(SHOT)) console.log(`截图：${SHOT.replace(REPO + '/', '')}`)
+  if (shotWritten) console.log(`截图：${SHOT.replace(REPO + '/', '')}`)
 } else {
   console.log(`${failures.length} 项未通过（通过 ${passed} 项）：`)
   for (const f of failures) console.log('  - ' + f)
