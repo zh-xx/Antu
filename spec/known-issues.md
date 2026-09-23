@@ -66,20 +66,32 @@ Error: Chrome 起不来，三种 headless 写法都试过了：
 Chrome 路径：/usr/bin/google-chrome
 ```
 
-单据：run `35867678543`（分支 `fix/export-mode`，`failure`）对
-run `35867862937`（`main`，`success`），两次的提交内容相同。
+**单据（同一天，两处独立发生）。**
+
+| run | 提交 | 这个提交动了什么 | 结果 |
+|---|---|---|---|
+| `35867678543` | `66eaad5` | 代码 | failure（端口 9698） |
+| `35867862937` | 合并后的 `main` | 同一份代码 | success |
+| `35869068728` | `85395e9` | 代码 | success |
+| `35869370751` | `b8ca672` | **只改了一个 .md 文件** | failure（端口 9553） |
+| `35869678359` | `7f54e5b` | 代码 | success |
+
+**`b8ca672` 那一行是关键**：那个提交只往 `spec/known-issues.md` 加了 30 行文档，
+**不可能影响 Chrome 起不起得来**。所以这不是某次改动的锅。
 
 **代价。** 这一层是"改动有没有把图弄坏"的唯一自动防线。它偶发红，
 下一次真红时就没人当回事了。
 
-**在哪。** `tools/lib/chrome.mjs` 的 `launchBrowser`：三种 headless 写法各等
-`pageTarget(port, 8000)`，也就是每种只等 8 秒。容器里第一次起 Chrome 要建 profile、
-没有任何缓存，8 秒够不够不知道；另外没带 `--disable-dev-shm-usage`
-（容器里 `/dev/shm` 很小，是 Chrome 起不来的常见原因）。
+**在哪。** `tools/lib/chrome.mjs` 的 `launchBrowser`。两处可疑，但都还没证实：
 
-**建议做法。** 三个变体共用一个总时限（比如 60 秒）而不是各 8 秒，
-并加上 `--disable-dev-shm-usage`。**但根因还没证实**，别照抄这两条：
-先在 CI 上把"第一次起 Chrome 到底要多久"量出来，再按量到的数改。
+1. 三种 headless 写法**各等** `pageTarget(port, 8000)`，即每种只等 8 秒。
+   容器里第一次起 Chrome 要建 profile、没有任何缓存，8 秒够不够不知道；
+2. 没带 `--disable-dev-shm-usage`（容器里 `/dev/shm` 很小，是 Chrome 起不来的常见原因）。
+
+**下一步不是猜着改，是加诊断。** 现在 `spawn(chrome, ..., { stdio: 'ignore' })`
+把 Chrome 自己的报错**丢掉了**，失败信息里只有"端口没起来"，
+所以只能猜。先在起不来的时候把 Chrome 的 stderr 收下来、
+把每次尝试的耗时打出来，再照量到的数改（总时限和 `--disable-dev-shm-usage` 都在候选里）。
 
 **暂时怎么判。** 见到这条报错先重跑；连续两次都红，再当代码问题查。
 
