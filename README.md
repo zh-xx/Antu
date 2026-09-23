@@ -125,12 +125,30 @@ antu/
 | `antu_schema` | 字段表（从代码生成，约 1.2k token） | 不要 |
 | `antu_guide` | 一页机制说明（约 1.1k token） | 不要 |
 | `antu_examples` | 看示例（默认给六份 1 KB 的小示例） | 不要 |
-
-前三个都按大类分发（传 `type`，不传就是 `fact`），所以加新图类型时工具不用改。
 | `antu_validate` | 校验 JSON，逐条报错 | 不要 |
 | `antu_layout` | 算几何：多大、该用哪个方向、哪个视角摆不下 | 不要 |
 | `antu_render` | 出成品 HTML | 不要 |
-| `antu_preview` | 截图返回，用眼睛检查 | 要（复用本机 Chrome） |
+| `antu_preview` | 截图返回，用眼睛检查 | 要（复用本机浏览器） |
+
+前三个都按大类分发（传 `type`，不传就是 `fact`），所以加新图类型时工具不用改。
+
+**浏览器从哪找**：`ANTU_CHROME` 环境变量 → 已知路径 → `PATH`。
+本机装的不是 Chrome、而是别的 Chromium 内核浏览器（麒麟／统信上很常见）时，
+在客户端的 `env` 里指一下就行：
+
+```json
+{
+  "mcpServers": {
+    "antu": {
+      "command": "node",
+      "args": ["/绝对路径/antu/tools/mcp/server.mjs"],
+      "env": { "ANTU_CHROME": "/opt/browser360/browser360" }
+    }
+  }
+}
+```
+
+命令行同理：`ANTU_CHROME=/它的路径 npm run verify`。
 
 **agent 的参考资料只有 2.3k token**（schema + guide），不再需要读那几万字符的人类文档。
 `spec/*.md` 那八份设计文档**不经过 MCP**：它们是给人看的，人直接开文件。
@@ -143,7 +161,7 @@ antu/
 
 1. `spec/fact/schema-draft.md` —— JSON 长什么样、字段怎么填、什么会报错；
 2. `spec/fact/timeline-rules.md` —— 事件摆在图的哪个位置；
-3. `examples/` —— 真实案例是怎么写的（`fact-电梯劝烟案.json` 最短最干净）；
+3. `examples/` —— 真实案例是怎么写的（`examples/fact/电梯劝烟案.json` 最短最干净）；
 4. 写完直接生成，**校验不过会告诉你错在哪**：
 
 ```bash
@@ -162,7 +180,7 @@ npm run diagram -- 你的.json
 | `npm run diagram -- x.json [-o y.html]` | 把一份 JSON 变成自包含 HTML，`--rebuild` 强制重建引擎 |
 | `npm run mcp` | 起 MCP 服务端（给 agent 用） |
 | `npm run mcp:test` | 用自带客户端把 MCP 全流程走一遍 |
-| `npm run verify` | **一条命令验完**：构建、lint、数据、渲染、MCP，并出一张截图 |
+| `npm run verify` | **一条命令验完**：构建、lint、数据、浏览器查找、渲染、MCP，并出一张截图 |
 | `npm run verify:fast` | 同上，跳过要浏览器的部分（快） |
 
 推上去之后 CI 会自动跑这两条（见 `.github/workflows/verify.yml`），

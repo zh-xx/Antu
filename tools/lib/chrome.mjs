@@ -9,12 +9,15 @@
 //  WebSocket，所以连 CDP 也不用装包。
 // ============================================================
 
-import { spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync, spawn } from 'node:child_process'
+import { mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+// 已知路径。**这里不堆厂商路径**：任何 Chromium 内核的浏览器都能靠
+// ANTU_CHROME 接进来（麒麟／统信上常见的国产浏览器就走这条路），
+// 仓库不必替用户猜他用的是哪一个。
 const CANDIDATES = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/Applications/Chromium.app/Contents/MacOS/Chromium',
@@ -24,8 +27,43 @@ const CANDIDATES = [
   '/usr/bin/chromium-browser',
 ]
 
+// 有些发行版把浏览器装在别处，或者只通过 update-alternatives 挂进来，
+// 所以候选表落空后再按可执行名去 PATH 里找一遍。
+// **这个表是下面 shell 插值的唯一来源**，不要让外部值流进来。
+const PATH_NAMES = ['google-chrome', 'chromium', 'chromium-browser', 'microsoft-edge', 'chrome']
+
+function findInPath(name) {
+  try {
+    const out = execFileSync('sh', ['-c', `command -v ${name}`], { encoding: 'utf8' }).trim()
+    return out || null
+  } catch {
+    return null // 没有 sh（例如 Windows）或没找到，都算落空
+  }
+}
+
+/** 候选必须是**能执行的文件**：目录不算（ANTU_CHROME 少写一层就会指到目录上） */
+function isBrowserFile(p) {
+  try {
+    return statSync(p).isFile()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 找本机的浏览器。顺序：ANTU_CHROME 环境变量 > 已知路径 > PATH。
+ *
+ * 环境变量**每次现读**，不在模块加载时读死：否则调用方在 import 之后再设就不生效，
+ * 验证器也没法在同一个进程里换着值验它。
+ */
 export function findChrome() {
-  for (const p of CANDIDATES) if (existsSync(p)) return p
+  const explicit = process.env.ANTU_CHROME
+  if (explicit && isBrowserFile(explicit)) return explicit
+  for (const p of CANDIDATES) if (isBrowserFile(p)) return p
+  for (const name of PATH_NAMES) {
+    const found = findInPath(name)
+    if (found && isBrowserFile(found)) return found
+  }
   return null
 }
 

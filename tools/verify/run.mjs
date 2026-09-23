@@ -12,12 +12,13 @@
 //    node tools/verify/run.mjs --shot-only  只出一张图
 //
 //  检查什么：
-//    1. 构建    开发构建与引擎构建都能过
-//    2. lint    静态检查（未定义变量、死变量）
-//    3. 数据    每份示例都能校验通过；视角 × 方向全部能排；校验错误本身对得上
-//    4. 渲染    用 file:// 打开生成的 HTML，断言卡片数/尺寸/缩放，且零外部请求
-//    5. MCP     自带客户端把十个步骤走一遍
-//    6. 截图    出一张图，供人扫一眼（不能自动判断好看，但要能看）
+//    1. 构建        开发构建与引擎构建都能过
+//    2. lint        静态检查（未定义变量、死变量）
+//    3. 数据        每份示例都能校验通过；视角 × 方向全部能排；校验错误本身对得上
+//    4. 浏览器查找  ANTU_CHROME 优先、指错了不瞎返回（不要浏览器，所以在 verify:fast 里）
+//    5. 渲染        用 file:// 打开生成的 HTML，断言卡片数/尺寸/缩放/位置，且零外部请求
+//    6. MCP         自带客户端把十二个步骤走一遍
+//    7. 截图        出一张图，供人扫一眼（不能自动判断好看，但要能看）
 // ============================================================
 
 import { execFileSync } from 'node:child_process'
@@ -278,12 +279,42 @@ function checkData() {
 }
 
 // ---------------------------------------------------------------
-// 4. 渲染（要浏览器）
+// 4. 浏览器查找（不要浏览器，所以能进 verify:fast）
+// ---------------------------------------------------------------
+/**
+ * findChrome 的三条行为。
+ *
+ * 为什么单独立一项：它是"仓库里不堆厂商路径"这个决定的支点——用户机器上
+ * 换了别的 Chromium 内核浏览器（麒麟／统信上很常见），全靠 ANTU_CHROME 接进来。
+ * 这条链断了，预览和上面的渲染检查会一起哑掉，而症状只是"本机没找到 Chrome"，
+ * 看不出是环境变量根本没被读到。所以这里只断言"读到了、且不瞎返回"。
+ */
+function checkBrowserLookup() {
+  section('浏览器查找')
+  const probe = join(REPO, 'package.json') // 一个确定存在的文件，借它当"浏览器路径"
+  const prev = process.env.ANTU_CHROME
+  try {
+    process.env.ANTU_CHROME = probe
+    eq('ANTU_CHROME 优先于已知路径', findChrome(), probe)
+
+    process.env.ANTU_CHROME = '/nope/not-a-browser'
+    truthy('ANTU_CHROME 指向不存在的路径时不当成浏览器', findChrome() !== '/nope/not-a-browser')
+
+    process.env.ANTU_CHROME = REPO
+    truthy('ANTU_CHROME 指向目录时不当成浏览器', findChrome() !== REPO)
+  } finally {
+    if (prev === undefined) delete process.env.ANTU_CHROME
+    else process.env.ANTU_CHROME = prev
+  }
+}
+
+// ---------------------------------------------------------------
+// 5. 渲染（要浏览器）
 // ---------------------------------------------------------------
 async function checkRender(sampleFile) {
   section('渲染（file:// 打开，零外部请求）')
   if (!findChrome()) {
-    bad('没有可用的 Chrome，跳过', '装一个 Chrome 再来')
+    bad('没有可用的 Chrome，跳过', '装一个 Chrome，或者设 ANTU_CHROME 指到你已有的浏览器')
     return null
   }
 
@@ -382,7 +413,7 @@ async function checkRender(sampleFile) {
 }
 
 // ---------------------------------------------------------------
-// 5. MCP 自测
+// 6. MCP 自测
 // ---------------------------------------------------------------
 function checkMcp() {
   section('MCP 服务端')
@@ -414,6 +445,8 @@ if (!shotOnly) {
 }
 
 const data = checkData()
+
+checkBrowserLookup()
 
 if (!shotOnly && !skipBrowser) {
   if (data.sample) await checkRender(data.sample)
