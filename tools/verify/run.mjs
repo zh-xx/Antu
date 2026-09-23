@@ -36,6 +36,7 @@ import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
 import { readExample, listExamples, listAgentGuides, describeSchema } from '../mcp/engine.mjs'
 import { listKnowledgeTypes } from '../../src/core/registry.js'
 import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.js'
+import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 
@@ -350,10 +351,12 @@ function checkBrowserLookup() {
  * 四条要害，都是这套机制最容易悄悄坏掉的地方：
  *   1. 点了按钮真能落盘（浏览器会拦"同一页面的第二次自动下载"，
  *      所以点击要标成用户手势，见 lib/chrome.mjs 的 eval）；
- *   2. 尺寸正好是内容 × 2 —— 多了说明框错了范围（比如用了 getNodesBounds，
- *      会把两个 1×1 的装饰节点算进去）；
+ *   2. 尺寸正好是（内容 + 四周留白）× 2 —— 多了说明框错了范围（比如用了
+ *      getNodesBounds，会把两个 1×1 的装饰节点算进去）；
  *   3. 不是一张白图；
- *   4. **轴末端有箭头**。这条是两个真缺陷换来的：箭头原先用 CSS 边框三角画
+ *   4. **四周真留出白边**：只量总尺寸查不出"留白加在一边"或者"内容被拉伸
+ *      填满了整张图"，所以四条边各采一圈像素，必须全是白的；
+ *   5. **轴末端有箭头**。这条是两个真缺陷换来的：箭头原先用 CSS 边框三角画
  *      （width:0 + 三边 transparent），导出时被整个丢掉；换成内联 SVG 之后
  *      还得把它多占的 6px 算进内容尺寸，否则会被裁在框外。
  *      只量尺寸查不出这两种，所以在箭头应该在的位置采一个像素。
@@ -416,10 +419,11 @@ async function checkExport(browser, spec) {
     viewsOf(spec)[0],
     orientation,
   )
-  eq('尺寸 = 内容 × 2', [shot.width, shot.height], [
-    graph.size.width * 2,
-    graph.size.height * 2,
+  eq('尺寸 = (内容 + 留白) × 2', [shot.width, shot.height], [
+    exportFrame(graph.size.width, graph.size.height).width * 2,
+    exportFrame(graph.size.width, graph.size.height).height * 2,
   ])
+  ok('留白', `每边 ${EXPORT_PAD}px（设计像素）`)
 
   // 采样：一张纯白的图会缩得极小，但那是旁证；这里直接数非白像素。
   const sample = async (x, y) =>
@@ -458,16 +462,70 @@ async function checkExport(browser, spec) {
   )
   truthy('导出图不是一张白纸', ink > 5000, `非白像素 ${ink}`)
 
+  // 留白：四条边各取一圈像素，必须全是白的；同一张图里内容区必须有墨。
+  // 两条要一起看：只看"边上全白"的话，一张整白图也能过；只看"里面有墨"的话，
+  // 留白加在一边、内容被拉满整张图也能过。
+  //
+  // 先判前提再采样：留白为 0 时这四个取像素的矩形会有一条边是 0，
+  // getImageData 直接抛错，症状是一堆堆栈盖住"其实就是留白没了"。
+  const pad = EXPORT_PAD * 2 // 设备像素
+  truthy('每边留白大于 0（设备像素）', pad > 0, `${pad}px`)
+  const bands = !pad
+    ? null
+    : await browser.eval(
+        `(async () => {
+        const img = new Image()
+        img.src = 'data:image/png;base64,${shot.buf.toString('base64')}'
+        await img.decode()
+        const c = document.createElement('canvas')
+        c.width = img.width
+        c.height = img.height
+        const ctx = c.getContext('2d')
+        ctx.drawImage(img, 0, 0)
+        const count = (x, y, w, h) => {
+          const d = ctx.getImageData(x, y, w, h).data
+          let n = 0
+          for (let i = 0; i < d.length; i += 4) if (d[i] < 240 || d[i + 1] < 240 || d[i + 2] < 240) n += 1
+          return n
+        }
+        const p = ${pad}
+        return {
+          w: c.width,
+          h: c.height,
+          top: count(0, 0, c.width, p),
+          bottom: count(0, c.height - p, c.width, p),
+          left: count(0, p, p, c.height - p * 2),
+          right: count(c.width - p, p, p, c.height - p * 2),
+          inner: count(p, p, c.width - p * 2, c.height - p * 2),
+        }
+      })()`,
+        { awaitPromise: true },
+      )
+  // 先确认这四圈确实在图内，别在越界的坐标上"数出 0 个非白像素"
+  truthy(
+    '留白采样范围在导出图之内',
+    !!bands && pad * 2 < bands.w && pad * 2 < bands.h,
+    bands ? `图 ${bands.w}×${bands.h}，每边留白 ${pad}px` : '没有采到像素',
+  )
+  if (bands) {
+    truthy('内容区里有墨', bands.inner > 5000, `内容区非白像素 ${bands.inner}`)
+    eq('上边留白是纯白', bands.top, 0)
+    eq('下边留白是纯白', bands.bottom, 0)
+    eq('左边留白是纯白', bands.left, 0)
+    eq('右边留白是纯白', bands.right, 0)
+  }
+
   // 轴末端那个箭头：算准它该在哪，采一个像素看是不是深色。
   // 竖向：轴在 x = 轴列中心，箭头挂在轴末端下方 ARROW_EXTENT 之内；
   // 横向：轴在 y = 轴行中心，箭头挂在轴右端。
+  // 坐标是内容坐标，成品图上要再加上留白（EXPORT_PAD）。
   const axisAt = graph.grid.axisColumnIndex * CELL_W + CELL_W / 2
   const [px, py] =
     orientation === 'vertical'
       ? [axisAt, graph.size.height - ARROW_EXTENT / 2]
       : [graph.size.width - ARROW_EXTENT / 2, axisAt]
-  const sx = Math.round(px * 2)
-  const sy = Math.round(py * 2)
+  const sx = Math.round((px + EXPORT_PAD) * 2)
+  const sy = Math.round((py + EXPORT_PAD) * 2)
   // 先确认采样点在图内。少了这一步，箭头被裁掉时 getImageData 会返回全黑的全透明像素，
   // 看上去"是深色"就放行了 —— 这条断言本身就抓不住那个 bug（实测过）。
   truthy(
@@ -526,6 +584,64 @@ async function checkRender(sampleFile) {
 
     const dock = await browser.eval(`document.querySelectorAll('.antu-dock-chip').length`)
     truthy('控制胶囊在位', dock > 0)
+
+    // 胶囊里控件的形态规则（rendering §4.2）。这几条都是"看画面也未必看得出、
+    // 但一旦破了整个胶囊就乱"的规则，所以按颜色和样式表查，不靠人看。
+    const shape = await browser.eval(`(() => {
+      const bar = document.querySelector('.antu-dock-bar')
+      if (!bar) return null
+      const btns = [...bar.querySelectorAll('button')]
+      const text = (b) => b.textContent.trim()
+      // 关键：12% 灰的开关按 rgba 读出来也很"深"（15,23,42），但它压在
+      // 近白的胶囊底上，看着是浅的。所以必须按 alpha 合成一次再比亮度，
+      // 不然会把"开着的开关"误判成实心。
+      const lum = (b) => {
+        const m = getComputedStyle(b).backgroundColor.match(/[\\d.]+/g).map(Number)
+        const a = m.length === 4 ? m[3] : 1
+        return a * ((m[0] + m[1] + m[2]) / 3) + (1 - a) * 255
+      }
+      const dark = btns.filter((b) => lum(b) < 128).map(text)
+
+      // 样式表里查按下态与焦点圈：这两个状态没法在静态页面上"采"出来，
+      // 只能查规则在不在。查的是"在不在"，不是"好不好看"。
+      const css = [...document.styleSheets].flatMap((s) => {
+        try {
+          return [...s.cssRules].map((r) => r.selectorText || '')
+        } catch {
+          return []
+        }
+      }).join(' || ')
+      const hasRule = (sel) => css.includes(sel)
+      const classes = ['.antu-dock-chip', '.antu-dock-seg-item', '.antu-dock-action']
+      const focusSel = css
+        .split(' || ')
+        .find((s) => s.includes('.antu-dock-action:focus-visible')) || ''
+
+      const action = bar.querySelector('.antu-dock-action')
+      const icon = action?.querySelector('svg')
+      const r = icon?.getBoundingClientRect()
+      return {
+        total: btns.length,
+        dark,
+        hasIcon: !!icon,
+        iconW: r ? Math.round(r.width) : 0,
+        iconH: r ? Math.round(r.height) : 0,
+        missingActive: classes.filter((c) => !hasRule(c + ':active')),
+        focusCovered: classes.filter((c) => !focusSel.includes(c + ':focus-visible')),
+      }
+    })()`)
+    truthy('量到了胶囊控件的形态', shape)
+    if (shape) {
+      eq('胶囊里只有导出按钮是深底', shape.dark, ['导出图片'])
+      truthy('导出按钮带下载符号', shape.hasIcon)
+      truthy(
+        '下载符号有真实尺寸（不是零尺寸元素，那种导出时会被整个丢掉）',
+        shape.iconW > 0 && shape.iconH > 0,
+        `${shape.iconW}×${shape.iconH}`,
+      )
+      eq('每个控件都有按下态', shape.missingActive, [])
+      eq('每个控件都在统一的焦点圈规则里', shape.focusCovered, [])
+    }
 
     const title = await browser.eval(`document.querySelector('.antu-header-title')?.textContent`)
     eq('标签卡标题', title, spec.title)
