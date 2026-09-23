@@ -613,9 +613,12 @@ async function checkRender(sampleFile) {
       }).join(' || ')
       const hasRule = (sel) => css.includes(sel)
       const classes = ['.antu-dock-chip', '.antu-dock-seg-item', '.antu-dock-action']
+      // 把**所有**带 :focus-visible 的规则合起来看，不是只找动作按钮那一条：
+      // 这几条以后要是被拆成几条规则写，只认一条会误报"开关没有焦点圈"。
       const focusSel = css
         .split(' || ')
-        .find((s) => s.includes('.antu-dock-action:focus-visible')) || ''
+        .filter((s) => s.includes(':focus-visible'))
+        .join(' || ')
 
       const action = bar.querySelector('.antu-dock-action')
       const icon = action?.querySelector('svg')
