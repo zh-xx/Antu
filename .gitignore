@@ -7,6 +7,10 @@ dist-html/
 build/
 .vite/
 
+# 生成出来的图：与源 JSON 同名同目录，属产物，不进仓库
+# （示例数据本身要提交，由 examples/**/*.json 管）
+examples/**/*.html
+
 # 日志与缓存
 *.log
 .cache/
