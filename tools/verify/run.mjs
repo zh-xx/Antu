@@ -17,12 +17,13 @@
 //    3. 数据        每份示例都能校验通过；视角 × 方向全部能排；校验错误本身对得上
 //    4. 浏览器查找  ANTU_CHROME 优先、指错了不瞎返回（不要浏览器，所以在 verify:fast 里）
 //    5. 渲染        用 file:// 打开生成的 HTML，断言卡片数/尺寸/缩放/位置，且零外部请求
-//    6. MCP         自带客户端把十二个步骤走一遍
-//    7. 截图        出一张图，供人扫一眼（不能自动判断好看，但要能看）
+//    6. 导出        点导出真能落盘 PNG；不带题头的尺寸 = 内容 × 2；带题头更高；不是白图
+//    7. MCP         自带客户端把十二个步骤走一遍
+//    8. 截图        出一张图，供人扫一眼（不能自动判断好看，但要能看）
 // ============================================================
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, readdirSync, mkdirSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { REPO, renderToFile } from '../lib/make-html.mjs'
@@ -317,6 +318,107 @@ function checkBrowserLookup() {
   }
 }
 
+/**
+ * 导出图片的检查。
+ *
+ * 三条要害，都是这套机制最容易悄悄坏掉的地方：
+ *   1. 点了按钮真能落盘（浏览器会拦"同一页面的第二次自动下载"，
+ *      所以点击要标成用户手势，见 lib/chrome.mjs 的 eval）；
+ *   2. 尺寸正好是内容 × 2 —— 多了说明框错了范围（比如用了 getNodesBounds，
+ *      会把两个 1×1 的装饰节点算进去）；
+ *   3. 不是一张白图。
+ *
+ * 每次落盘后立刻把文件挪走：两次导出的文件名一样，浏览器会覆盖，
+ * 留在目录里就看不出第二次到底导没导。
+ */
+async function checkExport(browser, spec) {
+  section('导出图片')
+  const dir = join(OUT, 'downloads')
+  rmSync(dir, { recursive: true, force: true })
+  mkdirSync(dir, { recursive: true })
+  await browser.setDownloadDir(dir)
+
+  const clickChip = (label) =>
+    browser.eval(
+      `(() => {
+        const el = [...document.querySelectorAll('.antu-dock-bar button')]
+          .find((b) => b.textContent.trim() === ${JSON.stringify(label)})
+        if (!el) return false
+        el.click()
+        return true
+      })()`,
+      { userGesture: true },
+    )
+
+  const grab = async (hint) => {
+    let file = null
+    for (let i = 0; i < 40 && !file; i++) {
+      await new Promise((r) => setTimeout(r, 250))
+      file = readdirSync(dir).find((f) => f.endsWith('.png')) ?? null
+    }
+    if (!file) {
+      bad(`${hint}：点了导出但没有文件落盘`)
+      return null
+    }
+    const path = join(dir, file)
+    const buf = readFileSync(path)
+    rmSync(path, { force: true }) // 挪走，好让下一次落盘看得见
+    return { name: file, buf, width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) }
+  }
+
+  if (!(await clickChip('导出图片'))) {
+    bad('导出图片：底部胶囊里没有这个按钮')
+    return
+  }
+  const withHeader = await grab('带题头')
+  if (!withHeader) return
+  truthy('点了导出会落盘一张 PNG', withHeader.buf.slice(1, 4).toString() === 'PNG')
+  // 留一份下来，和人看截图一个道理：尺寸对不代表内容对
+  const EXPORT_SHOT = join(OUT, 'export.png')
+  writeFileSync(EXPORT_SHOT, withHeader.buf)
+  ok('带题头导出', `${withHeader.width}×${withHeader.height}　${EXPORT_SHOT.replace(REPO + '/', '')}`)
+
+  await clickChip('题头')
+  await new Promise((r) => setTimeout(r, 400))
+  await clickChip('导出图片')
+  const plain = await grab('不带题头')
+  if (!plain) return
+
+  // 页面用的一定是默认呈现状态（新开的浏览器配置里没有偏好）：
+  // 字段只开摘要、方向按槽数、看第一个视角。
+  const graph = buildFactGraph(
+    spec,
+    { sources: false, actors: false, summary: true },
+    viewsOf(spec)[0],
+    spec.slots.length >= 5 ? 'vertical' : 'horizontal',
+  )
+  eq('不带题头的尺寸 = 内容 × 2', [plain.width, plain.height], [
+    graph.size.width * 2,
+    graph.size.height * 2,
+  ])
+  truthy('带题头比不带题头高出一截', withHeader.height > plain.height)
+
+  // 采样：一张纯白的图会缩得极小，但那是旁证；这里直接数非白像素。
+  const ink = await browser.eval(
+    `(async () => {
+      const img = new Image()
+      img.src = 'data:image/png;base64,${plain.buf.toString('base64')}'
+      await img.decode()
+      const c = document.createElement('canvas')
+      c.width = img.width
+      c.height = img.height
+      const ctx = c.getContext('2d')
+      ctx.drawImage(img, 0, 0)
+      const d = ctx.getImageData(0, 0, c.width, c.height).data
+      let n = 0
+      for (let i = 0; i < d.length; i += 4) if (d[i] < 240 || d[i + 1] < 240 || d[i + 2] < 240) n += 1
+      return n
+    })()`,
+    { awaitPromise: true },
+  )
+  truthy('导出图不是一张白纸', ink > 5000, `非白像素 ${ink}`)
+}
+
 // ---------------------------------------------------------------
 // 5. 渲染（要浏览器）
 // ---------------------------------------------------------------
@@ -416,6 +518,8 @@ async function checkRender(sampleFile) {
     await browser.screenshot(SHOT)
     shotWritten = true
     ok('截图已存', SHOT.replace(REPO + '/', ''))
+
+    await checkExport(browser, spec)
   } finally {
     await browser.close()
   }
@@ -423,7 +527,7 @@ async function checkRender(sampleFile) {
 }
 
 // ---------------------------------------------------------------
-// 6. MCP 自测
+// 7. MCP 自测
 // ---------------------------------------------------------------
 function checkMcp() {
   section('MCP 服务端')
@@ -469,6 +573,7 @@ console.log('')
 if (failures.length === 0) {
   console.log(`全部通过（${passed} 项，${((Date.now() - started) / 1000).toFixed(1)} 秒）`)
   if (shotWritten) console.log(`截图：${SHOT.replace(REPO + '/', '')}`)
+  if (existsSync(join(OUT, 'export.png'))) console.log(`导出样本：${join(OUT, 'export.png').replace(REPO + '/', '')}`)
 } else {
   console.log(`${failures.length} 项未通过（通过 ${passed} 项）：`)
   for (const f of failures) console.log('  - ' + f)

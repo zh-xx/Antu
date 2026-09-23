@@ -71,6 +71,26 @@
   color: var(--antu-text);
   font-weight: 600;
 }
+/* 胶囊里唯一一个**动作**（点了就下文件），不是开关。
+   开关的底色最浅是透明、最深是 12% 灰，所以实心那一档只留给动作，
+   一眼就能和"开着"的开关区分开。 */
+.antu-dock-action {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--antu-text);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.antu-dock-action:hover:not(:disabled) { background: #1e293b; }
+.antu-dock-action:disabled { opacity: 0.55; cursor: default; }
+.antu-dock-action:focus-visible { outline: 2px solid var(--antu-text); outline-offset: 2px; }
 .antu-dock-sep { width: 1px; height: 14px; background: rgba(15, 23, 42, 0.10); }
 /* 箭头用两条边旋转出来，比用字符好对齐：字符坐在基线上，天生偏下。
    两条边拼出的角默认朝右下，转 225 度就朝上（菜单是在上方弹出的）。 */
@@ -766,3 +786,16 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* ===== 导出期间 ================================================
+   exportPng.js 抓 .react-flow__viewport，抓完就把 .is-exporting 摘掉。
+
+   **只藏这一样**：卡片详情浮层。它是卡片节点的一部分，在捕获范围内，
+   不藏就会跟着进图。其余几样（缩放控件／缩略图／底部胶囊／点阵底纹）
+   都在 .react-flow__viewport **之外**，天然不进图，不用管——
+   多藏一个就多一次没必要的闪烁。
+
+   标签卡的"文档题头"样式不在这里，在 exportPng.js 里用 toBlob 的 style
+   选项改在克隆体上，屏幕上那份一动不动。
+   ============================================================== */
+.is-exporting .antu-preview { display: none !important; }

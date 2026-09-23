@@ -14,10 +14,11 @@
 //   是 fact/timeline 的概念。见 known-issues 第 15 条。）
 // ============================================================
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { useShell } from '../../../shell/shellContext.js'
 import { PreviewContext } from '../previewContext.js'
 import EventNode from '../EventNode.jsx'
 import ControlDock from '../ControlDock.jsx'
@@ -122,6 +123,32 @@ export default function FactTimeline({ spec }) {
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
 
+  // 标签卡的显隐归外壳（headerVisible），这里只是把它转给底部胶囊，
+  // 并让导出跟着它走——**屏幕上显示什么，导出就是什么**（rendering §10.2）。
+  const { headerVisible, toggleHeader } = useShell()
+
+  // 导出：真正的活在画布外壳里（只有它知道 React Flow 的 DOM 与内容尺寸），
+  // 这里只把"现在这份 graph + 要不要带题头 + 文件名"递过去。
+  // 守卫用 ref 而不是 state：state 在同一个 tick 里还是旧值，连点两下会导两次。
+  const canvasRef = useRef(null)
+  const exportingRef = useRef(false)
+  const [exporting, setExporting] = useState(false)
+  const onExport = async () => {
+    if (exportingRef.current) return
+    exportingRef.current = true
+    setExporting(true)
+    try {
+      await canvasRef.current?.exportPng({ includeHeader: headerVisible, title: spec?.title })
+    } catch (e) {
+      // 导出失败不能白失败：告诉人一声，而不是按钮点了没反应
+      console.error('[案图] 导出失败：', e)
+      window.alert(`导出失败：${e.message}`)
+    } finally {
+      exportingRef.current = false
+      setExporting(false)
+    }
+  }
+
   // 浮层状态通过 Context 传下去，避免写进节点 data 引发整份节点数组重建
   const preview = useMemo(
     () => ({
@@ -138,6 +165,7 @@ export default function FactTimeline({ spec }) {
     <div className="antu-fact">
       <PreviewContext.Provider value={preview}>
         <Canvas
+          ref={canvasRef}
           graph={graph}
           nodeTypes={nodeTypes}
           showGrid={showGrid}
@@ -171,6 +199,10 @@ export default function FactTimeline({ spec }) {
             onToggleOrientation={toggleOrientation}
             showGrid={showGrid}
             onToggleGrid={toggleGrid}
+            showHeader={headerVisible}
+            onToggleHeader={toggleHeader}
+            exporting={exporting}
+            onExport={onExport}
           />
         </Canvas>
       </PreviewContext.Provider>

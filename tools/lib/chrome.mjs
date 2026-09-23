@@ -226,8 +226,19 @@ export async function launchBrowser({ width = 1600, height = 900, port } = {}) {
       return session
     },
 
-    async eval(expression) {
-      const r = await c.send('Runtime.evaluate', { expression, returnByValue: true })
+    /**
+     * 在页面里求值。
+     * userGesture=true 时按"用户手势"标记这次求值——脚本触发的点击默认不算手势，
+     * 浏览器会因此拦掉同一个页面的第二次下载；标上手势就不拦了。
+     * awaitPromise=true 时等表达式返回的 Promise 落定再回值。
+     */
+    async eval(expression, { userGesture = false, awaitPromise = false } = {}) {
+      const r = await c.send('Runtime.evaluate', {
+        expression,
+        returnByValue: true,
+        userGesture,
+        awaitPromise,
+      })
       if (r.exceptionDetails) {
         throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text)
       }
@@ -244,6 +255,43 @@ export async function launchBrowser({ width = 1600, height = 900, port } = {}) {
     async screenshot(outPath) {
       writeFileSync(outPath, Buffer.from(await session.screenshotData(), 'base64'))
       return outPath
+    },
+
+    /**
+     * 允许下载，并指定落到哪个目录。导出功能要靠它验：
+     * 点一下按钮，再检查落盘的 PNG。
+     *
+     * 先试 Browser 域，不行退回 Page 域——两者不同版本上可用性不一样，
+     * 本机与 CI 的 Chrome 版本不同，两条都留着省得各配一套。
+     */
+    async setDownloadDir(dir) {
+      const params = { behavior: 'allow', downloadPath: dir }
+      try {
+        await c.send('Browser.setDownloadBehavior', { ...params, eventsEnabled: true })
+      } catch {
+        await c.send('Page.setDownloadBehavior', params)
+      }
+    },
+
+    /**
+     * 用**真实鼠标事件**点一个元素。expr 求值结果必须是元素（可以是查找表达式）。
+     *
+     * 为什么不用 el.click()：脚本触发的点击不算"用户手势"，
+     * 浏览器会因此拦掉同一个页面的第二次下载——导出功能正是点一下下载一次，
+     * 只有真实手势才验得了"连着导两次"。
+     */
+    async clickAt(expr) {
+      const json = await session.eval(`(() => {
+        const el = (${expr})
+        if (!el) return null
+        const r = el.getBoundingClientRect()
+        return JSON.stringify({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) })
+      })()`)
+      if (!json) throw new Error(`点不到元素：${expr}`)
+      const { x, y } = JSON.parse(json)
+      for (const type of ['mousePressed', 'mouseReleased']) {
+        await c.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 })
+      }
     },
 
     /** 本次导航期间请求过的地址 */

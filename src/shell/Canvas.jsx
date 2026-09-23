@@ -12,11 +12,12 @@
 //  是画法自己的事；这里只负责把事件转出去。
 // ============================================================
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState, useEdgesState } from '@xyflow/react'
 
 import { ARIA_LABEL_CONFIG } from '../core/labels.js'
 import { FIT_PADDING, fitZoom } from '../core/canvas.js'
+import { exportPng as runExportPng } from './exportPng.js'
 
 /** 放大上限。原先定 1:1，理由是"再放大只是把同样的像素摊大"：
  *  这话对信息量没错，对可读性却是错的，字段全开时字号在屏幕上只有 8px。
@@ -27,6 +28,7 @@ const MAX_ZOOM = 3
 const PAN_PAD = 160
 
 export default function Canvas({
+  ref,
   graph,
   nodeTypes,
   showGrid = false,
@@ -103,6 +105,18 @@ export default function Canvas({
     if (!width || !height) return 0.1
     return Math.max(fitZoom(graph.size, { width, height }), 0.05)
   }, [canvasSize, graph])
+
+  // 导出为什么在这里：它要抓 .react-flow__viewport 这个节点，
+  // 而整个项目里只有这里知道画布 DOM 长什么样、内容多大（graph.size）。
+  // 渲染器只拿到一个 exportPng 方法，仍然不碰 React Flow（见 rendering §10）。
+  useImperativeHandle(
+    ref,
+    () => ({
+      exportPng: ({ includeHeader, title } = {}) =>
+        runExportPng({ rootEl: canvasRef.current, graph, includeHeader, title }),
+    }),
+    [graph],
+  )
 
   return (
     <main

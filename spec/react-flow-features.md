@@ -79,8 +79,8 @@
 |---|---|---|
 | **子流**（节点嵌套，父节点包住子节点） | `parentId`、`extent: 'parent'`、父节点给 `style.width/height` | 计划用（把“一个槽”整块包起来时可能用） |
 | 受控 / 非受控状态 | `useNodesState`、`useEdgesState` | ✅ 必须用（见 §十 第一、二条） |
-| 节点/边工具函数 | `getNodesBounds`、`getViewportForBounds`、`addEdge` | 计划用（导出时） |
-| 读取画布实例 | `useReactFlow()` | 计划用（导出时） |
+| 节点/边工具函数 | `getNodesBounds`、`getViewportForBounds`、`addEdge` | **导出时没用上**：两个 1×1 的装饰节点会被算进包围盒，多出一圈留白。改用我们自己的 `graph.size`，见 `fact/rendering.md` §10.3 |
+| 读取画布实例 | `useReactFlow()` | **导出时没用上**：同样是走 DOM（`.react-flow__viewport`），不必拿画布实例 |
 | 第三方署名水印 | `proOptions.hideAttribution` | 保留不隐藏（未订阅 Pro，作者请求不隐藏） |
 
 ---
@@ -118,11 +118,13 @@
 { id: 'ev-1', parentId: 'slot-1', extent: 'parent', position: { x: 32, y: 32 }, type: 'card' }
 ```
 
-**导出 PNG**（需另装 `html-to-image`）
+**导出 PNG**（已做，见 `fact/rendering.md` §10）
 
 ```js
-import { toPng } from 'html-to-image'
-import { getNodesBounds, getViewportForBounds } from '@xyflow/react'
+import { toBlob } from 'html-to-image'
+// 抓 .react-flow__viewport，把**克隆体的** transform 换成单位变换，
+// 尺寸给 graph.size —— 这样导出的就是整张图，且与用户当前的平移缩放无关。
+// 不要用 getNodesBounds（见 §六 那张表），也不要捕获整个 .antu-app（会变成窗口长宽比）。
 ```
 
 **让浮层里的长文能滚动**（画布开着 `panOnScroll` 时必须加，否则滚轮被画布拿去平移）
@@ -167,7 +169,7 @@ const maxZoom = 3   // 上限只用来防止放大到荒唐的程度
 | 事情 | 由谁做 |
 |---|---|
 | 节点摆哪里（自动布局） | **不是 React Flow**。用 dagre 或 elkjs，或自己算（fact 图就是自己算的网格） |
-| 导出图片 | React Flow 只提供算范围的工具，真正的截图靠 `html-to-image` |
+| 导出图片 | 截图靠 `html-to-image`；但**范围要自己算**——React Flow 的 `getNodesBounds` 会把两个 1×1 装饰节点算进去，不能用 |
 | 我们自己的排布规则 | `src/renderers/fact/timeline/grid.js`，与 React Flow 无关 |
 
 ## 九、当前进度备忘
@@ -175,7 +177,8 @@ const maxZoom = 3   // 上限只用来防止放大到荒唐的程度
 - **已在用**：视口层全部（含平移边界、动态缩放上下限、缩放动画）、5 类自定义节点、节点点击与进出、
   点空白、选中加权、中文无障碍文案、受控节点状态
 - **事实图到此为止**：不再加 React Flow 的能力。第三、四节里的边与连接点留给关系图／程序图
-- **将来**：拖拽编辑（`snapToGrid`）、导出图片、子流
+- **导出图片已做**（不走 React Flow 的工具函数，走 DOM，见 §六、§七）
+- **将来**：拖拽编辑（`snapToGrid`）、子流
 
 ## 十、踩过的坑（遇到先查这里）
 

@@ -4,11 +4,13 @@
 //  显示类控制集中在这里，浮在画布正下方居中。
 //  视角不在这里：它最常用，留在左栏一级，点一次就能切。
 //
-//  四个控制，按苹果的规矩各用各的形态：
+//  六个控制，按苹果的规矩各用各的形态：
 //    视角      选项名长、最多五个，摆不下 → 一个按钮显示当前值，点开带勾号的列表
 //    卡片内容  三个独立开关，少 → 全部摆出来，点一下切（开着的高亮）
 //    方向      两个互斥 → 分段控件，两个都摆出来、选中的凸起
 //    格线      一个开关 → 点一下切
+//    题头      一个开关 → 点一下切。它同时决定导出带不带题头（rendering §10.2）
+//    导出图片  唯一一个**动作**，不是开关 → 用分隔符隔开，点了就下文件
 //  一句话：选项少且独立就摆出来，选项名长就收进菜单。
 //  画法（子类）不在这里：它是"这份数据用哪种画法看"，属于页面最上层的问题，
 //  放在左上角的标签卡里。
@@ -42,6 +44,10 @@ export default function ControlDock({
   onToggleOrientation,
   showGrid = false,
   onToggleGrid,
+  showHeader = true,
+  onToggleHeader,
+  exporting = false,
+  onExport,
 }) {
   // 同时只开一个菜单：开新的自动关旧的
   const [open, setOpen] = useState(false)
@@ -123,6 +129,25 @@ export default function ControlDock({
           onClick={() => onToggleGrid(!showGrid)}
         >
           格线
+        </button>
+
+        <button
+          className={`antu-dock-chip${showHeader ? ' is-on' : ''}`}
+          onClick={() => onToggleHeader(!showHeader)}
+        >
+          题头
+        </button>
+
+        {/* 分隔符隔开：前面全是"怎么看"的开关，这个是唯一的动作 */}
+        <span className="antu-dock-sep" />
+
+        <button
+          className="antu-dock-action"
+          onClick={onExport}
+          disabled={exporting}
+          title="把整张图导成 PNG（2 倍分辨率）"
+        >
+          {exporting ? '导出中…' : '导出图片'}
         </button>
       </div>
     </div>
