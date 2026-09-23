@@ -112,8 +112,7 @@ export default function Canvas({
   useImperativeHandle(
     ref,
     () => ({
-      exportPng: ({ includeHeader, title } = {}) =>
-        runExportPng({ rootEl: canvasRef.current, graph, includeHeader, title }),
+      exportPng: ({ title } = {}) => runExportPng({ rootEl: canvasRef.current, graph, title }),
     }),
     [graph],
   )

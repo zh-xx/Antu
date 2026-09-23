@@ -36,6 +36,14 @@ export const HEADER_W = 150
 /** 轴点直径 */
 export const DOT_SIZE = 10
 
+/**
+ * 轴末端那个箭头超出轴线的长度（见 AxisLineNode：竖向挂在轴下面，横向挂在轴右边）。
+ *
+ * **必须算进内容尺寸**，否则导出的图会把箭头切掉——内容高到轴线为止，
+ * 箭头在轴线之外 6px，落在捕获范围外。实测过一次：导出图里轴上光秃秃的。
+ */
+export const ARROW_EXTENT = 6
+
 /** 侧 → 配色序号（与 CSS 里的 g0 / g1 / g2 对应） */
 export function groupIndexOf(side) {
   if (side === SIDE.SIDE1) return 0
@@ -123,6 +131,10 @@ export function makeMetrics(grid, fields, isH) {
   // 轴线所在车道的中心线（沿车道轴量的坐标）
   const axisCenter = grid.axisColumnIndex * laneExtent + laneExtent / 2
 
+  // 内容尺寸要把箭头算进去（见 ARROW_EXTENT）
+  const contentW = isH ? originX + rowCount * slotExtent + ARROW_EXTENT : colCount * laneExtent
+  const contentH = isH ? colCount * laneExtent : originY + rowCount * slotExtent + ARROW_EXTENT
+
   return {
     isH,
     colCount,
@@ -139,7 +151,7 @@ export function makeMetrics(grid, fields, isH) {
     cellBoxH,
     cellAt,
     axisCenter,
-    contentW: isH ? originX + rowCount * slotExtent : colCount * laneExtent,
-    contentH: isH ? colCount * laneExtent : originY + rowCount * slotExtent,
+    contentW,
+    contentH,
   }
 }

@@ -24,7 +24,6 @@ import { getRenderer, listKinds, listTypes } from './core/registry.js'
 import { GRAPH_TYPE_LABELS, labelOf } from './core/labels.js'
 import DiagramHeader from './shell/DiagramHeader.jsx'
 import { readPrefs, writePrefs } from './shell/prefs.js'
-import { ShellContext } from './shell/shellContext.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
 
 /** 渲染器不可用时的兜底说明 */
@@ -117,38 +116,26 @@ export default function App() {
   const Renderer = spec ? getRenderer(spec.type, kind) : null
   const ready = errors.length === 0 && Renderer
 
-  // 左上角标签卡的显隐：全局偏好，默认显示。
-  // 它同时决定导出时带不带题头——**屏幕上显示什么，导出就是什么**（rendering §10.2）。
-  // 状态放这里是因为标签卡归 App 渲染，而开关在底部胶囊里，两边靠 context 通。
-  const [headerVisible, setHeaderVisible] = useState(() => readPrefs().headerVisible !== false)
-  const toggleHeader = (value) => {
-    setHeaderVisible(value)
-    writePrefs({ headerVisible: value })
-  }
-  const shell = useMemo(() => ({ headerVisible, toggleHeader }), [headerVisible])
-
   return (
-    <ShellContext.Provider value={shell}>
-      <div className="antu-app">
-        {headerVisible && (
-          <DiagramHeader
-            title={spec?.title || '案图'}
-            typeLabel={spec ? labelOf(GRAPH_TYPE_LABELS, spec.type) : ''}
-            info={diagramInfo(spec)}
-            kinds={kinds}
-            kind={kind}
-            onSelectKind={selectKind}
-          />
-        )}
+    <div className="antu-app">
+      {/* 标签卡常显，不给开关。原先它同时控制"屏幕上显不显示"和"导出带不带"，
+          现在导出一律不带题头（rendering §10.2 改过），开关就没有意义了。 */}
+      <DiagramHeader
+        title={spec?.title || '案图'}
+        typeLabel={spec ? labelOf(GRAPH_TYPE_LABELS, spec.type) : ''}
+        info={diagramInfo(spec)}
+        kinds={kinds}
+        kind={kind}
+        onSelectKind={selectKind}
+      />
 
-        {ready ? (
-          <ErrorBoundary>
-            <Renderer spec={spec} />
-          </ErrorBoundary>
-        ) : (
-          <FallbackInfo errors={errors} spec={spec} hasRenderer={!!Renderer} />
-        )}
-      </div>
-    </ShellContext.Provider>
+      {ready ? (
+        <ErrorBoundary>
+          <Renderer spec={spec} />
+        </ErrorBoundary>
+      ) : (
+        <FallbackInfo errors={errors} spec={spec} hasRenderer={!!Renderer} />
+      )}
+    </div>
   )
 }

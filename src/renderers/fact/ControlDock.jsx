@@ -9,7 +9,6 @@
 //    卡片内容  三个独立开关，少 → 全部摆出来，点一下切（开着的高亮）
 //    方向      两个互斥 → 分段控件，两个都摆出来、选中的凸起
 //    格线      一个开关 → 点一下切
-//    题头      一个开关 → 点一下切。它同时决定导出带不带题头（rendering §10.2）
 //    导出图片  唯一一个**动作**，不是开关 → 用分隔符隔开，点了就下文件
 //  一句话：选项少且独立就摆出来，选项名长就收进菜单。
 //  画法（子类）不在这里：它是"这份数据用哪种画法看"，属于页面最上层的问题，
@@ -44,8 +43,6 @@ export default function ControlDock({
   onToggleOrientation,
   showGrid = false,
   onToggleGrid,
-  showHeader = true,
-  onToggleHeader,
   exporting = false,
   onExport,
 }) {
@@ -129,13 +126,6 @@ export default function ControlDock({
           onClick={() => onToggleGrid(!showGrid)}
         >
           格线
-        </button>
-
-        <button
-          className={`antu-dock-chip${showHeader ? ' is-on' : ''}`}
-          onClick={() => onToggleHeader(!showHeader)}
-        >
-          题头
         </button>
 
         {/* 分隔符隔开：前面全是"怎么看"的开关，这个是唯一的动作 */}

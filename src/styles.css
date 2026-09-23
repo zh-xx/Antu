@@ -258,10 +258,6 @@
   top: 50%;
   bottom: auto;
   transform: translateY(-50%);
-  border-left: 6px solid var(--antu-axis);
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-right: 0;
 }
 .antu-link { transition: top .25s ease-out; }
 
@@ -293,16 +289,15 @@
 /* 箭头用 CSS 三角画，不用「▼」字符：
    字符有字体边距，框的中心和字形的中心不是一回事，怎么调都会偏一两像素。
    CSS 三角的几何是确定的：left 50% + translateX(-50%) 必然落在轴线中心。 */
+/* 箭头是内联 SVG（见 AxisLineNode）。颜色走 currentColor，这里只给颜色和位置。
+   原先用 CSS 边框三角画（width:0 + 三边 transparent），导出 PNG 时会整个丢掉。 */
 .antu-axis-arrow {
   position: absolute;
   bottom: -6px;
   left: 50%;
   transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid var(--antu-axis);
+  color: var(--antu-axis);
+  display: block;
 }
 
 /* ---------- 引线层 ---------- */
