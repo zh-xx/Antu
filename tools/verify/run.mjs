@@ -17,7 +17,7 @@
 //    3. 数据        每份示例都能校验通过；视角 × 方向全部能排；校验错误本身对得上
 //    4. 浏览器查找  ANTU_CHROME 优先、指错了不瞎返回（不要浏览器，所以在 verify:fast 里）
 //    5. 渲染        用 file:// 打开生成的 HTML，断言卡片数/尺寸/缩放/位置，且零外部请求
-//    6. 导出        点导出真能落盘 PNG；不带题头的尺寸 = 内容 × 2；带题头更高；不是白图
+//    6. 导出        点导出真能落盘 PNG；尺寸 = 内容 × 2；不是白图；轴末端有箭头
 //    7. MCP         自带客户端把十二个步骤走一遍
 //    8. 截图        出一张图，供人扫一眼（不能自动判断好看，但要能看）
 // ============================================================
@@ -35,6 +35,7 @@ import { validateSpec } from '../../src/core/validate.js'
 import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
 import { readExample, listExamples, listAgentGuides, describeSchema } from '../mcp/engine.mjs'
 import { listKnowledgeTypes } from '../../src/core/registry.js'
+import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 
@@ -125,6 +126,31 @@ function checkLint() {
   } catch (e) {
     const out = String(e.stdout || e.message)
     bad('静态检查未通过', out.split('\n').filter(Boolean).slice(-3).join(' / '))
+  }
+}
+
+// ---------------------------------------------------------------
+// 2.5 单元测试（纯 Node，秒级）
+// ---------------------------------------------------------------
+// 集成测试走端到端，慢；单元测试盯纯函数，快。
+// 两边都要：比如"箭头那 6px 有没有算进内容尺寸"是纯函数层面的事，
+// 单元测试一眼钉住，不必等到导出成图再数像素。
+function checkUnit() {
+  section('单元测试')
+  try {
+    const out = execFileSync('node', ['--test', 'test/*.test.mjs'], {
+      cwd: REPO,
+      stdio: 'pipe',
+      encoding: 'utf8',
+    })
+    const pass = out.match(/# pass (\d+)/)?.[1] ?? '?'
+    const fail = out.match(/# fail (\d+)/)?.[1] ?? '?'
+    if (fail === '0') ok(`纯函数测试 ${pass} 项全通`)
+    else bad(`纯函数测试有 ${fail} 项未通过`)
+  } catch (e) {
+    const out = String(e.stdout || e.message)
+    const fails = out.split('\n').filter((l) => l.includes('not ok')).slice(0, 3)
+    bad('单元测试未通过', fails.join(' / '))
   }
 }
 
@@ -321,15 +347,18 @@ function checkBrowserLookup() {
 /**
  * 导出图片的检查。
  *
- * 三条要害，都是这套机制最容易悄悄坏掉的地方：
+ * 四条要害，都是这套机制最容易悄悄坏掉的地方：
  *   1. 点了按钮真能落盘（浏览器会拦"同一页面的第二次自动下载"，
  *      所以点击要标成用户手势，见 lib/chrome.mjs 的 eval）；
  *   2. 尺寸正好是内容 × 2 —— 多了说明框错了范围（比如用了 getNodesBounds，
  *      会把两个 1×1 的装饰节点算进去）；
- *   3. 不是一张白图。
+ *   3. 不是一张白图；
+ *   4. **轴末端有箭头**。这条是两个真缺陷换来的：箭头原先用 CSS 边框三角画
+ *      （width:0 + 三边 transparent），导出时被整个丢掉；换成内联 SVG 之后
+ *      还得把它多占的 6px 算进内容尺寸，否则会被裁在框外。
+ *      只量尺寸查不出这两种，所以在箭头应该在的位置采一个像素。
  *
- * 每次落盘后立刻把文件挪走：两次导出的文件名一样，浏览器会覆盖，
- * 留在目录里就看不出第二次到底导没导。
+ * 导出不带题头（那个开关已取消，见 rendering §10.2），所以只有一次导出。
  */
 async function checkExport(browser, spec) {
   section('导出图片')
@@ -370,53 +399,86 @@ async function checkExport(browser, spec) {
     bad('导出图片：底部胶囊里没有这个按钮')
     return
   }
-  const withHeader = await grab('带题头')
-  if (!withHeader) return
-  truthy('点了导出会落盘一张 PNG', withHeader.buf.slice(1, 4).toString() === 'PNG')
+  const shot = await grab('导出')
+  if (!shot) return
+  truthy('点了导出会落盘一张 PNG', shot.buf.slice(1, 4).toString() === 'PNG')
   // 留一份下来，和人看截图一个道理：尺寸对不代表内容对
   const EXPORT_SHOT = join(OUT, 'export.png')
-  writeFileSync(EXPORT_SHOT, withHeader.buf)
-  ok('带题头导出', `${withHeader.width}×${withHeader.height}　${EXPORT_SHOT.replace(REPO + '/', '')}`)
-
-  await clickChip('题头')
-  await new Promise((r) => setTimeout(r, 400))
-  await clickChip('导出图片')
-  const plain = await grab('不带题头')
-  if (!plain) return
+  writeFileSync(EXPORT_SHOT, shot.buf)
+  ok('导出成功', `${shot.width}×${shot.height}　${EXPORT_SHOT.replace(REPO + '/', '')}`)
 
   // 页面用的一定是默认呈现状态（新开的浏览器配置里没有偏好）：
   // 字段只开摘要、方向按槽数、看第一个视角。
+  const orientation = spec.slots.length >= 5 ? 'vertical' : 'horizontal'
   const graph = buildFactGraph(
     spec,
     { sources: false, actors: false, summary: true },
     viewsOf(spec)[0],
-    spec.slots.length >= 5 ? 'vertical' : 'horizontal',
+    orientation,
   )
-  eq('不带题头的尺寸 = 内容 × 2', [plain.width, plain.height], [
+  eq('尺寸 = 内容 × 2', [shot.width, shot.height], [
     graph.size.width * 2,
     graph.size.height * 2,
   ])
-  truthy('带题头比不带题头高出一截', withHeader.height > plain.height)
 
   // 采样：一张纯白的图会缩得极小，但那是旁证；这里直接数非白像素。
+  const sample = async (x, y) =>
+    browser.eval(
+      `(async () => {
+        const img = new Image()
+        img.src = 'data:image/png;base64,${shot.buf.toString('base64')}'
+        await img.decode()
+        const c = document.createElement('canvas')
+        c.width = img.width
+        c.height = img.height
+        const ctx = c.getContext('2d')
+        ctx.drawImage(img, 0, 0)
+        const d = ctx.getImageData(${x}, ${y}, 1, 1).data
+        return [d[0], d[1], d[2]]
+      })()`,
+      { awaitPromise: true },
+    )
+
   const ink = await browser.eval(
     `(async () => {
-      const img = new Image()
-      img.src = 'data:image/png;base64,${plain.buf.toString('base64')}'
-      await img.decode()
-      const c = document.createElement('canvas')
-      c.width = img.width
-      c.height = img.height
-      const ctx = c.getContext('2d')
-      ctx.drawImage(img, 0, 0)
-      const d = ctx.getImageData(0, 0, c.width, c.height).data
-      let n = 0
-      for (let i = 0; i < d.length; i += 4) if (d[i] < 240 || d[i + 1] < 240 || d[i + 2] < 240) n += 1
-      return n
-    })()`,
+        const img = new Image()
+        img.src = 'data:image/png;base64,${shot.buf.toString('base64')}'
+        await img.decode()
+        const c = document.createElement('canvas')
+        c.width = img.width
+        c.height = img.height
+        const ctx = c.getContext('2d')
+        ctx.drawImage(img, 0, 0)
+        const d = ctx.getImageData(0, 0, c.width, c.height).data
+        let n = 0
+        for (let i = 0; i < d.length; i += 4) if (d[i] < 240 || d[i + 1] < 240 || d[i + 2] < 240) n += 1
+        return n
+      })()`,
     { awaitPromise: true },
   )
   truthy('导出图不是一张白纸', ink > 5000, `非白像素 ${ink}`)
+
+  // 轴末端那个箭头：算准它该在哪，采一个像素看是不是深色。
+  // 竖向：轴在 x = 轴列中心，箭头挂在轴末端下方 ARROW_EXTENT 之内；
+  // 横向：轴在 y = 轴行中心，箭头挂在轴右端。
+  const axisAt = graph.grid.axisColumnIndex * CELL_W + CELL_W / 2
+  const [px, py] =
+    orientation === 'vertical'
+      ? [axisAt, graph.size.height - ARROW_EXTENT / 2]
+      : [graph.size.width - ARROW_EXTENT / 2, axisAt]
+  const sx = Math.round(px * 2)
+  const sy = Math.round(py * 2)
+  // 先确认采样点在图内。少了这一步，箭头被裁掉时 getImageData 会返回全黑的全透明像素，
+  // 看上去"是深色"就放行了 —— 这条断言本身就抓不住那个 bug（实测过）。
+  truthy(
+    '箭头采样点在导出图范围内',
+    sx >= 0 && sy >= 0 && sx < shot.width && sy < shot.height,
+    `采样点 (${sx},${sy})，图 ${shot.width}×${shot.height}`,
+  )
+  const rgb = await sample(sx, sy)
+  // 不只是"深色"：要是轴那条线的颜色（半透明采样时允许偏一点）
+  const near = Math.abs(rgb[0] - 178) < 40 && Math.abs(rgb[1] - 192) < 40 && Math.abs(rgb[2] - 208) < 40
+  truthy('导出图里时间轴末端有箭头', near, `在 (${sx},${sy}) 采到 rgb(${rgb})，轴色约 rgb(178,192,208)`)
 }
 
 // ---------------------------------------------------------------
@@ -467,6 +529,31 @@ async function checkRender(sampleFile) {
 
     const title = await browser.eval(`document.querySelector('.antu-header-title')?.textContent`)
     eq('标签卡标题', title, spec.title)
+
+    // 标签卡常显（「题头」开关已取消，见 rendering §10.2）
+    truthy('屏幕上标签卡常显', await browser.eval(`!!document.querySelector('.antu-header-card')`))
+    truthy(
+      '胶囊里没有「题头」开关了',
+      !(await browser.eval(
+        `[...document.querySelectorAll('.antu-dock-bar button')].some((b) => b.textContent.trim() === '题头')`,
+      )),
+    )
+
+    // 时间轴末端的箭头必须是**有真实尺寸的 SVG**。
+    // 这条防两件事：箭头改回零尺寸的 CSS 边框三角（导出时会被整个丢掉），
+    // 以及"改了源码但没生效"——我犯过一次：报告说改成 SVG 了，文件里还是 span 0×0。
+    const arrow = await browser.eval(`(() => {
+      const el = document.querySelector('.antu-axis-arrow')
+      if (!el) return null
+      const r = el.getBoundingClientRect()
+      return { tag: el.tagName.toLowerCase(), w: r.width, h: r.height, poly: !!el.querySelector('polygon') }
+    })()`)
+    truthy('时间轴末端有箭头', arrow)
+    if (arrow) {
+      eq('箭头是 svg', arrow.tag, 'svg')
+      truthy('箭头有多边形（有真实形状，不是零尺寸边框三角）', arrow.poly)
+      truthy('箭头有真实尺寸', arrow.w > 0 && arrow.h > 0, `${arrow.w}×${arrow.h}`)
+    }
 
     // 最要紧的一条：成品不许对外发请求
     const external = browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://'))
@@ -556,6 +643,7 @@ const started = Date.now()
 if (!shotOnly) {
   checkBuild()
   checkLint()
+  checkUnit()
 }
 
 const data = checkData()
