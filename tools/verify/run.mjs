@@ -104,9 +104,16 @@ function eq(label, actual, expected) {
   else bad(label, `期望 ${e}，实际 ${a}`)
 }
 
-function truthy(label, value) {
-  if (value) ok(label)
-  else bad(label)
+/**
+ * value 为真就算过。
+ *
+ * `detail` 一定要带上：全脚本有近二十处调用把"实测到多少"当第三个参数传进来，
+ * 原先这个参数被这里吃掉，于是最要紧的数字（非白像素多少、留白多少、组间几倍）
+ * 既不出现，失败时也看不到，只能重跑一遍去查。
+ */
+function truthy(label, value, detail = '') {
+  if (value) ok(label, detail)
+  else bad(label, detail)
 }
 
 // ---------------------------------------------------------------
@@ -416,10 +423,13 @@ async function checkLaunchFailure() {
   eq('三种写法都试过了', ports.length, 3)
   eq('每种写法各占一个端口', new Set(ports).size, ports.length)
   // Chrome 自己的话必须带进失败信息，否则下次还是只能猜
+  // detail 只在失败时给：过了就不用把那段原文再抄一遍，日志太吵
   truthy(
     '失败信息里带上浏览器自己的报错',
     message.includes('假浏览器：我起不来，原因写在这里'),
-    message.split('\n').slice(1, 3).join(' / ').slice(0, 90),
+    message.includes('假浏览器：我起不来，原因写在这里')
+      ? ''
+      : message.split('\n').slice(1, 3).join(' / ').slice(0, 90),
   )
   truthy('失败信息里带上浏览器路径', message.includes(fake))
 
@@ -434,7 +444,7 @@ async function checkLaunchFailure() {
   const flagOf = (args, name) => args.find((a) => a.startsWith(`${name}=`))
   const profiles = attempts.map((a) => flagOf(a, '--user-data-dir'))
   const launchedPorts = attempts.map((a) => flagOf(a, '--remote-debugging-port'))
-  truthy('每次尝试都带了 profile 目录', profiles.every(Boolean), profiles.join(' / '))
+  truthy('每次尝试都带了 profile 目录', profiles.every(Boolean), profiles.some((p) => !p) ? profiles.join(' / ') : '')
   eq('三次尝试各有各的 profile 目录', new Set(profiles).size, profiles.length)
   eq('三次尝试各有各的调试端口', new Set(launchedPorts).size, launchedPorts.length)
   truthy(
@@ -804,6 +814,72 @@ async function checkRender(sampleFile) {
       )
       eq('每个控件都有按下态', shape.missingActive, [])
       eq('每个控件都在统一的焦点圈规则里', shape.focusCovered, [])
+    }
+
+    // 分组靠距离，不靠那根线（rendering §4.2）。
+    // 这条是实测出来的毛病：原先组内组间都是 2px，11 个元素的空隙一模一样，
+    // "五块"这件事全靠一根 1px、10% 不透明度的线扛着，用户分不出来。
+    // 所以断言写成**比例**而不是某个具体像素：组间必须明显宽于组内。
+    const groups = await browser.eval(`(() => {
+      const bar = document.querySelector('.antu-dock-bar')
+      if (!bar) return null
+      const kids = [...bar.children].filter((e) => getComputedStyle(e).display !== 'none')
+      const rect = (e) => e.getBoundingClientRect()
+      const inner = []   // 同一块里两个控件之间的空隙（中间没有分隔符）
+      const outer = []   // 跨过分隔符的空隙：左边距 + 右边距
+      const sides = []   // 每条分隔符两侧，各是多少
+      for (let i = 1; i < kids.length; i += 1) {
+        const prev = kids[i - 1]
+        const cur = kids[i]
+        const gap = +(rect(cur).left - rect(prev).right).toFixed(2)
+        if (cur.classList.contains('antu-dock-sep') || prev.classList.contains('antu-dock-sep')) outer.push(gap)
+        else inner.push(gap)
+      }
+      for (let i = 0; i < kids.length; i += 1) {
+        if (!kids[i].classList.contains('antu-dock-sep')) continue
+        sides.push({
+          left: +(rect(kids[i]).left - rect(kids[i - 1]).right).toFixed(2),
+          right: +(rect(kids[i + 1]).left - rect(kids[i]).right).toFixed(2),
+        })
+      }
+      const sep = bar.querySelector('.antu-dock-sep')
+      const s = sep ? getComputedStyle(sep) : null
+      return {
+        inner: Math.max(...inner),
+        outerTotal: sides.length ? +(sides[0].left + 1 + sides[0].right).toFixed(2) : 0,
+        outerMin: outer.length ? Math.min(...outer) : 0,
+        seps: sides.length,
+        sepH: s ? parseFloat(s.height) : 0,
+        sepAlpha: s ? Number((s.backgroundColor.match(/[\\d.]+/g) || [])[3] ?? 1) : 0,
+      }
+    })()`)
+    truthy('量到了胶囊的分组间距', groups)
+    if (groups) {
+      eq('每两块之间都有一条分隔符', groups.seps, 4)
+      truthy(
+        '组间距离至少是组内的 5 倍（分组要一眼看得出来）',
+        groups.outerTotal >= groups.inner * 5,
+        `组内 ${groups.inner}px，组间 ${groups.outerTotal}px（${(groups.outerTotal / groups.inner).toFixed(1)} 倍）`,
+      )
+      const lopsided = await browser.eval(`(() => {
+        const bar = document.querySelector('.antu-dock-bar')
+        const kids = [...bar.children].filter((e) => getComputedStyle(e).display !== 'none')
+        const rect = (e) => e.getBoundingClientRect()
+        const off = []
+        for (let i = 0; i < kids.length; i += 1) {
+          if (!kids[i].classList.contains('antu-dock-sep')) continue
+          const l = rect(kids[i]).left - rect(kids[i - 1]).right
+          const r = rect(kids[i + 1]).left - rect(kids[i]).right
+          if (Math.abs(l - r) > 0.5) off.push(+Math.abs(l - r).toFixed(2))
+        }
+        return off
+      })()`)
+      eq('分隔符两侧一样宽（不能一边宽一边窄）', lopsided, [])
+      truthy(
+        '分隔符本身看得见（够高、够不透明）',
+        groups.sepH >= 15 && groups.sepAlpha >= 0.1,
+        `高 ${groups.sepH}px，不透明度 ${groups.sepAlpha}`,
+      )
     }
 
     const title = await browser.eval(`document.querySelector('.antu-header-title')?.textContent`)
