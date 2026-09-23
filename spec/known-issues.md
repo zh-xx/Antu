@@ -53,6 +53,36 @@
 **顺带一处文档空白**：`validate` 与 `layout` 的分工没写下来。`layout` 是**逐视角**报的
 （`blockedViews`），`validate` 只报第一个。使用者按名字猜，会以为两个都覆盖了全部视角。
 
+### 18. CI 上 Chrome 偶发起不来，红的是环境不是代码 `待修`
+
+**现象。** 同样的提交，`pull_request` 那次红，合并进 `main` 之后再跑一次又绿。
+红的那次死在【渲染】这一步的开头：
+
+```
+Error: Chrome 起不来，三种 headless 写法都试过了：
+  --headless=old → 浏览器调试端口 9698 没起来
+  --headless=new → 浏览器调试端口 9698 没起来
+  (不带 headless) → 浏览器调试端口 9698 没起来
+Chrome 路径：/usr/bin/google-chrome
+```
+
+单据：run `35867678543`（分支 `fix/export-mode`，`failure`）对
+run `35867862937`（`main`，`success`），两次的提交内容相同。
+
+**代价。** 这一层是"改动有没有把图弄坏"的唯一自动防线。它偶发红，
+下一次真红时就没人当回事了。
+
+**在哪。** `tools/lib/chrome.mjs` 的 `launchBrowser`：三种 headless 写法各等
+`pageTarget(port, 8000)`，也就是每种只等 8 秒。容器里第一次起 Chrome 要建 profile、
+没有任何缓存，8 秒够不够不知道；另外没带 `--disable-dev-shm-usage`
+（容器里 `/dev/shm` 很小，是 Chrome 起不来的常见原因）。
+
+**建议做法。** 三个变体共用一个总时限（比如 60 秒）而不是各 8 秒，
+并加上 `--disable-dev-shm-usage`。**但根因还没证实**，别照抄这两条：
+先在 CI 上把"第一次起 Chrome 到底要多久"量出来，再按量到的数改。
+
+**暂时怎么判。** 见到这条报错先重跑；连续两次都红，再当代码问题查。
+
 ---
 
 ## 反复踩的坑（不是待修项，是规矩）
