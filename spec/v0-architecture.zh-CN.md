@@ -36,8 +36,8 @@
 | type | 表达的内容 | 对应法律思维 | 状态 |
 |---|---|---|---|
 | `relationship` | 谁和谁、以什么角色、存在什么法律关系 | 主体与法律关系界定 | 待做 |
-| `fact` | 已发生事实的时间叙事 | 事实认定 | 待做（优先） |
-| `procedure` | 程序路径与可能分支 | 程序运作 | 待做 |
+| `fact` | 已发生事实的时间叙事 | 事实认定 | 时间图已可用 |
+| `procedure` | 程序路径与可能分支 | 程序运作 | 流程图已可用 |
 | `justification` | 规范+事实→结论的推理（说理） | 法律论证 | **搁置**，前三类成熟后开始 |
 
 **分界备忘：**
@@ -238,7 +238,8 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
 ### 待定（动手前确认）
 - [ ] `specVersion` 的形态（有无必要、怎么演进）
 - [x] fact 内容层 schema：**已定稿**（含 label / summary / detail 的分工，见 `spec/fact/schema-draft.md`）。其余类型未开始
-- [ ] 其余类型（relationship / procedure）内容层 schema 字段细节
+- [x] procedure 内容层 schema：**v1 已确认**（见 `spec/procedure/schema-draft.zh-CN.md`）
+- [ ] relationship 内容层 schema 字段细节
 - [x] 校验层报错信息的形态：**已实现**。每条错误带字段路径与事件 id（如 `slots[0].events[1] (ev-2)`），说明哪里不对、怎么改
 - [ ] 信封层可选元数据范围
 - [ ] 插件壳（dsh 插件 / MCP / 独立网页）——推迟到核心成熟后。
@@ -262,6 +263,6 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
    如果先做别的 fact 子类，可以选不依赖新数据的（如按分组分列的矩阵式排布）
 5. **relationship 类型**：schema + 渲染器。这一类图里 `edges` 就是主要内容，
    画布的边能力在这里才真正用上
-6. **procedure 类型**：schema + 渲染器
+6. [x] **procedure 类型**：schema v1 + 流程图渲染器（`spec/procedure/schema-draft.zh-CN.md` §6.1）
 7. **回顾前几类**，再启动 justification
 8. 数据管线（agent 侧，文书 → JSON）与插件壳：另行规划

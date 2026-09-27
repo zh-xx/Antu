@@ -43,6 +43,15 @@ export const BACK_LANE_START = 34
 /** Corner radius of an orthogonal link where it turns */
 export const CORNER_R = 10
 
+/**
+ * The stage gutter: the strip beside the node field where stage bands and their names sit.
+ * Vertical: a column on the left (the names are written horizontally, so it needs width).
+ * Horizontal: a row along the top (one line of name, so a little height is enough).
+ * Only reserved when the diagram has stages and the band switch is on.
+ */
+export const STAGE_GUTTER_V = 132
+export const STAGE_GUTTER_H = 44
+
 /** The single source of node sizes. The rendering layer must not write a second copy. */
 export function sizeOf(node) {
   switch (node?.kind) {

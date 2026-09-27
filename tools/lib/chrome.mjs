@@ -54,6 +54,13 @@ function isBrowserFile(p) {
 }
 
 /**
+ * The diagram's own items, whichever type is on the page: a fact event card or a procedure
+ * flow node. Waiting on the fact card alone made every procedure page sit out the full
+ * 15-second timeout before a screenshot, and report "0 cards".
+ */
+export const ITEM_SELECTOR = '.antu-card, .antu-pn'
+
+/**
  * Find the browser on this machine. Order: ANTU_CHROME environment variable > known paths > PATH.
  *
  * The environment variable is **read fresh every time**, not frozen at module load: otherwise a
@@ -359,10 +366,10 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
     /**
      * Open a page and wait for it to settle.
      * @param url          file:// or http://
-     * @param waitFor      return once this expression is truthy (by default, wait for .antu-card to appear)
+     * @param waitFor      return once this expression is truthy (by default, wait for the diagram's items to appear)
      * @param settleMs     wait a little longer after it settles, so animations come to rest
      */
-    async open(url, { waitFor = 'document.querySelectorAll(".antu-card").length', settleMs = 800 } = {}) {
+    async open(url, { waitFor = `document.querySelectorAll(${JSON.stringify(ITEM_SELECTOR)}).length`, settleMs = 800 } = {}) {
       requests = []
       errors = []
       await c.send('Page.navigate', { url })
@@ -486,7 +493,7 @@ export async function screenshotPage(htmlPath, { width = 1600, height = 900, set
   const session = await launchBrowser({ width, height })
   try {
     await session.open(pathToFileURL(htmlPath).href, { settleMs })
-    const cards = await session.eval('document.querySelectorAll(".antu-card").length')
+    const cards = await session.eval(`document.querySelectorAll(${JSON.stringify(ITEM_SELECTOR)}).length`)
     return {
       data: await session.screenshotData(),
       mimeType: 'image/png',

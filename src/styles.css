@@ -236,7 +236,8 @@
 
 /* ---------- 画布（外壳提供，见 shell/Canvas.jsx） ---------- */
 /* 渲染器的根容器：只负责把自己撑满，画布本身在外壳里 */
-.antu-fact { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
+.antu-fact,
+.antu-procedure { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
 
 .antu-canvas {
   position: relative;      /* 必须留：里面的缩放控件、缩略图、控制胶囊都相对它绝对定位 */
@@ -838,3 +839,116 @@
    选项改在克隆体上，屏幕上那份一动不动。
    ============================================================== */
 .is-exporting .antu-preview { display: none !important; }
+
+/* ===== 程序图 · 流程图（procedure/flow） =========================
+   形状由 kind 定（SVG 画轮廓），颜色由 outcome 定，两件事不混。
+   **SVG 的填充与描边不写在这里**，写在 flow/palette.js、以属性挂上去：
+   导出图片时 html-to-image 带不走类选择器给 SVG 上的颜色（实测整张图糊成黑块）。
+   这里只放屏幕上才有的效果：悬停阴影、焦点环、选中加粗。
+   连线与条件标签在一层自画的 SVG 里（ConnectionLayerNode），压在节点下面。
+   ============================================================== */
+.antu-pn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+}
+.antu-pn-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-pn-shape { transition: stroke .15s, filter .15s; }
+
+.antu-pn:hover .antu-pn-shape { filter: drop-shadow(0 3px 8px rgba(15, 23, 42, .12)); }
+.react-flow__node-pnode:hover { z-index: 10 !important; }
+.react-flow__node.selected .antu-pn-shape { stroke-width: 2; }
+.antu-pn:focus-visible .antu-pn-shape { stroke: #2f6fed; stroke-width: 2; }
+
+.antu-pn-body {
+  position: relative;
+  max-width: 100%;
+  padding: 6px 14px;
+  text-align: center;
+  pointer-events: none;
+}
+/* 菱形里能放字的只有中间那块：左右各让出四分之一 */
+.antu-pn.k-decision .antu-pn-body { padding: 0 25%; }
+.antu-pn.k-document .antu-pn-body { padding-bottom: 12px; }
+.antu-pn.k-note .antu-pn-body { text-align: left; padding-right: 20px; }
+.antu-pn-label {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--antu-text);
+  overflow-wrap: anywhere;
+}
+.antu-pn.k-decision .antu-pn-label { -webkit-line-clamp: 3; line-clamp: 3; font-size: 12px; }
+.antu-pn.k-note .antu-pn-label { font-weight: 400; color: var(--antu-text-2); }
+.antu-pn-detail {
+  margin-top: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--antu-text-3);
+}
+/* 节点比事件卡窄（药丸只有 176），浮层不跟节点宽度走，给一个够读的宽度 */
+.antu-pn .antu-preview { width: 280px; left: 50%; margin-left: -140px; text-align: left; }
+.antu-pn .antu-preview.right,
+.antu-pn .antu-preview.left { margin-left: 0; }
+.antu-pn .antu-preview.right { left: calc(100% + 10px); }
+.antu-pn .antu-preview.left { left: auto; }
+
+/* ---------- 连线层 ---------- */
+.antu-plinks { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+.antu-plinks-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+
+.antu-plabel {
+  position: absolute;
+  max-width: 150px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--antu-text-2);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  width: max-content;
+}
+/* 落进目标框的那一段：从目标框上沿往上长，长文本绝不压进框里；只有半个层间距，限两行 */
+.antu-plabel.a-rise { transform: translateY(-100%); padding-left: 2px; -webkit-line-clamp: 2; line-clamp: 2; }
+/* 水平直线上方：居中，坐在线上 */
+.antu-plabel.a-over { transform: translate(-50%, -100%); text-align: center; }
+/* 折线与回边通道：压在线上，靠底色把线遮住 */
+.antu-plabel.a-center {
+  transform: translate(-50%, -50%);
+  text-align: center;
+  background: var(--antu-canvas);
+  box-shadow: 0 0 0 1px var(--antu-line);
+}
+.antu-plabel.k-back { color: var(--antu-text-3); }
+
+/* ---------- 阶段带 ---------- */
+.antu-pstages { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+.antu-pstage-bar { position: absolute; border-radius: 2px; background: #cbd5e1; }
+.antu-pstage-name {
+  position: absolute;
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--antu-text-3);
+  overflow-wrap: anywhere;
+}
+.antu-pstages.is-h .antu-pstage-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.antu-pstage-rule { position: absolute; border-top: 1px dashed #dde3ea; }
+.antu-pstages.is-h .antu-pstage-rule { border-top: 0; border-left: 1px dashed #dde3ea; }

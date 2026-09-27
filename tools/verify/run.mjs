@@ -51,6 +51,8 @@ import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.
 import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
+import { buildProcedureGraph } from '../../src/renderers/procedure/flow/layout.js'
+import { sizeOf } from '../../src/renderers/procedure/flow/metrics.js'
 
 const argv = process.argv.slice(2)
 const skipBrowser = argv.includes('--no-browser')
@@ -577,8 +579,12 @@ function checkData() {
   // "card count" and "label card title" actually mean something.
   const sample = 'examples/fact/elevator-smoking-case.zh-CN.json'
   truthy('the render sample exists', existsSync(join(REPO, sample)))
+  // Same rule for the flowchart: one fixed file. 01 is chosen because it carries every thing
+  // the renderer has to draw at once: stages, decisions, back edges, both outcome colours.
+  const procedureSample = 'examples/procedure/01-software-development-contract.zh-CN.json'
+  truthy('the procedure render sample exists', existsSync(join(REPO, procedureSample)))
 
-  return { files, sample, combos, views }
+  return { files, sample, procedureSample, combos, views }
 }
 
 // ---------------------------------------------------------------
@@ -762,8 +768,12 @@ async function checkLingeringChrome() {
  * pixel bands are sampled along the edges and one pixel where the arrow should be. The export
  * carries no heading (that switch was withdrawn, see rendering §10.2), so there is one export.
  */
-async function checkExport(browser, spec) {
-  section('export image')
+/**
+ * Point the browser's downloads at a fresh directory, and return the two things an export
+ * check needs: a click that finds its control by class, and a wait for the PNG to land.
+ * Shared by the fact and procedure render checks, so both exercise the same export path.
+ */
+async function downloadHelpers(browser) {
   const dir = join(OUT, 'downloads')
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(dir, { recursive: true })
@@ -798,6 +808,13 @@ async function checkExport(browser, spec) {
     rmSync(path, { force: true }) // move it out of the way so the next download is visible
     return { name: file, buf, width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) }
   }
+
+  return { clickByClass, grab }
+}
+
+async function checkExport(browser, spec) {
+  section('export image')
+  const { clickByClass, grab } = await downloadHelpers(browser)
 
   const clicked = await clickByClass('.antu-dock-action')
   if (!clicked) {
@@ -1339,6 +1356,180 @@ async function checkRender(sampleFile) {
 }
 
 // ---------------------------------------------------------------
+// 6b. Render: the procedure flowchart
+// ---------------------------------------------------------------
+/**
+ * The flowchart opened over file://, the same way a user opens it. What only a browser can
+ * show: every node and link actually on screen, the shapes being real SVG, the switches doing
+ * what they say, the overlay opening, the export producing an image of the right size.
+ * The geometry itself is pinned by test/procedure-layout.test.mjs; here the counts are taken
+ * from the same layout function, so the page is compared against it, not against a number
+ * copied by hand.
+ */
+async function checkRenderProcedure(sampleFile) {
+  section('render: procedure flowchart')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+
+  const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
+  // The page's default presentation: every switch on, vertical (a fresh profile has no preferences)
+  const layout = buildProcedureGraph(spec, {}, undefined, 'vertical')
+  const html = join(OUT, 'render-procedure.html')
+  renderToFile(spec, { outPath: html, quiet: true })
+
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    await browser.open(`file://${html}?lang=zh`)
+    const count = (sel) => browser.eval(`document.querySelectorAll(${JSON.stringify(sel)}).length`)
+
+    eq('node count', await count('.antu-pn'), spec.nodes.length)
+    eq('link count (several edges into one target merge into one)', await count('.antu-plink'), layout.connections.length)
+    eq(
+      'condition label count',
+      await count('.antu-plabel'),
+      layout.connections.filter((c) => c.label).length,
+    )
+    eq('stage band count', await count('.antu-pstage-name'), layout.stageBands.length)
+    eq('main-line links carry the main class', await count('.antu-plink.k-main'), layout.spine.length - 1)
+    eq('back edges carry the back class', await count('.antu-plink.k-back'), layout.connections.filter((c) => c.kind === 'back').length)
+
+    // Shapes are SVG with a real size: a decision is a polygon, an end has its second ring
+    const shapes = await browser.eval(`(() => {
+      const z = parseFloat(document.querySelector('.react-flow__viewport').style.transform.split('scale(')[1])
+      const one = (sel) => {
+        const e = document.querySelector(sel)
+        if (!e) return null
+        const r = e.getBoundingClientRect()
+        return { w: Math.round(r.width / z), h: Math.round(r.height / z) }
+      }
+      return {
+        step: one('.antu-pn.k-step'),
+        decisionPolygon: document.querySelectorAll('.antu-pn.k-decision polygon').length,
+        decisions: document.querySelectorAll('.antu-pn.k-decision').length,
+        endRings: document.querySelectorAll('.antu-pn.k-end .antu-pn-ring').length,
+        ends: document.querySelectorAll('.antu-pn.k-end').length,
+        arrows: [...document.querySelectorAll('.antu-plink')].filter((p) => (p.getAttribute('marker-end') || '').startsWith('url(')).length,
+        negative: document.querySelectorAll('.antu-pn.o-negative').length,
+        // SVG paint set by a CSS class rule does not survive html-to-image: the first export
+        // came out as solid black shapes on a correctly sized canvas. Paint must be attributes.
+        unpainted: [...document.querySelectorAll('.antu-pn-shape, .antu-pn-ring, .antu-plink, .antu-arrow path')]
+          .filter((e) => !e.getAttribute('fill') || (!e.closest('marker') && !e.getAttribute('stroke'))).length,
+      }
+    })()`)
+    truthy('node shapes measured', shapes)
+    if (shapes) {
+      eq('a step box has its design size', [shapes.step?.w, shapes.step?.h], [sizeOf({ kind: 'step' }).w, sizeOf({ kind: 'step' }).h])
+      eq('every decision is drawn as a diamond', shapes.decisionPolygon, shapes.decisions)
+      eq('every end has its second ring', shapes.endRings, shapes.ends)
+      eq('every link ends in an arrowhead', shapes.arrows, layout.connections.length)
+      eq('negative outcomes are coloured as such', shapes.negative, spec.nodes.filter((n) => n.outcome === 'negative').length)
+      eq('every shape and link carries its paint as SVG attributes (so the export keeps it)', shapes.unpainted, 0)
+    }
+
+    eq('label card title', await browser.eval(`document.querySelector('.antu-header-title')?.textContent`), spec.title)
+    eq('label card type', await browser.eval(`document.querySelector('.antu-header-type')?.textContent`), '程序图')
+    truthy(
+      'the label card counts nodes, not time slots',
+      (await browser.eval(`document.querySelector('.antu-header-info')?.textContent || ''`)).includes(`${spec.nodes.length} 个节点`),
+    )
+
+    // The dock: four switches (the stage one because the sample has stages), orientation,
+    // language, export; and the export is still the only solid dark control
+    const dock = await browser.eval(`(() => {
+      const bar = document.querySelector('.antu-dock-bar')
+      if (!bar) return null
+      const kids = [...bar.children]
+      const lum = (b) => {
+        const m = getComputedStyle(b).backgroundColor.match(/[\\d.]+/g).map(Number)
+        const a = m.length === 4 ? m[3] : 1
+        return a * ((m[0] + m[1] + m[2]) / 3) + (1 - a) * 255
+      }
+      return {
+        chips: bar.querySelectorAll('.antu-dock-chip').length,
+        blocks: kids.filter((e) => e.classList.contains('antu-dock-sep')).length + 1,
+        dark: [...bar.querySelectorAll('button')].filter((b) => lum(b) < 128).map((b) => b.className.split(' ')[0]),
+      }
+    })()`)
+    truthy('the flowchart dock is present', dock)
+    if (dock) {
+      eq('four switches in the dock', dock.chips, 4)
+      eq('four blocks: switches · orientation · language · export', dock.blocks, 4)
+      eq('only the export action is solid dark', dock.dark, ['antu-dock-action'])
+    }
+
+    // Switches do what they say. Clicked by position (the labels change with the language)
+    const clickChip = (i) =>
+      browser.eval(`document.querySelectorAll('.antu-dock-bar .antu-dock-chip')[${i}].click()`, { userGesture: true })
+    const settle = () => new Promise((r) => setTimeout(r, 400))
+
+    await clickChip(0)
+    await settle()
+    eq('the condition switch hides the labels', await count('.antu-plabel'), 0)
+    await clickChip(0)
+    await settle()
+
+    await clickChip(2)
+    await settle()
+    eq('the main-line switch drops the highlight', await count('.antu-plinks.is-main-hl'), 0)
+    await clickChip(2)
+    await settle()
+    eq('the main-line switch brings it back', await count('.antu-plinks.is-main-hl'), 1)
+
+    await clickChip(3)
+    await settle()
+    eq('the stage switch removes the bands', await count('.antu-pstage-name'), 0)
+    await clickChip(3)
+    await settle()
+
+    // Orientation: the second item of the first segmented control is "horizontal"
+    await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[1].click()`, { userGesture: true })
+    await settle()
+    truthy('horizontal: the stage bands run along the top', (await count('.antu-pstages.is-h')) === 1)
+    eq('horizontal: no node is lost', await count('.antu-pn'), spec.nodes.length)
+    await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[0].click()`, { userGesture: true })
+    await settle()
+
+    // The overlay: keyboard pins it (the mouse path goes through React Flow), Escape closes it
+    await browser.eval(`document.querySelector('.antu-pn.k-decision').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`)
+    await settle()
+    eq('Enter on a node pins its overlay', await count('.antu-preview.pinned'), 1)
+    await browser.eval(`document.querySelector('.antu-pn.k-decision').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
+    await settle()
+    eq('Escape closes it', await count('.antu-preview'), 0)
+
+    const external = browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://'))
+    eq('external request count', external.length, 0)
+    if (external.length) console.log('     ' + external.join('\n     '))
+    eq('console error count', browser.errors.length, 0)
+    if (browser.errors.length) console.log('     ' + browser.errors.slice(0, 3).join('\n     '))
+
+    mkdirSync(OUT, { recursive: true })
+    await browser.screenshot(join(OUT, 'screenshot-procedure.png'))
+    ok('screenshot saved', '.verify/screenshot-procedure.png')
+
+    // Export: the size must be the layout's content size plus padding, at 2×. The back-edge
+    // lanes sit at the far edge of the content, so a size that forgot them shows up here.
+    const { clickByClass, grab } = await downloadHelpers(browser)
+    if (!(await clickByClass('.antu-dock-action'))) {
+      bad('export image: the button is not in the flowchart dock')
+    } else {
+      const shot = await grab('procedure export')
+      if (shot) {
+        truthy('clicking export lands a PNG on disk', shot.buf.slice(1, 4).toString() === 'PNG')
+        const frame = exportFrame(layout.size.width, layout.size.height)
+        eq('export size = (content + padding) × 2', [shot.width, shot.height], [frame.width * 2, frame.height * 2])
+        writeFileSync(join(OUT, 'export-procedure.png'), shot.buf)
+        ok('export succeeded', `${shot.width}×${shot.height}  .verify/export-procedure.png`)
+      }
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
+// ---------------------------------------------------------------
 // 7. MCP self-test
 // ---------------------------------------------------------------
 function checkMcp() {
@@ -1437,6 +1628,7 @@ await checkLingeringChrome()
 if (!shotOnly && !skipBrowser) {
   const profilesBefore = profilesInTmp().length
   if (data.sample) await checkRender(data.sample)
+  if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   checkMcp()
   // This stretch launched a browser twice (once for the render, once for the MCP preview), and
   // both must be closed cleanly. Identity, not "equal to 0": this machine may already have

@@ -120,6 +120,31 @@ export const factKnowledge = {
    */
   validate: (spec) => buildGrid(spec).errors,
 
+  /**
+   * The label card's third line: size and time span (the type is already in the line above).
+   * Each type supplies its own, because "how big is this diagram" is counted in its own units
+   * (time slots here, nodes and stages for a procedure). t and formatNumber come from the
+   * caller, so this stays plain JS.
+   */
+  info: (spec, t, formatNumber) => {
+    const slots = Array.isArray(spec.slots) ? spec.slots : []
+    const dates = slots
+      .flatMap((s) => (s?.events || []).map((e) => e?.date))
+      .filter((d) => typeof d === 'string' && d)
+      .sort()
+    let slotsLine = t('info.slots', { n: formatNumber(slots.length) })
+    if (dates.length > 0) {
+      const first = dates[0].slice(0, 10)
+      const last = dates[dates.length - 1].slice(0, 10)
+      slotsLine += first === last ? ` · ${first}` : ` · ${t('info.span', { from: first, to: last })}`
+    }
+    return [
+      slotsLine,
+      t('info.actors', { n: formatNumber(spec.actors?.length || 0) }),
+      t('info.sources', { n: formatNumber(spec.sources?.length || 0) }),
+    ]
+  },
+
   /** Which ways of drawing a fact diagram exist. For now only the timeline. */
   layouts: {
     timeline: buildFactGraph,

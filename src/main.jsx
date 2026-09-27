@@ -10,6 +10,7 @@ import './styles.css'
 // adding a kind = adding one line in the corresponding register.js.
 import './renderers/index.js'
 import './renderers/fact/timeline/register.js'
+import './renderers/procedure/flow/register.js'
 
 // The language is resolved once at the outermost layer and passed down (see shell/LangContext.jsx).
 createRoot(document.getElementById('root')).render(

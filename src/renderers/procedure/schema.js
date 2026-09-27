@@ -126,6 +126,19 @@ export const procedureKnowledge = {
   fields: PROCEDURE_FIELDS,
   describe: describeProcedureSchema,
 
+  /** The label card's third line, counted in a procedure's own units (see the same entry in fact/schema.js) */
+  info: (spec, t, formatNumber) => {
+    const nodes = Array.isArray(spec.nodes) ? spec.nodes.length : 0
+    const stages = Array.isArray(spec.stages) ? spec.stages.length : 0
+    let first = t('info.nodes', { n: formatNumber(nodes) })
+    if (stages > 0) first += ` · ${t('info.stages', { n: formatNumber(stages) })}`
+    return [
+      first,
+      t('info.actors', { n: formatNumber(spec.actors?.length || 0) }),
+      t('info.sources', { n: formatNumber(spec.sources?.length || 0) }),
+    ]
+  },
+
   /** Validation: there is only one copy of the rules, in flow/rules.js */
   validate: (spec) => validateProcedure(spec),
 

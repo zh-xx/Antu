@@ -36,6 +36,8 @@ export const zh = {
   'info.slots': ({ n }) => `${n} 个时间点`,
   'info.actors': ({ n }) => `${n} 个主体`,
   'info.sources': ({ n }) => `${n} 个来源`,
+  'info.nodes': ({ n }) => `${n} 个节点`,
+  'info.stages': ({ n }) => `${n} 个阶段`,
 
   // ---------- control dock (ControlDock.jsx) ----------
   'dock.actors': '主体',
@@ -51,6 +53,13 @@ export const zh = {
   'export.failed': ({ message }) => `导出失败：${message}`,
   'dock.langEn': 'EN',
   'dock.langZh': '中文',
+
+  // ---------- flowchart dock and node overlay (procedure/flow) ----------
+  'flow.conditions': '条件',
+  'flow.detail': '详情',
+  'flow.mainLine': '主干',
+  'flow.stages': '阶段',
+  'flow.previewHint': '点击节点查看全文',
 
   // ---------- card and source overlay (EventNode.jsx) ----------
   'card.sources': ({ n }) => `来源 ${n} 项`,

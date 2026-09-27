@@ -487,19 +487,33 @@ one character of the data changes (the hard constraint in §3 of `spec/v0-archit
 
 ### 6.1 The first sub-type, `flow` (flowchart)
 
-**Implementation status (2026-09)**: the layout layer works; the code is in
-`src/renderers/procedure/flow/` (rules.js validation, metrics.js sizing, layout.js layout), with unit
-tests in `test/procedure-layout.test.mjs`. Done and not done:
+**Implementation status (2026-09)**: the flowchart renders; the code is in
+`src/renderers/procedure/flow/` (rules.js validation, metrics.js sizing, layout.js layout, palette.js
+colours, FlowRenderer.jsx and its node / link / stage-band components), with unit tests in
+`test/procedure-layout.test.mjs` and a browser check in `npm run verify`. Done and not done:
 
 ```
 Done     layering (longest path), back-edge detection and routing round the outside, merging
          several edges into the same target, aligning the main line into one column, both
-         orientations (vertical / horizontal), nodes do not overlap, rounded-corner polyline paths
-Not done the React renderer (not yet wired into the canvas), stage bands, the control capsule,
-         label collision avoidance for conditions, crossing minimisation, **placing note nodes**
-         (the first version treats them as ordinary nodes on the first layer; they take no part
-         in the flow and their position is still not good)
+         orientations (vertical / horizontal), nodes do not overlap, rounded-corner polyline paths;
+         the React renderer (six shapes by kind, three colours by outcome, hover / pinned
+         overlay with provenance), stage bands cut along the main line, the control capsule
+         (§6.2), image export
+Not done crossing minimisation; branch and back-edge exits that run behind neighbouring nodes
+         of the same layer; condition labels only avoid their siblings (each sits on its own
+         target's approach), not every other line; **placing note nodes** (the first version
+         treats them as ordinary nodes on the first layer; they take no part in the flow and
+         their position is still not good)
 ```
+
+Two decisions the renderer made, so they are not undone by accident:
+
+- **Stage bands follow the main line, not the nodes.** A stage's branch nodes reach into the next
+  stage's layers (a delay branch hangs below the step that started it), so bands taken per node
+  would overlap. Along the main line a stage runs from its first main-line node to the next stage's
+  first one; bands are contiguous and never overlap. A stage never on the main line gets no band.
+- **The main-line highlight follows the spine the engine settled on**, marked (`main: true`) or
+  inferred, so a diagram with no `main` flags still shows its main line.
 
 Measured (7 real contracts, both orientations lay out): 01 has twelve layers, 05 sixteen, 06 twenty;
 in 03, 3 edges are merged into 2 links; 01 has 12 back edges recognised, 07 has 0.
@@ -550,7 +564,8 @@ damages …), 05 has 4, 01 has 4. Several ends in one layer sit side by side in 
 | Export image | action | reuses the export the canvas shell already has |
 
 The rules for the four control forms (menu / toggle / segmented / action) follow §4.2 of
-`spec/fact/rendering.md`; no separate set is invented.
+`spec/fact/rendering.md`; no separate set is invented. The language switch sits beside them, the
+same one the timeline has.
 
 ### 6.3 How scale is computed, and what to do when it will not fit
 

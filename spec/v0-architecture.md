@@ -36,8 +36,8 @@ The split is by **what the diagram expresses and why** (not by visual shape; vis
 | type | What it expresses | The legal thinking behind it | Status |
 |---|---|---|---|
 | `relationship` | Who is involved with whom, in what role, under what legal relationship | Defining the parties and the legal relationship | Not started |
-| `fact` | The temporal narrative of facts that have occurred | Finding the facts | Not started (priority) |
-| `procedure` | The procedural path and its possible branches | How procedure operates | Not started |
+| `fact` | The temporal narrative of facts that have occurred | Finding the facts | Timeline available |
+| `procedure` | The procedural path and its possible branches | How procedure operates | Flowchart available |
 | `justification` | Reasoning (argumentation) from norms plus facts to a conclusion | Legal argumentation | **Deferred**; starts once the first three have matured |
 
 **Boundary notes:**
@@ -234,7 +234,8 @@ The structured locations in `sources` (page 6 of the contract, the case number a
 ### To be decided (confirm before starting)
 - [ ] The shape of `specVersion` (whether it is needed at all, how it evolves)
 - [x] The fact content-layer schema: **final** (including the division of labour between label / summary / detail, see `spec/fact/schema-draft.md`). The other types have not started
-- [ ] The field details of the content-layer schema for the remaining types (relationship / procedure)
+- [x] The procedure content-layer schema: **v1, confirmed** (see `spec/procedure/schema-draft.md`)
+- [ ] The field details of the content-layer schema for relationship
 - [x] The shape of validation error messages: **implemented**. Every error carries a field path and an event id (e.g. `slots[0].events[1] (ev-2)`) and says what is wrong and how to fix it
 - [ ] The range of optional envelope metadata
 - [ ] The plugin shell (a dsh plugin / MCP / a standalone web page): postponed until the core matures.
@@ -258,6 +259,6 @@ The structured locations in `sources` (page 6 of the contract, the case number a
    if another fact sub-type comes first, pick one that needs no new data (for instance a matrix layout with one column per group)
 5. **The relationship type**: schema + renderer. In this kind of diagram `edges` are the main content,
    and the canvas's edge capabilities are really used here for the first time
-6. **The procedure type**: schema + renderer
+6. [x] **The procedure type**: schema v1 + the flowchart renderer (`spec/procedure/schema-draft.md` §6.1)
 7. **Revisit the earlier types**, then start justification
 8. The data pipeline (on the agent side, documents → JSON) and the plugin shell: to be planned separately

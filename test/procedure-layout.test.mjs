@@ -313,3 +313,90 @@ test('a link carrying several conditions merges them into one label', () => {
     assert.equal(c.points.length, 4, 'a merged branch link is still one orthogonal polyline')
   }
 })
+
+// ── What the renderer relies on ──────────────────────────────
+// The flowchart renderer draws straight from these fields, and the canvas fits the viewport
+// (and the image export crops) to `size`. So anything outside `size` is cut off on screen and
+// in the exported PNG, which is how the back-edge lanes were first found missing from it.
+
+// One language of the agent examples is enough here (the pair shares its structure)
+const agentEn = agentFiles.filter((f) => f.endsWith('.en.json'))
+const loadAgent = (f) => JSON.parse(readFileSync(`${AGENT_DIR}/${f}`, 'utf8'))
+
+test('every node and every link point lies inside the content size', () => {
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), {}, undefined, dir)
+      const { width, height } = g.size
+      for (const n of g.nodes) {
+        assert.ok(n.position.x >= 0 && n.position.x + n.data.w <= width, `${f}/${dir}: ${n.id} sticks out sideways`)
+        assert.ok(n.position.y >= 0 && n.position.y + n.data.h <= height, `${f}/${dir}: ${n.id} sticks out vertically`)
+      }
+      for (const c of g.connections) {
+        for (const [x, y] of c.points) {
+          assert.ok(x >= 0 && x <= width && y >= 0 && y <= height, `${f}/${dir}: ${c.id} leaves the content box at (${x}, ${y})`)
+        }
+      }
+    }
+  }
+})
+
+test('the main-line links are exactly the spine, marked or inferred', () => {
+  for (const [name, spec] of [...files.map((f) => [f, load(f)]), ...agentEn.map((f) => [f, loadAgent(f)])]) {
+    const g = buildProcedureGraph(spec)
+    const main = g.connections.filter((c) => c.kind === 'main')
+    assert.equal(main.length, g.spine.length - 1, `${name}: one main link per step along the spine`)
+    for (const c of main) {
+      assert.equal(g.spine[g.spine.indexOf(c.from) + 1], c.to, `${name}: ${c.id} is not a spine step`)
+    }
+  }
+  // The agent example with no `main` flags at all: the highlight must still follow the inferred spine
+  const inferred = buildProcedureGraph(loadAgent('5-inferred-spine.en.json'))
+  assert.ok(inferred.connections.some((c) => c.kind === 'main'), 'an inferred spine still gets main links')
+})
+
+test('stage bands follow the main line: in order, contiguous, never overlapping', () => {
+  let checked = 0
+  for (const f of files) {
+    const spec = load(f)
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(spec, {}, undefined, dir)
+      if (!spec.stages?.length) {
+        assert.equal(g.stageBands.length, 0, `${f}: no stages, no bands`)
+        assert.equal(g.gutter, 0, `${f}: no stages, no gutter`)
+        continue
+      }
+      assert.ok(g.stageBands.length > 0, `${f}/${dir}: stages written but no band drawn`)
+      assert.ok(g.gutter > 0, `${f}/${dir}: bands need a gutter`)
+      const along = dir === 'vertical' ? g.size.height : g.size.width
+      g.stageBands.forEach((b, i) => {
+        assert.ok(b.to > b.from, `${f}/${dir}: band ${b.label} is empty`)
+        assert.ok(b.from >= 0 && b.to <= along, `${f}/${dir}: band ${b.label} leaves the content`)
+        if (i > 0) assert.equal(b.from, g.stageBands[i - 1].to, `${f}/${dir}: bands ${i - 1} and ${i} are not contiguous`)
+      })
+      // Every node sits beyond the gutter, so a band name never runs under a node
+      for (const n of g.nodes) {
+        const across = dir === 'vertical' ? n.position.x : n.position.y
+        assert.ok(across >= g.gutter, `${f}/${dir}: ${n.id} sits in the stage gutter`)
+      }
+      checked += 1
+    }
+    // Switched off: no bands and the gutter is given back
+    const off = buildProcedureGraph(spec, { stages: false })
+    assert.equal(off.stageBands.length, 0)
+    assert.equal(off.gutter, 0)
+  }
+  assert.ok(checked >= 8, `the corpus should have staged contracts to check, saw ${checked}`)
+})
+
+test('every condition label says how it sits on its point', () => {
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), {}, undefined, dir)
+      for (const c of g.connections) {
+        assert.ok(['rise', 'over', 'center'].includes(c.labelAnchor), `${f}/${dir}: ${c.id} anchor ${c.labelAnchor}`)
+        assert.ok(Number.isFinite(c.labelAt.x) && Number.isFinite(c.labelAt.y), `${f}/${dir}: ${c.id} label point`)
+      }
+    }
+  }
+})

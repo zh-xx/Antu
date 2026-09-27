@@ -12,7 +12,7 @@
 // ============================================================
 
 import { memo, useContext } from 'react'
-import { PreviewContext } from './previewContext.js'
+import { PreviewContext } from '../../shell/previewContext.js'
 import { SOURCE_TYPE_KEYS, labelOf } from '../../core/labels.js'
 import { useLang } from '../../shell/LangContext.jsx'
 import { translate } from '../../core/i18n.js'

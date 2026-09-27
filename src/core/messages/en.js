@@ -41,6 +41,8 @@ export const en = {
   'info.slots': ({ n }) => `${n} time slot${n === 1 ? '' : 's'}`,
   'info.actors': ({ n }) => `${n} part${n === 1 ? 'y' : 'ies'}`,
   'info.sources': ({ n }) => `${n} source${n === 1 ? '' : 's'}`,
+  'info.nodes': ({ n }) => `${n} node${n === 1 ? '' : 's'}`,
+  'info.stages': ({ n }) => `${n} stage${n === 1 ? '' : 's'}`,
 
   // ---------- control dock (ControlDock.jsx) ----------
   'dock.actors': 'Parties',
@@ -73,6 +75,13 @@ export const en = {
     date ? `${label}, ${date}` : label,
   'card.dateNote': ({ note }) => `Time note: ${note}`,
   'card.previewHint': 'Click a card to read the full text',
+
+  // ---------- flowchart dock and node overlay (procedure/flow) ----------
+  'flow.conditions': 'Conditions',
+  'flow.detail': 'Detail',
+  'flow.mainLine': 'Main line',
+  'flow.stages': 'Stages',
+  'flow.previewHint': 'Click a node to read the full text',
 
   // ---------- canvas accessibility text (Canvas.jsx) ----------
   // The key names come from defaultAriaLabelConfig in @xyflow/system and must correspond one to one for it to take effect
