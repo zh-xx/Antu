@@ -1,77 +1,93 @@
-# 给 agent 的机制说明
+# Mechanism notes for an agent
 
-> 这是**操作说明**，不是规范。字段清单见 `antu_schema`，示例见 `antu_examples`，
-> 设计理由在 `spec/` 下那几份人类文档里（写 JSON 不需要读它们）。
+> This is an **operating note**, not the specification. The field list is served by
+> `antu_schema`, examples by `antu_examples`, and the design rationale lives in the
+> human-facing documents under `spec/` (you do not need them to write JSON).
+>
+> **This file is English on purpose.** It goes into a model's context, the same as
+> the field table and the validation errors. See the header of `src/core/i18n.js`.
 
-## 一句话
+## In one sentence
 
-一份 fact JSON 描述：**什么时间、谁、做了什么、依据什么材料**。
-引擎把它画成一张时间轴：时间自上而下，主体与立场分列左右。
+A fact JSON describes: **when, who, did what, resting on which material**.
+The engine draws it as a timeline: time runs downwards, parties and sides are laid
+out left and right.
 
-## 事件画在哪，由三件事决定
+## Where an event is drawn is decided by three things
 
 ```
-行（时间）  slots 数组的顺序。数组在前 = 时间在前。
-            date 只用来显示，不决定顺序，也不重排。
+Row (time)   the order of the slots array. Earlier in the array = earlier in time.
+             date is display-only: it never orders or reorders anything.
 
-列（站位）  groupId 决定落在哪一侧：
-              第 1 个 group → 第 1 侧（竖向时在左）
-              第 2 个 group → 第 2 侧（竖向时在右）
-              第 3 个 group 或不写 → 轴线（中间那一列）
+Column (side) groupId decides which side:
+              the 1st group  -> side 1 (left when vertical)
+              the 2nd group  -> side 2 (right when vertical)
+              the 3rd group or none -> the axis (the middle column)
 
-列（车道）  actorIds 决定在哪条车道：
-              给 1 个主体 → 落在那个主体的车道
-              给 2 个以上，或一个都不给 → 落在轴线
+Column (lane) actorIds decides the lane:
+              exactly 1 party -> that party's lane
+              2 or more, or none -> the axis
 ```
 
-**多主体事件落轴线**是一条硬规则：它表示"双方共同做的"或"客观上发生的"，
-不属于任何一方。
+**An event with several parties lands on the axis.** That is a hard rule: it means
+"both sides did this" or "this happened objectively", and belongs to neither side.
 
-## 视角是什么
+## What a view is
 
-同一份数据可以有几套看法。视角只换上面那两条的用法，**不改数据**：
+The same data can be looked at in several ways. A view only changes how the two
+rules above are applied. It **never changes the data**:
 
 ```json
-{ "label": "双方对照", "splitBy": "actor",
-  "side1": { "label": "华远贸易", "actors": ["a-1"] },
-  "side2": { "label": "鑫城建材", "actors": ["a-2"] } }
+{ "label": "parties side by side", "splitBy": "actor",
+  "side1": { "label": "Huayuan Trading", "actors": ["a-1"] },
+  "side2": { "label": "Xincheng Building Materials", "actors": ["a-2"] } }
 ```
 
-- `splitBy: "actor"`：按主体分侧，`side1`/`side2` 里写明谁在哪侧；
-- `splitBy: "group"`：按分组分侧，不用写主体；
-- 不写 `views` 也可以，引擎会给一个"全体"视角。
+- `splitBy: "actor"`: split by party; `side1` / `side2` say who is on which side;
+- `splitBy: "group"`: split by group; no need to name parties;
+- `views` may be omitted; the engine then provides a single "all" view.
 
-## 一条限制：一格一事件
+## One limit: one event per cell
 
-**同一个时间点的同一条车道上只能放一个事件。** 放两个就会报错，那个视角也会
-从界面的选项里消失（点不了的选项是噪音）。
+**A time point holds at most one event per lane.** Two events in the same lane of the
+same slot is an error, and that view also disappears from the interface options
+(an option that cannot be clicked is noise).
 
-三种改法，按常用程度排：
+Three ways to fix it, most common first:
 
-1. **把时间点拆细**。9:24 的两件事，如果一个是 9:24:03、一个是 9:24:16，
-   就拆成两个槽，各自给准确时间。
-2. **补 actorIds**。两件事分属不同主体，给上 `actorIds` 它们就落到不同车道。
-3. **补 groupId**。分属不同性质，给上 `groupId` 它们就落到不同侧。
+1. **Split the time point.** If two things happened at 9:24, one at 9:24:03 and one at
+   9:24:16, make two slots and give each its exact time.
+2. **Add actorIds.** If the two events belong to different parties, add `actorIds` and
+   they fall into different lanes.
+3. **Add groupId.** If they are of different kinds, add `groupId` and they fall on
+   different sides.
 
-拆完记得确认：拆出来的每个槽都只放一件事。
+After splitting, check again that each slot holds exactly one event.
 
-## 写完之后
+## After writing
 
 ```
-antu_validate   逐条报错，带字段路径与事件 id（如 slots[0].events[1] (ev-2)）
-antu_layout     不渲染，先算一遍：多大、该用哪个方向、哪个视角摆不下
-antu_preview    截图看一眼：卡片挤不挤、字小不小、空不空
-antu_render     出自包含 HTML
+antu_validate   reports each problem, with the field path and the event id
+                (e.g. slots[0].events[1] (ev-2))
+antu_layout     no rendering: how large, which orientation, which views do not fit
+antu_preview    take a screenshot and look: are cards cramped, is the text small,
+                is there too much empty space
+antu_render     produce the self-contained HTML
 ```
 
-**"校验通过"只是及格线。** 校验查不出"好不好看"。写完务必
-`antu_preview` 看一眼再交付。
+**Passing validation is only the pass mark.** Validation cannot tell whether the
+diagram looks good. Always run `antu_preview` and look before delivering.
 
-## 几条容易踩的
+## Things that are easy to get wrong
 
-- **date 不决定顺序。** 顺序看 `slots` 数组。想调顺序就调数组。
-- **引用的 id 必须存在**。`actorIds` / `groupId` / `sourceIds` 指向不存在的 id 会报错。
-- **来源只写本图用到的**。`sources` 是图内自带的，不需要把整个案卷列进去。
-- **approx 不是"大概写写"**，是"这个时间不精确"的正式标记，图上会显示"约"；
-  还要用 `dateNote` 说明为什么。
-- **摘要别太长**。`summary` 约 22 字，超了会被截断；长的内容放 `detail`。
+- **date does not decide order.** The order is the `slots` array. To reorder, reorder
+  the array.
+- **Referenced ids must exist.** `actorIds` / `groupId` / `sourceIds` pointing at an id
+  that does not exist is an error.
+- **List only the sources this diagram uses.** `sources` travels inside the diagram;
+  there is no need to list the whole case file.
+- **approx is not "roughly written".** It is the formal marker that the time is not
+  exact, and the diagram then shows "approx."; explain why in `dateNote`.
+- **Keep the summary short.** `summary` fits one line of the card (about 22 full-width
+  characters); a longer one is **rejected**, not truncated, because it would overflow
+  the card. Put the long text in `detail`.

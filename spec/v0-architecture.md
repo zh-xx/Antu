@@ -1,267 +1,263 @@
-# 案图 · 架构共识 v0（讨论成果存档）
+# antu · Architecture consensus v0 (record of the discussions)
 
-> 本文档是 2025-09 前后与项目发起人逐轮讨论后锁定的架构共识，作为后续规范定稿与编码的依据。
-> 状态：**共识稿，尚未定稿**。标记「待定」的事项需在动手前确认。
+> This document is the architecture consensus locked in after successive rounds of discussion with the project founder around 2025-09. It is the basis for finalising the specification and for writing code.
+> Status: **consensus draft, not yet final**. Items marked "to be decided" must be confirmed before work starts.
 
 ---
 
-## 1. 项目定位
+## 1. Project positioning
 
-案图 = **法律可视化渲染内核**。它只做三件事：
+antu = a **rendering core for legal visualisation**. It does exactly three things:
 
-1. 定义多种法律可视化图的 **JSON 规范**（schema）；
-2. 为每种图类型提供**预设渲染器**（注册表，可扩展）；
-3. 接收 JSON → 校验 → 按 `type` 分发 → 渲染给用户看。
+1. define the **JSON specification** (schema) for several kinds of legal diagram;
+2. provide a **preset renderer** for each diagram type (a registry, extensible);
+3. take JSON → validate → dispatch by `type` → render it for the user to look at.
 
-**明确不做：**
+**What it explicitly does not do:**
 
-- ❌ 不生成 JSON（文书解析、语义提取由 agent 完成，agent 产出符合规范的 JSON）
-- ❌ 不绑定特定法律语义（核心不认识"原告/被告"，只认 JSON 标准与图类型）
-- ❌ 编辑功能属于后续增量规划，不在当前核心范围
+- ❌ It does not generate JSON (document parsing and semantic extraction are the agent's job; the agent produces JSON that conforms to the specification)
+- ❌ It does not bind itself to any particular legal semantics (the core does not know "plaintiff/defendant"; it knows only the JSON standard and the diagram types)
+- ❌ Editing is later incremental work, outside the current core
 
-## 2. 本质：声明式可视化规范
+## 2. The essence: a declarative visualisation specification
 
-- 规范回答 **What（画什么）**，引擎回答 **How（怎么画）**。
-- 类比：Mermaid（标准语法 + 渲染引擎）的近亲。
-- 差异：案图的"语法"是**写给 LLM 生成**的，不是人写的——
-  - 字段名直白、枚举封闭、结构扁平，便于 LLM 按 schema 填对；
-  - 因此**校验是引擎入口的必备工序**（门卫），错误要能指出"哪个字段不合规"，让 agent 自行修正。
+- The specification answers **What (what to draw)**; the engine answers **How (how to draw it)**.
+- Analogy: a close relative of Mermaid (a standard syntax plus a rendering engine).
+- The difference: antu's "syntax" is **written for an LLM to generate**, not written by a person:
+  - field names are plain, enums are closed and the structure is flat, so an LLM can fill it in correctly against the schema;
+  - validation is therefore **a required step at the engine's entrance** (the validation gate), and an error must be able to say "which field is non-compliant" so the agent can correct it itself.
 
-## 3. 图类型体系
+## 3. The diagram type system
 
-### 顶层类型划分标准
+### The criterion for splitting the top-level types
 
-按**表达的目的/内容**划分（不是按图形长相——图形长相是渲染器的事）。
+The split is by **what the diagram expresses and why** (not by visual shape; visual shape is the renderer's business).
 
-| type | 表达的内容 | 对应法律思维 | 状态 |
+| type | What it expresses | The legal thinking behind it | Status |
 |---|---|---|---|
-| `relationship` | 谁和谁、以什么角色、存在什么法律关系 | 主体与法律关系界定 | 待做 |
-| `fact` | 已发生事实的时间叙事 | 事实认定 | 待做（优先） |
-| `procedure` | 程序路径与可能分支 | 程序运作 | 待做 |
-| `justification` | 规范+事实→结论的推理（说理） | 法律论证 | **搁置**，前三类成熟后开始 |
+| `relationship` | Who is involved with whom, in what role, under what legal relationship | Defining the parties and the legal relationship | Not started |
+| `fact` | The temporal narrative of facts that have occurred | Finding the facts | Not started (priority) |
+| `procedure` | The procedural path and its possible branches | How procedure operates | Not started |
+| `justification` | Reasoning (argumentation) from norms plus facts to a conclusion | Legal argumentation | **Deferred**; starts once the first three have matured |
 
-**分界备忘：**
+**Boundary notes:**
 
-- 事实图 vs 证成图 = 描述层（是什么）vs 论证层（凭什么）；
-- 关系图 = 静态结构（横切面）；程序图 = 动态进程（时间流、含未来可能性分支）；
-- 时间线归属：实体事实的时间线 → 事实图；程序进展/路径分支 → 程序图。
+- fact vs justification = the descriptive layer (what is) vs the argumentative layer (on what basis);
+- relationship = static structure (a cross-section); procedure = dynamic process (a flow of time, including branches that are still open);
+- where the timeline belongs: the timeline of substantive facts → fact; procedural progress and branch paths → procedure.
 
-### 大类之下：子类是渲染层的划分，不是数据类型
+### Below the top level: sub-types divide the rendering layer, they are not data types
 
-**schema 只规定到大类这一层。** `type` 是信封层唯一的类型字段，大类之下**没有"子类型"字段**。
+**The schema specifies only down to the top-level type.** `type` is the only type field in the envelope, and below the top-level type there is **no "sub-type" field**.
 
-大类之下有几个**子类**。子类不是数据类型，是同一个大类的几种画法（几个并列的渲染器）；
-它们各自有各自的渲染规则，但吃的必须是**同一份 schema**：
+A top-level type has several **sub-types**. A sub-type is not a data type but one of several ways of drawing the same top-level type (renderers standing side by side); each has its own rendering rules, but every one of them must consume **the same schema**:
 
 ```
-fact 的 JSON          ← schema 规定到这一层为止，没有"我是什么子类"这种东西
+the fact JSON         ← the schema stops at this layer; there is no "which sub-type am I"
      │
-     ▼  渲染层
-   ├─ 时间图 timeline
-   ├─ 泳道图 swimlane
-   └─ （以后还会有）
+     ▼  rendering layer
+   ├─ timeline
+   ├─ swimlane
+   └─ (more to come)
 ```
 
-**硬约束（这条规则最重要的推论）：**
+**Hard constraint (the most important corollary of this rule):**
 
-> **任意一份合法的大类 JSON，都必须能用该大类的任意一个子类渲染。**
+> **Any valid JSON of a top-level type must be renderable by any sub-type of that type.**
 
-不允许出现"这份数据只有某个子类画得出来"。这是"schema 只到大类"的代价，也正是它的意义：
-将来加了泳道图，**已有的每一份 fact JSON 立刻就能用泳道图看，数据一个字不改**。
-反过来说，写子类渲染器的人不能假设某份数据"恰好适合"自己这一种画法。
+It must never be the case that "only one sub-type can draw this data". That is the price of "the schema stops at the top-level type", and it is also the point of the rule:
+once a swimlane renderer is added, **every existing fact JSON can be viewed as a swimlane straight away, with not one character of the data changed**.
+Conversely, whoever writes a sub-type renderer may not assume that some particular data "happens to suit" their way of drawing.
 
-**用哪个子类是看图时选的**，像视角、方向一样是渲染层的开关，不在数据里。所以：
+**Which sub-type to use is chosen while looking at the diagram.** Like the view and the orientation, it is a switch in the rendering layer, not something in the data. Therefore:
 
-- 不是"这份 JSON 是什么子类"，而是"这份 JSON 现在用哪种画法"；
-- 同一大类的子类之间**并列**，没有哪个在数据层面上是"主"，只有一个默认值（按注册顺序取第一个）。
+- the question is not "what sub-type is this JSON" but "which way of drawing is this JSON using right now";
+- sub-types of the same top-level type are **side by side**; none of them is "primary" at the data level. There is only a default value (the first one in registration order).
 
-**注册表因此是两级的**：`大类 × 子类 → 渲染器组件`（见 `core/registry.js`）。
+**The registry is therefore two-level**: `top-level type × sub-type → renderer component` (see `core/registry.js`).
 
-**与早期说法的差别。** 早期这里写的是"不建类型树，呈现方式不同 → 渲染参数，同一渲染器换画法"。
-按现在的规则，子类之间是**并列的渲染器**，不是同一个渲染器换参数。
-"渲染参数"是子类**内部**的事，例如时间图内部的视角、方向、卡片字段，那些连渲染器都不换。
+**Difference from the earlier wording.** Earlier this read "no type tree: a different presentation mode is a rendering parameter, the same renderer with a changed way of drawing".
+Under the current rule, sub-types are **renderers standing side by side**, not one renderer with different parameters.
+A "rendering parameter" is something **inside** a sub-type, such as the view, the orientation and the card fields inside the timeline; those do not even swap the renderer.
 
-### 差异分三类，各归各的层
+### Differences fall into three classes, each belonging to its own layer
 
-| 差异来源 | 例子 | 归哪一层 |
+| Source of the difference | Example | Which layer it belongs to |
 |---|---|---|
-| **子类（画法）不同** | 事实图：时间图 / 泳道图 | **渲染层**，并列的渲染器，同一份 schema。数据层不体现 |
-| **子类内部的呈现参数** | 时间图：竖向 / 横向、看哪个视角、卡片显示哪些字段 | **渲染参数**，同一个渲染器换参数。数据层不体现 |
-| **领域语义不同** | 关系类型：合同 / 股权 / 担保 / 代理 | **受控枚举** + 专属可选字段，写在 schema 里 |
+| **A different sub-type (way of drawing)** | fact: timeline / swimlane | **Rendering layer**, renderers side by side over the same schema. Not reflected in the data layer |
+| **Presentation parameters inside a sub-type** | timeline: vertical / horizontal, which view, which fields the card shows | **Rendering parameters**, the same renderer with different parameters. Not reflected in the data layer |
+| **Different domain semantics** | relationship types: contract / equity / guarantee / agency | **Controlled enum** plus dedicated optional fields, written into the schema |
 
-两条关键区分：
+Two key distinctions:
 
-1. **图的类型 ≠ 元素的类型**：`type`（信封）只决定"整张图表达什么"；图内每个元素还有自己的类型（如 relationship 里 person/company），后者是**每类图内部**的受控枚举。
-2. **成为新顶层类型的唯一判据 = 元素结构装不进现有类型**（如 justification 的 premise/claim 结构不同于 relationship 的 entities/links）。装得下就加枚举值/参数/子类，装不下才注册新类型。
+1. **The type of a diagram ≠ the type of an element**: `type` (the envelope) decides only what the whole diagram expresses; each element inside the diagram also has its own type (for instance person/company inside a relationship), and that is a controlled enum **internal to each kind of diagram**.
+2. **The only test for becoming a new top-level type = the element structure does not fit into an existing type** (for instance the premise/claim structure of a justification differs from the entities/links of a relationship). If it fits, add an enum value, a parameter or a sub-type; only if it does not fit do you register a new type.
 
-## 4. 来源 Source：全局溯源机制（不是第五类图）
+## 4. Source: the global provenance mechanism (not a fifth kind of diagram)
 
-**核心洞察**：案图的深层产品竞争力不是"画四种图"，而是**任何表达都能指到它的出处**——"表达必须可溯源"。
+**Core insight**: antu's deep product advantage is not that it "draws four kinds of diagram" but that **any expression can point to its origin**. Every expression must carry its provenance.
 
-- 支撑表达的不只是诉讼法上的"证据"，而是广义**来源（source）**：证据、法条、判例/裁判文书、文书、合同条款、登记记录等，都是 source 的 subtype；
-- 四类图是**内容层**（表达什么）；source 是**资源层**（用什么支撑表达），**统一存在于所有图类型之下**：
-  - fact 事件 → 挂证据/文书
-  - justification 主张 → 挂法条/判例
-  - relationship 关系 → 挂合同/登记
-- **不设独立图类型**：source 作为实体（独立 `id`），各类图的表达元素通过 `sourceIds` 引用挂靠；
-- **sources 存放 = 方案 B（已定）**：每张图 JSON 自带它引用的 `sources` 表——单图自洽、可独立渲染、便于分享；引擎无需跨文件寻址；冗余由 agent 生成时承担。将来路径（方案 C：案件级全局表）记为候选，不预先设计；
-- **结构化定位（已定）**：source 的 loc 按 type 走**结构化定位字段**（如 statute → lawName+article；case → caseNo+court），可校验、可跳转、可反查原始材料——地基稳定优先；
-- **引用而非复制（零冗余的多对多）**：source 表存一份，多个表达引用同一 id；一个表达也可引用多个 source。冗余来自内嵌复制，不来自多对多；
-- **多对多的成本在引擎**（校验 id 存在性、渲染时解析回内容），不在 JSON 本体——JSON 反而更小更干净；
-- source 带 `type` 枚举（statute / case / contract / evidence / document / web / other），且 source 本身应携带出处信息（名称、原文定位如页码）——溯源到原始材料；7 类字段一览见 source-schema-draft §4；
-- type 判定规则：看"来源在当前案子里的角色"不看获取途径（在线公示若提交为证据 → evidence；仅案外引用 → web）；
-- 将来若出现"来源间印证/矛盾关系展示"（质证），在 **justification 家族内部扩展**，不新增顶层类型。
+- What supports an expression is not only "evidence" in the procedural sense but **sources** in a broad sense: evidence, statutes, precedents and judgments, documents, contract clauses, registration records and so on are all values of the source `type` enum;
+- the four diagram types are the **content layer** (what is expressed); source is the **resource layer** (what supports the expression), and it **exists uniformly beneath every diagram type**:
+  - a fact event → carries evidence or documents
+  - a justification claim → carries statutes or precedents
+  - a relationship → carries contracts or registration records
+- **no separate diagram type**: a source is an entity (with its own `id`), and the expressive elements of every kind of diagram attach to it by referencing it through `sourceIds`;
+- **where `sources` live = option B (decided)**: every diagram JSON carries the `sources` table it references, so one diagram is self-contained, renders on its own and is easy to share; the engine never has to look across files; the redundancy is borne by the agent at generation time. A future path (option C: a case-level global table) is recorded as a candidate and not designed in advance;
+- **structured location (decided)**: the `loc` of a source uses **structured location fields** per type (for instance statute → lawName+article; case → caseNo+court), which can be validated, jumped to and traced back to the original material. A stable foundation comes first;
+- **reference rather than copy (zero-redundancy many-to-many)**: the source table is stored once and several expressions reference the same id; one expression may also reference several sources. Redundancy comes from embedding copies, not from many-to-many;
+- **the cost of many-to-many sits in the engine** (checking that ids exist, resolving them back to content when rendering), not in the JSON itself; the JSON is in fact smaller and cleaner;
+- a source carries a `type` enum (statute / case / contract / evidence / document / web / other), and the source should itself carry the information needed to trace back to the original material (a name, a location in the original such as a page number); for the fields of all seven types see `spec/source-schema-draft.md` §4;
+- how to decide `type`: look at the role the source plays in the present case, not at how it was obtained (an online public record submitted as evidence → `evidence`; merely cited from outside the case → `web`);
+- if the display of corroboration or contradiction between sources (cross-examination) is ever needed, it extends **inside the justification family** rather than adding a top-level type.
 
-## 5. JSON 结构分层
+## 5. Layers of the JSON structure
 
-### 信封层（四类共享，结构一致）
+### The envelope (shared by all four types, identical structure)
 
 ```jsonc
 {
-  "specVersion": 1,          // 规范版本（是否必填/如何演进：待定）
-  "type": "relationship",    // 路由钥匙，必填
-  "title": "张三诉李四民间借贷纠纷"
-  // 其他可选元数据（案件编号、备注…）：待定
+  "specVersion": 1,          // specification version (required? how it evolves: to be decided)
+  "type": "relationship",    // the routing key, required
+  "title": "Zhang San v. Li Si, private lending dispute"
+  // other optional metadata (case number, notes…): to be decided
 }
 ```
 
-核心只拆信封、按 `type` 路由；信封之外不理解任何内容。
+The core unpacks only the envelope and routes by `type`; beyond the envelope it understands nothing.
 
-### 内容层（刻意不统一 —— 每种类型按自身语义建模）
+### The content layer (deliberately not unified: each type is modelled on its own semantics)
 
-按类型各自定义，示例草案（**字段细节均待定**，此处仅为方向示例）：
+Each type defines its own. Draft examples (**every field detail is still to be decided**; these only show the direction):
 
 ```jsonc
 // relationship
-{ "entities": [ { "id": "e1", "label": "张三" } ], "links": [ { "source": "e1", "target": "e2", "label": "借款 50 万" } ] }
+{ "entities": [ { "id": "e1", "label": "Zhang San" } ], "links": [ { "source": "e1", "target": "e2", "label": "loan of CNY 500,000" } ] }
 
 // fact
-{ "events": [ { "date": "2023-03-10", "label": "签订借款合同", "detail": "…" } ] }
+{ "events": [ { "date": "2023-03-10", "label": "loan contract signed", "detail": "…" } ] }
 
 // procedure
-{ "steps": [ { "id": "s1", "label": "立案", "next": ["s2", "s3"] } ] }
+{ "steps": [ { "id": "s1", "label": "case filed", "next": ["s2", "s3"] } ] }
 ```
 
-**取舍原则（已确认）：** schema 像**业务语言**、LLM 好填，优先于渲染器省事（统一 nodes/edges）。
-理由：LLM 生成是瓶颈，渲染器不是；为渲染器省事牺牲 schema 语义清晰是本末倒置。
+**Trade-off principle (confirmed):** a schema that reads like **business language** and is easy for an LLM to fill in takes priority over making life easy for the renderer (unified nodes/edges).
+Reason: LLM generation is the bottleneck, the renderer is not. Sacrificing the semantic clarity of the schema to make the renderer's life easy puts the cart before the horse.
 
-### 公共约定层（规则共享，四类都遵守）
+### The shared conventions (agreed rules, obeyed by all four types)
 
-1. 引用一律用 `id`；
-2. 内容元素都带 `label`；
-3. 表达元素可留 `sourceIds` 可选位（挂来源，见第 4 节）；
-4. 可选字段宽松：渲染器给默认值，缺失不崩。
+1. references always use `id`;
+2. content elements all carry a `label`;
+3. expressive elements may have an optional `sourceIds` slot (to attach sources, see section 4);
+4. optional fields are lenient: the renderer supplies defaults, and a missing field does not break rendering.
 
-## 6. 渲染引擎形态（概念）
+## 6. The shape of the rendering engine (conceptual)
 
 ```
-JSON (信封) ──> [校验门卫] ──> 按大类路由 ──> 注册表（大类 × 子类）
+JSON (envelope) ──> [validation gate] ──> route by top-level type ──> registry (top-level type × sub-type)
                                               ├─ relationship
-                                              │    ├─ 子类…
+                                              │    ├─ sub-type…
                                               │    └─ …
                                               ├─ fact
-                                              │    ├─ timeline  时间图   ← 已做
-                                              │    └─ （泳道图等，待做）
+                                              │    ├─ timeline   ← done
+                                              │    └─ (swimlane etc., to be done)
                                               ├─ procedure
-                                              │    └─ （含泳道式流程，天然对应它的时间流与分支）
-                                              └─ justification（搁置）
+                                              │    └─ (including a swimlane-style flow, which maps naturally onto its flow of time and branches)
+                                              └─ justification (deferred)
 ```
 
-- **一个大类 = 一套 schema**；**一个子类 = 一个渲染器**。schema 只规定到大类这一层，
-  大类之下没有"子类型"字段，子类的划分见 §3；
-- 新增画法 = 注册一个子类渲染器，**核心本体不动**；
-- 底层渲染技术：React Flow（已选定，事实图已在用）。
-- 布局：**各子类自负**，不用统一布局库。事实图的时间图自己算网格（`src/renderers/fact/timeline/grid.js`）；
-  关系图、程序图计划用 dagre 或 elkjs（**尚未安装**，`package.json` 里目前只有 React Flow）。
-- 渲染器内部负责"语义 → React Flow nodes/edges"的翻译（翻译发生在渲染器内，不在规范内）。
+- **one top-level type = one schema**; **one sub-type = one renderer**. The schema specifies only down to the top-level type, and below it there is no "sub-type" field; for how sub-types divide see §3;
+- adding a way of drawing means registering one sub-type renderer, **with the core itself untouched**;
+- the underlying rendering technology is React Flow (chosen; already in use for the fact diagram).
+- Layout: **each sub-type is on its own**, with no shared layout library. The fact timeline computes its own grid (`src/renderers/fact/timeline/grid.js`); the relationship and procedure diagrams plan to use dagre or elkjs (**not installed yet**; `package.json` currently lists only React Flow).
+- the renderer is responsible for translating semantics into React Flow nodes/edges (the translation happens inside the renderer, not inside the specification).
 
-## 6.1 产物形态：一个自包含的 HTML
+## 6.1 The deliverable: one self-contained HTML file
 
-**引擎的最终产物不是一个网站，而是一个 HTML 文件。**
+**The engine's final output is not a website but a single HTML file.**
 
 ```
-Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 HTML ──> 双击打开
+Agent reads case materials ──> produces one fact JSON ──> one self-contained HTML ──> double-click to open
 ```
 
-- **一个 JSON 一个 HTML**。这一份文件就是这一张图，页面里没有"别的图"可换。
-  想看别的，需要另一份 JSON 生成的另一个文件；
-- **同一份 JSON 的几种画法在这个 HTML 里切**（左上角的渲染类型切换器），不重新加载数据。
+- **one JSON, one HTML**. That file is that one diagram, and there is no "other diagram" to switch to inside the page.
+  To see another one you need another file generated from another JSON;
+- **the several ways of drawing the same JSON are switched inside this HTML** (the rendering-type switcher at the top left), without reloading the data.
 
-为什么是自包含 HTML，而不是"服务端 + 浏览器访问"：
+Why a self-contained HTML rather than "a server plus browser access":
 
-| 法律工作的真实需要 | 自包含 HTML | 服务端方案 |
+| What legal work actually needs | Self-contained HTML | Server-based approach |
 |---|---|---|
-| 归档 | 一个文件 | 要留着服务、依赖环境 |
-| 传阅（微信、邮件） | 直接发 | 要发链接和账号 |
-| 当附件提交 | 双击就开 | 对方未必能访问 |
-| 离线看 | 可以 | 不行 |
+| Archiving | one file | a server to keep running, an environment to maintain |
+| Circulation (WeChat, email) | send it directly | send a link and an account |
+| Submitting as an attachment | double-click and it opens | the other side may not be able to reach it |
+| Reading offline | possible | not possible |
 
-**由此带来四条硬约束，写代码时必须守住：**
+**This brings four hard constraints that code must hold to:**
 
-1. **页面里不能有任何网络请求**。数据由页面内联给出（`window.__ANTU_SPEC__`）：
-   **成品**由 `tools/make-html.mjs` 注进去，**开发时**由 `vite.config.js` 里的插件
-   把同一份 JSON 注进 `index.html`。两边走**完全同一条路**，所以应用代码里
-   只有一条路径——没有 fetch、没有示例清单、没有"取不到就回落"的分支。
-   内联缺失时给明确的错，而不是去别处找（成品里根本没有"别处"）；
-2. **引擎必须打成 iife，不能用 ES module**。`file://` 打开时 `<script type="module">`
-   会被 CORS 拦掉（见 `vite.engine.config.js`）；
-3. **样式和脚本都要能整段内联**，所以样式只出一个文件，不分包、不异步加载；
-4. **内联时数据里的 `</script` 要转义**，否则会提前把脚本块关掉。
+1. **The page must make no network request of any kind.** The data is supplied inline in the page (`window.__ANTU_SPEC__`):
+   in a **built file** `tools/make-html.mjs` injects it, and **during development** a plugin in `vite.config.js`
+   injects the same JSON into `index.html`. Both sides go **the exact same way**, so the application code has
+   only one path: no fetch, no list of examples, no "fall back when it cannot be fetched" branch.
+   When the inline data is missing it reports a clear error instead of looking elsewhere (in a built file there is no "elsewhere");
+2. **The engine must be bundled as an iife, not an ES module.** When opened over `file://`, `<script type="module">`
+   is blocked by CORS (see `vite.engine.config.js`);
+3. **Both styles and scripts must be inlineable as one block**, so the styles come out as a single file, with no chunking and no asynchronous loading;
+4. **When inlining, `</script` inside the data must be escaped**, otherwise it closes the script block early.
 
-生成方式：`npm run diagram -- 某份.json [-o 输出.html]`，见 `tools/make-html.mjs`。
+How it is produced: `npm run diagram -- some-file.json [-o output.html]`, see `tools/make-html.mjs`.
 
-### 来源只标出处，不跳转（已定）
+### Sources state their origin only, with no jumping (decided)
 
-`sources` 里的结构化定位（合同第 6 页、案号等）照常写进 HTML，但**原始材料不打包进去**，
-也不做"点来源跳到材料"。页面上只表明"依据在哪一份材料、哪一页"，材料由用户自己去找。
+The structured locations in `sources` (page 6 of the contract, the case number and so on) are written into the HTML as usual, but **the original materials are not bundled in**, and there is no "click a source to jump to the material". The page states only which material and which page a point rests on; the user finds the material themselves.
 
-## 7. 已确认 / 待定清单
+## 7. Confirmed / to be decided
 
-### 已确认
-- [x] 核心不生成 JSON；JSON 生成是 agent 职责
-- [x] 声明式两支柱（规范 + 引擎）
-- [x] 类型按表达目的划分；顶层四类（justification 搁置）
-- [x] Source（来源）= 全局溯源机制，不设独立图类型；表达必须可溯源，引用而非复制（零冗余多对多）
-- [x] sources 存放 = 方案 B（图内自带来源副本，单图自洽）；结构化定位字段（loc 按 type 精雕），地基稳定优先
-- [x] 信封层共享；内容层语义独立；公共约定层规则共享
-- [x] **schema 只到大类**；子类是渲染层的划分，任意合法 JSON 都能用该大类的任意子类渲染（§3）
-- [x] **产物是自包含 HTML**：一个 JSON 一个文件，页面内无网络请求，离线可看（§6.1）
-- [x] **不要侧栏**：画布占满，左上角标签卡 + 底部控制胶囊 + 缩放/缩略图，共四处浮层（`spec/fact/rendering.md` §4）
-- [x] **来源只标出处、不跳转**；原始材料不打包（§6.1）
-- [x] 取舍原则：业务语言优先于渲染器统一
-- [x] 技术栈：React 19 + Vite + @xyflow/react 12 + dagre，JSX，useState（讨论后沿用）
-- [x] 防过度设计：最小可跑优先；先 relationship 三件套跑通
-- [x] 顶层类型不建"子类型树"：差异分流为 渲染参数 / 预设配置 / 受控枚举；新顶层类型唯一判据 = 元素结构装不进现有类型
-- [x] 命名：中文"案图"，代号 `antu`；发包名暂定 `antu-viz`（未占用，已验证）
-- [x] source 规范定稿：7 类（statute/case/contract/evidence/document/web/other）字段全部精雕完成（见 source-schema-draft.md）
+### Confirmed
+- [x] The core does not generate JSON; generating JSON is the agent's job
+- [x] Two declarative pillars (specification + engine)
+- [x] Types are divided by what they express; four top-level types (justification deferred)
+- [x] Source = the global provenance mechanism, not a separate diagram type; every expression must carry its provenance, and reference rather than copy (zero-redundancy many-to-many)
+- [x] Where `sources` live = option B (each diagram carries its own copy of the sources, so one diagram is self-contained); structured location fields (`loc` refined per type), a stable foundation first
+- [x] The envelope is shared; the content layer is semantically independent; the shared conventions are agreed rules
+- [x] **The schema stops at the top-level type**; sub-types divide the rendering layer, and any valid JSON can be rendered by any sub-type of its type (§3)
+- [x] **The deliverable is a self-contained HTML file**: one JSON, one file, no network request inside the page, readable offline (§6.1)
+- [x] **No sidebar**: the canvas fills the space, with a label card at the top left + a control dock at the bottom + zoom/minimap, four floating layers in all (`spec/fact/rendering.md` §4)
+- [x] **Sources state their origin only, with no jumping**; original materials are not bundled (§6.1)
+- [x] Trade-off principle: business language takes priority over renderer uniformity
+- [x] Technology stack: React 19 + Vite + @xyflow/react 12 + dagre, JSX, useState (kept after discussion)
+- [x] Guard against over-design: the smallest thing that runs comes first; get the relationship trio working first
+- [x] No "sub-type tree" under a top-level type: differences are routed to rendering parameters / preset configuration / controlled enums; the only test for a new top-level type is that the element structure does not fit an existing type
+- [x] Naming: 案图 in Chinese, code name `antu`; package name provisionally `antu-viz` (unclaimed, verified)
+- [x] The source specification is final: all fields of the seven types (statute/case/contract/evidence/document/web/other) are fully refined (see `spec/source-schema-draft.md`)
 
-### 待定（动手前确认）
-- [ ] `specVersion` 的形态（有无必要、怎么演进）
-- [x] fact 内容层 schema：**已定稿**（含 label / summary / detail 的分工，见 `spec/fact/schema-draft.md`）。其余类型未开始
-- [ ] 其余类型（relationship / procedure）内容层 schema 字段细节
-- [x] 校验层报错信息的形态：**已实现**。每条错误带字段路径与事件 id（如 `slots[0].events[1] (ev-2)`），说明哪里不对、怎么改
-- [ ] 信封层可选元数据范围
-- [ ] 插件壳（dsh 插件 / MCP / 独立网页）——推迟到核心成熟后。
-      形态上已经明确了一半：**产物是自包含 HTML**（§6.1），所以不是"做一个网站"，
-      而是"生成文件"；剩下的问题是生成动作放在哪一层（agent 直接跑命令 / MCP 工具 / dsh 插件）
-- [ ] **泳道图归哪个大类**。常规泳道图的灵魂是"步骤 + 流转箭头"，
-      而 fact 的数据里只有"什么时候、谁参与了"，**没有"谁交给谁"**。
-      三个候选：① 归 procedure（程序图本来就带时间流与分支，箭头有数据支撑）；
-      ② 给 fact 补"行为指向"字段（schema 变更）；③ 不做泳道图，改做其它 fact 子类。
-      涉及 §3 的差异归类，动 schema 前必须定
+### To be decided (confirm before starting)
+- [ ] The shape of `specVersion` (whether it is needed at all, how it evolves)
+- [x] The fact content-layer schema: **final** (including the division of labour between label / summary / detail, see `spec/fact/schema-draft.md`). The other types have not started
+- [ ] The field details of the content-layer schema for the remaining types (relationship / procedure)
+- [x] The shape of validation error messages: **implemented**. Every error carries a field path and an event id (e.g. `slots[0].events[1] (ev-2)`) and says what is wrong and how to fix it
+- [ ] The range of optional envelope metadata
+- [ ] The plugin shell (a dsh plugin / MCP / a standalone web page): postponed until the core matures.
+      Half of its shape is already clear: **the deliverable is a self-contained HTML file** (§6.1), so it is not "building a website"
+      but "generating a file"; what remains is which layer the generating action sits in (the agent running a command directly / an MCP tool / a dsh plugin)
+- [ ] **Which top-level type the swimlane diagram belongs to.** The soul of a conventional swimlane is "steps plus transfer arrows",
+      whereas fact data holds only "when, and who took part", **with no "who handed what to whom"**.
+      Three candidates: (1) it belongs to procedure (a procedure diagram already carries a flow of time and branches, so the arrows have data behind them);
+      (2) add a "direction of action" field to fact (a schema change); (3) drop the swimlane and build another fact sub-type instead.
+      This touches the classification of differences in §3, and must be settled before the schema is touched
 
-## 8. 近期路线（建议顺序，随时可调整）
+## 8. Near-term roadmap (suggested order, adjustable at any time)
 
-1. [x] **规范 v0 定稿**：source 机制 7 类全部精雕完成；fact 内容层 schema 已定稿
-2. [x] **引擎原型**：信封解析 + **两级注册表**（大类 × 子类）+ fact 的时间图子类。
-       排布、卡片、交互、配色、校验、视角、方向全部可跑；8 份示例、23 个视角、
-       46 种视角 × 方向组合实测通过
-3. [x] **产物形态**：JSON → **自包含 HTML**（一个文件、离线可看、无网络请求），
-       见 §6.1 与 `tools/make-html.mjs`
-4. **下一个子类**：待定。泳道图归哪个大类还没想清（见 §7 待定），
-   如果先做别的 fact 子类，可以选不依赖新数据的（如按分组分列的矩阵式排布）
-5. **relationship 类型**：schema + 渲染器。这一类图里 `edges` 就是主要内容，
-   画布的边能力在这里才真正用上
-6. **procedure 类型**：schema + 渲染器
-7. **回顾前几类**，再启动 justification
-8. 数据管线（agent 侧，文书 → JSON）与插件壳：另行规划
+1. [x] **Specification v0 final**: all seven source types fully refined; the fact content-layer schema final
+2. [x] **Engine prototype**: envelope parsing + a **two-level registry** (top-level type × sub-type) + the fact timeline sub-type.
+       Layout, cards, interaction, colour, validation, views and orientation all work; 8 examples, 23 views and
+       46 view × orientation combinations tested and passing
+3. [x] **Deliverable shape**: JSON → **self-contained HTML** (one file, readable offline, no network requests),
+       see §6.1 and `tools/make-html.mjs`
+4. **The next sub-type**: to be decided. Which top-level type the swimlane belongs to is not yet clear (see §7, to be decided);
+   if another fact sub-type comes first, pick one that needs no new data (for instance a matrix layout with one column per group)
+5. **The relationship type**: schema + renderer. In this kind of diagram `edges` are the main content,
+   and the canvas's edge capabilities are really used here for the first time
+6. **The procedure type**: schema + renderer
+7. **Revisit the earlier types**, then start justification
+8. The data pipeline (on the agent side, documents → JSON) and the plugin shell: to be planned separately

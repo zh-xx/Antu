@@ -1,332 +1,332 @@
-# fact 渲染思路 v0
+# fact rendering approach v0
 
-> 状态：**核心思路已确认**（2026-09）。
-> 配套：数据怎么摆见 `spec/fact/timeline-rules.md`；本文讲的是**怎么画、怎么交互、代码怎么分**。
-> 用法：§1 到 §4 是核心思路，要改得重新讨论；§5 的数字全部出自 `src/renderers/fact/cardGeometry.js`，改那里即可，别在样式里另写一份。
+> Status: **core approach confirmed** (2026-09).
+> Companion: where the data goes is in `spec/fact/timeline-rules.md`; this document is about **how it is drawn, how it is interacted with, how the code is split**.
+> Usage: §1 to §4 are the core approach, changing them means reopening the discussion; every number in §5 comes from `src/renderers/fact/cardGeometry.js`, change it there and do not write a second copy in the styles.
 
 ---
 
-## 0. 一句话
+## 0. In one sentence
 
-把一份 fact 规范画成一张**固定网格**：行是时间，列是车道，一格一个事件。
+Draw one fact specification as a **fixed grid**: rows are time, columns are lanes, one cell holds one event.
 
-## 1. 引擎与渲染器的分工（通用，不限于 fact）
+## 1. Division of labour between the engine and a renderer (general, not limited to fact)
 
-- **渲染器只做一件事**：把规范翻译成 `{ nodes, edges }`。
-- **画布由引擎统一提供**：缩放、平移、小地图、节点点击这些公共能力只写一次，每个渲染器不重复实现。
-- **布局算法各渲染器自负**：fact 的时间图用本文的网格算法；将来的其它子类、以及关系图、程序图、证成图各用各的（后两类可能用 dagre 或 elkjs）。
-- 收益：新增一种画法 = 注册一个子类渲染器，画布那块一个字不用改。
+- **A renderer does exactly one thing**: translate the specification into `{ nodes, edges }`.
+- **The engine provides the canvas for all of them**: zoom, pan, minimap, node click. These shared capabilities are written once and no renderer reimplements them.
+- **Each renderer owns its layout algorithm**: the fact timeline uses the grid algorithm in this document; future sub-types, plus the relationship, procedure and justification diagrams, each use their own (the latter two may use dagre or elkjs).
+- Payoff: adding a new way of drawing means registering one sub-type renderer, and not one word of the canvas changes.
 
-## 2. 校验与渲染共用同一份排布计算
+## 2. Validation and rendering share one placement computation
 
-- 排布规则**只有一份实现**：`src/renderers/fact/timeline/grid.js`。
-- 校验层拿它报错，渲染层拿它算坐标，两边永不脱节。
-- 这是一条硬约束：不允许在校验层和渲染层各写一套规则。
+- There is **only one implementation** of the placement rules: `src/renderers/fact/timeline/grid.js`.
+- The validation layer calls it to report errors, the rendering layer calls it to compute coordinates, and the two can never drift apart.
+- This is a hard constraint: the validation layer and the rendering layer are not allowed to each carry their own set of rules.
 
-## 3. 网格模型
+## 3. The grid model
 
-| | 由什么决定 |
+| | Decided by |
 |---|---|
-| **行** | 时间槽（`slots` 数组下标，自上而下就是时间先后） |
-| **列** | 站位 × 主体：第 1 侧各主体 · 轴线 · 第 2 侧各主体 |
-| **格** | 最多一个事件 |
+| **Row** | Time slot (`slots` array index; top to bottom is chronological order) |
+| **Column** | Side × party: each party on side 1, then the axis, then each party on side 2 |
+| **Cell** | At most one event |
 
-- **空格子保留位置**，什么都不画。空位本身是信息（这一方在这类事上没有动作）。
-- **卡片 = 格子减去四周边距**，所以所有卡片一样大，天然对齐。
-- 站位与距离的完整规则见 `spec/fact/timeline-rules.md`。
+- **An empty cell keeps its place** and nothing is drawn in it. The vacancy is itself information (this party did nothing in this kind of matter).
+- **Card = cell minus the margin on all four sides**, so every card is the same size and alignment is automatic.
+- The full rules for side and distance are in `spec/fact/timeline-rules.md`.
 
-## 4. 画面元素与交互
+## 4. Screen elements and interaction
 
-- **轴线**：中间那一列的竖线，底端一个向下箭头表示时间方向；每个槽在轴线上打一个轴点。
-- **引线**：卡片靠轴的一侧拉一条细线，连到本槽的轴点。卡片本来就在轴线列时，不画引线。
-  引线整层排在**轴点之下、卡片之上**：轴点盖住线的末端（线不会插进圆圈里把白心戳穿），
-  卡片盖住线身（线横穿中间列时被卡片切断，而不是压在卡片上）。
-- **轴上不写时间**，时间印在每张卡片上。
-- **方向切换**：竖向时间向下、横向时间向右，在画布底部的控制胶囊里切。**方向只换像素映射，数据一行不改**：
-  一个事件落在哪一列永远是"槽序 × 车道序"，横竖只是把这两者挂到不同的轴上。
-  横向时标题从网格上方挪到左侧；引线由横线变竖线；浮层改为往左右冒；时间箭头的方向跟着转。
-- **视角切换**：同一份数据可以有几套看法（谁在哪一侧、按主体还是按性质分侧）。切换器在画布底部的控制胶囊里，切换时整张图重排、视口重新适配。**摆不下的视角不出现在选项里**（点不了的选项是噪音），只往控制台打一条警告，让写数据的人找得到。机制见 `spec/fact/schema-draft.md` 的「视角机制」。
-- **列标题**：只写这一列的组名（如「按约定履行」），**不写「第 N 侧 / 轴线」这类位置描述**，
-  位置看图就知道，写出来只是占地方。字号 14px。只有该侧有多列（多主体）时，才在下面补一行主体名。
-- **卡片默认只放两样**：标题在上、时间在下。另有三个开关按需打开：来源的有无、主体标签、摘要一行。
-  卡片高度按「开了哪些字段」以及「标题、主体标签各占几行」算出来，所以关掉字段卡片不会空出一块。
-- **详情**：就在卡片旁边，分两级。悬停露出 `detail` 摘要（3 行）与**来源名称**；
-  点击**就地钉住**，展开全文、时间说明（`dateNote`）、时长与全部依据（名称、类型、原文摘录），可滚动。见 §4.1。
-- **依据分三层**：扫一眼卡片看**有没有**（开关打开时右下角那个点，实心＝有、空心＝未列）
-  → 悬停看**靠的是哪几份**（只给名称）→ 点开看**摘录全文**。
-  依据是这张图的立身之本，最轻的动作也要能看到个大概，不该藏到「点开」之后。
-- **时段**：有 `dateEnd` 的持续事件，时间写成「起 - 止」（同日只写结束时刻，不重复日期），
-  点开后另给一行「持续 X」。**只在文字上表达，不在轴上画长度**：槽是等距的而真实时间不是
-  （电梯案里 4 秒和 264 秒占的图上距离一样），按真实时长画长度会骗人。
-- **格子层**：把底层那套矩形用虚线画出来，一眼看清"整张图是矩形拼出来的"。控制胶囊里有开关，**默认关闭**。
-  两侧各多画一列空位，用来显示坐标系的余量。
-- **配色**：卡片一律中性（白底、深灰边框），**不按站位上色，也没有左侧色条**。
-  站位色（蓝／红）**只出现在列标题上**（原先左栏还有一个图例，因为和列标题重复，已删）。
-  画布这套是四档灰，逐级变浅：卡片边框 `#8291a6` > 引线 `#94a3b8` > 轴线 `#b2c0d0` > 格线 `#cbd5e1`。
-- **没有侧栏，画布占满整个窗口**，其余都是画布上的浮层，共四处：
-  - **左上角：标签卡**。这张图是什么（JSON 的 `title`）、大类、渲染类型、规模与时间跨度。
-    它只是牌子，不可点；**渲染类型切换器**也在这一行（见 §9）。
-  - **底部中间：控制胶囊**。"怎么看"的开关：视角、卡片字段、方向、底层格线；
-    最右端用分隔符隔开的是胶囊里唯一一个**动作**——导出图片（见 §10）。
-    四种控件为什么长成四种样子，见 §4.2。
-  - **左下角：缩放控件**、**右下角：缩略图**（React Flow 自带）。
-  为什么不要侧栏：侧栏里真正"图上没有的"只有案件导航和本图规模两样，为它们常年占掉 268px 宽（窗宽 17%）
-  不划算；当事人就是列标题、来源就在卡片浮层里，都是重复的。撤掉之后画布宽 13%，图大 13%。
-  浮层会盖住画布边缘的一小块，拖一下画布就错开，这是浮层的固有代价，接受。
+- **Axis**: the vertical line in the middle column, with a downward arrow at the bottom end showing the direction of time; each slot gets an axis dot on the axis.
+- **Link**: a thin line drawn from the side of the card facing the axis, connecting to the axis dot of its slot. When the card is already in the axis column, no link is drawn.
+  The whole link layer sits **below the axis dots and above the cards**: the dots cover the end of the line (so the line never pokes into the circle and punches through its white centre),
+  and the cards cover the body of the line (so a line crossing the middle column is cut by the card instead of lying on top of it).
+- **No time is written on the axis**, time is printed on every card.
+- **Direction switch**: vertical time runs downwards, horizontal time runs to the right, switched in the control dock at the bottom of the canvas. **Direction only changes the pixel mapping, not one line of data**:
+  which column an event falls in is always "slot index × lane index", horizontal and vertical merely hang those two on different axes.
+  When horizontal, the header moves from above the grid to its left; links turn from horizontal lines into vertical lines; the detail overlay pops out sideways; the direction of the time arrow turns with it.
+- **View switch**: the same data can be looked at in several ways (who is on which side, split by party or by kind). The switcher is in the control dock at the bottom of the canvas; switching re-lays out the whole diagram and re-fits the viewport. **A view that does not fit does not appear among the options** (an option that cannot be clicked is noise); a warning is printed to the console instead, so that whoever wrote the data can find it. The mechanism is in the "view mechanism" section of `spec/fact/schema-draft.md`.
+- **Column heading**: only the group name of this column (for example "performance as agreed"), **never a positional description such as "side N / axis"**,
+  the position is obvious from the picture and writing it out only takes up room. Font size 14px. Only when that side has several columns (several parties) is a second row with the party names added below.
+- **By default a card holds two things**: title on top, time below. Three further switches can be turned on as needed: whether sources are shown, party tags, and one summary line.
+  Card height is computed from "which fields are on" and "how many lines the title and the party tags each take", so turning a field off does not leave an empty block in the card.
+- **Detail**: right beside the card, in two levels. Hovering reveals the `detail` summary (3 lines) and the **source names**;
+  clicking **pins it in place**, expanding the full text, the time note (`dateNote`), the duration and all provenance (name, type, verbatim excerpt), scrollable. See §4.1.
+- **Provenance has three layers**: a glance at the card shows **whether there is any** (the dot at the bottom right when the switch is on; filled = present, hollow = none listed)
+  → hovering shows **which items it rests on** (names only) → opening shows **the verbatim excerpt**.
+  Provenance is what this diagram stands on; even the lightest action must show roughly what is there, it must not be hidden behind "open it".
+- **Duration**: for a lasting event with `dateEnd`, the time is written as "start - end" (on the same day only the ending time is written, without repeating the date),
+  and opening the card adds a "duration X" line. **This is expressed in text only, length is never drawn on the axis**: slots are equally spaced and real time is not
+  (in the elevator case 4 seconds and 264 seconds take up the same distance on the diagram), drawing length by real duration would deceive.
+- **Cell layer**: draws the underlying rectangles as dashed lines, so that at a glance you can see "the whole diagram is pieced together from rectangles". There is a switch in the control dock, **off by default**.
+  One empty column is drawn on each side, to show the margin of the coordinate system.
+- **Colour**: cards are neutral throughout (white background, dark grey border), **no colour by side, and no coloured bar on the left**.
+  The side colours (blue / red) **appear only on the column headings** (there used to be a legend in the left column as well; it duplicated the column headings, so it was deleted).
+  The canvas palette is four greys, lighter at each step: card border `#8291a6` > link `#94a3b8` > axis `#b2c0d0` > grid line `#cbd5e1`.
+- **There is no side column, the canvas fills the whole window**, everything else is an overlay on the canvas, four of them in total:
+  - **Top left: the label card**. What this diagram is (the JSON `title`), its type, its rendering kind, its size and its time span.
+    It is only a sign, not clickable; the **rendering kind switcher** is on that same row (see §9).
+  - **Bottom centre: the control dock**. The switches for "how to look at it": view, card fields, direction, underlying grid lines;
+    separated off at the far right by a divider is the only **action** in the dock, export image (see §10).
+    Why the four kinds of control take four different shapes is in §4.2.
+  - **Bottom left: zoom controls**, **bottom right: minimap** (both from React Flow).
+  Why no side column: the only things in a side column that are genuinely "not on the diagram" are case navigation and the size of this diagram, and occupying 268px of width (17% of the window width) all year round for those two
+  is not worth it; the parties are the column headings, the sources are in the card overlay, both would be duplicated. With it removed the canvas is 13% wider and the diagram 13% larger.
+  An overlay covers a small part of the canvas edge, and one drag of the canvas moves it aside; that is the inherent cost of an overlay, and it is accepted.
 
-### 4.1 详情为什么用卡片旁的浮层，而不是侧边抽屉
+### 4.1 Why detail uses an overlay beside the card, not a side drawer
 
-**任何会改变画布尺寸的面板都会让内容位移。** 侧边抽屉会把画布挤窄，点开的那张卡片跟着挪走，正好躲开你的鼠标。所以详情一律用**覆盖式浮层**：
+**Any panel that changes the size of the canvas makes the content shift.** A side drawer squeezes the canvas narrower, and the card you clicked moves away with it, dodging your mouse. So detail always uses an **overlay that covers**:
 
-- 画布尺寸从头到尾不变，卡片一动不动；
-- 浮层与卡片同宽（`width: 100%`，卡片多宽它多宽），左边对齐，因此**横向永远不会溢出**；第一行的卡片浮层往下冒，其余往上冒，避开顶部；
-- 触摸设备没有悬停，所以**点击必须能独立打开**（钉住态），不能只靠 hover；
-- 关掉的方式有三个：点空白处、点浮层右上角 ×、直接点另一张卡。
+- the canvas size never changes from start to finish, the cards do not move at all;
+- the overlay is the same width as the card (`width: 100%`, as wide as the card is), left-aligned, so it **never overflows horizontally**; the overlay of a card in the first row pops downwards, the others pop upwards, to avoid the top edge;
+- touch devices have no hover, so **a click must be able to open it on its own** (the pinned state), it cannot rely on hover alone;
+- there are three ways to close it: click empty space, click the × at the overlay's top right, or click another card directly.
 
-### 4.2 控制胶囊里控件的形态
+### 4.2 The shapes of the controls in the control dock
 
-一个胶囊里挤了四种控件（菜单、开关、分段、动作），分成五块
-（视角 / 卡片字段 / 方向 / 格线 / 导出）。要让它们一眼可分，靠四件事，顺序不能换：
+One dock is packed with four kinds of control (menu, switch, segmented, action), divided into five blocks
+(view / card fields / direction / grid lines / export). Making them distinguishable at a glance rests on four things, and the order cannot be swapped:
 
-1. **形态按"选项多不多、互不互斥"定，不按重要性定。** 选项名长且最多五个 → 收进菜单
-   （一个按钮显示当前值）；少而独立的 → 全部摆出来一个一个开关；两个互斥 → 分段控件。
-2. **状态用底色深浅分三档**，档与档之间差 6% 上下的灰：
-   胶囊底（透明）< 分段轨道（6%）< 打开的开关（12%）。
-   "开着"和"这一段被选中"必须是两种深浅，否则分不清"这是个开关"和"这是组选项"。
-3. **实心那一档只留给胶囊里唯一那个动作**（导出图片），另配一个下载符号。
-   别的控件全是浅底或透明，整条胶囊里只有这一块是深的，不用读文字就知道该点哪。
-4. **分组靠距离，竖线只补一笔。** 组内（同一个模块的开关之间）2px，
-   组间（跨分隔符）21px，十倍的关系。原先组内组间**都是 2px**（实测过：11 个元素的空隙
-   一模一样），于是"是不是一块"全靠那根 1px、10% 不透明度、14px 高的线扛着，
-   在 28px 高的胶囊里细到像渲染瑕疵，用户分不出五块。现在距离扛主要的，
-   线加高加实一点（16px、12%）当扫视时的记号。**这两件事别合并**：
-   距离对了线可以很淡，距离不对线喊多响都没用。
+1. **The shape follows "how many options, do they exclude each other", not importance.** Long option names and at most five of them → collect them into a menu
+   (one button showing the current value); few and independent → put them all out as separate switches; two that exclude each other → a segmented control.
+2. **State is carried by three levels of background darkness**, about 6% of grey between level and level:
+   dock background (transparent) < segmented track (6%) < switch that is on (12%).
+   "On" and "this segment is selected" must be two different darknesses, otherwise you cannot tell "this is a switch" from "these are group options".
+3. **The solid level is reserved for the one action in the dock** (export image), with a download symbol beside it.
+   Every other control is a light background or transparent, so this one block is the only dark thing in the whole dock and you know where to click without reading the text.
+4. **Grouping is carried by distance, the divider only adds a stroke.** Within a group (between the switches of one module) 2px,
+   between groups (across a divider) 21px, a ratio of ten. Previously within and between groups were **both 2px** (measured: the gaps between 11 elements were
+   exactly the same), so "are these one block" rested entirely on that 1px, 10%-opacity, 14px-high line,
+   which in a 28px-high dock is so thin it looks like a rendering defect, and users could not tell the five blocks apart. Now distance carries the main load,
+   and the line is made taller and more solid (16px, 12%) as a marker when scanning. **Do not merge these two things**:
+   when the distance is right the line can be faint; when the distance is wrong, no matter how loudly the line shouts it does not help.
 
-**为什么动作不用强调色（蓝）。** 这套配色里颜色是**有意义的**：蓝＝第 1 侧、红＝第 2 侧
-（见 §4 配色那条）。给按钮上蓝，图上就多出一个"看起来像第 1 侧"的元素。
-所以动作走**中性深色**（`--antu-text`），靠"实心 vs 半透明"而不是靠色相区分。
+**Why the action does not use the accent colour (blue).** In this palette colour is **meaningful**: blue = side 1, red = side 2
+(see the colour item in §4). Painting a button blue adds an element to the diagram that "looks like side 1".
+So the action uses a **neutral dark colour** (`--antu-text`), and is distinguished by "solid vs semi-transparent" rather than by hue.
 
-**每个控件都要有按下态和焦点圈**，不只是那个动作：
-按下要比"开着"再深一档（否则点一个已经开着的开关，底色反而变浅，像没接住这一下）；
-焦点圈四个控件用同一种（浏览器默认那个圈是另一套样子，而且它偏蓝，会和站位色撞）。
+**Every control needs a pressed state and a focus ring**, not just that one action:
+pressed must be one level darker than "on" (otherwise clicking a switch that is already on makes the background lighter, as if the click was not caught);
+the focus ring is the same for all four controls (the browser default ring is a different style, and it leans blue, which clashes with the side colours).
 
-**导出中不许用"实心黑压到半透明"表示停用**：那会糊成一块中间调的灰，看着仍像能点。
-换成和开关同一层的浅底加次要色文字，一眼就是停用了。
+**While exporting, do not show disabled with "solid black pressed down to semi-transparent"**: that smears into a mid-tone grey that still looks clickable.
+Use the same light background as the switches with secondary-colour text instead, which reads as disabled at a glance.
 
-**这四条都有断言钉着**（`tools/verify/run.mjs` 的渲染那一段）：分组间距那条写成**比例**
-（组间至少是组内的 5 倍）而不是某个具体像素，所以调数值不会误报，退回"组内组间一样宽"
-一定报错。另外还查每条分隔符两侧是不是一样宽（防一边宽一边窄）、
-线够不够高够不够不透明（1px 的线看不见等于没有）。
+**All four of these have assertions pinned to them** (the rendering section of `tools/verify/run.mjs`): the grouping-distance item is written as a **ratio**
+(between groups at least 5 times within groups) rather than a specific pixel count, so adjusting the numbers does not produce a false alarm, while falling back to "within and between groups the same width"
+always fails. It also checks whether the two sides of every divider are equally wide (guarding against one wide side and one narrow side),
+and whether the line is tall enough and opaque enough (a 1px line you cannot see is the same as no line).
 
-## 5. 参数（可调）
+## 5. Parameters (adjustable)
 
-| 项 | 值 |
+| Item | Value |
 |---|---|
-| 格子宽 | 316（横向留白 28） |
-| 格子高 | 卡片高 + 28 |
-| 卡片宽 | 288 |
-| 卡片高 | 由字段与行数算出，默认 87 |
-| 卡片内边距 | 11（纵）/ 13（横） |
-| 标题 | 13px，一行约 20 字，最多两行 |
-| 摘要 | 11.5px，一行上限 22 字 |
-| 标题区（竖向） | 顶部留高 96 |
-| 标题区（横向） | 左侧留宽 150（比 96 宽，因为标题文字要在一列里放得下） |
-| 轴点直径 | 10 |
-| 第 1 侧色 | `#2f6fed` |
-| 第 2 侧色 | `#e5484d` |
-| 卡片边框 | `#8291a6` |
-| 引线 | `#94a3b8` |
-| 轴线 | `#b2c0d0` |
-| 格线 | `#cbd5e1` |
+| Cell width | 316 (28 margin horizontal) |
+| Cell height | card height + 28 |
+| Card width | 288 |
+| Card height | computed from the fields and the number of lines, 87 by default |
+| Card padding | 11 (vertical) / 13 (horizontal) |
+| Title | 13px, about 20 characters per line, at most two lines |
+| Summary | 11.5px, at most 22 characters per line |
+| Header (vertical) | 96 height reserved at the top |
+| Header (horizontal) | 150 width reserved at the left (wider than 96, because the heading text has to fit within one column) |
+| Axis dot diameter | 10 |
+| Side 1 colour | `#2f6fed` |
+| Side 2 colour | `#e5484d` |
+| Card border | `#8291a6` |
+| Link | `#94a3b8` |
+| Axis | `#b2c0d0` |
+| Grid line | `#cbd5e1` |
 
-**这些数字的唯一来源是 `src/renderers/fact/cardGeometry.js`**：内宽、字号、字数上限、卡片高度都由它推出，
-样式层通过 CSS 变量取用（纵向内边距、标题字号、摘要字号）。改那里，**摘要字数上限与卡片高度会自动跟着变**，
-不用两头对。样式里不再写第二遍，避免同一个数字两处不一致。
+**The single source for these numbers is `src/renderers/fact/cardGeometry.js`** (`CARD_W`, `CARD_PAD_X`, `CARD_PAD_Y`, `LABEL_FONT`, `SNIPPET_FONT`, `TITLE_LINES`, `cardHeightOf`):
+inner width, font sizes, character limits and card height are all derived there,
+and the styles take them through CSS variables (vertical padding, title font size, summary font size). Change it there and **the summary character limit and the card height follow automatically**,
+with no need to keep the two ends in step. The styles no longer write a second copy, avoiding the same number disagreeing in two places.
+(The colours and the dot diameter live in `src/styles.css` as `--antu-side1` / `--antu-side2` and the card border, link, axis and grid-line rules; `CELL_W`, `CELL_GAP`, `HEADER_H`, `HEADER_W` and `DOT_SIZE` live in `src/renderers/fact/timeline/metrics.js`.)
 
-## 6. 技术选型
+## 6. Technology choice
 
-**React Flow（`@xyflow/react` 12）作为四类图共用的画布。**
+**React Flow (`@xyflow/react` 12) as the canvas shared by all four diagram types.**
 
-- fact 这一版**只用到画布级能力**：缩放、平移、自适应视图、小地图、节点点击。
-- **没有用到图结构级能力**：`edges` 为空数组，不用连接点 `Handle`，本轮关闭节点拖拽。
-- **保留它的理由**：四类图里三类（关系图、程序图、证成图）都是标准的节点-边图，正是它的主场；四类共用一套画布，避免每类图各造一套缩放平移；将来两处会用到更多能力，见 §7。
-- **选它的代价**：约 120 KB（gzip）。当前这张图自己写缩放平移也做得到，但会破坏画布统一。
+- This fact version **uses only canvas-level capabilities**: zoom, pan, fit view, minimap, node click.
+- **It does not use graph-structure-level capabilities**: `edges` is an empty array, connection points `Handle` are not used, node dragging is off for this round.
+- **Why keep it**: three of the four diagram types (relationship, procedure, justification) are standard node-edge graphs, which is exactly its home ground; sharing one canvas across the four avoids building a separate zoom-and-pan for each type; two places will use more of its capabilities later, see §7.
+- **What it costs**: about 120 KB (gzip). This diagram on its own could have hand-written zoom and pan, but that would break the unified canvas.
 
-## 7. 本轮未做
+## 7. Not done this round
 
-| 项 | 说明 |
+| Item | Note |
 |---|---|
-| `dateEnd` 的图形化 | 文字版已做（卡片写起止、浮层给时长）。**跨槽的竖条不做**：槽是等距的而真实时间不是，按真实时长画长度会骗人 |
-| 拖拽编辑 | 结构上已为它留好路（顺序靠数组、同槽靠嵌套）；React Flow 自带吸附网格，与这套格子天然匹配 |
-| 一格多事件 | 同一个时间点、同一条车道上放两条事件时报错。这是网格模型的基本假设（格子一事件），要数据作者自己拆时间点。**代价是"不分侧"那类视角在多数数据上不可用**（见下） |
+| Drawing `dateEnd` | The text version is done (the card writes start and end, the overlay gives the duration). **No vertical bar across slots**: slots are equally spaced and real time is not, drawing length by real duration would deceive |
+| Drag editing | The structure has already left the road open for it (order via the array, same slot via nesting); React Flow has snap-to-grid built in, which matches these cells naturally |
+| Several events in one cell | Two events at the same time point in the same lane is an error. This is the basic assumption of the grid model (one cell, one event), the data author has to split the time point themselves. **The cost is that the "no side split" kind of view is unusable on most data** (see below) |
 
-## 7.1 已定的两条（原先列在"未做"里）
+## 7.1 Two items already settled (previously listed under "not done")
 
-| 项 | 结论 |
+| Item | Conclusion |
 |---|---|
-| 方向的默认值 | **已定：按槽数。槽 ≥ 5 竖向，槽 ≤ 4 横向**（理由见 §8）。手动设过的按图记住，没设过的按这条算 |
-| 三个以上主体的验证 | **已验证**：建设工程那份是 4 个主体、5 列，多视角跑过；46 种视角 × 方向组合全部能排 |
+| The default for direction | **Settled: by slot count. 5 or more slots vertical, 4 or fewer horizontal** (rationale in §8). Diagrams where it was set by hand remember that; where it was not set, this rule applies |
+| Verifying more than three parties | **Verified**: the construction document has 4 parties and 5 columns and has been run through several views; all 46 view × direction combinations lay out |
 
-## 8. 方向怎么选（实测数据，供定默认值用）
+## 8. How direction is chosen (measured data, for fixing the default)
 
-两个方向的内容尺寸（同一份数据、同一个视角）：
+Content size in the two directions (same data, same view):
 
 ```
-竖向：宽 = 列数 × 316          高 = 96 + 时间点数 × 行高
-横向：宽 = 150 + 时间点数 × 316  高 = 列数 × 行高
+Vertical:   width = column count × 316            height = 96 + time point count × row height
+Horizontal: width = 150 + time point count × 316  height = column count × row height
 ```
 
-适配缩放取「视口 ÷ (内容 × 1.12)」的宽高较小值。实测（画布 1360 × 857）：
+The fit zoom is the smaller of "viewport ÷ (content × 1.12)" for width and height. Measured (canvas 1360 × 857):
 
-| 列数 / 时间点数 | 竖向 | 横向 | 谁更好 |
+| Columns / time points | Vertical | Horizontal | Which is better |
 |---|---|---|---|
-| 5 / 5 | 0.769 | 0.702 | 竖向 |
-| **5 / 4** | 0.769 | **0.859** | **横向** |
-| 7 / 3 | 0.549 | 1.000 | 横向 |
-| 5 / 8 | 0.929 | 0.453 | 竖向 |
-| 7 / 7 | 0.961 | 0.514 | 竖向 |
+| 5 / 5 | 0.769 | 0.702 | Vertical |
+| **5 / 4** | 0.769 | **0.859** | **Horizontal** |
+| 7 / 3 | 0.549 | 1.000 | Horizontal |
+| 5 / 8 | 0.929 | 0.453 | Vertical |
+| 7 / 7 | 0.961 | 0.514 | Vertical |
 
-**定下来的默认规则：按槽数（`slots` 条数）判断。槽 ≥ 5 用竖向，槽 ≤ 4 用横向。**
-取 5 的道理：横向一格宽 316，一屏减掉左侧标题列只排得下约 3.8 个槽；槽到 5 个横向就明显挤了。
-**方向按图记**：手动设过的记住，没设过的按这条算默认。换一份数据不跟着走。
+**The default rule as settled: decide by slot count (the number of `slots`). 5 or more slots vertical, 4 or fewer horizontal.**
+Where 5 comes from: a horizontal cell is 316 wide, and one screen minus the left heading column fits only about 3.8 slots; at 5 slots horizontal is visibly crowded.
+**Direction is remembered per diagram**: what was set by hand is remembered, what was not uses this rule as the default. Switching to another data set does not carry it over.
 
-（下面是更细的对照，用来看例外。交叉点：列数 > 时间点数 时横向更好，否则竖向更好。） 道理很直白：横向把"时间点"这一维换成占宽 316 的一格，
-所以时间点越多横向越宽；列数越多竖向越宽。谁让内容更接近屏幕比例，谁就更好。
+(The finer comparison below is for looking at the exceptions. The crossover: when column count > time point count horizontal is better, otherwise vertical is better.) The reason is plain: horizontal turns the "time point" dimension into a cell 316 wide,
+so the more time points the wider horizontal becomes; the more columns the wider vertical becomes. Whichever brings the content closer to the screen aspect ratio is better.
 
-现有五份示例共 15 个视角，**全部是"时间点多、列数少"，所以全部竖向更好（横向差 27% 到 39%）**。
-要看到横向胜出的场景，需要造"主体多、时间点少"的数据（例如三方在同一天各做一件事）。
+The five existing examples have 15 views in total, and **all of them are "many time points, few columns", so vertical is better for all of them (horizontal is 27% to 39% worse)**.
+To see a case where horizontal wins you need data with "many parties, few time points" (for example three parties each doing one thing on the same day).
 
-## 9. 渲染类型（子类）切换器
+## 9. The rendering kind (sub-type) switcher
 
-**同一份 fact JSON 可以有几种画法**，它们是并列的渲染器，各自有各自的渲染规则，
-但吃同一份 schema。时间图是第一个；泳道图、以及其他画法以后陆续加。
-（为什么子类不是数据类型、以及那条硬约束，见 `v0-architecture.md` §3。）
+**The same fact JSON can be drawn in several ways**; they are parallel renderers, each with its own rendering rules,
+but they all consume the same schema. The timeline is the first; swimlane and other ways of drawing will be added later.
+(Why a sub-type is not a data type, and that hard constraint, are in `spec/v0-architecture.md` §3.)
 
-界面上它放在**左上角标签卡那一行**，不放在底部控制胶囊里：
+In the interface it sits on **the same row as the label card at the top left**, not in the bottom control dock:
 
-| 放在哪 | 理由 |
+| Where it sits | Reason |
 |---|---|
-| 左上角标签卡 | 它回答的是"这份数据用哪种画法看"，是这一页最上层的问题 |
-| 底部控制胶囊 | 那里放的是**子类内部**的呈现参数（视角、方向、字段、格线），两者不是一类。<br>胶囊里唯一的**动作**是"导出图片"，见 §10 |
+| The label card at the top left | It answers "in which way is this data looked at", the topmost question on this page |
+| The bottom control dock | That is where the presentation parameters **internal to a sub-type** live (view, direction, fields, grid lines), the two are not the same kind.<br>The only **action** in the dock is "export image", see §10 |
 
-两条约定：
+Two conventions:
 
-- **只有一种画法时是纯文字，不做成按钮。** 点开一个只有一个选项的菜单是白费一步；
-- **多于一种时自动变成可点的下拉**，选过的按图记住（`localStorage` 的 `kinds`）。
+- **With only one way of drawing it is plain text, not made into a button.** Opening a menu with a single option wastes a step;
+- **With more than one it automatically becomes a clickable dropdown**, and what was chosen is remembered per diagram (`kinds` in `localStorage`).
 
-切换时整张图按新画法重排、视口按新内容重新适配；数据一个字不改。
+On switching, the whole diagram is laid out again in the new way and the viewport re-fits to the new content; not one word of the data changes.
 
-## 10. 导出图片
+## 10. Exporting an image
 
-**一句话**：把当前这张图导成一张 PNG，贴进起诉状、代理词、证据说明。
+**In one sentence**: export the current diagram as one PNG, to paste into a complaint, a written argument or a note on evidence.
 
-按钮在底部胶囊最右端，点一下直接下载，不弹对话框。
+The button is at the far right of the bottom dock; one click downloads directly, with no dialog.
 
-### 10.1 六条已定
+### 10.1 Six settled points
 
-| 项 | 结论 | 理由 |
+| Item | Conclusion | Reason |
 |---|---|---|
-| 导出范围 | **整张图**，不按当前视口裁；跟随当前的视角、方向、字段开关 | 用户能看到的那部分自己截屏就行。导出的价值是"屏幕上这张图的**完整版**" |
-| 题头 | **不带**，永远只导图本身 | 见 10.2 |
-| 分辨率 | **固定 2×** | 2× 在 A4 宽度下够清晰；这项目不给"少用一次"的选项加开关 |
-| 背景 | **白底不透明** | 法律文书里贴图，透明底到了深色底上会出问题 |
-| 格式 | **只做 PNG**，SVG／PDF 不做 | PDF 已有"浏览器打印 HTML"这条路；SVG 导出要给 `foreignObject` 套一层，兼容性差 |
-| 按钮位置 | 底部胶囊**最右端**，用分隔符隔开 | 紧挨着"调参数"的地方，调好就导，是一条操作线 |
+| Export range | **The whole diagram**, not cropped to the current viewport; it follows the current view, direction and field switches | Whatever the user can see they can screenshot themselves. The value of the export is "the **complete version** of this diagram that is on screen" |
+| Heading | **Not included**, the diagram itself is always all that is exported | See 10.2 |
+| Resolution | **Fixed at 2×** | 2× is clear enough at A4 width; this project does not add a switch to an option that is only used once in a while |
+| Background | **White, opaque** | When an image is pasted into a legal document, a transparent background goes wrong on a dark background |
+| Format | **PNG only**, no SVG or PDF | For PDF there is already the "browser prints the HTML" route; SVG export needs a wrapper around `foreignObject`, with poor compatibility |
+| Button position | **Far right** of the bottom dock, separated by a divider | Right next to "adjust the parameters", adjust and export, one line of operation |
 
-`2×` 落在 `html-to-image` 的 `pixelRatio` 上。
+`2×` lands on `html-to-image`'s `pixelRatio`.
 
-### 10.2 题头：不做开关，导出不带
+### 10.2 The heading: no switch, not exported
 
-「题头」＝左上角那张标签卡（案件名 / 大类·渲染类型 / 规模与时间跨度）。
-**它是屏幕上的浮层，不进导出图。**
+"Heading" = the label card at the top left (case name / type · rendering kind / size and time span).
+**It is an overlay on screen and does not go into the exported image.**
 
-**曾经做过一个开关，后来撤了。** 当时的想法是"屏幕上显示什么，导出就是什么"，
-让开关同时管两件事：屏幕上显不显示这张卡、导出带不带它。理由是这样
-"导出前能先看到最终成图"。
+**There used to be a switch for it, and it was withdrawn.** The idea at the time was "whatever is on screen is what is exported",
+with the switch controlling two things at once: whether the card shows on screen and whether the export carries it. The reason was that
+"you can see the final image before exporting".
 
-撤掉的原因有两条：
+There were two reasons for withdrawing it:
 
-1. **导出图十有八九是贴进文书、发给别人的。** 那种场合要的是图本身，
-   案件名和规模会另外写在正文里。默认不带题头才对；
-2. 而要"带题头"的场合少得多，却让每个人每次都面对这个开关，
-   还顺带把标签卡从屏幕上藏起来，等于为一个少数场合改了多数人的界面。
+1. **Nine times out of ten the exported image is pasted into a document and sent to someone.** What that occasion wants is the diagram itself,
+   and the case name and the size are written in the body text instead. Not carrying the heading by default is the right call;
+2. The occasions that do want "with heading" are far fewer, yet everyone faced that switch every time,
+   and it also took the label card off the screen, which amounts to changing the interface for the many on account of a minority occasion.
 
-代价写下来：**现在做不到"导出带题头"**。真要那个效果，
-得每页另加一行标题——而那本来就该是文书自己的事。
+Write the cost down: **"export with heading" cannot be done now.** If that effect is really wanted,
+a heading line has to be added to each page separately, and that was always the document's own business.
 
-### 10.3 怎么捕获
+### 10.3 How it is captured
 
-两道**都不许改回**的取舍：
+Two trade-offs that **must not be changed back**:
 
-1. **不用 `getNodesBounds`。** 图里有两个 1×1 的装饰节点（格子层、引线层），
-   它们会被算进包围盒，凭空多出一圈留白。`graph.size` 才是准的；
-2. **不捕获整个 `.antu-app`。** 那样导出图是窗口的长宽比，图窄时上下拖出大片空白。
+1. **Not `getNodesBounds`.** There are two 1×1 decorative nodes in the diagram (the cell layer and the link layer),
+   and they would be counted into the bounding box, adding a ring of blank space out of nowhere. `graph.size` is the accurate one;
+2. **Not capturing the whole `.antu-app`.** That way the exported image has the aspect ratio of the window, and a narrow diagram drags out large blank areas above and below.
 
-做法：抓 `.react-flow__viewport`，把**副本的** `transform` 换成单位变换，
-副本就按"整张图铺满 `graph.size`"渲染；活的那个画布一动不动。
+The method: grab `.react-flow__viewport`, replace the **copy's** `transform` with the identity transform,
+so the copy renders as "the whole diagram filling `graph.size`"; the live canvas does not move at all.
 
-**`graph.size` 里包含轴末端那个箭头多占的 6px**（`timeline/metrics.js` 的
-`ARROW_EXTENT`）。少算这 6px，导出时箭头会被裁在框外——这是真发生过的缺陷。
+**`graph.size` includes the extra 6px taken by the arrow at the end of the axis** (`ARROW_EXTENT` in
+`timeline/metrics.js`). Under-counting those 6px crops the arrow out of the frame on export, and this is a defect that really happened.
 
-### 10.4 要记住的坑
+### 10.4 Pitfalls to remember
 
-| 坑 | 说明 |
+| Pitfall | Note |
 |---|---|
-| 只有**在捕获范围内**的浮层才需要藏 | 实测：缩放控件、缩略图、底部胶囊、点阵底纹都在 `.react-flow__viewport` **之外**，抓 viewport 时天然不进图。真正要藏的是**卡片详情浮层**（它是卡片节点的一部分，会跟着进图）。做法：给外壳加一个 `is-exporting` 类，样式里隐藏，导完摘掉 |
-| **不需要改活画布，也不需要还原** | 原先以为要"记下视口 → 改成整张图 → 捕获 → 还原"。实测不用：`html-to-image` 的 `style` 只作用在**克隆出来的那一份**上，把克隆体的 `transform` 换成单位变换即可，用户的平移缩放从头到尾一动不动 |
-| **字体是固有代价** | `foreignObject` 捕获用的是**打开这个 HTML 那台机器上的系统字体**。同一个文件在别人机器上打开，导出的图会与作者看到的略有出入。无法解决，只能知道 |
-| CSS 变量没问题（已实测） | 卡片的内边距、标题字号是从 `cardGeometry.js` 注入的 CSS 变量。`html-to-image` 会把计算后的样式内联进克隆体，导出的图里字号与屏幕一致 |
-| **浏览器会拦"同一页面的第二次自动下载"** | 与实现无关，但**验证时会踩**：脚本触发的点击不算用户手势，第一次下载放行、第二次被拦，症状是"点了没反应、控制台也没错"。做法：验证时把点击标成用户手势（`Runtime.evaluate` 的 `userGesture: true`），见 `tools/lib/chrome.mjs` 的 `eval` |
-| 两次导出同名会**覆盖** | 验证里连导两次时，第二次会盖掉第一次，文件数永远是 1。判"第二次到底导没导"得**每导一次就把文件挪走** |
-| **零尺寸元素会整个丢掉** | 轴线末端那个箭头原先用 CSS 边框三角画（`width:0;height:0` ＋三边 `transparent`）。**导出图里它不见了**，轴上光秃秃的。改法：用内联 `<svg>` 画，有真实尺寸。**规矩：凡是要进导出图的形状，别用零尺寸元素拼** |
+| Only overlays **inside the capture range** need hiding | Measured: the zoom controls, the minimap, the bottom dock and the dot-grid background are all **outside** `.react-flow__viewport`, so capturing the viewport leaves them out naturally. What really needs hiding is the **card detail overlay** (it is part of the card node and goes into the image with it). Method: add an `is-exporting` class to the shell, hide it in the styles, remove it once the export is done |
+| **The live canvas does not need changing, and does not need restoring** | It was first thought that one had to "record the viewport → change to the whole diagram → capture → restore". Measured: not needed. `html-to-image`'s `style` applies only to **the clone**, so replacing the clone's `transform` with the identity transform is enough, and the user's pan and zoom do not move from start to finish |
+| **Fonts are an inherent cost** | `foreignObject` capture uses **the system fonts on the machine that opens this HTML**. Open the same file on someone else's machine and the exported image differs slightly from what the author saw. It cannot be solved, it can only be known |
+| CSS variables are fine (measured) | The card's padding and title font size are CSS variables injected from `cardGeometry.js`. `html-to-image` inlines the computed styles into the clone, so font sizes in the exported image match the screen |
+| **The browser blocks "a second automatic download from the same page"** | Nothing to do with the implementation, but **it is hit during verification**: a script-triggered click does not count as a user gesture, the first download goes through and the second is blocked, with the symptom "clicked and nothing happened, and no error in the console". Method: mark the click as a user gesture during verification (`userGesture: true` of `Runtime.evaluate`), see `eval` in `tools/lib/chrome.mjs` |
+| Two exports under the same name **overwrite** | When exporting twice in a row during verification, the second overwrites the first and the file count is always 1. To judge "whether the second export happened at all" you must **move the file away after every export** |
+| **Zero-size elements are dropped entirely** | The arrow at the end of the axis was originally drawn with a CSS border triangle (`width:0;height:0` plus three `transparent` sides). **It disappeared from the exported image** and the axis ended bare. The fix: draw it with an inline `<svg>`, which has a real size. **Rule: never build a shape that has to go into the exported image out of zero-size elements** |
 
-### 10.5 四周留白（导出才有，屏幕上没有）
+### 10.5 Margin on all four sides (export only, not on screen)
 
-导出图四周各留 **24px**（设计像素，2× 后是 48px），四边一样，不随图的形状变。
+The exported image keeps **24px** on each of its four sides (design pixels, 48px after 2×), the same on all four, and it does not change with the shape of the diagram.
 
-为什么不留 0：内容框正好卡在最后一根线、最后一个字的边上。贴边导出，
-插进文书里就是图贴边框；看上去也像被裁过一刀。
+Why not 0: the content frame sits exactly on the edge of the last line and the last character. Exported flush to the edge,
+pasted into a document it touches the border; it also looks like it was cropped once.
 
-为什么是固定值而不是按比例：按比例的话小图看不出来、大图留一大圈。
-24px 只承担"别贴边"这一件事，不承担排版边距的功能。
+Why a fixed value and not proportional: proportionally, a small diagram shows nothing and a large one leaves a huge ring.
+The 24px carries one thing only, "do not touch the edge", and does not serve as a typographical margin.
 
-**做法：内容照旧按 `graph.size` 渲染，再画到一张更大的白画布上。**
-留白是"图之外"的东西，不该靠在克隆体上做位移去凑——那样留白出没出来
-取决于 `foreignObject` 怎么处理 `transform`，只能靠采像素间接判。
-画布合成则是尺寸和留白都由构造保证，能直接断言（见 10.7）。
+**Method: the content is still rendered per `graph.size`, then drawn onto a larger white canvas.**
+The margin is something "outside the diagram" and should not be approximated by shifting the clone: whether the margin appears would then
+depend on how `foreignObject` handles `transform`, and could only be judged indirectly by sampling pixels.
+Canvas compositing makes both the size and the margin guaranteed by construction, and directly assertable (see 10.7).
 
-验证脚本里那条"尺寸 = 内容 × 2"随之改成"尺寸 =（内容 + 四周留白）× 2"。
+The verification script's line "size = content × 2" changes accordingly to "size = (content + margin on all four sides) × 2".
 
-### 10.6 体积
+### 10.6 Size
 
-`html-to-image` 约 +15～20 KB，打进引擎：`engine.js` 389 KB → 约 405 KB，
-成品 HTML 420 KB → **约 440 KB**。自包含 HTML 不压缩传输，这是实打实的增量；
-换一个离线可用的导出按钮，值。
+`html-to-image` is about +15 to 20 KB; built into the engine: `engine.js` 389 KB → about 405 KB,
+the produced HTML 420 KB → **about 440 KB**. A self-contained HTML is transferred uncompressed, so this is a real increase;
+trading it for an offline-capable export button is worth it.
 
-### 10.7 怎么验（可自动化）
+### 10.7 How it is verified (automatable)
 
-`tools/verify/run.mjs` 已经有一套 CDP 基础设施，导出属于"能自动判"的那类：
+`tools/verify/run.mjs` already has a CDP infrastructure, and export belongs to the "can be judged automatically" class:
 
 ```
-点导出按钮 → 用 CDP 指定下载目录 → 检查落盘的 PNG：
-  ✅ 点了导出会落盘一张 PNG（魔数正确）
-  ✅ 尺寸 =（内容 + 四周留白）× 2（精确相等）
-  ✅ 不是一张白纸（把 PNG 丢回页面用 canvas 采像素，数非白点）
-  ✅ 四周留白带里非白像素 = 0（四条边各数一圈）
-  ✅ 同一次采样里内容区必须有墨
-  ✅ 箭头采样点在导出图范围内
-  ✅ 导出图里时间轴末端有箭头（采到的必须是轴那条线的颜色）
+Click the export button → point CDP at a download directory → check the PNG that landed on disk:
+  ✅ clicking export lands a PNG on disk (correct magic number)
+  ✅ size = (content + margin on all four sides) × 2 (exactly equal)
+  ✅ it is not a blank sheet (drop the PNG back into the page and sample pixels with canvas, count non-white points)
+  ✅ non-white pixels in the four margin bands = 0 (count one ring along each of the four edges)
+  ✅ the content area must have ink in the same sampling
+  ✅ the arrow sampling point is inside the exported image
+  ✅ the end of the time axis in the exported image has an arrow (what is sampled must be the colour of the axis line)
 ```
 
-**尺寸那条是冲着 10.3 那个坑去的**：一旦改回 `getNodesBounds`，
-横向会多出 150px／竖向多出 96px，断言立刻失败。
+**The size line is aimed at the pitfall in 10.3**: fall back to `getNodesBounds` and horizontal gains an extra 150px / vertical an extra 96px, and the assertion fails at once.
 
-**留白那两条要一起看**：只看"四条边全白"，一张整白图也能过；
-只看"内容区有墨"，留白加在一边、或者内容被画到 (0,0) 把上边填满也能过。
+**The two margin lines have to be read together**: looking only at "all four edges white" would pass a completely white image;
+looking only at "the content area has ink" would pass a margin added on one side, or content painted at (0,0) filling the top edge.
 
-**箭头那两条是冲着两个真缺陷去的**：箭头原先用 CSS 边框三角画，导出时整个丢掉；
-换成内联 SVG 之后又忘了把它多占的 6px 算进内容尺寸，被裁在框外。
-这两条断言**都验过能失败**（把 `ARROW_EXTENT` 改成 0，它们会报错、退出码 1）。
+**The two arrow lines are aimed at two real defects**: the arrow was originally drawn with a CSS border triangle and was entirely lost on export;
+after switching to an inline SVG, the extra 6px it takes was forgotten in the content size and it was cropped out of the frame.
+Both assertions **have been verified to be able to fail** (set `ARROW_EXTENT` to 0 and they report an error with exit code 1).
 
-`known-issues.md` 里反复强调"能自动判的就别留给人看"，导出正好属于此类。
-
+`spec/known-issues.md` repeatedly stresses "what can be judged automatically must not be left to a human", and export is exactly that kind of thing.
