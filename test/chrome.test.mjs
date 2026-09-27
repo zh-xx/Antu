@@ -1,13 +1,15 @@
 // ============================================================
-//  test/chrome.test.mjs —— 起浏览器这件事里能单独测的那部分
+//  test/chrome.test.mjs — the part of launching a browser that can be tested alone
 //
-//  起浏览器整件事要真浏览器（那归 tools/verify 的集成层），
-//  但"三次尝试之间不许互相踩"这条是纯算术，能在这儿钉住。
+//  Launching a browser needs a real browser (that belongs to the integration
+//  layer in tools/verify), but "the three attempts must not tread on each other"
+//  is pure arithmetic and can be pinned down here.
 //
-//  为什么值得钉：这条踩过。三种 headless 写法共用一个 profile 目录时，
-//  Chrome 见到 profile 已被占用就直接自杀（SingletonLock 已存在），
-//  于是第二、三种写法连启动都做不到，备用链路是废的，
-//  症状是 CI 上偶发"三种写法全都没起来"（见 known-issues 第 18 条）。
+//  Worth pinning because it was hit for real: three headless variants sharing one
+//  profile directory made Chrome kill itself (the SingletonLock already existed),
+//  so the second and third variants could not even start and the fallback chain was
+//  dead. The symptom was an intermittent "all three variants failed to start" on CI
+//  (see known-issues item 18).
 // ============================================================
 
 import { test } from 'node:test'
@@ -27,53 +29,53 @@ const args = (i, over = {}) =>
 
 const flagValue = (list, name) => list.find((a) => a.startsWith(`${name}=`))
 
-test('三种 headless 写法都在，且互不相同', () => {
+test('all three headless variants are present and distinct', () => {
   assert.equal(HEADLESS_VARIANTS.length, 3)
   const keys = HEADLESS_VARIANTS.map((f) => f.join(' '))
-  assert.equal(new Set(keys).size, 3, `有两种写法一模一样：${keys}`)
+  assert.equal(new Set(keys).size, 3, `two variants are identical: ${keys}`)
 })
 
-test('每种写法各占一个端口，不重复', () => {
+test('each variant gets its own port', () => {
   const ports = attemptPorts(9500)
   assert.equal(ports.length, HEADLESS_VARIANTS.length)
   assert.deepEqual(ports, [9500, 9501, 9502])
-  assert.equal(new Set(ports).size, ports.length, `端口有重复：${ports}`)
+  assert.equal(new Set(ports).size, ports.length, `duplicate ports: ${ports}`)
 })
 
-test('指定起始端口时也从它往后排', () => {
+test('an explicit starting port is counted up from', () => {
   assert.deepEqual(attemptPorts(9600), [9600, 9601, 9602])
 })
 
-test('每次尝试用各自的 profile 目录', () => {
+test('each attempt uses its own profile directory', () => {
   const profiles = [0, 1, 2].map((i) => flagValue(args(i), '--user-data-dir'))
-  assert.equal(new Set(profiles).size, 3, `profile 有重复：${profiles}`)
+  assert.equal(new Set(profiles).size, 3, `duplicate profiles: ${profiles}`)
 })
 
-test('参数里带上这次尝试的端口与 profile，不会串', () => {
+test('the arguments carry this attempt’s port and profile, with no crossing over', () => {
   for (let i = 0; i < 3; i += 1) {
     assert.equal(flagValue(args(i), '--remote-debugging-port'), `--remote-debugging-port=${9500 + i}`)
     assert.equal(flagValue(args(i), '--user-data-dir'), `--user-data-dir=/tmp/antu-chrome-${i}`)
   }
 })
 
-test('带上容器里需要的两条（CI 的 runner 是容器）', () => {
+test('the two flags a container needs are present (the CI runner is a container)', () => {
   const a = args(0)
-  assert.ok(a.includes('--no-sandbox'), '缺 --no-sandbox')
+  assert.ok(a.includes('--no-sandbox'), 'missing --no-sandbox')
   assert.ok(
     a.includes('--disable-dev-shm-usage'),
-    '缺 --disable-dev-shm-usage：容器里 /dev/shm 小，Chrome 会因此起不来',
+    'missing --disable-dev-shm-usage: /dev/shm is small in a container and Chrome fails to start',
   )
 })
 
-test('headless 写法原样传下去', () => {
+test('the headless variant is passed through as-is', () => {
   assert.ok(args(0).includes('--headless=old'))
   assert.ok(args(1).includes('--headless=new'))
-  assert.ok(!args(2).some((a) => a.startsWith('--headless')), '第三种不该带 headless')
+  assert.ok(!args(2).some((a) => a.startsWith('--headless')), 'the third variant must not carry headless')
 })
 
-test('窗口尺寸与首页仍在（这两条是原行为，别改丢了）', () => {
+test('window size and start page are still set (existing behaviour; do not drop them)', () => {
   const a = args(0)
   assert.equal(flagValue(a, '--window-size'), '--window-size=1600,900')
-  assert.ok(a.includes('--allow-file-access-from-files'), '缺了就打不开 file:// 的样本')
+  assert.ok(a.includes('--allow-file-access-from-files'), 'without it a file:// sample cannot be opened')
   assert.equal(a.at(-1), 'about:blank')
 })

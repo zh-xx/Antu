@@ -1,29 +1,34 @@
 // ============================================================
-//  src/shell/DiagramHeader.jsx —— 画布左上角的那一块
+//  src/shell/DiagramHeader.jsx —— the block at the top left of the canvas
 //
-//  最终产物是一份**自包含的 HTML**：一个 fact 生成一份 JSON，
-//  一份 JSON 生成一个 HTML。这个 HTML 打开就是一张图，没有"别的图"可换，
-//  所以这里不放任何文件/案子切换。
+//  The final product is a **self-contained HTML**: one fact produces one JSON,
+//  one JSON produces one HTML. That HTML opens as a single diagram, with no "other
+//  diagram" to switch to, so there is no file/case switcher here.
 //
-//  页面上唯一要能操作的是**渲染类型（小类）**：
-//  同一份 JSON 属于一个大类（fact），可以用该大类的任一小类来画，
-//  比如时间图、泳道图。切换它不用重新加载数据。
+//  The only thing on the page that must be operable is the **rendering kind (sub-type)**:
+//  one JSON belongs to one type (fact) and can be drawn with any sub-type of that type,
+//  such as the timeline or a swimlane diagram. Switching it does not reload the data.
 //
-//  三行：
-//    图的标题（JSON 的 title）
-//    大类 + 渲染类型切换器
-//    规模与时间跨度
+//  Three rows:
+//    the diagram title (the JSON `title`)
+//    the type + rendering kind switcher
+//    size and time span
 // ============================================================
 
 import { useEffect, useRef, useState } from 'react'
+import { useLang } from './LangContext.jsx'
 
 export default function DiagramHeader({ title, typeLabel, info = [], kinds = [], kind, onSelectKind }) {
-  // 只有一种渲染类型时不做成按钮：点开只有一个选项的菜单是白费一步
+  const { t } = useLang()
+
+  // With only one rendering kind, do not make it a button: opening a menu with
+  // a single option wastes a step
   const multi = kinds.length > 1
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
 
-  // 点外面关掉。用捕获阶段，免得被画布的 pointerdown 吃掉。
+  // Close on an outside click. Use the capture phase so the canvas's pointerdown
+  // does not swallow it.
   useEffect(() => {
     if (!open) return undefined
     const onDown = (e) => {
@@ -33,7 +38,10 @@ export default function DiagramHeader({ title, typeLabel, info = [], kinds = [],
     return () => document.removeEventListener('pointerdown', onDown, true)
   }, [open])
 
-  const kindLabel = kinds.find((k) => k.kind === kind)?.label
+  // The registry hands back wording keys; resolve them in the current language
+  // (see listKinds in core/registry.js)
+  const kindKey = kinds.find((k) => k.kind === kind)?.labelKey
+  const kindLabel = kindKey ? t(kindKey) : kind
 
   return (
     <div className="antu-header" ref={rootRef}>
@@ -70,7 +78,7 @@ export default function DiagramHeader({ title, typeLabel, info = [], kinds = [],
               }}
             >
               <span className="antu-header-tick">{k.kind === kind ? '✓' : ''}</span>
-              {k.label}
+              {t(k.labelKey)}
             </button>
           ))}
         </div>
