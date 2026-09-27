@@ -1,6 +1,8 @@
-# procedure · Schema draft v0
+# procedure · Schema v1
 
-> Status: **draft v0.1**. Fields and constraints are fixed as proposed this round; five items await the sponsor's position (see §7). Field names, enum values and requiredness can all change.
+> Status: **v1, confirmed** (sponsor, 2026-09). The five items in §7 were approved exactly as proposed, and the seven real contracts in §8 all pass without a new field. This is what the implementation follows.
+> Names, enum values and requiredness can still move if the renderer turns something up, but a change from here is a schema revision rather than a draft edit.
+> The file keeps the `schema-draft` name for consistency with the fact one (and because the tooling refers to it by that name); the status is what says v1.
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (different domain semantics → controlled enum, no new top-level type).
 > Scope: procedure = **a path and its possible branches**. What has already happened → `fact`; who stands in what relation to whom → `relationship`; norms + facts → a conclusion → `justification`.
 > The first sub-type: `flow` (flowchart). This draft serves this one top-level type only; the sub-type split is in §6.
@@ -568,7 +570,10 @@ and hard-coding would block legal data, while not hard-coding still lets the age
 
 ---
 
-## 7. Five items for the sponsor to confirm
+## 7. The five items, as confirmed
+
+**Confirmed as proposed (sponsor, 2026-09).** Kept here with the reasoning, because each one had a
+real alternative and the reasoning is what makes a later change cheap to judge.
 
 | # | Question | What this draft says | If rejected, what changes |
 |---|---|---|---|

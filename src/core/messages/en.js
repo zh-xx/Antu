@@ -137,6 +137,8 @@ export const en = {
     `${at}: \`summary\` is too wide for one line (about ${actual} full-width characters, limit ${max}); shorten it or move the text to detail`,
   'err.groupNeedsOneActor': ({ at, groupId, n }) =>
     `${at}: a side group ("${groupId}") must name exactly one party (currently ${n}); events that involve no particular party belong in the centre group or should omit groupId`,
+  'err.multiActorNeedsAxis': ({ at, n, groupId }) =>
+    `${at}: an event with ${n} parties belongs on the centre axis, but groupId points at a side group ("${groupId}"); the two contradict each other`,
   'err.specNotObject': 'a spec must be a JSON object',
   'err.envelopeTypeRequired': 'missing required field `type` (the engine uses it to pick a renderer)',
   'err.envelopeTypeString': '`type` must be a string',

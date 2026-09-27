@@ -239,3 +239,77 @@ test('agent examples: no hints such as several entries (copying them hits no tra
     assert.deepEqual(hintsOfProcedure(spec), [], `${f} should produce no hints`)
   }
 })
+
+// ── Link geometry ────────────────────────────────────────────
+// The renderer will draw connections from `points` verbatim, so the contract has to hold here:
+// a link touches both boxes, and a back edge is routed outside the whole node field. Getting
+// this wrong looks like a line floating in mid-air or crossing a node, which shows up only in a
+// picture — exactly the kind of defect the unit layer should have caught first.
+
+const withBoxes = (f, dir) => {
+  const g = buildProcedureGraph(load(f), {}, undefined, dir)
+  const box = new Map(
+    g.nodes.map((n) => [n.id, { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }]),
+  )
+  return { g, box }
+}
+
+const onBoxBoundary = (p, b) => {
+  const [x, y] = p
+  const within = (v, lo, hi) => v >= lo - 0.5 && v <= hi + 0.5
+  if (!within(x, b.x, b.x + b.w) || !within(y, b.y, b.y + b.h)) return false
+  return (
+    Math.abs(x - b.x) < 0.5 ||
+    Math.abs(x - (b.x + b.w)) < 0.5 ||
+    Math.abs(y - b.y) < 0.5 ||
+    Math.abs(y - (b.y + b.h)) < 0.5
+  )
+}
+
+test('every link begins and ends on the boundary of its two nodes', () => {
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const { g, box } = withBoxes(f, dir)
+      for (const c of g.connections) {
+        const first = c.points[0]
+        const last = c.points[c.points.length - 1]
+        assert.ok(onBoxBoundary(first, box.get(c.from)), `${f}/${dir}: ${c.id} starts off the source box`)
+        assert.ok(onBoxBoundary(last, box.get(c.to)), `${f}/${dir}: ${c.id} ends off the target box`)
+        assert.ok(c.d.startsWith('M '), `${f}/${dir}: ${c.id} has no path`)
+        for (const [x, y] of c.points) {
+          assert.ok(Number.isFinite(x) && Number.isFinite(y), `${f}/${dir}: ${c.id} has a bad point`)
+        }
+      }
+    }
+  }
+})
+
+test('back edges are routed outside every node, so they cross nothing', () => {
+  let checked = 0
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const { g } = withBoxes(f, dir)
+      const back = g.connections.filter((c) => c.kind === 'back')
+      if (back.length === 0) continue
+      const maxRight = Math.max(...g.nodes.map((n) => n.position.x + n.data.w))
+      const maxBottom = Math.max(...g.nodes.map((n) => n.position.y + n.data.h))
+      for (const c of back) {
+        const lane = dir === 'vertical' ? c.points[1][0] : c.points[1][1]
+        const limit = dir === 'vertical' ? maxRight : maxBottom
+        assert.ok(lane > limit, `${f}/${dir}: ${c.id} runs inside the node field (lane ${lane} <= ${limit})`)
+        checked += 1
+      }
+    }
+  }
+  assert.ok(checked > 20, `the corpus should contain back edges to check, saw ${checked}`)
+})
+
+test('a link carrying several conditions merges them into one label', () => {
+  const g = buildProcedureGraph(load('03-labour-outsourcing-contract.zh-CN.json'))
+  const merged = g.connections.filter((c) => c.merged > 1)
+  assert.equal(merged.length, 2)
+  for (const c of merged) {
+    assert.ok(c.label.includes(' / '), 'merged conditions are joined with " / "')
+    assert.equal(c.points.length, 4, 'a merged branch link is still one orthogonal polyline')
+  }
+})
