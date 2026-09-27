@@ -499,9 +499,15 @@ Done     layering (longest path), back-edge detection and routing round the outs
          the React renderer (six shapes by kind, three colours by outcome, hover / pinned
          overlay with provenance), stage bands cut along the main line, the control capsule
          (§6.2), image export
-Not done crossing minimisation; branch and back-edge exits that run behind neighbouring nodes
-         of the same layer; condition labels only avoid their siblings (each sits on its own
-         target's approach), not every other line; **placing note nodes** (the first version
+         link routing (route.js): no link runs behind a node it does not belong to, and no two
+         different links lie on top of each other (both pinned by unit tests on all 7 contracts,
+         both orientations); long forward links run down node-free channels between columns;
+         back edges loop out of the nearest side and edges into one target share a lane
+Not done crossing minimisation / ordering within a layer. It is now the main limit: when a
+         back edge's target has neighbours on both sides in its layer, the edge cannot come in
+         from the side and takes the long way (out of the bottom, in at the top, joining the
+         main line); in 01 the three delay loops of each stage do this. Condition labels only
+         avoid their siblings, not every other line. **Placing note nodes** (the first version
          treats them as ordinary nodes on the first layer; they take no part in the flow and
          their position is still not good)
 ```

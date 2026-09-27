@@ -28,17 +28,35 @@ export const DIAMOND_H = 112
 /** Vertical spacing between layers (room for the condition labels beside the edges) */
 export const GAP_Y = 64
 
+/**
+ * The same gap in a horizontal diagram. Wider, because a condition label there has to fit
+ * *between* two layers, left of its target, written across the page: at 64 the labels ran
+ * under the previous column's nodes and were cut off.
+ */
+export const GAP_Y_H = 120
+
+/** The gap between layers for an orientation */
+export const layerGap = (vertical) => (vertical ? GAP_Y : GAP_Y_H)
+
 /** Spacing between nodes sitting side by side within one layer */
 export const GAP_X = 36
 
 /** Padding around the content. The image export adds more on top; this one keeps the diagram itself off the edge */
 export const PAD = 40
 
-/** How back edges go round: each further back edge gives up this much more room outwards */
-export const BACK_LANE_W = 26
+/**
+ * Distance between two lines that share a gap or a channel (route.js). Small enough that three
+ * tracks fit either side of a gutter's centre between two diamonds (GAP_X / 2 = 18 each way),
+ * large enough that two parallel lines still read as two.
+ */
+export const TRACK = 6
 
-/** The starting distance left between a back edge and the main line */
-export const BACK_LANE_START = 34
+/**
+ * Room kept outside the outermost columns, on both sides across the flow: the outer gutters are
+ * channels too (a back edge from the rightmost column needs somewhere to run), so they need
+ * room for their tracks.
+ */
+export const OUTER = 24
 
 /** Corner radius of an orthogonal link where it turns */
 export const CORNER_R = 10

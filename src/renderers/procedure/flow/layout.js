@@ -20,23 +20,22 @@
 //      alternating right and left
 //    ⑤ compute coordinates (axis-agnostic: a vertical layout runs layers
 //      downwards, a horizontal one to the right)
-//    ⑥ link: main edges connect directly, branches take orthogonal polylines,
-//      back edges go round the outside; several edges into the same target merge
+//    ⑥ link: several edges into the same target merge; then route.js lays every
+//      link on node-free gaps and channels (no link ever runs behind a node)
+//    ⑦ stage bands, cut along the main line
 //
-//  **What it does not do**: crossing minimisation, orthogonal edge avoidance,
-//  merging several main-line nodes in one layer. The real corpus has a longest
-//  chain of 20 layers and a maximum out-degree of 7, and this is enough; if it
-//  ever is not, that can be discussed then.
+//  **What it does not do**: crossing minimisation, merging several main-line
+//  nodes in one layer.
 // ============================================================
 
 import { validateProcedure, hintsOfProcedure } from './rules.js'
+import { routeLinks } from './route.js'
 import {
   PAD,
-  GAP_Y,
+  layerGap,
   GAP_X,
   CORNER_R,
-  BACK_LANE_W,
-  BACK_LANE_START,
+  OUTER,
   STAGE_GUTTER_V,
   STAGE_GUTTER_H,
   sizeOf,
@@ -226,8 +225,9 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
   const allCols = rows.flatMap((r) => [...r.col.values()])
   const minCol = Math.min(...allCols)
   const maxCol = Math.max(...allCols)
-  const acrossCenter = (c) => PAD + gutter + (c - minCol) * colPitch + colPitch / 2
+  const acrossCenter = (c) => PAD + gutter + OUTER + (c - minCol) * colPitch + colPitch / 2
 
+  const gap = layerGap(vertical)
   const placed = new Map()
   let alongPos = PAD
   for (const r of rows) {
@@ -248,10 +248,10 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       })
     }
     r.along = alongPos
-    alongPos += r.extent + GAP_Y
+    alongPos += r.extent + gap
   }
-  const contentAlong = alongPos - GAP_Y + PAD
-  const contentAcross = PAD * 2 + gutter + (maxCol - minCol + 1) * colPitch - GAP_X
+  const contentAlong = alongPos - gap + PAD
+  const contentAcross = PAD * 2 + gutter + OUTER * 2 + (maxCol - minCol + 1) * colPitch
   const size = vertical
     ? { width: contentAcross, height: contentAlong }
     : { width: contentAlong, height: contentAcross }
@@ -264,144 +264,69 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     grouped.get(k).push(e)
   }
 
-  const maxRight = Math.max(...[...placed.values()].map((p) => p.x + p.w))
-  const maxBottom = Math.max(...[...placed.values()].map((p) => p.y + p.h))
-  const backList = spec.edges.filter((e) => back.has(keyOf(e)))
-  const laneIndex = new Map()
-  backList.forEach((e) => {
-    const k = `${e.from}|${e.to}`
-    if (!laneIndex.has(k)) laneIndex.set(k, laneIndex.size)
-  })
-
   // An edge is on the main line when it joins two consecutive main-line nodes. Reading it off the
   // spine rather than off `main: true` matters when nothing is marked: the engine inferred the
   // spine in step ③, and the highlight must follow what was inferred, not only what was written.
   const spineNext = new Map(spine.slice(0, -1).map((id, i) => [id, spine[i + 1]]))
 
-  // The back-edge lanes run outside the node field, so the content box has to grow to hold
-  // them (plus the padding): the viewport fits to `size` and the image export crops to it,
-  // so a lane left outside would be cut off.
-  if (laneIndex.size > 0) {
-    const lastLane = BACK_LANE_START + (laneIndex.size - 1) * BACK_LANE_W + PAD
-    if (vertical) size.width = Math.max(size.width, maxRight + lastLane)
-    else size.height = Math.max(size.height, maxBottom + lastLane)
+  // Boxes in along/across coordinates, the language route.js speaks
+  const rowIndex = new Map(rows.map((r, i) => [r.layer, i]))
+  const boxes = new Map(
+    [...placed.entries()].map(([id, p]) => {
+      const a0 = vertical ? p.y : p.x
+      const c0 = vertical ? p.x : p.y
+      const al = vertical ? p.h : p.w
+      const ac = vertical ? p.w : p.h
+      // tip: a diamond meets its links only at its points, so a link may not land beside its centre
+      const tip = byId.get(id).kind === 'decision'
+      return [id, { a0, a1: a0 + al, c0, c1: c0 + ac, am: a0 + al / 2, cm: p.ac, row: rowIndex.get(p.layer), tip }]
+    }),
+  )
+  // Channels: every column centre, and the middle of every gutter (one outside each edge too)
+  const channels = []
+  for (let c = minCol - 1; c <= maxCol; c += 1) {
+    if (c >= minCol) channels.push(acrossCenter(c))
+    channels.push(acrossCenter(c) + colPitch / 2)
   }
 
-  const connections = []
-  for (const [k, group] of grouped) {
+  const groups = [...grouped.values()].map((group) => {
     const { from, to } = group[0]
-    const s = placed.get(from)
-    const t = placed.get(to)
     const isBack = back.has(keyOf(group[0]))
     const labels = group.map((e) => e.condition).filter(Boolean)
-    const label = labels.length ? labels.join(' / ') : ''
+    return { from, to, isBack, merged: group.length, label: labels.length ? labels.join(' / ') : '' }
+  })
+  const routed = routeLinks({ groups, boxes, rows, channels, vertical, gap })
 
-    // labelAnchor says how the label sits on labelAt (the renderer only reads it, never guesses):
-    //   rise    starts just after the point and grows upwards from it (the last drop into a
-    //           target: a long label must never run down into the box it points at)
-    //   over    centred, sitting on top of the point (above a horizontal segment)
-    //   center  centred on the point, masking the line under it (on a back-edge lane)
-    let points
-    let labelAt
-    let labelAnchor
-
-    if (isBack) {
-      // round the outside: the exit is on the source node's side along the layer
-      // direction, pulled back along an outside lane
-      const lane = (laneIndex.get(k) ?? 0)
-      if (vertical) {
-        const lx = maxRight + BACK_LANE_START + lane * BACK_LANE_W
-        const sy = s.y + s.h / 2
-        const ty = t.y + t.h / 2
-        points = [
-          [s.x + s.w, sy],
-          [lx, sy],
-          [lx, ty],
-          [t.x + t.w, ty],
-        ]
-        labelAt = { x: lx, y: (sy + ty) / 2 }
-        labelAnchor = 'center'
-      } else {
-        const ly = maxBottom + BACK_LANE_START + lane * BACK_LANE_W
-        const sx = s.x + s.w / 2
-        const tx = t.x + t.w / 2
-        points = [
-          [sx, s.y + s.h],
-          [sx, ly],
-          [tx, ly],
-          [tx, t.y + t.h],
-        ]
-        labelAt = { x: (sx + tx) / 2, y: ly }
-        labelAnchor = 'center'
-      }
-    } else if (vertical) {
-      const sx = s.x + s.w / 2
-      const tx = t.x + t.w / 2
-      const sBottom = s.y + s.h
-      const tTop = t.y
-      if (Math.abs(sx - tx) < 0.5) {
-        points = [
-          [sx, sBottom],
-          [sx, tTop],
-        ]
-        // Just above the target, like the elbows below: the middle of the gap is where sibling
-        // branches turn, so a label there would sit on their horizontal run
-        labelAt = { x: sx + 6, y: tTop - 3 }
-        labelAnchor = 'rise'
-      } else {
-        const yMid = (sBottom + tTop) / 2
-        points = [
-          [sx, sBottom],
-          [sx, yMid],
-          [tx, yMid],
-          [tx, tTop],
-        ]
-        // On the target's own drop, not the middle of the shared run: branches leaving one
-        // source share that run, so labels in its middle land on top of each other, while each
-        // branch drops into its own column
-        labelAt = { x: tx + 6, y: tTop - 3 }
-        labelAnchor = 'rise'
-      }
-    } else {
-      const sy = s.y + s.h / 2
-      const ty = t.y + t.h / 2
-      const sRight = s.x + s.w
-      const tLeft = t.x
-      if (Math.abs(sy - ty) < 0.5) {
-        points = [
-          [sRight, sy],
-          [tLeft, ty],
-        ]
-        // The second half of the run, for the same reason as the vertical case: siblings turn
-        // at the middle
-        labelAt = { x: ((sRight + tLeft) / 2 + tLeft) / 2, y: sy - 4 }
-        labelAnchor = 'over'
-      } else {
-        const xMid = (sRight + tLeft) / 2
-        points = [
-          [sRight, sy],
-          [xMid, sy],
-          [xMid, ty],
-          [tLeft, ty],
-        ]
-        labelAt = { x: (xMid + tLeft) / 2, y: ty - 4 }
-        labelAnchor = 'over'
-      }
+  // labelAnchor says how the label sits on labelAt (the renderer only reads it, never guesses):
+  //   rise    starts just right of the point and grows upwards (vertical: the last drop into a
+  //           target, so a long label never runs down into the box it points at)
+  //   lead    ends just before the point and sits above it (horizontal: the same, turned)
+  //   center  centred on the point, masking the line under it (on a back edge's lane)
+  const connections = groups.map((g, i) => {
+    const r = routed[i]
+    return {
+      id: `c:${g.from}->${g.to}`,
+      from: g.from,
+      to: g.to,
+      kind: g.isBack ? 'back' : spineNext.get(g.from) === g.to ? 'main' : 'branch',
+      merged: g.merged,
+      points: r.points,
+      d: toPathD(r.points),
+      label: g.label,
+      labelAt: r.labelAt,
+      labelAnchor: r.labelAnchor,
     }
+  })
 
-    connections.push({
-      id: `c:${from}->${to}`,
-      from,
-      to,
-      kind: isBack ? 'back' : spineNext.get(from) === to ? 'main' : 'branch',
-      merged: group.length,
-      points,
-      d: toPathD(points),
-      label,
-      labelAt,
-      labelAnchor,
-    })
+  // The content box holds what was drawn: a line in an outer channel, or in the gap after the
+  // last layer, must not be cropped by the viewport fit or the image export
+  for (const c of connections) {
+    for (const [x, y] of c.points) {
+      size.width = Math.max(size.width, x + PAD)
+      size.height = Math.max(size.height, y + PAD)
+    }
   }
+  const backList = spec.edges.filter((e) => back.has(keyOf(e)))
 
   // ⑦ stage bands. Cut **along the main line**, not per node: a stage's branch nodes reach into the
   // next stage's layers (a delay branch hangs below the step that started it), so bands taken per
@@ -412,7 +337,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
   const stageBands = []
   if (showStages) {
     const rowOf = new Map(rows.map((r, i) => [r.layer, i]))
-    const edgeOf = (rowIdx) => (rowIdx <= 0 ? PAD : rows[rowIdx].along - GAP_Y / 2)
+    const edgeOf = (rowIdx) => (rowIdx <= 0 ? PAD : rows[rowIdx].along - gap / 2)
     const endAlong = contentAlong - PAD
     let cur = null
     for (const id of spine) {

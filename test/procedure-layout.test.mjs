@@ -284,24 +284,87 @@ test('every link begins and ends on the boundary of its two nodes', () => {
   }
 })
 
-test('back edges are routed outside every node, so they cross nothing', () => {
-  let checked = 0
+/**
+ * Which nodes a polyline runs behind. A segment may touch its own two boxes only at its ends
+ * (it leaves one boundary and arrives at another); any other box it enters, it is hidden by.
+ */
+const runsBehind = (c, box) => {
+  const hits = []
+  for (let i = 0; i < c.points.length - 1; i += 1) {
+    const [[x1, y1], [x2, y2]] = [c.points[i], c.points[i + 1]]
+    const [lx, hx, ly, hy] = [Math.min(x1, x2), Math.max(x1, x2), Math.min(y1, y2), Math.max(y1, y2)]
+    for (const [id, b] of box) {
+      if (hx > b.x + 1 && lx < b.x + b.w - 1 && hy > b.y + 1 && ly < b.y + b.h - 1) hits.push(id)
+    }
+  }
+  return hits
+}
+
+test('no link runs behind a node: every real contract, both orientations', () => {
+  // The first rendering had 10 of 37 links in 01 and 8 of 23 in 03 disappearing under boxes
+  // they did not belong to. The reader cannot follow such a line, so this is a hard zero.
   for (const f of files) {
     for (const dir of ['vertical', 'horizontal']) {
-      const { g } = withBoxes(f, dir)
-      const back = g.connections.filter((c) => c.kind === 'back')
-      if (back.length === 0) continue
-      const maxRight = Math.max(...g.nodes.map((n) => n.position.x + n.data.w))
-      const maxBottom = Math.max(...g.nodes.map((n) => n.position.y + n.data.h))
-      for (const c of back) {
-        const lane = dir === 'vertical' ? c.points[1][0] : c.points[1][1]
-        const limit = dir === 'vertical' ? maxRight : maxBottom
-        assert.ok(lane > limit, `${f}/${dir}: ${c.id} runs inside the node field (lane ${lane} <= ${limit})`)
-        checked += 1
+      const { g, box } = withBoxes(f, dir)
+      for (const c of g.connections) {
+        assert.deepEqual(runsBehind(c, box), [], `${f}/${dir}: ${c.id} runs behind these nodes`)
       }
     }
   }
-  assert.ok(checked > 20, `the corpus should contain back edges to check, saw ${checked}`)
+})
+
+test('no two different links lie on top of each other', () => {
+  // Lines may coincide only where they are meant to: the fork shared by one source's branches,
+  // the lane shared by back edges into one target. Anything else is two lines drawn as one.
+  const segs = (c) =>
+    c.points.slice(1).map((p, i) => {
+      const q = c.points[i]
+      return q[0] === p[0]
+        ? { axis: 'v', at: q[0], lo: Math.min(q[1], p[1]), hi: Math.max(q[1], p[1]) }
+        : { axis: 'h', at: q[1], lo: Math.min(q[0], p[0]), hi: Math.max(q[0], p[0]) }
+    })
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), {}, undefined, dir)
+      const cs = g.connections.map((c) => ({ c, s: segs(c) }))
+      for (let i = 0; i < cs.length; i += 1) {
+        for (let j = i + 1; j < cs.length; j += 1) {
+          const [A, B] = [cs[i].c, cs[j].c]
+          if (A.from === B.from || A.to === B.to) continue
+          for (const a of cs[i].s) {
+            for (const b of cs[j].s) {
+              const same = a.axis === b.axis && Math.abs(a.at - b.at) < 0.5
+              const shared = Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo)
+              assert.ok(!(same && shared > 2), `${f}/${dir}: ${A.id} and ${B.id} overlap for ${shared}px`)
+            }
+          }
+        }
+      }
+    }
+  }
+})
+
+test('back edges into one target share a lane wherever they can', () => {
+  // 01 has 12 back edges: drawn one lane each they made a wall of parallel dashes. Sharing is
+  // only possible where both can reach the lane without crossing a node, so the check is that
+  // bundling happens, not that every target ends up with exactly one lane.
+  const g = buildProcedureGraph(load('01-software-development-contract.zh-CN.json'))
+  const back = g.connections.filter((c) => c.kind === 'back')
+  assert.equal(back.length, 12)
+  // The lane is the longest run along the flow (vertical here)
+  const laneOf = (c) => {
+    let best = null
+    c.points.slice(1).forEach((p, i) => {
+      const q = c.points[i]
+      if (q[0] === p[0] && (!best || Math.abs(p[1] - q[1]) > best.len)) best = { x: p[0], len: Math.abs(p[1] - q[1]) }
+    })
+    return `${c.to}@${best?.x}`
+  }
+  const lanes = new Set(back.map(laneOf))
+  assert.ok(lanes.size <= 8, `12 back edges should bundle into far fewer lanes, got ${lanes.size}`)
+  // n-15 and n-17 both return to n-3 from the right-hand column: one lane, not two
+  const [a, b] = ['n-15', 'n-17'].map((id) => back.find((c) => c.from === id && c.to === 'n-3'))
+  assert.equal(laneOf(a), laneOf(b))
 })
 
 test('a link carrying several conditions merges them into one label', () => {
@@ -394,7 +457,7 @@ test('every condition label says how it sits on its point', () => {
     for (const dir of ['vertical', 'horizontal']) {
       const g = buildProcedureGraph(load(f), {}, undefined, dir)
       for (const c of g.connections) {
-        assert.ok(['rise', 'over', 'center'].includes(c.labelAnchor), `${f}/${dir}: ${c.id} anchor ${c.labelAnchor}`)
+        assert.ok(['rise', 'lead', 'center'].includes(c.labelAnchor), `${f}/${dir}: ${c.id} anchor ${c.labelAnchor}`)
         assert.ok(Number.isFinite(c.labelAt.x) && Number.isFinite(c.labelAt.y), `${f}/${dir}: ${c.id} label point`)
       }
     }
