@@ -46,7 +46,7 @@ import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
 import { readExample, listExamples, listAgentGuides, describeSchema, layoutReport, formatLayoutReport,
   readAgentGuide,
 } from '../mcp/engine.mjs'
-import { listKnowledgeTypes } from '../../src/core/registry.js'
+import { listKnowledgeTypes, layoutOf, layoutKindsOf } from '../../src/core/registry.js'
 import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.js'
 import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
@@ -58,6 +58,25 @@ const shotOnly = argv.includes('--shot-only')
 
 const OUT = join(REPO, '.verify')
 const SHOT = join(OUT, 'screenshot.png')
+
+/**
+ * The fact agent example several checks below are pinned to: the geometry report reads it, and
+ * the field-table/validator parity check strips its required fields. Both are fact-specific on
+ * purpose (the geometry report's text, the fact field table), so the path is named here rather
+ * than reached for through a loop variable.
+ */
+const FACT_AGENT_SAMPLE = join(REPO, 'examples/agent/fact/1-minimal.en.json')
+
+/**
+ * Every message prefix whose entries are **fixed English** and therefore copied into zh.js,
+ * never translated: validation errors and hints, which are read by the agent.
+ * A new major type's keys get their own prefix, and that prefix belongs in this list
+ * (zh.js spreads them; see the note at the end of that file).
+ *
+ * Declared up here on purpose: the main flow below calls checkMessages() before this point in
+ * file order, and a `const` further down would still be in its temporal dead zone.
+ */
+const FIXED_ENGLISH_PREFIXES = ['err.', 'perr.', 'phint.']
 
 // ---------------------------------------------------------------
 // Minimal assertions and reporting
@@ -217,10 +236,22 @@ function checkData() {
       bad(`example ${f} validation`, errs[0])
       continue
     }
-    for (const view of viewsOf(spec)) {
+    // Ask the registry for this type's layout, never hard-wire fact. Two reasons: procedure has
+    // no views, and its layout takes the same four arguments with the view simply unused.
+    // Hard-wiring fact here is how this loop used to count every procedure example as
+    // "does not fit (expected)" without anyone noticing: viewsOf handed it a fact "all" view and
+    // the fact grid ran on a spec with no slots, so it reported an error and moved on.
+    const layout = layoutOf(spec.type, layoutKindsOf(spec.type)[0])
+    if (!layout) {
+      bad(`example ${f}: no layout registered`, `type=${spec.type}`)
+      continue
+    }
+    const units = spec.type === 'fact' ? viewsOf(spec) : [undefined]
+    const fields = spec.type === 'fact' ? { summary: true } : {}
+    for (const view of units) {
       views += 1
       for (const o of ['vertical', 'horizontal']) {
-        const g = buildFactGraph(spec, { summary: true }, view, o)
+        const g = layout(spec, fields, view, o)
         combos += 1
         if (g.errors.length) {
           blocked += 1
@@ -235,25 +266,99 @@ function checkData() {
     }
   }
   ok(`all ${files.length} examples pass validation`)
-  ok(`${views} views × 2 directions = ${combos} combinations all lay out`, blocked ? `${blocked} of them do not fit (expected)` : '')
+  ok(
+    `${views} views × 2 directions = ${combos} combinations all lay out`,
+    blocked ? `${blocked} of them do not fit (expected)` : '',
+  )
 
   // The agent examples are "data that runs", not documentation: schema changes make them fail.
   // This check is where the design of item 14 lands, keeping them from drifting silently.
-  const agentDir = join(REPO, 'examples/agent/fact')
-  if (existsSync(agentDir)) {
-    const files2 = readdirSync(agentDir).filter((f) => f.endsWith('.json'))
-    let bad = 0
-    let blocked = 0
-    for (const f of files2) {
+  // It runs for **every** major type, dispatching through the registry, for the same reason as
+  // the loop above.
+  for (const { type } of listKnowledgeTypes()) {
+    const agentDir = join(REPO, 'examples/agent', type)
+    if (!existsSync(agentDir)) continue
+    const agentFiles = readdirSync(agentDir).filter((f) => f.endsWith('.json'))
+    let badAgent = 0
+    let blockedAgent = 0
+    for (const f of agentFiles) {
       const spec = JSON.parse(readFileSync(join(agentDir, f), 'utf8'))
-      if (validateSpec(spec).length) bad += 1
-      for (const v of viewsOf(spec)) {
-        if (buildFactGraph(spec, { summary: true }, v).errors.length) blocked += 1
+      if (validateSpec(spec).length) badAgent += 1
+      const layout = layoutOf(spec.type, layoutKindsOf(spec.type)[0])
+      if (!layout) continue
+      if (layout(spec).errors.length) blockedAgent += 1
+    }
+    truthy(`all ${agentFiles.length} agent examples of ${type} pass validation`, badAgent === 0)
+    truthy(
+      `every ${type} agent example lays out (copying one will not hit "does not fit")`,
+      blockedAgent === 0,
+    )
+  }
+
+  // Examples come in pairs: X.en.json and X.zh-CN.json. **Only the text may differ**; the
+  // structure has to be identical, or one half quietly drifts (a link fixed on one side only,
+  // a node added to one language). Nothing else in the toolchain compares the two.
+  const pairs = []
+  for (const { type } of listKnowledgeTypes()) {
+    for (const base of [`examples/${type}`, `examples/agent/${type}`]) {
+      const dir = join(REPO, base)
+      if (!existsSync(dir)) continue
+      const names = readdirSync(dir)
+      for (const n of names.filter((x) => x.endsWith('.en.json'))) {
+        const stem = n.slice(0, -'.en.json'.length)
+        const zhName = `${stem}.zh-CN.json`
+        if (!names.includes(zhName)) {
+          bad(`pair ${base}/${stem}`, 'the .zh-CN half is missing')
+          continue
+        }
+        pairs.push([`${base}/${n}`, `${base}/${zhName}`])
       }
     }
-    truthy(`all ${files2.length} agent examples pass validation`, bad === 0)
-    truthy('every agent example view fits (copying one will not hit "does not fit")', blocked === 0)
   }
+  truthy('examples come in pairs (.en and .zh-CN)', pairs.length >= 20, `${pairs.length} pairs`)
+  // Structural projection: ids, kinds, links, flags. **Never the text** — party roles, edge
+  // conditions and view labels are translated, so they differ by design and comparing them would
+  // make every pair look drifted.
+  const structureOf = (spec) =>
+    JSON.stringify({
+      actors: (spec.actors ?? []).map((a) => a.id),
+      stages: (spec.stages ?? []).map((s) => s.id),
+      sources: (spec.sources ?? []).map((s) => [s.id, s.type]),
+      nodes: (spec.nodes ?? []).map((n) => [
+        n.id,
+        n.kind,
+        n.outcome ?? '',
+        (n.actorIds ?? []).join(','),
+        n.stageId ?? '',
+        (n.sourceIds ?? []).join(','),
+      ]),
+      edges: (spec.edges ?? []).map((e) => [e.from, e.to, e.main ? 1 : 0]),
+      views: (spec.views ?? []).map((v) => [
+        v.splitBy,
+        (v.side1?.actors ?? []).join(','),
+        (v.side2?.actors ?? []).join(','),
+      ]),
+      slots: (spec.slots ?? []).map((s) =>
+        (s.events ?? []).map((e) => [
+          e.id,
+          (e.actorIds ?? []).join(','),
+          e.groupId ?? '',
+          e.approx ? 1 : 0,
+          e.dateEnd ? 1 : 0,
+          (e.sourceIds ?? []).join(','),
+        ]),
+      ),
+    })
+  const drifted = pairs.filter(([a, b]) => {
+    const A = JSON.parse(readFileSync(join(REPO, a), 'utf8'))
+    const B = JSON.parse(readFileSync(join(REPO, b), 'utf8'))
+    return structureOf(A) !== structureOf(B)
+  })
+  eq(
+    'the two halves of every pair share one structure (only the text differs)',
+    drifted.map(([a]) => a),
+    [],
+  )
 
   // The spec for the agent and the design document for humans must stay separate. This guards
   // against "handing the human documents to the agent": those documents explain "why it was
@@ -264,11 +369,11 @@ function checkData() {
   // Look these up with the directory included, so that a generic word like "schema-draft" does
   // not cause a false hit. The list carries no extensions, so a rename (X.md → X.zh-CN.md) does
   // not affect it. **A new major type's design draft must be added here too**: miss it and that
-  // one has no leak check. When the procedure design draft is committed, add
-  // 'spec/procedure/schema-draft' here: leaving it out is how it escaped the check before.
+  // one has no leak check. spec/procedure/schema-draft was missed once, found only when
+  // procedure was translated.
   const humanDocs = ['spec/fact/schema-draft', 'spec/fact/timeline-rules', 'spec/fact/rendering',
     'spec/source-schema-draft', 'spec/v0-architecture', 'spec/known-issues', 'spec/mcp-server',
-    'spec/react-flow-features']
+    'spec/react-flow-features', 'spec/procedure/schema-draft']
   const leaked2 = humanDocs.filter((n) => serverSrc.includes(n))
   truthy('no human-facing design document leaks into MCP', leaked2.length === 0)
   if (leaked2.length) console.log('     leaked in: ' + leaked2.join(', '))
@@ -298,7 +403,7 @@ function checkData() {
   // "a string came back": the fit zoom and the orientation advice are exactly what an agent reads
   // before deciding whether the diagram is too wide. See tools/mcp/engine.mjs formatLayoutReport.
   const lay = layoutReport(
-    JSON.parse(readFileSync(join(agentDir, '1-minimal.en.json'), 'utf8')),
+    JSON.parse(readFileSync(FACT_AGENT_SAMPLE, 'utf8')),
     { fields: { summary: true } },
   )
   truthy('the geometry report can be computed', lay.ok === true, lay.ok ? '' : String(lay.reason))
@@ -399,7 +504,7 @@ function checkData() {
   // validator. The method: take an example that passes validation and strip the "required"
   // fields one at a time, and the validator must report an error. That makes it impossible for
   // the field table to drift silently, without rewriting the validation rules as data.
-  const base = JSON.parse(readFileSync(join(agentDir, '1-minimal.en.json'), 'utf8'))
+  const base = JSON.parse(readFileSync(FACT_AGENT_SAMPLE, 'utf8'))
   // The required marker in the field table: `FACT_FIELDS` was changed to 'yes' with the
   // internationalisation. Both 'yes' and '是' are accepted here, and **the compatibility is
   // not superfluous**: while the English switch was being made, this accepted only '是',
@@ -1288,13 +1393,39 @@ function checkMessages() {
   const missingInEn = [...zk].filter((k) => !ek.has(k))
   eq('zh and en keys correspond one to one (nothing missing in zh)', missingInZh, [])
   eq('zh and en keys correspond one to one (nothing missing in en)', missingInEn, [])
-  // Error messages are fixed in English: err.* must be the same value in both dictionaries,
-  // never written twice
+  // Error messages are fixed in English: the same value in both dictionaries, never written twice
   const drift = [...ek]
-    .filter((k) => k.startsWith('err.'))
-    .filter((k) => (typeof en[k] === 'function' ? en[k] !== zh[k] : en[k] !== zh[k]))
+    .filter((k) => FIXED_ENGLISH_PREFIXES.some((p) => k.startsWith(p)))
+    .filter((k) => en[k] !== zh[k])
   eq('validation errors are identical in both dictionaries (errors are fixed English, they do not follow the interface language)', drift, [])
   truthy('the number of message keys is sensible', ek.size > 40, `${ek.size} entries`)
+
+  // Every key the source asks for has to exist. A key that does not raises no error anywhere:
+  // translate() hands the key straight back, so both the interface and the agent see
+  // "perr.badKind" and read it as the message. It happened once: a translation pass rewrote the
+  // procedure validation errors as keys and added none of them to the catalogue, and only the
+  // procedure unit tests noticed, indirectly. This check is where that class of slip dies.
+  const used = new Set()
+  const collect = (dir) => {
+    for (const e of readdirSync(join(REPO, dir), { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`
+      if (e.isDirectory()) {
+        collect(p)
+        continue
+      }
+      if (!/\.(js|jsx|mjs)$/.test(e.name)) continue
+      const text = readFileSync(join(REPO, p), 'utf8')
+      for (const m of text.matchAll(/\b(?:tEn|t)\(\s*'([A-Za-z][\w.]*)'/g)) used.add(m[1])
+      for (const m of text.matchAll(/\btranslate\(\s*[^,()]+,\s*'([A-Za-z][\w.]*)'/g)) used.add(m[1])
+    }
+  }
+  for (const d of ['src', 'tools']) collect(d)
+  truthy('message keys are actually used', used.size > 20, `${used.size} keys found in the source`)
+  eq(
+    'every message key the source asks for exists in the dictionary',
+    [...used].filter((k) => !ek.has(k)).sort(),
+    [],
+  )
 }
 
 const data = checkData()

@@ -15,5 +15,7 @@
 
 import { registerKnowledge } from '../core/registry.js'
 import { factKnowledge } from './fact/schema.js'
+import { procedureKnowledge } from './procedure/schema.js'
 
 registerKnowledge('fact', factKnowledge)
+registerKnowledge('procedure', procedureKnowledge)

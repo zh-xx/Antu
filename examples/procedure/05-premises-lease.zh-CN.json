@@ -1,0 +1,95 @@
+{
+  "type": "procedure",
+  "title": "房屋租赁合同 · 履行流程",
+  "domain": "contract-performance",
+  "actors": [
+    { "id": "a-1", "name": "甲方", "role": "出租方" },
+    { "id": "a-2", "name": "乙方", "role": "承租方" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "交付与押金" },
+    { "id": "st-2", "label": "租赁期与租金" },
+    { "id": "st-3", "label": "到期、续租与退租" },
+    { "id": "st-4", "label": "解除与清退" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "contract", "name": "房屋租赁合同", "loc": { "file": "房屋租赁合同.docx" } }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "合同签署生效", "stageId": "st-1", "sourceIds": ["s-1"] },
+    { "id": "n-2", "kind": "step", "label": "甲方交付房屋", "detail": "2026 年 8 月 1 日前", "actorIds": ["a-1"], "stageId": "st-1" },
+    { "id": "n-3", "kind": "decision", "label": "房屋是否正常可用", "stageId": "st-1" },
+    { "id": "n-4", "kind": "step", "label": "乙方支付押金", "detail": "324,000 元", "actorIds": ["a-2"], "stageId": "st-1" },
+    { "id": "n-5", "kind": "step", "label": "甲方支付逾期交付违约金", "detail": "每日按当月租金 0.1%", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-1" },
+    { "id": "n-6", "kind": "decision", "label": "逾期是否超过 30 日", "stageId": "st-1" },
+    { "id": "n-7", "kind": "step", "label": "乙方解除合同并获赔", "detail": "甲方退还租金押金并支付 3 个月租金赔偿", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-1" },
+
+    { "id": "n-8", "kind": "step", "label": "租赁期", "detail": "2026.8.1 - 2029.7.31", "stageId": "st-2" },
+    { "id": "n-9", "kind": "step", "label": "乙方支付当月租金", "detail": "每月 5 日前", "actorIds": ["a-2"], "stageId": "st-2" },
+    { "id": "n-10", "kind": "decision", "label": "是否按时支付", "stageId": "st-2" },
+    { "id": "n-11", "kind": "step", "label": "正常履行", "outcome": "positive", "stageId": "st-2" },
+    { "id": "n-12", "kind": "step", "label": "乙方支付逾期滞纳金", "detail": "每日按当月租金 0.05%", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-2" },
+    { "id": "n-13", "kind": "decision", "label": "逾期是否超过 15 日", "stageId": "st-2" },
+    { "id": "n-14", "kind": "step", "label": "甲方解除合同", "detail": "乙方支付 3 个月租金违约金，从押金抵扣", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-2" },
+
+    { "id": "n-15", "kind": "decision", "label": "是否续租", "stageId": "st-3" },
+    { "id": "n-16", "kind": "step", "label": "乙方提前 90 日书面通知续租", "actorIds": ["a-2"], "stageId": "st-3" },
+    { "id": "n-17", "kind": "step", "label": "同等条件优先续租", "stageId": "st-3" },
+    { "id": "n-18", "kind": "end", "label": "续签合同", "outcome": "positive", "stageId": "st-3" },
+    { "id": "n-19", "kind": "step", "label": "甲方另行出租", "detail": "租赁期届满前 90 日未通知", "actorIds": ["a-1"], "stageId": "st-3" },
+    { "id": "n-20", "kind": "step", "label": "乙方腾退", "detail": "届满后 15 日内", "actorIds": ["a-2"], "stageId": "st-3" },
+    { "id": "n-21", "kind": "step", "label": "乙方恢复房屋原状", "actorIds": ["a-2"], "stageId": "st-3" },
+    { "id": "n-22", "kind": "step", "label": "甲方验收", "detail": "10 个工作日内", "actorIds": ["a-1"], "stageId": "st-3" },
+    { "id": "n-23", "kind": "decision", "label": "验收是否合格", "stageId": "st-3" },
+    { "id": "n-24", "kind": "step", "label": "甲方无息退还押金", "detail": "15 个工作日内", "actorIds": ["a-1"], "outcome": "positive", "stageId": "st-3" },
+    { "id": "n-25", "kind": "step", "label": "乙方整改后重新验收", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-3" },
+    { "id": "n-26", "kind": "end", "label": "合同终止", "stageId": "st-3" },
+
+    { "id": "n-27", "kind": "step", "label": "乙方腾退并恢复原状", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-4" },
+    { "id": "n-28", "kind": "step", "label": "甲方处置遗留物品", "actorIds": ["a-1"], "stageId": "st-4" },
+    { "id": "n-29", "kind": "end", "label": "合同终止", "outcome": "negative", "stageId": "st-4" },
+    { "id": "n-30", "kind": "step", "label": "合同解除", "outcome": "negative", "stageId": "st-4" },
+    { "id": "n-31", "kind": "step", "label": "甲方退还租金押金并赔偿", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-4" },
+    { "id": "n-32", "kind": "end", "label": "合同终止", "outcome": "negative", "stageId": "st-4" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "condition": "是", "main": true },
+    { "from": "n-3", "to": "n-5", "condition": "否" },
+    { "from": "n-5", "to": "n-6" },
+    { "from": "n-6", "to": "n-7", "condition": "是" },
+    { "from": "n-6", "to": "n-2", "condition": "否" },
+
+    { "from": "n-4", "to": "n-8", "main": true },
+    { "from": "n-8", "to": "n-9", "main": true },
+    { "from": "n-9", "to": "n-10", "main": true },
+    { "from": "n-10", "to": "n-11", "condition": "是", "main": true },
+    { "from": "n-10", "to": "n-12", "condition": "否" },
+    { "from": "n-12", "to": "n-13" },
+    { "from": "n-13", "to": "n-14", "condition": "是" },
+    { "from": "n-13", "to": "n-9", "condition": "否" },
+
+    { "from": "n-11", "to": "n-15", "main": true },
+    { "from": "n-15", "to": "n-16", "condition": "是" },
+    { "from": "n-15", "to": "n-19", "condition": "否", "main": true },
+    { "from": "n-16", "to": "n-17" },
+    { "from": "n-17", "to": "n-18" },
+    { "from": "n-19", "to": "n-20", "main": true },
+    { "from": "n-20", "to": "n-21", "main": true },
+    { "from": "n-21", "to": "n-22", "main": true },
+    { "from": "n-22", "to": "n-23", "main": true },
+    { "from": "n-23", "to": "n-24", "condition": "是", "main": true },
+    { "from": "n-23", "to": "n-25", "condition": "否" },
+    { "from": "n-25", "to": "n-22" },
+    { "from": "n-24", "to": "n-26", "main": true },
+
+    { "from": "n-14", "to": "n-27" },
+    { "from": "n-27", "to": "n-28" },
+    { "from": "n-28", "to": "n-29" },
+
+    { "from": "n-7", "to": "n-30" },
+    { "from": "n-30", "to": "n-31" },
+    { "from": "n-31", "to": "n-32" }
+  ]
+}

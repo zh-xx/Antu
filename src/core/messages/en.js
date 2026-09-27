@@ -99,10 +99,12 @@ export const en = {
   'sourceType.other': 'Other',
 
   'graphKind.timeline': 'Timeline',
+  'graphKind.flow': 'Flowchart',
 
   // ---------- graph types (the envelope-level type) ----------
   'graphType.fact': 'Fact',
   'graphType.relationship': 'Relationship',
+  'graphType.procedure': 'Procedure',
   'graphType.justification': 'Justification',
 
   // ---------- validation errors: fixed English, they do not follow the interface language ----------
@@ -135,6 +137,8 @@ export const en = {
     `${at}: \`summary\` is too wide for one line (about ${actual} full-width characters, limit ${max}); shorten it or move the text to detail`,
   'err.groupNeedsOneActor': ({ at, groupId, n }) =>
     `${at}: a side group ("${groupId}") must name exactly one party (currently ${n}); events that involve no particular party belong in the centre group or should omit groupId`,
+  'err.multiActorNeedsAxis': ({ at, n, groupId }) =>
+    `${at}: an event with ${n} parties belongs on the centre axis, but groupId points at a side group ("${groupId}"); the two contradict each other`,
   'err.specNotObject': 'a spec must be a JSON object',
   'err.envelopeTypeRequired': 'missing required field `type` (the engine uses it to pick a renderer)',
   'err.envelopeTypeString': '`type` must be a string',
@@ -144,6 +148,52 @@ export const en = {
   'err.slotNotArray': '`slots` must be an array (one slot = one time point)',
   'err.slotShape': ({ at }) => `${at}: must be an object of the form { events: [ … ] }`,
   'err.eventsNotArray': ({ at }) => `${at}.events must be an array`,
+
+  // ---------- procedure: validation errors (perr.*) and hints (phint.*) ----------
+  // Same rule as err.*: fixed English, they do not follow the interface language.
+  // zh.js spreads these straight from here (see the prefix list at the end of zh.js).
+  'perr.domainNotInEnum': ({ value, allowed }) =>
+    `\`domain\` is "${value}", not in the enum (${allowed})`,
+  'perr.nodesEmpty': '`nodes` must not be empty (a flow needs at least a start and an end)',
+  'perr.edgesEmpty': '`edges` must not be empty (the nodes have to be connected)',
+  'perr.notObject': ({ at }) => `${at}: must be an object`,
+  'perr.required': ({ at, field }) => `${at}: missing required field \`${field}\``,
+  'perr.duplicateNodeId': ({ at, id }) => `${at}: id "${id}" duplicates an earlier node`,
+  'perr.badKind': ({ at, value, allowed }) =>
+    `${at}: \`kind\` is "${value}", not in the vocabulary (${allowed})`,
+  'perr.badOutcome': ({ at, value, allowed }) =>
+    `${at}: \`outcome\` is "${value}", not in the enum (${allowed})`,
+  'perr.mustBeString': ({ at, field }) => `${at}: \`${field}\` must be a string`,
+  'perr.badRef': ({ at, field, kind, id }) =>
+    `${at}: ${field} refers to a non-existent ${kind} "${id}"`,
+  'perr.badFrom': ({ at, id }) => `${at}: \`from\` refers to a non-existent node "${id}"`,
+  'perr.badTo': ({ at, id }) => `${at}: \`to\` refers to a non-existent node "${id}"`,
+  'perr.selfLoop': ({ at, id }) => `${at}: self-loop (from and to are both "${id}")`,
+  'perr.duplicateEdge': ({ at, from, to }) =>
+    `${at}: duplicate edge ${from} -> ${to} (same condition); branches into one target each need their own condition`,
+  'perr.noEntry': 'no node has zero incoming edges (a flow needs a start)',
+  'perr.unreachable': ({ id }) =>
+    `nodes (${id}): unreachable from the start (it would be dropped silently and never appear)`,
+  'perr.noEnd': 'no node has `kind: "end"` (a flow needs an end)',
+  'perr.deadEnd': ({ id, label }) =>
+    `nodes (${id}): "${label}" is a dead end: it is neither end nor note but has no outgoing edge`,
+  'perr.decisionTooFewOut': ({ id, n }) =>
+    `nodes (${id}): kind is "decision" but only ${n} outgoing edge(s); a decision needs at least 2`,
+  'perr.decisionNoCondition': ({ id, index, to }) =>
+    `nodes (${id}): kind is "decision" but edge edges[${index}] -> "${to}" has no condition. ` +
+    'If it really is a decision, give every outgoing edge a condition (e.g. "yes / no"); ' +
+    'if it is a step, change kind to "step" (a step may have several outgoing edges, one of them the main line)',
+  'perr.tooManyMain': ({ id, n }) =>
+    `nodes (${id}): ${n} outgoing edges are marked main; a path has exactly one`,
+  'perr.mainBroken': ({ id }) =>
+    `the main line breaks at node "${id}": the edges marked main do not reach any end. ` +
+    'Either add the missing main edge, or repair the chain',
+  'phint.stageBackwards': ({ from, fromStage, to, toStage }) =>
+    `stage runs backwards: ${from} (${fromStage}) -> ${to} (${toStage}); back edges are normal, others need a second look`,
+  'phint.decisionOnSpine': ({ id, label }) =>
+    `decision "${id}" (${label}) is on the main line but no outgoing edge is marked main; the breach path may end up drawn as the main line`,
+  'phint.multipleEntries': ({ n, ids }) =>
+    `${n} entries (${ids}), they will all sit in the first layer; a contract flow usually has a single entry, so check whether an upstream link is missing`,
 }
 
 export default en

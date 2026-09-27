@@ -1,0 +1,21 @@
+{
+  "type": "procedure",
+  "title": "Branches: one step node with several outgoing edges",
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "Service period starts" },
+    { "id": "n-2", "kind": "step", "label": "Party B submits monthly service list" },
+    { "id": "n-3", "kind": "step", "label": "Party A pays" },
+    { "id": "n-4", "kind": "step", "label": "Party B pays liquidated damages", "outcome": "negative" },
+    { "id": "n-5", "kind": "step", "label": "Party A pays interest for late payment", "outcome": "negative" },
+    { "id": "n-6", "kind": "end", "label": "Contract term ends" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-2", "to": "n-4", "condition": "Party B fails to staff as agreed" },
+    { "from": "n-4", "to": "n-2" },
+    { "from": "n-3", "to": "n-5", "condition": "Party A pays late" },
+    { "from": "n-5", "to": "n-3" },
+    { "from": "n-3", "to": "n-6", "main": true }
+  ]
+}

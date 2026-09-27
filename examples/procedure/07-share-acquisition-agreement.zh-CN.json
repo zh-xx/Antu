@@ -1,0 +1,87 @@
+{
+  "type": "procedure",
+  "title": "股权收购协议 · 履行流程",
+  "domain": "contract-performance",
+  "actors": [
+    { "id": "a-1", "name": "甲方", "role": "转让方" },
+    { "id": "a-2", "name": "乙方", "role": "收购方" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "签约与先决条件" },
+    { "id": "st-2", "label": "交割" },
+    { "id": "st-3", "label": "价格调整" },
+    { "id": "st-4", "label": "交割后义务" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "contract", "name": "股权收购协议", "loc": { "file": "股权收购协议.docx" } }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "三方签字盖章", "stageId": "st-1", "sourceIds": ["s-1"] },
+    { "id": "n-2", "kind": "step", "label": "乙方支付定金", "detail": "¥24,000,000 · 占总对价 10%", "actorIds": ["a-2"], "stageId": "st-1" },
+    { "id": "n-3", "kind": "decision", "label": "先决条件是否满足", "detail": "签约后 90 日内", "stageId": "st-1" },
+    { "id": "n-5", "kind": "end", "label": "甲方退还双倍定金并赔偿乙方尽调费用", "detail": "¥48,000,000", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-1" },
+    { "id": "n-6", "kind": "end", "label": "甲方没收定金", "detail": "¥24,000,000", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-1" },
+    { "id": "n-19", "kind": "step", "label": "协议终止：守约方书面通知", "outcome": "negative", "stageId": "st-1" },
+    { "id": "n-20", "kind": "end", "label": "违约赔偿：依原因处理", "outcome": "negative", "stageId": "st-1" },
+
+    { "id": "n-4", "kind": "step", "label": "交割", "detail": "条件满足后 20 个工作日内", "stageId": "st-2" },
+    { "id": "n-7", "kind": "step", "label": "乙方支付 80% 对价", "detail": "¥192,000,000 至托管账户", "actorIds": ["a-2"], "stageId": "st-2" },
+    { "id": "n-8", "kind": "step", "label": "甲方交付", "detail": "股权变更登记、印章、合同、知识产权等", "actorIds": ["a-1"], "stageId": "st-2" },
+    { "id": "n-9", "kind": "step", "label": "交割后 10 个工作日内：完成法定代表人、董事、监事变更", "stageId": "st-2" },
+    { "id": "n-21", "kind": "step", "label": "乙方催告 30 日未纠正", "actorIds": ["a-2"], "stageId": "st-2" },
+    { "id": "n-22", "kind": "end", "label": "协议终止：甲方退还双倍定金并赔偿损失", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-2" },
+    { "id": "n-23", "kind": "step", "label": "甲方催告 30 日未纠正", "actorIds": ["a-1"], "stageId": "st-2" },
+    { "id": "n-24", "kind": "end", "label": "协议终止：甲方没收定金", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-2" },
+    { "id": "n-25", "kind": "step", "label": "乙方发现后 30 日内发赔偿通知", "actorIds": ["a-2"], "stageId": "st-2" },
+    { "id": "n-26", "kind": "decision", "label": "甲方是否认可赔偿主张", "stageId": "st-2" },
+    { "id": "n-27", "kind": "end", "label": "甲方 15 日内支付赔偿", "actorIds": ["a-1"], "outcome": "positive", "stageId": "st-2" },
+    { "id": "n-28", "kind": "step", "label": "提交 CIETAC 仲裁", "stageId": "st-2" },
+    { "id": "n-29", "kind": "end", "label": "仲裁裁决", "stageId": "st-2" },
+
+    { "id": "n-10", "kind": "step", "label": "交割后 180 日内：价格调整审计", "stageId": "st-3" },
+    { "id": "n-11", "kind": "decision", "label": "审计净资产是否达到基准", "detail": "基准 ¥2.8 亿", "stageId": "st-3" },
+    { "id": "n-12", "kind": "step", "label": "乙方支付超额部分 50%", "detail": "上限 ¥12,000,000", "actorIds": ["a-2"], "stageId": "st-3" },
+    { "id": "n-13", "kind": "step", "label": "差额从调整款中扣除", "detail": "调整款 ¥24,000,000；超出部分甲方补足", "stageId": "st-3" },
+    { "id": "n-14", "kind": "step", "label": "调整期结束：释放剩余调整款项", "stageId": "st-3" },
+
+    { "id": "n-15", "kind": "step", "label": "交割后 90 日内：过渡期管理移交", "stageId": "st-4" },
+    { "id": "n-16", "kind": "step", "label": "交割后 12 个月内：员工保留承诺", "detail": "总人数不低于 90%", "stageId": "st-4" },
+    { "id": "n-17", "kind": "step", "label": "交割后 3 年内：竞业禁止与不招揽", "stageId": "st-4" },
+    { "id": "n-18", "kind": "end", "label": "协议终止：正常履行完毕", "outcome": "positive", "stageId": "st-4" },
+    { "id": "n-30", "kind": "end", "label": "甲方支付违约金并赔偿损失", "detail": "违约金 ¥50,000,000", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-4" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "condition": "全部满足", "main": true },
+    { "from": "n-3", "to": "n-5", "condition": "因甲方原因逾期" },
+    { "from": "n-3", "to": "n-6", "condition": "因乙方原因逾期" },
+    { "from": "n-3", "to": "n-19", "condition": "未满足（不可抗力）" },
+    { "from": "n-19", "to": "n-20" },
+
+    { "from": "n-4", "to": "n-7", "main": true },
+    { "from": "n-7", "to": "n-8", "main": true },
+    { "from": "n-8", "to": "n-9", "main": true },
+    { "from": "n-9", "to": "n-10", "main": true },
+    { "from": "n-10", "to": "n-11", "main": true },
+    { "from": "n-11", "to": "n-12", "condition": "净资产 ≥ 基准", "main": true },
+    { "from": "n-11", "to": "n-13", "condition": "净资产 < 基准" },
+    { "from": "n-12", "to": "n-14", "main": true },
+    { "from": "n-13", "to": "n-14" },
+    { "from": "n-14", "to": "n-15", "main": true },
+    { "from": "n-15", "to": "n-16", "main": true },
+    { "from": "n-16", "to": "n-17", "main": true },
+    { "from": "n-17", "to": "n-18", "main": true },
+    { "from": "n-17", "to": "n-30", "condition": "违反竞业禁止或不招揽" },
+
+    { "from": "n-4", "to": "n-21", "condition": "甲方根本违约" },
+    { "from": "n-21", "to": "n-22" },
+    { "from": "n-4", "to": "n-23", "condition": "乙方根本违约" },
+    { "from": "n-23", "to": "n-24" },
+    { "from": "n-8", "to": "n-25", "condition": "甲方陈述与保证不实" },
+    { "from": "n-25", "to": "n-26" },
+    { "from": "n-26", "to": "n-27", "condition": "认可" },
+    { "from": "n-26", "to": "n-28", "condition": "异议" },
+    { "from": "n-28", "to": "n-29" }
+  ]
+}

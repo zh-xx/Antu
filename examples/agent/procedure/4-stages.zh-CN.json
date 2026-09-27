@@ -1,0 +1,33 @@
+{
+  "type": "procedure",
+  "title": "阶段、主体与结果",
+  "domain": "contract-performance",
+  "actors": [
+    { "id": "a-1", "name": "甲方", "role": "委托方" },
+    { "id": "a-2", "name": "乙方", "role": "开发方" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "签约" },
+    { "id": "st-2", "label": "开发" },
+    { "id": "st-3", "label": "收尾" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "contract", "name": "软件开发服务合同", "loc": { "file": "软件开发服务合同.docx" } }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "合同签署生效", "stageId": "st-1" },
+    { "id": "n-2", "kind": "step", "label": "甲方支付首期款", "detail": "360,000 元", "actorIds": ["a-1"], "stageId": "st-1", "sourceIds": ["s-1"] },
+    { "id": "n-3", "kind": "step", "label": "需求确认", "detail": "2026-06-30 前完成", "actorIds": ["a-2"], "stageId": "st-2" },
+    { "id": "n-4", "kind": "document", "label": "需求确认书", "stageId": "st-2" },
+    { "id": "n-5", "kind": "note", "label": "需求变更须双方书面确认", "stageId": "st-2" },
+    { "id": "n-6", "kind": "step", "label": "项目完成", "outcome": "positive", "stageId": "st-3" },
+    { "id": "n-7", "kind": "end", "label": "合同终止", "stageId": "st-3" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "main": true },
+    { "from": "n-4", "to": "n-6", "main": true },
+    { "from": "n-6", "to": "n-7", "main": true }
+  ]
+}

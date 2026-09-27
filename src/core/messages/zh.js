@@ -89,21 +89,23 @@ export const zh = {
   'sourceType.other': '其他',
 
   'graphKind.timeline': '时间图',
+  'graphKind.flow': '流程图',
 
   // ---------- graph types ----------
   'graphType.fact': '事实图',
   'graphType.relationship': '关系图',
+  'graphType.procedure': '程序图',
   'graphType.justification': '证成图',
 
   // ---------- validation errors and hints: fixed English, not translated here, taken straight from the English dictionary ----------
   // The spread rather than rewriting each entry makes "there is only one English copy of the errors" obvious in the code.
   //
-  // One prefix so far: err. (the fact field rules). Validation error keys for a new major type
-  // get their own prefix, and **that prefix must be added here too**, or the key-consistency
-  // check reports "zh is missing a key", which is exactly its job.
+  // One prefix per major type: err. (fact field rules), perr. (procedure errors), phint. (procedure hints).
+  // Validation error keys for a new major type get their own prefix, and **that prefix must be added here too**,
+  // or the key-consistency check reports "zh is missing a key", which is exactly its job.
   ...Object.fromEntries(
     Object.keys(en)
-      .filter((k) => k.startsWith('err.'))
+      .filter((k) => k.startsWith('err.') || k.startsWith('perr.') || k.startsWith('phint.'))
       .map((k) => [k, en[k]]),
   ),
 }

@@ -1,0 +1,65 @@
+{
+  "type": "procedure",
+  "title": "劳务外包合同 · 履行流程",
+  "domain": "contract-performance",
+  "actors": [
+    { "id": "a-1", "name": "甲方", "role": "用工单位" },
+    { "id": "a-2", "name": "乙方", "role": "外包服务方" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "服务期" },
+    { "id": "st-2", "label": "解除与终止" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "contract", "name": "劳务外包合同", "loc": { "file": "劳务外包合同.docx" } }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "合同签订生效", "stageId": "st-1", "sourceIds": ["s-1"] },
+    { "id": "n-2", "kind": "step", "label": "服务期开始", "detail": "2026-07-01", "stageId": "st-1" },
+    { "id": "n-3", "kind": "step", "label": "乙方提交服务清单及发票", "detail": "每月 25 日前", "actorIds": ["a-2"], "stageId": "st-1" },
+    { "id": "n-4", "kind": "step", "label": "甲方付款", "detail": "收到发票后 15 个工作日内", "actorIds": ["a-1"], "stageId": "st-1" },
+    { "id": "n-5", "kind": "decision", "label": "服务期是否结束", "stageId": "st-1" },
+    { "id": "n-6", "kind": "decision", "label": "期满前 30 日双方是否提出终止", "stageId": "st-1" },
+    { "id": "n-7", "kind": "step", "label": "合同自动续期一年", "stageId": "st-1" },
+
+    { "id": "n-9", "kind": "step", "label": "乙方支付违约金", "detail": "每缺少一人每日 200 元", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-1" },
+    { "id": "n-10", "kind": "step", "label": "乙方赔偿甲方全部损失", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-1" },
+    { "id": "n-11", "kind": "step", "label": "乙方承担全部工伤赔偿", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-1" },
+    { "id": "n-12", "kind": "step", "label": "甲方支付逾期付款违约金", "detail": "每日按逾期金额 0.03%", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-1" },
+
+    { "id": "n-13", "kind": "step", "label": "甲方单方解除", "detail": "提前 30 日通知并支付剩余服务费总额 10% 违约金", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-2" },
+    { "id": "n-14", "kind": "step", "label": "甲方可单方解除", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-2" },
+    { "id": "n-15", "kind": "step", "label": "乙方可单方解除", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-2" },
+    { "id": "n-8", "kind": "end", "label": "合同终止", "stageId": "st-2" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "main": true },
+    { "from": "n-4", "to": "n-5", "main": true },
+    { "from": "n-5", "to": "n-3", "condition": "否" },
+    { "from": "n-5", "to": "n-6", "condition": "是", "main": true },
+    { "from": "n-6", "to": "n-7", "condition": "否" },
+    { "from": "n-6", "to": "n-8", "condition": "是", "main": true },
+    { "from": "n-7", "to": "n-2" },
+
+    { "from": "n-3", "to": "n-9", "condition": "乙方未按约配置人员" },
+    { "from": "n-9", "to": "n-3" },
+    { "from": "n-3", "to": "n-10", "condition": "乙方未依法缴纳社保" },
+    { "from": "n-10", "to": "n-3" },
+    { "from": "n-3", "to": "n-11", "condition": "派驻人员工伤且乙方未缴工伤保险" },
+    { "from": "n-11", "to": "n-3" },
+    { "from": "n-4", "to": "n-12", "condition": "甲方逾期付款" },
+    { "from": "n-12", "to": "n-4" },
+
+    { "from": "n-2", "to": "n-13", "condition": "甲方单方解除合同" },
+    { "from": "n-13", "to": "n-8" },
+    { "from": "n-2", "to": "n-14", "condition": "乙方连续 3 个月无法满足 80% 用人需求" },
+    { "from": "n-2", "to": "n-14", "condition": "乙方未依法签劳动合同被查处" },
+    { "from": "n-2", "to": "n-14", "condition": "因乙方原因甲方被劳动监察处罚" },
+    { "from": "n-14", "to": "n-8" },
+    { "from": "n-2", "to": "n-15", "condition": "甲方累计欠付服务费超 3 个月" },
+    { "from": "n-2", "to": "n-15", "condition": "甲方严重违反用工规范且未整改" },
+    { "from": "n-15", "to": "n-8" }
+  ]
+}
