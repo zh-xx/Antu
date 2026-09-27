@@ -1,0 +1,20 @@
+{
+  "type": "procedure",
+  "title": "不标 main：让引擎自己认主干",
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "立案" },
+    { "id": "n-2", "kind": "step", "label": "送达起诉状副本" },
+    { "id": "n-3", "kind": "decision", "label": "被告是否答辩" },
+    { "id": "n-4", "kind": "step", "label": "缺席审理" },
+    { "id": "n-5", "kind": "step", "label": "开庭审理" },
+    { "id": "n-6", "kind": "end", "label": "作出判决" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2" },
+    { "from": "n-2", "to": "n-3" },
+    { "from": "n-3", "to": "n-5", "condition": "答辩" },
+    { "from": "n-3", "to": "n-4", "condition": "不答辩" },
+    { "from": "n-4", "to": "n-6" },
+    { "from": "n-5", "to": "n-6" }
+  ]
+}

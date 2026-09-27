@@ -1,0 +1,95 @@
+{
+  "type": "procedure",
+  "title": "Premises Lease · Performance Flow",
+  "domain": "contract-performance",
+  "actors": [
+    { "id": "a-1", "name": "Party A", "role": "landlord" },
+    { "id": "a-2", "name": "Party B", "role": "tenant" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "Delivery and deposit" },
+    { "id": "st-2", "label": "Lease term and rent" },
+    { "id": "st-3", "label": "Expiry, renewal and handover" },
+    { "id": "st-4", "label": "Rescission and clearing out" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "contract", "name": "Premises Lease", "loc": { "file": "Premises Lease.docx" } }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "Lease signed and effective", "stageId": "st-1", "sourceIds": ["s-1"] },
+    { "id": "n-2", "kind": "step", "label": "Party A delivers the premises", "detail": "before 1 August 2026", "actorIds": ["a-1"], "stageId": "st-1" },
+    { "id": "n-3", "kind": "decision", "label": "Premises fit for use?", "stageId": "st-1" },
+    { "id": "n-4", "kind": "step", "label": "Party B pays the deposit", "detail": "RMB 324,000", "actorIds": ["a-2"], "stageId": "st-1" },
+    { "id": "n-5", "kind": "step", "label": "Party A pays liquidated damages for late delivery", "detail": "0.1% of the monthly rent per day", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-1" },
+    { "id": "n-6", "kind": "decision", "label": "Delay exceeds 30 days?", "stageId": "st-1" },
+    { "id": "n-7", "kind": "step", "label": "Party B rescinds and is compensated", "detail": "Party A refunds rent and deposit and pays 3 months' rent", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-1" },
+
+    { "id": "n-8", "kind": "step", "label": "Lease term", "detail": "1 Aug 2026 - 31 Jul 2029", "stageId": "st-2" },
+    { "id": "n-9", "kind": "step", "label": "Party B pays the monthly rent", "detail": "by the 5th of each month", "actorIds": ["a-2"], "stageId": "st-2" },
+    { "id": "n-10", "kind": "decision", "label": "Paid on time?", "stageId": "st-2" },
+    { "id": "n-11", "kind": "step", "label": "Performance as agreed", "outcome": "positive", "stageId": "st-2" },
+    { "id": "n-12", "kind": "step", "label": "Party B pays a late-payment penalty", "detail": "0.05% of the monthly rent per day", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-2" },
+    { "id": "n-13", "kind": "decision", "label": "Delay exceeds 15 days?", "stageId": "st-2" },
+    { "id": "n-14", "kind": "step", "label": "Party A rescinds the lease", "detail": "Party B pays 3 months' rent as liquidated damages, deducted from the deposit", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-2" },
+
+    { "id": "n-15", "kind": "decision", "label": "Renew the lease?", "stageId": "st-3" },
+    { "id": "n-16", "kind": "step", "label": "Party B gives 90 days' written notice to renew", "actorIds": ["a-2"], "stageId": "st-3" },
+    { "id": "n-17", "kind": "step", "label": "Priority renewal on equal terms", "stageId": "st-3" },
+    { "id": "n-18", "kind": "end", "label": "Lease renewed", "outcome": "positive", "stageId": "st-3" },
+    { "id": "n-19", "kind": "step", "label": "Party A lets the premises to another", "detail": "no notice 90 days before expiry", "actorIds": ["a-1"], "stageId": "st-3" },
+    { "id": "n-20", "kind": "step", "label": "Party B vacates", "detail": "within 15 days after expiry", "actorIds": ["a-2"], "stageId": "st-3" },
+    { "id": "n-21", "kind": "step", "label": "Party B restores the premises", "actorIds": ["a-2"], "stageId": "st-3" },
+    { "id": "n-22", "kind": "step", "label": "Party A inspects", "detail": "within 10 business days", "actorIds": ["a-1"], "stageId": "st-3" },
+    { "id": "n-23", "kind": "decision", "label": "Inspection passed?", "stageId": "st-3" },
+    { "id": "n-24", "kind": "step", "label": "Party A refunds the deposit without interest", "detail": "within 15 business days", "actorIds": ["a-1"], "outcome": "positive", "stageId": "st-3" },
+    { "id": "n-25", "kind": "step", "label": "Party B rectifies; re-inspection", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-3" },
+    { "id": "n-26", "kind": "end", "label": "Lease terminated", "stageId": "st-3" },
+
+    { "id": "n-27", "kind": "step", "label": "Party B vacates and restores the premises", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-4" },
+    { "id": "n-28", "kind": "step", "label": "Party A disposes of items left behind", "actorIds": ["a-1"], "stageId": "st-4" },
+    { "id": "n-29", "kind": "end", "label": "Lease terminated", "outcome": "negative", "stageId": "st-4" },
+    { "id": "n-30", "kind": "step", "label": "Lease rescinded", "outcome": "negative", "stageId": "st-4" },
+    { "id": "n-31", "kind": "step", "label": "Party A refunds rent and deposit and compensates", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-4" },
+    { "id": "n-32", "kind": "end", "label": "Lease terminated", "outcome": "negative", "stageId": "st-4" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "condition": "Yes", "main": true },
+    { "from": "n-3", "to": "n-5", "condition": "No" },
+    { "from": "n-5", "to": "n-6" },
+    { "from": "n-6", "to": "n-7", "condition": "Yes" },
+    { "from": "n-6", "to": "n-2", "condition": "No" },
+
+    { "from": "n-4", "to": "n-8", "main": true },
+    { "from": "n-8", "to": "n-9", "main": true },
+    { "from": "n-9", "to": "n-10", "main": true },
+    { "from": "n-10", "to": "n-11", "condition": "Yes", "main": true },
+    { "from": "n-10", "to": "n-12", "condition": "No" },
+    { "from": "n-12", "to": "n-13" },
+    { "from": "n-13", "to": "n-14", "condition": "Yes" },
+    { "from": "n-13", "to": "n-9", "condition": "No" },
+
+    { "from": "n-11", "to": "n-15", "main": true },
+    { "from": "n-15", "to": "n-16", "condition": "Yes" },
+    { "from": "n-15", "to": "n-19", "condition": "No", "main": true },
+    { "from": "n-16", "to": "n-17" },
+    { "from": "n-17", "to": "n-18" },
+    { "from": "n-19", "to": "n-20", "main": true },
+    { "from": "n-20", "to": "n-21", "main": true },
+    { "from": "n-21", "to": "n-22", "main": true },
+    { "from": "n-22", "to": "n-23", "main": true },
+    { "from": "n-23", "to": "n-24", "condition": "Yes", "main": true },
+    { "from": "n-23", "to": "n-25", "condition": "No" },
+    { "from": "n-25", "to": "n-22" },
+    { "from": "n-24", "to": "n-26", "main": true },
+
+    { "from": "n-14", "to": "n-27" },
+    { "from": "n-27", "to": "n-28" },
+    { "from": "n-28", "to": "n-29" },
+
+    { "from": "n-7", "to": "n-30" },
+    { "from": "n-30", "to": "n-31" },
+    { "from": "n-31", "to": "n-32" }
+  ]
+}

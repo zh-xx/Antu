@@ -1,0 +1,18 @@
+{
+  "type": "procedure",
+  "title": "同一目标的多条边：条件不同，渲染时合并",
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "服务期开始" },
+    { "id": "n-2", "kind": "step", "label": "日常履行" },
+    { "id": "n-3", "kind": "step", "label": "甲方可单方解除", "outcome": "negative" },
+    { "id": "n-4", "kind": "end", "label": "合同终止" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "condition": "乙方连续 3 个月不达标" },
+    { "from": "n-2", "to": "n-3", "condition": "乙方未依法签劳动合同被查处" },
+    { "from": "n-2", "to": "n-3", "condition": "因乙方原因甲方被处罚" },
+    { "from": "n-2", "to": "n-4", "main": true },
+    { "from": "n-3", "to": "n-4" }
+  ]
+}

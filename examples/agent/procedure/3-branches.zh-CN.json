@@ -1,0 +1,21 @@
+{
+  "type": "procedure",
+  "title": "分支：一个过程节点挂多条出边",
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "服务期开始" },
+    { "id": "n-2", "kind": "step", "label": "乙方每月提交服务清单" },
+    { "id": "n-3", "kind": "step", "label": "甲方付款" },
+    { "id": "n-4", "kind": "step", "label": "乙方支付违约金", "outcome": "negative" },
+    { "id": "n-5", "kind": "step", "label": "甲方支付逾期利息", "outcome": "negative" },
+    { "id": "n-6", "kind": "end", "label": "合同期满" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-2", "to": "n-4", "condition": "乙方未按约配置人员" },
+    { "from": "n-4", "to": "n-2" },
+    { "from": "n-3", "to": "n-5", "condition": "甲方逾期付款" },
+    { "from": "n-5", "to": "n-3" },
+    { "from": "n-3", "to": "n-6", "main": true }
+  ]
+}

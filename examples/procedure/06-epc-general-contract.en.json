@@ -1,0 +1,88 @@
+{
+  "type": "procedure",
+  "title": "EPC General Contract · Performance Flow",
+  "domain": "contract-performance",
+  "actors": [
+    { "id": "a-1", "name": "Party A", "role": "Owner" },
+    { "id": "a-2", "name": "Party B", "role": "Contractor" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "Commencement preparation" },
+    { "id": "st-2", "label": "Design and procurement" },
+    { "id": "st-3", "label": "Construction and commissioning" },
+    { "id": "st-4", "label": "Completion and defect liability" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "contract", "name": "EPC General Contract", "loc": { "file": "EPC General Contract.docx" } }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "Contract signed and effective", "stageId": "st-1", "sourceIds": ["s-1"] },
+    { "id": "n-2", "kind": "step", "label": "Party B submits performance bond", "detail": "10% · RMB 35,000,000", "actorIds": ["a-2"], "stageId": "st-1" },
+    { "id": "n-3", "kind": "step", "label": "Party A pays advance payment", "detail": "10% · RMB 35,000,000", "actorIds": ["a-1"], "stageId": "st-1" },
+    { "id": "n-4", "kind": "step", "label": "Notice to commence issued", "detail": "24-month term · to 2028-07-31", "actorIds": ["a-1"], "stageId": "st-1" },
+
+    { "id": "n-5", "kind": "step", "label": "End of month 1: concept design submitted", "actorIds": ["a-2"], "stageId": "st-2" },
+    { "id": "n-6", "kind": "step", "label": "End of month 3: preliminary design approved", "actorIds": ["a-2"], "stageId": "st-2" },
+    { "id": "n-7", "kind": "step", "label": "End of month 6: construction drawings passed review", "actorIds": ["a-2"], "stageId": "st-2" },
+    { "id": "n-8", "kind": "step", "label": "End of month 10: main equipment procured and on site", "stageId": "st-2" },
+
+    { "id": "n-9", "kind": "step", "label": "End of month 12: civil foundation works accepted", "detail": "cumulative payment to 30%", "stageId": "st-3" },
+    { "id": "n-10", "kind": "step", "label": "End of month 18: equipment installation complete", "detail": "cumulative payment to 55%", "stageId": "st-3" },
+    { "id": "n-11", "kind": "step", "label": "End of month 22: integrated commissioning complete", "detail": "cumulative payment to 70%", "stageId": "st-3" },
+
+    { "id": "n-12", "kind": "step", "label": "End of month 24: completion acceptance passed", "detail": "cumulative payment to 85%", "stageId": "st-4" },
+    { "id": "n-13", "kind": "step", "label": "Defect liability period", "detail": "24 months · 3% quality retention", "stageId": "st-4" },
+    { "id": "n-14", "kind": "step", "label": "Defect liability period ends with no outstanding defects", "detail": "payment to 97%", "stageId": "st-4" },
+    { "id": "n-15", "kind": "step", "label": "Settlement audit complete", "detail": "remaining 3% paid", "stageId": "st-4" },
+    { "id": "n-16", "kind": "end", "label": "Contract terminated", "outcome": "positive", "stageId": "st-4" },
+
+    { "id": "n-17", "kind": "step", "label": "Delay in the works", "outcome": "negative", "stageId": "st-1" },
+    { "id": "n-18", "kind": "step", "label": "Party A cause or force majeure: extension may be claimed", "actorIds": ["a-2"], "stageId": "st-1" },
+    { "id": "n-19", "kind": "step", "label": "Delay attributable to Party B", "detail": "0.05% per day · cap 10%", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-1" },
+    { "id": "n-20", "kind": "step", "label": "Delay beyond a set period: Party A may terminate", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-1" },
+    { "id": "n-21", "kind": "step", "label": "Contract terminated: completed works settled", "outcome": "negative", "stageId": "st-4" },
+
+    { "id": "n-22", "kind": "step", "label": "Performance targets missed: rectification", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-3" },
+    { "id": "n-23", "kind": "step", "label": "More than 3 rectifications: 0.1% each", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-3" },
+    { "id": "n-24", "kind": "step", "label": "Targets met after rectification: continue", "outcome": "positive", "stageId": "st-4" },
+
+    { "id": "n-25", "kind": "step", "label": "Acceptance failed: rectification", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-4" },
+    { "id": "n-26", "kind": "step", "label": "Passed after rectification: continue", "outcome": "positive", "stageId": "st-4" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "main": true },
+    { "from": "n-4", "to": "n-5", "main": true },
+    { "from": "n-5", "to": "n-6", "main": true },
+    { "from": "n-6", "to": "n-7", "main": true },
+    { "from": "n-7", "to": "n-8", "main": true },
+    { "from": "n-8", "to": "n-9", "main": true },
+    { "from": "n-9", "to": "n-10", "main": true },
+    { "from": "n-10", "to": "n-11", "main": true },
+    { "from": "n-11", "to": "n-12", "main": true },
+    { "from": "n-12", "to": "n-13", "main": true },
+    { "from": "n-13", "to": "n-14", "main": true },
+    { "from": "n-14", "to": "n-15", "main": true },
+    { "from": "n-15", "to": "n-16", "main": true },
+
+    { "from": "n-4", "to": "n-17" },
+    { "from": "n-17", "to": "n-18" },
+    { "from": "n-18", "to": "n-4" },
+    { "from": "n-17", "to": "n-19" },
+    { "from": "n-19", "to": "n-20" },
+    { "from": "n-20", "to": "n-21" },
+    { "from": "n-21", "to": "n-16" },
+
+    { "from": "n-11", "to": "n-22" },
+    { "from": "n-22", "to": "n-23" },
+    { "from": "n-23", "to": "n-11" },
+    { "from": "n-22", "to": "n-24" },
+    { "from": "n-24", "to": "n-12" },
+
+    { "from": "n-12", "to": "n-25" },
+    { "from": "n-25", "to": "n-12" },
+    { "from": "n-25", "to": "n-26" },
+    { "from": "n-26", "to": "n-13" }
+  ]
+}

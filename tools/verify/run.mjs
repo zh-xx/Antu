@@ -264,11 +264,11 @@ function checkData() {
   // Look these up with the directory included, so that a generic word like "schema-draft" does
   // not cause a false hit. The list carries no extensions, so a rename (X.md → X.zh-CN.md) does
   // not affect it. **A new major type's design draft must be added here too**: miss it and that
-  // one has no leak check. When the procedure design draft is committed, add
-  // 'spec/procedure/schema-draft' here: leaving it out is how it escaped the check before.
+  // one has no leak check. spec/procedure/schema-draft was missed once, found only when
+  // procedure was translated.
   const humanDocs = ['spec/fact/schema-draft', 'spec/fact/timeline-rules', 'spec/fact/rendering',
     'spec/source-schema-draft', 'spec/v0-architecture', 'spec/known-issues', 'spec/mcp-server',
-    'spec/react-flow-features']
+    'spec/react-flow-features', 'spec/procedure/schema-draft']
   const leaked2 = humanDocs.filter((n) => serverSrc.includes(n))
   truthy('no human-facing design document leaks into MCP', leaked2.length === 0)
   if (leaked2.length) console.log('     leaked in: ' + leaked2.join(', '))

@@ -32,6 +32,7 @@ export const SOURCE_TYPE_KEYS = {
 export const GRAPH_TYPE_KEYS = {
   fact: 'graphType.fact',
   relationship: 'graphType.relationship',
+  procedure: 'graphType.procedure',
   justification: 'graphType.justification',
 }
 
