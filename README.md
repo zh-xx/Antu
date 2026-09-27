@@ -2,9 +2,13 @@
 
 [![Verify](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
 
-[中文](README.md) | **English**
+[中文](README.zh-CN.md) | **English**
 
-A rendering core for legal work visualization. Input one JSON document, output one self-contained HTML file that opens offline and can be archived or circulated.
+A rendering core for legal work visualization. Input one JSON document, output one self-contained
+HTML file that opens offline and can be archived or circulated.
+
+Add `?lang=en` or `?lang=zh` to a generated HTML file to pin the interface language. The data
+itself is never translated: case content travels with the JSON.
 
 ---
 
@@ -70,8 +74,8 @@ One JSON document produces one self-contained HTML file of about 420 KB. Engine 
 
 ```bash
 npm install
-npm run diagram -- examples/fact/电梯劝烟案.json
-# → examples/fact/电梯劝烟案.html
+npm run diagram -- examples/fact/elevator-smoking-case.en.json
+# → examples/fact/elevator-smoking-case.en.html
 ```
 
 ## Agent integration
@@ -87,9 +91,9 @@ npm run diagram -- examples/fact/电梯劝烟案.json
 }
 ```
 
-An agent can read the specification, view examples, validate, compute geometry, produce output, and take a screenshot to check the result. Validation confirms only that the JSON is well formed; it cannot confirm that the diagram is satisfactory, so taking a screenshot is a necessary step. The reference material for an agent is 2.3k tokens.
+An agent can read the specification, view examples, validate, compute geometry, produce output, and take a screenshot to check the result. Validation confirms only that the JSON is well formed; it cannot confirm that the diagram is satisfactory, so taking a screenshot is a necessary step. The reference material for an agent is 4.5k tokens (a 2.9k-character field table plus a 4.0k-character mechanism note).
 
-Without MCP, read the documents in this order: [spec/fact/schema-draft.md](spec/fact/schema-draft.md) (field definitions), then [spec/fact/timeline-rules.md](spec/fact/timeline-rules.md) (event placement rules), and consult [examples/fact/电梯劝烟案.json](examples/fact/电梯劝烟案.json).
+Without MCP, read the documents in this order: [spec/fact/schema-draft.md](spec/fact/schema-draft.md) (field definitions), then [spec/fact/timeline-rules.md](spec/fact/timeline-rules.md) (event placement rules), and consult [examples/fact/elevator-smoking-case.en.json](examples/fact/elevator-smoking-case.en.json).
 
 ## Design documents
 

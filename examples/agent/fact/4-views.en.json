@@ -1,0 +1,43 @@
+{
+  "type": "fact",
+  "title": "Views: the same data, seen two ways",
+  "actors": [
+    { "id": "a-1", "name": "Huayuan Trading" },
+    { "id": "a-2", "name": "Xincheng Building Materials" }
+  ],
+  "groups": [
+    { "id": "g-1", "label": "Performance as agreed" },
+    { "id": "g-2", "label": "Deviation from the agreement" }
+  ],
+  "views": [
+    {
+      "label": "Parties side by side",
+      "splitBy": "actor",
+      "side1": { "label": "Huayuan Trading", "actors": ["a-1"] },
+      "side2": { "label": "Xincheng Building Materials", "actors": ["a-2"] },
+      "axis": { "label": "Common to both parties" }
+    },
+    { "label": "Split by group", "splitBy": "group" },
+    { "label": "Huayuan Trading only", "splitBy": "actor", "side1": { "actors": ["a-1"] }, "side2": { "actors": [] } }
+  ],
+  "slots": [
+    {
+      "events": [
+        { "id": "ev-1", "date": "2023-03-10", "label": "The loan contract is signed",
+          "actorIds": ["a-1", "a-2"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-2", "date": "2023-03-12", "label": "Huayuan Trading disburses the loan",
+          "groupId": "g-1", "actorIds": ["a-1"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-3", "date": "2024-03-11", "label": "Xincheng Building Materials fails to repay on time",
+          "groupId": "g-2", "actorIds": ["a-2"] }
+      ]
+    }
+  ]
+}

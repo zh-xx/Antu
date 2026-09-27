@@ -1,37 +1,42 @@
 // ============================================================
-//  src/App.jsx —— 应用外壳
+//  src/App.jsx — the application shell
 //
-//  职责最小化：
-//   1. 校验页面内联进来的那份规范
-//   2. 按大类 × 子类从注册表取渲染器并渲染
-//   3. 记住用户自己的阅读偏好
-//  核心不认识"事实图/关系图"的业务语义，只认 type。
+//  Responsibilities kept minimal:
+//   1. validate the spec inlined into the page
+//   2. get the renderer from the registry by type × kind and render it
+//   3. remember the user's own reading preferences
+//  The core knows nothing of the business meaning of "fact diagram /
+//  relationship diagram"; it knows type only.
 //
-//  **数据从哪来：页面内联。** 成品是一份自包含的 HTML，一份 JSON 一个文件；
-//  开发时由 vite.config.js 里的插件把同一份 JSON 注进 index.html。
-//  两边走完全同一条路，所以这里没有 fetch、没有示例清单、没有回落分支。
-//  演示数据住在开发配置里，成品里一个字节都不带。
+//  **Where the data comes from: inlined into the page.** The product is one
+//  self-contained HTML, one file per JSON; in development a plugin in
+//  vite.config.js injects that same JSON into index.html. Both travel the exact
+//  same path, which is why there is no fetch, no example list and no fallback
+//  branch here. The demo data lives in the dev configuration and not one byte of
+//  it travels into the product.
 //
-//  布局：没有常驻侧栏，画布占满整个窗口，其余都是画布上的浮层。
-//    左上角    标签卡（图的标题、大类、渲染类型切换）
-//    底部中间  控制胶囊（由渲染器自己放）
-//    左下右下  缩放、缩略图（React Flow 自带）
+//  Layout: no permanent sidebar; the canvas fills the whole window and everything
+//  else is a popover on the canvas.
+//    top left           the label card (diagram title, type, rendering kind switch)
+//    bottom centre      the control capsule (placed by the renderer itself)
+//    bottom left/right  zoom, minimap (from React Flow)
 // ============================================================
 
 import { useEffect, useMemo, useState } from 'react'
 import { validateSpec } from './core/validate.js'
 import { getRenderer, listKinds, listTypes } from './core/registry.js'
-import { GRAPH_TYPE_LABELS, labelOf } from './core/labels.js'
+import { GRAPH_TYPE_KEYS } from './core/labels.js'
+import { useLang } from './shell/LangContext.jsx'
 import DiagramHeader from './shell/DiagramHeader.jsx'
 import { readPrefs, writePrefs } from './shell/prefs.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
 
-/** 渲染器不可用时的兜底说明 */
-function FallbackInfo({ errors, spec, hasRenderer }) {
+/** The fallback explanation when no renderer is available */
+function FallbackInfo({ errors, spec, hasRenderer, t, labelOf, formatNumber }) {
   if (errors.length > 0) {
     return (
       <div className="antu-fallback">
-        <div className="antu-error-title">这份数据不能用（{errors.length} 处问题）</div>
+        <div className="antu-error-title">{t('fallback.invalidTitle', { n: formatNumber(errors.length) })}</div>
         <ul className="antu-error-list">
           {errors.map((e, i) => (
             <li key={i}>{e}</li>
@@ -44,9 +49,11 @@ function FallbackInfo({ errors, spec, hasRenderer }) {
   if (spec && !hasRenderer) {
     return (
       <div className="antu-fallback">
-        <div className="antu-error-title">没有为 type = "{spec.type}" 注册渲染器</div>
+        <div className="antu-error-title">{t('fallback.noRendererTitle', { type: spec.type })}</div>
         <div className="antu-error-hint">
-          已注册：{listTypes().map((t) => labelOf(GRAPH_TYPE_LABELS, t)).join(' / ') || '（无）'}
+          {t('fallback.registered', {
+            list: listTypes().map((ty) => labelOf(GRAPH_TYPE_KEYS, ty)).join(' / ') || t('common.none'),
+          })}
         </div>
       </div>
     )
@@ -55,8 +62,8 @@ function FallbackInfo({ errors, spec, hasRenderer }) {
   return null
 }
 
-/** 标签卡第三行：规模与时间跨度（大类已经在上面的行里，不重复） */
-function diagramInfo(spec) {
+/** The label card's third line: size and time span (the type is already in the line above, so not repeated) */
+function diagramInfo(spec, t, formatNumber) {
   if (!spec) return []
   const out = []
 
@@ -66,31 +73,34 @@ function diagramInfo(spec) {
     .filter((d) => typeof d === 'string' && d)
     .sort()
 
-  let slotsLine = `${slots.length} 个时间点`
+  let slotsLine = t('info.slots', { n: formatNumber(slots.length) })
   if (dates.length > 0) {
     const first = dates[0].slice(0, 10)
     const last = dates[dates.length - 1].slice(0, 10)
-    slotsLine += first === last ? ` · ${first}` : ` · ${first} 至 ${last}`
+    slotsLine +=
+      first === last
+        ? ` · ${first}`
+        : ` · ${t('info.span', { from: first, to: last })}`
   }
   out.push(slotsLine)
-  out.push(`${spec.actors?.length || 0} 个主体`)
-  out.push(`${spec.sources?.length || 0} 个来源`)
+  out.push(t('info.actors', { n: formatNumber(spec.actors?.length || 0) }))
+  out.push(t('info.sources', { n: formatNumber(spec.sources?.length || 0) }))
   return out
 }
 
 export default function App() {
+  const { t, lang, labelOf, formatNumber } = useLang()
   const [spec, setSpec] = useState(null)
   const [errors, setErrors] = useState([])
 
-  // 数据内联在页面里。取不到就是生成/注入那一环出了问题，明确说出来，
-  // 不要拿"我去别处找找看"糊过去（成品里根本没有"别处"）。
+  // The data is inlined into the page. If it cannot be found, something went
+  // wrong at the generation/injection step: say so plainly, do not fob the user
+  // off with "let me look elsewhere" (there is no "elsewhere" in the product).
   useEffect(() => {
     const inline = typeof window !== 'undefined' ? window.__ANTU_SPEC__ : undefined
     if (!inline) {
       setErrors([
-        import.meta.env.DEV
-          ? '开发服务器没拿到数据：用 ?example=0 或 ?spec=examples/某份.json 指定一份。'
-          : '这份文件里没有内联数据，生成时出了问题。请重新生成这份 HTML。',
+        import.meta.env.DEV ? t('fallback.devNoData') : t('fallback.noInlineData'),
       ])
       return
     }
@@ -99,12 +109,15 @@ export default function App() {
     setSpec(errs.length ? null : inline)
   }, [])
 
-  // 按图记的偏好用**标题**当键：它写在数据里，开发和成品都有，
-  // 而且不依赖文件名（成品根本没有文件名）。
+  // The per-diagram preference is keyed by **title**: the title is written in the
+  // data, so both dev and the product have it, and it does not depend on a file
+  // name (the product has no file name at all).
   const specKey = spec?.title || ''
 
-  // 子类是渲染层的选择，不在数据里：从注册表按大类查出有哪些画法。
-  // 手动选过的按图记着，没选过就用第一个（默认画法）。
+  // The kind is a choice of the rendering layer, not part of the data: look up
+  // from the registry which kinds the type has.
+  // A manually chosen one is remembered per diagram; with none chosen, use the
+  // first (the default kind).
   const kinds = useMemo(() => (spec ? listKinds(spec.type) : []), [spec])
   const [kindPrefs, setKindPrefs] = useState(() => readPrefs().kinds || {})
   const kind = kinds.find((k) => k.kind === kindPrefs[specKey])?.kind ?? kinds[0]?.kind ?? null
@@ -118,23 +131,32 @@ export default function App() {
 
   return (
     <div className="antu-app">
-      {/* 标签卡常显，不给开关。原先它同时控制"屏幕上显不显示"和"导出带不带"，
-          现在导出一律不带题头（rendering §10.2 改过），开关就没有意义了。 */}
+      {/* The label card is always shown, with no switch. It used to control both
+          "whether it shows on screen" and "whether the export carries it"; now the
+          export never carries the heading (spec/fact/rendering.md §10.2 changed),
+          so the switch has no meaning. */}
       <DiagramHeader
-        title={spec?.title || '案图'}
-        typeLabel={spec ? labelOf(GRAPH_TYPE_LABELS, spec.type) : ''}
-        info={diagramInfo(spec)}
+        title={spec?.title || t('common.untitled')}
+        typeLabel={spec ? labelOf(GRAPH_TYPE_KEYS, spec.type) : ''}
+        info={diagramInfo(spec, t, formatNumber)}
         kinds={kinds}
         kind={kind}
         onSelectKind={selectKind}
       />
 
       {ready ? (
-        <ErrorBoundary>
+        <ErrorBoundary lang={lang}>
           <Renderer spec={spec} />
         </ErrorBoundary>
       ) : (
-        <FallbackInfo errors={errors} spec={spec} hasRenderer={!!Renderer} />
+        <FallbackInfo
+          errors={errors}
+          spec={spec}
+          hasRenderer={!!Renderer}
+          t={t}
+          labelOf={labelOf}
+          formatNumber={formatNumber}
+        />
       )}
     </div>
   )

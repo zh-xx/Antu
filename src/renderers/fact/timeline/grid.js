@@ -1,44 +1,45 @@
 // ============================================================
-//  src/renderers/fact/timeline/grid.js —— fact 排布的唯一事实来源
+//  src/renderers/fact/timeline/grid.js — the single source of truth for fact layout
 //
-//  把一份 fact 规范算成“哪个事件落在第几行、第几列”。
-//  校验层（validate.js）和渲染层（fact 渲染器）都调用它，
-//  保证“检查的规则”和“画出来的样子”用的是同一套逻辑。
+//  Turns a fact spec into "which row and which column each event falls in".
+//  The validation layer (validate.js) and the rendering layer (the fact renderer) both call it,
+//  guaranteeing that "the rules checked" and "what is drawn" use one and the same logic.
 //
-//  规则见 spec/fact/timeline-rules.md：
-//   - 行 = 槽（slots 数组下标）
-//   - 列 = 站位 × 主体：第 1 侧各主体、轴线、第 2 侧各主体
-//   - 站位由 groupId 决定；涉及 ≥2 个主体则落轴线
-//   - 距离按侧内主体次序
+//  Rules in spec/fact/timeline-rules.md:
+//   - row = slot (index into the slots array)
+//   - column = side × party: each party on side 1, the axis, each party on side 2
+//   - the side is decided by groupId; 2 or more parties land on the axis
+//   - distance follows the order of parties within a side
 // ============================================================
 
-import { SUMMARY_MAX } from '../cardGeometry.js'
+import { SUMMARY_MAX, SUMMARY_MAX_EM, textEm } from '../cardGeometry.js'
+import { tEn } from '../../../core/i18n.js'
 
 export const SIDE = { SIDE1: 'side1', AXIS: 'axis', SIDE2: 'side2' }
 
-/** 组数上限：轴只有两侧加轴线三个位置 */
+/** Group limit: the axis has only two sides plus the middle, three positions */
 const MAX_GROUPS = 3
 
 /**
- * 内置的缺省视角。数据里不写 `views` 时就用它，行为与加视角之前完全一致：
- * 按分组分侧，不按主体筛。
+ * The built-in default view. Used when the data writes no `views`, and behaves exactly as
+ * before views existed: split by group, no filtering by party.
  */
-const DEFAULT_VIEW = { label: '全体', splitBy: 'group' }
+const DEFAULT_VIEW = { label: 'all', splitBy: 'group' }
 
-/** 这份数据有哪些视角。不写就给一个内置的。 */
+/** Which views this data has. If none is written, one built-in view is given. */
 export function viewsOf(spec) {
   const list = Array.isArray(spec?.views) ? spec.views.filter(isPlainObject) : []
   return list.length > 0 ? list : [DEFAULT_VIEW]
 }
 
-/** 视角某一侧声明的主体清单（去重保序，只认字符串 id） */
+/** The list of parties a view declares for one side (deduplicated, order kept, string ids only) */
 function viewActors(view, side) {
   const a = view?.[side]?.actors
   if (!Array.isArray(a)) return []
   return [...new Set(a.filter((x) => typeof x === 'string'))]
 }
 
-/** 视角某一侧的标题：按主体分侧时取自视角，按分组分侧时取自 groups */
+/** Side heading of a view: from the view when split by party, from groups when split by group */
 function sideLabelsOf(view, groups) {
   if (view.splitBy === 'actor') {
     return {
@@ -57,10 +58,11 @@ function sideLabelsOf(view, groups) {
 const ISO_RE = /^\d{4}(-\d{2}(-\d{2}(T\d{2}(:\d{2}(:\d{2})?)?)?)?)?$/
 
 /**
- * 两个 ISO 时间谁在前。
- * 比到两者共同的长度为止：ISO 8601 的字符串按字典序比就是按时间比，
- * 但精度可能不同（一个到秒、一个只到日），只比共同部分才不会误判。
- * 例如 "2017-05-02" 与 "2017-05-02T09:24:16" 共同部分相等，不算谁早。
+ * Which of two ISO times comes first.
+ * Compare only up to the length the two share: ISO 8601 strings compare as times when compared
+ * lexicographically, but the precision may differ (one to the second, one only to the day), and
+ * comparing just the shared part avoids a false verdict. For example "2017-05-02" and
+ * "2017-05-02T09:24:16" share the same prefix, so neither counts as earlier.
  */
 function isBefore(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false
@@ -75,16 +77,11 @@ function isPlainObject(v) {
 }
 
 /**
- * 算出一份 fact 规范的网格。
- * @returns {{
- *   errors: string[],
- *   columns: Array<{ key, side, actorId?, actorName?, groupIndex? }>,
- *   rows: Array<{ index, cells: Map<string, object> }>,
- *   placements: Map<string, { row, col, key }>,
- *   axisColumnIndex: number,
- *   actorById: Map, groupById: Map, groupIndexById: Map, sourceById: Map,
- *   eventCount: number,
- * }}
+ * Compute the grid of a fact spec.
+ * @returns {{ errors: string[], columns: Array<{ key, side, actorId?, actorName?, groupIndex? }>,
+ *   rows: Array<{ index, cells: Map<string, object> }>, placements: Map<string, { row, col, key }>,
+ *   axisColumnIndex: number, actorById: Map, groupById: Map, groupIndexById: Map, sourceById: Map,
+ *   eventCount: number }}
  */
 export function buildGrid(spec, view) {
   const effectiveView = isPlainObject(view) ? view : viewsOf(spec)[0]
@@ -113,179 +110,191 @@ export function buildGrid(spec, view) {
     eventCount: 0,
   }
 
-  // ---------- 主体清单 ----------
+  // ---------- party list ----------
   const actorById = new Map()
   actors.forEach((a, i) => {
     if (!isPlainObject(a)) {
-      errors.push(`actors[${i}]: 不是对象`)
+      errors.push(tEn('err.notObject', { at: `actors[${i}]` }))
       return
     }
     if (!a.id) {
-      errors.push(`actors[${i}]: 缺少必填字段 \`id\``)
+      errors.push(tEn('err.required', { at: `actors[${i}]`, field: 'id' }))
       return
     }
-    if (actorById.has(a.id)) errors.push(`actors[${i}]: id "${a.id}" 重复`)
+    if (actorById.has(a.id)) errors.push(tEn('err.duplicateId', { at: `actors[${i}]`, id: a.id }))
     actorById.set(a.id, a)
-    if (!a.name) errors.push(`actors[${i}] (${a.id}): 缺少必填字段 \`name\``)
+    if (!a.name) errors.push(tEn('err.required', { at: `actors[${i}] (${a.id})`, field: 'name' }))
   })
 
-  // ---------- 视角清单 ----------
-  // 只校验结构（引用是否存在、两侧是否重叠），不管当前选中哪个视角。
-  // 事件能不能摆下取决于当前视角，那部分在下面按当前视角判。
+  // ---------- view list ----------
+  // Only the structure is validated (whether references exist, whether the two sides overlap);
+  // which view is selected does not matter here. Whether an event fits depends on the current
+  // view, and that is judged below.
   if (spec?.views !== undefined && spec?.views !== null) {
     if (!Array.isArray(spec.views)) {
-      errors.push('`views` 必须是数组')
+      errors.push(tEn('err.viewsNotArray'))
     } else {
       spec.views.forEach((v, vi) => {
         const vAt = `views[${vi}]`
         if (!isPlainObject(v)) {
-          errors.push(`${vAt}: 必须是对象`)
+          errors.push(tEn('err.notObject', { at: vAt }))
           return
         }
-        if (!v.label) errors.push(`${vAt}: 缺少必填字段 \`label\``)
+        if (!v.label) errors.push(tEn('err.required', { at: vAt, field: 'label' }))
         if (v.splitBy !== 'actor' && v.splitBy !== 'group') {
           errors.push(
-            `${vAt}: \`splitBy\` 只能是 "actor"（按主体分侧）或 "group"（按分组分侧），实际为 "${v.splitBy}"`,
+            tEn('err.badSplitBy', { at: vAt, value: v.splitBy }),
           )
         }
         if (v.splitBy === 'actor') {
           const a1 = viewActors(v, 'side1')
           const a2 = viewActors(v, 'side2')
           ;[...a1, ...a2].forEach((id) => {
-            if (!actorById.has(id)) errors.push(`${vAt}: 引用了不存在的 actor "${id}"`)
+            if (!actorById.has(id)) errors.push(tEn('err.missingRef', { at: vAt, field: 'side', kind: 'actor', id }))
           })
           const both = a1.filter((id) => a2.includes(id))
           if (both.length > 0) {
-            errors.push(`${vAt}: 主体 ${both.join('、')} 同时出现在两侧，一个主体只能在一侧`)
+            errors.push(tEn('err.bothSides', { at: vAt, names: both.join(', ') }))
           }
         }
       })
     }
   }
 
-  // ---------- 分组清单 ----------
+  // ---------- group list ----------
   const groupById = new Map()
   const groupIndexById = new Map()
   if (groups.length > MAX_GROUPS) {
-    errors.push(`groups: 最多 ${MAX_GROUPS} 个（轴只有两侧加轴线三个站位），实际 ${groups.length} 个`)
+    errors.push(tEn('err.tooManyGroups', { at: 'groups', max: MAX_GROUPS, actual: groups.length }))
   }
   groups.forEach((g, i) => {
     if (!isPlainObject(g)) {
-      errors.push(`groups[${i}]: 不是对象`)
+      errors.push(tEn('err.notObject', { at: `groups[${i}]` }))
       return
     }
     if (!g.id) {
-      errors.push(`groups[${i}]: 缺少必填字段 \`id\``)
+      errors.push(tEn('err.required', { at: `groups[${i}]`, field: 'id' }))
       return
     }
-    if (groupIndexById.has(g.id)) errors.push(`groups[${i}]: id "${g.id}" 重复`)
+    if (groupIndexById.has(g.id)) errors.push(tEn('err.duplicateId', { at: `groups[${i}]`, id: g.id }))
     groupById.set(g.id, g)
     groupIndexById.set(g.id, i)
-    if (!g.label) errors.push(`groups[${i}] (${g.id}): 缺少必填字段 \`label\``)
+    if (!g.label) errors.push(tEn('err.required', { at: `groups[${i}] (${g.id})`, field: 'label' }))
   })
 
-  // ---------- 来源表 ----------
+  // ---------- source table ----------
   const sourceById = new Map()
   sources.forEach((s, i) => {
     if (!isPlainObject(s)) {
-      errors.push(`sources[${i}]: 不是对象`)
+      errors.push(tEn('err.notObject', { at: `sources[${i}]` }))
       return
     }
     if (!s.id) {
-      errors.push(`sources[${i}]: 缺少必填字段 \`id\``)
+      errors.push(tEn('err.required', { at: `sources[${i}]`, field: 'id' }))
       return
     }
-    if (sourceById.has(s.id)) errors.push(`sources[${i}]: id "${s.id}" 重复`)
+    if (sourceById.has(s.id)) errors.push(tEn('err.duplicateId', { at: `sources[${i}]`, id: s.id }))
     sourceById.set(s.id, s)
-    if (!s.type) errors.push(`sources[${i}] (${s.id}): 缺少必填字段 \`type\``)
-    if (!s.name) errors.push(`sources[${i}] (${s.id}): 缺少必填字段 \`name\``)
+    if (!s.type) errors.push(tEn('err.required', { at: `sources[${i}] (${s.id})`, field: 'type' }))
+    if (!s.name) errors.push(tEn('err.required', { at: `sources[${i}] (${s.id})`, field: 'name' }))
   })
 
-  // ---------- 槽 ----------
+  // ---------- slots ----------
   if (!Array.isArray(slots)) {
-    errors.push('`slots` 必须是数组（一个槽 = 一个时间点）')
+    errors.push(tEn('err.slotNotArray'))
     return { ...empty, actorById, groupById, groupIndexById, sourceById }
   }
-  if (slots.length === 0) errors.push('`slots` 不能为空')
+  if (slots.length === 0) errors.push(tEn('err.slotsEmpty'))
 
   const eventIds = new Set()
   const seenActorsOnSide = { [SIDE.SIDE1]: new Set(), [SIDE.SIDE2]: new Set() }
-  /** 摊平后的事件：{ slotIndex, event, side, actorId|null } */
+  /** Flattened events: { slotIndex, event, side, actorId|null } */
   const flat = []
 
   slots.forEach((slot, si) => {
     const at = `slots[${si}]`
     if (!isPlainObject(slot)) {
-      errors.push(`${at}: 必须是对象，形如 { events: [ … ] }`)
+      errors.push(tEn('err.slotShape', { at }))
       return
     }
     if (!Array.isArray(slot.events)) {
-      errors.push(`${at}.events 必须是数组`)
+      errors.push(tEn('err.eventsNotArray', { at }))
       return
     }
-    if (slot.events.length === 0) errors.push(`${at}.events 不能为空（空槽没有意义）`)
+    if (slot.events.length === 0) errors.push(tEn('err.slotEventsEmpty', { at }))
 
     slot.events.forEach((e, ei) => {
       const eAt = `${at}.events[${ei}]${e?.id ? ` (${e.id})` : ''}`
       if (!isPlainObject(e)) {
-        errors.push(`${eAt}: 不是对象`)
+        errors.push(tEn('err.notObject', { at: eAt }))
         return
       }
-      if (!e.id) errors.push(`${eAt}: 缺少必填字段 \`id\``)
-      else if (eventIds.has(e.id)) errors.push(`${eAt}: id "${e.id}" 与前面的事件重复`)
+      if (!e.id) errors.push(tEn('err.required', { at: eAt, field: 'id' }))
+      else if (eventIds.has(e.id)) errors.push(tEn('err.duplicateId', { at: eAt, id: e.id }))
       else eventIds.add(e.id)
 
-      if (!e.date) errors.push(`${eAt}: 缺少必填字段 \`date\``)
+      if (!e.date) errors.push(tEn('err.required', { at: eAt, field: 'date' }))
       else if (!ISO_RE.test(e.date)) {
-        errors.push(`${eAt}: \`date\` 不符合 ISO 8601（如 2017-05-02T09:24:03），实际为 "${e.date}"`)
+        errors.push(tEn('err.badDate', { at: eAt, field: 'date', value: e.date }))
       }
-      if (!e.label) errors.push(`${eAt}: 缺少必填字段 \`label\``)
+      if (!e.label) errors.push(tEn('err.required', { at: eAt, field: 'label' }))
 
-      // dateEnd 是可选字段，但一旦写了就必须合法，否则卡片上那行时间会显示乱码
+      // dateEnd is optional, but once written it must be valid, or the time line on the card shows garbage
       if (e.dateEnd !== undefined && e.dateEnd !== null) {
         if (typeof e.dateEnd !== 'string' || !ISO_RE.test(e.dateEnd)) {
           errors.push(
-            `${eAt}: \`dateEnd\` 不符合 ISO 8601（如 2017-05-02T09:26:24），实际为 "${e.dateEnd}"`,
+            tEn('err.badDate', { at: eAt, field: 'dateEnd', value: e.dateEnd }),
           )
         } else if (isBefore(e.dateEnd, e.date)) {
-          errors.push(`${eAt}: \`dateEnd\` (${e.dateEnd}) 早于 \`date\` (${e.date})，时段不能倒着走`)
+          errors.push(tEn('err.dateEndBeforeDate', { at: eAt, end: e.dateEnd, start: e.date }))
         }
       }
 
-      // summary 是卡片上的一行补充，超过一行卡片就放不下了
+      // summary is one supplementary line on the card; more than one line does not fit
       if (e.summary !== undefined && e.summary !== null) {
         if (typeof e.summary !== 'string') {
-          errors.push(`${eAt}: \`summary\` 必须是字符串`)
-        } else if ([...e.summary].length > SUMMARY_MAX) {
+          errors.push(tEn('err.mustBeString', { at: eAt, field: 'summary' }))
+        } else if (textEm(e.summary) > SUMMARY_MAX_EM) {
+          // Judged by **drawn width**, not by character count: an English sentence has nearly
+          // twice the characters of the Chinese one, so counting characters would reject valid
+          // text (see textEm in cardGeometry.js).
           errors.push(
-            `${eAt}: \`summary\` 超过 ${SUMMARY_MAX} 字（实际 ${[...e.summary].length} 字），卡片一行放不下；要么缩短，要么改写成 detail`,
+            tEn('err.summaryTooLong', {
+              at: eAt,
+              max: SUMMARY_MAX,
+              actual: Math.ceil(textEm(e.summary)),
+            }),
           )
         }
       }
 
       const ids = Array.isArray(e.actorIds) ? e.actorIds : []
       ids.forEach((id) => {
-        if (!actorById.has(id)) errors.push(`${eAt}: actorIds 引用了不存在的 actor "${id}"`)
+        if (!actorById.has(id)) errors.push(tEn('err.missingRef', { at: eAt, field: 'actorIds', kind: 'actor', id }))
       })
       if (e.groupId && !groupIndexById.has(e.groupId)) {
-        errors.push(`${eAt}: groupId 引用了不存在的 group "${e.groupId}"`)
+        errors.push(tEn('err.missingRef', { at: eAt, field: 'groupId', kind: 'group', id: e.groupId }))
       }
       const srcIds = Array.isArray(e.sourceIds) ? e.sourceIds : []
       srcIds.forEach((id) => {
-        if (!sourceById.has(id)) errors.push(`${eAt}: sourceIds 引用了不存在的 source "${id}"`)
+        if (!sourceById.has(id)) errors.push(tEn('err.missingRef', { at: eAt, field: 'sourceIds', kind: 'source', id }))
       })
 
-      // ---------- 站位 ----------
-      // 两种看法：
-      //   按主体（视角）：谁做的摆谁那边，跨两侧或一侧多人一起做的落轴线
-      //   按分组（数据）：groupId 指向哪一组就摆哪一侧，涉及 ≥2 主体落轴线
+      // ---------- side ----------
+      // Two ways of looking at it:
+      //   by party (view): whoever did it goes on their side; crossing both sides, or several
+      //     parties on one side acting together, lands on the axis
+      //   by group (data): groupId points at a group and the event goes to that side; 2 or more
+      //     parties land on the axis
       const gi = e.groupId ? groupIndexById.get(e.groupId) : undefined
       let side
       let actorId = null
 
       if (byActor) {
-        // 视角声明了主体，就只显示与这些主体有关的事件（没主体的事件是客观事实，照常显示）。
-        // 视角两侧都空（"只看时间先后"）时不做筛选，全部落轴线。
+        // When a view declares parties, only events involving them are shown (an event with no
+        // party is an objective fact and is shown as usual).
+        // When both sides of the view are empty ("chronology only") nothing is filtered and
+        // everything lands on the axis.
         const inScope = [...in1, ...in2]
         if (
           inScope.length > 0 &&
@@ -301,26 +310,26 @@ export function buildGrid(spec, view) {
           side = SIDE.SIDE2
           actorId = ids[0]
         } else {
-          side = SIDE.AXIS // 没主体、跨两侧、或一侧多人一起做的事
+        side = SIDE.AXIS // no party, crossing both sides, or several parties on one side acting together
         }
       } else if (ids.length >= 2) {
-        side = SIDE.AXIS // 多主体 → 自动落轴线
+        side = SIDE.AXIS // several parties → the axis automatically
         if (gi === 0 || gi === 1) {
           errors.push(
-            `${eAt}: 事件涉及 ${ids.length} 个主体，按规则应落轴线上，但 groupId 指向了侧别组 "${e.groupId}"，两者矛盾`,
+            tEn('err.multiActorNeedsAxis', { at: eAt, n: ids.length, groupId: e.groupId }),
           )
         }
       } else if (e.groupId === undefined || e.groupId === null || e.groupId === '') {
-        side = SIDE.AXIS // 不写分组 → 轴线
+        side = SIDE.AXIS // no group written → the axis
       } else if (gi === undefined) {
-        return // 未知分组，上面已报错
+        return // unknown group, already reported above
       } else {
-        side = SIDE_BY_GROUP_INDEX[gi] ?? SIDE.AXIS // 第 3 组及以后 → 轴线
+        side = SIDE_BY_GROUP_INDEX[gi] ?? SIDE.AXIS // the 3rd group and beyond → the axis
       }
 
       if (!byActor && side !== SIDE.AXIS && ids.length !== 1) {
         errors.push(
-          `${eAt}: 写了侧别组 "${e.groupId}"，必须恰好指定 1 个主体（现在是 ${ids.length} 个）；不涉及具体主体的事件请归入轴线组或不写 groupId`,
+          tEn('err.groupNeedsOneActor', { at: eAt, groupId: e.groupId, n: ids.length }),
         )
         return
       }
@@ -332,11 +341,13 @@ export function buildGrid(spec, view) {
     })
   })
 
-  // ---------- 建列 ----------
-  // 列的**先后次序一律由图级 actors 清单决定**（靠前的贴近轴线），两个模式都一样。
-  // 视角只回答"谁在哪一侧"，不回答"谁在内谁在外"：一个意思一个地方说。
-  // 按主体分侧时，某一列没有事件也保留（空列本身是信息，这一方在这类事上没有动作）；
-  // 按分组分侧时，列取"在这一侧出现过的主体"。
+  // ---------- build the columns ----------
+  // **The order of the columns is always decided by the diagram-level actors list** (earlier
+  // entries sit closer to the axis), in both modes. A view only answers "who is on which side",
+  // never "who is inside and who is outside": one meaning, said in one place.
+  // When split by party, a column with no event is kept (an empty column is itself information:
+  // this party did nothing in this kind of matter); when split by group, the columns are the
+  // parties that appeared on that side.
   const actorOrder = actors.map((a) => (isPlainObject(a) ? a.id : null)).filter(Boolean)
   const columnsFor = (side) =>
     byActor
@@ -344,8 +355,9 @@ export function buildGrid(spec, view) {
       : actorOrder.filter((id) => seenActorsOnSide[side].has(id))
 
   const columns = []
-  // 第 1 侧排在轴线左边：清单里越靠前的主体离轴越近，
-  // 而列是从左往右排的，所以这里要倒过来，贴轴的那一列才落在最右。
+  // Side 1 is laid out to the left of the axis: the earlier a party is in the list the closer it
+  // sits to the axis, and columns are laid out left to right, so this has to be reversed for the
+  // column next to the axis to end up rightmost.
   columnsFor(SIDE.SIDE1)
     .reverse()
     .forEach((actorId) => {
@@ -359,7 +371,7 @@ export function buildGrid(spec, view) {
 
   const colIndexByKey = new Map(columns.map((c, i) => [c.key, i]))
 
-  // ---------- 摆格子 + 撞车检查 ----------
+  // ---------- place the cells + collision check ----------
   const rows = slots.map((_, i) => ({ index: i, cells: new Map() }))
   const placements = new Map()
   let eventCount = 0
@@ -367,14 +379,14 @@ export function buildGrid(spec, view) {
   flat.forEach(({ slotIndex, event, side, actorId }) => {
     const key = side === SIDE.AXIS ? SIDE.AXIS : `${side}:${actorId}`
     const col = colIndexByKey.get(key)
-    if (col === undefined) return // 异常数据，前面已报错
+    if (col === undefined) return // bad data, already reported above
 
     eventCount += 1
     const row = rows[slotIndex]
     if (row.cells.has(key)) {
       const other = row.cells.get(key)
       errors.push(
-        `slots[${slotIndex}]: 同一个槽的同一条车道放了两个事件（"${other.id}" 与 "${event.id}"），一格只能放一个`,
+        tEn('err.oneEventPerCell', { at: `slots[${slotIndex}]`, a: other.id, b: event.id }),
       )
     } else {
       row.cells.set(key, event)

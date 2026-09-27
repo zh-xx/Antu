@@ -1,0 +1,65 @@
+{
+  "type": "fact",
+  "title": "Single actor: one party, two sides by nature",
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "Guo",
+      "role": "plaintiff"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Normal (performance as agreed)"
+    },
+    {
+      "id": "g-2",
+      "label": "Abnormal (deviation from the agreement)"
+    }
+  ],
+  "views": [
+    {
+      "label": "By performance",
+      "splitBy": "group"
+    },
+    {
+      "label": "Chronological only",
+      "splitBy": "actor",
+      "side1": {
+        "actors": []
+      },
+      "side2": {
+        "actors": []
+      }
+    }
+  ],
+  "slots": [
+    {
+      "events": [
+        {
+          "id": "ev-1",
+          "date": "2019-04-27",
+          "label": "Annual pass issued and fingerprint enrolled",
+          "groupId": "g-1",
+          "actorIds": [
+            "a-1"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-2",
+          "date": "2019-10-17",
+          "label": "Text received: no entry without face scan",
+          "groupId": "g-2",
+          "actorIds": [
+            "a-1"
+          ]
+        }
+      ]
+    }
+  ]
+}

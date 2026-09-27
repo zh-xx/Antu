@@ -1,5 +1,15 @@
 # 待修清单
 
+> **Note for English readers.** This is a working log of known issues and how they were
+> fixed, kept in Chinese. It is **not a design document**; its entries are cited by
+> number from comments in the code (for example `known-issues` item 18 is the sole
+> reference behind the browser launch retry logic in `tools/lib/chrome.mjs`). It is
+> deliberately not translated: it is a living record that gets appended to as work
+> continues, so an English copy would have to be maintained in parallel. Issue numbers
+> carry no meaning outside this file; treat them as identifiers, not as references worth
+> following in English. Design rationale lives in the other documents under `spec/`,
+> which are English by default with a `.zh-CN.md` counterpart.
+
 > 用途：**记下已经发现、但还没修的问题**，免得聊过去就忘了。
 > 谁都可以往上加（发起人、agent 都行）。修完不要删，挪到文末「已修」并写清改法和实测，
 > 这样后来的人知道"这个坑踩过、是怎么填的"。
@@ -25,6 +35,14 @@
 
 **当初的结论没变**（见下面的原文）：先不动，等排布规则再复杂一档、
 或者真出现"只校验"的需求时再动，那时才看得清该在哪切。放回待修清单，不是待办。
+
+**补记（2026-09，程序图落地时）。** 程序图的 schema 已定稿（`spec/procedure/schema-draft.md`），
+§5 是校验规则、§6 是排布规则，本来就是两张清单。**照抄"校验就是排布顺手报错"这个写法，
+procedure 的校验就会长进流程图的排布里**；将来再加泳道图、状态图，就是三份排布各报一套错，
+同一份数据三种说法。
+
+所以 procedure 那边**从第一天就分两层写**（一层只查"数据对不对"，一层只管"怎么摆"），
+不必等这条翻工。fact 这边什么时候动，仍按上面的原结论，不因为 procedure 提前。
 
 ### 17. 校验只验第一个视角 `待修`
 
@@ -52,6 +70,53 @@
 
 **顺带一处文档空白**：`validate` 与 `layout` 的分工没写下来。`layout` 是**逐视角**报的
 （`blockedViews`），`validate` 只报第一个。使用者按名字猜，会以为两个都覆盖了全部视角。
+
+**与 procedure 的关系：没有。** 程序图不吃视角这一维（`spec/procedure/schema-draft.md` §4.7），
+所以这条不挡程序图，可以一直放着。
+
+### 19. MCP 的三个工具还写死着 fact `待修`
+
+**现象。** `tools/mcp/engine.mjs` 号称"按大类分发，加新图类型时工具不用改"
+（README 的 MCP 那一节就是这么写的），但有三处没做到：
+
+1. `layoutReport()` 直接 `import { viewsOf, buildGrid } from '../../src/renderers/fact/timeline/grid.js'`，
+   还硬编码了 `spec.slots`、`slotCount`、`suggestedOrientation`；
+2. 示例摘要（`listExamples` 里的 `read()`）算的是 `events` / `slots` / `views`，都是 fact 的字段；
+3. 调用排布函数时传的是 `layout(spec, fields, view, orientation)`，四个参数里三个是 fact 的概念。
+
+（`layoutKindsOf(type)[0]` 取默认画法这一处是对的，不用动。）
+
+**代价。** procedure 一落地，agent 调 `antu_layout` 问"这张合同流程图多大"，
+会拿到按 `slots` 数出来的废话数字；调 `antu_examples` 看程序图的示例，
+摘要显示"0 事件 / 0 时间点 / 1 个视角（全体）"。agent 会以为自己取错了数据。
+实测（2026-09，程序图的排布落地当天现场复现）：
+
+```
+listExamples({type:'procedure', group:'real'}) → 7 份，但每份 events:0 slots:0 views:["全体"]
+layoutReport(一份 procedure 规范)              → counts: { slots: 0, events: 0, actors: 2, sources: 1 }
+                                                 （layers 明明有 10 层，报的是 0 个时间点）
+```
+
+**复核（2026-09，示例成对与国际化之后）**：这一条的**第 1、2、3 点仍然成立**，
+`layoutReport` 里还是 `import { viewsOf, buildGrid } from '.../fact/timeline/grid.js'`。
+现状是 procedure 走注册表拿到了排布函数（`layoutOf(type, kind)`，那段已经对），
+但**报告层**仍按 fact 的字段算，所以症状照旧：
+
+```
+listExamples({type:'procedure', group:'real'}) → 7 份，每份 events:0 slots:0 views:["all"]
+```
+
+（上面那句里的 `["全体"]` 现显示为 `["all"]`，是国际化时把内置视角名改成了语言中性的 `all`；
+数字与结论未变。）
+
+**在哪。** `tools/mcp/engine.mjs` 的 `layoutReport` 与 `listExamples`。
+
+**建议做法。** 把"这份数据怎么算几何报告"也做成**大类自己提供的一份**：注册表里加一项
+`report(spec, options)`，fact 提供 fact 的（槽数、列数、建议方向），procedure 提供 procedure 的
+（层数、最宽一层、终止节点数、建议方向）。示例摘要同理，按大类取字段。MCP 只负责转发。
+
+**先别急着改。** 等 procedure 的排布写出来之后再动：那时才知道报告里真正该报什么
+（层数？最宽一层？），现在猜是白猜。这条与第 3 条是两处，不要一起翻工。
 
 ## 反复踩的坑（不是待修项，是规矩）
 
@@ -99,6 +164,31 @@
 ---
 
 ## 已修
+
+> **编号索引。** 代码注释里引用的条号大多已经修完，内容挪到了本节；
+> 修完时**有的保留了编号，有的被并进了相邻条目**。
+> 所以按条号直接搜不一定搜得到，先看这张表。
+> 同理，下面按主题命名的条目，其原始编号也列在这里。
+
+| 条号 | 现状 | 在哪 |
+|---|---|---|
+| 1 | 已修 | 验证脚本收进仓库了（临时脚本写二十来遍） |
+| 2 | 已修 | 注册表拆成"知识"和"组件"两套 |
+| 3 | **待修** | 见上面「待修」一节 |
+| 5 | 已修 | 画布搬进外壳，App 的接口瘦下来 |
+| 9 | 已修 | HTML 生成逻辑合成一份 |
+| 11 | 已修 | 删掉一个凭空加的字段（`spec?.kindHint`） |
+| 14 | 已修 | 示例分成了两批（给人与给 agent 的分开） |
+| 15 | 已修 | 画布搬进外壳，App 的接口瘦下来 |
+| 17 | **待修** | 见上面「待修」一节 |
+| 18 | 已修 | CI 上 Chrome 偶发起不来 |
+| 19 | **待修** | 见上面「待修」一节 |
+| 20 | 已修 | `readExample` 读不出真实案例 |
+
+按主题命名的条目（更早的几轮，编号未保留）：
+浏览器查找可配置 · 加了 CI · 给 agent 的参考资料独立出来了 · 拆开了 timeline/layout.js ·
+小卫生清完了 · 加了错误边界 · 装上了 linter · 数据来源的分叉 ·
+`npm run build` 的产物打开是报错页
 
 ### 浏览器查找可配置（已修，见 `2753f60`）
 
@@ -166,12 +256,16 @@ README 加了 CI 徽章。
 
 | | 给谁 | 体量 |
 |---|---|---|
-| `antu_schema` | agent：字段表（哪个必填、什么类型、一句话说明） | 1777 字符 ≈ 1.2k token |
-| `antu_guide` | agent：一页机制说明（事件画在哪、视角怎么换、一格一事件） | 1732 字符 ≈ 1.1k token |
+| `antu_schema` | agent：字段表（哪个必填、什么类型、一句话说明） | 2858 字符 ≈ 1.9k token |
+| `antu_guide` | agent：一页机制说明（事件画在哪、视角怎么换、一格一事件） | 4042 字符 ≈ 2.6k token |
 | `antu_examples` | agent：六份 1 KB 的小示例（见上一条） | 每份约 1 KB |
 | `antu_spec` | 设计者：八份设计文档 | 约 5.7 万字符 |
 
-**合计 2.3k token 就能开工**，替掉原先的 17k。
+**合计 4.5k token 就能开工**，替掉原先的 17k。
+
+> 2026-09 复核：英文化之后字段表与机制说明都变长了，原先写的「2.3k」已过时。
+> 实测 `antu_schema` 2858 字符（≈1.9k token）、`antu_guide` 4042 字符（≈2.6k token）。
+> 验证器里加了一条断言盯着这个数：README 声明的值与实测值相差超过 0.6k 就报错。
 
 **铁律：不手抄第二份规则。** 这个项目已经吃过四次"同一件事写两处然后走偏"
 的苦。所以字段表**从代码里的 `FACT_FIELDS` 生成**（`renderers/fact/schema.js`），
@@ -216,7 +310,7 @@ agent 示例的视角全部排得下（照抄不会撞到"摆不下"）
 
 **接口变化。** `antu_examples` 不传参数给的就是小示例（并注明真实案例可用
 `group="real"` 列出）；传 `file` 仍可取任意一份，路径现在支持
-`examples/agent/fact/1-minimal.json` 这种写法。
+`examples/agent/fact/1-minimal.en.json` 这种写法。
 
 **实测体积。** 六份合计 5.5 KB；一份真实案例 7.9 KB。读三份约 3 KB。
 
@@ -595,3 +689,31 @@ Error: ENOTEMPTY: directory not empty, rmdir '/tmp/antu-chrome-EPzGJe/Default'
 
 **这轮之后的分工**：`verify:fast` 里多两条不要浏览器的检查
 （三次尝试各占各的端口与 profile；收尾连子进程一起杀）。
+
+### 20. `readExample` 读不出真实案例（已修，见下一提交）
+
+**现象**（原文保留）：`listExamples({group:'real'})` 能列出 `examples/<大类>/x.json`，
+但把这些路径**原样**交给 `readExample`，一律返回 `null`。agent 拿到清单却取不到内容。
+
+**这一条比原记录说的还多一层。** 修的时候才发现是**两个**毛病叠着：
+
+1. 白名单漏了 `<大类>/x.json` 这一层（原记录说的就是这个）；
+2. `listExamples` 返回的是**绝对路径**，而 `readExample` 只认相对路径。
+   即使补上第 1 点，照列表给的路径去读**依然读不到**。
+
+第 2 点是补第 1 点时用"列表里每一条都取得到"这条断言试出来的：
+只补白名单，那条断言仍然红。**光看代码看不出第 2 点**，这正是先写断言的价值。
+
+**改法。** 三条一起动：
+
+1. 白名单加 `<大类>/x.json`（`/^[\w-]+\/[\w.-]+\.json$/`）；
+2. `readExample` 同时接受相对路径与绝对路径，与 `listExamples` 的口径对齐；
+3. 验证器加两条断言：**列表里每一条都取得到**，以及**按基名取时解析到默认语言那一份**
+   （示例成对之后 `xxx.json` 不再存在，要给 `xxx.en.json`）。
+
+**实测**：`examples/fact` 11 份、`examples/agent/fact` 12 份，
+真实案例列表里取不回来的 **0 条**。
+
+**顺带发现的一处同源问题**：`listExamples` 会把 `.en.json` 与 `.zh-CN.json`
+**两份都列出来**，于是 fact 的真实案例从 11 条变 22 条，agent 看到同一个案子出现两次。
+已加 `lang` 参数，默认只给英文那一份（英文是本项目的默认语言，见 `README.md`）。

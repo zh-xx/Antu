@@ -1,40 +1,46 @@
 // ============================================================
-//  src/renderers/fact/ControlDock.jsx —— 画布底部的控制胶囊
+//  src/renderers/fact/ControlDock.jsx — the control capsule at the bottom of the canvas
 //
-//  显示类控制集中在这里，浮在画布正下方居中。
-//  视角不在这里：它最常用，留在左栏一级，点一次就能切。
+//  Display controls are collected here, floating centred just below the canvas.
+//  The view is not here: it is the most used, so it stays on the first level of the left
+//  column, one click away.
 //
-//  六个控制，按苹果的规矩各用各的形态：
-//    视角      选项名长、最多五个，摆不下 → 一个按钮显示当前值，点开带勾号的列表
-//    卡片内容  三个独立开关，少 → 全部摆出来，点一下切（开着的高亮）
-//    方向      两个互斥 → 分段控件，两个都摆出来、选中的凸起
-//    格线      一个开关 → 点一下切
-//    导出图片  唯一一个**动作**，不是开关 → 用分隔符隔开，点一下直接下载
-//  一句话：选项少且独立就摆出来，选项名长就收进菜单。动作跟状态要能一眼分开：
-//  状态靠底色深浅（透明 / 12% 灰），动作是胶囊里唯一一块实心，另配一个下载符号。
-//  画法（子类）不在这里：它是"这份数据用哪种画法看"，属于页面最上层的问题，
-//  放在左上角的标签卡里。
+//  Six controls, each in its own shape by Apple's rule:
+//    view            option names are long and there are up to five, no room → one button showing
+//                    the current value, opening a list with tick marks
+//    card fields     three independent switches, few → put them all out, click to toggle (on = highlighted)
+//    orientation     two mutually exclusive → a segmented control, both out, the selected one raised
+//    grid lines      one switch → click to toggle
+//    export image    the only **action**, not a state → set off by a divider, one click downloads
+//  In one sentence: few independent options go out in the open, long option names go into a menu.
+//  Actions and states must be distinguishable at a glance: states use background darkness
+//  (transparent / 12% grey), the action is the only solid block in the dock, with a download symbol.
+//  The rendering kind (sub-type) is not here either: it answers "in which way is this data looked
+//  at", the topmost question on the page, so it sits in the label card at the top left.
 // ============================================================
 
 import { useEffect, useRef, useState } from 'react'
-import { SOURCE_WORD } from '../../core/labels.js'
+import { useLang } from '../../shell/LangContext.jsx'
 
-/** 可选的卡片字段（标题与时间固定显示，不在此列） */
-const OPTIONAL_FIELDS = [
-  { key: 'sources', label: SOURCE_WORD },
-  { key: 'actors', label: '主体' },
-  { key: 'summary', label: '摘要' },
-]
+/** Optional card fields (title and time are always shown and not listed here). Message keys are stored and resolved per language on use. */
+const OPTIONAL_FIELDS = ['sources', 'actors', 'summary']
+const FIELD_KEYS = { sources: 'dock.sources', actors: 'dock.actors', summary: 'dock.summary' }
 
 const ORIENTATIONS = [
-  ['vertical', '竖向'],
-  ['horizontal', '横向'],
+  ['vertical', 'dock.vertical'],
+  ['horizontal', 'dock.horizontal'],
+]
+
+/** Language switch. Each language name is written in its own language, so you recognise your entry even in the wrong language. */
+const LANGS = [
+  ['en', 'dock.langEn'],
+  ['zh', 'dock.langZh'],
 ]
 
 export default function ControlDock({
-  /** 可选的视角（摆不下的已经被上游滤掉，不会进来） */
+  /** The usable views (ones that do not fit were filtered upstream and never arrive here) */
   viewOptions = [],
-  /** 数据里一共有几个视角，用来判断要不要显示这个菜单 */
+  /** How many views the data has in total, used to decide whether to show this menu */
   viewCount = 0,
   view,
   onSelectView,
@@ -47,11 +53,13 @@ export default function ControlDock({
   exporting = false,
   onExport,
 }) {
-  // 同时只开一个菜单：开新的自动关旧的
+  const { t, lang, setLang } = useLang()
+
+  // Only one menu is open at a time: opening a new one closes the old
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
 
-  // 点外面关掉。用捕获阶段，免得被画布自己的事件吃掉。
+  // Close on an outside click. The capture phase is used so the canvas's own handlers cannot swallow it.
   useEffect(() => {
     if (!open) return undefined
     const onDown = (e) => {
@@ -82,7 +90,7 @@ export default function ControlDock({
       )}
 
       <div className="antu-dock-bar">
-        {/* 视角选项名长、最多五个，摆不下，所以收进菜单 */}
+        {/* View option names are long and there are at most five, no room, so they go into a menu */}
         {viewCount > 1 && (
           <>
             <button
@@ -95,27 +103,27 @@ export default function ControlDock({
             <span className="antu-dock-sep" />
           </>
         )}
-        {OPTIONAL_FIELDS.map((f) => (
+        {OPTIONAL_FIELDS.map((key) => (
           <button
-            key={f.key}
-            className={`antu-dock-chip${fields[f.key] ? ' is-on' : ''}`}
-            onClick={() => onToggleField(f.key, !fields[f.key])}
+            key={key}
+            className={`antu-dock-chip${fields[key] ? ' is-on' : ''}`}
+            onClick={() => onToggleField(key, !fields[key])}
           >
-            {f.label}
+            {t(FIELD_KEYS[key])}
           </button>
         ))}
 
         <span className="antu-dock-sep" />
 
-        {/* 分段控件：只有两个选项，都摆出来比收进菜单少一次点击 */}
+        {/* Segmented control: only two options, putting both out saves one click compared with a menu */}
         <div className="antu-dock-seg">
-          {ORIENTATIONS.map(([value, label]) => (
+          {ORIENTATIONS.map(([value, key]) => (
             <button
               key={value}
               className={`antu-dock-seg-item${orientation === value ? ' is-on' : ''}`}
               onClick={() => onToggleOrientation(value)}
             >
-              {label}
+              {t(key)}
             </button>
           ))}
         </div>
@@ -126,23 +134,42 @@ export default function ControlDock({
           className={`antu-dock-chip${showGrid ? ' is-on' : ''}`}
           onClick={() => onToggleGrid(!showGrid)}
         >
-          格线
+          {t('dock.grid')}
         </button>
 
-        {/* 分隔符隔开：前面全是"怎么看"的开关，这个是唯一的动作 */}
+        <span className="antu-dock-sep" />
+
+        {/* Language affects interface text only, never data: the case content on the diagram
+            comes with the JSON. So switching language reloads no data and changes no geometry. */}
+        <div className="antu-dock-seg" title={t('dock.lang')}>
+          {LANGS.map(([value, key]) => (
+            <button
+              key={value}
+              className={`antu-dock-seg-item${lang === value ? ' is-on' : ''}`}
+              onClick={() => setLang(value)}
+            >
+              {t(key)}
+            </button>
+          ))}
+        </div>
+
+        {/* Set off by a divider: everything before is a "how to look at it" switch, this is the only action */}
         <span className="antu-dock-sep" />
 
         <button
           className="antu-dock-action"
           onClick={onExport}
           disabled={exporting}
-          title="把整张图导成 PNG（2 倍分辨率）"
+          title={t('dock.exportTitle')}
         >
-          {/* 下载的通用记号（箭向下、落到一条线上）。这一格是动作、别的格子是
-              状态，给动作配符号是工具栏的常规做法：光四个字摆在深底上，
-              看着更像一块标签而不是一个能按的东西。
-              `fill="none"`：这几笔是描边画的，不关掉填充会糊成实心块。
-              尺寸用 13 而不是 12：小字旁边配符号，符号略大一点才不显小。 */}
+          {/* The conventional download mark (an arrow down onto a line). This cell is an action
+              while the others are states, and giving an action a symbol is standard toolbar
+              practice: four words alone on a dark background read more like a label than
+              something pressable.
+              `fill="none"`: these strokes are drawn as outlines, and leaving the fill on
+              smears them into a solid block.
+              Size 13 rather than 12: a symbol beside small text must be slightly larger to
+              not look small. */}
           <svg
             className="antu-dock-action-icon"
             viewBox="0 0 16 16"
@@ -159,7 +186,7 @@ export default function ControlDock({
               strokeLinejoin="round"
             />
           </svg>
-          {exporting ? '导出中…' : '导出图片'}
+          {exporting ? t('dock.exporting') : t('dock.exportImage')}
         </button>
       </div>
     </div>

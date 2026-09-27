@@ -1,18 +1,18 @@
 // ============================================================
-//  src/renderers/fact/timeline/layout.js —— 时间图排布的入口
+//  src/renderers/fact/timeline/layout.js — entry point for timeline layout
 //
-//  行 = 槽（slots 数组下标，自上而下就是时间先后）
-//  列 = 站位 × 主体：第 1 侧各主体、轴线、第 2 侧各主体
+//  Row = slot (index into the slots array; top to bottom is chronological order)
+//  Column = side × party: each party on side 1, the axis, each party on side 2
 //
-//  这个文件只做"串起来"：
-//    grid.js     算出每个事件落在第几行第几列
-//    metrics.js  把行列算成像素
-//    nodes.js    把像素造成 React Flow 节点
+//  This file only "strings things together":
+//    grid.js     works out which row and which column each event falls in
+//    metrics.js  turns rows and columns into pixels
+//    nodes.js    turns pixels into React Flow nodes
 //
-//  节点顺序决定绘制层级（后画的压在上面）：
-//    格子层 → 列标题 → 引线层 → 轴线 → 卡片
-//  引线排在轴线之前，轴点才能盖住线的末端（线不会插进圆圈里）；
-//  卡片排在最后，压住引线。
+//  Node order decides the drawing order (later ones sit on top):
+//    cell layer → column headings → link layer → axis → cards
+//  The link layer comes before the axis so the axis dots cover the end of the line (the line
+//  never pokes into the circle); cards come last and cover the lines.
 // ============================================================
 
 import { buildGrid } from './grid.js'
@@ -20,18 +20,19 @@ import { makeMetrics } from './metrics.js'
 import { axisNode, cellsNode, headerNodes, linksNode, placeCard } from './nodes.js'
 
 /**
- * 把一份已通过校验的 fact 规范算成 React Flow 的节点。
- * edges 恒为空；卡片到轴点的引线由单独的"引线层"节点承担。
+ * Turn a validated fact spec into React Flow nodes.
+ * edges is always empty; the links from cards to axis dots are carried by a separate "link layer"
+ * node.
  */
 export function buildFactGraph(spec, fields = {}, view, orientation = 'vertical') {
   const isH = orientation === 'horizontal'
-  // 视角也是排布的输入：它决定分侧依据、有哪些列
+  // The view is an input to layout too: it decides what the sides split by and which columns exist
   const grid = buildGrid(spec, view)
   const m = makeMetrics(grid, fields, isH)
 
   const nodes = [cellsNode(m), ...headerNodes(grid, m)]
 
-  // 卡片位置与引线一起算：引线要贴着卡片的边
+  // Card position and link are computed together: the link has to hug the edge of the card
   const cards = []
   const links = []
   grid.rows.forEach((row) => {
@@ -49,8 +50,9 @@ export function buildFactGraph(spec, fields = {}, view, orientation = 'vertical'
   nodes.push(...cards)
 
   return {
-    // 这个视角摆不下的事件会进这里（例如不分侧时同一时间点有多条）。
-    // 必须带出来：不带的话事件会被静默丢掉，界面上看不出少东西。
+    // Events this view cannot place end up here (for instance several at one time point when
+    // there is no side split). They must be carried out: otherwise events would be dropped
+    // silently and the interface would show nothing missing.
     errors: grid.errors,
     sideLabels: grid.sideLabels,
     nodes,

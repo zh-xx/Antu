@@ -1,12 +1,13 @@
 // ============================================================
-//  tools/lib/chrome.mjs —— 用本机 Chrome 跑页面的共用工具
+//  tools/lib/chrome.mjs — shared utility for running a page in the local Chrome
 //
-//  为什么要它：验证渲染结果这件事，这个项目做过几十次，每次都是在
-//  /tmp 里现写一套一模一样的 CDP 脚本（起浏览器、连调试端口、导航、
-//  轮询、截图），用完就扔。现在只有这一份，验证脚本和 MCP 预览都用它。
+//  Why it exists: verifying the rendered result has been done dozens of times in
+//  this project, each time writing the same throwaway CDP script in /tmp (launch
+//  a browser, connect to the debugging port, navigate, poll, screenshot). Now
+//  there is one copy, used by both the verify script and the MCP preview.
 //
-//  不引入无头浏览器依赖：复用本机已有的 Chrome；Node 22 自带
-//  WebSocket，所以连 CDP 也不用装包。
+//  No headless browser dependency: reuse the Chrome already on the machine, and
+//  Node 22 ships WebSocket, so not even CDP needs a package.
 // ============================================================
 
 import { execFileSync, spawn } from 'node:child_process'
@@ -15,9 +16,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-// 已知路径。**这里不堆厂商路径**：任何 Chromium 内核的浏览器都能靠
-// ANTU_CHROME 接进来（麒麟／统信上常见的国产浏览器就走这条路），
-// 仓库不必替用户猜他用的是哪一个。
+// Known paths. **No vendor paths are piled up here**: any Chromium-based browser
+// can be plugged in through ANTU_CHROME (the domestic browsers common on Kylin /
+// UOS go this way), so the repository need not guess which one the user has.
 const CANDIDATES = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/Applications/Chromium.app/Contents/MacOS/Chromium',
@@ -27,9 +28,11 @@ const CANDIDATES = [
   '/usr/bin/chromium-browser',
 ]
 
-// 有些发行版把浏览器装在别处，或者只通过 update-alternatives 挂进来，
-// 所以候选表落空后再按可执行名去 PATH 里找一遍。
-// **这个表是下面 shell 插值的唯一来源**，不要让外部值流进来。
+// Some distributions put the browser elsewhere, or only link it in through
+// update-alternatives, so once the candidate list comes up empty look for the
+// executable names in PATH as well.
+// **This list is the only source of the shell interpolation below**, so that no
+// external value can flow into it.
 const PATH_NAMES = ['google-chrome', 'chromium', 'chromium-browser', 'microsoft-edge', 'chrome']
 
 function findInPath(name) {
@@ -37,11 +40,11 @@ function findInPath(name) {
     const out = execFileSync('sh', ['-c', `command -v ${name}`], { encoding: 'utf8' }).trim()
     return out || null
   } catch {
-    return null // 没有 sh（例如 Windows）或没找到，都算落空
+    return null // no sh (Windows, for instance) or not found: both count as a miss
   }
 }
 
-/** 候选必须是**能执行的文件**：目录不算（ANTU_CHROME 少写一层就会指到目录上） */
+/** A candidate must be an **executable file**: a directory does not count (one level missing in ANTU_CHROME points at a directory) */
 function isBrowserFile(p) {
   try {
     return statSync(p).isFile()
@@ -51,10 +54,11 @@ function isBrowserFile(p) {
 }
 
 /**
- * 找本机的浏览器。顺序：ANTU_CHROME 环境变量 > 已知路径 > PATH。
+ * Find the browser on this machine. Order: ANTU_CHROME environment variable > known paths > PATH.
  *
- * 环境变量**每次现读**，不在模块加载时读死：否则调用方在 import 之后再设就不生效，
- * 验证器也没法在同一个进程里换着值验它。
+ * The environment variable is **read fresh every time**, not frozen at module load: otherwise a
+ * caller that sets it after the import gets nothing, and the verifier could not test it by
+ * swapping values inside one process.
  */
 export function findChrome() {
   const explicit = process.env.ANTU_CHROME
@@ -70,10 +74,10 @@ export function findChrome() {
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /**
- * 等调试端口起来，拿到页面目标的 WebSocket 地址。
+ * Wait for the debugging port to come up and get the WebSocket address of the page target.
  *
- * `died` 传进来时，进程一退就立刻放弃：等一个已经死掉的浏览器，
- * 除了把超时时间白白耗完没有别的结果。
+ * When `died` is passed in, give up the moment the process exits: waiting on an
+ * already dead browser only burns the whole timeout for nothing.
  */
 async function pageTarget(port, timeoutMs = 15000, died = null) {
   const deadline = Date.now() + timeoutMs
@@ -84,14 +88,14 @@ async function pageTarget(port, timeoutMs = 15000, died = null) {
       const page = list.find((t) => t.type === 'page')
       if (page?.webSocketDebuggerUrl) return page.webSocketDebuggerUrl
     } catch {
-      /* 还没起来，继续等 */
+      /* not up yet, keep waiting */
     }
     await wait(200)
   }
   return null
 }
 
-/** 极简 CDP 客户端：够用就好，不做完整实现 */
+/** Minimal CDP client: good enough, not a complete implementation */
 function cdp(url) {
   const ws = new WebSocket(url)
   let seq = 0
@@ -111,7 +115,7 @@ function cdp(url) {
   })
   const ready = new Promise((res, rej) => {
     ws.addEventListener('open', res, { once: true })
-    ws.addEventListener('error', () => rej(new Error('连不上浏览器调试端口')), { once: true })
+    ws.addEventListener('error', () => rej(new Error('Cannot connect to the browser debugging port')), { once: true })
   })
   const send = (method, params = {}) =>
     new Promise((resolve, reject) => {
@@ -123,31 +127,34 @@ function cdp(url) {
 }
 
 /**
- * 起一个 headless Chrome，返回一个会话。
- * 用完务必 close()，否则进程和临时目录都会留下。
+ * Launch a headless Chrome and return a session.
+ * Always close() it when done, or both the process and the temporary directory are left behind.
  */
 /**
- * 三种 headless 写法，按"先老后新"的顺序试。
+ * Three headless variants, tried in the order "old first, new after".
  *
- * `--headless=old` 在 Chrome 132 之后被移除，而 CI 的 runner 版本比本机新；
- * 但老机器上只有这一种，所以三种都留着：本机和 CI 不必各配一套。
+ * `--headless=old` was removed after Chrome 132 and the CI runner is newer than
+ * this machine; but old machines have only that one, so all three stay: this
+ * machine and CI do not each need their own set.
  */
 export const HEADLESS_VARIANTS = [['--headless=old'], ['--headless=new'], []]
 
-/** 每次尝试等调试端口的时限。进程一退就提前放弃，所以给得宽也不拖时间。 */
+/** How long one attempt waits for the debugging port. A dead process gives up early, so a generous value costs no time. */
 const ATTEMPT_TIMEOUT = 30000
 
 /**
- * 每种写法**各占一个端口**。
+ * **Each variant gets its own port.**
  *
- * 不能三次共用一个端口：上一版万一还活着，端口还占着，下一版绑不上就退，
- * 备用链路等于没有。端口错开之后，前一版没死透也不影响后一版起来。
+ * Three attempts must not share one port: if the previous one is somehow still
+ * alive it still holds the port, the next one cannot bind and exits, and the
+ * fallback chain is worth nothing. With staggered ports a previous variant that
+ * did not die cleanly no longer stops the next one from starting.
  */
 export function attemptPorts(basePort, count = HEADLESS_VARIANTS.length) {
   return Array.from({ length: count }, (_, i) => basePort + i)
 }
 
-/** 一次尝试的完整启动参数。profile 与端口由调用方按尝试分配，不共用。 */
+/** The full launch arguments for one attempt. Profile and port are assigned per attempt by the caller, never shared. */
 export function launchArgs({ flags, port, profile, width, height }) {
   return [
     ...flags,
@@ -156,7 +163,7 @@ export function launchArgs({ flags, port, profile, width, height }) {
     '--no-first-run',
     '--disable-extensions',
     '--allow-file-access-from-files',
-    // 容器里 /dev/shm 往往很小，Chrome 会因此起不来。CI 上跑得跑这一条
+    // /dev/shm is often tiny in a container and Chrome then fails to start. Needed on CI
     '--disable-dev-shm-usage',
     `--user-data-dir=${profile}`,
     `--remote-debugging-port=${port}`,
@@ -165,17 +172,17 @@ export function launchArgs({ flags, port, profile, width, height }) {
   ]
 }
 
-/** 收着 Chrome 自己的 stderr：起不来的时候，原因基本都在这里面 */
+/** Keep Chrome's own stderr: when it fails to start, the reason is almost always in here */
 function captureStderr(child, keep = 600) {
   let buf = ''
   child.stderr?.on('data', (d) => {
     buf += String(d)
-    if (buf.length > keep * 4) buf = buf.slice(-keep * 2) // 别让它无限长
+    if (buf.length > keep * 4) buf = buf.slice(-keep * 2) // so it cannot grow without bound
   })
   return () => buf.slice(-keep).trim()
 }
 
-/** 等一个子进程真的退出，最多等 ms */
+/** Wait for a child process to really exit, at most ms */
 async function waitForExit(child, ms) {
   if (child.exitCode !== null || child.signalCode !== null) return true
   return Promise.race([
@@ -185,11 +192,11 @@ async function waitForExit(child, ms) {
 }
 
 /**
- * 先好好请它走，不走就强杀。
+ * Ask it politely to leave first, and force-kill if it does not.
  *
- * 为什么要强杀：容器的负载一高，Chrome 可能卡住不理 SIGTERM。
- * 它不走，profile 目录就还占着、临时文件也删不掉，
- * 而且会一直占着 CPU 影响后面几次尝试。
+ * Why force-kill: under heavy container load Chrome can freeze and ignore SIGTERM.
+ * If it does not leave, the profile directory stays occupied, the temporary files
+ * cannot be deleted, and it keeps burning CPU for the attempts that follow.
  */
 async function terminate(child, ms = 3000) {
   if (!child || child.exitCode !== null || child.signalCode !== null) return
@@ -200,42 +207,47 @@ async function terminate(child, ms = 3000) {
 }
 
 /**
- * 杀**整个进程组**，不只是主进程。
+ * Kill **the whole process group**, not just the main process.
  *
- * 只杀主进程会留下正在写 profile 的子进程，紧接着删目录就会撞上
- * `ENOTEMPTY: directory not empty` —— CI 上真撞过（见 known-issues 第 18 条）：
- * 主进程收 SIGTERM 退出了，子进程还在往 profile 里写，
- * `rmSync` 走到最后一步 rmdir 时目录又非空了。
- * 起子进程时用 detached 让它自成一个进程组，这里就能连组一起收掉。
+ * Killing only the main process leaves the child that is writing the profile
+ * alive, and deleting the directory right after hits
+ * `ENOTEMPTY: directory not empty`. This happened on CI for real (see known-issues
+ * item 18): the main process exited on SIGTERM while the child was still writing
+ * into the profile, so `rmSync` reached its final rmdir with the directory
+ * non-empty again. Launching the child with detached makes it its own process
+ * group, so it can be reaped group and all here.
  */
 function killGroup(child, signal = 'SIGTERM') {
-  // **必须和上面 spawn 的 detached 用同一个判断**：只有子进程自成一个进程组时，
-  // 负号才是它的组；没 detached 时 -pid 会指到验证进程自己那一组，把自己一起杀了。
+  // **This must test the same thing as the detached flag on the spawn above**: only when the
+  // child is its own process group does the minus sign mean its group; without detached, -pid
+  // points at the verify process's own group and would kill us too.
   if (process.platform === 'win32') {
     try {
       child.kill(signal)
     } catch {
-      /* 已经没了 */
+      /* already gone */
     }
     return
   }
   try {
-    // 负号 = 整个进程组
+    // the minus sign = the whole process group
     process.kill(-child.pid, signal)
   } catch {
     try {
       child.kill(signal)
     } catch {
-      /* 已经没了 */
+      /* already gone */
     }
   }
 }
 
 /**
- * 删掉一份临时 profile 目录。
+ * Delete one temporary profile directory.
  *
- * 要重试：Chrome 收尾的那几百毫秒里还有零星写入，一次删不干净是常事。
- * 重试仍然失败就如实返回 false，由调用方决定怎么办（不吞掉、也不抛）。
+ * It needs retries: in the few hundred milliseconds while Chrome is winding down
+ * there are still stray writes, and failing to delete in one go is normal.
+ * If the retries still fail, return false honestly and let the caller decide what
+ * to do (neither swallow it nor throw).
  */
 async function removeProfile(dir, attempts = 5) {
   if (!dir) return true
@@ -251,23 +263,22 @@ async function removeProfile(dir, attempts = 5) {
 }
 
 /**
- * 起一个 headless Chrome，返回一个会话。
- * 用完务必 close()，否则进程和临时目录都会留下。
+ * Launch a headless Chrome and return a session.
+ * Always close() it when done, or both the process and the temporary directory are left behind.
  */
 export async function launchBrowser({ width = 1600, height = 900, port, timeoutMs } = {}) {
   const chrome = findChrome()
   if (!chrome) {
-    throw new Error('没找到 Chrome/Chromium。装一个，或者跳过需要浏览器的检查。')
+    throw new Error('Chrome/Chromium not found. Install one, or skip the checks that need a browser.')
   }
   const ports = attemptPorts(port ?? 9500 + Math.floor(Math.random() * 400))
 
-  // 每次尝试一份**自己的** profile 目录，这是这个工具踩过的坑：
-  // Chrome 见到同一个 --user-data-dir 已经有实例，会直接
-  //   Failed to create SingletonLock: File exists
-  //   Failed to create a ProcessSingleton for your profile directory ... Aborting now
-  // 自杀退出。共用一份时，第一版一旦没起来（或没死透），后面两版连启动都做不到，
-  // "三种写法挨个试"的备用链路就是废的，症状是三次全报"端口没起来"。
-  // 实测（macOS Chrome 153，占着 profile 起第二份）：第二份 4 秒内退出，端口没人听。
+  // **Its own** profile directory per attempt, a trap this tool has fallen into:
+  // when Chrome sees the same --user-data-dir already has an instance, it exits
+  // with "Failed to create SingletonLock: File exists" / "Aborting now". With one
+  // shared directory, once the first variant fails to start (or does not die
+  // cleanly) the other two cannot even launch, the "try three variants" fallback
+  // chain is dead, and the symptom is all three reporting "the port never came up".
   const attempts = HEADLESS_VARIANTS.map((flags, i) => ({
     flags,
     port: ports[i],
@@ -281,9 +292,9 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
   const failures = []
   for (const a of attempts) {
     const c = spawn(chrome, launchArgs({ ...a, width, height }), {
-      // stderr 要留着：Chrome 起不来的原因基本只在这里，丢掉就只能猜
+      // keep stderr: the reason Chrome fails to start is almost only in here, and dropping it leaves only guesses
       stdio: ['ignore', 'ignore', 'pipe'],
-      // 自成进程组，收尾时才能连子进程一起收掉（见 killGroup）
+      // its own process group, so that shutdown can reap the children too (see killGroup)
       detached: process.platform !== 'win32',
     })
     const readStderr = captureStderr(c)
@@ -299,22 +310,22 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
     }
     const tail = readStderr()
     const why = exited
-      ? `Chrome 自己退了${tail ? `：${tail.split('\n').slice(-3).join(' / ')}` : '（没留下错误信息）'}`
-      : `${delay / 1000} 秒内端口没起来`
-    failures.push(`${a.flags.join(' ') || '(不带 headless)'}　端口 ${a.port}　${why}`)
+      ? `Chrome exited on its own${tail ? `: ${tail.split('\n').slice(-3).join(' / ')}` : ' (left no error message)'}`
+      : `the port did not come up within ${delay / 1000}s`
+    failures.push(`${a.flags.join(' ') || '(no headless flag)'}  port ${a.port}  ${why}`)
     await terminate(c)
     target = null
   }
-  // 没用上的 profile 目录一并清掉，别在 /tmp 里留一堆
+  // clean up the profile directories that went unused too, rather than leaving a pile in /tmp
   for (const a of attempts) {
     if (a.profile !== profile) await removeProfile(a.profile)
   }
   if (!target) {
     await terminate(child)
     throw new Error(
-      `Chrome 起不来，${attempts.length} 种 headless 写法都试过了（每种各占一个端口和一份 profile）：\n  ` +
+      `Chrome will not start; all ${attempts.length} headless variants were tried (each with its own port and profile):\n  ` +
         `${failures.join('\n  ')}\n` +
-        `Chrome 路径：${chrome}`,
+        `Chrome path: ${chrome}`,
     )
   }
 
@@ -330,9 +341,9 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
     mobile: false,
   })
 
-  /** 本次导航期间发起的网络请求（用来断言"没有外部请求"） */
+  /** Network requests made during this navigation (used to assert "no external requests") */
   let requests = []
-  /** 控制台的 error 与未捕获异常 */
+  /** Console errors and uncaught exceptions */
   let errors = []
   c.on((msg) => {
     if (msg.method === 'Network.requestWillBeSent') requests.push(msg.params.request.url)
@@ -346,10 +357,10 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
 
   const session = {
     /**
-     * 打开一个页面并等它稳定。
-     * @param url          file:// 或 http://
-     * @param waitFor      等这个表达式为真再返回（默认等出现 .antu-card）
-     * @param settleMs     稳定之后再等一会儿，让动画落定
+     * Open a page and wait for it to settle.
+     * @param url          file:// or http://
+     * @param waitFor      return once this expression is truthy (by default, wait for .antu-card to appear)
+     * @param settleMs     wait a little longer after it settles, so animations come to rest
      */
     async open(url, { waitFor = 'document.querySelectorAll(".antu-card").length', settleMs = 800 } = {}) {
       requests = []
@@ -377,10 +388,11 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
     },
 
     /**
-     * 在页面里求值。
-     * userGesture=true 时按"用户手势"标记这次求值——脚本触发的点击默认不算手势，
-     * 浏览器会因此拦掉同一个页面的第二次下载；标上手势就不拦了。
-     * awaitPromise=true 时等表达式返回的 Promise 落定再回值。
+     * Evaluate an expression in the page.
+     * With userGesture=true this evaluation is marked as a "user gesture": a script-triggered
+     * click does not count as a gesture by default, and the browser then blocks the second
+     * download from the same page; marking the gesture stops it from blocking.
+     * With awaitPromise=true, wait for the Promise the expression returns to settle before returning.
      */
     async eval(expression, { userGesture = false, awaitPromise = false } = {}) {
       const r = await c.send('Runtime.evaluate', {
@@ -395,24 +407,25 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
       return r.result?.value
     },
 
-    /** 截图的 base64（MCP 预览要的是它，不落盘） */
+    /** Base64 of a screenshot (what the MCP preview wants, not written to disk) */
     async screenshotData() {
       const { data } = await c.send('Page.captureScreenshot', { format: 'png' })
       return data
     },
 
-    /** 截图写到文件（验证脚本要的是它，好让人工看一眼） */
+    /** Write a screenshot to a file (what the verify scripts want, so a human can glance at it) */
     async screenshot(outPath) {
       writeFileSync(outPath, Buffer.from(await session.screenshotData(), 'base64'))
       return outPath
     },
 
     /**
-     * 允许下载，并指定落到哪个目录。导出功能要靠它验：
-     * 点一下按钮，再检查落盘的 PNG。
+     * Allow downloads and say which directory they land in. The export feature is verified
+     * through it: click the button, then check the PNG that landed on disk.
      *
-     * 先试 Browser 域，不行退回 Page 域——两者不同版本上可用性不一样，
-     * 本机与 CI 的 Chrome 版本不同，两条都留着省得各配一套。
+     * Try the Browser domain first and fall back to the Page domain: their availability
+     * differs between versions, and this machine and CI run different Chrome versions, so
+     * both are kept rather than configuring one for each.
      */
     async setDownloadDir(dir) {
       const params = { behavior: 'allow', downloadPath: dir }
@@ -424,11 +437,12 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
     },
 
     /**
-     * 用**真实鼠标事件**点一个元素。expr 求值结果必须是元素（可以是查找表达式）。
+     * Click an element with a **real mouse event**. The result of evaluating expr must be an
+     * element (it may be a lookup expression).
      *
-     * 为什么不用 el.click()：脚本触发的点击不算"用户手势"，
-     * 浏览器会因此拦掉同一个页面的第二次下载——导出功能正是点一下下载一次，
-     * 只有真实手势才验得了"连着导两次"。
+     * Why not el.click(): a script-triggered click is not a "user gesture", so the browser
+     * blocks the second download from the same page. Export is exactly one download per
+     * click, and only a real gesture can verify "export twice in a row".
      */
     async clickAt(expr) {
       const json = await session.eval(`(() => {
@@ -437,18 +451,18 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
         const r = el.getBoundingClientRect()
         return JSON.stringify({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) })
       })()`)
-      if (!json) throw new Error(`点不到元素：${expr}`)
+      if (!json) throw new Error(`Cannot click element: ${expr}`)
       const { x, y } = JSON.parse(json)
       for (const type of ['mousePressed', 'mouseReleased']) {
         await c.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 })
       }
     },
 
-    /** 本次导航期间请求过的地址 */
+    /** URLs requested during this navigation */
     get requests() {
       return requests.slice()
     },
-    /** 本次导航期间的控制台错误与未捕获异常 */
+    /** Console errors and uncaught exceptions during this navigation */
     get errors() {
       return errors.slice()
     },
@@ -464,8 +478,8 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
 }
 
 /**
- * 把一份 HTML 截成 PNG（MCP 预览用的就是它）。
- * 起一次浏览器、开一个页面、截完就关。
+ * Render one HTML file to a PNG (this is what the MCP preview uses).
+ * Launch a browser once, open one page, close when the shot is taken.
  */
 export async function screenshotPage(htmlPath, { width = 1600, height = 900, settleMs = 800 } = {}) {
   const started = Date.now()

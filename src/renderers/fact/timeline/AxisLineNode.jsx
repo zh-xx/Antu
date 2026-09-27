@@ -1,17 +1,18 @@
 // ============================================================
-//  src/renderers/fact/AxisLineNode.jsx —— 轴线（装饰节点）
+//  src/renderers/fact/timeline/AxisLineNode.jsx — the axis (a decoration node)
 //
-//  中间那一列的一条竖线，底端一个向下箭头表示时间方向；
-//  每个槽在轴线上打一个小圆点，作为该时刻的标记。
-//  轴上不写时间（时间在每张卡片上）。
+//  The vertical line of the middle column, with a downward arrow at its bottom end showing the
+//  direction of time; each slot gets a small dot on the axis as the marker for that instant.
+//  No time is written on the axis (time is on every card).
 //
-//  **箭头用内联 SVG，不用 CSS 边框三角。** 边框三角靠 width:0;height:0
-//  加三边 transparent 拼出形状，导出成 PNG 时会被整个丢掉
-//  （html-to-image 不保留这种零尺寸元素），症状是导出图里轴上光秃秃的。
-//  SVG 有真实尺寸，稳定。两个方向各给一套坐标，不靠旋转，少一层可变因素。
+//  **The arrow is an inline SVG, not a CSS border triangle.** A border triangle is put together
+//  from width:0;height:0 plus three transparent sides, and is dropped entirely when exported to
+//  PNG (html-to-image does not keep such zero-size elements), the symptom being a bare axis in
+//  the exported image. The SVG has a real size and is stable. Each direction gets its own set of
+//  coordinates rather than a rotation, one variable fewer.
 //
-//  另外：箭头超出轴线 6px，那 6px 要算进内容尺寸（见 timeline/metrics.js
-//  的 ARROW_EXTENT），否则导出时会被裁掉。
+//  Also: the arrow reaches 6px beyond the axis line, and those 6px must be counted into the
+//  content size (see ARROW_EXTENT in timeline/metrics.js), or the export crops them off.
 // ============================================================
 
 import { memo } from 'react'
@@ -20,10 +21,11 @@ const AxisLineNode = memo(function AxisLineNode({ data }) {
   const { isH, length, dotOffsets, dotSize } = data
 
   return (
-    // 外层只负责“被测量”：长度立即到位、不加过渡。
-    // React Flow 靠它量出节点尺寸来算 fitView 的边界与居中；
-    // 如果让被测量的元素自己做尺寸过渡，它量到的会是过渡中间的旧值，
-    // 缩放和位置就都会算错（实测过：全关字段后图会浮在上方、下面空一大块）。
+    // The outer element is only there to be measured: its length is in place immediately, with no
+    // transition. React Flow measures the node size from it to work out fitView's bounds and
+    // centring; if the measured element animated its own size, what is measured would be the old
+    // value halfway through the transition, and both zoom and position would be wrong (measured:
+    // with all fields off the diagram floated to the top with a large blank area below).
     <div className={`antu-axis-wrap${isH ? ' is-h' : ''}`} style={isH ? { width: length } : { height: length }}>
       <div className="antu-axis-line" style={isH ? { width: length } : { height: length }}>
         {isH ? (

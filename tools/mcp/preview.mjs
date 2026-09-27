@@ -1,12 +1,13 @@
 // ============================================================
-//  tools/mcp/preview.mjs —— 把生成的 HTML 截成一张 PNG
+//  tools/mcp/preview.mjs — render the generated HTML to a PNG
 //
-//  为什么这件事重要：**agent 看不见自己画的东西**。
-//  校验全过、排布也合理，图照样可能难看（卡片挤、字太小、太空）。
-//  这个工具让 agent 能"看一眼"再决定改不改。
+//  Why this matters: **an agent cannot see what it has drawn.**
+//  Validation may pass and the layout may be sound, and the diagram can still look
+//  bad (cards jammed together, text too small, too much empty space).
+//  This tool lets an agent take a look before deciding whether to change anything.
 //
-//  真正的实现在 tools/lib/chrome.mjs（验证脚本用的是同一份），
-//  这里只做一层薄封装。
+//  The real implementation is in tools/lib/chrome.mjs (the verification script uses
+//  the same one); this is only a thin wrapper.
 // ============================================================
 
 export { findChrome, screenshotPage as screenshot } from '../lib/chrome.mjs'

@@ -1,161 +1,161 @@
-# fact 时间图 · 排布规则 v0
+# fact timeline · placement rules v0
 
-> 状态：**已确认**（2026-09，发起人逐条拍板）。
-> 范围：fact 图的**排布**规则，即“事件摆在图的哪里”。
-> 关系：本文取代 `spec/fact/schema-draft.md` 第 3 节中关于分组、主体、顺序的旧规则。字段本身的定义仍以那份为准（槽结构除外，见 §4）。
+> Status: **confirmed** (2026-09, settled point by point by the originator).
+> Scope: the **placement** rules of a fact diagram, that is "where on the diagram an event goes".
+> Relationship: this document supersedes the old rules on groups, parties and order in section 3 of `spec/fact/schema-draft.md`. The definitions of the fields themselves still follow that document (except the slot structure, see §4).
 
-> **关于方位词。** 本文一律用**方向中立**的叫法：**第 1 侧 / 第 2 侧 / 轴线**。
-> 竖向下第 1 侧在**左**、第 2 侧在**右**；横向下第 1 侧在**上**、第 2 侧在**下**。
-> 下面 ASCII 图按**竖向**画，图里出现的"上 / 下"就是竖向下第 1 侧 / 第 2 侧的实际位置，
-> 不是规范的术语。
+> **On directional words.** This document uses **direction-neutral** terms throughout: **side 1 / side 2 / axis**.
+> When vertical, side 1 is on the **left** and side 2 on the **right**; when horizontal, side 1 is at the **top** and side 2 at the **bottom**.
+> The ASCII diagrams below are drawn **vertical**, so the "top / bottom" that appear in them are the actual positions of side 1 / side 2 when vertical,
+> not specification terminology.
 
 ---
 
-> **这份是给设计者看的。** agent 写 JSON 用的是另一份：
-> 字段见 MCP 的 `antu_schema`，机制见 `spec/agent/fact/guide.md`。
-> 两份不互抄，分工写在 `spec/agent/README.md`。
+> **This one is for the designer.** What an agent uses to write JSON is a different document:
+> fields in the MCP's `antu_schema`, mechanism in `spec/agent/fact/guide.md`.
+> The two do not copy from each other; the division of labour is written in `spec/agent/README.md`.
 
 
-## 0. 一句话
+## 0. In one sentence
 
-一张 fact 时间图，就是一条轴线上的一张网格：
+A fact timeline is a grid on an axis:
 
-- **竖着的是时间**：一个槽 = 一个时间点，自上而下。
-- **横着的是车道**：第 1 侧、轴线、第 2 侧，共三种站位。
+- **Down the page is time**: one slot = one time point, top to bottom.
+- **Across the page are lanes**: side 1, the axis, side 2, three kinds of side in total.
 
 ```
-                    上侧车道          轴 线           下侧车道
-槽 1（第 1 个时间点）  [事件]         [事件]          [事件]      ← 同一行并排
-槽 2                                [事件]
-槽 3                                [事件]
-                    ↓ 时间沿轴线向下
+                    side 1 lane        axis           side 2 lane
+slot 1 (1st time point)  [event]        [event]        [event]      ← side by side on the same row
+slot 2                                  [event]
+slot 3                                  [event]
+                    ↓ time runs down along the axis
 ```
 
-## 1. 四样东西各管什么
+## 1. What each of the four things controls
 
-| 对象 | 管什么 | 有序？ |
+| Object | Controls | Ordered? |
 |---|---|---|
-| `slots` | **时间**。一个槽 = 一个时间点 | 有序，顺序即先后 |
-| `groups` | **站位**。决定事件离不离开轴线、去第 1 侧还是第 2 侧 | 有序，顺序即站位 |
-| `actors` | **车道**。每个主体占一列，决定同一侧内的远近 | 有序，顺序即由内到外 |
-| `events` | **内容**。装在槽里，靠 `groupId` / `actorIds` 定位 | 无序，位置由前两者决定 |
+| `slots` | **Time**. One slot = one time point | Ordered, the order is the sequence |
+| `groups` | **Side**. Decides whether an event leaves the axis and goes to side 1 or side 2 | Ordered, the order is the side |
+| `actors` | **Lane**. Each party takes one column, deciding the distance within one side | Ordered, the order is inside out |
+| `events` | **Content**. Held in slots, positioned by `groupId` / `actorIds` | Unordered, position decided by the two above |
 
-> **视角**（同一个案件换几种看法）换的只是上面两个字段的用法，不引入新字段决定位置。
-> 一个事件落在哪一列，永远是 `groupId` 定侧、`actorIds` 定列。
-> 具体机制与写法见 `spec/fact/schema-draft.md` 的「视角机制」；本文只管一套确定规则下怎么摆。
+> A **view** (the same case looked at in several ways) only changes how the two fields above are used; it introduces no new field that decides position.
+> Which column an event falls in is always `groupId` for the side and `actorIds` for the column.
+> The mechanism and how to write it are in the "view mechanism" section of `spec/fact/schema-draft.md`; this document only covers placement under one fixed set of rules.
 
-## 2. 站位：事件在轴线上还是某一侧
+## 2. Side: is the event on the axis or on one of the sides
 
-| 事件的情况 | 落在哪 |
+| The event's situation | Where it goes |
 |---|---|
-| 没写 `groupId` | 轴线上 |
-| 写第 1 个组 | 第 1 侧 |
-| 写第 2 个组 | 第 2 侧 |
-| 写第 3 个组 | 轴线上（与“不写”落点相同，只是给这条车道一个名字） |
-| 涉及 **2 个及以上**主体 | 轴线上。若 `groupId` 同时指向第 1/2 组（侧别组），**报错** |
+| `groupId` not written | On the axis |
+| The 1st group written | Side 1 |
+| The 2nd group written | Side 2 |
+| The 3rd group written | On the axis (same place as "not written", it only gives this lane a name) |
+| **2 or more** parties involved | On the axis. If `groupId` also points to the 1st/2nd group (a side group), **an error** |
 
-要点：
+Key points:
 
-- **组的顺序就是站位的顺序**：第 1 组第 1 侧、第 2 组第 2 侧、第 3 组轴线。
-- **组数上限 3**。轴只有两侧加中间三个位置，第 4 个组属于数据错误。
-- **第 3 组可写可不写**。它的价值是给“轴线上”一个名字，好在列标题里显示；不写就靠默认规则落到同一位置。
-- 分组里没有事件 = 一条空车道，不影响布局，列标题仍会出现（空位本身是信息）。
-- **矛盾即报错**：事件涉及 ≥2 个主体时，`groupId` 只能指向第 3 组（轴线组）或不写。指向第 1/2 组的，校验层报错并指出冲突在哪，由 agent 自行修正。
+- **The order of the groups is the order of the sides**: 1st group side 1, 2nd group side 2, 3rd group the axis.
+- **The group limit is 3.** The axis has only two sides plus the middle, three positions, so a 4th group is a data error.
+- **The 3rd group may be written or not.** Its value is giving "on the axis" a name, so that it can be displayed in the column heading; if it is not written, the default rule puts the event in the same place.
+- A group with no events = an empty lane, which does not affect the layout, and the column heading still appears (the vacancy is itself information).
+- **A contradiction is an error**: when an event involves 2 or more parties, `groupId` may only point to the 3rd group (the axis group) or be omitted. If it points to the 1st/2nd group, the validation layer reports an error and points out where the conflict is, and the agent corrects it itself.
 
-## 3. 距离：同一侧内的主体怎么往外排
+## 3. Distance: how parties within one side are laid out outwards
 
-- **每一侧都从贴轴的第 1 格起算**，跨侧互不影响。
-- 同一侧里有多个主体时，按它们在 `actors` 清单里的先后，一个比一个往外错一格。
-- 因此，如果两个主体分居两侧（每侧各一个），**它们离轴的距离相同**，图是对称的。
-
-```
-两侧各一个主体（电梯劝烟案）        同一侧里有三个主体
-        上侧    轴线    下侧              上侧              轴线
-第 1 格  [A]           [B]            第 1 格 [A]
-第 2 格                               第 2 格       [B]
-第 3 格                               第 3 格              [C]
-两侧离轴距离相同                      同一侧内依次往外
-```
-
-## 4. 时间槽
-
-- **一个槽 = 一个时间点。** 同一槽里的事件**并排显示**。
-- **槽的先后 = `slots` 数组的先后。** 不写编号、不写序号，顺序就是数组位置。这样拖拽换位不需要重编号。
-- **`date` 只用于显示，不决定顺序。** 混合精度（有的到秒、有的只到日）时机器无法可靠比较，顺序一律听数组的。
-- **同一个槽里，同一条车道最多一个事件。** 撞车即数据错误，校验层报错并指出是哪两个事件撞了。
-- **轴上不画时间刻度。** 时间只在每张卡片上显示，槽本身也不写抬头。
-- **空槽无意义**，不允许。
+- **Each side starts counting from cell 1 next to the axis**, the sides do not affect each other.
+- When one side has several parties, they are offset one cell further out than the previous one, in the order they appear in the `actors` list.
+- Therefore, if two parties sit on opposite sides (one on each side), **their distance from the axis is the same** and the diagram is symmetric.
 
 ```
-同一槽内允许（三条车道各一个）          同一槽内不允许（两个都落同一车道）
-第 1 格 [上侧事件][轴线事件][下侧事件]        [上侧事件 A][上侧事件 B]  ← 撞车
+One party on each side (elevator smoking case)   Three parties on one side
+        side 1   axis    side 2                    side 1        axis
+cell 1  [A]             [B]                    cell 1 [A]
+cell 2                                         cell 2       [B]
+cell 3                                         cell 3             [C]
+equal distance from the axis                   progressively outwards within one side
 ```
 
-事件结构（取代原来的扁平 `events` 数组）：
+## 4. Time slots
+
+- **One slot = one time point.** Events in the same slot are **displayed side by side**.
+- **The order of slots = the order of the `slots` array.** No number and no index is written; the position in the array is the order. That way drag-reordering needs no renumbering.
+- **`date` is for display only and does not decide the order.** With mixed precision (some to the second, some only to the day) a machine cannot compare reliably, so the order always follows the array.
+- **Within one slot, one lane holds at most one event.** A collision is a data error; the validation layer reports it and points out which two events collided.
+- **No time scale is drawn on the axis.** Time is shown only on each card, and the slot itself carries no heading either.
+- **An empty slot is meaningless** and is not allowed.
+
+```
+Allowed within one slot (one each on three lanes)     Not allowed within one slot (both fall on the same lane)
+cell 1 [side 1 event][axis event][side 2 event]          [side 1 event A][side 1 event B]  ← collision
+```
+
+Event structure (replacing the former flat `events` array):
 
 ```jsonc
 "slots": [
   {
     "events": [
-      { "id": "ev-2", "date": "2017-05-02T09:24:07", "label": "杨帆进入电梯",
+      { "id": "ev-2", "date": "2017-05-02T09:24:07", "label": "Yang Fan enters the elevator",
         "groupId": "g-1", "actorIds": ["a-1"] },
-      { "id": "ev-1", "date": "2017-05-02T09:24:03", "label": "段小立在电梯内吸烟",
+      { "id": "ev-1", "date": "2017-05-02T09:24:03", "label": "Duan Xiaoli smokes inside the elevator",
         "groupId": "g-2", "actorIds": ["a-2"] }
     ]
   }
 ]
 ```
 
-## 5. 两条配套约定
+## 5. Two supporting conventions
 
-- **`actorIds` 的含义是“这个事件涉及谁”，不是“这是谁做的”。** 可选。收到短信这种事件涉及收信人，应当写上；闸机停用、120 到达这类不涉及任何当事人的，不写或归入第 3 组。
-- **判断顺序不依赖 `date`。** 排序、分槽的依据全部来自 `slots` 数组位置，`date` 仅在卡片上显示。
+- **`actorIds` means "whom this event involves", not "who did this".** Optional. An event such as receiving a text message involves the recipient and should be written; one that involves no party at all, such as a gate being shut down or an ambulance arriving, is either left out or put in the 3rd group.
+- **The order of judgement does not depend on `date`.** Sorting and slotting rest entirely on the position in the `slots` array, and `date` is shown on the card only.
 
-## 6. 完整示例：电梯劝烟案（节选）
+## 6. Complete example: the elevator smoking case (extract)
 
 ```
-                    上侧(杨帆)         轴 线              下侧(段小立)
-9时24分           [杨帆进入电梯]   [双方言语交流]      [段小立吸烟]
-                                   ↑ 三条车道同一槽并排
-9时28分                            [走至单元门口]
-9时31分                            [呼叫 120]
-（日级精度）                                           [段小立死亡]
+                    side 1 (Yang Fan)   axis                side 2 (Duan Xiaoli)
+09:24               [Yang Fan enters the elevator] [the two exchange words] [Duan Xiaoli smokes]
+                                          ↑ three lanes side by side in the same slot
+09:28                                   [walks to the entrance of the building]
+09:31                                   [calls an ambulance]
+(day precision)                                             [Duan Xiaoli dies]
 ```
 
-> 左侧的时刻来自卡片自身，轴上不另画时间刻度。
+> The times on the left come from the cards themselves; no time scale is drawn on the axis.
 
 ```jsonc
 "actors": [
-  { "id": "a-1", "name": "杨帆",   "role": "被告 · 劝阻方" },
-  { "id": "a-2", "name": "段小立", "role": "受害人 · 被劝阻方" }
+  { "id": "a-1", "name": "Yang Fan",   "role": "defendant · dissuader" },
+  { "id": "a-2", "name": "Duan Xiaoli", "role": "victim · the one dissuaded" }
 ],
 "groups": [
-  { "id": "g-1", "label": "杨帆的行为" },        // 第 1 组 → 上侧
-  { "id": "g-2", "label": "段小立的行为" },      // 第 2 组 → 下侧
-  { "id": "g-3", "label": "双方共同或客观经过" }  // 第 3 组 → 轴线
+  { "id": "g-1", "label": "Yang Fan's conduct" },        // 1st group → side 1
+  { "id": "g-2", "label": "Duan Xiaoli's conduct" },     // 2nd group → side 2
+  { "id": "g-3", "label": "joint or objective course" }  // 3rd group → the axis
 ],
 "slots": [
-  { "events": [ /* 9时24分：三件事同时，分居三条车道 */ ] },
-  { "events": [ /* 9时28分 */ ] },
-  { "events": [ /* 9时31分 */ ] },
-  { "events": [ /* 段小立死亡，date 仅到日 */ ] }
+  { "events": [ /* 09:24: three things at once, one on each of the three lanes */ ] },
+  { "events": [ /* 09:28 */ ] },
+  { "events": [ /* 09:31 */ ] },
+  { "events": [ /* Duan Xiaoli dies, date goes only to the day */ ] }
 ]
 ```
 
-## 7. 本轮不做
+## 7. Not done this round
 
-| 项 | 说明 |
+| Item | Note |
 |---|---|
-| `dateEnd` 的图形化 | 文字版已做（卡片写「起 - 止」、浮层给时长）。跨槽的竖条**不做**：槽是等距的而真实时间不是（电梯案里 4 秒和 264 秒占的图上距离一样），按真实时长画长度会骗人 |
-| 横竖切换 | **已做**。方向是渲染参数，逻辑不随方向变；默认值按槽数取（槽 ≥ 5 竖向、≤ 4 横向） |
-| 三个以上主体的专门验证 | **已验**：4 个主体、5 列的示例已跑过多个视角 |
-| 拖拽编辑 | 结构已为它留好路（顺序靠数组、同槽靠嵌套），功能不做 |
-| 轴上的时间刻度 | 不画。时间只在卡片上显示，避免混合精度下刻度误导 |
+| Drawing `dateEnd` | The text version is done (the card writes "start - end", the overlay gives the duration). No vertical bar across slots: **not done**, slots are equally spaced and real time is not (in the elevator case 4 seconds and 264 seconds take up the same distance on the diagram), drawing length by real duration would deceive |
+| Vertical/horizontal switching | **Done.** Direction is a rendering parameter and the logic does not change with direction; the default is taken from the slot count (5 or more slots vertical, 4 or fewer horizontal) |
+| Dedicated verification for more than three parties | **Verified**: the example with 4 parties and 5 columns has been run through several views |
+| Drag editing | The structure has left the road open for it (order via the array, same slot via nesting); the feature is not done |
+| A time scale on the axis | Not drawn. Time is shown on the cards only, avoiding a misleading scale under mixed precision |
 
-## 8. 已收口
+## 8. Settled
 
-| 争议点 | 结论 |
+| Point of dispute | Conclusion |
 |---|---|
-| 事件涉及 ≥2 个主体、又写了侧别组 | **报错**。矛盾多半意味着数据写错了，校验层指出冲突字段，由 agent 自行修正 |
-| 混合精度下槽刻度会误导 | **轴上不画时间刻度**，时间只在卡片上显示，从根上避免误导 |
-| `groups[].label` 与 `events[].label` 同名 | **保持现状**。`name` 是“它叫什么”，`label` 是“这儿显示什么字”：主体、来源用 `name`，分组、事件用 `label`。为求表面整齐把分组改成 `name` 反而牺牲语义 |
+| An event involves 2 or more parties and a side group is also written | **An error.** A contradiction mostly means the data is wrong; the validation layer points out the conflicting field and the agent corrects it itself |
+| A slot scale misleads under mixed precision | **No time scale on the axis**, time is shown on the cards only, avoiding the misleading from the root |
+| `groups[].label` and `events[].label` share a name | **Keep as is.** `name` is "what it is called", `label` is "what text is shown here": parties and sources use `name`, groups and events use `label`. Renaming groups to `name` for surface tidiness would sacrifice semantics instead |

@@ -1,9 +1,9 @@
 // ============================================================
-//  src/renderers/fact/LinkLayerNode.jsx —— 引线层（装饰节点）
+//  src/renderers/fact/timeline/LinkLayerNode.jsx — the link layer (a decoration node)
 //
-//  所有“卡片 → 轴点”的引线集中在这一个节点里，整层排在卡片之前，
-//  因此卡片永远压在引线之上，引线不会横穿别人的卡片。
-//  本层不接收鼠标事件。
+//  All "card → axis dot" links are collected in this one node, and the whole layer is placed
+//  before the cards, so cards always cover the links and a link never crosses another card.
+//  This layer receives no mouse events.
 // ============================================================
 
 import { memo } from 'react'
@@ -16,7 +16,7 @@ const LinkLayerNode = memo(function LinkLayerNode({ data }) {
       {segments.map((s, i) => (
         <span
           key={i}
-          // 竖向是横线（border-top），横向是竖线（border-left）
+          // A horizontal line when vertical (border-top), a vertical line when horizontal (border-left)
           className={`antu-link${isH ? ' is-h' : ''}`}
           style={{ left: s.left, top: s.top, width: s.width, height: s.height }}
         />

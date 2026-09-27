@@ -1,0 +1,100 @@
+{
+  "specVersion": 1,
+  "type": "fact",
+  "title": "Project progress · No groups (everything on the axis; illustrative data)",
+
+  "actors": [
+    { "id": "a-1", "name": "Project X", "role": "The course of events itself" }
+  ],
+
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "document",
+      "name": "Project approval reply",
+      "loc": { "file": "立项批复.pdf", "page": 1 },
+      "quote": "Project X is approved for establishment, with a total investment of RMB 32m."
+    },
+    {
+      "id": "s-2",
+      "type": "document",
+      "name": "Construction permit",
+      "loc": { "file": "施工许可.pdf", "page": 1 },
+      "quote": "Construction is permitted, valid until 31 December 2025."
+    },
+    {
+      "id": "s-3",
+      "type": "evidence",
+      "name": "Acceptance minutes",
+      "loc": { "file": "验收纪要.pdf", "page": 2 },
+      "quote": "Each item passed acceptance; completion acceptance is approved."
+    }
+  ],
+
+  "slots": [
+    {
+      "events": [
+        {
+          "id": "ev-1",
+          "date": "2023-08-20",
+          "label": "The project obtains the approval reply",
+          "summary": "RMB 32m total investment",
+          "actorIds": ["a-1"],
+          "detail": "The competent authority approved the establishment of the project and fixed the total investment at RMB 32m.",
+          "sourceIds": ["s-1"]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-2",
+          "date": "2023-10-15",
+          "label": "Construction permit obtained",
+          "summary": "Valid to end-2025",
+          "actorIds": ["a-1"],
+          "detail": "The construction permit was obtained, valid until 31 December 2025.",
+          "sourceIds": ["s-2"]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-3",
+          "date": "2024-01-08",
+          "label": "Main structure topped out",
+          "summary": "12 days ahead of schedule",
+          "actorIds": ["a-1"],
+          "detail": "The main structure was topped out, 12 days ahead of the original schedule."
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-4",
+          "date": "2024-03-01",
+          "dateEnd": "2024-05-30",
+          "label": "Mechanical and electrical installation stage",
+          "summary": "Lasted about three months",
+          "actorIds": ["a-1"],
+          "detail": "Mechanical and electrical installation ran from 1 March to 30 May, with no stoppage of work in between."
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-5",
+          "date": "2024-07-12",
+          "label": "Completion acceptance passed",
+          "summary": "Each item passed acceptance",
+          "actorIds": ["a-1"],
+          "detail": "Each item passed acceptance; completion acceptance is approved.",
+          "sourceIds": ["s-3"]
+        }
+      ]
+    }
+  ]
+}

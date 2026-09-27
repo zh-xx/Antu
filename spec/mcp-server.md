@@ -1,225 +1,260 @@
-# 案图的 MCP 服务端
+# antu's MCP server
 
-> 状态：**可用**（2026-09）。这是给 **agent** 用的入口。
+> Status: **working** (2026-09). This is the entry point for **agents**.
 
-## 0. 一句话
+## 0. In one sentence
 
-agent 通过它读规范、看示例、校验自己的 JSON、算几何、出成品、**并且看一眼结果**。
+Through it an agent reads the specification, views examples, validates its own JSON,
+computes the geometry, produces the output, **and takes a look at the result**.
 
-## 1. 三条设计原则
+## 1. Three design principles
 
-**一、MCP 里没有"生成 JSON"这种工具。**
+**One: there is no "generate JSON" tool in the MCP.**
 
-引擎不生成 JSON，这是项目的根本原则（见 `v0-architecture.md` §1）。
-读文书、提取事实、写 JSON 是 agent 的职责。服务端只提供
-**规范、示例、校验、几何、渲染、预览**，不替 agent 写数据。
+The engine does not generate JSON; that is a founding principle of the project (see
+`spec/v0-architecture.md` §1). Reading documents, extracting facts and writing JSON is the
+agent's job. The server only provides **specification, examples, validation, geometry,
+rendering and preview**. It does not write data on the agent's behalf.
 
-**二、让 agent 能"看见"。**
+**Two: let the agent see.**
 
-这是最容易被忽略、也最要紧的一条。
+This is the most easily overlooked principle, and the most important.
 
-agent 和人一样，**看不见自己画出来的东西**。校验全过、几何也合理，
-图照样可能难看：卡片挤在一起、字太小、整张图太空、列标题被截断。
+An agent, like a person, **cannot see what it has drawn**. Validation may pass and the
+geometry may be sound, and the diagram can still look bad: cards jammed together, text
+too small, the whole diagram too empty, column headings cut off.
 
-`antu_preview` 把结果截成 PNG 返回，agent 用自己的眼睛检查。
-没有这一步，agent 只能盲写。
+`antu_preview` returns the result as a PNG so the agent can check it with its own eyes.
+Without that step the agent can only write blind.
 
-举个真实例子：这个项目本身的开发过程中，有好几个缺陷是**校验全过**的，
-只有看图才发现——
+A real example: during this project's own development, several defects **passed every
+validation check** and were only found by looking at the diagram:
 
-- 画布上的"适应视图"按钮点了没反应（一个 0×0 的装饰节点让 React Flow 判错了状态）
-- 左上角标签卡的样式被误删，结果标签卡把画布挤到右边、缩成一小块
-- 方向箭头朝向不对、小三角和文字没对齐
+- the "fit view" button on the canvas did nothing (a 0×0 decorative node made React
+  Flow misjudge the state)
+- the styles of the top-left card were deleted by accident, so the card pushed the
+  canvas to the right and squeezed it into a sliver
+- the direction arrow pointed the wrong way, and a small triangle was misaligned with
+  its text
 
-**校验能保证"合法"，保证不了"好看"。** 预览补的就是这一段。
+**Validation guarantees that the data is legal; it cannot guarantee that the diagram
+looks good.** The preview covers that gap.
 
-**三、能在本地跑就不要联网。**
+**Three: run locally rather than over the network wherever possible.**
 
-校验和几何是**纯 JS**，不需要浏览器：给定 JSON，直接算出"内容多大、
-该用哪个方向、哪个视角摆不下"。预览复用**本机已有的浏览器**（怎么找见 §4），
-不打包无头浏览器。整个服务端不访问网络。
+Validation and geometry are **plain JS** and need no browser: given a JSON they work out
+how large the content is, which orientation to use, and which views do not fit. The
+preview reuses **the browser already installed on the machine** (how it is located is
+in §4); no headless browser is bundled. The whole server makes no network requests.
 
-## 2. 八个工具
+## 2. Seven tools
 
-分两组。**给 agent 的参考资料和给设计者的文档是两回事**，别混：
+Two groups. **Reference material for agents and documents for designers are two
+different things**; do not mix them.
 
-### 给 agent 的（写 JSON 用的）
+### For agents (needed to write JSON)
 
-**三个参考资料工具都按大类分发**：传 `type` 取哪一类图的东西，不传就是 `fact`。
-目前只有事实图一类，要别的大类会明确回一句"还没有 procedure 这一类"，
-而不是回一份空表（空表会被读成"这一类有，只是为空"）。
+**The three reference tools are all dispatched by type**: pass `type` to get material
+for that kind of diagram, omit it and you get `fact`. So far only the fact type exists;
+asking for another type returns an explicit "there is no procedure material yet" rather
+than an empty table (an empty table reads as "this type exists, it is just empty").
 
-| 工具 | 干什么 | 体量 | 要浏览器吗 |
+| Tool | What it does | Size | Needs a browser |
 |---|---|---|---|
-| `antu_schema` | 字段表：哪个必填、什么类型、一句话说明 | 1777 字符 ≈ 1.2k token | 不要 |
-| `antu_guide` | 一页机制说明：事件画在哪、视角怎么换、"一格一事件"那条限制 | 1732 字符 ≈ 1.1k token | 不要 |
-| `antu_examples` | 列示例（默认给 `examples/agent/fact/` 那六份小示例）；传 `file` 取任意一份 | 每份约 1 KB | 不要 |
+| `antu_schema` | Field table: what is required, of what type, one line of explanation | 2858 characters ≈ 1.9k tokens | no |
+| `antu_guide` | One page of mechanism notes: where an event is drawn, how views change, the "one event per cell" limit | 4042 characters ≈ 2.6k tokens | no |
+| `antu_examples` | Lists examples (by default the six small ones in `examples/agent/fact/`); pass `file` to fetch any one | about 1 KB each | no |
+| `antu_validate` | Validates, reporting each problem (with field path and event id) | — | no |
+| `antu_layout` | Computes the geometry: content size, fit zoom, suggested orientation, whether each view fits | — | no |
+| `antu_render` | Produces the self-contained HTML | — | no |
+| `antu_preview` | Returns a PNG screenshot | one image | **yes** |
 
-**这么设计是为了加新大类时不用返工。** 原先 `antu_schema` 直接调
-`describeFactSchema()`、`antu_guide` 直接读一个固定文件，等于把 fact 写死在工具里；
-关系图做出来那天，这三个工具全要改。现在字段表、机制说明、示例都按大类分，
-加一个新大类只需要：写它的 `schema.js`（含字段元数据）、
-在 `spec/agent/<大类>/` 放一份 `guide.md`、在 `examples/agent/<大类>/` 放几份小示例。
-**工具那边一行都不用改。**
-| `antu_validate` | 校验，逐条报错（带字段路径与事件 id） | —— | 不要 |
-| `antu_layout` | 算几何：内容尺寸、适配缩放、建议方向、每个视角能不能排下 | —— | 不要 |
-| `antu_render` | 生成自包含 HTML | —— | 不要 |
-| `antu_preview` | 截成 PNG 返回 | 一张图 | **要** |
+**The design is meant to avoid rework when a new type is added.** `antu_schema` used to
+call `describeFactSchema()` directly and `antu_guide` read one fixed file, which amounts
+to hard-coding fact into the tools; the day the relationship diagram arrived all three
+tools would have needed changing. Now the field table, the mechanism notes and the
+examples are all split by type, and adding a type means only: write its `schema.js`
+(with field metadata), put a `guide.md` in `spec/agent/<type>/`, and put a few small
+examples in `examples/agent/<type>/`. **Not one line of the tools changes.**
 
-合计 **2.3k token** 就能开工，替掉原先"读 schema 文档 8k + 排布规则 3k + 示例 5k"。
+Together **4.5k tokens** is enough to start work, replacing the old "read the schema
+document 8k + layout rules 3k + examples 5k".
 
-**三个工具互相指路**（按使用顺序成链），agent 不必猜下一步该调什么：
+**The three tools point at each other** (a chain in order of use) so an agent need not
+guess what to call next:
 
 ```
 antu_schema → antu_guide → antu_examples → antu_validate
 ```
 
-每个工具的说明里都写明了前后该看哪个。
+Every tool description says which one to look at before and after.
 
-### 给设计者的（**不在 MCP 里**）
+### For designers (**not in the MCP**)
 
-`spec/*.md` 那八份设计文档（约 5.7 万字符）讲的是"当初为什么这么定"，
-**MCP 一个都不暴露。** 原先的做法是原样挂出去、只加了个"写数据用得上"的标签，
-那等于没分：agent 顺着列表读下去,读的就是写给设计者的上万字符。
+The eleven design documents under `spec/` describe why things were decided the way they
+were. **The MCP exposes none of them.** The old approach hung them all out with a
+"useful for writing data" label, which is the same as no separation at all: an agent
+following the list would read tens of thousands of characters written for designers.
 
-要读设计理由的是人，人直接开文件，不需要经过 MCP。
+Whoever needs the design rationale is a person, and a person opens the file directly.
+The MCP is not involved.
 
-**资源只有一个**：
-
-```
-antu://agent/<大类>/guide    那个大类的机制说明（现在只有 antu://agent/fact/guide）
-```
-
-只此一个。`spec/agent/` 下有什么，这里就有什么；上一层的东西一律不出现。
-
-**验证器里有断言守着这条线**：MCP 的服务端代码里不许出现任何一份人类文档的名字
-（spec/fact/schema-draft.md、spec/known-issues.md……）。
-
-### 为什么不手抄一份"给 agent 的规范"
-
-这个项目已经吃过四次"同一件事写两处然后走偏"的苦（类名撞车、`1.12` 两份、
-MCP 分发表、HTML 模板两份）。再手抄一份规则就是第五次。
-
-所以字段表**从代码里的 `FACT_FIELDS` 生成**（`renderers/fact/schema.js`），
-而且验证器里有一条守护：**标"必填"的字段，抽掉之后校验器必须报错**。
-两边说的是同一件事，改一边忘了另一边会被测出来。
-
-至于"常见错误与改法"，**不需要静态列表**：写完调 `antu_validate`，
-校验器会逐条告诉你哪里不对、怎么改。
-
-## 3. agent 的完整流程
+**There is exactly one resource:**
 
 ```
-1. antu_spec          → 读 spec/fact/schema-draft.md、spec/fact/timeline-rules.md
-2. antu_examples      → 看一份真实案例是怎么写的
-3. 写 JSON            ← agent 自己的活
-4. antu_validate      → 有错就改，循环到通过
-5. antu_layout        → 看一眼几何：会不会太宽、哪个视角摆不下
-6. antu_preview       → 看一眼图：好不好看
-   ↑ 不满意就回第 3 步
-7. antu_render        → 出成品 HTML，交给用户
+antu://agent/<type>/guide    mechanism notes for that type (currently only antu://agent/fact/guide)
 ```
 
-第 4 到 6 步是循环。**"校验通过"只是及格线，"看着舒服"才是交付标准。**
+Only that one. Whatever is under `spec/agent/` is here; nothing from the level above
+ever appears.
 
-## 4. 接进 MCP 客户端
+**An assertion in the verifier guards that line**: the name of no human-facing document
+(`spec/fact/schema-draft.md`, `spec/known-issues.md`, …) may appear in the MCP server
+code.
 
-服务端走 stdio。以 Claude Desktop 一类客户端为例：
+### Why not hand-copy a "specification for agents"
+
+This project has already been bitten four times by writing the same thing in two places
+and having them drift (clashing class names, `1.12` in two places, the MCP dispatch
+table, the HTML template in two places). Hand-copying the rules a fifth time would make
+it five.
+
+So the field table is **generated from `FACT_FIELDS` in the code**
+(`renderers/fact/schema.js`), and the verifier has a guard: **a field marked required,
+when removed, must make the validator complain.** Both sides state the same thing, and
+changing one while forgetting the other is caught by the tests.
+
+As for "common mistakes and how to fix them", **no static list is needed**: call
+`antu_validate` after writing and the validator reports each problem and how to fix it.
+
+## 3. An agent's full workflow
+
+```
+1. antu_examples      → see how a real case is written
+2. antu_schema        → the field table
+3. antu_guide         → the mechanism notes
+4. write JSON         ← the agent's own work
+5. antu_validate      → fix any errors, loop until it passes
+6. antu_layout        → check the geometry: too wide? which view does not fit?
+7. antu_preview       → look at the diagram: does it look good?
+   ↑ not satisfied, go back to step 4
+8. antu_render        → produce the finished HTML and hand it to the user
+```
+
+Steps 5 to 7 are a loop. **Passing validation is only the pass mark; looking
+comfortable is the delivery standard.**
+
+## 4. Wiring it into an MCP client
+
+The server runs over stdio. With a client such as Claude Desktop:
 
 ```json
 {
   "mcpServers": {
     "antu": {
       "command": "node",
-      "args": ["/绝对路径/antu/tools/mcp/server.mjs"]
+      "args": ["/absolute/path/to/antu/tools/mcp/server.mjs"]
     }
   }
 }
 ```
 
-也可以手动跑起来看它等在那里：
+It can also be run by hand to watch it wait:
 
 ```bash
-npm run mcp          # 起服务端（等 stdin 上的 JSON-RPC）
-npm run mcp:test     # 用自带的客户端走一遍全流程
+npm run mcp          # start the server (waits for JSON-RPC on stdin)
+npm run mcp:test     # run the whole flow with the bundled client
 ```
 
-### 浏览器从哪找
+### Where the browser comes from
 
-只有 `antu_preview` 要浏览器（渲染检查也要）。查找顺序是：
+Only `antu_preview` needs a browser (the render check does too). The lookup order is:
 
 ```
-ANTU_CHROME 环境变量  →  已知路径  →  PATH
+ANTU_CHROME environment variable  →  known paths  →  PATH
 ```
 
-**仓库里不堆厂商路径**：任何 Chromium 内核的浏览器都能靠环境变量接进来，
-所以本机装的是 360、奇安信、Edge 之类（麒麟／统信上很常见）时，
-在客户端的 `env` 里指一下即可，不必改代码：
+**No vendor paths are piled up in the repository**: any Chromium-based browser can be
+wired in through the environment variable, so if the machine has 360, QiAnXin, Edge or
+the like (common on Kylin / UOS), point at it in the client's `env` rather than changing
+code:
 
 ```json
 {
   "mcpServers": {
     "antu": {
       "command": "node",
-      "args": ["/绝对路径/antu/tools/mcp/server.mjs"],
+      "args": ["/absolute/path/to/antu/tools/mcp/server.mjs"],
       "env": { "ANTU_CHROME": "/opt/browser360/browser360" }
     }
   }
 }
 ```
 
-命令行同理：`ANTU_CHROME=/它的路径 npm run verify`。
+Same on the command line: `ANTU_CHROME=/its/path npm run verify`.
 
-几点边界，都是有意这么定的：
+A few boundaries, all deliberate:
 
-- **环境变量每次现读**，不在模块加载时读死——否则客户端在 import 之后再设就不生效；
-- **指错了不报错，继续往下找**。指向不存在的路径、或者指向一个目录（少写一层），
-  都当作没设，免得一个笔误把整条路堵死；
-- **找不到浏览器不是错误，是降级**：`antu_preview` 会回一句"预览做不了，
-  先用 `antu_layout` 判断几何"，其余工具照常能用。
-- **没有 `sh` 的环境（例如 Windows）**：PATH 那一步落空，其余两步照常。
+- **the environment variable is read every time**, not once at module load, otherwise
+  setting it after the client imports the module would have no effect;
+- **a wrong value is not an error, the search continues.** Pointing at a path that does
+  not exist, or at a directory (one level short), counts as unset, so a typo does not
+  block the whole path;
+- **not finding a browser is a degradation, not an error**: `antu_preview` replies
+  "preview is not possible, use `antu_layout` to judge the geometry for now", and every
+  other tool keeps working;
+- **an environment without `sh` (Windows, for instance)**: the PATH step comes up empty,
+  the other two steps still work.
 
-`tools/verify/run.mjs` 里有三条断言守着这段（列在【浏览器查找】一节），
-**不需要浏览器**，所以 `npm run verify:fast` 也会跑。
+`tools/verify/run.mjs` has three assertions guarding this section (listed under
+[browser lookup]), and they **need no browser**, so `npm run verify:fast` runs them too.
 
-## 5. 自测
+## 5. Self-test
 
-`tools/mcp/client-test.mjs` 是一个**自己写的 MCP 客户端**，按真实客户端的顺序走一遍：
-
-```
-握手 → 列工具 → 列资源 → 读资源 → 列示例
-→ 校验坏 JSON → 校验真 JSON → 算几何 → 生成 HTML → 截图预览
-```
-
-为什么要它：MCP 是协议，光看代码看不出"客户端调得通吗"。
-它还顺便证明了两件事——**校验和几何确实不需要浏览器**、
-**预览确实能在几秒内出一张真图**。
-
-实测（电梯劝烟案）：
+`tools/mcp/client-test.mjs` is a **hand-written MCP client** that walks the flow in the
+order a real client would:
 
 ```
-校验通过
-竖向 948×901，适配缩放 0.849；横向 2362×345，0.605；建议竖向
-4 个视角，其中"只看时间先后"摆不下（同槽两条事件落同一车道）
-生成 HTML 419 KB
-预览 9 张卡片，1400×820，约 2.4 秒
+handshake → list tools → list resources → read resource → list examples
+→ validate bad JSON → validate real JSON → compute geometry → produce HTML → screenshot
 ```
 
-## 6. 依赖代价（要说清）
+Why it exists: MCP is a protocol, and reading the code cannot tell you whether a client
+can actually drive it. It also demonstrates two things in passing: **validation and
+geometry really do not need a browser**, and **the preview really does produce a real
+image within seconds**.
 
-用了官方 SDK `@modelcontextprotocol/sdk`。它带进来 **158 个包、约 73 MB**
-（express、hono、ajv、jose 等，主要是 HTTP 传输那半边用的）。
+Measured (elevator smoking case):
 
-- **不影响浏览器包**：SDK 只被 MCP 入口引用，Vite 不会把它打进引擎，
-  自包含 HTML 的体积一个字节没变；
-- **它只是开发/集成期依赖**：最终用户拿到的还是一个 HTML 文件，不装这些。
+```
+validation passes
+vertical 948×901, fit zoom 0.849; horizontal 2362×345, 0.605; vertical suggested
+4 views, of which "Chronological only" does not fit (two events in one slot fall in the same lane)
+HTML produced: 419 KB
+preview: 9 cards, 1400×820, about 2.4 seconds
+```
 
-如果这个代价不能接受，替代方案是**不用 SDK、自己实现 stdio 上的 JSON-RPC**
-（约两百行，零新依赖）。代价是自己维护协议版本兼容。
-现在先用 SDK：**协议正确性比少几个包重要**。
+## 6. The dependency cost (worth stating plainly)
 
-## 7. 还没做的
+The official SDK `@modelcontextprotocol/sdk` is used. It brings in **158 packages, about
+73 MB** (express, hono, ajv, jose and others, mostly for the HTTP transport half).
 
-- 关系图、程序图、其它子类的几何计算（`antu_layout` 目前只认 fact 的时间图）
-- 增量预览（现在每次都重新起一个 Chrome，约 2.4 秒；可以复用实例压到几百毫秒）
-- 把预览图和上一条并列返回，让 agent 一次看到"改前改后"
+- **It does not affect the browser bundle**: the SDK is only referenced by the MCP entry
+  point, Vite never bundles it into the engine, and the self-contained HTML has not grown
+  by a single byte;
+- **it is only a development / integration dependency**: what an end user receives is
+  still one HTML file, and they install none of this.
+
+If that cost is unacceptable, the alternative is **to skip the SDK and implement
+JSON-RPC over stdio directly** (about two hundred lines, zero new dependencies). The
+price is maintaining protocol version compatibility yourself. For now the SDK is used:
+**protocol correctness matters more than a few fewer packages**.
+
+## 7. Not done yet
+
+- geometry for the relationship type, the procedure type and other sub-types
+  (`antu_layout` currently only understands the fact timeline)
+- incremental preview (each run starts a fresh Chrome, about 2.4 seconds; reusing an
+  instance could bring it down to a few hundred milliseconds)
+- returning the preview image alongside the previous one so an agent sees before and
+  after in one go

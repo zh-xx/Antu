@@ -1,18 +1,18 @@
 // ============================================================
-//  src/renderers/fact/timeline/nodes.js —— 把算好的数造成 React Flow 节点
+//  src/renderers/fact/timeline/nodes.js — build React Flow nodes from the computed numbers
 //
-//  metrics.js 负责"算"，这里负责"造"。每类节点一小段：
-//    格子层、列标题、轴线、引线层、卡片
+//  metrics.js computes, this file builds. One short section per node type:
+//    cell layer, column headings, axis, link layer, cards
 //
-//  装饰类节点（格子、引线）都要声明 width/height: 1，理由见 cellsNode 那段注释，
-//  那条踩过坑，别再改回 0。
+//  Decoration nodes (cells, links) must declare width/height: 1, for the reason in the cellsNode
+//  comment below: that one was a real pitfall, do not change it back to 0.
 // ============================================================
 
 import { SIDE } from './grid.js'
 import { CARD_W } from '../cardGeometry.js'
 import { DOT_SIZE, HEADER_W, groupIndexOf } from './metrics.js'
 
-/** 装饰类节点共有的属性：不拖、不选、不可连、不可聚焦 */
+/** Attributes shared by decoration nodes: not draggable, not selectable, not connectable, not focusable */
 const DECORATION = {
   draggable: false,
   selectable: false,
@@ -21,7 +21,8 @@ const DECORATION = {
 }
 
 /**
- * 卡片的数据：主体名与来源在这里就解析好，浮层直接用，不必再回头翻 spec。
+ * Data for a card: party names and sources are resolved here, so the overlay can use them
+ * directly without going back to the spec.
  */
 export function cardData(event, grid, rowIndex) {
   const actorNames = (Array.isArray(event.actorIds) ? event.actorIds : []).map(
@@ -34,20 +35,23 @@ export function cardData(event, grid, rowIndex) {
 }
 
 /**
- * 格子层（最底层，默认隐藏，由开关控制）。
- * 只把行列数与格子尺寸交代出去，具体画多少格由组件决定。
+ * The cell layer (bottom-most, hidden by default, controlled by a switch).
+ * It only hands out the row and column counts and the cell size; how many cells to draw is the
+ * component's business.
  */
 export function cellsNode(m) {
   return {
     id: '__cells__',
     type: 'cells',
     position: { x: 0, y: 0 },
-    // 装饰层的尺寸要走两条互相打架的规则，所以只能给 1×1：
-    //   不声明  → React Flow 把"没尺寸"的节点整个设成 visibility:hidden，看不见
-    //   声明 0×0 → 它永远拿不到 measured，而只要有一个节点没有 measured，
-    //              React Flow 就把 nodesInitialized 判成 false，
-    //              fitView 的队列路径便永不结算（症状：画布上"适应视图"按钮点了没反应）
-    // 1×1 两条都满足：节点有尺寸所以可见、能被量到；真正画多大由里面的 SVG 决定。
+    // The decoration layer's size has to satisfy two rules that fight each other, so it can only
+    // be 1×1:
+    //   not declared → React Flow sets a "sizeless" node to visibility:hidden entirely, invisible
+    //   declared 0×0 → it never gets measured, and if a single node has no measured value React
+    //                  Flow judges nodesInitialized false, so the fitView queue path never
+    //                  settles (symptom: the "fit view" button on the canvas does nothing)
+    // 1×1 satisfies both: the node has a size so it is visible and measurable; how big it really
+    // draws is decided by the SVG inside.
     width: 1,
     height: 1,
     style: { pointerEvents: 'none' },
@@ -64,13 +68,13 @@ export function cellsNode(m) {
   }
 }
 
-/** 列标题：竖向时在网格上方一行，横向时在网格左侧一列 */
+/** Column headings: a row above the grid when vertical, a column on the left when horizontal */
 export function headerNodes(grid, m) {
   const side1Count = grid.columns.filter((c) => c.side === SIDE.SIDE1).length
   const side2Count = grid.columns.filter((c) => c.side === SIDE.SIDE2).length
 
   return grid.columns.map((col, ci) => {
-    // 只有该侧有多列（多主体）时才补一行主体名
+    // A row of party names is added only when that side has several columns (several parties)
     const manyCols =
       col.side === SIDE.SIDE1 ? side1Count > 1 : col.side === SIDE.SIDE2 ? side2Count > 1 : false
     return {
@@ -92,11 +96,12 @@ export function headerNodes(grid, m) {
 }
 
 /**
- * 轴线（含每个槽的轴点）。
- * 位置：竖向时贴着轴点列的中线、从标题区往下；横向时反过来。
+ * The axis (including the axis dot of every slot).
+ * Position: hugging the centre line of the axis-dot column and running down from the header area
+ * when vertical, and the other way round when horizontal.
  */
 export function axisNode(grid, m) {
-  // 轴点沿时间轴排，位置是相对轴线节点起点的偏移（竖向是 top，横向是 left）
+  // Axis dots are laid along the time axis; the position is an offset from the node's origin (top when vertical, left when horizontal)
   const dotOffsets = grid.rows.map(
     (r) => r.index * m.slotExtent + m.slotExtent / 2 - DOT_SIZE / 2,
   )
@@ -111,13 +116,13 @@ export function axisNode(grid, m) {
   }
 }
 
-/** 引线层。整层一个节点，排在卡片之前，所以卡片永远压住线。 */
+/** The link layer. One node for the whole layer, placed before the cards, so cards always cover the lines. */
 export function linksNode(segments, isH) {
   return {
     id: '__links__',
     type: 'links',
     position: { x: 0, y: 0 },
-    // 同格子层：1×1 的理由见 cellsNode 那段注释
+    // Same as the cell layer: for why 1×1, see the comment in cellsNode
     width: 1,
     height: 1,
     style: { pointerEvents: 'none' },
@@ -127,10 +132,11 @@ export function linksNode(segments, isH) {
 }
 
 /**
- * 一张卡片，以及它连到轴点的引线（卡片本就在轴线车道上时没有引线）。
+ * One card, and the link from it to its axis dot (no link when the card is in the axis lane itself).
  *
- * 引线：从卡片靠轴的那条边拉到轴点。竖向走卡片左右两侧的横线，
- * 横向走卡片上下两侧的竖线。
+ * The link: from the edge of the card facing the axis to the axis dot. It runs as a horizontal
+ * line on the left/right of the card when vertical, and as a vertical line above/below it when
+ * horizontal.
  */
 export function placeCard(event, colIndex, rowIndex, grid, m, fields) {
   const cell = m.cellAt(rowIndex, colIndex)
@@ -163,7 +169,7 @@ export function placeCard(event, colIndex, rowIndex, grid, m, fields) {
     data: {
       ...cardData(event, grid, rowIndex),
       groupIndex: groupIndexOf(grid.columns[colIndex].side),
-      // 尺寸的唯一来源：样式里不再写宽高
+      // The single source of size: the styles no longer write width and height
       cardW: CARD_W,
       cardH: m.cardH,
       labelLines: m.labelLines,

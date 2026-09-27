@@ -1,14 +1,17 @@
 // ============================================================
-//  src/shell/ErrorBoundary.jsx —— 渲染出错时的兜底
+//  src/shell/ErrorBoundary.jsx —— the fallback when rendering throws
 //
-//  为什么需要：渲染器是「数据 → 界面」的最后一步，它抛错时
-//  整页会变成白屏，用户看不到任何信息。开发时我也只能去翻控制台。
+//  Why it is needed: a renderer is the last step of "data → interface", and when it
+//  throws the whole page goes blank, leaving the user with no information at all.
+//  While developing, all I could do was dig through the console.
 //
-//  这个兜底不做修复，只做一件事：**把白屏换成一句人话加一段可复制的错误**。
-//  边界包在渲染器外面，所以校验出错的路径不受影响（那条路由 App 自己处理）。
+//  This fallback does not repair anything; it does one thing: **replace the blank page
+//  with a plain sentence and a copyable error**. The boundary wraps the renderer, so the
+//  validation-failure path is unaffected (App handles that path itself).
 // ============================================================
 
 import { Component } from 'react'
+import { translate } from '../core/i18n.js'
 
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -21,21 +24,23 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // 控制台里留全量信息（含组件栈），页面上只给可复制的部分
-    console.error('[案图] 渲染出错', error, info)
+    // Keep the full information (including the component stack) in the console;
+    // the page only gets the copyable part
+    console.error('[antu] render failed', error, info)
   }
 
+  // This is a class component and cannot call a hook (useLang), so App passes the
+  // language in as a prop. This is the only piece of wording here; it is not worth
+  // turning the whole boundary into a function component for it.
   render() {
     const { error } = this.state
+    const t = (key, vars) => translate(this.props.lang, key, vars)
     if (!error) return this.props.children
 
     return (
       <div className="antu-fallback">
-        <div className="antu-error-title">渲染出错了</div>
-        <div className="antu-error-hint">
-          数据本身可能没问题（校验已经通过），是这个画法在渲染时抛错了。
-          把下面这段发给开发者，或者换一种渲染类型试试。
-        </div>
+        <div className="antu-error-title">{t('error.renderTitle')}</div>
+        <div className="antu-error-hint">{t('error.renderHint')}</div>
         <pre className="antu-error-trace">{String(error?.stack || error)}</pre>
       </div>
     )

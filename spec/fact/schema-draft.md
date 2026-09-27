@@ -1,107 +1,107 @@
-# fact（事实图）· Schema 草案 v0
+# fact · Schema draft v0
 
-> 状态：**草案 v0.2，字段已按发起人决策精简**。字段名/约束均可改。
+> Status: **draft v0.2; the field set has been trimmed per the sponsor's decisions**. Field names and constraints may still change.
 
-> **这份是给设计者看的。** agent 写 JSON 用的是另一份：
-> 字段见 MCP 的 `antu_schema`，机制见 `spec/agent/fact/guide.md`。
-> 两份不互抄，分工写在 `spec/agent/README.md`。
+> **This document is for designers.** An agent writing JSON uses a different one:
+> fields come from the MCP tool `antu_schema`, mechanism from `spec/agent/fact/guide.md`.
+> The two do not copy each other; the division of labour is set out in `spec/agent/README.md`.
 
-> 依据：`v0-architecture.md` 中的公共约定层（id 引用 / 都带 label / 可选宽松）。
-> 范围：fact = 已发生**实体事实**的时间叙事。程序事件（立案/开庭/判决）不属此类 → procedure。
+> Basis: the shared conventions layer in `spec/v0-architecture.md` (references by id / everything carries a label / permissive optionality).
+> Scope: fact = a timeline narrative of **substantive facts that have already happened**. Procedural events (filing, hearing, judgment) are not this type; they are procedure.
 
-## 0. 已定决策（发起人拍板，2025-09）
+## 0. Decisions already taken (sponsor's rulings, 2025-09)
 
-1. **无 `kind` 分类字段**——事件类别不做枚举（与 evidence 无"证据种类"一致：分类枚举无实质收益、徒增维护）；
-2. **sources 走方案 B**——图内自带来源副本，事件用 `sourceIds` 引用图内 sources；
-3. 旧原型代码不迁入（新引擎从零写）。
+1. **No `kind` classification field.** Event categories are not enumerated, consistent with evidence having no "evidence type": a category enum brings no real benefit and only adds maintenance;
+2. **sources follow option B**: the diagram carries its own copy of the sources, and events reference the in-diagram sources with `sourceIds`;
+3. The old prototype code is not carried over (the new engine is written from scratch).
 
-## 1. 信封层（与所有类型共享）
+## 1. Envelope (shared by all types)
 
 ```jsonc
 {
   "specVersion": 1,
   "type": "fact",
-  "title": "华远贸易诉鑫城建材案 · 事实经过"
+  "title": "Huayuan Trading v. Xincheng Building Materials · Facts"
 }
 ```
 
-## 2. 内容层草案
+## 2. Content layer, draft
 
 ```jsonc
 {
   "type": "fact",
-  "title": "华远贸易诉鑫城建材案 · 事实经过",
+  "title": "Huayuan Trading v. Xincheng Building Materials · Facts",
 
-  // 图级主体清单（有序，决定时间轴分列顺序）—— 见 §3 主体机制
+  // diagram-level party list (ordered; sets the lane order on the timeline). See "Actor mechanism" in §3
   "actors": [
-    { "id": "a-1", "name": "华远贸易", "role": "原告" },
-    { "id": "a-2", "name": "鑫城建材", "role": "被告" }
+    { "id": "a-1", "name": "Huayuan Trading", "role": "plaintiff" },
+    { "id": "a-2", "name": "Xincheng Building Materials", "role": "defendant" }
   ],
 
-  // 图级分组清单（有序，决定分侧顺序）—— 见 §3 分组机制
-  // 第 1 个 → 第 1 侧，第 2 个 → 第 2 侧，第 3 个 → 轴线
+  // diagram-level group list (ordered; sets the side order). See "Group mechanism" in §3
+  // the 1st -> side 1, the 2nd -> side 2, the 3rd -> the axis
   "groups": [
-    { "id": "g-1", "label": "按约定履行" },
-    { "id": "g-2", "label": "偏离约定" },
-    { "id": "g-3", "label": "双方共同或客观经过" }
+    { "id": "g-1", "label": "Performance as agreed" },
+    { "id": "g-2", "label": "Deviation from the agreement" },
+    { "id": "g-3", "label": "Joint acts or objective course" }
   ],
 
-  // 视角清单：同一个案件换几种看法 —— 见 §3 视角机制
-  // 一个事件落在哪一列，由 groupId（定侧）和 actorIds（定列）决定，视角只换这两个的用法
+  // view list: the same case looked at in several ways. See "View mechanism" in §3
+  // which lane an event falls into is decided by groupId (the side) and actorIds (the lane); a view only changes how those two are used
   "views": [
-    { "label": "双方对照", "splitBy": "actor",
-      "side1": { "label": "华远贸易", "actors": ["a-1"] },
-      "side2": { "label": "鑫城建材", "actors": ["a-2"] },
-      "axis":  { "label": "双方共同或客观经过" } },
-    { "label": "按性质分侧", "splitBy": "group" }
+    { "label": "Parties side by side", "splitBy": "actor",
+      "side1": { "label": "Huayuan Trading", "actors": ["a-1"] },
+      "side2": { "label": "Xincheng Building Materials", "actors": ["a-2"] },
+      "axis":  { "label": "Joint acts or objective course" } },
+    { "label": "Split by group", "splitBy": "group" }
   ],
 
-  // 图内自带的来源表（方案 B：只含本图引用到的来源）
+  // the diagram's own source table (option B: only the sources this diagram references)
   "sources": [
-    { "id": "s-1", "type": "contract", "name": "借款合同", "loc": { "file": "借款合同.pdf", "page": 3 } },
-    { "id": "s-2", "type": "evidence", "name": "银行转账流水", "loc": { "file": "流水.pdf", "page": 1 } }
+    { "id": "s-1", "type": "contract", "name": "Loan contract", "loc": { "file": "loan-contract.pdf", "page": 3 } },
+    { "id": "s-2", "type": "evidence", "name": "Bank transfer record", "loc": { "file": "bank-transfer-record.pdf", "page": 1 } }
   ],
 
-  // 时间槽：数组顺序就是时间先后。**权威顺序是数组位置，date 不决定顺序**
+  // time slots: array order is chronological order. **The array position is authoritative; date never decides the order**
   "slots": [
     {
       "events": [
-        { "id": "ev-1", "date": "2023-03-10", "label": "双方签订借款合同",
-          "summary": "本金 500 万，期限 12 个月",
-          "actorIds": ["a-1", "a-2"],   // 双主体 → 落轴线
+        { "id": "ev-1", "date": "2023-03-10", "label": "The two parties sign the loan contract",
+          "summary": "principal CNY 5m; term 12 months",
+          "actorIds": ["a-1", "a-2"],   // two parties -> the axis
           "groupId": "g-3",
-          "detail": "约定借款 500 万元，期限 12 个月，到期一次还本付息。",
+          "detail": "The loan was 5,000,000 yuan for a term of 12 months; principal and interest were payable in one sum at maturity.",
           "sourceIds": ["s-1"] }
       ]
     },
     {
       "events": [
-        { "id": "ev-2", "date": "2023-03-12T10:30", "label": "华远贸易交付借款",
-          "summary": "转账 500 万元至被告账户",
-          "actorIds": ["a-1"],          // 单主体 → 落在该主体所在侧
+        { "id": "ev-2", "date": "2023-03-12T10:30", "label": "Huayuan Trading disburses the loan",
+          "summary": "CNY 5m transferred to the defendant",
+          "actorIds": ["a-1"],          // one party -> that party's side
           "groupId": "g-1",
-          "detail": "华远贸易通过银行转账 500 万元至鑫城建材账户，附言载明为借款。",
+          "detail": "Huayuan Trading transferred 5,000,000 yuan to Xincheng Building Materials' account by bank transfer; the remark stated that it was a loan.",
           "sourceIds": ["s-1", "s-2"] }
       ]
     },
     {
       "events": [
         { "id": "ev-3", "date": "2023-06-01", "dateEnd": "2023-12-31",
-          "label": "鑫城建材分期还款",
-          "summary": "约定分 6 期，前 3 期正常",
+          "label": "Xincheng Building Materials repays in instalments",
+          "summary": "6 instalments agreed; the first 3 on time",
           "actorIds": ["a-2"],
           "groupId": "g-1",
-          "detail": "双方另行约定分 6 期偿还，2023 年 6 月至 11 月的前 3 期均按期支付。",
+          "detail": "The parties separately agreed on repayment in 6 instalments; the first 3, from June to November 2023, were all paid on time.",
           "sourceIds": ["s-2"] }
       ]
     },
     {
       "events": [
-        { "id": "ev-4", "date": "2024-01-15", "label": "鑫城建材停止还款",
-          "summary": "第 4 期起未再支付",
+        { "id": "ev-4", "date": "2024-01-15", "label": "Xincheng Building Materials stops repaying",
+          "summary": "nothing paid from the 4th instalment on",
           "actorIds": ["a-2"],
           "groupId": "g-2",
-          "detail": "自第 4 期起未再支付任何款项，经催告仍未履行。",
+          "detail": "From the 4th instalment on no further payment was made, and it remained unpaid after demand.",
           "sourceIds": ["s-2"] }
       ]
     }
@@ -109,327 +109,343 @@
 }
 ```
 
-要点：
+Points to note:
 
-- **事件装在时间槽里**（`slots[].events[]`），不是一个平铺的 `events` 数组。同一时刻发生的事放在同一个槽里，槽内按列分开。
-- **数组顺序才是权威顺序**，`date` 只用来显示与排序参考。混合精度（一个到秒、一个只到日）时按 date 排序会排错。
-- **站位由 `groupId` 和主体数共同决定**：单主体落该主体所在侧，涉及 ≥2 个主体落轴线。完整规则见 `spec/fact/timeline-rules.md`。
-- 一个来源可被多个事件引用（`s-1`、`s-2` 各被引用两次），这就是"引用而非复制"的零冗余。
+- **Events live inside time slots** (`slots[].events[]`), not in a flat `events` array. Things that happened at the same instant go into the same slot, and inside the slot they are separated by lane.
+- **The array order is the authoritative order.** `date` serves display and as a reference for sorting. With mixed precision (one event to the second, another only to the day) sorting by date gets it wrong.
+- **Placement is decided by `groupId` together with the number of parties**: one party puts the event on that party's side, two or more put it on the axis. The full rules are in `spec/fact/timeline-rules.md`.
+- One source can be referenced by several events (`s-1` and `s-2` are each referenced twice); this is the zero-redundancy of "reference, not copy".
 
-> **多对多说明**：来源在**图内 sources 表**里存一份，事件用 `sourceIds` 引用——一个事件可挂多个来源，一个来源可被多个事件引用。零冗余的关键是"引用而非复制"，见主文档第 4 节。
+> **On many-to-many:** a source is stored once in the **diagram's own `sources` table** and events reference it with `sourceIds`. One event may rest on several sources, and one source may be referenced by several events. Zero redundancy comes from "reference, not copy"; see section 4 of the main design document.
 
-## 3. 字段规则（草案）
+## 3. Field rules (draft)
 
-### 图级字段
+### Envelope fields
 
-| 字段 | 必填 | 类型 | 说明 |
+| Field | Required | Type | Notes |
 |---|---|---|---|
-| `actors` | ❌ | object[] | **主体清单**（有序，决定时间轴分列顺序）：`{ id, name, role? }`；见下"主体机制" |
-| `groups` | ❌ | object[] | **分组清单**（有序，决定分侧顺序）：`{ id, label }`；见下"分组机制" |
-| `views` | ❌ | object[] | **视角清单**（同一个案件换几种看法）；见下"视角机制"。不写就只有一种"全体"看法 |
-| `sources` | ❌ | object[] | 图内来源表（方案 B），见下 |
-| `slots` | ✅ | object[] | 时间槽序列，数组顺序即先后顺序；每个槽形如 `{ events: [...] }` |
+| `type` | yes | string | always "fact" |
+| `title` | yes | string | diagram title, shown at the top left |
 
-### 视角机制（2026-09 定）
+### Diagram-level fields
 
-#### 一句话
+| Field | Required | Type | Notes |
+|---|---|---|---|
+| `actors` | no | object[] | **party list** (ordered; sets the lane order on the timeline): `{ id, name, role? }`; see "Actor mechanism" below |
+| `groups` | no | object[] | **group list** (ordered; sets the side order): `{ id, label }`; see "Group mechanism" below |
+| `views` | no | object[] | **view list** (the same case looked at in several ways); see "View mechanism" below. Omit it and only the single "all" view exists |
+| `sources` | no | object[] | the diagram's own source table (option B); see below |
+| `slots` | yes | object[] | the sequence of time slots; array order is chronological order; `date` is display-only and never reorders. Each slot is `{ events: [...] }` |
 
-**一个事件落在哪一列，由两个字段决定：`groupId` 定侧，`actorIds` 定列。**
-视角就是换一套这两个字段的用法，不引入第三个字段来定位置。
+Each slot is `{ events: [ ... ] }`: events at this time point; must not be empty (an empty time slot carries no meaning).
 
-```
-纵坐标 = slots 下标        顺序即先后
-横坐标 = 两级
-   ├─ 粗一级：侧   由 groupId 决定（第1组→第1侧，第2组→第2侧，第3组/不写→轴线）
-   └─ 细一级：列   由 actorIds 决定（一个主体一列）
-特例：涉及 ≥2 个主体的事件，一律落轴线
-```
+### View mechanism (settled 2026-09)
 
-#### 规范只定机制，不列菜单
+#### In one sentence
 
-**视角该有哪几个、谁跟谁摆一起，由 agent 读案情后决定，规范不预设。**
-
-理由：这件事**没法硬编码**。可能出现的情况非常多，而有意义的很少：
+**Where an event falls is decided by two fields: `groupId` fixes the side, `actorIds` fixes the lane.**
+A view is just another way of using those two fields; it introduces no third field to fix position.
 
 ```
-4 个主体：全体 1 + 单主体 4 + 两两组合 6 + 不分侧 1 = 12 种
-其中有法律意义的：约 3 到 4 种
+Row (time)     = slots index         array order is chronological order
+Column (side)  = two levels
+   ├─ coarse: side   decided by groupId (1st group -> side 1, 2nd group -> side 2, 3rd group / none -> the axis)
+   └─ fine:   lane   decided by actorIds (one party, one lane)
+Exception: an event involving 2 or more parties always lands on the axis
 ```
 
-穷举出来的四分之三是没人要看的东西；而"谁跟谁对立"只有读了案情才知道，机器推不出来。
-所以规范只写底线（视角依据这两个 id），剩下的交给 agent。
+#### The specification fixes the mechanism, not a menu
 
-#### 数据怎么写
+**Which views there should be, and who is placed against whom, is for the agent to decide after reading the case; the specification does not prescribe it.**
+
+Reason: this **cannot be hard-coded**. The combinations that can arise are very many, and few of them are meaningful:
+
+```
+4 parties: all 1 + single party 4 + pairs 6 + no split 1 = 12 combinations
+of which legally meaningful: about 3 or 4
+```
+
+Three quarters of any exhaustive list is something nobody wants to look at; and "who is opposed to whom" can only be known by reading the case, a machine cannot derive it.
+So the specification writes only the floor (a view rests on those two ids) and leaves the rest to the agent.
+
+#### How to write the data
 
 ```jsonc
 "views": [
-  // 按主体分侧：谁做的摆谁那边
-  { "label": "发包方 vs 承包方", "splitBy": "actor",
-    "side1": { "label": "发包方", "actors": ["a-1", "a-2"] },
-    "side2": { "label": "承包方", "actors": ["a-3", "a-4"] },
-    "axis":  { "label": "双方共同或客观经过" } },
+  // split by party: each act goes on its actor's side
+  { "label": "Employer vs contractor", "splitBy": "actor",
+    "side1": { "label": "Employer", "actors": ["a-1", "a-2"] },
+    "side2": { "label": "Contractor", "actors": ["a-3", "a-4"] },
+    "axis":  { "label": "Joint acts or objective course" } },
 
-  // 按分组分侧：侧别由事件的 groupId 决定
-  { "label": "按分组分侧", "splitBy": "group" }
+  // split by group: the side is decided by the event's groupId
+  { "label": "Split by group", "splitBy": "group" }
 ]
 ```
 
-| 字段 | 作用 |
+| Field | Job |
 |---|---|
-| `splitBy` | **用哪个字段定侧**：`"actor"` 用 `actorIds`，`"group"` 用 `groupId` |
-| `side1.actors` / `side2.actors` | **谁在哪一侧**。两份名单的并集同时是**筛选范围** |
-| `side1.label` / `side2.label` / `axis.label` | 侧名，只用于显示 |
+| `label` | view name, shown in the dropdown |
+| `splitBy` | split the sides by party or by group: `"actor"` uses `actorIds`, `"group"` uses `groupId` |
+| `side1 / side2` | `{ label, actors: [...] }. Required when splitBy=actor`. `side1.actors` / `side2.actors` say **who is on which side**; the union of the two lists is also the **filter scope** |
+| `axis` | `{ label }. Heading of the centre column` |
 
-不写 `views` 时自动生成一个"全体"视角（按分组分侧），行为与没有这个字段时完全一致。
+When `views` is omitted, an "all" view is generated automatically (split by group), behaving exactly as if the field did not exist.
 
-**两种分侧依据都要留。** 保留 `group` 的理由：**"这件事算不算违约"是法律判断，从主体推不出来**。
-主体只说明"谁做的"，`groupId` 才说明"这算什么性质"。
+**Both ways of splitting have to stay.** Why `group` is kept: **whether an act counts as a breach is a legal judgment, and it cannot be derived from the parties.**
+The parties only say "who did it"; `groupId` says "what kind of act this is".
 
-#### 摆放规则
+#### Placement rules
 
 ```
-事件涉及的主体（splitBy = actor 时）
-  ├─ 只在一侧        → 摆那一侧
-  ├─ 跨两侧          → 摆轴线
-  └─ 一侧多人一起做   → 摆轴线
+parties involved in the event (when splitBy = actor)
+  ├─ on one side only     -> that side
+  ├─ spanning both sides  -> the axis
+  └─ several on one side  -> the axis
 
-（splitBy = group 时沿用原有规则：看 groupId，≥2 主体落轴线）
+(when splitBy = group the original rules apply: look at groupId; 2 or more parties -> the axis)
 ```
 
-#### 两个 id 各管一件事，不重叠
+#### The two ids each govern one thing, with no overlap
 
-| 谁 | 管什么 |
+| Who | Governs |
 |---|---|
-| **视角** | 谁在哪一侧（`side1.actors` / `side2.actors`） |
-| **图级 `actors` 清单** | 谁在内谁在外（**顺序一律以图级清单为准**，顺序即由内到外） |
+| **the view** | who is on which side (`side1.actors` / `side2.actors`) |
+| **the diagram-level `actors` list** | who is inner and who is outer (**order always follows the diagram-level list**; that order is inner to outer) |
 
-视角名单的书写顺序**不影响**内外远近。一个意思只让一个地方说，避免两处打架。
+The order in which names are written inside a view does **not** affect inner/outer distance. One meaning is stated in one place only, so that two places never contradict each other.
 
-#### 筛选
+#### Filtering
 
-`splitBy: actor` 且视角里至少有一个主体时，**只显示与这些主体有关的事件**
-（完全没有主体的事件是客观事实，照常显示）。所以"只看甲公司"这个视角下，
-只涉及乙公司的事件不出现。**两侧都空时不筛选**，全部落轴线。
+With `splitBy: actor` and at least one party in the view, **only events connected with those parties are shown** (an event with no party at all is an objective fact and is shown as usual). So under a "company A only" view an event involving only company B does not appear. **When both sides are empty there is no filtering**, and everything lands on the axis.
 
-#### 已知限制
+#### Known limitation
 
-"两侧都空"那种视角（不分侧），一条车道只能放一条事件；
-同一个时间点有多条事件时摆不下，切换器里会标成"摆不下"并禁用。
-真实案件里同一时刻多件事是常态，所以这个视角只在每槽一条事件时可用。
+In a "both sides empty" view (no split), one lane holds only one event; when a single time point has several events they do not fit, and the switcher marks the view as "does not fit" and disables it.
+In real cases several things happening at the same instant is normal, so this view is usable only when every slot holds one event.
 
-#### 校验管到哪
+#### How far validation goes
 
-**校验只管结构，不管视角选得对不对**（后者要读懂案情，是 agent 的事）：
+**Validation checks structure only, not whether the views are the right choice** (the latter needs the case understood, and that is the agent's job):
 
-- 视角引用的主体 id 是否存在
-- 同一个主体是否同时出现在两侧
-- 这个视角下摆不摆得下
+- whether the actor ids a view references exist
+- whether the same party appears on both sides
+- whether the events fit under this view
 
-选得合不合理，校验不说话。
+Whether a choice is sensible, validation says nothing about.
 
-#### 同一批事实换个 agent 可能切出不同的视角
+#### A different agent may cut the same facts into different views
 
-这是正常的：**视角是判断，不是事实**。但如果将来要求输出稳定，
-得在提示词或流程里约束，不是在 schema 里约束。
+This is normal: **a view is a judgment, not a fact.** If output is later required to be stable, the constraint belongs in the prompt or in the workflow, not in the schema.
 
-### events[] 每项
-| 字段 | 必填 | 类型 | 说明 |
+### events[] entries
+
+| Field | Required | Type | Notes |
 |---|---|---|---|
-| `id` | ✅ | string | 全图唯一，供引用 |
-| `date` | ✅ | string (ISO 8601，**精度可截断**) | 时间标记；**数组顺序才是权威顺序**（见下） |
-| `label` | ✅ | string | 图上显示的一句话标题 |
-| `actorIds` | ❌ | string[] | 引用图级 `actors` 的 id；见下"主体机制" |
-| `groupId` | ❌ | string | 引用图级 `groups` 的 id（单个，互斥分组）；见下"分组机制" |
-| `detail` | ❌ | string | 详情，点击展开 |
-| `summary` | ❌ | string | **卡片上的一行补充**，≤22 字；见下「label / summary / detail 的分工」 |
-| `dateEnd` | ❌ | string (ISO 8601) | 事件是"持续期间"时给结束时刻 → 卡片写「起 - 止」、浮层给时长（**不画时段条**，理由见 §4） |
-| `approx` | ❌ | boolean | 时间非精确（估计值/校准值）→ 渲染显示"约"，计算逻辑谨慎处理 |
-| `dateNote` | ❌ | string | 说明时间为何非精确、如何校准（人类可读） |
-| `sourceIds` | ❌ | string[] | 引用本图 `sources` 里的 id（多对多，见上） |
+| `id` | yes | string | unique within the diagram |
+| `date` | yes | string (ISO 8601, **precision may be truncated**) | ISO 8601. Go to seconds when known, otherwise stop at the day; **the array order is the authoritative order** (see below) |
+| `label` | yes | string | card title; about 20 characters per line, at most two lines |
+| `actorIds` | no | string[] | parties involved. Two or more puts this event on the centre axis; references the diagram-level `actors` ids (see "Actor mechanism" below) |
+| `groupId` | no | string | which side this event falls on; references a diagram-level `groups` id (one only, mutually exclusive groups); see "Group mechanism" below |
+| `detail` | no | string | full text revealed when the card is opened |
+| `summary` | no | string | the line under the card title; about 22 characters; see "label / summary / detail" below |
+| `dateEnd` | no | string (ISO 8601) | for a span, the end instant; must not be earlier than date. The card then shows "start - end" and the overlay gives the duration (**no span bar is drawn**, why see §4) |
+| `approx` | no | boolean | time is not exact (estimated or inferred); the diagram shows "approx."; calculations treat it with care |
+| `dateNote` | no | string | why the time is not exact, and how it was derived (human-readable) |
+| `sourceIds` | no | string[] | which materials it rests on; references ids in this diagram's `sources` (many-to-many, see above) |
 
-> **无 `kind` 字段**（已定）：事件类别不做分类枚举。
+> **No `kind` field** (settled): event categories are not enumerated.
 
-### label / summary / detail 的分工（2026-09 定）
+### Division of labour: label / summary / detail (settled 2026-09)
 
-这三个字段都是文字，但服务于**两种不同的阅读场景**：卡片上一眼扫过，和浮层里细读。
-原先想用一个 `detail` 同时承担两边，做不到——算过账：图是竖着长的，卡上每加一行，
-图总高就 +126px（7 行 × 18px），全览缩放掉一档，**整张图的字都小 15～19%**。
-所以「短到能上卡」和「值得叫 detail」是互斥的，只能拆成两个字段。
+All three fields are text, but they serve **two different reading situations**: a glance across the card, and close reading in the overlay.
+The original plan was for one `detail` to serve both, and that does not work. The arithmetic: the diagram grows vertically, so every extra line on a card adds 126px to the total height (7 lines x 18px), which drops the fit-to-view zoom by one step and makes **every character in the whole diagram 15 to 19% smaller**.
+So "short enough to sit on the card" and "worth calling detail" are mutually exclusive, and the field has to be split in two.
 
-| 字段 | 长度 | 出现在哪 | 职责 | 底线 |
+| Field | Length | Where it appears | Job | Floor |
 |---|---|---|---|---|
-| `label` | 10～20 字 | 卡片 | 认出这是哪件事 | **必须含主体与行为**：读出来是「谁做了什么」 |
-| `summary` | **≤22 字** | 卡片 | 补一句 `label` 没有的关键信息 | **不许复述 `label`**；放不下一行就不要写 |
-| `detail` | 40～120 字 | 只在浮层 | 想细看时的完整交代 | **不许复述 `label`**；要么不写，要么给出新信息 |
+| `label` | 10 to 20 characters | the card | recognise which event this is | **must name the party and the act**: read out, it says "who did what" |
+| `summary` | **about 22 full-width characters, one card line** | the card | add the key information `label` does not carry | **must not restate `label`**; if it does not fit one line, leave it out |
+| `detail` | 40 to 120 characters | the overlay only | the full account for a close read | **must not restate `label`**; either leave it out or give new information |
 
-（`summary` 的 22 字上限由卡片几何算出，改卡片宽度或摘要字号会自动跟着变，
-见 `src/renderers/fact/cardGeometry.js`。写规范时按 22 字理解即可。）
+(The one-line limit is computed from the card geometry; changing the card width or the summary font size changes it automatically, see `src/renderers/fact/cardGeometry.js`. It is a width budget, not a character count: a full-width character costs one em, a Latin character about 0.55, so one line holds about 22 Chinese characters or about 40 Latin characters. A `summary` wider than one line is rejected, not truncated.)
 
-`summary` 是为卡片而生的字段：**一行装得下就是它的设计目标**，所以它不需要被截断。
-它该装的是律师扫图时最想先看到的那类东西——金额、时长、关键动作、第三方介入。
-
-```
-label   郭兵办理双人年卡并录入指纹
-summary 卡费 1360 元，微信支付
-
-label   双方在电梯内持续言语交流（劝阻）
-summary 全程接触不足五分钟，无肢体冲突
-
-label   收到「不刷脸无法入园」短信
-summary 原指纹识别已取消
-```
-
-注意 `summary` 与 `detail` **都是可选的**，而且允许只写一个：
-某条事件若没有 `label` 之外的一句关键信息，`summary` 就留空，这是正常的。
-
-真实反例（电梯劝烟案，说明 `detail` 为什么要单独定规矩）：
+`summary` is a field born for the card: **fitting one line is its design goal**, so it is meant to be written to fit rather than trimmed afterwards.
+What it should carry is what a lawyer scanning the diagram most wants to see first: amounts, durations, key acts, third-party involvement.
 
 ```
-label  (6字) 急救人员到达
-detail(10字) 急救人员到达患者身边                  ← 纯复述，零新信息
+label   Guo Bing buys the two-person annual pass and registers his fingerprint
+summary card fee RMB 1,360, paid by WeChat
 
-label (16字) 双方走至单元门口，段小立情绪激动
-detail(18字) 段小立情绪相对较为激动，杨帆比较冷静   ← 新信息只有「杨帆比较冷静」
+label   The two talk continuously inside the elevator (dissuasion)
+summary in contact under five minutes; no altercation
+
+label   Receives the "no face scan, no entry" SMS
+summary fingerprint recognition cancelled
 ```
 
-对照同案里写得好的两条（70 字、98 字），里面有「被物业主管拉开」「接触时长不足五分钟」这类**只有 `detail` 才说得清**的信息。
+Note that `summary` and `detail` are **both optional**, and writing only one of them is allowed:
+if an event has no key information beyond `label`, `summary` stays empty, and that is normal.
 
-### 时间图三形态（常见例子，不是全部）
+A real counter-example (the elevator smoking case, showing why `detail` needs a rule of its own):
 
-**下面三种是最常见的形态，只是例子，不是一张闭合的菜单。** 一个案子该切哪几个视角，
-由 agent 读案情后决定（理由见「视角机制」）。三种都用同一套摆放规则算出来，
-数据层没有形态字段。
+```
+label  Paramedics arrive
+detail Paramedics reach patient                                        <- pure restatement, zero new information
 
-| 形态 | 视角怎么声明 | 说明 |
+label  The two reach the building entrance; Duan Xiaoli is agitated
+detail Duan Xiaoli was relatively agitated, Yang Fan relatively calm   <- the only new information is "Yang Fan relatively calm"
+```
+
+Compare the two well-written entries in the same case; they carry information that **only `detail` can convey**, such as "pulled back by the property manager" and "in contact for under five minutes".
+
+### The three common timeline shapes (examples, not all of them)
+
+**The three below are the most common shapes. They are examples, not a closed menu.** Which views a case should be cut into is for the agent to decide after reading it (why, see "View mechanism"). All three are computed by the same set of placement rules; the data layer has no shape field.
+
+| Shape | How the view is declared | Notes |
 |---|---|---|
-| **单主体时间图** | 一侧挂一个主体，另一侧空（或 `splitBy: group` 按语义分侧） | 以一个主体的视角还原事实 |
-| **双主体时间图** | 两侧各挂一个主体 | 一人一侧，对立的双方 |
-| **多主体时间图** | 两侧各挂多个主体 | 多列，两侧可不对称 |
+| **single-party timeline** | one side carries one party, the other side is empty (or `splitBy: group` splits by meaning) | reconstruct the facts from one party's standpoint |
+| **two-party timeline** | one party on each side | one party per side, the two opposed |
+| **multi-party timeline** | several parties on each side | several lanes; the two sides may be asymmetric |
 
-**两侧叫"第 1 侧 / 第 2 侧"，不叫"上侧 / 下侧"**：竖轴下两侧实际在左右。
-上下的说法来自横向布局的设想，搬到竖轴之后就不对了。
+**The two sides are called "side 1 / side 2", not "top side / bottom side".** With a vertical axis the two sides are in fact left and right. The top/bottom wording comes from a horizontal layout and stops being right once it is moved onto a vertical axis.
 
-**横竖方向由渲染层决定**（`orientation: "horizontal" | "vertical"`），数据层不关心方向。
-两个方向都已实现，在画布底部的控制胶囊里手动切换。
+**Direction is decided by the renderer** (`orientation: "horizontal" | "vertical"`); the data layer does not care about direction. Both directions are implemented and are switched by hand in the control dock at the foot of the canvas.
 
-### 分组机制（2026-09 定）
+### Group mechanism (settled 2026-09)
 
-**目的**：支撑**单主体时间图**的"事件分两侧"——分侧依据**不固定**（行为/后果、正常/异常……由 agent 按案情决定）。
+**Purpose:** to support "events split across two sides" in a **single-party timeline**. The basis of the split is **not fixed** (act/consequence, normal/abnormal, and so on; the agent decides from the case).
 
-- **`groups` 是图级有序清单**：顺序即分侧顺序（第 1 个在左/上，第 2 个在右/下）；
-- **事件用 `groupId` 引用**（单个，互斥分组）；
-- **不填 `groupId` 的事件** → 不分侧（全部在轴线一侧呈现）；
-- **分类标准完全自由**——数据层不预设任何分类枚举；
-- **为何组要放图级**（而非事件直接写组名）：顺序可控、组名只写一次不会拼错、列标题直接取用、空组也能表示、可校验（`groupId` 必须存在于 `groups`）；
-- 与 `actors` 机制对称（图级清单 + 引用）。
+- **`groups` is an ordered diagram-level list**: order is the side order (the 1st on the left/top, the 2nd on the right/bottom);
+- **at most 3**: the 1st on the left (top) side, the 2nd on the right (bottom) side, the 3rd on the axis. A 4th is a data error, because the axis has only two sides plus the centre;
+- **an event references it with `groupId`** (one only; the groups are mutually exclusive);
+- **an event with no `groupId`** -> no side (presented on the axis alone);
+- **the classification is entirely free**: the data layer presets no category enum;
+- **why groups sit at diagram level** (rather than an event writing the group name): the order is controllable, the name is written once and cannot be misspelt, the column heading comes straight from it, an empty group can still be represented, and it can be validated (`groupId` must exist in `groups`);
+- symmetric with the `actors` mechanism (a diagram-level list plus references).
 
-### 单主体时间图的 actors 规则（2026-09 定）
+| Field | Required | Type | Notes |
+|---|---|---|---|
+| `id` | yes | string | events reference it via groupId |
+| `label` | yes | string | column heading, e.g. "performance as agreed" |
 
-- **单主体视角在一侧挂一个主体、另一侧留空**（或改用 `splitBy: group` 按语义分侧，
-  这两种做法都行，见「视角机制」）；
-- 其他人物出现在 `label` / `detail` 文字中，**不作为可引用实体**；
-- `actorIds` 的作用退化为"标注该事件是否为视角主体的行为"（是 → 引用；否 → 省略）；
-- **视角不再靠"`actors` 里只有一个元素"隐含表达**，而是由 `views` 明说。
-  早期曾定"不需要 perspective 字段、一个视角一份数据"，2026-09 改为一份数据带多个视角，
-  理由是同一批事实在几份文件里各抄一遍，抄漏一处就自相矛盾。
+### Actor rules for a single-party timeline (settled 2026-09)
 
-### 主体机制（2026-09 定）
+- **a single-party view puts one party on one side and leaves the other side empty** (or switches to `splitBy: group` to split by meaning; both are fine, see "View mechanism");
+- other people appear in the `label` / `detail` text and are **not referenceable entities**;
+- `actorIds` falls back to marking whether the event is an act of the view's party (yes -> reference it; no -> omit it);
+- **the view is no longer implied by "there is only one element in `actors`"** but is stated outright by `views`.
+  An earlier decision was "no perspective field, one set of data per view"; in 2026-09 this changed to one set of data carrying several views, because copying the same facts into several files means that one missed copy makes the set contradict itself.
 
-**目的**：支撑**双/多主体时间图**——**主体决定事件分列在轴的两侧**（或更多列）。
+### Actor mechanism (settled 2026-09)
 
-- **`actors` 是图级有序清单**：顺序即分列顺序（第 1 个在左、第 2 个在右、第 3 个起依次）；
-- **事件用 `actorIds` 引用主体**（不重复写名字）；
-- **渲染规则**（呈现层计算，**数据里没有"左/右/中"**）：
+**Purpose:** to support **two-party and multi-party timelines**: **parties decide how events are split into lanes on either side of the axis** (or into more lanes).
 
-  | `actorIds` | 渲染位置 |
+- **`actors` is an ordered diagram-level list**: order is the lane order (the 1st on the left, the 2nd on the right, the 3rd onwards in turn);
+- **an event references parties with `actorIds`** (names are not repeated);
+- **rendering rule** (computed by the presentation layer; **the data contains no "left/right/centre"**):
+
+  | `actorIds` | Where it is drawn |
   |---|---|
-  | 1 个 | 该主体所在列 |
-  | ≥2 个 | **居中**（时间轴上，跨列） |
-  | 空 / 缺省 | 居中 |
+  | 1 | that party's lane |
+  | 2 or more | **the centre** (on the axis, spanning lanes) |
+  | empty / omitted | the centre |
 
-- **"是否交互"隐含在 `actorIds` 数量里**——不需要 `type: "interaction"` 之类的字段；
-- **主体粒度建议**：清单只列**需要分列的主要主体**（建议 ≤4 个）；次要参与者（物业人员、急救人员等）写进 `label`/`detail`，不进清单，避免列过多；
-- **同一主体名称须一致**（agent 责任）；
-- **方向性行为（谁对谁）暂不表达**：`actorIds` 是无序集合；"杨帆劝阻段小立"这类方向信息写在 `label`/`detail` 中。若将来需要箭头，再加可选 `from`/`to`，不预先设计；
-- **不做主体表引用 id 之外的身份系统**：fact 是时间叙事，`actors` 只是布局依据与显示标签。
+- **whether an event is an interaction is implied by the number in `actorIds`**: no `type: "interaction"` field is needed;
+- **suggested granularity:** list only the **main parties that need their own lane** (4 or fewer is suggested); secondary participants (property staff, paramedics and so on) go into `label`/`detail` and not into the list, so that lanes do not multiply;
+- **the same party must be named consistently** (the agent's responsibility);
+- **directed acts (who did what to whom) are not expressed for now**: `actorIds` is an unordered set, and direction such as "Yang Fan dissuaded Duan Xiaoli" is written in `label`/`detail`. If arrows are needed later, an optional `from`/`to` can be added; it is not designed in advance;
+- **no identity system beyond referencing the actor table's ids**: a fact diagram is a timeline narrative, and `actors` is only a layout basis and a display label.
 
-### 顺序机制（2026-09 定，问题 1 收尾）
+| Field | Required | Type | Notes |
+|---|---|---|---|
+| `id` | yes | string | unique within the diagram; events reference it via actorIds |
+| `name` | yes | string | display name, e.g. "Huayuan Trading" |
+| `role` | no | string | procedural standing, e.g. "plaintiff" |
 
-- **顺序载体 = 数组位置**：`events` 数组的先后即事件先后顺序。依据是 JSON 标准（RFC 8259）——数组是有序集合，解析/序列化/传输均保持顺序。
-- **`date` 与顺序解耦**：`date` 是**客观时间**，**不因顺序调整而修改**；它用于显示、分组与一致性校验，**不决定顺序**。
-- **不引入 `order` / `after` 字段**：
-  - `order` 冗余（数组已有序），且拖拽编辑时需重编号一片；
-  - `after` 需拓扑排序 + 环检测，而 fact 是**线性叙事**，无需图结构；
-  - 且二者都加重 agent 负担（LLM 在"引用正确性"上最易出错）。
-- **拖拽编辑**（将来功能）：拖拽 = 重排数组，**不改 `date`**；若要改时间，须显式编辑 `date`。
-- **一致性校验**（校验层职责）：数组顺序与 `date` 解析出的时间顺序**明显矛盾**时发出警告，提示 agent 复核；**不自动重排**（精度不足时机器可能判断错）。
+### Order mechanism (settled 2026-09, closing issue 1)
 
-### date / dateEnd 格式：ISO 8601 精度截断（2026-09 定）
+- **The carrier of order is array position**: the order of the `events` array is the order of the events. The basis is the JSON standard (RFC 8259): an array is an ordered collection, and parsing, serialising and transport all preserve the order.
+- **`date` is decoupled from order**: `date` is the **objective time** and is **not changed when the order is adjusted**; it is used for display, grouping and consistency checking, and **does not decide the order**.
+- **no `order` / `after` field is introduced**:
+  - `order` is redundant (the array is already ordered), and drag editing would force a block of values to be renumbered;
+  - `after` needs topological sorting plus cycle detection, whereas a fact diagram is a **linear narrative** and needs no graph structure;
+  - and both of them add to the agent's burden (an LLM is most error-prone on reference correctness).
+- **Drag editing** (a future feature): dragging means reordering the array and **does not change `date`**; to change the time, `date` has to be edited explicitly.
+- **Consistency checking** (the validation layer's job): when the array order **clearly contradicts** the time order parsed from `date`, raise a warning and ask the agent to check; **never reorder automatically** (with insufficient precision the machine may get it wrong).
+
+### date / dateEnd format: ISO 8601 with truncated precision (settled 2026-09)
 
 ```jsonc
-"date": "2017-05-02T09:24:03"   // 秒级
-"date": "2017-05-02T09:24"      // 分钟级
-"date": "2017-05-02"            // 日级
-"date": "2017-05"               // 月级（文书只写年月）
-"date": "2017"                  // 年级
+"date": "2017-05-02T09:24:03"   // to the second
+"date": "2017-05-02T09:24"      // to the minute
+"date": "2017-05-02"            // to the day
+"date": "2017-05"               // to the month (a document states only year and month)
+"date": "2017"                  // to the year
 ```
 
-- 选它的理由：国际标准、机器零歧义、**同精度下字符串排序即时间排序**、单字段支持全精度；
-- 比"date+time 双字段"简单，比"结构化 {year,month,day}"更符合"schema 像业务语言"；
-- agent 负责把中文日期（"二〇一七年五月二日"）转成 ISO；校验层负责格式校验；
-- 精度不足时按已知精度截断，**不补零造假**（只知年月就填到月）；
-- **排序权威 = 数组顺序**（agent 按案情判断时间先后并排好）；`date` 用于显示与分组，**引擎不擅自重排**；
-  - 理由（真实案例驱动）：混合精度下字符串排序不成立（`"2017-05-02"` 会排在 `"2017-05-02T09:24:03"` 之前）；且精度不足的事件无法机械定位——如电梯劝烟案中"段小立死亡"只有日级精度，但其实际发生于 09:37 急救之后，机器按"日级=当天00:00"会排到最前，只有结合案情才能排对；
-- 真实案例驱动：电梯劝烟案核心事实在 9:24–9:37 之间，"接触时长不足 5 分钟"是关键事实，日级精度无法表达。
+- why it was chosen: it is an international standard, unambiguous to a machine, **at equal precision string order is time order**, and a single field covers every precision;
+- simpler than a `date` + `time` pair, and closer to "the schema reads like business language" than a structured `{ year, month, day }`;
+- the agent converts a Chinese date ("二〇一七年五月二日") into ISO; the validation layer checks the format;
+- when precision is lacking, truncate to the precision known and **never pad with zeros to fake it** (if only year and month are known, stop at the month);
+- **the authoritative order is the array order** (the agent judges the sequence from the case and lays it out); `date` is for display and grouping, and **the engine never reorders on its own**;
+  - why (driven by a real case): with mixed precision string order does not hold (`"2017-05-02"` sorts before `"2017-05-02T09:24:03"`); and an event with insufficient precision cannot be placed mechanically. In the elevator smoking case "Duan Xiaoli dies" has day precision only, but it in fact happened after the 09:37 rescue, so a machine reading "day precision = 00:00 that day" would put it first. Only the case makes the right order visible;
+- driven by a real case: the core facts of the elevator smoking case fall between 09:24 and 09:37, and "in contact for under 5 minutes" is a key fact that day precision cannot express. See `examples/fact/elevator-smoking-case.en.json`.
 
-### sources 说明（方案 B：图内自带）
-- 每张图 JSON 自带 `sources` 数组，仅含**本图引用到**的来源（单图自洽、可独立渲染、便于分享）；
-- 事件用 `sourceIds` 引用图内 sources；
-- 校验层检查：`sourceIds` 里的每个 id 必须存在于本图 `sources`（悬空引用报错）；
-- 将来路径（方案 C 全局表）不预先设计，见 source-schema-draft §0。
+### On sources (option B: carried inside the diagram)
 
-## 4. 呈现（渲染层的工作）
+- every diagram JSON carries its own `sources` array, containing only the sources **this diagram references** (self-contained, renderable on its own, easy to share);
+- events reference the in-diagram sources with `sourceIds`;
+- the validation layer checks that every id in `sourceIds` exists in this diagram's `sources` (a dangling reference is an error);
+- the future path (option C, a global table) is not designed in advance; see `spec/source-schema-draft.md` §0.
 
-**数据层不关心横竖，也没有"我是什么形态"这种字段。** 形态是渲染时由两件事决定的：
+| Field | Required | Type | Notes |
+|---|---|---|---|
+| `id` | yes | string | events reference it via sourceIds |
+| `type` | yes | string | contract / evidence / judgment / transcript, etc. |
+| `name` | yes | string | material name, e.g. "elevator lobby surveillance video" |
+| `loc` | no | object | location, e.g. { file, page } or { file, timestamp } |
+| `quote` | no | string | verbatim excerpt, shown when the card is opened |
 
-1. **视角**（`views`）：决定分侧依据，以及谁在哪一侧；
-2. **方向**（`orientation`）：决定时间向下（竖向）还是向右（横向）。
+## 4. Presentation (the renderer's job)
 
-四种常见形态就是这两件事的不同取值，**没有 `layout` 字段**（早期草案里的
-`layout: "single-actor" | "dual-actor" | "multi-actor"` 已废弃）：
+**The data layer does not care about direction, and it has no "what shape am I" field.** The shape is decided at render time by two things:
 
-| 形态 | 怎么来的 |
+1. **the view** (`views`): which decides the basis of the split, and who is on which side;
+2. **the direction** (`orientation`): which decides whether time runs downwards (vertical) or to the right (horizontal).
+
+The four common shapes are just different values of those two, and **there is no `layout` field** (the early draft's `layout: "single-actor" | "dual-actor" | "multi-actor"` is abandoned):
+
+| Shape | How it arises |
 |---|---|
-| 单主体时间图 | 视角一侧挂一个主体、另一侧空；或按 `groups` 按性质分侧 |
-| 双主体时间图 | 视角两侧各挂一个主体 |
-| 多主体时间图 | 视角两侧各挂多个主体（两侧可以不对称） |
-| 不分侧 | 视角两侧都空，事件全落轴线 |
+| single-party timeline | the view has one party on one side and the other side empty; or `groups` splits by meaning |
+| two-party timeline | the view has one party on each side |
+| multi-party timeline | the view has several parties on each side (the two sides may be asymmetric) |
+| no split | both sides of the view are empty and every event lands on the axis |
 
-其余约定：
+Other conventions:
 
-- **多主体事件**（`actorIds` ≥ 2）一律落轴线；
-- **持续事件**（有 `dateEnd`）**只在文字上表达**（卡片写起止、浮层给时长），
-  **不画时段条**：槽是等距的而真实时间不是（电梯案里 4 秒和 264 秒占的图上距离一样），
-  按真实时长画长度会骗人；
-- **同一份数据可以有几种画法**（子类），画法在页面上切，见 `spec/fact/rendering.md` §9；
-- 排布规则本身见 `spec/fact/timeline-rules.md`，画面元素见 `spec/fact/rendering.md`。
+- **a multi-party event** (`actorIds` of 2 or more) always lands on the axis;
+- **a span event** (one with `dateEnd`) is **expressed in text only** (the card shows start and end, the overlay gives the duration). **No span bar is drawn**: slots are evenly spaced while real time is not (in the elevator case 4 seconds and 264 seconds take the same distance on the diagram), so drawing length by real duration would mislead;
+- **the same data can be drawn in several ways** (sub-types), switched in the interface; see `spec/fact/rendering.md` §9;
+- the placement rules themselves are in `spec/fact/timeline-rules.md`, and the elements on screen in `spec/fact/rendering.md`.
 
-## 5. 待议点（请发起人表态）
+## 5. Open points (for the sponsor to rule on)
 
-1. **`dateEnd`**：已定保留（诉讼中持续期间常见，示例已验证）。
-2. **近似/校准时间**：已定——`approx` + `dateNote`（见 §3）。
-3. **主体机制**：已定——图级 `actors` 有序清单 + 事件 `actorIds` 引用 + 涉及 ≥2 个主体落轴线（见 §3）。
-4. **视角**：已定——规范只定机制（一个事件落在哪一列永远由 `groupId` 定侧、`actorIds` 定列），
-   **不列视角菜单**；一个案子该切哪几个视角，由 agent 读案情后决定（见 §3「视角机制」）。
-   早期曾定"不需要 perspective 字段、一个视角一份数据"，已改为一份数据带多个视角。
+1. **`dateEnd`**: settled, kept (spans are common in litigation and the examples verify it).
+2. **Approximate / calibrated time**: settled, `approx` + `dateNote` (see §3).
+3. **Actor mechanism**: settled: an ordered diagram-level `actors` list, events referencing it with `actorIds`, and 2 or more parties putting the event on the axis (see §3).
+4. **Views**: settled: the specification fixes only the mechanism (where an event falls is always `groupId` for the side and `actorIds` for the lane) and **lists no view menu**; which views a case is cut into is for the agent to decide after reading it (see "View mechanism" in §3).
+   An earlier decision was "no perspective field, one set of data per view"; this has changed to one set of data carrying several views.
 
-> fact schema 的主要设计项已全部定案，可视为 **v1 定稿**（除真实案例继续检验外）。
+> All the main design decisions for the fact schema are settled, and it can be treated as **final v1** (subject to further testing against real cases).
 
-## 6. 已解决的问题（真实案例验证记录）
+## 6. Settled problems (record of validation against real cases)
 
-| 问题 | 结论 | 依据 |
+| Problem | Conclusion | Basis |
 |---|---|---|
-| `date` 精度不足（只到日） | 改用 ISO 8601 精度截断（秒/分/日/月/年） | 电梯劝烟案核心事实在 9:24–9:37 |
-| 混合精度排序失效 | 顺序权威 = 数组位置；`date` 不决定顺序 | 字符串排序 + 精度不足均会排错 |
-| `evidenceNo`/`party` 必填 | 改为**可选** | 判决书不载明证据编号与举证方 |
-| 近似/校准时间无处表达 | 新增可选 `approx`（机器读）+ `dateNote`（人读） | 电梯劝烟案监控显示时间快十余分钟，法院用"约9时33分" |
+| `date` precision insufficient (to the day only) | switched to ISO 8601 with truncated precision (second / minute / day / month / year) | the core facts of the elevator smoking case fall between 09:24 and 09:37 |
+| mixed-precision sorting fails | the authoritative order is array position; `date` does not decide the order | both string order and insufficient precision get it wrong |
+| `evidenceNo` / `party` required | changed to **optional** | a judgment does not state the evidence number or the party adducing it |
+| no place for approximate / calibrated time | added the optional `approx` (machine-readable) and `dateNote` (human-readable) | in the elevator smoking case the surveillance clock ran some ten minutes fast and the court used "about 9:33" |

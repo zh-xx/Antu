@@ -1,13 +1,14 @@
-# 给 agent 的规格
+# Specification for agents
 
-**这个目录里的东西只给 agent 看。** 上一层 `spec/*.md` 只给设计者看，两者不混。
+**Everything in this directory is for agents only.** The `spec/*.md` files one level up
+are for designers. The two are kept apart.
 
 ```
-spec/agent/<大类>/guide.md     那个大类的机制说明（短、够用、可执行）
-spec/*.md                      设计者的文档（讲"当初为什么这么定"，篇幅大）
+spec/agent/<type>/guide.md     mechanism notes for that type (short, sufficient, actionable)
+spec/*.md                      designer documents (why it was decided this way; long)
 ```
 
-现在只有事实图一类：
+Only the fact type exists so far:
 
 ```
 spec/agent/
@@ -16,23 +17,30 @@ spec/agent/
     └── guide.md
 ```
 
-加一个新大类时，在 `spec/agent/` 下加一个目录、放一份 `guide.md` 就行。
-MCP 那边的资源会自己多出一个 `antu://agent/<大类>/guide`，不用改代码。
+When a new type is added, create a directory under `spec/agent/` and put a `<type>/guide.md`
+in it. The MCP side then exposes `antu://agent/<type>/guide` by itself, with no code
+change.
 
-## 字段表不在这里
+**This directory is English-only.** These files go into a model's context, the same as
+the field table and the validation errors, so they are not translated and have no
+Chinese counterpart. See the header of `src/core/i18n.js`.
 
-字段表不落文件，因为**它必须和校验器同源**：它从
-`src/renderers/fact/schema.js` 的 `FACT_FIELDS` 生成，
-注册进 `core/registry.js` 的知识表，MCP 的 `antu_schema` 按大类取。
-落成文件就会有第二份、就会走偏。
+## The field table is not here
 
-## 示例也不在这里
+The field table is not written to a file, because **it has to share one source with the
+validator**: it is generated from `FACT_FIELDS` in `src/renderers/fact/schema.js`,
+registered into the knowledge table in `core/registry.js`, and served per type by the
+MCP tool `antu_schema`. Written to a file it would exist twice and drift.
 
-给 agent 的示例在 `examples/agent/<大类>/` 下。同样按大类分，
-加新大类时加一个目录即可。
+## Examples are not here either
 
-## 规矩
+Examples for agents live under `examples/agent/<type>/`. They are also split by type;
+adding a type means adding a directory.
 
-**往这个目录加东西之前先问一句：这是 agent 写 JSON 需要的，还是人想知道的？**
+## The rule
 
-只有前者放这里。设计理由、历史沿革、踩坑记录、待修清单，一律放上一层。
+**Before adding anything to this directory, ask: does an agent need this to write JSON,
+or is this something a human wants to know?**
+
+Only the former belongs here. Design rationale, history, pitfalls and the to-fix list
+all go one level up.

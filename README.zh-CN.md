@@ -2,9 +2,11 @@
 
 [![验证](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
 
-[English](README.en.md) | **中文**
+[English](README.md) | **中文**
 
 法律工作可视化渲染内核。输入一份 JSON，输出一个自包含的 HTML 文件，可离线打开、归档、传阅。
+
+在成品 HTML 后加 `?lang=en` 或 `?lang=zh` 可指定界面语言。数据本身不翻译：案件内容随 JSON 走。
 
 ---
 
@@ -70,8 +72,8 @@ agent ──> 提取关键信息 ──> 一份 JSON ──> 引擎 ──> 图
 
 ```bash
 npm install
-npm run diagram -- examples/fact/电梯劝烟案.json
-# → examples/fact/电梯劝烟案.html
+npm run diagram -- examples/fact/elevator-smoking-case.zh-CN.json
+# → examples/fact/elevator-smoking-case.zh-CN.html
 ```
 
 ## 接入 agent
@@ -87,9 +89,9 @@ npm run diagram -- examples/fact/电梯劝烟案.json
 }
 ```
 
-agent 可以读取规范、查看示例、校验、计算几何、生成成品，并截图核对效果。校验仅能确认 JSON 合法，不能确认成图效果合格，因此截图核对是必要步骤。agent 的参考资料为 2.3k token。
+agent 可以读取规范、查看示例、校验、计算几何、生成成品，并截图核对效果。校验仅能确认 JSON 合法，不能确认成图效果合格，因此截图核对是必要步骤。agent 的参考资料为 4.5k token（字段表 2.9k 字符 + 机制说明 4.0k 字符）。
 
-未接入 MCP 时，按以下顺序阅读：[spec/fact/schema-draft.md](spec/fact/schema-draft.md)（字段定义）、[spec/fact/timeline-rules.md](spec/fact/timeline-rules.md)（事件排布规则），并参考 [examples/fact/电梯劝烟案.json](examples/fact/电梯劝烟案.json)。
+未接入 MCP 时，按以下顺序阅读：[spec/fact/schema-draft.md](spec/fact/schema-draft.md)（字段定义）、[spec/fact/timeline-rules.md](spec/fact/timeline-rules.md)（事件排布规则），并参考 [examples/fact/elevator-smoking-case.zh-CN.json](examples/fact/elevator-smoking-case.zh-CN.json)。
 
 ## 设计文档
 
