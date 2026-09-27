@@ -1,12 +1,13 @@
 // ============================================================
-//  tools/mcp/engine.mjs —— MCP 服务端要用的引擎能力
+//  tools/mcp/engine.mjs —— the engine capabilities the MCP server needs
 //
-//  关键事实：**校验和排布是纯 JS，不需要浏览器**。
-//  所以 agent 不截图也能问出：JSON 过不过、内容多大、该用哪个方向、
-//  有几个视角摆不下。真正需要浏览器的只有最后那一眼"好不好看"。
+//  Key fact: **validation and layout are pure JS and need no browser**.
+//  So without a screenshot an agent can still ask: does the JSON pass, how large is
+//  the content, which orientation should be used, how many views do not fit. The only
+//  thing that truly needs a browser is that last look at whether it is good-looking.
 //
-//  这一层只做"给定 JSON，返回事实"，不做任何生成 JSON 的事——
-//  引擎不生成 JSON，那是 agent 的职责。
+//  This layer only does "given JSON, return facts"; it never generates JSON —
+//  the engine does not generate JSON, that is the agent's job.
 // ============================================================
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
@@ -15,43 +16,50 @@ import { join } from 'node:path'
 import { renderToFile, REPO } from '../lib/make-html.mjs'
 import { fitZoom } from '../../src/core/canvas.js'
 import { knowledgeOf, listKnowledgeTypes } from '../../src/core/registry.js'
-// 登记各大类的知识（纯 JS，不碰组件）。有了它，校验与排布都从注册表取。
+// Registers the knowledge for each type (pure JS, no components). With it, validation
+// and layout both come from the registry.
 import '../../src/renderers/index.js'
 import { layoutOf as layoutFromRegistry, layoutKindsOf } from '../../src/core/registry.js'
 
 import { validateSpec } from '../../src/core/validate.js'
+import { tEn } from '../../src/core/i18n.js'
 import { viewsOf, buildGrid } from '../../src/renderers/fact/timeline/grid.js'
 
-// 仓库根目录由 tools/lib/make-html.mjs 统一给出（服务端可能从任何 cwd 启动，
-// 所以一律相对那个位置解析），这里直接用它导出的 REPO。
+// The repository root is provided once by tools/lib/make-html.mjs (the server may be
+// started from any cwd, so everything resolves relative to that location); this uses
+// the REPO it exports directly.
 
-/** 画布尺寸的默认假设：用来算"适配缩放"。和 verify 脚本用的是同一个尺寸 */
+/** The default assumption for canvas size: used to compute the "fit zoom". The same size the verify script uses */
 const CANVAS = { width: 1600, height: 900 }
 
-// 排布函数不再自己列表：走注册表（renderers/index.js 登记过）。
-// 原先这里手写了一份 LAYOUTS，和注册表重复，加子类要改两处（known-issues 第 2 条）。
+// The layout functions no longer keep their own list: they go through the registry
+// (registered in renderers/index.js). There used to be a hand-written LAYOUTS here
+// duplicating the registry, so adding a sub-type meant changing two places
+// (known-issues item 2).
 
-/** 校验。返回逐条错误（已经是给人和 agent 看的中文） */
+/** Validation. Returns errors one by one (already in Chinese, for humans and agents) */
 export function validate(spec) {
   try {
     return validateSpec(spec)
   } catch (e) {
-    return [`校验层自己抛错了：${e.message}`]
+    return [`the validation layer itself threw: ${e.message}`]
   }
 }
 
 /**
- * 几何报告：不渲染，只算。
- * 这是 agent 判断"这张图会不会太宽/太空"的主要依据。
+ * Geometry report: compute only, no rendering.
+ * This is the main basis on which an agent judges whether the diagram will be too wide
+ * or too empty.
  */
 export function layoutReport(spec, { orientation, fields = { summary: true } } = {}) {
   const type = spec?.type
-  // 问注册表：这个大类有哪几种画法，默认用第一个。
-  // （原先这里读 spec?.kindHint，而 schema 里没有这个字段，见 known-issues 第 11 条。）
+  // Ask the registry which rendering kinds this type has and default to the first.
+  // (This used to read spec?.kindHint, a field the schema does not have; see
+  // known-issues item 11.)
   const kind = layoutKindsOf(type)[0] ?? null
   const layout = layoutFromRegistry(type, kind)
   if (!layout) {
-    return { ok: false, reason: `还没有 type="${type}" 子类 "${kind}" 的几何计算` }
+    return { ok: false, reason: `no geometry computation for type="${type}" kind="${kind}" yet` }
   }
 
   const views = viewsOf(spec)
@@ -73,7 +81,8 @@ export function layoutReport(spec, { orientation, fields = { summary: true } } =
     }
   })
 
-  // 两个方向都算一遍，好给"该用哪个"的建议（和渲染层按槽数取默认值的规则一致）
+  // Compute both orientations so as to advise which one to use (consistent with the
+  // rule by which the rendering layer picks a default from the slot count)
   const byOrientation = {}
   for (const o of ['vertical', 'horizontal']) {
     const g = layout(spec, fields, undefined, o)
@@ -99,54 +108,65 @@ export function layoutReport(spec, { orientation, fields = { summary: true } } =
   }
 }
 
-/** 把几何报告写成人能读的短文本（工具返回给 agent 的那段） */
+/** Turn the geometry report into a short human-readable text (the part the tool returns to an agent) */
 export function formatLayoutReport(r) {
   if (!r.ok) return r.reason
   const lines = []
-  lines.push(`数据：${r.counts.events} 条事件 / ${r.counts.slots} 个时间点 / ${r.counts.actors} 个主体 / ${r.counts.sources} 个来源`)
+  lines.push(`Data: ${r.counts.events} events / ${r.counts.slots} time slots / ${r.counts.actors} parties / ${r.counts.sources} sources`)
   const v = r.byOrientation.vertical
   const h = r.byOrientation.horizontal
-  lines.push(`竖向：内容 ${v.size.width}×${v.size.height}，适配缩放 ${v.fit}`)
-  lines.push(`横向：内容 ${h.size.width}×${h.size.height}，适配缩放 ${h.fit}`)
-  lines.push(`建议方向：${r.suggestedOrientation === 'vertical' ? '竖向' : '横向'}（按槽数规则${r.counts.slots} ≥ 5 → 竖向）`)
-  lines.push(`视角 ${r.views.length} 个：`)
+  lines.push(`Vertical: content ${v.size.width}×${v.size.height}, fit zoom ${v.fit}`)
+  lines.push(`Horizontal: content ${h.size.width}×${h.size.height}, fit zoom ${h.fit}`)
+  lines.push(
+    r.suggestedOrientation === 'vertical'
+      ? `Suggested orientation: vertical (by the slot-count rule, ${r.counts.slots} slots >= 5)`
+      : `Suggested orientation: horizontal (by the slot-count rule, ${r.counts.slots} slots < 5)`,
+  )
+  lines.push(`${r.views.length} view(s):`)
   for (const row of r.rows) {
     const c = row.columns
-    const mark = row.blocked ? `摆不下（${row.blockReason}）` : '可排'
-    lines.push(`  ${row.index}. ${row.label}：左${c.side1}/轴${c.axis}/右${c.side2}，${row.events} 条事件 → ${mark}`)
+    const mark = row.blocked ? `does not fit (${row.blockReason})` : 'fits'
+    lines.push(`  ${row.index}. ${row.label}: side1 ${c.side1} / axis ${c.axis} / side2 ${c.side2}, ${row.events} events -> ${mark}`)
   }
   if (r.blockedViews.length > 0) {
     lines.push('')
-    lines.push(`注意：有 ${r.blockedViews.length} 个视角摆不下，它们不会出现在界面的视角选项里。`)
-    lines.push('常见原因：同一个时间点里有两件以上事件落在同一条车道上（网格是一格一事件）。')
-    lines.push('改法：把那个时间点拆成两个更细的时间，或者调整分组/主体让它们落到不同车道。')
+    lines.push(`Note: ${r.blockedViews.length} view(s) do not fit and will not appear in the view dropdown.`)
+    lines.push('Common cause: two or more events of one time slot fall in the same lane (the grid is one event per cell).')
+    lines.push('How to fix: split that time slot into two finer time points, or change the groups / parties so the events land in different lanes.')
   }
   return lines.join('\n')
 }
 
 /**
- * 生成自包含 HTML。
+ * Generate the self-contained HTML.
  *
- * 实现只有一份，在 tools/lib/make-html.mjs —— 命令行工具和这里都调它。
- * 原先两个文件各有一份（相似度 83%），改一处忘一处，症状是
- * "某一条路生成出来的 HTML 不对"。见 known-issues 第 9 条。
+ * There is only one implementation, in tools/lib/make-html.mjs — both the command-line
+ * tool and this call it. There used to be one copy in each of two files (83% similar),
+ * and changing one and forgetting the other showed up as "the HTML generated by one
+ * path is wrong". See known-issues item 9.
  */
 export function renderHtml(spec, { outPath, preset } = {}) {
   return renderToFile(spec, { outPath, preset, quiet: true })
 }
 
 /**
- * 示例清单。
- *
- * 分两批，服务两种读者：
- *   agent  examples/agent/*.json —— 最小、完整、每份只讲一件事，**必须能过校验**
- *   真实   examples/*.json       —— 真实案例，完整但长，供人和 agent 参考
- *
- * 默认给 agent 那批：一份 0.8~1.2 KB，读三份约 3 KB；
- * 一份真实案例约 7.9 KB，单单读它就顶六份。
- * （known-issues 第 14 条：给人和给 agent 的示例要分开。）
+ * The example list. Two batches for two readers: agent (examples/agent/*.json —
+ * minimal, one idea each, must pass validation) and real (examples/*.json — real cases,
+ * complete but long). The agent batch is the default. See known-issues item 14.
  */
-export function listExamples({ type = 'fact', group = 'agent' } = {}) {
+/**
+ * The language suffix in an example file name.
+ *
+ * Examples are stored in pairs, `<name>.en.json` and `<name>.zh-CN.json`, same structure,
+ * only the text values differ. English is the default, so an agent is listed **the
+ * English copy only**: listing both shows one case twice and invites a wrong pick.
+ */
+const LANG_SUFFIX = /\.(en|zh-CN)\.json$/i
+
+/** The Chinese variant (to be excluded). Old files with no suffix still count: they are small examples with Chinese content. */
+const isZhVariant = (f) => /\.zh-CN\.json$/i.test(f)
+
+export function listExamples({ type = 'fact', group = 'agent', lang = 'en' } = {}) {
   const dir = join(REPO, 'examples')
   const read = (path, file) => {
     const spec = JSON.parse(readFileSync(path, 'utf8'))
@@ -166,13 +186,17 @@ export function listExamples({ type = 'fact', group = 'agent' } = {}) {
     existsSync(d)
       ? readdirSync(d)
           .filter((f) => f.endsWith('.json'))
+          // List only the current language: the zh variant does not appear in en mode and vice versa.
+          // Old files with no language suffix are listed in both modes (they are not paired yet).
+          .filter((f) => !LANG_SUFFIX.test(f) || (lang === 'zh' ? isZhVariant(f) : !isZhVariant(f)))
           .sort()
           .map((f) => read(join(d, f), `${prefix}${f}`))
       : []
 
-  // 小示例按大类分目录：examples/agent/<type>/*.json
+  // Small examples are filed by type: examples/agent/<type>/*.json
   if (group === 'raw') {
-    // 原始材料：写数据**不要**拿它当模板，它是"这些示例是怎么做出来的"的底稿
+    // Raw material: **do not** use it as a template when writing data; it is the source
+    // from which "how these examples were made" is derived
     const rawDir = join(dir, 'raw')
     return existsSync(rawDir)
       ? readdirSync(rawDir)
@@ -181,40 +205,58 @@ export function listExamples({ type = 'fact', group = 'agent' } = {}) {
           .map((f) => ({ file: `examples/raw/${f}`, path: join(rawDir, f), bytes: statSync(join(rawDir, f)).size }))
       : []
   }
-  // 真实案例也按大类分：examples/<type>/*.json
+  // Real cases are also filed by type: examples/<type>/*.json
   if (group === 'real') return jsonIn(join(dir, String(type)), `examples/${type}/`)
   return jsonIn(join(dir, 'agent', String(type)), `examples/agent/${type}/`)
 }
 
 /**
- * 取一份示例的完整内容。
+ * Read the full content of one example. **Only three kinds are recognised**:
+ * examples/agent/*.json, examples/*.json and examples/raw/*.md. Anything else (for
+ * example examples/README.md) counts as "not found".
  *
- * **只认三类**：examples/agent/*.json（给 agent 的小示例）、
- * examples/*.json（真实案例）、examples/raw/*.md（原始材料）。
- * 别的（比如 examples/README.md）一律当"没找到"。
- *
- * 为什么要卡这个：原先 file 能取到 examples 下任何文件，
- * agent 以为在取示例，结果取回来一整份判决书（3500 字符）。
- * 那不是示例，是"这些示例是怎么做出来的"的底稿，得让它自己说清要看的是什么。
+ * Why the restriction: `file` used to reach any file under examples, so an agent
+ * thinking it was fetching an example got back a whole judgment. That is source
+ * material, not an example; the caller must say what it wants to read.
  */
-export function readExample(file) {
-  const rel = String(file).replace(/^examples\//, '')
+export function readExample(file, { lang = 'en' } = {}) {
+  // Both forms are accepted: a relative path (examples/fact/x.json) and an absolute
+  // path. The absolute form is indispensable: listExamples returns absolute paths, and
+  // an agent copying one back must be able to fetch it (this used to accept only
+  // relative paths, so it could not).
+  const rel = String(file)
+    .replace(/^examples\//, '')
+    .replace(new RegExp(`^${REPO.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/examples/`), '')
+  // Three kinds of path: agent examples, real cases (filed by type, e.g.
+  // examples/fact/x.json), raw material. The real-case kind used to be missing the
+  // "type directory" level, so the paths listExamples(group:'real') returned could not
+  // be fetched by readExample (a pre-existing bug).
   const ok =
     /^agent\/[\w-]+\/[\w.-]+\.json$/.test(rel) ||
+    /^[\w-]+\/[\w.-]+\.json$/.test(rel) ||
     /^[\w.\u4e00-\u9fff-]+\.json$/.test(rel) ||
     /^raw\/[\w.\u4e00-\u9fff-]+\.md$/.test(rel)
   if (!ok) return null
-  const p = join(REPO, 'examples', rel)
+
+  let p = join(REPO, 'examples', rel)
+  // Paired examples: given the base name (e.g. xxx.json), resolve to the current
+  // language's copy, so an agent need not know how the files are paired and can just
+  // fetch the path antu_examples listed.
+  if (!existsSync(p) && lang === 'en' && rel.endsWith('.json')) {
+    const paired = p.replace(/\.json$/i, '.en.json')
+    if (existsSync(paired)) p = paired
+  }
   if (!existsSync(p)) return null
   return { path: p, text: readFileSync(p, 'utf8') }
 }
 
 /**
- * 给 agent 的规格清单，只扫 `spec/agent/`。
+ * The spec list for an agent; scans only `spec/agent/`.
  *
- * 上一层 `spec/*.md` 是设计文档（讲"当初为什么这么定"，一份上万字符），
- * **不在这里**：那份是给人看的，端给 agent 只会白烧上下文。
- * 两边的分工写在 spec/agent/README.md。
+ * The layer above, `spec/*.md`, is design documentation (it explains "why this was
+ * decided at the time", tens of thousands of characters per file) and is
+ * **not included here**: that is for humans, and serving it to an agent only burns
+ * context. The division between the two is written in spec/agent/README.md.
  */
 export function listAgentGuides() {
   const dir = join(REPO, 'spec/agent')
@@ -227,22 +269,23 @@ export function listAgentGuides() {
 }
 
 /**
- * 取某大类的机制说明。
- * 一个大类一份：spec/agent/<type>/guide.md。加新大类时加一个目录即可。
+ * Fetch the mechanism notes for one type.
+ * One per type: spec/agent/<type>/guide.md. Adding a type means adding a directory.
  */
 export function readAgentGuide(type = 'fact') {
   const p = join(REPO, 'spec/agent', String(type), 'guide.md')
   return existsSync(p) ? readFileSync(p, 'utf8') : null
 }
 
-/** 画布尺寸的默认假设（MCP 报"适配缩放"时用） */
+/** The default assumption for canvas size (used when MCP reports the "fit zoom") */
 export { CANVAS, listKnowledgeTypes }
 
 /**
- * 字段表，**按大类取**。
+ * The field table, **fetched by type**.
  *
- * 原先这里直接调 describeFactSchema()，等于把 fact 写死在工具里：
- * 等关系图做出来，整条路要返工。现在从注册表拿，加新大类时工具一行不用改。
+ * This used to call describeFactSchema() directly, which amounts to hard-coding fact
+ * into the tool: once the relationship diagram exists, that whole path needs rework.
+ * Now it comes from the registry, and adding a type changes not one line of the tools.
  */
 export function describeSchema(type = 'fact') {
   const k = knowledgeOf(type)
@@ -250,9 +293,9 @@ export function describeSchema(type = 'fact') {
   return { ok: true, text: k.describe() }
 }
 
-/** 报"你要的这个大类还没有"时统一用的话 */
+/** The wording used consistently when reporting "the type you asked for does not exist yet" */
 function unknownType(type) {
   const known = listKnowledgeTypes()
-  const list = known.map((t) => `${t.type}（${t.label}）`).join('、')
-  return `还没有 ${type} 这一类的参考资料。目前有：${list || '（一个都没有）'}。`
+  const list = known.map((t) => `${t.type} (${tEn(t.labelKey)})`).join(', ')
+  return `no reference material for type "${type}" yet. Available: ${list || '(none)'}.`
 }

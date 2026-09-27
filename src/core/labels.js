@@ -1,58 +1,79 @@
 // ============================================================
-//  src/core/labels.js —— 界面文案中英对照
+//  src/core/labels.js — display names for enum values and canvas accessibility text
 //
-//  原则：**代码里一律用英文枚举值**（便于校验、便于机器处理），
-//  **界面上只出现中文**。所有面向用户的字符串集中放这里，
-//  不要在组件里散写，改文案只需要动这一个文件。
+//  Principle: **code always uses English enum values** (easy to validate, easy
+//  for a machine), **the interface displays them in the current language**. All
+//  user-facing enum text is gathered here; do not scatter it through the
+//  components, so that changing a word touches this one file only.
+//
+//  The text itself lives in core/messages/{en,zh}.js; this file only maps
+//  "enum -> message key" and then looks the word up by language. So there is no
+//  need for one table per language here.
+//
+//  The language is passed in as a parameter, not read from global state here.
+//  Reason: the Node side (MCP, validation) also uses labelOf, and it has no
+//  window.
 // ============================================================
 
-/** 来源类型（对应 spec/source-schema-draft.md 的 7 类） */
-export const SOURCE_TYPE_LABELS = {
-  statute: '法条',
-  case: '判例',
-  contract: '合同',
-  evidence: '证据',
-  document: '文书',
-  web: '网页',
-  other: '其他',
+import { translate } from './i18n.js'
+
+/** Source type -> message key (the 7 classes in spec/source-schema-draft.md) */
+export const SOURCE_TYPE_KEYS = {
+  statute: 'sourceType.statute',
+  case: 'sourceType.case',
+  contract: 'sourceType.contract',
+  evidence: 'sourceType.evidence',
+  document: 'sourceType.document',
+  web: 'sourceType.web',
+  other: 'sourceType.other',
 }
 
-/** 图类型（信封层的 type） */
-export const GRAPH_TYPE_LABELS = {
-  fact: '事实图',
-  relationship: '关系图',
-  procedure: '程序图',
-  justification: '证成图',
+/** Diagram type (the envelope-layer type) -> message key */
+export const GRAPH_TYPE_KEYS = {
+  fact: 'graphType.fact',
+  relationship: 'graphType.relationship',
+  justification: 'graphType.justification',
 }
 
-export const labelOf = (dict, key) => dict[key] ?? key
+/**
+ * Get the display name of one enum value.
+ *
+ * When the lookup fails it returns the enum value itself rather than an empty
+ * string: showing `fact` on screen makes a missing mapping obvious at a glance,
+ * whereas a blank is the hardest thing to trace. This is the same convention as
+ * i18n.translate for a missing key.
+ */
+export const labelOf = (keyMap, value, lang) => {
+  const key = keyMap[value]
+  return key ? translate(lang, key) : value
+}
+
+// The key naming a source in the interface is `dock.sources`. It is looked up where it is
+// used (ControlDock's field map and EventNode) rather than re-exported from here: a constant
+// that nothing imports drifts silently, and this one had a comment claiming three call sites.
 
 /**
- * 界面上对 source 的称呼。
- * 卡片标记、浮层小标题、左栏开关都用这一个词，改词只改这里。
- * 用「来源」而不是「依据」：JSON 字段就叫 sources，规范文档里写的也是
- * 「来源表」，界面跟着用同一个词，全项目一套词汇。
+ * React Flow's prompts and accessibility text, generated for the current
+ * language. The key names come from @xyflow/system's defaultAriaLabelConfig and
+ * must match one to one or they have no effect, so only the values change here,
+ * never the keys.
  */
-export const SOURCE_WORD = '来源'
+export function ariaLabelConfig(lang) {
+  const t = (key, vars) => translate(lang, key, vars)
+  return {
+    'node.a11yDescription.default': t('aria.nodeDefault'),
+    'node.a11yDescription.keyboardDisabled': t('aria.nodeKeyboardDisabled'),
+    'node.a11yDescription.ariaLiveMessage': ({ x, y }) => t('aria.nodeMoved', { x, y }),
+    'edge.a11yDescription.default': t('aria.edgeDefault'),
 
-/**
- * React Flow 的提示语与无障碍文案，整套中文。
- * 键名来自 @xyflow/system 的 defaultAriaLabelConfig，必须一一对应才生效。
- */
-export const ARIA_LABEL_CONFIG = {
-  'node.a11yDescription.default': '按回车或空格可选中此节点。',
-  'node.a11yDescription.keyboardDisabled':
-    '按回车或空格可选中此节点。选中后可用方向键移动。',
-  'node.a11yDescription.ariaLiveMessage': ({ x, y }) => `已移动节点。新位置：x ${x}，y ${y}`,
-  'edge.a11yDescription.default': '按回车或空格可选中此连线。',
+    'controls.ariaLabel': t('aria.controls'),
+    'controls.zoomIn.ariaLabel': t('aria.zoomIn'),
+    'controls.zoomOut.ariaLabel': t('aria.zoomOut'),
+    'controls.fitView.ariaLabel': t('aria.fitView'),
+    'controls.interactive.ariaLabel': t('aria.interactive'),
 
-  'controls.ariaLabel': '画布控件',
-  'controls.zoomIn.ariaLabel': '放大',
-  'controls.zoomOut.ariaLabel': '缩小',
-  'controls.fitView.ariaLabel': '适应视图',
-  'controls.interactive.ariaLabel': '切换交互',
+    'minimap.ariaLabel': t('aria.minimap'),
 
-  'minimap.ariaLabel': '缩略图',
-
-  'handle.ariaLabel': '连接点',
+    'handle.ariaLabel': t('aria.handle'),
+  }
 }

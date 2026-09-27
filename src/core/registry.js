@@ -1,67 +1,76 @@
 // ============================================================
-//  src/core/registry.js —— 渲染器注册表
+//  src/core/registry.js — the renderer registry
 //
-//  引擎的核心机制：**大类 × 子类 → 渲染器组件**。
+//  The engine's core mechanism: **type × kind -> renderer component**.
 //
-//  为什么要两级：
-//    大类（type，信封层）决定 JSON 长什么样，schema 只规定到这一层。
-//    大类之下没有"子类型"字段；子类是**渲染层的划分**：
-//    同一个大类的几种画法，各自有各自的渲染规则，但吃同一份 schema。
+//  Why two levels:
+//    The type (the envelope layer) decides what the JSON looks like, and the
+//    schema only governs that layer. There is no "sub-type" field under the
+//    type; kind is **a division of the rendering layer**: several drawing
+//    methods for one type, each with its own rendering rules, all eating the
+//    same schema.
 //
-//  由此带出一条硬约束：
-//    **任意一份合法的大类 JSON，都必须能用该大类的任意一个子类渲染。**
-//    不允许出现"这份数据只有某个子类画得出来"。将来加了新子类，
-//    已有的每一份 JSON 立刻就能用它看，数据一个字不改。
+//  That yields one hard constraint:
+//    **Any valid JSON of a type must render under any kind of that type.**
+//    "Only one kind can draw this data" must never happen. When a new kind is
+//    added, every existing JSON can be viewed with it at once, the data
+//    unchanged to the character.
 //
-//  用哪个子类是看图时选的，不在数据里。
+//  Which kind is used is chosen while looking at the diagram, not in the data.
 // ============================================================
 
-/** type -> Map(kind -> { kind, label, Component })，Map 的插入顺序即子类的展示顺序 */
+/** type -> Map(kind -> { kind, label, Component }); Map insertion order is the display order of kinds */
 const registry = new Map()
 
 /**
- * 知识注册表：type -> { validate, layouts }。
+ * Knowledge registry: type -> { validate, layouts }.
  *
- * 和上面那张表的区别：上面注册的是**组件**（.jsx，只有浏览器能加载），
- * 这里注册的是**纯 JS 的规则**（怎么校验、怎么排布）。
- * 分开的原因：Node 侧的 MCP 需要"fact 怎么校验、有哪些画法"，
- * 但它加载不了 .jsx。原先它只能自己手写一份分发表，于是同一个事实写了两处
- * （见 known-issues 第 2 条）。现在两边都从这一张表取。
+ * How it differs from the table above: that one registers **components**
+ * (.jsx, which only a browser can load); this one registers **plain-JS rules**
+ * (how to validate, how to lay out). The split exists because the Node-side MCP
+ * needs "how fact is validated, which kinds exist", yet cannot load .jsx. It
+ * used to keep a hand-written dispatch table of its own, so the same fact lived
+ * in two places (see known-issues item 2). Now both sides read this one table.
  */
 const knowledge = new Map()
 
 /**
- * 注册某大类的知识。
- * @param type 大类
+ * Register the knowledge of one type.
+ * @param type the type
  * @param k    { validate(spec) => string[], layouts: { kind: buildGraph } }
  */
 export function registerKnowledge(type, k) {
-  if (!type) throw new Error('registerKnowledge: type 不能为空')
-  if (!k?.validate) throw new Error('registerKnowledge: 缺少 validate')
-  if (!k?.describe) throw new Error('registerKnowledge: 缺少 describe（给 agent 的字段表）')
+  if (!type) throw new Error('registerKnowledge: type must not be empty')
+  if (!k?.validate) throw new Error('registerKnowledge: validate is required')
+  if (!k?.describe) throw new Error('registerKnowledge: describe is required (the agent-facing field table)')
   knowledge.set(type, k)
 }
 
 /**
- * 取某大类的全部知识。
- * 给 agent 的参考资料都从这里出：字段表（fields/describe）、校验、有哪些画法。
- * 这样加一个新大类时，工具那边一行都不用改。
+ * Get all the knowledge of one type.
+ * Every reference an agent receives comes from here: the field table
+ * (fields/describe), validation, and which kinds exist. So adding a type takes
+ * no change at all on the tool side.
  */
 export function knowledgeOf(type) {
   return knowledge.get(type)
 }
 
-/** 已登记知识的大类。用于告诉 agent"目前有哪几类"。 */
+/**
+ * Types with registered knowledge. Used to tell an agent "which types exist".
+ * labelKey is a message key, not the message; the consumer looks the word up by
+ * language (see core/labels.js).
+ */
 export function listKnowledgeTypes() {
-  return [...knowledge.entries()].map(([type, k]) => ({ type, label: k.label ?? type }))
+  return [...knowledge.entries()].map(([type, k]) => ({ type, labelKey: k.label ?? `graphType.${type}` }))
 }
 
-/** 取某大类的校验函数。没注册就返回 undefined（表示不校验）。 */
+/** The validator of a type. undefined when nothing is registered (meaning: no validation). */
 export function validatorOf(type) {
   return knowledge.get(type)?.validate
 }
 
-/** 取某大类的排布函数。不传 kind（或传了没有的）就给第一个，也就是默认画法。 */
+/** The layout function of a type. With no kind (or an unknown one) it gives the first, i.e. the default kind. */
 export function layoutOf(type, kind) {
   const layouts = knowledge.get(type)?.layouts
   if (!layouts) return undefined
@@ -69,29 +78,30 @@ export function layoutOf(type, kind) {
   return Object.values(layouts)[0]
 }
 
-/** 某大类有哪几种画法（按注册顺序）。用于 Node 侧报"这个大类有哪些子类"。 */
+/** Which kinds a type has (in registration order). Used on the Node side to report "which kinds this type has". */
 export function layoutKindsOf(type) {
   return Object.keys(knowledge.get(type)?.layouts ?? {})
 }
 
 /**
- * 注册一个子类渲染器。
- * @param type      大类（信封层的 type），如 'fact'
- * @param kind      子类，如 'timeline'
- * @param Component 渲染器组件
- * @param label     子类的中文名，如 '时间图'。不传就用 kind 本身
+ * Register one kind renderer.
+ * @param type      the type (the envelope-layer type), e.g. 'fact'
+ * @param kind      the kind, e.g. 'timeline'
+ * @param Component the renderer component
+ * @param label     the message key of the kind, e.g. 'graphKind.timeline'. Defaults to kind itself
  */
 export function registerRenderer(type, kind, Component, label) {
-  if (!type) throw new Error('registerRenderer: type 不能为空')
-  if (!kind) throw new Error('registerRenderer: kind 不能为空')
-  if (!Component) throw new Error('registerRenderer: Component 不能为空')
+  if (!type) throw new Error('registerRenderer: type must not be empty')
+  if (!kind) throw new Error('registerRenderer: kind must not be empty')
+  if (!Component) throw new Error('registerRenderer: Component must not be empty')
   if (!registry.has(type)) registry.set(type, new Map())
   registry.get(type).set(kind, { kind, label: label || kind, Component })
 }
 
 /**
- * 取渲染器。
- * 不传 kind（或传了个没注册的）就给该大类的第一个子类，也就是默认画法。
+ * Get a renderer.
+ * With no kind (or an unregistered one) it gives the first kind of that type,
+ * i.e. the default kind.
  */
 export function getRenderer(type, kind) {
   const kinds = registry.get(type)
@@ -100,14 +110,21 @@ export function getRenderer(type, kind) {
   return kinds.values().next().value.Component
 }
 
-/** 某大类下有哪些子类，按注册顺序。返回 [{ kind, label }] */
+/**
+ * Which kinds a type has, in registration order. Returns [{ kind, labelKey }].
+ *
+ * What is given here is a **message key**, not the message itself. Reason: the
+ * registry is also used on the Node side (MCP), which has no interface
+ * language. Translation happens on the consumer side for the current language;
+ * see core/labels.js.
+ */
 export function listKinds(type) {
   const kinds = registry.get(type)
   if (!kinds) return []
-  return [...kinds.values()].map(({ kind, label }) => ({ kind, label }))
+  return [...kinds.values()].map(({ kind, label }) => ({ kind, labelKey: label }))
 }
 
-/** 已注册的大类列表（调试用） */
+/** Registered types (for debugging) */
 export function listTypes() {
   return [...registry.keys()]
 }
