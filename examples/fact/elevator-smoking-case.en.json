@@ -1,0 +1,321 @@
+{
+  "specVersion": 1,
+  "type": "fact",
+  "title": "Tian Jiuju v. Yang Fan, right to life · Facts (Zhengzhou elevator smoking case)",
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "Yang Fan",
+      "role": "Defendant · the one who dissuaded"
+    },
+    {
+      "id": "a-2",
+      "name": "Duan Xiaoli",
+      "role": "Deceased · the one dissuaded"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Yang Fan's acts"
+    },
+    {
+      "id": "g-2",
+      "label": "Duan Xiaoli's acts"
+    },
+    {
+      "id": "g-3",
+      "label": "Joint acts or objective course"
+    }
+  ],
+  "views": [
+    {
+      "label": "Split by group",
+      "splitBy": "group"
+    },
+    {
+      "label": "Yang Fan vs Duan Xiaoli",
+      "splitBy": "actor",
+      "side1": {
+        "label": "Yang Fan's acts",
+        "actors": [
+          "a-1"
+        ]
+      },
+      "side2": {
+        "label": "Duan Xiaoli's acts",
+        "actors": [
+          "a-2"
+        ]
+      },
+      "axis": {
+        "label": "Joint acts or objective course"
+      }
+    },
+    {
+      "label": "Yang Fan only",
+      "splitBy": "actor",
+      "side1": {
+        "label": "Yang Fan's acts",
+        "actors": [
+          "a-1"
+        ]
+      },
+      "side2": {
+        "actors": []
+      },
+      "axis": {
+        "label": "Remaining course"
+      }
+    },
+    {
+      "label": "Chronological only",
+      "splitBy": "actor",
+      "side1": {
+        "actors": []
+      },
+      "side2": {
+        "actors": []
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "evidence",
+      "name": "Elevator surveillance video",
+      "loc": {
+        "file": "Elevator surveillance video"
+      },
+      "meta": {
+        "evidenceNo": "(not stated in the judgment)",
+        "party": "(not stated in the judgment)"
+      },
+      "quote": "At 09:24:03 on 2 May 2017 Duan Xiaoli was smoking inside the elevator ... at 09:24:16 the two began talking ... at 09:26:24 they left the elevator"
+    },
+    {
+      "id": "s-2",
+      "type": "evidence",
+      "name": "Surveillance video at the building entrance",
+      "loc": {
+        "file": "Surveillance video at the building entrance"
+      },
+      "meta": {
+        "evidenceNo": "(not stated in the judgment)",
+        "party": "(not stated in the judgment)"
+      },
+      "quote": "At 09:28:40 the two reached the building entrance; Duan Xiaoli was relatively agitated and Yang Fan relatively calm. At 09:29:06 they headed towards the property management office; until then Duan Xiaoli's cigarette had never gone out"
+    },
+    {
+      "id": "s-3",
+      "type": "evidence",
+      "name": "Surveillance video at the property management office door",
+      "loc": {
+        "file": "Surveillance video at the property management office door"
+      },
+      "meta": {
+        "evidenceNo": "(not stated in the judgment)",
+        "party": "(not stated in the judgment)"
+      },
+      "quote": "Throughout, Yang Fan remained relatively calm and restrained; the two only talked, with no pulling and no physical altercation ... the three surveillance clips show that Yang Fan and Duan Xiaoli were in contact for under five minutes"
+    },
+    {
+      "id": "s-4",
+      "type": "evidence",
+      "name": "Diagnosis certificate, Henan Provincial Staff Hospital",
+      "loc": {
+        "file": "Diagnosis certificate"
+      },
+      "meta": {
+        "evidenceNo": "(not stated in the judgment)",
+        "party": "(not stated in the judgment)"
+      },
+      "quote": "120 was called at 09:31 and paramedics reached the patient at 09:37"
+    },
+    {
+      "id": "s-5",
+      "type": "evidence",
+      "name": "Police interview records (Yan Changchun; Duan Xiaoli's relatives)",
+      "loc": {
+        "file": "Interview record"
+      },
+      "meta": {
+        "evidenceNo": "(not stated in the judgment)",
+        "party": "(not stated in the judgment)"
+      },
+      "quote": "Two minutes later 120 called me and told me to meet them at the compound gate; calls came at 09:40 and 09:42"
+    },
+    {
+      "id": "s-6",
+      "type": "case",
+      "name": "Second-instance judgment in this case",
+      "loc": {
+        "caseNo": "(2017) Yu 01 Min Zhong No. 14848",
+        "court": "Zhengzhou Intermediate People's Court, Henan Province"
+      },
+      "meta": {
+        "level": "Second instance",
+        "docType": "Judgment"
+      },
+      "quote": "Yang Fan's dissuading of Duan Xiaoli's smoking did not exceed the necessary limit and was proper ... there is no legal causation between the two, and Yang Fan was not at fault"
+    }
+  ],
+  "slots": [
+    {
+      "events": [
+        {
+          "id": "ev-2",
+          "date": "2017-05-02T09:24:07",
+          "label": "Yang Fan enters the elevator and presses B1",
+          "groupId": "g-1",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "Yang Fan entered the elevator at 09:24:07 and pressed the button for floor B1",
+          "sourceIds": [
+            "s-1"
+          ]
+        },
+        {
+          "id": "ev-1",
+          "date": "2017-05-02T09:24:03",
+          "label": "Duan Xiaoli smokes inside the elevator",
+          "summary": "the lit button was the first floor",
+          "groupId": "g-2",
+          "actorIds": [
+            "a-2"
+          ],
+          "detail": "Duan Xiaoli was smoking inside the elevator; the lit button was the first floor",
+          "sourceIds": [
+            "s-1"
+          ]
+        },
+        {
+          "id": "ev-3",
+          "date": "2017-05-02T09:24:16",
+          "dateEnd": "2017-05-02T09:26:24",
+          "label": "The two talk continuously inside the elevator (dissuasion)",
+          "summary": "contact under 5 min, no altercation",
+          "groupId": "g-3",
+          "actorIds": [
+            "a-1",
+            "a-2"
+          ],
+          "detail": "The two began talking; the conversation continued while the elevator reached the first floor and B1, with some verbal disagreement; at 09:26:24 they left the elevator. The three surveillance clips show they were in contact for under five minutes",
+          "sourceIds": [
+            "s-1",
+            "s-3"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-4",
+          "date": "2017-05-02T09:28:40",
+          "label": "The two reach the building entrance; Duan Xiaoli is agitated",
+          "summary": "Yang Fan stays calm",
+          "groupId": "g-3",
+          "actorIds": [
+            "a-1",
+            "a-2"
+          ],
+          "detail": "Duan Xiaoli was relatively agitated, Yang Fan relatively calm",
+          "sourceIds": [
+            "s-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-5",
+          "date": "2017-05-02T09:29:06",
+          "label": "The two head for the property management office; Duan Xiaoli's cigarette is still lit",
+          "groupId": "g-3",
+          "actorIds": [
+            "a-1",
+            "a-2"
+          ],
+          "detail": "The two headed towards the property management office; until then Duan Xiaoli's cigarette had never gone out",
+          "sourceIds": [
+            "s-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-6",
+          "date": "2017-05-02T09:31",
+          "label": "Calling 120",
+          "summary": "Dialled 09:31, arrived 09:37",
+          "groupId": "g-3",
+          "actorIds": [],
+          "detail": "The diagnosis certificate from Henan Provincial Staff Hospital records: 120 was called at 09:31 and paramedics reached the patient at 09:37. The judgment does not state who made the call",
+          "sourceIds": [
+            "s-4",
+            "s-5"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-7",
+          "date": "2017-05-02T09:33",
+          "approx": true,
+          "dateNote": "Surveillance timestamps run from 09:43:55 to 09:48:56; calibrated against the diagnosis certificate and interview records, the actual time was about 09:33 (the surveillance clock ran some ten minutes fast)",
+          "label": "Argument at the property management office door; Yang Fan is led away",
+          "summary": "Property manager separates the two",
+          "groupId": "g-3",
+          "actorIds": [
+            "a-1",
+            "a-2"
+          ],
+          "detail": "The two kept talking at the property management office door; Duan Xiaoli grew increasingly agitated and approached Yang Fan several times, and was pulled back by Zhang Zongyin, the property customer-service manager; Zhang Zongyin led Yang Fan away and Duan Xiaoli was taken to the property office. Property staff Zhang Zongyin and Yan Changchun took part in mediating (not listed among actors)",
+          "sourceIds": [
+            "s-3"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-8",
+          "date": "2017-05-02T09:37",
+          "label": "Paramedics arrive",
+          "groupId": "g-3",
+          "actorIds": [],
+          "detail": "Paramedics reach patient",
+          "sourceIds": [
+            "s-4"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-9",
+          "date": "2017-05-02",
+          "label": "Duan Xiaoli dies",
+          "summary": "exact time not stated",
+          "groupId": "g-2",
+          "actorIds": [
+            "a-2"
+          ],
+          "detail": "The judgment anonymises the death and does not state the exact time, so date is accurate only to the day.",
+          "sourceIds": [
+            "s-6"
+          ]
+        }
+      ]
+    }
+  ]
+}
