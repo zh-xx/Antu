@@ -169,7 +169,7 @@ JSON (envelope) ──> [validation gate] ──> route by top-level type ──
 - **one top-level type = one schema**; **one sub-type = one renderer**. The schema specifies only down to the top-level type, and below it there is no "sub-type" field; for how sub-types divide see §3;
 - adding a way of drawing means registering one sub-type renderer, **with the core itself untouched**;
 - the underlying rendering technology is React Flow (chosen; already in use for the fact diagram).
-- Layout: **each sub-type is on its own**, with no shared layout library. The fact timeline computes its own grid (`src/renderers/fact/timeline/grid.js`); the relationship and procedure diagrams plan to use dagre or elkjs (**not installed yet**; `package.json` currently lists only React Flow).
+- Layout: **each sub-type is on its own**, with no shared layout library. The fact timeline computes its own grid (`src/renderers/fact/timeline/grid.js`); the procedure flowchart uses ELK's layered algorithm (elkjs, `src/renderers/procedure/flow/elk.js`), chosen over dagre and the hand-written layout by measured crossings (`spec/procedure/schema-draft.md` §6.1); the relationship diagram will likely use it too.
 - the renderer is responsible for translating semantics into React Flow nodes/edges (the translation happens inside the renderer, not inside the specification).
 
 ## 6.1 The deliverable: one self-contained HTML file
@@ -225,7 +225,7 @@ The structured locations in `sources` (page 6 of the contract, the case number a
 - [x] **No sidebar**: the canvas fills the space, with a label card at the top left + a control dock at the bottom + zoom/minimap, four floating layers in all (`spec/fact/rendering.md` §4)
 - [x] **Sources state their origin only, with no jumping**; original materials are not bundled (§6.1)
 - [x] Trade-off principle: business language takes priority over renderer uniformity
-- [x] Technology stack: React 19 + Vite + @xyflow/react 12 + dagre, JSX, useState (kept after discussion)
+- [x] Technology stack: React 19 + Vite + @xyflow/react 12 + elkjs (the procedure flowchart's layout; dagre was the earlier plan), JSX, useState
 - [x] Guard against over-design: the smallest thing that runs comes first; get the relationship trio working first
 - [x] No "sub-type tree" under a top-level type: differences are routed to rendering parameters / preset configuration / controlled enums; the only test for a new top-level type is that the element structure does not fit an existing type
 - [x] Naming: 案图 in Chinese, code name `antu`; package name provisionally `antu-viz` (unclaimed, verified)

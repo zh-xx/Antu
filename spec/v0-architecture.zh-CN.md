@@ -172,7 +172,7 @@ JSON (信封) ──> [校验门卫] ──> 按大类路由 ──> 注册表�
 - 新增画法 = 注册一个子类渲染器，**核心本体不动**；
 - 底层渲染技术：React Flow（已选定，事实图已在用）。
 - 布局：**各子类自负**，不用统一布局库。事实图的时间图自己算网格（`src/renderers/fact/timeline/grid.js`）；
-  关系图、程序图计划用 dagre 或 elkjs（**尚未安装**，`package.json` 里目前只有 React Flow）。
+  程序图的流程图用 ELK 的分层算法（elkjs，`src/renderers/procedure/flow/elk.js`），是按实测交叉数在 dagre 与手写排布之间选出的（见 `spec/procedure/schema-draft.zh-CN.md` §6.1）；关系图大概率也会用它。
 - 渲染器内部负责"语义 → React Flow nodes/edges"的翻译（翻译发生在渲染器内，不在规范内）。
 
 ## 6.1 产物形态：一个自包含的 HTML
@@ -229,7 +229,7 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
 - [x] **不要侧栏**：画布占满，左上角标签卡 + 底部控制胶囊 + 缩放/缩略图，共四处浮层（`spec/fact/rendering.md` §4）
 - [x] **来源只标出处、不跳转**；原始材料不打包（§6.1）
 - [x] 取舍原则：业务语言优先于渲染器统一
-- [x] 技术栈：React 19 + Vite + @xyflow/react 12 + dagre，JSX，useState（讨论后沿用）
+- [x] 技术栈：React 19 + Vite + @xyflow/react 12 + elkjs（程序图流程图的布局；原先计划用 dagre），JSX，useState
 - [x] 防过度设计：最小可跑优先；先 relationship 三件套跑通
 - [x] 顶层类型不建"子类型树"：差异分流为 渲染参数 / 预设配置 / 受控枚举；新顶层类型唯一判据 = 元素结构装不进现有类型
 - [x] 命名：中文"案图"，代号 `antu`；发包名暂定 `antu-viz`（未占用，已验证）

@@ -910,31 +910,16 @@
 
 .antu-plabel {
   position: absolute;
-  max-width: 150px;
+  box-sizing: border-box;
   padding: 1px 6px;
   border-radius: 4px;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--antu-text-2);
-  white-space: normal;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  width: max-content;
-}
-/* 落进目标框的那一段：从目标框上沿往上长，长文本绝不压进框里；只有半个层间距，限两行 */
-.antu-plabel.a-rise { transform: translateY(-100%); padding-left: 2px; -webkit-line-clamp: 2; line-clamp: 2; }
-/* 横向图落进目标框的那一段：文字收在目标框左边、坐在线上，绝不压进框里 */
-.antu-plabel.a-lead { transform: translate(-100%, -100%); text-align: right; -webkit-line-clamp: 2; line-clamp: 2; max-width: 104px; }
-/* 折线与回边通道：压在线上，靠底色把线遮住 */
-.antu-plabel.a-center {
-  transform: translate(-50%, -50%);
-  text-align: center;
   background: var(--antu-canvas);
-  box-shadow: 0 0 0 1px var(--antu-line);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--antu-text-2);
+  text-align: center;
+  overflow-wrap: anywhere;
+  overflow: hidden;
 }
 .antu-plabel.k-back { color: var(--antu-text-3); }
 

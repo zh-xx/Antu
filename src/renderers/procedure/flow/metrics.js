@@ -25,38 +25,24 @@ export const PILL_H = 52
 export const DIAMOND_W = 232
 export const DIAMOND_H = 112
 
-/** Vertical spacing between layers (room for the condition labels beside the edges) */
-export const GAP_Y = 64
-
-/**
- * The same gap in a horizontal diagram. Wider, because a condition label there has to fit
- * *between* two layers, left of its target, written across the page: at 64 the labels ran
- * under the previous column's nodes and were cut off.
- */
-export const GAP_Y_H = 120
-
-/** The gap between layers for an orientation */
-export const layerGap = (vertical) => (vertical ? GAP_Y : GAP_Y_H)
-
-/** Spacing between nodes sitting side by side within one layer */
-export const GAP_X = 36
+/** ELK spacing: between two layers, and between two nodes side by side in one layer */
+export const LAYER_GAP = 48
+export const NODE_GAP = 40
 
 /** Padding around the content. The image export adds more on top; this one keeps the diagram itself off the edge */
 export const PAD = 40
 
-/**
- * Distance between two lines that share a gap or a channel (route.js). Small enough that three
- * tracks fit either side of a gutter's centre between two diamonds (GAP_X / 2 = 18 each way),
- * large enough that two parallel lines still read as two.
- */
+/** Distance between two parallel rule trunks */
 export const TRACK = 6
 
 /**
- * Room kept outside the outermost columns, on both sides across the flow: the outer gutters are
- * channels too (a back edge from the rightmost column needs somewhere to run), so they need
- * room for their tracks.
+ * Condition labels: ELK is given a box per label and keeps it clear of every node. The box is
+ * computed from these, and the stylesheet draws the text with the same numbers.
  */
-export const OUTER = 24
+export const LABEL_FONT = 11
+export const LABEL_LINE = 16
+export const LABEL_PAD_X = 6
+export const LABEL_MAX_W = 150
 
 /** Corner radius of an orthogonal link where it turns */
 export const CORNER_R = 10
@@ -81,18 +67,6 @@ export function sizeOf(node) {
     default:
       return { w: BOX_W, h: BOX_H }
   }
-}
-
-/** Vertically a layer's "height" looks at the tallest node; horizontally its "width" looks at the widest */
-export function extentOf(node, vertical) {
-  const { w, h } = sizeOf(node)
-  return vertical ? h : w
-}
-
-/** The node's side in the within-layer direction (width when vertical, height when horizontal) */
-export function acrossOf(node, vertical) {
-  const { w, h } = sizeOf(node)
-  return vertical ? w : h
 }
 
 // ── Rule cards (the contingent clauses beside the flow) ──────

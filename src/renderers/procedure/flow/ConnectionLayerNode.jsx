@@ -82,10 +82,11 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
         connections
           .filter((c) => c.label)
           .map((c) => (
+            // The box ELK reserved for it, clear of every node: drawn exactly there
             <span
               key={c.id}
-              className={`antu-plabel a-${c.labelAnchor} k-${c.kind}`}
-              style={{ left: c.labelAt.x, top: c.labelAt.y }}
+              className={`antu-plabel k-${c.kind}`}
+              style={{ left: c.labelAt.x, top: c.labelAt.y, width: c.labelSize.width, height: c.labelSize.height }}
             >
               {c.label}
             </span>

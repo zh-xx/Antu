@@ -68,7 +68,7 @@ The diagrams meet the needs of legal work because the specification itself is de
 
 ## Output
 
-One JSON document produces one self-contained HTML file of about 420 KB. Engine and data are both inside the file. It issues no network requests, requires no server, and opens offline. It is suitable for archiving, circulation, and sending as an email attachment.
+One JSON document produces one self-contained HTML file of about 1.9 MB (most of it the layout engine, ELK). Engine and data are both inside the file. It issues no network requests, requires no server, and opens offline. It is suitable for archiving, circulation, and sending as an email attachment.
 
 ## Usage
 

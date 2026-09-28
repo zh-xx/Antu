@@ -493,35 +493,42 @@ colours, FlowRenderer.jsx and its node / link / stage-band components), with uni
 `test/procedure-layout.test.mjs` and a browser check in `npm run verify`. Done and not done:
 
 ```
-Done     layering (longest path), back-edge detection and routing round the outside, merging
-         several edges into the same target, aligning the main line into one column, both
-         orientations (vertical / horizontal), nodes do not overlap, rounded-corner polyline paths;
-         the React renderer (six shapes by kind, three colours by outcome, hover / pinned
-         overlay with provenance), stage bands cut along the main line, the control capsule
-         (§6.2), image export
-         link routing (route.js): no link runs behind a node it does not belong to, and no two
-         different links lie on top of each other (both pinned by unit tests on all 7 contracts,
-         both orientations); long forward links run down node-free channels between columns;
-         back edges loop out of the nearest side and edges into one target share a lane;
-         ordering within a layer: a node goes under the nodes that lead into it, so a side
-         strand keeps to one side of the main line and runs down its own column, and the main
-         line keeps a free side for the loops that return to it (in 01 every delay loop is now a
-         short loop beside its stage, none takes the long way round); the main line is routed
-         first and every main link is one straight segment
-Not done full crossing minimisation. What is left shows in 03: one step fans out to four
-         termination triggers that all come back to one end, and those strands still cross.
-         Condition labels only avoid their siblings, not every other line. **Placing note
-         nodes** (the first version
-         treats them as ordinary nodes on the first layer; they take no part in the flow and
-         their position is still not good)
+Done     placement and routing by ELK's layered algorithm (elkjs, flow/elk.js): layering,
+         crossing minimisation, node placement, orthogonal routing, room reserved for every
+         condition label; stages as partitions; main-line edges prioritised for straightness;
+         back-edge detection (drawn dashed), merging several edges into the same target, both
+         orientations; the React renderer (six shapes by kind, three colours by outcome,
+         hover / pinned overlay with provenance), stage bands, the control capsule (§6.2),
+         image export
+Not done **placing note nodes** (they take no part in the flow; ELK places them like any
+         other node)
 ```
+
+Measured on the 7 contracts and the two rule-layer drafts, both orientations:
+
+| | hand-written layout (replaced) | dagre | **ELK (in use)** |
+|---|---|---|---|
+| crossings, 01 | 12 | 7 | **0** |
+| crossings, 03 | 38 | 11 | **2** |
+| crossings, the other five | 12 | 1 | **0** |
+| labels on a node | avoided by rule | 0 | **0** (ELK reserves the space) |
+
+Pinned by unit tests: no link runs behind a node, no two different links overlap, every label
+clear of every node, links end on their node's outline (a diamond's slanted edge for a decision),
+main links almost never bend (3 of 176).
+
+Why ELK over the hand-written layout: the hand-written one kept the main line in a single column
+and hung everything off it. That made the main line rigid and forced the other branches to cross
+it; the crossing count was the price. ELK treats the main line as a preference (edge priority),
+not a column, and minimises crossings for the whole graph. **Cost:** elkjs adds about 1.4 MB, so
+a generated HTML is about 1.9 MB instead of about 480 KB. It is called synchronously (see the
+header of `flow/elk.js` for how and why); the elkjs version is pinned.
 
 Two decisions the renderer made, so they are not undone by accident:
 
-- **Stage bands follow the main line, not the nodes.** A stage's branch nodes reach into the next
-  stage's layers (a delay branch hangs below the step that started it), so bands taken per node
-  would overlap. Along the main line a stage runs from its first main-line node to the next stage's
-  first one; bands are contiguous and never overlap. A stage never on the main line gets no band.
+- **Stages are ELK partitions**, so every node of a stage lies after every node of the stage
+  before; a band runs from the middle of the gap before its first node to the middle of the gap
+  after its last. Bands are contiguous and never overlap.
 - **The main-line highlight follows the spine the engine settled on**, marked (`main: true`) or
   inferred, so a diagram with no `main` flags still shows its main line.
 

@@ -5,44 +5,42 @@
 //    nodes        React Flow nodes (position, size, the text to show)
 //    connections  the geometry of the links (the polyline points, and where the
 //                 condition label goes)
+//    rules        the rule cards and their lane (spec/procedure/schema-draft.md §11)
 //    size         how large the content is
 //
 //  **edges is always an empty array**, the same as fact's timeline: the links are
-//  drawn by a self-drawn layer, for the reason in spec/procedure/schema-draft.md
-//  §6.1 (a back edge has to go round, and several edges into the same target have
-//  to merge; React Flow's built-in edges can do neither).
+//  drawn by a self-drawn layer (ConnectionLayerNode), from the points computed here.
 //
-//  The six layout steps (rules in spec/procedure/schema-draft.md §6.1):
-//    ① recognise back edges (drop them, and what is left is a DAG)
-//    ② on the DAG take the "longest path from the entry" = the layer number
-//    ③ recognise the main line (walk the main edges; infer when unmarked)
-//    ④ fix the columns within each layer: the main line centred, the rest
-//      alternating right and left
-//    ⑤ compute coordinates (axis-agnostic: a vertical layout runs layers
-//      downwards, a horizontal one to the right)
-//    ⑥ link: several edges into the same target merge; then route.js lays every
-//      link on node-free gaps and channels (no link ever runs behind a node)
-//    ⑦ stage bands, cut along the main line
-//    ⑧ the rule lane: contingent clauses as cards beside the stages they apply
-//      to; the rules that end the contract join one trunk into their end
+//  Who does what:
+//    ① back edges (DFS) and ② the main line are recognised here: they are meaning
+//      (dashed loops, the highlighted main line), not geometry
+//    ③ placement and routing are ELK's layered algorithm (elk.js): layering, crossing
+//      minimisation, node placement, orthogonal routing, and room for the condition labels.
+//      Stages become ELK partitions, so a stage never starts before the previous one ends;
+//      main-line edges get priority, so they stay straight
+//    ④ stage bands are read off where each stage's nodes ended up
+//    ⑤ the rule lane is placed beside the node field
 //
-//  **What it does not do**: crossing minimisation, merging several main-line
-//  nodes in one layer.
+//  The hand-written layering and router this replaced gave 12 and 38 crossings on
+//  contracts 01 and 03; ELK gives 0 and 2 (see elk.js).
 // ============================================================
 
 import { validateProcedure, hintsOfProcedure, ruleEndIds } from './rules.js'
-import { routeLinks } from './route.js'
+import { elkLayoutSync } from './elk.js'
 // The same text measure the fact cards use, so a CJK character counts the same everywhere
 import { textEm } from '../../fact/cardGeometry.js'
 import {
   PAD,
-  layerGap,
-  GAP_X,
+  LAYER_GAP,
+  NODE_GAP,
   CORNER_R,
-  OUTER,
   STAGE_GUTTER_V,
   STAGE_GUTTER_H,
   TRACK,
+  LABEL_FONT,
+  LABEL_LINE,
+  LABEL_PAD_X,
+  LABEL_MAX_W,
   RULE_W,
   RULE_GAP,
   RULE_STACK_GAP,
@@ -50,8 +48,6 @@ import {
   SCOPE_BAR_PITCH,
   ruleHeight,
   sizeOf,
-  acrossOf,
-  extentOf,
 } from './metrics.js'
 
 const keyOf = (e) => `${e.from}|${e.to}|${e.condition ?? ''}`
@@ -103,6 +99,17 @@ const emptyStats = () => ({
 })
 
 /**
+ * The box a condition label needs: width capped at LABEL_MAX_W, text wrapped into lines of
+ * LABEL_LINE. ELK reserves exactly this box; the stylesheet draws the label in it.
+ */
+export function labelBox(text) {
+  const textW = textEm(text) * LABEL_FONT
+  const width = Math.min(LABEL_MAX_W, Math.ceil(textW + LABEL_PAD_X * 2))
+  const lines = Math.max(1, Math.ceil(textW / (LABEL_MAX_W - LABEL_PAD_X * 2) - 1e-9))
+  return { width, height: lines * LABEL_LINE + 2 }
+}
+
+/**
  * Lay out one procedure spec.
  *
  * The signature matches fact's kinds (spec, fields, view, orientation), because
@@ -137,7 +144,6 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
   const nodes = spec.nodes
   const stageById = new Map((spec.stages ?? []).map((s) => [s.id, s]))
   const byId = new Map(nodes.map((n) => [n.id, n]))
-  const order = new Map(nodes.map((n, i) => [n.id, i]))
   const ids = nodes.map((n) => n.id)
 
   const outE = new Map(ids.map((id) => [id, []]))
@@ -147,7 +153,8 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     inE.get(e.to).push({ ...e, index })
   })
 
-  // ① recognise back edges: DFS; an edge into a node "still on the current path" is a back edge
+  // ① recognise back edges: DFS; an edge into a node "still on the current path" is a back
+  // edge. Drawn dashed: a loop back reads differently from the way forward.
   const back = new Set()
   const color = new Map()
   const walk = (u) => {
@@ -161,37 +168,10 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
   }
   for (const id of ids) if ((color.get(id) ?? 0) === 0) walk(id)
 
-  // ② with the back edges removed it is a DAG. Kahn topological order + relaxation = the longest path from the entry
-  const dagOut = new Map(ids.map((id) => [id, []]))
-  const indeg = new Map(ids.map((id) => [id, 0]))
-  for (const e of spec.edges) {
-    if (back.has(keyOf(e))) continue
-    dagOut.get(e.from).push(e)
-    indeg.set(e.to, indeg.get(e.to) + 1)
-  }
-  const layer = new Map()
-  const queue = ids.filter((id) => indeg.get(id) === 0)
-  queue.forEach((id) => layer.set(id, 0))
-  for (let i = 0; i < queue.length; i += 1) {
-    const u = queue[i]
-    const lu = layer.get(u) ?? 0
-    for (const e of dagOut.get(u)) {
-      layer.set(e.to, Math.max(layer.get(e.to) ?? 0, lu + 1))
-      indeg.set(e.to, indeg.get(e.to) - 1)
-      if (indeg.get(e.to) === 0) queue.push(e.to)
-    }
-  }
-
-  // An end reached only through a rule has no incoming edge but is not an entry: it goes in the
-  // last layer, beside the flow's own end, and is placed outermost there (step ④) so the rule
-  // trunk reaches it from outside without crossing anything
+  // An end reached only through a rule has no incoming edge, but it is not an entry
   const ruleEnds = new Set([...ruleEndIds(spec)].filter((id) => byId.has(id) && inE.get(id).length === 0))
-  if (ruleEnds.size) {
-    const last = Math.max(0, ...ids.filter((id) => !ruleEnds.has(id)).map((id) => layer.get(id) ?? 0))
-    for (const id of ruleEnds) layer.set(id, last)
-  }
 
-  // ③ the main line: walk the main edges; when none is marked main, infer it as
+  // ② the main line: walk the main edges; when none is marked main, infer it as
   // "the first unconditional, unvisited outgoing edge"
   const entries = ids.filter((id) => inE.get(id).length === 0 && !ruleEnds.has(id))
   const spine = []
@@ -212,139 +192,16 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       cur = pick?.to
     }
   }
+  // An edge is on the main line when it joins two consecutive main-line nodes, marked or inferred
+  const spineNext = new Map(spine.slice(0, -1).map((id, i) => [id, spine[i + 1]]))
 
-  // ④ fix the columns within each layer. The main line sits in column 0. Every other node goes
-  // under the nodes that lead into it (the mean column of its forward predecessors), so a
-  // side branch keeps to one side of the main line and runs down its own column: the branch
-  // reads as a strand, and the main line keeps a free side for the loops that return to it.
-  // A node whose only predecessor is on the main line has no side yet; those alternate,
-  // starting with the side that has fewer nodes in the layer. Ties keep the data order.
-  const dagIn = new Map(ids.map((id) => [id, []]))
-  for (const e of spec.edges) if (!back.has(keyOf(e))) dagIn.get(e.to).push(e.from)
-  const colOf = new Map()
-  const maxLayer = Math.max(0, ...ids.map((id) => layer.get(id) ?? 0))
-  const rows = []
-  for (let L = 0; L <= maxLayer; L += 1) {
-    const inLayer = ids
-      .filter((id) => (layer.get(id) ?? 0) === L)
-      .sort((a, b) => order.get(a) - order.get(b))
-    if (inLayer.length === 0) continue
-    const col = new Map()
-    inLayer.filter((id) => spineSet.has(id)).forEach((id, i) => col.set(id, i))
-    const pull = new Map()
-    for (const id of inLayer) {
-      if (col.has(id) || ruleEnds.has(id)) continue
-      const cs = dagIn.get(id).filter((p) => colOf.has(p)).map((p) => colOf.get(p))
-      pull.set(id, cs.length ? cs.reduce((n, c) => n + c, 0) / cs.length : 0)
-    }
-    const others = [...pull.keys()]
-    const right = others.filter((id) => pull.get(id) > 0)
-    const left = others.filter((id) => pull.get(id) < 0)
-    for (const id of others.filter((id) => pull.get(id) === 0)) {
-      ;(right.length <= left.length ? right : left).push(id)
-    }
-    // Each side fills outwards from the main line: nearest pull first, never two in one column,
-    // and a node lands under its predecessors when that column is still free
-    const byPull = (a, b) => Math.abs(pull.get(a)) - Math.abs(pull.get(b)) || order.get(a) - order.get(b)
-    let next = Math.max(...[...col.values()]) + 1
-    if (!Number.isFinite(next)) next = 1
-    for (const id of right.sort(byPull)) {
-      const c = Math.max(next, Math.round(pull.get(id)))
-      col.set(id, c)
-      next = c + 1
-    }
-    for (const id of inLayer.filter((id) => ruleEnds.has(id))) {
-      col.set(id, next)
-      next += 1
-    }
-    next = -1
-    for (const id of left.sort(byPull)) {
-      const c = Math.min(next, Math.round(pull.get(id)))
-      col.set(id, c)
-      next = c - 1
-    }
-    for (const [id, c] of col) colOf.set(id, c)
-    rows.push({
-      layer: L,
-      ids: inLayer,
-      col,
-      extent: Math.max(...inLayer.map((id) => extentOf(byId.get(id), vertical))),
-    })
-  }
-
-  // ⑤ coordinates: axis-agnostic. In a vertical layout layers run downwards, in a horizontal one to the right.
-  // The stage gutter (when drawn) sits on the "across start" side: left when vertical, top when
-  // horizontal, so it moves every column over by the same amount and nothing else changes.
-  const showStages = fields?.stages !== false && Array.isArray(spec.stages) && spec.stages.length > 0
-  const gutter = showStages ? (vertical ? STAGE_GUTTER_V : STAGE_GUTTER_H) : 0
-  const colPitch = Math.max(...ids.map((id) => acrossOf(byId.get(id), vertical))) + GAP_X
-  const allCols = rows.flatMap((r) => [...r.col.values()])
-  const minCol = Math.min(...allCols)
-  const maxCol = Math.max(...allCols)
-  const acrossCenter = (c) => PAD + gutter + OUTER + (c - minCol) * colPitch + colPitch / 2
-
-  const gap = layerGap(vertical)
-  const placed = new Map()
-  let alongPos = PAD
-  for (const r of rows) {
-    for (const id of r.ids) {
-      const n = byId.get(id)
-      const { w, h } = sizeOf(n)
-      const c = r.col.get(id)
-      const ac = acrossCenter(c)
-      placed.set(id, {
-        x: vertical ? ac - w / 2 : alongPos,
-        y: vertical ? alongPos : ac - h / 2,
-        w,
-        h,
-        ac,
-        layer: r.layer,
-        col: c,
-        alongStart: alongPos,
-      })
-    }
-    r.along = alongPos
-    alongPos += r.extent + gap
-  }
-  const contentAlong = alongPos - gap + PAD
-  const contentAcross = PAD * 2 + gutter + OUTER * 2 + (maxCol - minCol + 1) * colPitch
-  const size = vertical
-    ? { width: contentAcross, height: contentAlong }
-    : { width: contentAlong, height: contentAcross }
-
-  // ⑥ links. First merge "several edges between the same pair of nodes" into one (§6.1, the second rule)
+  // Several edges between the same pair of nodes become one link, conditions side by side (§6.1)
   const grouped = new Map()
   for (const e of spec.edges) {
     const k = `${e.from}|${e.to}`
     if (!grouped.has(k)) grouped.set(k, [])
     grouped.get(k).push(e)
   }
-
-  // An edge is on the main line when it joins two consecutive main-line nodes. Reading it off the
-  // spine rather than off `main: true` matters when nothing is marked: the engine inferred the
-  // spine in step ③, and the highlight must follow what was inferred, not only what was written.
-  const spineNext = new Map(spine.slice(0, -1).map((id, i) => [id, spine[i + 1]]))
-
-  // Boxes in along/across coordinates, the language route.js speaks
-  const rowIndex = new Map(rows.map((r, i) => [r.layer, i]))
-  const boxes = new Map(
-    [...placed.entries()].map(([id, p]) => {
-      const a0 = vertical ? p.y : p.x
-      const c0 = vertical ? p.x : p.y
-      const al = vertical ? p.h : p.w
-      const ac = vertical ? p.w : p.h
-      // tip: a diamond meets its links only at its points, so a link may not land beside its centre
-      const tip = byId.get(id).kind === 'decision'
-      return [id, { a0, a1: a0 + al, c0, c1: c0 + ac, am: a0 + al / 2, cm: p.ac, row: rowIndex.get(p.layer), tip }]
-    }),
-  )
-  // Channels: every column centre, and the middle of every gutter (one outside each edge too)
-  const channels = []
-  for (let c = minCol - 1; c <= maxCol; c += 1) {
-    if (c >= minCol) channels.push(acrossCenter(c))
-    channels.push(acrossCenter(c) + colPitch / 2)
-  }
-
   const groups = [...grouped.values()].map((group) => {
     const { from, to } = group[0]
     const isBack = back.has(keyOf(group[0]))
@@ -352,67 +209,181 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     const isMain = !isBack && spineNext.get(from) === to
     return { from, to, isBack, isMain, merged: group.length, label: labels.length ? labels.join(' / ') : '' }
   })
-  const routed = routeLinks({ groups, boxes, rows, channels, vertical, gap })
 
-  // labelAnchor says how the label sits on labelAt (the renderer only reads it, never guesses):
-  //   rise    starts just right of the point and grows upwards (vertical: the last drop into a
-  //           target, so a long label never runs down into the box it points at)
-  //   lead    ends just before the point and sits above it (horizontal: the same, turned)
-  //   center  centred on the point, masking the line under it (on a back edge's lane)
+  // ③ ELK. Stages become partitions; a node without a stage takes the stage of the node before
+  // it in the data, so the order the author wrote is kept. An end reached only through rules
+  // goes in the last layer.
+  const showStages = fields?.stages !== false && stageById.size > 0
+  const gutter = showStages ? (vertical ? STAGE_GUTTER_V : STAGE_GUTTER_H) : 0
+  const stageIndex = new Map((spec.stages ?? []).map((s, i) => [s.id, i]))
+  const partition = new Map()
+  {
+    let last = 0
+    for (const n of nodes) {
+      if (stageIndex.has(n.stageId)) last = stageIndex.get(n.stageId)
+      partition.set(n.id, last)
+    }
+    for (const id of ruleEnds) partition.set(id, Math.max(0, stageById.size - 1))
+  }
+  const usePartitions = stageById.size > 1
+  const graph = {
+    id: 'root',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': vertical ? 'DOWN' : 'RIGHT',
+      'elk.padding': '[top=0,left=0,bottom=0,right=0]',
+      'elk.edgeRouting': 'ORTHOGONAL',
+      'elk.spacing.nodeNode': String(NODE_GAP),
+      'elk.layered.spacing.nodeNodeBetweenLayers': String(LAYER_GAP),
+      'elk.spacing.edgeNode': '20',
+      'elk.spacing.edgeEdge': '12',
+      'elk.spacing.edgeLabel': '4',
+      'elk.layered.spacing.edgeNodeBetweenLayers': '20',
+      'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      // Keep the order the author wrote nodes and edges in wherever it costs no crossing, and
+      // break cycles by it: the same JSON always gives the same picture
+      'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+      'elk.layered.cycleBreaking.strategy': 'MODEL_ORDER',
+      'elk.edgeLabels.inline': 'false',
+      'elk.partitioning.activate': String(usePartitions),
+      // An end reached only through rules has no edge at all; ELK would lay it out as a
+      // separate component beside the diagram and ignore its "last layer" constraint
+      'elk.separateConnectedComponents': 'false',
+    },
+    children: nodes.map((n) => {
+      const { w, h } = sizeOf(n)
+      const opts = {}
+      if (usePartitions) opts['elk.partitioning.partition'] = String(partition.get(n.id))
+      if (ruleEnds.has(n.id)) opts['elk.layered.layering.layerConstraint'] = 'LAST'
+      return { id: n.id, width: w, height: h, layoutOptions: opts }
+    }),
+    edges: groups.map((g, i) => ({
+      id: `g${i}`,
+      sources: [g.from],
+      targets: [g.to],
+      labels: g.label ? [{ id: `l${i}`, text: g.label, ...labelBox(g.label) }] : [],
+      layoutOptions: g.isMain
+        ? { 'elk.layered.priority.straightness': '10', 'elk.layered.priority.direction': '10' }
+        : {},
+    })),
+  }
+  const laid = elkLayoutSync(graph)
+
+  // Everything shifts by the padding, and by the stage gutter on the "across start" side
+  // (left when vertical, top when horizontal)
+  const ox = PAD + (vertical ? gutter : 0)
+  const oy = PAD + (vertical ? 0 : gutter)
+  const placed = new Map(laid.children.map((c) => [c.id, { x: c.x + ox, y: c.y + oy, w: c.width, h: c.height }]))
+  const size = { width: laid.width + ox + PAD, height: laid.height + oy + PAD }
+
+  // An end reached only through rules has no edge, so it can move freely: put it outermost in
+  // its layer (right when vertical, bottom when horizontal), where the rule trunk arrives from
+  // the lane without passing any other node. ELK alone may put it anywhere in the layer.
+  const moved = []
+  for (const id of ruleEnds) {
+    const p = placed.get(id)
+    const along = (q) => (vertical ? q.y : q.x)
+    const farEdge = (q) => (vertical ? q.x + q.w : q.y + q.h)
+    const others = [...placed.entries()]
+      .filter(([o, q]) => (!ruleEnds.has(o) || moved.includes(o)) && o !== id && Math.abs(along(q) - along(p)) < 1)
+      .map(([, q]) => farEdge(q))
+    if (!others.length) continue
+    const at = Math.max(...others) + NODE_GAP
+    if (vertical) p.x = at
+    else p.y = at
+    moved.push(id)
+    size.width = Math.max(size.width, p.x + p.w + PAD)
+    size.height = Math.max(size.height, p.y + p.h + PAD)
+  }
+
+  // Boxes in along/across coordinates (along = the direction the layers run)
+  const boxes = new Map(
+    [...placed.entries()].map(([id, p]) => {
+      const a0 = vertical ? p.y : p.x
+      const c0 = vertical ? p.x : p.y
+      const al = vertical ? p.h : p.w
+      const ac = vertical ? p.w : p.h
+      return [id, { a0, a1: a0 + al, c0, c1: c0 + ac, am: a0 + al / 2, cm: c0 + ac / 2 }]
+    }),
+  )
+
+  // ELK attaches links to a node's bounding box. A diamond only fills the middle of its box, so
+  // a link leaving the bottom beside the tip would start in the empty corner under a slanted
+  // edge. Slide such an end along its own segment until it meets the diamond's outline; the
+  // segment keeps its direction, it only gets longer.
+  const snapToDiamond = (pt, id) => {
+    if (byId.get(id)?.kind !== 'decision') return pt
+    const b = placed.get(id)
+    const [x, y] = pt
+    const cx = b.x + b.w / 2
+    const cy = b.y + b.h / 2
+    const onTopOrBottom = Math.abs(y - b.y) < 0.5 || Math.abs(y - (b.y + b.h)) < 0.5
+    if (onTopOrBottom) {
+      const dy = (b.h / 2) * (1 - Math.min(1, Math.abs(x - cx) / (b.w / 2)))
+      return [x, y < cy ? cy - dy : cy + dy]
+    }
+    const dx = (b.w / 2) * (1 - Math.min(1, Math.abs(y - cy) / (b.h / 2)))
+    return [x < cx ? cx - dx : cx + dx, y]
+  }
+
+  // Links, straight from ELK's sections. A label comes back as a box (top left and size) that
+  // ELK placed clear of every node; the renderer draws it exactly there.
+  const byEdge = new Map(laid.edges.map((e) => [e.id, e]))
   const connections = groups.map((g, i) => {
-    const r = routed[i]
+    const e = byEdge.get(`g${i}`)
+    const sec = e?.sections?.[0]
+    const points = sec
+      ? [sec.startPoint, ...(sec.bendPoints ?? []), sec.endPoint].map((p) => [p.x + ox, p.y + oy])
+      : []
+    if (points.length >= 2) {
+      points[0] = snapToDiamond(points[0], g.from)
+      points[points.length - 1] = snapToDiamond(points[points.length - 1], g.to)
+    }
+    const lab = e?.labels?.[0]
     return {
       id: `c:${g.from}->${g.to}`,
       from: g.from,
       to: g.to,
       kind: g.isBack ? 'back' : g.isMain ? 'main' : 'branch',
       merged: g.merged,
-      points: r.points,
-      d: toPathD(r.points),
+      points,
+      d: toPathD(points),
       label: g.label,
-      labelAt: r.labelAt,
-      labelAnchor: r.labelAnchor,
+      labelAt: lab ? { x: lab.x + ox, y: lab.y + oy } : null,
+      labelSize: lab ? { width: lab.width, height: lab.height } : null,
     }
   })
-
-  // The content box holds what was drawn: a line in an outer channel, or in the gap after the
-  // last layer, must not be cropped by the viewport fit or the image export
-  for (const c of connections) {
-    for (const [x, y] of c.points) {
-      size.width = Math.max(size.width, x + PAD)
-      size.height = Math.max(size.height, y + PAD)
-    }
-  }
   const backList = spec.edges.filter((e) => back.has(keyOf(e)))
 
-  // ⑦ stage bands. Cut **along the main line**, not per node: a stage's branch nodes reach into the
-  // next stage's layers (a delay branch hangs below the step that started it), so bands taken per
-  // node would overlap. Along the spine a stage runs from its first main-line node to the next
-  // stage's first one; the cut lies in the middle of the gap between the two layers. So bands are
-  // contiguous and never overlap, by construction. A stage that never appears on the main line
-  // gets no band (its nodes still render as usual).
+  // Layers, read back from where ELK put the nodes (for the stats and the popover direction)
+  const layerStarts = [...new Set(ids.map((id) => Math.round(boxes.get(id).a0)))].sort((a, b) => a - b)
+  const layerOf = (id) => layerStarts.indexOf(Math.round(boxes.get(id).a0))
+  const rows = layerStarts.map((a, i) => {
+    const inRow = ids.filter((id) => layerOf(id) === i)
+    return { layer: i, along: a, extent: Math.max(...inRow.map((id) => boxes.get(id).a1 - a)), count: inRow.length }
+  })
+
+  // ④ stage bands. With partitions every node of a stage lies after every node of the stage
+  // before, so a band runs from the middle of the gap before its first node to the middle of
+  // the gap after its last: contiguous, never overlapping. A stage no node uses gets no band.
+  const contentAlongEnd = (vertical ? size.height : size.width) - PAD
   const stageSpans = []
-  if (stageById.size) {
-    const rowOf = new Map(rows.map((r, i) => [r.layer, i]))
-    const edgeOf = (rowIdx) => (rowIdx <= 0 ? PAD : rows[rowIdx].along - gap / 2)
-    const endAlong = contentAlong - PAD
-    let cur = null
-    for (const id of spine) {
-      const sid = byId.get(id).stageId
-      if (!sid || !stageById.has(sid)) continue
-      if (cur && cur.stageId === sid) continue
-      const at = edgeOf(rowOf.get(layer.get(id) ?? 0))
-      if (cur) cur.to = at
-      cur = { stageId: sid, label: stageById.get(sid).label, from: at, to: endAlong }
-      stageSpans.push(cur)
-    }
-    // The first band starts at the top of the content, even if the entry sits before any stage
-    if (stageSpans.length) stageSpans[0].from = Math.min(stageSpans[0].from, PAD)
+  {
+    const present = (spec.stages ?? []).filter((st) => nodes.some((n) => n.stageId === st.id))
+    const extent = present.map((st) => {
+      const own = nodes.filter((n) => n.stageId === st.id).map((n) => boxes.get(n.id))
+      return { st, lo: Math.min(...own.map((b) => b.a0)), hi: Math.max(...own.map((b) => b.a1)) }
+    })
+    extent.forEach((x, i) => {
+      const from = i === 0 ? PAD : (extent[i - 1].hi + x.lo) / 2
+      const to = i === extent.length - 1 ? contentAlongEnd : (x.hi + extent[i + 1].lo) / 2
+      stageSpans.push({ stageId: x.st.id, label: x.st.label, from, to: Math.max(to, from + 1) })
+    })
   }
-  // The spans are computed whether or not the bands are drawn: the rule lane is placed by them
   const stageBands = showStages ? stageSpans : []
 
-  // ⑧ the rule lane. A rule is a clause that may fire anywhere in its stages ("if the supplier
+  // ⑤ the rule lane. A rule is a clause that may fire anywhere in its stages ("if the supplier
   // is late, a penalty of …"); drawn as edges from some step, it would claim a moment it does
   // not have, and repeat once per stage it covers. So it is a card in a lane of its own, beside
   // the node field, level with the first stage it applies to; the stages it covers are written
@@ -466,19 +437,26 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       if (!byEnd.has(id)) byEnd.set(id, [])
       byEnd.get(id).push(card)
     }
+    // A trunk runs down the gap between the node field and the lane, past the last layer, then
+    // across to its end and into it from beyond: nothing lies past the last layer, so the trunk
+    // crosses no node on the way.
+    const lastA1 = Math.max(...[...boxes.values()].map((b) => b.a1))
     let k = 0
     for (const [endId, cards] of byEnd) {
       const trunkC = laneC0 - RULE_GAP / 2 - k * TRACK
+      const bottom = lastA1 + LAYER_GAP / 2 + k * TRACK
       k += 1
       const e = boxes.get(endId)
       // Each card joins the trunk a little below its top, level with its consequence
       const stubs = cards.map((c) => c.a0 + 18)
-      for (const [i, a] of stubs.entries()) {
+      for (const [n, a] of stubs.entries()) {
         const pts = [P(a, laneC0), P(a, trunkC)]
-        ruleLinks.push({ id: `rl:${cards[i].rule.id}`, points: pts, d: toPathD(pts), arrow: false })
+        ruleLinks.push({ id: `rl:${cards[n].rule.id}`, points: pts, d: toPathD(pts), arrow: false })
       }
-      const pts = [P(Math.min(...stubs), trunkC), P(e.am, trunkC), P(e.am, e.c1)]
+      const pts = [P(Math.min(...stubs), trunkC), P(bottom, trunkC), P(bottom, e.cm), P(e.a1, e.cm)]
       ruleLinks.push({ id: `rt:${endId}`, to: endId, points: pts, d: toPathD(pts), arrow: true })
+      if (vertical) size.height = Math.max(size.height, bottom + PAD)
+      else size.width = Math.max(size.width, bottom + PAD)
     }
 
     // Scope bars: how far a rule reaches, drawn beside the lane across the stages it covers.
@@ -531,7 +509,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
         actorNames: (n.actorIds ?? []).map((id) => actorById.get(id)?.name ?? id),
         sources: (n.sourceIds ?? []).map((id) => sourceById.get(id)).filter(Boolean),
         sourceCount: (n.sourceIds ?? []).filter((id) => sourceById.has(id)).length,
-        layer: p.layer,
+        layer: layerOf(n.id),
         showDetail: fields?.detail !== false,
         vertical,
       },
@@ -542,8 +520,8 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     nodes: nodes.length,
     edges: spec.edges.length,
     connections: connections.length,
-    layers: maxLayer + 1,
-    widest: Math.max(...rows.map((r) => r.ids.length)),
+    layers: rows.length,
+    widest: Math.max(...rows.map((r) => r.count)),
     backEdges: backList.length,
     decisions: nodes.filter((n) => n.kind === 'decision').length,
     ends: nodes.filter((n) => n.kind === 'end').length,
@@ -557,7 +535,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     nodes: rfNodes,
     edges: [],
     connections,
-    rows: rows.map((r) => ({ layer: r.layer, along: r.along, extent: r.extent, count: r.ids.length })),
+    rows,
     spine,
     stageBands,
     rules: rulesOut,
