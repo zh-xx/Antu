@@ -515,8 +515,7 @@ Measured on the 7 contracts and the two rule-layer drafts, both orientations:
 
 Pinned by unit tests: no link runs behind a node, no two different links overlap, every label
 clear of every node, links end on their node's outline (a diamond's slanted edge for a decision),
-main links seldom bend (10 of 140: a jog where the main line crosses between stage boxes of
-different widths), stage boxes hold their own nodes and never overlap.
+main links seldom bend (10 of 140), no link bends more than twice, stage boxes hold their own nodes and never overlap.
 
 Why ELK over the hand-written layout: the hand-written one kept the main line in a single column
 and hung everything off it. That made the main line rigid and forced the other branches to cross
@@ -535,6 +534,16 @@ Decisions the renderer made, so they are not undone by accident:
   most three lines; a diamond folds its text into a near-square block. Fixed 208×64 boxes left
   most of every box empty and, fitted to a screen, the text too small to read — what putting the
   same data through Mermaid showed.
+- **Links bend as little as possible: straight first, then one bend** (`flow/straighten.js`).
+  ELK's router takes every link out of a bottom and into a top, so two nodes not exactly in line
+  cost a Z (two bends) and a loop four. After ELK, each link is offered simpler routes, fewest
+  bends first: straight; out of a side and down into the top (the usual way out of a decision);
+  out of the bottom and into a side; a loop straight back or round in a U. A route is taken only
+  if it is clear of every node, stage title and label, lies on no other link and crosses no more
+  of them. Several node placements are laid out and the one with the least bending is kept.
+  Measured (corpus, both orientations): 132 bends before, 62 after; none above two.
+- **Straight or curved links** is a presentation choice (§6.2): the curved style draws the same
+  route with each turn as a wide arc, so switching moves no node and no label.
 - **The main-line highlight follows the spine the engine settled on**, marked (`main: true`) or
   inferred, so a diagram with no `main` flags still shows its main line.
 
@@ -580,10 +589,11 @@ damages …), 05 has 4, 01 has 4. Several ends in one layer sit side by side in 
 | Control | Form | Notes |
 |---|---|---|
 | Orientation | segmented | vertical / horizontal |
+| Link style | segmented | straight / curved; remembered for every diagram |
 | Condition labels | toggle | show / hide the `condition` on edges |
 | Node detail | toggle | whether to show the `detail` line |
 | Main-line highlight | toggle | bolden the main edges |
-| Stage bands | toggle | available when `stages` is written |
+| Stage boxes | toggle | available when `stages` is written |
 | Export image | action | reuses the export the canvas shell already has |
 
 The rules for the four control forms (menu / toggle / segmented / action) follow §4.2 of

@@ -14,7 +14,8 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 
 import { validateProcedure, hintsOfProcedure, KINDS } from '../src/renderers/procedure/flow/rules.js'
-import { buildProcedureGraph, toPathD } from '../src/renderers/procedure/flow/layout.js'
+import { buildProcedureGraph, toPathD, toCurveD } from '../src/renderers/procedure/flow/layout.js'
+import { bendsOf } from '../src/renderers/procedure/flow/straighten.js'
 import { procedureKnowledge } from '../src/renderers/procedure/schema.js'
 import { registerKnowledge, layoutOf, layoutKindsOf } from '../src/core/registry.js'
 
@@ -197,6 +198,38 @@ test('polyline to SVG path: two points join directly, each extra corner gets a r
   assert.ok(d.startsWith('M 0 0'))
   assert.equal((d.match(/Q/g) || []).length, 2, 'one radius per corner')
   assert.equal(toPathD([]), '')
+})
+
+test('curved style: the same route, straight stays straight, each corner becomes one arc', () => {
+  assert.equal(toCurveD([[0, 0], [0, 100]]), toPathD([[0, 0], [0, 100]]))
+  const pts = [[0, 0], [0, 50], [100, 50], [100, 100]]
+  const d = toCurveD(pts)
+  assert.ok(d.startsWith('M 0 0') && d.endsWith('L 100 100'), 'it starts and ends where the route does')
+  assert.equal((d.match(/C/g) || []).length, 2, 'one arc per corner')
+  assert.equal(toCurveD([]), '')
+})
+
+test('links bend as little as possible: straight first, then one bend, never more than two', () => {
+  // ELK's router leaves every link out of a bottom and into a top, so any two nodes not in line
+  // cost a Z and a loop four bends; straighten.js offers straight and one-bend routes first.
+  // Measured on the corpus, both orientations: 132 bends before, 62 after, none above two.
+  let total = 0
+  let links = 0
+  let straightOrOne = 0
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), {}, undefined, dir)
+      for (const c of g.connections) {
+        const b = bendsOf(c.points)
+        assert.ok(b <= 2, `${f}/${dir}: ${c.id} bends ${b} times`)
+        total += b
+        links += 1
+        if (b <= 1) straightOrOne += 1
+      }
+    }
+  }
+  assert.ok(total <= 70, `${total} bends across the corpus`)
+  assert.ok(straightOrOne / links >= 0.85, `only ${straightOrOne} of ${links} links are straight or bend once`)
 })
 
 test('knowledge registration: procedure is registered with the flow sub-type', () => {

@@ -84,6 +84,14 @@ export default function ProcedureFlow({ spec }) {
   }
   const vertical = orientation !== 'horizontal'
 
+  // Link style: straight (orthogonal, the default: with many links, lines that only run level
+  // or upright are easiest to follow) or curved. One choice for every diagram, remembered.
+  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || readPrefs().linkStyle || 'straight')
+  const toggleLinkStyle = (next) => {
+    setLinkStyle(next)
+    writePrefs({ linkStyle: next })
+  }
+
   // Only the switches that move geometry go into layout: detail changes what a node shows,
   // stages turn into boxes ELK lays out. Condition labels and the main-line highlight are paint only,
   // so toggling them re-draws the link layer without re-fitting the viewport.
@@ -122,6 +130,7 @@ export default function ProcedureFlow({ spec }) {
         height,
         showConditions: fields.conditions,
         highlightMain: fields.mainLine,
+        curved: linkStyle === 'curved',
       },
     })
     // Rule cards are ordinary (hoverable, pinnable) nodes; their text and provenance travel in data
@@ -141,7 +150,7 @@ export default function ProcedureFlow({ spec }) {
       },
     }))
     return { nodes: [...deco, ...layout.nodes, ...cards], edges: [], size: layout.size }
-  }, [layout, spec, vertical, fields.conditions, fields.mainLine])
+  }, [layout, spec, vertical, fields.conditions, fields.mainLine, linkStyle])
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
@@ -182,6 +191,8 @@ export default function ProcedureFlow({ spec }) {
             hasRules={hasRules}
             orientation={orientation}
             onToggleOrientation={toggleOrientation}
+            linkStyle={linkStyle}
+            onToggleLinkStyle={toggleLinkStyle}
             exporting={exporting}
             onExport={onExport}
           />

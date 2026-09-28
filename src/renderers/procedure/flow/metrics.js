@@ -61,6 +61,12 @@ export const LABEL_MAX_W = 150
 
 /** Corner radius of an orthogonal link where it turns */
 export const CORNER_R = 8
+/**
+ * The curved style: the same route, each turn drawn as a wide arc of up to this radius (half the
+ * shorter of its two legs, so a short step between two turns becomes one smooth S). Capped, so
+ * an arc never swings far off its route into what lies beside it.
+ */
+export const CURVE_R = 40
 
 /**
  * The single source of node sizes. The rendering layer must not write a second copy.

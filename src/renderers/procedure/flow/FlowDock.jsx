@@ -4,7 +4,7 @@
 //  The controls are the ones listed in spec/procedure/schema-draft.md §6.2, in the four shapes
 //  of spec/fact/rendering.md §4.2 (no new shapes invented):
 //    condition labels / node detail / main line / stage bands / rules   independent switches → chips
-//    orientation                                                         two exclusive options → segmented
+//    orientation, link style (straight / curved)                         two exclusive options → segmented
 //    language, export image                                              shared with every dock (shell/DockParts.jsx)
 //  The stage-band and rule switches only appear when the data has stages / rules: a switch
 //  that can change nothing is noise.
@@ -27,6 +27,11 @@ const ORIENTATIONS = [
   ['horizontal', 'dock.horizontal'],
 ]
 
+const LINK_STYLES = [
+  ['straight', 'flow.linkStraight'],
+  ['curved', 'flow.linkCurved'],
+]
+
 export default function FlowDock({
   fields = {},
   onToggleField,
@@ -34,6 +39,8 @@ export default function FlowDock({
   hasRules = false,
   orientation = 'vertical',
   onToggleOrientation,
+  linkStyle = 'straight',
+  onToggleLinkStyle,
   exporting = false,
   onExport,
 }) {
@@ -55,6 +62,8 @@ export default function FlowDock({
         <span className="antu-dock-sep" />
 
         <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} />
+
+        <DockSegmented options={LINK_STYLES} value={linkStyle} onChange={onToggleLinkStyle} title={t('flow.linkStyle')} />
 
         <span className="antu-dock-sep" />
 

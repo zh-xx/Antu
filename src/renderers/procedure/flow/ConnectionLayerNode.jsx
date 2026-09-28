@@ -20,7 +20,9 @@ import { linkPaint, SCOPE_PAINT } from './palette.js'
 const KINDS = ['main', 'branch', 'back']
 
 const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
-  const { connections, ruleLinks = [], width, height, showConditions, highlightMain } = data
+  const { connections, ruleLinks = [], width, height, showConditions, highlightMain, curved } = data
+  // Straight or curved: the same route either way (layout.js computes both paths), so switching
+  // moves no node and no label
 
   return (
     <div className={`antu-plinks${highlightMain ? ' is-main-hl' : ''}`}>
@@ -50,7 +52,7 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
             <path
               key={c.id}
               className={`antu-plink k-${c.kind}`}
-              d={c.d}
+              d={curved ? c.dCurve : c.d}
               fill="none"
               stroke={p.stroke}
               strokeWidth={p.width}
@@ -67,7 +69,7 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
             <path
               key={l.id}
               className={`antu-plink ${l.scope ? 'k-scope' : 'k-rule'}`}
-              d={l.d}
+              d={curved ? l.dCurve : l.d}
               fill="none"
               stroke={p.stroke}
               strokeWidth={p.width}

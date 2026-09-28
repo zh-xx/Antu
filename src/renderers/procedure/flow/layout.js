@@ -27,6 +27,7 @@
 
 import { validateProcedure, hintsOfProcedure, ruleEndIds } from './rules.js'
 import { elkLayoutSync } from './elk.js'
+import { straighten, linkCost } from './straighten.js'
 // The same text measure the fact cards use, so a CJK character counts the same everywhere
 import { textEm } from '../../fact/cardGeometry.js'
 import {
@@ -34,8 +35,10 @@ import {
   LAYER_GAP,
   NODE_GAP,
   CORNER_R,
+  CURVE_R,
   STAGE_PAD_TOP,
   STAGE_PAD,
+  STAGE_TITLE_FONT,
   TRACK,
   LABEL_FONT,
   LABEL_LINE,
@@ -80,6 +83,46 @@ export function toPathD(points, r = CORNER_R) {
     const outUy = (ny - cy) / (outLen || 1)
     d.push(`L ${cx - inUx * rr} ${cy - inUy * rr}`)
     d.push(`Q ${cx} ${cy} ${cx + outUx * rr} ${cy + outUy * rr}`)
+  }
+  const last = points[points.length - 1]
+  d.push(`L ${last[0]} ${last[1]}`)
+  return d.join(' ')
+}
+
+/**
+ * The same polyline drawn curved: every turn becomes a wide arc (a cubic that leaves along one
+ * leg and arrives along the next), so the ends still leave and meet their nodes straight on and
+ * the route is the one the tests pin; only the corners change. A straight link stays straight.
+ */
+export function toCurveD(points, r = CURVE_R) {
+  if (!Array.isArray(points) || points.length < 2) return ''
+  if (points.length === 2) return toPathD(points)
+  const d = [`M ${points[0][0]} ${points[0][1]}`]
+  for (let i = 1; i < points.length - 1; i += 1) {
+    const [px, py] = points[i - 1]
+    const [cx, cy] = points[i]
+    const [nx, ny] = points[i + 1]
+    const inLen = Math.hypot(cx - px, cy - py)
+    const outLen = Math.hypot(nx - cx, ny - cy)
+    // A leg shared by two turns gives each half of it; an end leg is all this turn's
+    const inShare = i === 1 ? inLen : inLen / 2
+    const outShare = i === points.length - 2 ? outLen : outLen / 2
+    const rr = Math.max(0, Math.min(r, inShare, outShare))
+    if (rr === 0) {
+      d.push(`L ${cx} ${cy}`)
+      continue
+    }
+    const inUx = (cx - px) / (inLen || 1)
+    const inUy = (cy - py) / (inLen || 1)
+    const outUx = (nx - cx) / (outLen || 1)
+    const outUy = (ny - cy) / (outLen || 1)
+    const k = 0.55
+    const sx = cx - inUx * rr
+    const sy = cy - inUy * rr
+    const ex = cx + outUx * rr
+    const ey = cy + outUy * rr
+    d.push(`L ${sx} ${sy}`)
+    d.push(`C ${sx + inUx * rr * k} ${sy + inUy * rr * k} ${ex - outUx * rr * k} ${ey - outUy * rr * k} ${ex} ${ey}`)
   }
   const last = points[points.length - 1]
   d.push(`L ${last[0]} ${last[1]}`)
@@ -238,7 +281,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     ...spacing,
     'elk.padding': `[top=${STAGE_PAD_TOP},left=${STAGE_PAD},bottom=${STAGE_PAD},right=${STAGE_PAD}]`,
   }
-  const buildGraph = (withStages) => ({
+  const buildGraph = (withStages, placement) => ({
     id: 'root',
     layoutOptions: {
       'elk.algorithm': 'layered',
@@ -247,11 +290,8 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       'elk.edgeRouting': 'ORTHOGONAL',
       ...spacing,
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-      // Brandes–Köpf aligns each node with its neighbours across the stage boxes; network
-      // simplex, which aligns them only within one graph level, bent the main line at every
-      // box border (measured: 22 of 140 main links bent, against 10 with this)
-      'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
-      'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
+      // How nodes are placed across the flow: tried several ways, see PLACEMENTS below
+      ...placement,
       // Keep the order the author wrote nodes and edges in wherever it costs no crossing: the
       // same JSON always gives the same picture. (Not for cycle breaking: back edges arrive
       // already reversed, and the MODEL_ORDER breaker would reverse any edge that points at a
@@ -291,36 +331,133 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
         : {},
     })),
   })
-  // Any valid JSON must render: if ELK cannot lay the stages out as boxes (a forward edge from a
-  // later stage back into an earlier one can make that impossible), lay out once more without
-  // them rather than fail
-  let laid
-  const boxed = showStages && presentStages.length > 0
-  try {
-    laid = elkLayoutSync(buildGraph(boxed))
-  } catch (err) {
-    if (!boxed) throw err
-    laid = elkLayoutSync(buildGraph(false))
-  }
+  const diamonds = new Set(nodes.filter((n) => n.kind === 'decision').map((n) => n.id))
 
-  // Everything shifts by the padding. Coordinates come back absolute (json.shapeCoords ROOT).
-  const ox = PAD
-  const oy = PAD
-  const placed = new Map()
-  const stageBoxes = []
-  const collect = (list) => {
-    for (const c of list ?? []) {
-      if (c.id.startsWith('stage:')) {
-        const st = stageById.get(c.id.slice('stage:'.length))
-        stageBoxes.push({ stageId: st.id, label: st.label, x: c.x + ox, y: c.y + oy, w: c.width, h: c.height })
-        collect(c.children)
-      } else {
-        placed.set(c.id, { x: c.x + ox, y: c.y + oy, w: c.width, h: c.height })
+  // One complete placement: ELK with the given node placement, links read back and
+  // straightened. Returns the node boxes, the stage boxes, the links and the content size.
+  const place = (placement) => {
+    // Any valid JSON must render: if ELK cannot lay the stages out as boxes (a forward edge from a
+    // later stage back into an earlier one can make that impossible), lay out once more without
+    // them rather than fail
+    let laid
+    const boxed = showStages && presentStages.length > 0
+    try {
+      laid = elkLayoutSync(buildGraph(boxed, placement))
+    } catch (err) {
+      if (!boxed) throw err
+      laid = elkLayoutSync(buildGraph(false, placement))
+    }
+
+    // Everything shifts by the padding. Coordinates come back absolute (json.shapeCoords ROOT).
+    const ox = PAD
+    const oy = PAD
+    const placed = new Map()
+    const stageBoxes = []
+    const collect = (list) => {
+      for (const c of list ?? []) {
+        if (c.id.startsWith('stage:')) {
+          const st = stageById.get(c.id.slice('stage:'.length))
+          stageBoxes.push({ stageId: st.id, label: st.label, x: c.x + ox, y: c.y + oy, w: c.width, h: c.height })
+          collect(c.children)
+        } else {
+          placed.set(c.id, { x: c.x + ox, y: c.y + oy, w: c.width, h: c.height })
+        }
       }
     }
+    collect(laid.children)
+    const size = { width: laid.width + ox + PAD, height: laid.height + oy + PAD }
+
+    // ELK attaches links to a node's bounding box. A diamond only fills the middle of its box, so
+    // a link leaving the bottom beside the tip would start in the empty corner under a slanted
+    // edge. Slide such an end along its own segment until it meets the diamond's outline; the
+    // segment keeps its direction, it only gets longer.
+    const snapToDiamond = (pt, id) => {
+      if (byId.get(id)?.kind !== 'decision') return pt
+      const b = placed.get(id)
+      const [x, y] = pt
+      const cx = b.x + b.w / 2
+      const cy = b.y + b.h / 2
+      const onTopOrBottom = Math.abs(y - b.y) < 0.5 || Math.abs(y - (b.y + b.h)) < 0.5
+      if (onTopOrBottom) {
+        const dy = (b.h / 2) * (1 - Math.min(1, Math.abs(x - cx) / (b.w / 2)))
+        return [x, y < cy ? cy - dy : cy + dy]
+      }
+      const dx = (b.w / 2) * (1 - Math.min(1, Math.abs(y - cy) / (b.h / 2)))
+      return [x < cx ? cx - dx : cx + dx, y]
+    }
+
+    // Links, straight from ELK's sections. A label comes back as a box (top left and size) that
+    // ELK placed clear of every node; the renderer draws it exactly there.
+    const byEdge = new Map(laid.edges.map((e) => [e.id, e]))
+    const connections = groups.map((g, i) => {
+      const e = byEdge.get(`g${i}`)
+      const sec = e?.sections?.[0]
+      const points = sec
+        ? [sec.startPoint, ...(sec.bendPoints ?? []), sec.endPoint].map((p) => [p.x + ox, p.y + oy])
+        : []
+      // A back edge went in reversed; turn it round so it starts at its source again
+      if (g.isBack) points.reverse()
+      if (points.length >= 2) {
+        points[0] = snapToDiamond(points[0], g.from)
+        points[points.length - 1] = snapToDiamond(points[points.length - 1], g.to)
+      }
+      const lab = e?.labels?.[0]
+      return {
+        id: `c:${g.from}->${g.to}`,
+        from: g.from,
+        to: g.to,
+        kind: g.isBack ? 'back' : g.isMain ? 'main' : 'branch',
+        merged: g.merged,
+        points,
+        d: toPathD(points),
+        label: g.label,
+        labelAt: lab ? { x: lab.x + ox, y: lab.y + oy } : null,
+        labelSize: lab ? { width: lab.width, height: lab.height } : null,
+      }
+    })
+    // Fewer bends than ELK's router leaves: straight first, then one bend (see straighten.js).
+    // Stage titles are obstacles, so a link never runs through a stage's name.
+    const stageTitles = stageBoxes.map((b) => ({
+      x: b.x + STAGE_PAD - 2,
+      y: b.y + 7,
+      w: Math.min(b.w - STAGE_PAD * 2, textEm(b.label) * STAGE_TITLE_FONT + 4),
+      h: 18,
+    }))
+    const straightened = straighten(connections, placed, stageTitles, vertical, diamonds)
+    straightened.forEach((c, i) => {
+      connections[i] = { ...c, d: toPathD(c.points), dCurve: toCurveD(c.points) }
+    })
+    // A route out round the side can reach past ELK's box: the content grows to hold it
+    for (const c of connections) {
+      for (const [x, y] of c.points) {
+        size.width = Math.max(size.width, x + PAD)
+        size.height = Math.max(size.height, y + PAD)
+      }
+      if (c.labelAt) {
+        size.width = Math.max(size.width, c.labelAt.x + c.labelSize.width + PAD)
+        size.height = Math.max(size.height, c.labelAt.y + c.labelSize.height + PAD)
+      }
+    }
+    return { placed, stageBoxes, connections, size }
   }
-  collect(laid.children)
-  const size = { width: laid.width + ox + PAD, height: laid.height + oy + PAD }
+
+  // Node placement decides how many bends are left: where two nodes are not in line no route is
+  // straight. No one ELK strategy is best for every contract (Brandes–Köpf aligns across the
+  // stage boxes and wins most; network simplex wins where a long branch pulls the main line
+  // aside), so each is tried and the picture with the least bending is kept. ELK is quick
+  // enough for this; on a tie the first one wins, so the choice is stable.
+  const PLACEMENTS = [
+    { 'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF', 'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED' },
+    { 'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX' },
+    { 'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF' },
+  ]
+  let best = null
+  for (const placement of PLACEMENTS) {
+    const tried = place(placement)
+    const cost = tried.connections.reduce((n, c) => n + linkCost(c, tried.placed, diamonds), 0)
+    if (!best || cost < best.cost) best = { ...tried, cost }
+  }
+  const { placed, stageBoxes, connections, size } = best
 
   // Boxes in along/across coordinates (along = the direction the layers run)
   const boxes = new Map(
@@ -333,54 +470,6 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     }),
   )
 
-  // ELK attaches links to a node's bounding box. A diamond only fills the middle of its box, so
-  // a link leaving the bottom beside the tip would start in the empty corner under a slanted
-  // edge. Slide such an end along its own segment until it meets the diamond's outline; the
-  // segment keeps its direction, it only gets longer.
-  const snapToDiamond = (pt, id) => {
-    if (byId.get(id)?.kind !== 'decision') return pt
-    const b = placed.get(id)
-    const [x, y] = pt
-    const cx = b.x + b.w / 2
-    const cy = b.y + b.h / 2
-    const onTopOrBottom = Math.abs(y - b.y) < 0.5 || Math.abs(y - (b.y + b.h)) < 0.5
-    if (onTopOrBottom) {
-      const dy = (b.h / 2) * (1 - Math.min(1, Math.abs(x - cx) / (b.w / 2)))
-      return [x, y < cy ? cy - dy : cy + dy]
-    }
-    const dx = (b.w / 2) * (1 - Math.min(1, Math.abs(y - cy) / (b.h / 2)))
-    return [x < cx ? cx - dx : cx + dx, y]
-  }
-
-  // Links, straight from ELK's sections. A label comes back as a box (top left and size) that
-  // ELK placed clear of every node; the renderer draws it exactly there.
-  const byEdge = new Map(laid.edges.map((e) => [e.id, e]))
-  const connections = groups.map((g, i) => {
-    const e = byEdge.get(`g${i}`)
-    const sec = e?.sections?.[0]
-    const points = sec
-      ? [sec.startPoint, ...(sec.bendPoints ?? []), sec.endPoint].map((p) => [p.x + ox, p.y + oy])
-      : []
-    // A back edge went in reversed; turn it round so it starts at its source again
-    if (g.isBack) points.reverse()
-    if (points.length >= 2) {
-      points[0] = snapToDiamond(points[0], g.from)
-      points[points.length - 1] = snapToDiamond(points[points.length - 1], g.to)
-    }
-    const lab = e?.labels?.[0]
-    return {
-      id: `c:${g.from}->${g.to}`,
-      from: g.from,
-      to: g.to,
-      kind: g.isBack ? 'back' : g.isMain ? 'main' : 'branch',
-      merged: g.merged,
-      points,
-      d: toPathD(points),
-      label: g.label,
-      labelAt: lab ? { x: lab.x + ox, y: lab.y + oy } : null,
-      labelSize: lab ? { width: lab.width, height: lab.height } : null,
-    }
-  })
   const backList = spec.edges.filter((e) => back.has(keyOf(e)))
 
   // Layers, read back from where ELK put the nodes (for the stats and the popover direction)
@@ -475,10 +564,10 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       const stubs = cards.map((c) => c.a0 + 18)
       for (const [n, a] of stubs.entries()) {
         const pts = [P(a, laneC0), P(a, trunkC)]
-        ruleLinks.push({ id: `rl:${cards[n].rule.id}`, points: pts, d: toPathD(pts), arrow: false })
+        ruleLinks.push({ id: `rl:${cards[n].rule.id}`, points: pts, d: toPathD(pts), dCurve: toPathD(pts), arrow: false })
       }
       const pts = [P(Math.min(...stubs), trunkC), P(bottom, trunkC), P(bottom, e.cm), P(e.a1, e.cm)]
-      ruleLinks.push({ id: `rt:${endId}`, to: endId, points: pts, d: toPathD(pts), arrow: true })
+      ruleLinks.push({ id: `rt:${endId}`, to: endId, points: pts, d: toPathD(pts), dCurve: toCurveD(pts), arrow: true })
       if (vertical) size.height = Math.max(size.height, bottom + PAD)
       else size.width = Math.max(size.width, bottom + PAD)
     }
@@ -500,7 +589,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       .forEach((bar, i) => {
         const c = laneC0 + laneAcross + SCOPE_BAR_GAP + i * SCOPE_BAR_PITCH
         const pts = [P(bar.from + 6, c), P(bar.to - 6, c)]
-        ruleLinks.push({ id: `rs:${bar.from}|${bar.to}`, points: pts, d: toPathD(pts), arrow: false, scope: true })
+        ruleLinks.push({ id: `rs:${bar.from}|${bar.to}`, points: pts, d: toPathD(pts), dCurve: toPathD(pts), arrow: false, scope: true })
         laneAcross = Math.max(laneAcross, c - laneC0 + 4)
       })
 
