@@ -193,7 +193,11 @@ function checkLint() {
 function checkUnit() {
   section('unit tests')
   try {
-    const out = execFileSync('node', ['--test', 'test/*.test.mjs'], {
+    // The TAP reporter explicitly: the counts below are read from its "# pass N" lines, and
+    // Node's default reporter changed from TAP to spec in Node 24 ("ℹ pass N"), which made
+    // this check fail on newer Node while CI (Node 22) stayed green. `npm test` keeps the
+    // default output, for people.
+    const out = execFileSync('node', ['--test', '--test-reporter=tap', 'test/*.test.mjs'], {
       cwd: REPO,
       stdio: 'pipe',
       encoding: 'utf8',
@@ -400,6 +404,12 @@ function checkData() {
   const noType = describeSchema('relationship').reason ?? ''
   truthy('a missing major type gives a readable reason (not undefined)', noType.startsWith('no reference material for type'), noType)
   truthy('the mechanism guide is fetched by major type', listAgentGuides().includes('fact'))
+  // Every type the engine can draw has its guide: antu_guide(type="procedure") once answered
+  // "no mechanism notes" while schema, examples and layout all worked (issue #13)
+  const noGuide = listKnowledgeTypes()
+    .map(({ type }) => type)
+    .filter((t) => !listAgentGuides().includes(t))
+  truthy('every registered type has its mechanism guide', noGuide.length === 0, noGuide.join(', '))
 
   // The geometry report is the tool's text output, so it is asserted by its content, not just by
   // "a string came back": the fit zoom and the orientation advice are exactly what an agent reads
@@ -546,6 +556,9 @@ function checkData() {
   const schemaTok = tokOf(describeSchema('fact').text)
   const guideTok = tokOf(readAgentGuide('fact'))
   const agentRefTok = schemaTok + guideTok
+  // The procedure material has the same budget
+  const procRefTok = tokOf(describeSchema('procedure').text) + tokOf(readAgentGuide('procedure') ?? '')
+  truthy('the procedure reference material stays small too (under 6k tokens)', procRefTok < 6, `${procRefTok.toFixed(1)}k tokens`)
   truthy(
     'the agent reference material is still about the size we advertise (under 6k tokens)',
     agentRefTok < 6,

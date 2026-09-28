@@ -55,8 +55,8 @@ different things**; do not mix them.
 ### For agents (needed to write JSON)
 
 **The three reference tools are all dispatched by type**: pass `type` to get material
-for that kind of diagram, omit it and you get `fact`. So far only the fact type exists;
-asking for another type returns an explicit "there is no procedure material yet" rather
+for that kind of diagram, omit it and you get `fact`. Two types exist so far, fact and
+procedure; asking for another type returns an explicit "there is no such type yet" rather
 than an empty table (an empty table reads as "this type exists, it is just empty").
 
 | Tool | What it does | Size | Needs a browser |
@@ -252,8 +252,7 @@ price is maintaining protocol version compatibility yourself. For now the SDK is
 
 ## 7. Not done yet
 
-- geometry for the relationship type, the procedure type and other sub-types
-  (`antu_layout` currently only understands the fact timeline)
+- geometry for types not built yet (relationship and others); fact and procedure are done
 - incremental preview (each run starts a fresh Chrome, about 2.4 seconds; reusing an
   instance could bring it down to a few hundred milliseconds)
 - returning the preview image alongside the previous one so an agent sees before and

@@ -130,7 +130,7 @@ server.registerTool(
       'about 1.9k tokens. Then call antu_guide (where an event is drawn) and antu_examples (how one is written). ' +
       'Cross-field rules (dangling references, a span running backwards, and so on) are not in this table: ' +
       'call antu_validate after writing and it will report each one.\n' +
-      'Omit type and you get the fact diagram. So far only the fact type exists; the other three are not built yet.',
+      'Types built so far: fact (timeline) and procedure (flowchart). Omit type and you get fact.',
     inputSchema: {
       type: z.string().optional().describe('which diagram type, fact by default (fact diagram)'),
     },
@@ -146,10 +146,11 @@ server.registerTool(
   {
     title: 'Mechanism notes',
     description:
-      'One page on where an event is drawn: slots set the row, groupId sets the side, actorIds set the lane, ' +
-      'how views are switched, and that "one event per cell" limit with its three ways out. Read it once before writing JSON ' +
+      'One page on how the data becomes the picture. fact: slots set the row, groupId sets the side, actorIds set the lane, ' +
+      'how views are switched, and that "one event per cell" limit with its three ways out. procedure: nodes, edges and ' +
+      'rules, what the main line is, and when a clause is a rule rather than a branch. Read it once before writing JSON ' +
       'and it saves a few rounds of validation. The field list is antu_schema, real examples to copy from are antu_examples.\n' +
-      'Omit type and you get the fact diagram. The other three types are not built yet.',
+      'Types built so far: fact and procedure. Omit type and you get fact.',
     inputSchema: {
       type: z.string().optional().describe('which diagram type, fact by default (fact diagram)'),
     },
