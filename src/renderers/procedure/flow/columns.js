@@ -12,9 +12,13 @@
 //  direction inside them and draws a 2074×221 strip). So:
 //    1. each stage is laid out by ELK on its own, top-down, links inside it routed and then
 //       straightened (straighten.js), exactly as the single-graph layout does;
-//    2. the columns are set side by side, tops aligned, in the order of `stages`;
-//    3. a link from one stage to another is routed by router.js (fewest bends, then shortest,
-//       clear of every node, stage title and label).
+//    2. a stage far taller than the rest is cut in two, the halves side by side in its box;
+//    3. a stage may be mirrored, so the side its links to the next stage leave by is free;
+//    4. the boxes are set side by side, tops aligned, each as tall as its own content;
+//    5. a link from one stage to another is routed by router.js (fewest bends, then shortest,
+//       clear of every node, stage title and label, never along a box's edge);
+//    6. the whole picture is straightened once more, and a link that still crosses another is
+//       routed afresh (the loop gives way, the main line keeps the direct route).
 //
 //  Everything is computed in one frame, the vertical one (flow down, columns across). The
 //  horizontal orientation is that picture transposed: node and label sizes go in with width
@@ -23,8 +27,8 @@
 // ============================================================
 
 import { elkLayoutSync } from './elk.js'
-import { straighten, linkCost } from './straighten.js'
-import { routeLink } from './router.js'
+import { straighten, linkCost, bendsOf } from './straighten.js'
+import { routeLink, edgesOf, runsAlongBorder } from './router.js'
 import { textEm } from '../../fact/cardGeometry.js'
 import {
   LAYER_GAP,
@@ -37,6 +41,50 @@ import {
   COLUMN_MIN_W,
   sizeOf,
 } from './metrics.js'
+
+/**
+ * When a stage is cut in two (②): taller than SPLIT_RATIO times the median stage, taller than
+ * SPLIT_MIN_H, and taller than SPLIT_ASPECT times the picture's width
+ */
+const SPLIT_RATIO = 1.5
+const SPLIT_MIN_H = 480
+const SPLIT_ASPECT = 0.7
+
+/**
+ * Where to cut a stage's picture in two: between two layers, where the fewest links cross (a
+ * forward link across the cut costs more than a loop) and the two halves come out about as tall.
+ * @returns {Set<string>[] | null} the two sets of node ids, top half first
+ */
+function cutInTwo(lay) {
+  const rects = [...lay.placed.entries()]
+  if (rects.length < 4) return null
+  const tops = [...new Set(rects.map(([, r]) => r.y))].sort((a, b) => a - b)
+  let best = null
+  for (let i = 1; i < tops.length; i += 1) {
+    const cut = tops[i]
+    const top = new Set(rects.filter(([, r]) => r.y < cut).map(([id]) => id))
+    const bottom = new Set(rects.filter(([, r]) => r.y >= cut).map(([id]) => id))
+    if (top.size < 2 || bottom.size < 2) continue
+    const across = lay.inner.filter((g) => top.has(g.from) !== top.has(g.to))
+    const forward = across.filter((g) => !g.isBack).length
+    const loops = across.length - forward
+    const hTop = Math.max(...rects.filter(([id]) => top.has(id)).map(([, r]) => r.y + r.h))
+    const hBottom = Math.max(...rects.map(([, r]) => r.y + r.h)) - cut
+    const score = forward * 1000 + loops * 300 + Math.abs(hTop - hBottom)
+    if (!best || score < best.score) best = { score, top, bottom }
+  }
+  return best ? [best.top, best.bottom] : null
+}
+
+/** Mirror a stage's picture left to right, nodes, links and labels together */
+function mirrorSegment(seg) {
+  const W = seg.width
+  for (const [id, r] of seg.placed) seg.placed.set(id, { ...r, x: W - r.x - r.w })
+  for (const c of seg.connections) {
+    c.points = c.points.map(([x, y]) => [W - x, y])
+    if (c.labelAt) c.labelAt = { x: W - c.labelAt.x - c.labelSize.width, y: c.labelAt.y }
+  }
+}
 
 /** Who gives way when two links cross: the loop first, the main line last */
 const GIVE_WAY = { back: 0, branch: 1, main: 2 }
@@ -88,15 +136,14 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
     return vertical ? b : { width: b.height, height: b.width }
   }
 
-  // ① each stage on its own
-  const columns = stages.map((st) => {
-    const own = nodes.filter((n) => n.stageId === st.id)
+  // ① each stage on its own (a set of its nodes; a stage cut in two is laid out once per part)
+  const layOut = (st, own) => {
     const ownIds = new Set(own.map((n) => n.id))
     const inner = groups.filter((g) => ownIds.has(g.from) && ownIds.has(g.to))
-    // Links leaving or entering the stage: ELK does not route them (router.js does, later), but
-    // it is told they exist, as links to a placeholder after the last layer and from one before
-    // the first. Otherwise it gives away the side a link needs to get out (the bottom point of a
-    // decision to a branch, say) and the link to the next stage has to cross that branch.
+    // Links leaving or entering: ELK does not route them (router.js does, later), but it is told
+    // they exist, as links to a placeholder after the last layer and from one before the first.
+    // Otherwise it gives away the side a link needs to get out (the bottom point of a decision
+    // to a branch, say) and the link to the next stage has to cross that branch.
     const outs = groups.filter((g) => ownIds.has(g.from) && !ownIds.has(g.to) && !g.isBack)
     const ins = groups.filter((g) => !ownIds.has(g.from) && ownIds.has(g.to) && !g.isBack)
     let best = null
@@ -105,12 +152,57 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
       const cost = tried.connections.reduce((s, c) => s + linkCost(c, tried.placed, diamonds), 0)
       if (!best || cost < best.cost) best = { ...tried, cost }
     }
-    // The column: its content, the title strip (at the real top, which is the frame's left when
-    // transposed), never narrower than a readable rule card below it
-    const titleW = textEm(st.label) * STAGE_TITLE_FONT + STAGE_PAD * 2
-    const w = Math.max(best.width + PAD_C0 + STAGE_PAD, vertical ? titleW : 0, vertical ? COLUMN_MIN_W : 0)
-    const h = Math.max(best.height + PAD_A0 + STAGE_PAD, vertical ? 0 : titleW)
-    return { st, ...best, w, h }
+    return { st, ids: ownIds, inner, ...best }
+  }
+  const whole = stages.map((st) => layOut(st, nodes.filter((n) => n.stageId === st.id)))
+
+  // ② A stage far taller than the others turns the picture back into a strip (03: one stage of
+  // nine steps beside a stage of two ends). It is cut in two, where the fewest links cross the
+  // cut and the halves come out even, and the halves stand side by side in the stage's box.
+  // Only when the picture is not already wide: splitting a tall stage of a wide picture helps
+  // nothing.
+  const heights = whole.map((l) => l.height).sort((a, b) => a - b)
+  const median = heights[Math.floor((heights.length - 1) / 2)]
+  const roughWidth = whole.reduce((s, l) => s + l.width + STAGE_PAD * 2 + COLUMN_GAP, 0)
+  const segments = []
+  for (const lay of whole) {
+    const tall = lay.height > SPLIT_MIN_H && lay.height > median * SPLIT_RATIO && lay.height > roughWidth * SPLIT_ASPECT
+    const parts = tall ? cutInTwo(lay) : null
+    if (parts) for (const ids of parts) segments.push(layOut(lay.st, nodes.filter((n) => ids.has(n.id))))
+    else segments.push(lay)
+  }
+  const segOf = new Map()
+  segments.forEach((seg, i) => {
+    for (const id of seg.ids) segOf.set(id, i)
+  })
+
+  // ③ A link into the next stage leaves by the node's side facing it. If other nodes of the
+  // stage stand on that side (01: "rectify" beside "second payment"), the link has to go out
+  // underneath and round, three bends instead of two. The stage's picture may be mirrored left
+  // to right: whichever leaves more of those sides free is kept.
+  segments.forEach((seg, k) => {
+    const blockedIf = (mirror) => {
+      const rects = [...seg.placed.entries()]
+      const side = (id, towards) => {
+        const r = seg.placed.get(id)
+        return rects.some(([o, q]) => {
+          if (o === id || q.y >= r.y + r.h || q.y + q.h <= r.y) return false
+          const right = q.x >= r.x + r.w
+          const left = q.x + q.w <= r.x
+          return towards === 'right' ? (mirror ? left : right) : mirror ? right : left
+        })
+      }
+      let n = 0
+      for (const g of groups) {
+        if (g.isBack) continue
+        const a = segOf.get(g.from)
+        const b = segOf.get(g.to)
+        if (a === k && b > k && side(g.from, 'right')) n += 1
+        if (b === k && a < k && side(g.to, 'left')) n += 1
+      }
+      return n
+    }
+    if (blockedIf(true) < blockedIf(false)) mirrorSegment(seg)
   })
 
   function layoutStage(own, inner, placement, outs = [], ins = []) {
@@ -220,37 +312,54 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
     return { placed, connections: straightened, width: x1 - x0, height: y1 - y0 }
   }
 
-  // ② columns side by side, tops aligned
+  // ④ The stages side by side, tops aligned, each box as tall as its own content (a box
+  // stretched to the tallest one is mostly empty). A stage cut in two holds both halves side by
+  // side, a column gap apart.
   const placed = new Map()
   const boxes = []
   const connections = []
   let cx = PAD
-  for (const col of columns) {
-    const box = { stageId: col.st.id, label: col.st.label, x: cx, y: PAD, w: col.w, h: col.h }
-    boxes.push(box)
-    // The content sits centred across the column, clear of the title strip
-    const ox = cx + PAD_C0 + (col.w - PAD_C0 - STAGE_PAD - col.width) / 2
+  for (const st of stages) {
+    const segs = segments.filter((seg) => seg.st === st)
+    const content = segs.reduce((s, seg) => s + seg.width, 0) + COLUMN_GAP * (segs.length - 1)
+    const titleW = textEm(st.label) * STAGE_TITLE_FONT + STAGE_PAD * 2
+    const w = Math.max(content + PAD_C0 + STAGE_PAD, vertical ? titleW : 0, vertical ? COLUMN_MIN_W : 0)
+    const h = Math.max(Math.max(...segs.map((seg) => seg.height)) + PAD_A0 + STAGE_PAD, vertical ? 0 : titleW)
+    boxes.push({ stageId: st.id, label: st.label, x: cx, y: PAD, w, h })
+    // The content sits centred across the box, clear of the title strip
+    let ox = cx + PAD_C0 + (w - PAD_C0 - STAGE_PAD - content) / 2
     const oy = PAD + PAD_A0
-    for (const [id, r] of col.placed) placed.set(id, { ...r, x: r.x + ox, y: r.y + oy })
-    for (const c of col.connections) {
-      connections.push({
-        ...c,
-        points: c.points.map(([x, y]) => [x + ox, y + oy]),
-        labelAt: c.labelAt ? { x: c.labelAt.x + ox, y: c.labelAt.y + oy } : null,
-      })
+    for (const seg of segs) {
+      for (const [id, r] of seg.placed) placed.set(id, { ...r, x: r.x + ox, y: r.y + oy })
+      for (const c of seg.connections) {
+        connections.push({
+          ...c,
+          points: c.points.map(([x, y]) => [x + ox, y + oy]),
+          labelAt: c.labelAt ? { x: c.labelAt.x + ox, y: c.labelAt.y + oy } : null,
+        })
+      }
+      ox += seg.width + COLUMN_GAP
     }
-    cx += col.w + COLUMN_GAP
+    cx += w + COLUMN_GAP
   }
-  // Every column as tall as the tallest: the row of boxes reads as one band
   const tallest = Math.max(...boxes.map((b) => b.h))
-  for (const b of boxes) b.h = tallest
 
-  // ③ links between stages: main line first, then branches, then loops
+  // A route never runs along a box's edge (it would read as part of the box), and a link
+  // inside one stage stays inside that stage's box
+  const borders = boxes.flatMap(edgesOf)
+  const boxOfStage = new Map(boxes.map((b) => [b.stageId, b]))
+  const within = (c) => {
+    const a = byId.get(c.from).stageId
+    return a === byId.get(c.to).stageId ? boxOfStage.get(a) : null
+  }
+
+  // ⑤ links between segments (between stages, or between the two halves of a stage): main line
+  // first, then branches, then loops
   const titles = boxes.map((b) => titleBoxOf(b, b.label, vertical))
   const nodeRects = [...placed.values()]
   const labelRect = (c) => (c.labelAt ? { x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height } : null)
   const rank = (g) => (g.isMain ? 0 : g.isBack ? 2 : 1)
-  const cross = groups.filter((g) => byId.get(g.from).stageId !== byId.get(g.to).stageId).sort((a, b) => rank(a) - rank(b))
+  const cross = groups.filter((g) => segOf.get(g.from) !== segOf.get(g.to)).sort((a, b) => rank(a) - rank(b))
   for (const g of cross) {
     const labels = connections.map(labelRect).filter(Boolean)
     const points =
@@ -264,9 +373,13 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
         // Loops are not in the way yet: the link to the next stage takes the direct route, and a
         // loop it then crosses gives way below
         routes: connections.filter((c) => c.kind !== 'back' || g.isBack).map((c) => ({ points: c.points })),
+        // ...but where a loop leaves or arrives is still taken
+        taken: connections.flatMap((c) => [c.points[0], c.points[c.points.length - 1]]),
+        borders,
+        bounds: within(g),
       }) ?? fallbackRoute(placed.get(g.from), placed.get(g.to))
     const size = g.label ? frameLabel(g.label) : null
-    const at = size ? placeLabel(points, size, nodeRects, [...titles, ...labels], connections) : null
+    const at = size ? placeLabel(points, size, nodeRects, [...titles, ...labels], connections, borders) : null
     connections.push({
       id: `c:${g.from}->${g.to}`,
       from: g.from,
@@ -283,8 +396,32 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
   // Once more over the whole picture, now that the links between stages are there: a loop
   // inside a stage may go round the side a link to the next stage leaves by, and has an
   // equally simple route on the other side that crosses nothing
-  const all = straighten(connections, placed, titles, true, diamonds)
+  const all = straighten(connections, placed, titles, true, diamonds, { borders, within })
   connections.splice(0, connections.length, ...all)
+
+  // A link ELK routed inside a stage may still run along the edge of the box (a loop round the
+  // outside of the content sits exactly one padding in): routed afresh, inside the box, off the
+  // edge, if the router finds such a route
+  for (const c of connections) {
+    const hugs = c.points.slice(1).some((q, i) => runsAlongBorder(c.points[i][0], c.points[i][1], q[0], q[1], borders))
+    if (!hugs) continue
+    const others = connections.filter((o) => o !== c)
+    const labels = others.map(labelRect).filter(Boolean)
+    const pts = routeLink({
+      from: placed.get(c.from),
+      to: placed.get(c.to),
+      fromDiamond: diamonds.has(c.from),
+      toDiamond: diamonds.has(c.to),
+      nodes: nodeRects,
+      blocks: [...titles, ...labels],
+      routes: others.map((o) => ({ points: o.points })),
+      borders,
+      bounds: within(c),
+    })
+    if (!pts || crossingsOf(pts, others) > crossingsOf(c.points, others)) continue
+    c.points = pts
+    if (c.labelSize) c.labelAt = placeLabel(pts, c.labelSize, nodeRects, [...titles, ...labels], others, borders)
+  }
 
   // Last: a link that still crosses another is routed afresh by the router, which counts a
   // crossing as worse than one more bend; the new route is kept only if it crosses less
@@ -304,10 +441,27 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
       nodes: nodeRects,
       blocks: [...titles, ...labels],
       routes: others.map((o) => ({ points: o.points })),
+      borders,
+      bounds: within(c),
     })
     if (!pts || crossingsOf(pts, others) >= before) continue
+    // A crossing is worse than one more bend, but not worse than a long way round: when two links
+    // must cross or one goes right round the stage (03: the main line out of the lower left and
+    // the renewal loop back to the upper left), they cross
+    if (bendsOf(pts) > bendsOf(c.points) + 1 || lengthOf(pts) > lengthOf(c.points) * 1.6 + 80) continue
     c.points = pts
-    if (c.labelSize) c.labelAt = placeLabel(pts, c.labelSize, nodeRects, [...titles, ...labels], others)
+    if (c.labelSize) c.labelAt = placeLabel(pts, c.labelSize, nodeRects, [...titles, ...labels], others, borders)
+  }
+
+  // Last of all: a label that ended up on another link (links moved after it was placed) is
+  // placed again, beside its own link
+  for (const c of connections) {
+    const r = labelRect(c)
+    if (!r) continue
+    const others = connections.filter((o) => o !== c)
+    if (!others.some((o) => segsOf(o.points).some((sg) => segHits(sg, r, 2)))) continue
+    const labels = others.map(labelRect).filter(Boolean)
+    c.labelAt = placeLabel(c.points, c.labelSize, nodeRects, [...titles, ...labels], others, borders)
   }
 
   // The content box
@@ -324,7 +478,7 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
     }
   }
 
-  const frame = { boxes, placed, connections, titles, width, height, diamonds }
+  const frame = { boxes, placed, connections, titles, borders, width, height, diamonds }
   return { frame, ...toReal(frame, vertical) }
 }
 
@@ -374,6 +528,9 @@ function fallbackRoute(a, b) {
   ]
 }
 
+/** The length of a polyline */
+const lengthOf = (pts) => pts.slice(1).reduce((s, q, i) => s + Math.abs(q[0] - pts[i][0]) + Math.abs(q[1] - pts[i][1]), 0)
+
 /** How many times a polyline crosses the given links */
 function crossingsOf(points, links) {
   const cross = ([a, b], [c, d]) => {
@@ -401,34 +558,49 @@ const segsOf = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
  * A spot for a label beside its route: along each segment, the longest first, near the start or
  * in the middle, on either side; clear of nodes, other labels, titles and every link.
  */
-export function placeLabel(points, size, nodeRects, blocks, links) {
+export function placeLabel(points, size, nodeRects, blocks, links, borders = []) {
   const { width: w, height: h } = size
-  const blocked = (r) =>
-    nodeRects.some((n) => overlaps(r, n, 3)) ||
-    blocks.some((b) => overlaps(r, b, 3)) ||
-    links.some((c) => segsOf(c.points).some((s) => segHits(s, r, 3))) ||
-    segsOf(points).some((s) => segHits(s, r, 1))
-  const segs = segsOf(points).sort(
-    (a, b) => Math.abs(b[1][0] - b[0][0]) + Math.abs(b[1][1] - b[0][1]) - (Math.abs(a[1][0] - a[0][0]) + Math.abs(a[1][1] - a[0][1])),
-  )
-  for (const [p, q] of segs) {
+  // What is wrong with a spot, weighted: 0 is clear. Past the top or left of the picture (the
+  // content grows right and down only) or over a node is worst; over another link or label, or
+  // on a box's edge (it would read as the box's), next; touching its own link, least.
+  const badness = (r) =>
+    (r.x < PAD / 2 || r.y < PAD / 2 ? 100 : 0) +
+    nodeRects.filter((n) => overlaps(r, n, 3)).length * 50 +
+    blocks.filter((b) => overlaps(r, b, 3)).length * 20 +
+    links.filter((c) => segsOf(c.points).some((s) => segHits(s, r, 3))).length * 10 +
+    borders.filter((s) => segHits(s, r, 3)).length * 5 +
+    (segsOf(points).some((s) => segHits(s, r, 1)) ? 30 : 0)
+  // Every spot beside every long enough segment: the middle first, then near the ends, then
+  // every few pixels along; tight to the line, then a little further off
+  let best = null
+  for (const [p, q] of segsOf(points)) {
     const horizontal = Math.abs(p[1] - q[1]) < 0.5
     const len = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1])
     const need = horizontal ? w : h
     if (len < need + 8) continue
     const dir = horizontal ? Math.sign(q[0] - p[0]) : Math.sign(q[1] - p[1])
-    for (const t of [(len - need) / 2, 6, len - need - 6]) {
-      for (const side of [1, -1]) {
-        const r = horizontal
-          ? { x: dir > 0 ? p[0] + t : p[0] - t - w, y: side < 0 ? p[1] - 4 - h : p[1] + 4, w, h }
-          : { x: side < 0 ? p[0] - 4 - w : p[0] + 4, y: dir > 0 ? p[1] + t : p[1] - t - h, w, h }
-        if (!blocked(r)) return { x: r.x, y: r.y }
+    const spots = [(len - need) / 2, 6, len - need - 6]
+    for (let t = 6; t <= len - need - 6; t += 8) spots.push(t)
+    for (const off of [4, 14]) {
+      for (const t of spots) {
+        for (const side of [1, -1]) {
+          const r = horizontal
+            ? { x: dir > 0 ? p[0] + t : p[0] - t - w, y: side < 0 ? p[1] - off - h : p[1] + off, w, h }
+            : { x: side < 0 ? p[0] - off - w : p[0] + off, y: dir > 0 ? p[1] + t : p[1] - t - h, w, h }
+          const bad = badness(r)
+          if (bad === 0) return { x: r.x, y: r.y }
+          // Longer segments first on a tie: a label reads with the long run of its line
+          if (!best || bad < best.bad || (bad === best.bad && len > best.len)) best = { bad, len, x: r.x, y: r.y }
+        }
       }
     }
   }
-  // Nowhere clear: beside the middle of the longest segment
-  const [p, q] = segs[0]
-  return { x: (p[0] + q[0]) / 2 + 4, y: (p[1] + q[1]) / 2 - h / 2 }
+  if (best) return { x: best.x, y: best.y }
+  // No segment long enough: beside the middle of the longest one
+  const [p, q] = segsOf(points).sort(
+    (a, b) => Math.abs(b[1][0] - b[0][0]) + Math.abs(b[1][1] - b[0][1]) - (Math.abs(a[1][0] - a[0][0]) + Math.abs(a[1][1] - a[0][1])),
+  )[0]
+  return { x: Math.max(PAD / 2, (p[0] + q[0]) / 2 + 4), y: Math.max(PAD / 2, (p[1] + q[1]) / 2 - h / 2) }
 }
 
 /**
@@ -572,8 +744,15 @@ export function placeRules({ frame, rules, stages, vertical, ruleHeight, textEm,
         from,
         to,
         toDiamond: false,
-        nodes: [...nodeRects, ...allCards.filter((c) => c.x !== from.x || c.y !== from.y)],
+        // Other cards are in the way, and so are the other stages' boxes: a card's link runs
+        // below and between the boxes and enters only the box of the end it leads to
+        nodes: [
+          ...nodeRects,
+          ...allCards.filter((c) => c.x !== from.x || c.y !== from.y),
+          ...frame.boxes.filter((b) => !(to.x >= b.x && to.x <= b.x + b.w && to.y >= b.y && to.y <= b.y + b.h)),
+        ],
         blocks: [...frame.titles, ...labels],
+        borders: frame.borders,
         routes: [
           ...frame.connections.map((c) => ({ points: c.points })),
           ...linksFrame.map((l) => ({ points: l.points, share: l.to === endId })),

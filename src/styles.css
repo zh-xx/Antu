@@ -967,7 +967,9 @@
   vertical-align: middle;
 }
 .antu-rule-when-one {
-  display: -webkit-inline-box;
+  /* A block box, not an inline one: inline, it sits on a baseline and takes 4px more than its
+     lines, and the consequence below is squeezed by that much (metrics.js counts lines only) */
+  display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;

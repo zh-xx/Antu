@@ -135,6 +135,10 @@ export const RULE_FOOT = 18
 /** At most this many lines per trigger and for the consequence; the rest is in the popover */
 export const RULE_WHEN_MAX_LINES = 2
 export const RULE_THEN_MAX_LINES = 3
+/** The indent of a listed trigger, the room the outcome dot takes, and the margin on the text measure */
+export const RULE_LIST_INDENT = 14
+export const RULE_DOT_W = 12
+const RULE_TEXT_SLACK = 1.08
 
 /**
  * Height of one rule card, from its text. `width`: the card's width (in the column layout a card
@@ -144,13 +148,19 @@ export const RULE_THEN_MAX_LINES = 3
 export function ruleHeight(rule, textEm, width = RULE_W, foot = true) {
   const inner = width - RULE_PAD * 2
   const whens = Array.isArray(rule.when) ? rule.when : [rule.when]
-  // A list of triggers is bulleted: the bullet takes about one em of each line
-  const whenPerLine = inner / RULE_WHEN_FONT - (whens.length > 1 ? 1 : 0)
-  // A list opens with its own line ("if any of:")
-  const whenLines = whens.reduce(
-    (n, w) => n + Math.min(RULE_WHEN_MAX_LINES, Math.max(1, Math.ceil(textEm(w) / whenPerLine))),
-    whens.length > 1 ? 1 : 0,
-  )
-  const thenLines = Math.min(RULE_THEN_MAX_LINES, Math.max(1, Math.ceil(textEm(rule.then) / (inner / RULE_THEN_FONT))))
-  return RULE_PAD * 2 + whenLines * RULE_WHEN_LINE + 4 + thenLines * RULE_THEN_LINE + (foot ? 4 + RULE_FOOT : 0)
+  // Lines, counted in pixels with a small margin: the text measure is an estimate, and one
+  // character too many on a line wraps it (measured: at 186px wide, a 13-character trigger that
+  // was counted as one line took two, and its card cut its consequence off)
+  const lines = (px, room, max) => Math.min(max, Math.max(1, Math.ceil((px * RULE_TEXT_SLACK) / room)))
+  const whenLines =
+    whens.length > 1
+      ? // A list opens with its own line ("if any of:"), and its items are indented by LIST_INDENT
+        whens.reduce((n, w) => n + lines(textEm(w) * RULE_WHEN_FONT, inner - RULE_LIST_INDENT, RULE_WHEN_MAX_LINES), 1)
+      : // A single trigger shares its first line with "if"
+        lines((textEm(whens[0]) + 1) * RULE_WHEN_FONT + 4, inner, RULE_WHEN_MAX_LINES)
+  // The consequence is bold, and a rule with a non-neutral outcome has a dot before it
+  const dot = rule.outcome && rule.outcome !== 'neutral' ? RULE_DOT_W : 0
+  const thenLines = lines(textEm(rule.then) * RULE_THEN_FONT * 1.12 + dot, inner, RULE_THEN_MAX_LINES)
+  // + 2: the card's 1px border, top and bottom (the card is border-box)
+  return RULE_PAD * 2 + 2 + whenLines * RULE_WHEN_LINE + 4 + thenLines * RULE_THEN_LINE + (foot ? 4 + RULE_FOOT : 0)
 }

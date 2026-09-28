@@ -21,6 +21,8 @@
 //  snapping here. Pure geometry: the unit tests pin it directly.
 // ============================================================
 
+import { runsAlongBorder } from './router.js'
+
 /** Room kept between a link and a node it passes, and between a label and anything else */
 const CLEAR = 8
 const LABEL_CLEAR = 3
@@ -122,7 +124,11 @@ function segsCross([a, b], [c, d]) {
  * @param {Set<string>} diamonds  ids of decision nodes (a straight link meets one only at its point)
  * @returns the connections, each with its points and label box possibly replaced
  */
-export function straighten(connections, placed, obstacles, vertical, diamonds = new Set()) {
+export function straighten(connections, placed, obstacles, vertical, diamonds = new Set(), opts = {}) {
+  // Column layout (columns.js): routes must not run along a stage box's edge, and a link inside
+  // one stage must stay inside its box. `borders`: edges as [[x0,y0],[x1,y1]]; `within(c)`: the
+  // rectangle link c must stay in, or null.
+  const { borders = [], within = () => null } = opts
   // Work in along/across coordinates: along is the direction the layers run
   const P = (a, c) => (vertical ? [c, a] : [a, c])
   const box = (id) => {
@@ -145,6 +151,12 @@ export function straighten(connections, placed, obstacles, vertical, diamonds = 
       }),
     )
   const clearOfObstacles = (pts) => segmentsOf(pts).every((s) => obstacles.every((o) => !segHitsRect(s, o, 2)))
+  // Off the box edges, and inside the box for a link within one stage
+  const keepsItsPlace = (c, pts) => {
+    if (segmentsOf(pts).some(([p, q]) => runsAlongBorder(p[0], p[1], q[0], q[1], borders))) return false
+    const r = within(c)
+    return !r || pts.every(([x, y]) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
+  }
 
   const candidatesFor = (c) => {
     const S = box(c.from)
@@ -277,6 +289,9 @@ export function straighten(connections, placed, obstacles, vertical, diamonds = 
       if (!c.labelSize) return { ok: true, at: null }
       const { width: w, height: h } = c.labelSize
       const blocked = (r) =>
+        // Never past the top or left of the picture: the content grows right and down only
+        r.x < 8 ||
+        r.y < 8 ||
         nodeRects.some((n) => rectsOverlap(r, n, LABEL_CLEAR)) ||
         obstacles.some((o) => rectsOverlap(r, o, LABEL_CLEAR)) ||
         others(c).some((o) => {
@@ -310,8 +325,21 @@ export function straighten(connections, placed, obstacles, vertical, diamonds = 
       return { ok: false }
     }
 
+    // An end another link already leaves or arrives at is taken: two links out of one point
+    // read as one link that forks
+    const sharesAnEnd = (pts, self) => {
+      const ends = [pts[0], pts[pts.length - 1]]
+      return others(self).some((o) =>
+        [o.points[0], o.points[o.points.length - 1]].some((q) => q && ends.some((e) => Math.abs(e[0] - q[0]) < 1 && Math.abs(e[1] - q[1]) < 1)),
+      )
+    }
     const fits = (c, pts) =>
-      clearOfNodes(pts, c.from, c.to) && clearOfObstacles(pts) && !liesOnAnother(pts, c) && !runsThroughALabel(pts, c)
+      !sharesAnEnd(pts, c) &&
+      clearOfNodes(pts, c.from, c.to) &&
+      clearOfObstacles(pts) &&
+      !liesOnAnother(pts, c) &&
+      !runsThroughALabel(pts, c) &&
+      keepsItsPlace(c, pts)
 
     // Take a route that runs through other links' labels, moving each of those labels to
     // another clear spot beside its own link. All or nothing: returns an undo, or null (and
@@ -356,6 +384,7 @@ export function straighten(connections, placed, obstacles, vertical, diamonds = 
       for (const o of options) {
         if (!must && o.cross > was) continue
         if (!clearOfNodes(o.pts, c.from, c.to) || !clearOfObstacles(o.pts) || liesOnAnother(o.pts, c)) continue
+        if (!keepsItsPlace(c, o.pts) || sharesAnEnd(o.pts, c)) continue
         const undo = takeMovingLabels(c, o.pts)
         if (!undo) continue
         const label = placeLabel(c, o.pts)

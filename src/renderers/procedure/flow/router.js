@@ -61,6 +61,46 @@ function portsOf(r, diamond) {
 }
 const OUTWARD = { top: 3, bottom: 1, left: 2, right: 0 }
 
+/** A route running along a box edge, closer than this, reads as part of the box */
+export const BORDER_GAP = 10
+
+/** Does the axis-aligned segment run along one of the edges (parallel, closer than BORDER_GAP)? */
+export function runsAlongBorder(x0, y0, x1, y1, borders) {
+  const horizontal = Math.abs(y0 - y1) < 0.5
+  for (const [[bx0, by0], [bx1, by1]] of borders) {
+    const bh = Math.abs(by0 - by1) < 0.5
+    if (bh !== horizontal) continue
+    if (horizontal) {
+      if (Math.abs(by0 - y0) >= BORDER_GAP) continue
+      if (Math.min(Math.max(x0, x1), Math.max(bx0, bx1)) - Math.max(Math.min(x0, x1), Math.min(bx0, bx1)) > 0.5) return true
+    } else {
+      if (Math.abs(bx0 - x0) >= BORDER_GAP) continue
+      if (Math.min(Math.max(y0, y1), Math.max(by0, by1)) - Math.max(Math.min(y0, y1), Math.min(by0, by1)) > 0.5) return true
+    }
+  }
+  return false
+}
+
+/** The four edges of a box, as border segments */
+export const edgesOf = (r) => [
+  [
+    [r.x, r.y],
+    [r.x + r.w, r.y],
+  ],
+  [
+    [r.x, r.y + r.h],
+    [r.x + r.w, r.y + r.h],
+  ],
+  [
+    [r.x, r.y],
+    [r.x, r.y + r.h],
+  ],
+  [
+    [r.x + r.w, r.y],
+    [r.x + r.w, r.y + r.h],
+  ],
+]
+
 /** A tiny binary heap of [cost, state] */
 class Heap {
   constructor() {
@@ -113,13 +153,23 @@ class Heap {
  * @param {{points:number[][], share?:boolean}[]} p.routes  links already drawn; `share` ones may be run along
  * @param {string[]} [p.outSides] [p.inSides]  restrict the sides used (default: all)
  * @param {object} [p.portCost]  override what a side costs: { in: { bottom: 0 } } for a link from below
+ * @param {number[][][]} [p.borders]  box edges ([[x0,y0],[x1,y1]]) a route may cross but not run along
+ * @param {{x,y,w,h}} [p.bounds]  keep the whole route inside this rectangle (a link inside one stage)
+ * @param {number[][]} [p.taken]  more points no route may start or end at (ends of links left out of `routes`)
  * @returns {number[][] | null}  the polyline, first point on the source, last on the target
  */
 export function routeLink(p) {
-  const { from, to, nodes, blocks = [], routes = [] } = p
+  const { from, to, nodes, blocks = [], routes = [], borders = [], bounds = null } = p
   const portCost = { out: { ...PORT_COST.out, ...p.portCost?.out }, in: { ...PORT_COST.in, ...p.portCost?.in } }
-  const outPorts = portsOf(from, p.fromDiamond).filter(([, , s]) => !p.outSides || p.outSides.includes(s))
-  const inPorts = portsOf(to, p.toDiamond).filter(([, , s]) => !p.inSides || p.inSides.includes(s))
+  // A port another link already leaves or arrives at is taken: two links out of one point read
+  // as one link that forks (links allowed to merge, `share`, may use it)
+  const taken = [
+    ...routes.filter((rt) => !rt.share && rt.points.length).flatMap((rt) => [rt.points[0], rt.points[rt.points.length - 1]]),
+    ...(p.taken ?? []),
+  ]
+  const free = ([x, y]) => !taken.some(([tx, ty]) => Math.abs(tx - x) < 1 && Math.abs(ty - y) < 1)
+  const outPorts = portsOf(from, p.fromDiamond).filter(([x, y, s]) => (!p.outSides || p.outSides.includes(s)) && free([x, y]))
+  const inPorts = portsOf(to, p.toDiamond).filter(([x, y, s]) => (!p.inSides || p.inSides.includes(s)) && free([x, y]))
 
   // Obstacles: nodes with clearance, the two ends without (the route starts on their edge)
   const isEnd = (r) => r === from || r === to || (r.x === from.x && r.y === from.y) || (r.x === to.x && r.y === to.y)
@@ -135,6 +185,10 @@ export function routeLink(p) {
   for (const r of blocks) {
     xsSet.add(r.x - 4).add(r.x + r.w + 4)
     ysSet.add(r.y - 4).add(r.y + r.h + 4)
+  }
+  for (const [[bx0, by0], [bx1, by1]] of borders) {
+    xsSet.add(bx0 - BORDER_GAP - 1).add(bx0 + BORDER_GAP + 1).add(bx1 - BORDER_GAP - 1).add(bx1 + BORDER_GAP + 1)
+    ysSet.add(by0 - BORDER_GAP - 1).add(by0 + BORDER_GAP + 1).add(by1 - BORDER_GAP - 1).add(by1 + BORDER_GAP + 1)
   }
   for (const [x, y] of [...outPorts, ...inPorts]) {
     xsSet.add(x)
@@ -177,6 +231,8 @@ export function routeLink(p) {
 
   // Is the axis-aligned segment clear, and how many links does it cross?
   const segCheck = (x0, y0, x1, y1) => {
+    if (bounds && (Math.min(x0, x1) < bounds.x || Math.max(x0, x1) > bounds.x + bounds.w || Math.min(y0, y1) < bounds.y || Math.max(y0, y1) > bounds.y + bounds.h)) return null
+    if (runsAlongBorder(x0, y0, x1, y1, borders)) return null
     if (solid.some((r) => hitsRect(x0, y0, x1, y1, r, CLEAR))) return null
     // The two ends: never through their inside (touching the edge is how a route starts)
     if ([from, to].some((r) => hitsRect(x0, y0, x1, y1, r, -0.5))) return null
