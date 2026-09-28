@@ -79,7 +79,7 @@ function simplify(points) {
 /**
  * Route every link.
  *
- * @param groups     [{ from, to, isBack, kind, label, merged }] one per link (edges between the
+ * @param groups     [{ from, to, isBack, isMain, label, merged }] one per link (edges between the
  *                   same pair already merged)
  * @param boxes      Map id -> { a0, a1, c0, c1, am, cm, row } in along/across coordinates
  * @param rows       [{ along, extent }] in layer order
@@ -112,10 +112,11 @@ export function routeLinks({ groups, boxes, rows, channels, vertical, gap }) {
   // (other links arrive along it).
   const occA = [] // { c, lo, hi, keys }
   const occC = [] // { a, lo, hi, keys }
-  const clash = (o, key, lo, hi) => !o.keys.includes(key) && overlaps(Math.min(lo, hi), Math.max(lo, hi), o.lo, o.hi, 4)
+  const keysOf = (key) => (Array.isArray(key) ? key : [key])
+  const clash = (o, key, lo, hi) =>
+    !keysOf(key).some((k) => o.keys.includes(k)) && overlaps(Math.min(lo, hi), Math.max(lo, hi), o.lo, o.hi, 4)
   const freeA = (c, lo, hi, key) => !occA.some((o) => Math.abs(o.c - c) < SAME_LINE && clash(o, key, lo, hi))
   const freeC = (a, lo, hi, key) => !occC.some((o) => Math.abs(o.a - a) < SAME_LINE && clash(o, key, lo, hi))
-  const keysOf = (key) => (Array.isArray(key) ? key : [key])
   const takeA = (c, lo, hi, key) => occA.push({ c, lo: Math.min(lo, hi), hi: Math.max(lo, hi), keys: keysOf(key) })
   const takeC = (a, lo, hi, key) => occC.push({ a, lo: Math.min(lo, hi), hi: Math.max(lo, hi), keys: keysOf(key) })
 
@@ -192,7 +193,7 @@ export function routeLinks({ groups, boxes, rows, channels, vertical, gap }) {
       ? { labelAt: { x: t.cm + 6, y: t.a0 - 3 }, labelAnchor: 'rise' }
       : { labelAt: { x: t.a0 - 3, y: t.cm - 4 }, labelAnchor: 'lead' }
 
-  // Order matters for who gets the centre track: adjacent-layer links first (they are the
+  // Order matters for who gets the centre track: the main line, then adjacent-layer links (the
   // skeleton of the diagram), then longer forward links, then back edges.
   const order = groups
     .map((g, i) => ({ g, i }))
@@ -221,7 +222,11 @@ export function routeLinks({ groups, boxes, rows, channels, vertical, gap }) {
           ])
           pts = [[s.a1, cs[0]], [a, cs[0]], [a, cs[1]], [t.a0, cs[1]]]
         }
-      } else if (Math.abs(s.cm - t.cm) < 0.5 && !blockedA(s.cm, s.a1, t.a0, [g.from, g.to]) && freeA(s.cm, s.a1, t.a0, out)) {
+      } else if (
+        Math.abs(s.cm - t.cm) < 0.5 &&
+        !blockedA(s.cm, s.a1, t.a0, [g.from, g.to]) &&
+        freeA(s.cm, s.a1, t.a0, [out, `in:${g.to}`])
+      ) {
         // Same column and nothing in between: straight down
         pts = [[s.a1, s.cm], [t.a0, t.cm]]
         takeA(s.cm, s.a1, t.a0, [out, `in:${g.to}`])
@@ -242,26 +247,32 @@ export function routeLinks({ groups, boxes, rows, channels, vertical, gap }) {
       label ??= approachLabel(t)
     } else {
       const key = `back:${g.to}`
-      // Side route: out of the source's side, along a channel, into the target's side.
+      // Side route: out of one side of the source, along a channel, into one side of the target.
+      // All four pairings are tried: both on the right or both on the left (the loop goes round
+      // the outside of both), or each on the side facing the other (the loop runs between them,
+      // usually the shortest when they sit in neighbouring columns).
       let best = null
-      for (const side of [1, -1]) {
-        const sEdge = side > 0 ? s.c1 : s.c0
-        const tEdge = side > 0 ? t.c1 : t.c0
-        const x = pickChannel(
-          t.am,
-          s.am,
-          key,
-          (x) => Math.abs(x - sEdge) + Math.abs(x - tEdge) - (backLane.get(g.to) === x ? 1000 : 0),
-          (x) =>
-            (side > 0 ? x > Math.max(s.c1, t.c1) + 2 : x < Math.min(s.c0, t.c0) - 2) &&
-            !blockedC(s.am, sEdge, x, [g.from]) &&
-            !blockedC(t.am, x, tEdge, [g.to]) &&
-            freeC(s.am, sEdge, x, key) &&
-            freeC(t.am, x, tEdge, key),
-        )
-        if (x === undefined) continue
-        const cost = Math.abs(x - sEdge) + Math.abs(x - tEdge) - (backLane.get(g.to) === x ? 1000 : 0)
-        if (!best || cost < best.cost) best = { x, sEdge, tEdge, cost }
+      for (const sSide of [1, -1]) {
+        for (const tSide of [1, -1]) {
+          const sEdge = sSide > 0 ? s.c1 : s.c0
+          const tEdge = tSide > 0 ? t.c1 : t.c0
+          const cost = (x) => Math.abs(x - sEdge) + Math.abs(x - tEdge) - (backLane.get(g.to) === x ? 1000 : 0)
+          const x = pickChannel(
+            t.am,
+            s.am,
+            key,
+            cost,
+            (x) =>
+              (sSide > 0 ? x > s.c1 + 2 : x < s.c0 - 2) &&
+              (tSide > 0 ? x > t.c1 + 2 : x < t.c0 - 2) &&
+              !blockedC(s.am, sEdge, x, [g.from]) &&
+              !blockedC(t.am, x, tEdge, [g.to]) &&
+              freeC(s.am, sEdge, x, key) &&
+              freeC(t.am, x, tEdge, key),
+          )
+          if (x === undefined) continue
+          if (!best || cost(x) < best.cost) best = { x, sEdge, tEdge, cost: cost(x) }
+        }
       }
       if (best) {
         const { x, sEdge, tEdge } = best
@@ -301,8 +312,12 @@ export function routeLinks({ groups, boxes, rows, channels, vertical, gap }) {
   return result
 }
 
-/** Routing order: adjacent-layer forward links, then longer forward links, then back edges */
+/**
+ * Routing order: the main line first (it should be the straightest thing on the page), then
+ * adjacent-layer forward links, then longer forward links, then back edges
+ */
 function rank(g, boxes) {
+  if (g.isMain) return -1
   if (g.isBack) return 2
   return boxes.get(g.to).row - boxes.get(g.from).row === 1 ? 0 : 1
 }

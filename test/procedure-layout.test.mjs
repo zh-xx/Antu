@@ -362,9 +362,6 @@ test('back edges into one target share a lane wherever they can', () => {
   }
   const lanes = new Set(back.map(laneOf))
   assert.ok(lanes.size <= 8, `12 back edges should bundle into far fewer lanes, got ${lanes.size}`)
-  // n-15 and n-17 both return to n-3 from the right-hand column: one lane, not two
-  const [a, b] = ['n-15', 'n-17'].map((id) => back.find((c) => c.from === id && c.to === 'n-3'))
-  assert.equal(laneOf(a), laneOf(b))
 })
 
 test('a link carrying several conditions merges them into one label', () => {
@@ -460,6 +457,38 @@ test('every condition label says how it sits on its point', () => {
         assert.ok(['rise', 'lead', 'center'].includes(c.labelAnchor), `${f}/${dir}: ${c.id} anchor ${c.labelAnchor}`)
         assert.ok(Number.isFinite(c.labelAt.x) && Number.isFinite(c.labelAt.y), `${f}/${dir}: ${c.id} label point`)
       }
+    }
+  }
+})
+
+test('the main line is drawn straight: every main link is one segment', () => {
+  // A main link that skips layers (a side strand made the layers between longer) once took a
+  // channel a track beside the main line and read as a doubled line. The main line is routed
+  // first and goes straight whenever nothing sits between its two nodes.
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), {}, undefined, dir)
+      for (const c of g.connections.filter((c) => c.kind === 'main')) {
+        assert.equal(c.points.length, 2, `${f}/${dir}: main link ${c.id} bends`)
+      }
+    }
+  }
+})
+
+test('side strands stay on their side of the main line', () => {
+  // A node goes under the nodes that lead into it, so a branch that left the main line to the
+  // right carries on down the right. In 01 this is what turned each stage's delay loop from a
+  // long detour round the whole diagram into a short loop beside the step it returns to.
+  for (const f of files) {
+    const g = buildProcedureGraph(load(f))
+    const spineX = g.nodes.find((n) => n.id === g.spine[0])
+    const mid = spineX.position.x + spineX.data.w / 2
+    const side = new Map(g.nodes.map((n) => [n.id, Math.sign(n.position.x + n.data.w / 2 - mid)]))
+    const spine = new Set(g.spine)
+    for (const c of g.connections.filter((c) => c.kind === 'branch')) {
+      if (spine.has(c.from) || spine.has(c.to)) continue
+      const [a, b] = [side.get(c.from), side.get(c.to)]
+      assert.ok(a === b || a === 0 || b === 0, `${f}: ${c.id} jumps across the main line`)
     }
   }
 })

@@ -191,7 +191,15 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     }
   }
 
-  // ④ fix the columns within each layer: the main line centred, the rest right, left, right, left...
+  // ④ fix the columns within each layer. The main line sits in column 0. Every other node goes
+  // under the nodes that lead into it (the mean column of its forward predecessors), so a
+  // side branch keeps to one side of the main line and runs down its own column: the branch
+  // reads as a strand, and the main line keeps a free side for the loops that return to it.
+  // A node whose only predecessor is on the main line has no side yet; those alternate,
+  // starting with the side that has fewer nodes in the layer. Ties keep the data order.
+  const dagIn = new Map(ids.map((id) => [id, []]))
+  for (const e of spec.edges) if (!back.has(keyOf(e))) dagIn.get(e.to).push(e.from)
+  const colOf = new Map()
   const maxLayer = Math.max(0, ...ids.map((id) => layer.get(id) ?? 0))
   const rows = []
   for (let L = 0; L <= maxLayer; L += 1) {
@@ -200,14 +208,36 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       .sort((a, b) => order.get(a) - order.get(b))
     if (inLayer.length === 0) continue
     const col = new Map()
-    const spineHere = inLayer.filter((id) => spineSet.has(id))
-    const others = inLayer.filter((id) => !spineSet.has(id))
-    spineHere.forEach((id, i) => col.set(id, i))
-    const taken = new Set(col.values())
-    const cand = []
-    for (let s = 1; cand.length < others.length * 2 + 4; s += 1) cand.push(s, -s)
-    const free = cand.filter((c) => !taken.has(c))
-    others.forEach((id, i) => col.set(id, free[i]))
+    inLayer.filter((id) => spineSet.has(id)).forEach((id, i) => col.set(id, i))
+    const pull = new Map()
+    for (const id of inLayer) {
+      if (col.has(id)) continue
+      const cs = dagIn.get(id).filter((p) => colOf.has(p)).map((p) => colOf.get(p))
+      pull.set(id, cs.length ? cs.reduce((n, c) => n + c, 0) / cs.length : 0)
+    }
+    const others = [...pull.keys()]
+    const right = others.filter((id) => pull.get(id) > 0)
+    const left = others.filter((id) => pull.get(id) < 0)
+    for (const id of others.filter((id) => pull.get(id) === 0)) {
+      ;(right.length <= left.length ? right : left).push(id)
+    }
+    // Each side fills outwards from the main line: nearest pull first, never two in one column,
+    // and a node lands under its predecessors when that column is still free
+    const byPull = (a, b) => Math.abs(pull.get(a)) - Math.abs(pull.get(b)) || order.get(a) - order.get(b)
+    let next = Math.max(...[...col.values()]) + 1
+    if (!Number.isFinite(next)) next = 1
+    for (const id of right.sort(byPull)) {
+      const c = Math.max(next, Math.round(pull.get(id)))
+      col.set(id, c)
+      next = c + 1
+    }
+    next = -1
+    for (const id of left.sort(byPull)) {
+      const c = Math.min(next, Math.round(pull.get(id)))
+      col.set(id, c)
+      next = c - 1
+    }
+    for (const [id, c] of col) colOf.set(id, c)
     rows.push({
       layer: L,
       ids: inLayer,
@@ -293,7 +323,8 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     const { from, to } = group[0]
     const isBack = back.has(keyOf(group[0]))
     const labels = group.map((e) => e.condition).filter(Boolean)
-    return { from, to, isBack, merged: group.length, label: labels.length ? labels.join(' / ') : '' }
+    const isMain = !isBack && spineNext.get(from) === to
+    return { from, to, isBack, isMain, merged: group.length, label: labels.length ? labels.join(' / ') : '' }
   })
   const routed = routeLinks({ groups, boxes, rows, channels, vertical, gap })
 
@@ -308,7 +339,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       id: `c:${g.from}->${g.to}`,
       from: g.from,
       to: g.to,
-      kind: g.isBack ? 'back' : spineNext.get(g.from) === g.to ? 'main' : 'branch',
+      kind: g.isBack ? 'back' : g.isMain ? 'main' : 'branch',
       merged: g.merged,
       points: r.points,
       d: toPathD(r.points),

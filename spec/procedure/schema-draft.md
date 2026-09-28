@@ -502,12 +502,16 @@ Done     layering (longest path), back-edge detection and routing round the outs
          link routing (route.js): no link runs behind a node it does not belong to, and no two
          different links lie on top of each other (both pinned by unit tests on all 7 contracts,
          both orientations); long forward links run down node-free channels between columns;
-         back edges loop out of the nearest side and edges into one target share a lane
-Not done crossing minimisation / ordering within a layer. It is now the main limit: when a
-         back edge's target has neighbours on both sides in its layer, the edge cannot come in
-         from the side and takes the long way (out of the bottom, in at the top, joining the
-         main line); in 01 the three delay loops of each stage do this. Condition labels only
-         avoid their siblings, not every other line. **Placing note nodes** (the first version
+         back edges loop out of the nearest side and edges into one target share a lane;
+         ordering within a layer: a node goes under the nodes that lead into it, so a side
+         strand keeps to one side of the main line and runs down its own column, and the main
+         line keeps a free side for the loops that return to it (in 01 every delay loop is now a
+         short loop beside its stage, none takes the long way round); the main line is routed
+         first and every main link is one straight segment
+Not done full crossing minimisation. What is left shows in 03: one step fans out to four
+         termination triggers that all come back to one end, and those strands still cross.
+         Condition labels only avoid their siblings, not every other line. **Placing note
+         nodes** (the first version
          treats them as ordinary nodes on the first layer; they take no part in the flow and
          their position is still not good)
 ```
