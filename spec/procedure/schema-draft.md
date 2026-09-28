@@ -589,7 +589,7 @@ damages …), 05 has 4, 01 has 4. Several ends in one layer sit side by side in 
 | Control | Form | Notes |
 |---|---|---|
 | Orientation | segmented | vertical / horizontal |
-| Link style | segmented | straight / curved; remembered for every diagram |
+| Link style | segmented | curved (default) / straight; remembered for every diagram |
 | Condition labels | toggle | show / hide the `condition` on edges |
 | Node detail | toggle | whether to show the `detail` line |
 | Main-line highlight | toggle | bolden the main edges |

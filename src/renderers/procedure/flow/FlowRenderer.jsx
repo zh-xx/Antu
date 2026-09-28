@@ -84,9 +84,9 @@ export default function ProcedureFlow({ spec }) {
   }
   const vertical = orientation !== 'horizontal'
 
-  // Link style: straight (orthogonal, the default: with many links, lines that only run level
-  // or upright are easiest to follow) or curved. One choice for every diagram, remembered.
-  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || readPrefs().linkStyle || 'straight')
+  // Link style: curved (the default, the reader's choice: it reads softer, like Mermaid) or
+  // straight (orthogonal). Both draw the same route. One choice for every diagram, remembered.
+  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || readPrefs().linkStyle || 'curved')
   const toggleLinkStyle = (next) => {
     setLinkStyle(next)
     writePrefs({ linkStyle: next })

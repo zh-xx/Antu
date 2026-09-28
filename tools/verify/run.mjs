@@ -1512,20 +1512,20 @@ async function checkRenderProcedure(sampleFile) {
     await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[0].click()`, { userGesture: true })
     await settle()
 
-    // Link style, the second segmented control: curved draws arcs on the same routes, straight
-    // draws none; no node moves either way
+    // Link style, the second segmented control (curved first, the default): curved draws arcs,
+    // straight draws none, on the same routes; no node moves either way
     const linkPaths = () => browser.eval(`[...document.querySelectorAll('.antu-plink.k-main, .antu-plink.k-branch, .antu-plink.k-back')].map((p) => p.getAttribute('d')).join('|')`)
     const nodeBoxes = () => browser.eval(`[...document.querySelectorAll('.react-flow__node-pnode')].map((n) => n.style.transform).join('|')`)
-    const straightPaths = await linkPaths()
+    const curvedPaths = await linkPaths()
     const nodesBefore = await nodeBoxes()
-    truthy('straight style: no arc in any link', !/C /.test(straightPaths))
+    truthy('curved by default: links turn in arcs', /C /.test(curvedPaths))
     await browser.eval(`document.querySelectorAll('.antu-dock-bar .antu-dock-seg')[1].children[1].click()`, { userGesture: true })
     await settle()
-    truthy('curved style: links turn in arcs', /C /.test(await linkPaths()))
-    eq('curved style: no node moved', await nodeBoxes(), nodesBefore)
+    truthy('straight style: no arc in any link', !/C /.test(await linkPaths()))
+    eq('straight style: no node moved', await nodeBoxes(), nodesBefore)
     await browser.eval(`document.querySelectorAll('.antu-dock-bar .antu-dock-seg')[1].children[0].click()`, { userGesture: true })
     await settle()
-    eq('back to straight: the same paths as before', await linkPaths(), straightPaths)
+    eq('back to curved: the same paths as before', await linkPaths(), curvedPaths)
 
     // The overlay: keyboard pins it (the mouse path goes through React Flow), Escape closes it
     await browser.eval(`document.querySelector('.antu-pn.k-decision').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`)

@@ -28,8 +28,8 @@ const ORIENTATIONS = [
 ]
 
 const LINK_STYLES = [
-  ['straight', 'flow.linkStraight'],
   ['curved', 'flow.linkCurved'],
+  ['straight', 'flow.linkStraight'],
 ]
 
 export default function FlowDock({
@@ -39,7 +39,7 @@ export default function FlowDock({
   hasRules = false,
   orientation = 'vertical',
   onToggleOrientation,
-  linkStyle = 'straight',
+  linkStyle = 'curved',
   onToggleLinkStyle,
   exporting = false,
   onExport,
