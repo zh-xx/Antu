@@ -11,7 +11,7 @@
 //  self-drawn layer (ConnectionLayerNode), for the reasons in spec/procedure/schema-draft.md §6.1.
 //
 //  What reaches React Flow, in drawing order (later ones sit on top):
-//    stage bands → link layer → nodes
+//    stage boxes → link layer → nodes
 //  The two decoration layers are added here, not in layout.js: layout's `nodes` stays exactly
 //  "one per node of the data", which is what its unit tests pin.
 // ============================================================
@@ -25,17 +25,16 @@ import { useExport } from '../../../shell/useExport.js'
 import FlowNode from './FlowNode.jsx'
 import RuleCardNode from './RuleCardNode.jsx'
 import ConnectionLayerNode from './ConnectionLayerNode.jsx'
-import StageBandNode from './StageBandNode.jsx'
+import StageBoxNode from './StageBoxNode.jsx'
 import FlowDock from './FlowDock.jsx'
 import { buildProcedureGraph } from './layout.js'
-import { PAD } from './metrics.js'
 
 /** Node types used by the flowchart. Adding one means registering one line here. */
 const nodeTypes = {
   pnode: FlowNode,
   prule: RuleCardNode,
   plinks: ConnectionLayerNode,
-  pstages: StageBandNode,
+  pstages: StageBoxNode,
 }
 
 /**
@@ -86,7 +85,7 @@ export default function ProcedureFlow({ spec }) {
   const vertical = orientation !== 'horizontal'
 
   // Only the switches that move geometry go into layout: detail changes what a node shows,
-  // stages reserve the gutter. Condition labels and the main-line highlight are paint only,
+  // stages turn into boxes ELK lays out. Condition labels and the main-line highlight are paint only,
   // so toggling them re-draws the link layer without re-fitting the viewport.
   const layout = useMemo(
     () =>
@@ -102,13 +101,13 @@ export default function ProcedureFlow({ spec }) {
   const graph = useMemo(() => {
     const { width, height } = layout.size
     const deco = []
-    if (layout.stageBands.length) {
+    if (layout.stageBoxes.length) {
       deco.push({
         ...DECORATION,
         id: '__stages__',
         type: 'pstages',
         position: { x: 0, y: 0 },
-        data: { bands: layout.stageBands, pad: PAD, gutter: layout.gutter, width, height, vertical },
+        data: { boxes: layout.stageBoxes, width, height },
       })
     }
     deco.push({

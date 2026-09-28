@@ -16,9 +16,9 @@
 //      (dashed loops, the highlighted main line), not geometry
 //    ③ placement and routing are ELK's layered algorithm (elk.js): layering, crossing
 //      minimisation, node placement, orthogonal routing, and room for the condition labels.
-//      Stages become ELK partitions, so a stage never starts before the previous one ends;
-//      main-line edges get priority, so they stay straight
-//    ④ stage bands are read off where each stage's nodes ended up
+//      Each stage is a box holding its nodes (an ELK compound node); main-line edges get
+//      priority, so they stay straight
+//    ④ stage spans are read off the stage boxes, for the rule lane
 //    ⑤ the rule lane is placed beside the node field
 //
 //  The hand-written layering and router this replaced gave 12 and 38 crossings on
@@ -34,8 +34,8 @@ import {
   LAYER_GAP,
   NODE_GAP,
   CORNER_R,
-  STAGE_GUTTER_V,
-  STAGE_GUTTER_H,
+  STAGE_PAD_TOP,
+  STAGE_PAD,
   TRACK,
   LABEL_FONT,
   LABEL_LINE,
@@ -132,10 +132,9 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       connections: [],
       rows: [],
       spine: [],
-      stageBands: [],
+      stageBoxes: [],
       rules: [],
       ruleLinks: [],
-      gutter: 0,
       size: { width: 0, height: 0 },
       stats: emptyStats(),
     }
@@ -214,37 +213,45 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     return { from, to, isBack, isMain, merged: group.length, label: labels.length ? labels.join(' / ') : '' }
   })
 
-  // ③ ELK. Stages become partitions; a node without a stage takes the stage of the node before
-  // it in the data, so the order the author wrote is kept. An end reached only through rules
-  // goes in the last layer.
+  // ③ ELK. Each stage is a box (an ELK compound node) holding its nodes, drawn with its title:
+  // the grouping reads at a glance, and ELK routes links across the boxes and keeps labels
+  // clear of them. A node with no stage stays outside every box. An end reached only through
+  // rules goes in the last layer of its box.
   const showStages = fields?.stages !== false && stageById.size > 0
-  const gutter = showStages ? (vertical ? STAGE_GUTTER_V : STAGE_GUTTER_H) : 0
-  const stageIndex = new Map((spec.stages ?? []).map((s, i) => [s.id, i]))
-  const partition = new Map()
-  {
-    let last = 0
-    for (const n of nodes) {
-      if (stageIndex.has(n.stageId)) last = stageIndex.get(n.stageId)
-      partition.set(n.id, last)
-    }
-    for (const id of ruleEnds) partition.set(id, Math.max(0, stageById.size - 1))
+  const presentStages = (spec.stages ?? []).filter((st) => nodes.some((n) => n.stageId === st.id))
+  const leaf = (n) => {
+    const { w, h } = sizeOf(n)
+    const opts = ruleEnds.has(n.id) ? { 'elk.layered.layering.layerConstraint': 'LAST' } : {}
+    return { id: n.id, width: w, height: h, layoutOptions: opts }
   }
-  const usePartitions = stageById.size > 1
-  const graph = {
+  // Spacing is read per parent: without repeating it here, the inside of a box would fall
+  // back to ELK's defaults and be laid out looser than the rest
+  const spacing = {
+    'elk.spacing.nodeNode': String(NODE_GAP),
+    'elk.layered.spacing.nodeNodeBetweenLayers': String(LAYER_GAP),
+    'elk.spacing.edgeNode': '16',
+    'elk.spacing.edgeEdge': '10',
+    'elk.spacing.edgeLabel': '4',
+    'elk.layered.spacing.edgeNodeBetweenLayers': '16',
+  }
+  const stageBoxOptions = {
+    ...spacing,
+    'elk.padding': `[top=${STAGE_PAD_TOP},left=${STAGE_PAD},bottom=${STAGE_PAD},right=${STAGE_PAD}]`,
+  }
+  const buildGraph = (withStages) => ({
     id: 'root',
     layoutOptions: {
       'elk.algorithm': 'layered',
       'elk.direction': vertical ? 'DOWN' : 'RIGHT',
       'elk.padding': '[top=0,left=0,bottom=0,right=0]',
       'elk.edgeRouting': 'ORTHOGONAL',
-      'elk.spacing.nodeNode': String(NODE_GAP),
-      'elk.layered.spacing.nodeNodeBetweenLayers': String(LAYER_GAP),
-      'elk.spacing.edgeNode': '20',
-      'elk.spacing.edgeEdge': '12',
-      'elk.spacing.edgeLabel': '4',
-      'elk.layered.spacing.edgeNodeBetweenLayers': '20',
+      ...spacing,
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      // Brandes–Köpf aligns each node with its neighbours across the stage boxes; network
+      // simplex, which aligns them only within one graph level, bent the main line at every
+      // box border (measured: 22 of 140 main links bent, against 10 with this)
+      'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+      'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
       // Keep the order the author wrote nodes and edges in wherever it costs no crossing: the
       // same JSON always gives the same picture. (Not for cycle breaking: back edges arrive
       // already reversed, and the MODEL_ORDER breaker would reverse any edge that points at a
@@ -252,23 +259,28 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       // the main line upside down.)
       'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
       'elk.edgeLabels.inline': 'false',
-      'elk.partitioning.activate': String(usePartitions),
       // An end reached only through rules has no edge at all; ELK would lay it out as a
       // separate component beside the diagram and ignore its "last layer" constraint
       'elk.separateConnectedComponents': 'false',
+      // Stage boxes: links cross box borders, laid out as one graph; coordinates all absolute
+      'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+      'elk.json.shapeCoords': 'ROOT',
+      'elk.json.edgeCoords': 'ROOT',
     },
-    children: nodes.map((n) => {
-      const { w, h } = sizeOf(n)
-      const opts = {}
-      if (usePartitions) opts['elk.partitioning.partition'] = String(partition.get(n.id))
-      if (ruleEnds.has(n.id)) opts['elk.layered.layering.layerConstraint'] = 'LAST'
-      return { id: n.id, width: w, height: h, layoutOptions: opts }
-    }),
+    children: withStages
+      ? [
+          ...presentStages.map((st) => ({
+            id: `stage:${st.id}`,
+            layoutOptions: stageBoxOptions,
+            children: nodes.filter((n) => n.stageId === st.id).map(leaf),
+          })),
+          ...nodes.filter((n) => !presentStages.some((st) => st.id === n.stageId)).map(leaf),
+        ]
+      : nodes.map(leaf),
     // Back edges go in reversed. The loops were already recognised in step ①; handing ELK a
     // graph with no cycle means its own cycle breaking has nothing to decide, so the result
-    // cannot depend on the order the nodes happen to be written in. (It did: with a node
-    // appended at the end of the list, ELK reversed a main-line edge instead of the loop, which
-    // then contradicted the stage partitions and crashed.) The points are flipped back below.
+    // cannot depend on the order the nodes happen to be written in. The points are flipped
+    // back below.
     edges: groups.map((g, i) => ({
       id: `g${i}`,
       sources: [g.isBack ? g.to : g.from],
@@ -278,45 +290,37 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
         ? { 'elk.layered.priority.straightness': '10', 'elk.layered.priority.direction': '10' }
         : {},
     })),
-  }
-  // A forward edge from a later stage back into an earlier one (the "stage runs backwards"
-  // hint) cannot be honoured with partitions. Any valid JSON must render, so if ELK refuses
-  // the partitions, lay out once more without them rather than fail.
+  })
+  // Any valid JSON must render: if ELK cannot lay the stages out as boxes (a forward edge from a
+  // later stage back into an earlier one can make that impossible), lay out once more without
+  // them rather than fail
   let laid
+  const boxed = showStages && presentStages.length > 0
   try {
-    laid = elkLayoutSync(graph)
+    laid = elkLayoutSync(buildGraph(boxed))
   } catch (err) {
-    if (!usePartitions) throw err
-    graph.layoutOptions['elk.partitioning.activate'] = 'false'
-    laid = elkLayoutSync(graph)
+    if (!boxed) throw err
+    laid = elkLayoutSync(buildGraph(false))
   }
 
-  // Everything shifts by the padding, and by the stage gutter on the "across start" side
-  // (left when vertical, top when horizontal)
-  const ox = PAD + (vertical ? gutter : 0)
-  const oy = PAD + (vertical ? 0 : gutter)
-  const placed = new Map(laid.children.map((c) => [c.id, { x: c.x + ox, y: c.y + oy, w: c.width, h: c.height }]))
+  // Everything shifts by the padding. Coordinates come back absolute (json.shapeCoords ROOT).
+  const ox = PAD
+  const oy = PAD
+  const placed = new Map()
+  const stageBoxes = []
+  const collect = (list) => {
+    for (const c of list ?? []) {
+      if (c.id.startsWith('stage:')) {
+        const st = stageById.get(c.id.slice('stage:'.length))
+        stageBoxes.push({ stageId: st.id, label: st.label, x: c.x + ox, y: c.y + oy, w: c.width, h: c.height })
+        collect(c.children)
+      } else {
+        placed.set(c.id, { x: c.x + ox, y: c.y + oy, w: c.width, h: c.height })
+      }
+    }
+  }
+  collect(laid.children)
   const size = { width: laid.width + ox + PAD, height: laid.height + oy + PAD }
-
-  // An end reached only through rules has no edge, so it can move freely: put it outermost in
-  // its layer (right when vertical, bottom when horizontal), where the rule trunk arrives from
-  // the lane without passing any other node. ELK alone may put it anywhere in the layer.
-  const moved = []
-  for (const id of ruleEnds) {
-    const p = placed.get(id)
-    const along = (q) => (vertical ? q.y : q.x)
-    const farEdge = (q) => (vertical ? q.x + q.w : q.y + q.h)
-    const others = [...placed.entries()]
-      .filter(([o, q]) => (!ruleEnds.has(o) || moved.includes(o)) && o !== id && Math.abs(along(q) - along(p)) < 1)
-      .map(([, q]) => farEdge(q))
-    if (!others.length) continue
-    const at = Math.max(...others) + NODE_GAP
-    if (vertical) p.x = at
-    else p.y = at
-    moved.push(id)
-    size.width = Math.max(size.width, p.x + p.w + PAD)
-    size.height = Math.max(size.height, p.y + p.h + PAD)
-  }
 
   // Boxes in along/across coordinates (along = the direction the layers run)
   const boxes = new Map(
@@ -387,24 +391,21 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     return { layer: i, along: a, extent: Math.max(...inRow.map((id) => boxes.get(id).a1 - a)), count: inRow.length }
   })
 
-  // ④ stage bands. With partitions every node of a stage lies after every node of the stage
-  // before, so a band runs from the middle of the gap before its first node to the middle of
-  // the gap after its last: contiguous, never overlapping. A stage no node uses gets no band.
-  const contentAlongEnd = (vertical ? size.height : size.width) - PAD
+  // ④ stage spans along the flow, for the rule lane: from the stage boxes when drawn, from the
+  // stage's nodes otherwise
   const stageSpans = []
   {
-    const present = (spec.stages ?? []).filter((st) => nodes.some((n) => n.stageId === st.id))
-    const extent = present.map((st) => {
+    const extent = presentStages.map((st) => {
+      const box = stageBoxes.find((b) => b.stageId === st.id)
+      if (box) {
+        const lo = vertical ? box.y : box.x
+        return { st, lo, hi: lo + (vertical ? box.h : box.w) }
+      }
       const own = nodes.filter((n) => n.stageId === st.id).map((n) => boxes.get(n.id))
       return { st, lo: Math.min(...own.map((b) => b.a0)), hi: Math.max(...own.map((b) => b.a1)) }
     })
-    extent.forEach((x, i) => {
-      const from = i === 0 ? PAD : (extent[i - 1].hi + x.lo) / 2
-      const to = i === extent.length - 1 ? contentAlongEnd : (x.hi + extent[i + 1].lo) / 2
-      stageSpans.push({ stageId: x.st.id, label: x.st.label, from, to: Math.max(to, from + 1) })
-    })
+    for (const x of extent) stageSpans.push({ stageId: x.st.id, label: x.st.label, from: x.lo, to: Math.max(x.hi, x.lo + 1) })
   }
-  const stageBands = showStages ? stageSpans : []
 
   // ⑤ the rule lane. A rule is a clause that may fire anywhere in its stages ("if the supplier
   // is late, a penalty of …"); drawn as edges from some step, it would claim a moment it does
@@ -527,6 +528,8 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
         node: n,
         w: p.w,
         h: p.h,
+        // the width of the text column the size was computed for; the node draws its text in it
+        textW: sizeOf(n).textW,
         isSpine: spineSet.has(n.id),
         stageLabel: stageById.get(n.stageId)?.label ?? '',
         actorNames: (n.actorIds ?? []).map((id) => actorById.get(id)?.name ?? id),
@@ -560,11 +563,11 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     connections,
     rows,
     spine,
-    stageBands,
+    stageBoxes,
     rules: rulesOut,
     ruleLinks,
-    gutter,
-    size,
+    // Whole pixels: ELK places on fractions, and the canvas and the exported image want integers
+    size: { width: Math.ceil(size.width), height: Math.ceil(size.height) },
     stats,
   }
 }

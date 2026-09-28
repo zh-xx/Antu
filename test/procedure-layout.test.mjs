@@ -84,8 +84,9 @@ test('seven real contracts: both orientations lay out and no nodes overlap', () 
 
 test('the main line runs straight: almost no main link bends', () => {
   // The layout no longer forces the main line into one column (branches spread as the graph
-  // needs), but main-line edges carry ELK's straightness priority. Measured: 3 of 176 main
-  // links bend across the corpus in both orientations; allow a little, not a habit.
+  // needs), but main-line edges carry ELK's straightness priority. Stage boxes of different
+  // widths cost a jog where the main line crosses from one box into the next. Measured: 10 of
+  // 140 main links bend across the corpus in both orientations; allow a little, not a habit.
   let total = 0
   let bent = 0
   for (const f of files) {
@@ -98,7 +99,7 @@ test('the main line runs straight: almost no main link bends', () => {
       }
     }
   }
-  assert.ok(bent / total <= 0.03, `${bent} of ${total} main links bend`)
+  assert.ok(bent / total <= 0.08, `${bent} of ${total} main links bend`)
 })
 
 test('back edges are recognised: only the real loops are left', () => {
@@ -425,36 +426,35 @@ test('the main-line links are exactly the spine, marked or inferred', () => {
   assert.ok(inferred.connections.some((c) => c.kind === 'main'), 'an inferred spine still gets main links')
 })
 
-test('stage bands follow the main line: in order, contiguous, never overlapping', () => {
+test('stage boxes hold their own nodes and never overlap', () => {
   let checked = 0
+  const inside = (n, b) =>
+    n.position.x >= b.x && n.position.y >= b.y && n.position.x + n.data.w <= b.x + b.w && n.position.y + n.data.h <= b.y + b.h
+  const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
   for (const f of files) {
     const spec = load(f)
     for (const dir of ['vertical', 'horizontal']) {
       const g = buildProcedureGraph(spec, {}, undefined, dir)
       if (!spec.stages?.length) {
-        assert.equal(g.stageBands.length, 0, `${f}: no stages, no bands`)
-        assert.equal(g.gutter, 0, `${f}: no stages, no gutter`)
+        assert.equal(g.stageBoxes.length, 0, `${f}: no stages, no boxes`)
         continue
       }
-      assert.ok(g.stageBands.length > 0, `${f}/${dir}: stages written but no band drawn`)
-      assert.ok(g.gutter > 0, `${f}/${dir}: bands need a gutter`)
-      const along = dir === 'vertical' ? g.size.height : g.size.width
-      g.stageBands.forEach((b, i) => {
-        assert.ok(b.to > b.from, `${f}/${dir}: band ${b.label} is empty`)
-        assert.ok(b.from >= 0 && b.to <= along, `${f}/${dir}: band ${b.label} leaves the content`)
-        if (i > 0) assert.equal(b.from, g.stageBands[i - 1].to, `${f}/${dir}: bands ${i - 1} and ${i} are not contiguous`)
-      })
-      // Every node sits beyond the gutter, so a band name never runs under a node
-      for (const n of g.nodes) {
-        const across = dir === 'vertical' ? n.position.x : n.position.y
-        assert.ok(across >= g.gutter, `${f}/${dir}: ${n.id} sits in the stage gutter`)
+      const used = new Set(spec.nodes.map((n) => n.stageId).filter(Boolean))
+      assert.equal(g.stageBoxes.length, used.size, `${f}/${dir}: one box per stage that has nodes`)
+      for (const b of g.stageBoxes) {
+        assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.w <= g.size.width && b.y + b.h <= g.size.height, `${f}/${dir}: box ${b.label} leaves the content`)
+        for (const n of g.nodes) {
+          if (n.data.node.stageId === b.stageId) assert.ok(inside(n, b), `${f}/${dir}: ${n.id} is outside its box ${b.label}`)
+          else assert.ok(!inside(n, b), `${f}/${dir}: ${n.id} sits in the box of ${b.label}`)
+        }
       }
+      g.stageBoxes.forEach((a, i) =>
+        g.stageBoxes.slice(i + 1).forEach((b) => assert.ok(!overlap(a, b), `${f}/${dir}: boxes ${a.label} and ${b.label} overlap`)),
+      )
       checked += 1
     }
-    // Switched off: no bands and the gutter is given back
-    const off = buildProcedureGraph(spec, { stages: false })
-    assert.equal(off.stageBands.length, 0)
-    assert.equal(off.gutter, 0)
+    // Switched off: no boxes
+    assert.equal(buildProcedureGraph(spec, { stages: false }).stageBoxes.length, 0)
   }
   assert.ok(checked >= 8, `the corpus should have staged contracts to check, saw ${checked}`)
 })

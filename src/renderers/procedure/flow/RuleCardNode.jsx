@@ -16,7 +16,7 @@ import { memo, useContext } from 'react'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { SOURCE_TYPE_KEYS, labelOf } from '../../../core/labels.js'
 import { useLang } from '../../../shell/LangContext.jsx'
-import { nodePaint } from './palette.js'
+import { rulePaint } from './palette.js'
 
 const RuleCardNode = memo(function RuleCardNode({ id, data }) {
   const { rule, w, h, stageLabels, allStages, sources, vertical } = data
@@ -27,7 +27,7 @@ const RuleCardNode = memo(function RuleCardNode({ id, data }) {
   const showPreview = !pinnedId && hoveredId === id
   const open = isPinned || showPreview
   const whens = Array.isArray(rule.when) ? rule.when : [rule.when]
-  const paint = nodePaint('step', rule.outcome || 'neutral')
+  const paint = rulePaint(rule.outcome || 'neutral')
   const scope = allStages
     ? t('rule.scopeAll')
     : stageLabels.length === 1

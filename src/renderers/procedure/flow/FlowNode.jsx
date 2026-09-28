@@ -88,7 +88,7 @@ function Outline({ kind, outcome, w, h }) {
 }
 
 const FlowNode = memo(function FlowNode({ id, data }) {
-  const { node, w, h, isSpine, stageLabel, actorNames, sources, showDetail, vertical, layer } = data
+  const { node, w, h, textW, isSpine, stageLabel, actorNames, sources, showDetail, vertical, layer } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
 
@@ -126,7 +126,8 @@ const FlowNode = memo(function FlowNode({ id, data }) {
         <Outline kind={kind} outcome={outcome} w={w} h={h} />
       </svg>
 
-      <div className="antu-pn-body">
+      {/* The text column is exactly as wide as metrics.js measured it, so the lines break where the box was sized for */}
+      <div className="antu-pn-body" style={{ width: textW }}>
         <div className="antu-pn-label">{node.label}</div>
         {detail && <div className="antu-pn-detail">{detail}</div>}
       </div>

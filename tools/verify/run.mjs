@@ -1395,7 +1395,13 @@ async function checkRenderProcedure(sampleFile) {
       await count('.antu-plabel'),
       layout.connections.filter((c) => c.label).length,
     )
-    eq('stage band count', await count('.antu-pstage-name'), layout.stageBands.length)
+    eq('stage box count', await count('.antu-pstage-box'), layout.stageBoxes.length)
+    eq('each stage box has its title', await count('.antu-pstage-name'), layout.stageBoxes.length)
+    // Paint as attributes, so the exported image keeps the boxes (see palette.js)
+    truthy(
+      'stage boxes carry their fill as an attribute',
+      await browser.eval(`[...document.querySelectorAll('.antu-pstage-box')].every((r) => r.getAttribute('fill') && r.getAttribute('stroke'))`),
+    )
     eq('main-line links carry the main class', await count('.antu-plink.k-main'), layout.spine.length - 1)
     eq('back edges carry the back class', await count('.antu-plink.k-back'), layout.connections.filter((c) => c.kind === 'back').length)
 
@@ -1424,7 +1430,9 @@ async function checkRenderProcedure(sampleFile) {
     })()`)
     truthy('node shapes measured', shapes)
     if (shapes) {
-      eq('a step box has its design size', [shapes.step?.w, shapes.step?.h], [sizeOf({ kind: 'step' }).w, sizeOf({ kind: 'step' }).h])
+      // A node is as big as its text: the first step drawn has the size metrics.js gave its text
+      const firstStep = sizeOf(layout.nodes.find((n) => n.data.node.kind === 'step').data.node)
+      eq('a step box has its design size', [shapes.step?.w, shapes.step?.h], [firstStep.w, firstStep.h])
       eq('every decision is drawn as a diamond', shapes.decisionPolygon, shapes.decisions)
       eq('every end has its second ring', shapes.endRings, shapes.ends)
       eq('every link ends in an arrowhead', shapes.arrows, layout.connections.length)
@@ -1484,7 +1492,7 @@ async function checkRenderProcedure(sampleFile) {
 
     await clickChip(3)
     await settle()
-    eq('the stage switch removes the bands', await count('.antu-pstage-name'), 0)
+    eq('the stage switch removes the boxes', await count('.antu-pstage-box'), 0)
     await clickChip(3)
     await settle()
 
@@ -1499,7 +1507,7 @@ async function checkRenderProcedure(sampleFile) {
     // Orientation: the second item of the first segmented control is "horizontal"
     await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[1].click()`, { userGesture: true })
     await settle()
-    truthy('horizontal: the stage bands run along the top', (await count('.antu-pstages.is-h')) === 1)
+    truthy('horizontal: the stage boxes are still drawn', (await count('.antu-pstage-box')) > 0)
     eq('horizontal: no node is lost', await count('.antu-pn'), spec.nodes.length)
     await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[0].click()`, { userGesture: true })
     await settle()

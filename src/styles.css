@@ -865,37 +865,34 @@
 
 .antu-pn-body {
   position: relative;
-  max-width: 100%;
-  padding: 6px 14px;
+  flex: none;
   text-align: center;
   pointer-events: none;
 }
-/* 菱形里能放字的只有中间那块：左右各让出四分之一 */
-.antu-pn.k-decision .antu-pn-body { padding: 0 25%; }
-.antu-pn.k-document .antu-pn-body { padding-bottom: 12px; }
-.antu-pn.k-note .antu-pn-body { text-align: left; padding-right: 20px; }
+/* 文字列宽度由 metrics.js 算好、从 data.textW 传进来；这里的字号行高也必须与 metrics.js 一致 */
+.antu-pn.k-document .antu-pn-body { margin-bottom: 8px; }
+.antu-pn.k-note .antu-pn-body { text-align: left; }
 .antu-pn-label {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 20px;
   color: var(--antu-text);
   overflow-wrap: anywhere;
 }
-.antu-pn.k-decision .antu-pn-label { -webkit-line-clamp: 3; line-clamp: 3; font-size: 12px; }
 .antu-pn.k-note .antu-pn-label { font-weight: 400; color: var(--antu-text-2); }
 .antu-pn-detail {
   margin-top: 2px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--antu-text-3);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--antu-text-2);
 }
 /* 节点比事件卡窄（药丸只有 176），浮层不跟节点宽度走，给一个够读的宽度 */
 .antu-pn .antu-preview { width: 280px; left: 50%; margin-left: -140px; text-align: left; }
@@ -913,30 +910,29 @@
   box-sizing: border-box;
   padding: 1px 6px;
   border-radius: 4px;
-  background: var(--antu-canvas);
-  font-size: 11px;
+  background: rgba(255, 255, 255, .85);
+  font-size: 12px;
   line-height: 16px;
-  color: var(--antu-text-2);
+  color: #334155;
   text-align: center;
   overflow-wrap: anywhere;
   overflow: hidden;
 }
 .antu-plabel.k-back { color: var(--antu-text-3); }
 
-/* ---------- 阶段带 ---------- */
+/* ---------- 阶段框 ----------
+   每个阶段是 ELK 排出的一个分组框：浅底色 + 细边 + 左上角标题。
+   颜色与字号以属性/内联样式写上（palette.js、metrics.js），导出图片才带得走。 */
 .antu-pstages { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
-.antu-pstage-bar { position: absolute; border-radius: 2px; background: #cbd5e1; }
+.antu-pstages-svg { position: absolute; left: 0; top: 0; overflow: visible; }
 .antu-pstage-name {
   position: absolute;
-  font-size: 11.5px;
   font-weight: 650;
-  line-height: 1.4;
-  color: var(--antu-text-3);
-  overflow-wrap: anywhere;
+  line-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.antu-pstages.is-h .antu-pstage-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.antu-pstage-rule { position: absolute; border-top: 1px dashed #dde3ea; }
-.antu-pstages.is-h .antu-pstage-rule { border-top: 0; border-left: 1px dashed #dde3ea; }
 
 /* ---------- 规则卡片（或有条款：违约、延期责任、解除权） ----------
    不是流程上的一步，所以不画成节点加连线，而是放在它适用的阶段旁边的一栏里。

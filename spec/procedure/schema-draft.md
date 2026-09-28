@@ -339,7 +339,7 @@ contract knows, so it must be a data field rather than something hard-coded in t
 ### 4.4 Stages (`stages`)
 
 `stages` is an ordered diagram-level list; nodes reference it via `stageId`. When rendering it is
-drawn as a stage band (a light separator along one side of the main line, plus the stage name).
+drawn as a stage box (a light filled frame round the stage's nodes, its name in the top-left corner).
 
 **Why it deserves a field of its own.** The current Mermaid output writes the stage into the node
 text:
@@ -352,7 +352,7 @@ The consequence: stage boundaries cannot be drawn, nodes of the same stage scatt
 diagram, and the reader has to piece it together from the text. With `stages`, a stage becomes
 **structure**: it can be drawn, and nodes can be grouped by it.
 
-- Omit `stages` and no stage bands are drawn; nothing else changes;
+- Omit `stages` and no stage boxes are drawn; nothing else changes;
 - Write `stages` but leave a node without `stageId`: it belongs to no stage and renders as usual;
 - A `stageId` referencing a non-existent id → error.
 
@@ -495,10 +495,10 @@ colours, FlowRenderer.jsx and its node / link / stage-band components), with uni
 ```
 Done     placement and routing by ELK's layered algorithm (elkjs, flow/elk.js): layering,
          crossing minimisation, node placement, orthogonal routing, room reserved for every
-         condition label; stages as partitions; main-line edges prioritised for straightness;
+         condition label; stages as boxes (ELK compound nodes); main-line edges prioritised for straightness;
          back-edge detection (drawn dashed), merging several edges into the same target, both
          orientations; the React renderer (six shapes by kind, three colours by outcome,
-         hover / pinned overlay with provenance), stage bands, the control capsule (§6.2),
+         hover / pinned overlay with provenance), nodes sized to their text, stage boxes, the control capsule (§6.2),
          image export
 Not done **placing note nodes** (they take no part in the flow; ELK places them like any
          other node)
@@ -515,7 +515,8 @@ Measured on the 7 contracts and the two rule-layer drafts, both orientations:
 
 Pinned by unit tests: no link runs behind a node, no two different links overlap, every label
 clear of every node, links end on their node's outline (a diamond's slanted edge for a decision),
-main links almost never bend (3 of 176).
+main links seldom bend (10 of 140: a jog where the main line crosses between stage boxes of
+different widths), stage boxes hold their own nodes and never overlap.
 
 Why ELK over the hand-written layout: the hand-written one kept the main line in a single column
 and hung everything off it. That made the main line rigid and forced the other branches to cross
@@ -524,11 +525,16 @@ not a column, and minimises crossings for the whole graph. **Cost:** elkjs adds 
 a generated HTML is about 1.9 MB instead of about 480 KB. It is called synchronously (see the
 header of `flow/elk.js` for how and why); the elkjs version is pinned.
 
-Two decisions the renderer made, so they are not undone by accident:
+Decisions the renderer made, so they are not undone by accident:
 
-- **Stages are ELK partitions**, so every node of a stage lies after every node of the stage
-  before; a band runs from the middle of the gap before its first node to the middle of the gap
-  after its last. Bands are contiguous and never overlap.
+- **Stages are boxes**: each stage is an ELK compound node holding its nodes, drawn as a light
+  filled frame with the stage name in its corner; ELK routes links across the frames and keeps
+  them from overlapping. If ELK cannot lay the boxes out, the diagram is laid out once more
+  without them rather than fail.
+- **A node is as big as its text** (`metrics.js` `sizeOf`): 14px text, wrapped past a cap, at
+  most three lines; a diamond folds its text into a near-square block. Fixed 208×64 boxes left
+  most of every box empty and, fitted to a screen, the text too small to read — what putting the
+  same data through Mermaid showed.
 - **The main-line highlight follows the spine the engine settled on**, marked (`main: true`) or
   inferred, so a diagram with no `main` flags still shows its main line.
 
@@ -537,7 +543,7 @@ in 03, 3 edges are merged into 2 links; 01 has 12 back edges recognised, 07 has 
 
 - **The main line runs down the centre**, branch nodes spread left and right; several branches in one
   layer spread by their order in the `edges` array;
-- **Stage bands**: when `stages` is written, separators and stage names are drawn along one side of
+- **Stage boxes**: when `stages` is written, each stage's nodes are framed, with the stage name; formerly drawn along one side of
   the main line;
 - **Edges**: main edges connect directly; branch edges carry a `condition` label and reserve label
   width; back edges arc round one side of the main line;
@@ -612,7 +618,7 @@ real alternative and the reasoning is what makes a later change cheap to judge.
 | 1 | Free graph of `nodes` + `edges`, or a layered "main line + branches" structure? | **Free graph**. Reason: the schema stops at the top-level type, and later swimlane and state diagrams need to consume the same schema | changing to a layered structure means rewriting the schema and voiding every example. The most expensive of the five |
 | 2 | Is `main` marked on edges or on nodes? | **On edges**. Reason: the main line is a path, and marking nodes produces broken chains validation cannot catch | moving it to nodes means rewriting rule 16 as well |
 | 3 | 6 `kind`s with `outcome` separate, or the old prototype's 9? | **6 + separate `outcome`**. Reason: positive/negative is an attribute, not a shape | reverting to 9 keeps the problem that every "termination" is painted red |
-| 4 | Are `stages` needed? | **Yes**. Reason: contract flows fall into stages naturally, and without it stages can only be mixed into node text | delete `stages` and `stageId`, delete the stage bands, nothing else changes |
+| 4 | Are `stages` needed? | **Yes**. Reason: contract flows fall into stages naturally, and without it stages can only be mixed into node text | delete `stages` and `stageId`, delete the stage boxes, nothing else changes |
 | 5 | Is `domain` needed (fact rejected a classification enum at the time)? | **Yes, but optional and unread by rendering**. Reason: it classifies the whole diagram rather than its elements, and later there is a basis for default parameters by domain | delete it; nothing else moves |
 
 ---
