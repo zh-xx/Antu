@@ -94,10 +94,10 @@ server.registerTool(
     const rows = listExamples({ type, group })
     const lines = rows.map(
       (r) =>
-        `- ${r.file}  (${(r.bytes / 1024).toFixed(1)} KB)\n    ${r.title}\n    ${r.events} events / ${r.slots} time slots / ${r.actors} parties\n    views: ${r.views.join(', ')}`,
+        `- ${r.file}  (${(r.bytes / 1024).toFixed(1)} KB)\n    ${r.title}\n    ${r.line}`,
     )
     if (rows.length === 0 && group === 'agent') {
-      return OK(`no examples for type "${type}" yet. So far only fact exists.`)
+      return OK(`no small examples for type "${type}" yet. Try group="real".`)
     }
     const head =
       group === 'real'
@@ -191,12 +191,13 @@ server.registerTool(
     title: 'Work out the geometry',
     description:
       'Without rendering, work out the layout first: how large the content is, how far it is scaled down to fit, ' +
-      'whether vertical or horizontal suits it, and whether each view fits (how many events, how many columns). ' +
+      'and whether vertical or horizontal suits it. For a fact diagram also whether each view fits (how many events, ' +
+      'how many columns); for a procedure the layers, the widest layer, the loops and the rules. ' +
       'Use it to answer "will this diagram be too wide" or "does this view not fit", far faster than a screenshot.',
     inputSchema: {
       spec: specArg,
       orientation: z.enum(['vertical', 'horizontal']).optional().describe('omit it and the slot-count rule suggests one'),
-      summary: z.boolean().optional().describe('whether the cards show the summary (affects card height, and through it the content size); true by default'),
+      summary: z.boolean().optional().describe('fact only: whether the cards show the summary (affects card height, and through it the content size); true by default'),
     },
   },
   async ({ spec, orientation, summary = true }) => {

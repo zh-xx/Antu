@@ -13,8 +13,9 @@
 //  and this file only wraps it in a public interface, repeating not one line.
 // ============================================================
 
-import { buildGrid } from './timeline/grid.js'
+import { buildGrid, viewsOf } from './timeline/grid.js'
 import { buildFactGraph } from './timeline/layout.js'
+import { fitZoom } from '../../core/canvas.js'
 
 /**
  * Field metadata: **the agent-facing reference is generated from here**, not copied by hand
@@ -119,6 +120,120 @@ export const factKnowledge = {
    * so the two can never tell different stories.
    */
   validate: (spec) => buildGrid(spec).errors,
+
+  /**
+   * The label card's third line: size and time span (the type is already in the line above).
+   * Each type supplies its own, because "how big is this diagram" is counted in its own units
+   * (time slots here, nodes and stages for a procedure). t and formatNumber come from the
+   * caller, so this stays plain JS.
+   */
+  info: (spec, t, formatNumber) => {
+    const slots = Array.isArray(spec.slots) ? spec.slots : []
+    const dates = slots
+      .flatMap((s) => (s?.events || []).map((e) => e?.date))
+      .filter((d) => typeof d === 'string' && d)
+      .sort()
+    let slotsLine = t('info.slots', { n: formatNumber(slots.length) })
+    if (dates.length > 0) {
+      const first = dates[0].slice(0, 10)
+      const last = dates[dates.length - 1].slice(0, 10)
+      slotsLine += first === last ? ` · ${first}` : ` · ${t('info.span', { from: first, to: last })}`
+    }
+    return [
+      slotsLine,
+      t('info.actors', { n: formatNumber(spec.actors?.length || 0) }),
+      t('info.sources', { n: formatNumber(spec.sources?.length || 0) }),
+    ]
+  },
+
+  /**
+   * The geometry report for MCP's antu_layout (compute only, no rendering): per view, how
+   * many events and columns and whether it fits; per orientation, the content size and the
+   * fit zoom. It lives with the type because every quantity in it is a fact concept.
+   */
+  report: (spec, layout, { orientation, fields = { summary: true }, canvas }) => {
+    const views = viewsOf(spec)
+    const rows = views.map((view, i) => {
+      const graph = layout(spec, fields, view, orientation ?? 'vertical')
+      const grid = buildGrid(spec, view)
+      const cols = { side1: 0, axis: 0, side2: 0 }
+      grid.columns.forEach((c) => {
+        cols[c.side] += 1
+      })
+      return {
+        index: i,
+        label: view.label,
+        events: graph.eventCount ?? grid.eventCount ?? 0,
+        slots: grid.rows.length,
+        columns: cols,
+        blocked: graph.errors.length > 0,
+        blockReason: graph.errors[0] ?? null,
+      }
+    })
+    // Both orientations, to advise one (the same slot-count rule the renderer uses by default)
+    const byOrientation = {}
+    for (const o of ['vertical', 'horizontal']) {
+      const g = layout(spec, fields, undefined, o)
+      byOrientation[o] = { size: g.size, fit: Number(fitZoom(g.size, canvas).toFixed(3)) }
+    }
+    const slotCount = Array.isArray(spec.slots) ? spec.slots.length : 0
+    return {
+      views,
+      counts: {
+        slots: slotCount,
+        events: (spec.slots ?? []).reduce((n, s) => n + (s?.events?.length || 0), 0),
+        actors: spec.actors?.length ?? 0,
+        sources: spec.sources?.length ?? 0,
+      },
+      byOrientation,
+      suggestedOrientation: slotCount >= 5 ? 'vertical' : 'horizontal',
+      blockedViews: rows.filter((r) => r.blocked).map((r) => ({ label: r.label, reason: r.blockReason })),
+      rows,
+    }
+  },
+
+  /** The geometry report as the short text the tool returns to an agent */
+  formatReport: (r) => {
+    const lines = []
+    lines.push(`Data: ${r.counts.events} events / ${r.counts.slots} time slots / ${r.counts.actors} parties / ${r.counts.sources} sources`)
+    const v = r.byOrientation.vertical
+    const h = r.byOrientation.horizontal
+    lines.push(`Vertical: content ${v.size.width}×${v.size.height}, fit zoom ${v.fit}`)
+    lines.push(`Horizontal: content ${h.size.width}×${h.size.height}, fit zoom ${h.fit}`)
+    lines.push(
+      r.suggestedOrientation === 'vertical'
+        ? `Suggested orientation: vertical (by the slot-count rule, ${r.counts.slots} slots >= 5)`
+        : `Suggested orientation: horizontal (by the slot-count rule, ${r.counts.slots} slots < 5)`,
+    )
+    lines.push(`${r.views.length} view(s):`)
+    for (const row of r.rows) {
+      const c = row.columns
+      const mark = row.blocked ? `does not fit (${row.blockReason})` : 'fits'
+      lines.push(`  ${row.index}. ${row.label}: side1 ${c.side1} / axis ${c.axis} / side2 ${c.side2}, ${row.events} events -> ${mark}`)
+    }
+    if (r.blockedViews.length > 0) {
+      lines.push('')
+      lines.push(`Note: ${r.blockedViews.length} view(s) do not fit and will not appear in the view dropdown.`)
+      lines.push('Common cause: two or more events of one time slot fall in the same lane (the grid is one event per cell).')
+      lines.push('How to fix: split that time slot into two finer time points, or change the groups / parties so the events land in different lanes.')
+    }
+    return lines.join('\n')
+  },
+
+  /** One example's size, for MCP's example list: the numbers and the line the tool prints */
+  summarize: (spec) => {
+    const slots = Array.isArray(spec.slots) ? spec.slots : []
+    const events = slots.reduce((n, s) => n + (s?.events?.length || 0), 0)
+    const actors = spec.actors?.length ?? 0
+    const views = viewsOf(spec).map((v) => v.label)
+    return {
+      events,
+      slots: slots.length,
+      actors,
+      views,
+      line: `${events} events / ${slots.length} time slots / ${actors} parties\n    views: ${views.join(', ')}`,
+    }
+  },
 
   /** Which ways of drawing a fact diagram exist. For now only the timeline. */
   layouts: {

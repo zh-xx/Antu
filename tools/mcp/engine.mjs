@@ -14,7 +14,6 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { renderToFile, REPO } from '../lib/make-html.mjs'
-import { fitZoom } from '../../src/core/canvas.js'
 import { knowledgeOf, listKnowledgeTypes } from '../../src/core/registry.js'
 // Registers the knowledge for each type (pure JS, no components). With it, validation
 // and layout both come from the registry.
@@ -23,7 +22,6 @@ import { layoutOf as layoutFromRegistry, layoutKindsOf } from '../../src/core/re
 
 import { validateSpec } from '../../src/core/validate.js'
 import { tEn } from '../../src/core/i18n.js'
-import { viewsOf, buildGrid } from '../../src/renderers/fact/timeline/grid.js'
 
 // The repository root is provided once by tools/lib/make-html.mjs (the server may be
 // started from any cwd, so everything resolves relative to that location); this uses
@@ -50,91 +48,30 @@ export function validate(spec) {
  * Geometry report: compute only, no rendering.
  * This is the main basis on which an agent judges whether the diagram will be too wide
  * or too empty.
+ *
+ * What is counted belongs to the type (time slots and views for a fact diagram; nodes,
+ * layers and rules for a procedure), so the report itself comes from the type's knowledge
+ * (renderers/<type>/schema.js); this only dispatches. It used to count fact's slots for
+ * every type, and a procedure came back as "0 events / 0 time slots" (known-issues item 19).
  */
-export function layoutReport(spec, { orientation, fields = { summary: true } } = {}) {
+export function layoutReport(spec, { orientation, fields } = {}) {
   const type = spec?.type
   // Ask the registry which rendering kinds this type has and default to the first.
   // (This used to read spec?.kindHint, a field the schema does not have; see
   // known-issues item 11.)
   const kind = layoutKindsOf(type)[0] ?? null
   const layout = layoutFromRegistry(type, kind)
-  if (!layout) {
+  const k = knowledgeOf(type)
+  if (!layout || !k?.report) {
     return { ok: false, reason: `no geometry computation for type="${type}" kind="${kind}" yet` }
   }
-
-  const views = viewsOf(spec)
-  const rows = views.map((view, i) => {
-    const graph = layout(spec, fields, view, orientation ?? 'vertical')
-    const grid = buildGrid(spec, view)
-    const cols = { side1: 0, axis: 0, side2: 0 }
-    grid.columns.forEach((c) => {
-      cols[c.side] += 1
-    })
-    return {
-      index: i,
-      label: view.label,
-      events: graph.eventCount ?? grid.eventCount ?? 0,
-      slots: grid.rows.length,
-      columns: cols,
-      blocked: graph.errors.length > 0,
-      blockReason: graph.errors[0] ?? null,
-    }
-  })
-
-  // Compute both orientations so as to advise which one to use (consistent with the
-  // rule by which the rendering layer picks a default from the slot count)
-  const byOrientation = {}
-  for (const o of ['vertical', 'horizontal']) {
-    const g = layout(spec, fields, undefined, o)
-    byOrientation[o] = { size: g.size, fit: Number(fitZoom(g.size, CANVAS).toFixed(3)) }
-  }
-  const slotCount = Array.isArray(spec.slots) ? spec.slots.length : 0
-  const suggested = slotCount >= 5 ? 'vertical' : 'horizontal'
-
-  return {
-    ok: true,
-    type,
-    views,
-    counts: {
-      slots: slotCount,
-      events: (spec.slots ?? []).reduce((n, s) => n + (s?.events?.length || 0), 0),
-      actors: spec.actors?.length ?? 0,
-      sources: spec.sources?.length ?? 0,
-    },
-    byOrientation,
-    suggestedOrientation: suggested,
-    blockedViews: rows.filter((r) => r.blocked).map((r) => ({ label: r.label, reason: r.blockReason })),
-    rows,
-  }
+  return { ok: true, type, ...k.report(spec, layout, { orientation, fields, canvas: CANVAS }) }
 }
 
 /** Turn the geometry report into a short human-readable text (the part the tool returns to an agent) */
 export function formatLayoutReport(r) {
   if (!r.ok) return r.reason
-  const lines = []
-  lines.push(`Data: ${r.counts.events} events / ${r.counts.slots} time slots / ${r.counts.actors} parties / ${r.counts.sources} sources`)
-  const v = r.byOrientation.vertical
-  const h = r.byOrientation.horizontal
-  lines.push(`Vertical: content ${v.size.width}×${v.size.height}, fit zoom ${v.fit}`)
-  lines.push(`Horizontal: content ${h.size.width}×${h.size.height}, fit zoom ${h.fit}`)
-  lines.push(
-    r.suggestedOrientation === 'vertical'
-      ? `Suggested orientation: vertical (by the slot-count rule, ${r.counts.slots} slots >= 5)`
-      : `Suggested orientation: horizontal (by the slot-count rule, ${r.counts.slots} slots < 5)`,
-  )
-  lines.push(`${r.views.length} view(s):`)
-  for (const row of r.rows) {
-    const c = row.columns
-    const mark = row.blocked ? `does not fit (${row.blockReason})` : 'fits'
-    lines.push(`  ${row.index}. ${row.label}: side1 ${c.side1} / axis ${c.axis} / side2 ${c.side2}, ${row.events} events -> ${mark}`)
-  }
-  if (r.blockedViews.length > 0) {
-    lines.push('')
-    lines.push(`Note: ${r.blockedViews.length} view(s) do not fit and will not appear in the view dropdown.`)
-    lines.push('Common cause: two or more events of one time slot fall in the same lane (the grid is one event per cell).')
-    lines.push('How to fix: split that time slot into two finer time points, or change the groups / parties so the events land in different lanes.')
-  }
-  return lines.join('\n')
+  return knowledgeOf(r.type).formatReport(r)
 }
 
 /**
@@ -168,18 +105,16 @@ const isZhVariant = (f) => /\.zh-CN\.json$/i.test(f)
 
 export function listExamples({ type = 'fact', group = 'agent', lang = 'en' } = {}) {
   const dir = join(REPO, 'examples')
+  // The size of each example is counted by its own type (knowledge.summarize): a procedure
+  // listed with fact's counters used to read "0 events / 0 time slots" (known-issues item 19)
   const read = (path, file) => {
     const spec = JSON.parse(readFileSync(path, 'utf8'))
-    const slots = Array.isArray(spec.slots) ? spec.slots : []
     return {
       file,
       path,
       title: spec.title,
-      events: slots.reduce((n, s) => n + (s?.events?.length || 0), 0),
-      slots: slots.length,
-      actors: spec.actors?.length ?? 0,
       bytes: readFileSync(path).length,
-      views: viewsOf(spec).map((v) => v.label),
+      ...(knowledgeOf(spec.type)?.summarize?.(spec) ?? { line: '' }),
     }
   }
   const jsonIn = (d, prefix) =>

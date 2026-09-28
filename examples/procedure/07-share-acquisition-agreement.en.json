@@ -3,85 +3,365 @@
   "title": "Share Acquisition Agreement · Performance Flow",
   "domain": "contract-performance",
   "actors": [
-    { "id": "a-1", "name": "Party A", "role": "Transferor" },
-    { "id": "a-2", "name": "Party B", "role": "Acquirer" }
+    {
+      "id": "a-1",
+      "name": "Party A",
+      "role": "Transferor"
+    },
+    {
+      "id": "a-2",
+      "name": "Party B",
+      "role": "Acquirer"
+    }
   ],
   "stages": [
-    { "id": "st-1", "label": "Signing and conditions precedent" },
-    { "id": "st-2", "label": "Closing" },
-    { "id": "st-3", "label": "Price adjustment" },
-    { "id": "st-4", "label": "Post-closing obligations" }
+    {
+      "id": "st-1",
+      "label": "Signing and conditions precedent"
+    },
+    {
+      "id": "st-2",
+      "label": "Closing"
+    },
+    {
+      "id": "st-3",
+      "label": "Price adjustment"
+    },
+    {
+      "id": "st-4",
+      "label": "Post-closing obligations"
+    }
   ],
   "sources": [
-    { "id": "s-1", "type": "contract", "name": "Share Acquisition Agreement", "loc": { "file": "Share Acquisition Agreement.docx" } }
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "Share Acquisition Agreement",
+      "loc": {
+        "file": "Share Acquisition Agreement.docx"
+      }
+    }
   ],
   "nodes": [
-    { "id": "n-1", "kind": "start", "label": "Three parties sign and seal", "stageId": "st-1", "sourceIds": ["s-1"] },
-    { "id": "n-2", "kind": "step", "label": "Party B pays the deposit", "detail": "RMB 24,000,000 · 10% of total consideration", "actorIds": ["a-2"], "stageId": "st-1" },
-    { "id": "n-3", "kind": "decision", "label": "Conditions precedent satisfied?", "detail": "within 90 days of signing", "stageId": "st-1" },
-    { "id": "n-5", "kind": "end", "label": "Party A refunds double the deposit and Party B's due diligence costs", "detail": "RMB 48,000,000", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-1" },
-    { "id": "n-6", "kind": "end", "label": "Party A forfeits the deposit", "detail": "RMB 24,000,000", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-1" },
-    { "id": "n-19", "kind": "step", "label": "Agreement terminated: notice by the non-breaching party", "outcome": "negative", "stageId": "st-1" },
-    { "id": "n-20", "kind": "end", "label": "Breach damages: dealt with by cause", "outcome": "negative", "stageId": "st-1" },
-
-    { "id": "n-4", "kind": "step", "label": "Closing", "detail": "within 20 business days after conditions are met", "stageId": "st-2" },
-    { "id": "n-7", "kind": "step", "label": "Party B pays 80% of the consideration", "detail": "RMB 192,000,000 into escrow", "actorIds": ["a-2"], "stageId": "st-2" },
-    { "id": "n-8", "kind": "step", "label": "Party A delivers", "detail": "equity change registration, seals, contracts, IP, etc.", "actorIds": ["a-1"], "stageId": "st-2" },
-    { "id": "n-9", "kind": "step", "label": "Within 10 business days of closing: change of legal representative, directors and supervisors", "stageId": "st-2" },
-    { "id": "n-21", "kind": "step", "label": "Party B's 30-day cure notice unheeded", "actorIds": ["a-2"], "stageId": "st-2" },
-    { "id": "n-22", "kind": "end", "label": "Agreement terminated: Party A refunds double the deposit and damages", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-2" },
-    { "id": "n-23", "kind": "step", "label": "Party A's 30-day cure notice unheeded", "actorIds": ["a-1"], "stageId": "st-2" },
-    { "id": "n-24", "kind": "end", "label": "Agreement terminated: Party A forfeits the deposit", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-2" },
-    { "id": "n-25", "kind": "step", "label": "Party B serves a damages notice within 30 days of discovery", "actorIds": ["a-2"], "stageId": "st-2" },
-    { "id": "n-26", "kind": "decision", "label": "Does Party A accept the damages claim?", "stageId": "st-2" },
-    { "id": "n-27", "kind": "end", "label": "Party A pays damages within 15 days", "actorIds": ["a-1"], "outcome": "positive", "stageId": "st-2" },
-    { "id": "n-28", "kind": "step", "label": "Referred to CIETAC arbitration", "stageId": "st-2" },
-    { "id": "n-29", "kind": "end", "label": "Arbitral award", "stageId": "st-2" },
-
-    { "id": "n-10", "kind": "step", "label": "Within 180 days of closing: price adjustment audit", "stageId": "st-3" },
-    { "id": "n-11", "kind": "decision", "label": "Do audited net assets reach the benchmark?", "detail": "benchmark RMB 280,000,000", "stageId": "st-3" },
-    { "id": "n-12", "kind": "step", "label": "Party B pays 50% of the excess", "detail": "cap RMB 12,000,000", "actorIds": ["a-2"], "stageId": "st-3" },
-    { "id": "n-13", "kind": "step", "label": "Shortfall deducted from the adjustment amount", "detail": "adjustment amount RMB 24,000,000; Party A tops up any excess", "stageId": "st-3" },
-    { "id": "n-14", "kind": "step", "label": "Adjustment period ends: remaining adjustment funds released", "stageId": "st-3" },
-
-    { "id": "n-15", "kind": "step", "label": "Within 90 days of closing: transition management handover", "stageId": "st-4" },
-    { "id": "n-16", "kind": "step", "label": "Within 12 months of closing: employee retention undertaking", "detail": "headcount not below 90%", "stageId": "st-4" },
-    { "id": "n-17", "kind": "step", "label": "Within 3 years of closing: non-compete and non-solicitation", "stageId": "st-4" },
-    { "id": "n-18", "kind": "end", "label": "Agreement terminated: performance complete", "outcome": "positive", "stageId": "st-4" },
-    { "id": "n-30", "kind": "end", "label": "Party A pays liquidated damages and compensation", "detail": "liquidated damages RMB 50,000,000", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-4" }
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "Three parties sign and seal",
+      "stageId": "st-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "n-2",
+      "kind": "step",
+      "label": "Party B pays the deposit",
+      "detail": "RMB 24,000,000 · 10% of total consideration",
+      "actorIds": [
+        "a-2"
+      ],
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-3",
+      "kind": "decision",
+      "label": "Conditions precedent satisfied?",
+      "detail": "within 90 days of signing",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-5",
+      "kind": "end",
+      "label": "Party A refunds double the deposit and Party B's due diligence costs",
+      "detail": "RMB 48,000,000",
+      "actorIds": [
+        "a-1"
+      ],
+      "outcome": "negative",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-6",
+      "kind": "end",
+      "label": "Party A forfeits the deposit",
+      "detail": "RMB 24,000,000",
+      "actorIds": [
+        "a-1"
+      ],
+      "outcome": "negative",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-19",
+      "kind": "step",
+      "label": "Agreement terminated: notice by the non-breaching party",
+      "outcome": "negative",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-20",
+      "kind": "end",
+      "label": "Breach damages: dealt with by cause",
+      "outcome": "negative",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "Closing",
+      "detail": "within 20 business days after conditions are met",
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-7",
+      "kind": "step",
+      "label": "Party B pays 80% of the consideration",
+      "detail": "RMB 192,000,000 into escrow",
+      "actorIds": [
+        "a-2"
+      ],
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "Party A delivers",
+      "detail": "equity change registration, seals, contracts, IP, etc.",
+      "actorIds": [
+        "a-1"
+      ],
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-9",
+      "kind": "step",
+      "label": "Within 10 business days of closing: change of legal representative, directors and supervisors",
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-10",
+      "kind": "step",
+      "label": "Within 180 days of closing: price adjustment audit",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-11",
+      "kind": "decision",
+      "label": "Do audited net assets reach the benchmark?",
+      "detail": "benchmark RMB 280,000,000",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-12",
+      "kind": "step",
+      "label": "Party B pays 50% of the excess",
+      "detail": "cap RMB 12,000,000",
+      "actorIds": [
+        "a-2"
+      ],
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-13",
+      "kind": "step",
+      "label": "Shortfall deducted from the adjustment amount",
+      "detail": "adjustment amount RMB 24,000,000; Party A tops up any excess",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-14",
+      "kind": "step",
+      "label": "Adjustment period ends: remaining adjustment funds released",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-15",
+      "kind": "step",
+      "label": "Within 90 days of closing: transition management handover",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-16",
+      "kind": "step",
+      "label": "Within 12 months of closing: employee retention undertaking",
+      "detail": "headcount not below 90%",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-17",
+      "kind": "step",
+      "label": "Within 3 years of closing: non-compete and non-solicitation",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-18",
+      "kind": "end",
+      "label": "Agreement terminated: performance complete",
+      "outcome": "positive",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-31",
+      "kind": "end",
+      "label": "Agreement terminated for breach",
+      "outcome": "negative",
+      "stageId": "st-2"
+    }
   ],
   "edges": [
-    { "from": "n-1", "to": "n-2", "main": true },
-    { "from": "n-2", "to": "n-3", "main": true },
-    { "from": "n-3", "to": "n-4", "condition": "All satisfied", "main": true },
-    { "from": "n-3", "to": "n-5", "condition": "Delay caused by Party A" },
-    { "from": "n-3", "to": "n-6", "condition": "Delay caused by Party B" },
-    { "from": "n-3", "to": "n-19", "condition": "Not satisfied (force majeure)" },
-    { "from": "n-19", "to": "n-20" },
-
-    { "from": "n-4", "to": "n-7", "main": true },
-    { "from": "n-7", "to": "n-8", "main": true },
-    { "from": "n-8", "to": "n-9", "main": true },
-    { "from": "n-9", "to": "n-10", "main": true },
-    { "from": "n-10", "to": "n-11", "main": true },
-    { "from": "n-11", "to": "n-12", "condition": "Net assets ≥ benchmark", "main": true },
-    { "from": "n-11", "to": "n-13", "condition": "Net assets < benchmark" },
-    { "from": "n-12", "to": "n-14", "main": true },
-    { "from": "n-13", "to": "n-14" },
-    { "from": "n-14", "to": "n-15", "main": true },
-    { "from": "n-15", "to": "n-16", "main": true },
-    { "from": "n-16", "to": "n-17", "main": true },
-    { "from": "n-17", "to": "n-18", "main": true },
-    { "from": "n-17", "to": "n-30", "condition": "Breach of non-compete or non-solicitation" },
-
-    { "from": "n-4", "to": "n-21", "condition": "Material breach by Party A" },
-    { "from": "n-21", "to": "n-22" },
-    { "from": "n-4", "to": "n-23", "condition": "Material breach by Party B" },
-    { "from": "n-23", "to": "n-24" },
-    { "from": "n-8", "to": "n-25", "condition": "Party A's representations and warranties untrue" },
-    { "from": "n-25", "to": "n-26" },
-    { "from": "n-26", "to": "n-27", "condition": "Accepted" },
-    { "from": "n-26", "to": "n-28", "condition": "Disputed" },
-    { "from": "n-28", "to": "n-29" }
+    {
+      "from": "n-1",
+      "to": "n-2",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-3",
+      "main": true
+    },
+    {
+      "from": "n-3",
+      "to": "n-4",
+      "condition": "All satisfied",
+      "main": true
+    },
+    {
+      "from": "n-3",
+      "to": "n-5",
+      "condition": "Delay caused by Party A"
+    },
+    {
+      "from": "n-3",
+      "to": "n-6",
+      "condition": "Delay caused by Party B"
+    },
+    {
+      "from": "n-3",
+      "to": "n-19",
+      "condition": "Not satisfied (force majeure)"
+    },
+    {
+      "from": "n-19",
+      "to": "n-20"
+    },
+    {
+      "from": "n-4",
+      "to": "n-7",
+      "main": true
+    },
+    {
+      "from": "n-7",
+      "to": "n-8",
+      "main": true
+    },
+    {
+      "from": "n-8",
+      "to": "n-9",
+      "main": true
+    },
+    {
+      "from": "n-9",
+      "to": "n-10",
+      "main": true
+    },
+    {
+      "from": "n-10",
+      "to": "n-11",
+      "main": true
+    },
+    {
+      "from": "n-11",
+      "to": "n-12",
+      "condition": "Net assets ≥ benchmark",
+      "main": true
+    },
+    {
+      "from": "n-11",
+      "to": "n-13",
+      "condition": "Net assets < benchmark"
+    },
+    {
+      "from": "n-12",
+      "to": "n-14",
+      "main": true
+    },
+    {
+      "from": "n-13",
+      "to": "n-14"
+    },
+    {
+      "from": "n-14",
+      "to": "n-15",
+      "main": true
+    },
+    {
+      "from": "n-15",
+      "to": "n-16",
+      "main": true
+    },
+    {
+      "from": "n-16",
+      "to": "n-17",
+      "main": true
+    },
+    {
+      "from": "n-17",
+      "to": "n-18",
+      "main": true
+    }
+  ],
+  "rules": [
+    {
+      "id": "r-1",
+      "when": "Material breach by Party A, uncured 30 days after Party B's notice",
+      "then": "Party B may terminate: Party A refunds double the deposit and pays damages",
+      "outcome": "negative",
+      "stageIds": [
+        "st-2"
+      ],
+      "endId": "n-31",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-2",
+      "when": "Material breach by Party B, uncured 30 days after Party A's notice",
+      "then": "Party A may terminate and forfeit the deposit",
+      "outcome": "negative",
+      "stageIds": [
+        "st-2"
+      ],
+      "endId": "n-31",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-3",
+      "when": "Party A's representations and warranties prove untrue",
+      "then": "Party B serves a damages notice within 30 days of discovery; if accepted Party A pays within 15 days, otherwise CIETAC arbitration",
+      "outcome": "negative",
+      "stageIds": [
+        "st-2",
+        "st-3",
+        "st-4"
+      ],
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-4",
+      "when": "Party A breaches the non-compete or non-solicitation",
+      "then": "Party A pays liquidated damages of RMB 50,000,000 and compensation",
+      "outcome": "negative",
+      "stageIds": [
+        "st-4"
+      ],
+      "sourceIds": [
+        "s-1"
+      ]
+    }
   ]
 }

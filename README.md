@@ -22,7 +22,7 @@ antu renders four kinds of legal content as diagrams. Its specification is defin
 |---|---|---|
 | Relationship | Parties, roles, legal relationships | Not started |
 | Fact | Timeline, participants, sequence of events | Timeline sub-type available |
-| Procedure | Procedural path and possible branches | Not started |
+| Procedure | Procedural path and possible branches | Flowchart sub-type available |
 | Justification | Conclusion derived from norms and facts | Deferred |
 
 ## Why use antu
@@ -68,7 +68,7 @@ The diagrams meet the needs of legal work because the specification itself is de
 
 ## Output
 
-One JSON document produces one self-contained HTML file of about 420 KB. Engine and data are both inside the file. It issues no network requests, requires no server, and opens offline. It is suitable for archiving, circulation, and sending as an email attachment.
+One JSON document produces one self-contained HTML file of about 1.9 MB (most of it the layout engine, ELK). Engine and data are both inside the file. It issues no network requests, requires no server, and opens offline. It is suitable for archiving, circulation, and sending as an email attachment.
 
 ## Usage
 

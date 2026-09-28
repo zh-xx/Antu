@@ -1,0 +1,60 @@
+// ============================================================
+//  src/renderers/procedure/flow/palette.js — the flowchart's SVG colours
+//
+//  Why colours live in JS and not in the stylesheet: the image export (shell/exportPng.js)
+//  clones the canvas with html-to-image, and SVG paint set by a CSS **class rule** does not
+//  survive that clone — measured: every shape and link came out filled solid black. Paint set
+//  as SVG **attributes** does (the timeline's axis arrow relies on the same thing). So every
+//  fill and stroke that has to be in the exported picture is written here and passed as an
+//  attribute; the stylesheet only adds what is screen-only (hover shadow, focus ring).
+//
+//  Two dimensions, never mixed (spec/procedure/schema-draft.md §4.3): kind fixes the shape,
+//  outcome fixes the colour.
+// ============================================================
+
+/** Node outline and fill by outcome. neutral grey, positive green, negative red. */
+export const OUTCOME_PAINT = {
+  neutral: { stroke: '#64748b', fill: '#eef2ff' },
+  positive: { stroke: '#15803d', fill: '#dcfce7' },
+  negative: { stroke: '#b91c1c', fill: '#fee2e2' },
+}
+
+/** The start pill: a tinted fill, so the entry is found at a glance (only when neutral) */
+export const START_PAINT = { stroke: '#334155', fill: '#e2e8f0' }
+
+/** A note takes no part in the flow: no border, a pale yellow sheet, only the fold is drawn */
+export const NOTE_PAINT = { stroke: 'none', fill: '#fef9c3', fold: '#ca8a04' }
+
+/** Paint for one node's outline */
+export function nodePaint(kind, outcome = 'neutral') {
+  if (kind === 'note') return NOTE_PAINT
+  if (kind === 'start' && outcome === 'neutral') return START_PAINT
+  return OUTCOME_PAINT[outcome] ?? OUTCOME_PAINT.neutral
+}
+
+/**
+ * A rule card: the bar on its leading edge takes the outcome colour, the card itself only a
+ * faint tint of it. A card is text to read, not a step to find: a full node fill on a stack of
+ * them turns the whole lane into one block of colour.
+ */
+const RULE_TINT = { neutral: '#f8fafc', positive: '#f0fdf4', negative: '#fef2f2' }
+export function rulePaint(outcome = 'neutral') {
+  const o = OUTCOME_PAINT[outcome] ? outcome : 'neutral'
+  return { stroke: OUTCOME_PAINT[o].stroke, fill: RULE_TINT[o] }
+}
+
+/** A stage box: a pale wash behind its nodes, a hairline edge, a quiet title */
+export const STAGE_PAINT = { fill: '#f8fafc', stroke: '#cbd5e1', title: '#475569' }
+
+/** The scope bar beside the rule lane: how far a rule reaches */
+export const SCOPE_PAINT = { stroke: '#cbd5e1', width: 4 }
+
+/**
+ * Paint for one link. The main-line highlight is part of this, not a CSS state: with the
+ * switch on, the exported picture has to show the main line too.
+ */
+export function linkPaint(kind, highlightMain) {
+  if (kind === 'back') return { stroke: '#64748b', width: 1.5, dash: '5 4' }
+  if (kind === 'main' && highlightMain) return { stroke: '#1e293b', width: 2.4, dash: undefined }
+  return { stroke: '#475569', width: 1.6, dash: undefined }
+}

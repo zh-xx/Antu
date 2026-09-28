@@ -1,9 +1,11 @@
 // ============================================================
-//  src/renderers/fact/previewContext.js
+//  src/shell/previewContext.js
 //
-//  Shared state for the card detail overlay: which card is hovered, which card is pinned.
-//  A file of its own so that both index.jsx and EventNode.jsx can use it without importing
-//  each other and forming a cycle.
+//  Shared state for the detail overlay: which node is hovered, which node is pinned.
+//  A file of its own so that a renderer and its node component can both use it without
+//  importing each other and forming a cycle. It lives in the shell because every rendering
+//  kind has the same two-level overlay (hover to peek, click to pin): fact's event cards and
+//  procedure's flow nodes both read it.
 //
 //  Why Context rather than writing into node data:
 //  writing into data would force setNodes, and every mouse pass over a card would rebuild the

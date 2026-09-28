@@ -14,7 +14,8 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 
 import { validateProcedure, hintsOfProcedure, KINDS } from '../src/renderers/procedure/flow/rules.js'
-import { buildProcedureGraph, toPathD } from '../src/renderers/procedure/flow/layout.js'
+import { buildProcedureGraph, toPathD, toCurveD } from '../src/renderers/procedure/flow/layout.js'
+import { bendsOf } from '../src/renderers/procedure/flow/straighten.js'
 import { procedureKnowledge } from '../src/renderers/procedure/schema.js'
 import { registerKnowledge, layoutOf, layoutKindsOf } from '../src/core/registry.js'
 
@@ -82,40 +83,50 @@ test('seven real contracts: both orientations lay out and no nodes overlap', () 
   }
 })
 
-test('the main line is a straight line when vertical (all in one column)', () => {
-  const g = buildProcedureGraph(load(byPrefix('01-')), {}, undefined, 'vertical')
-  const centers = g.spine.map((id) => {
-    const n = g.nodes.find((x) => x.id === id)
-    return n.position.x + n.data.w / 2
-  })
-  assert.ok(g.spine.length > 5, 'the main line of this data should have a dozen or so steps')
-  assert.equal(new Set(centers.map((c) => Math.round(c))).size, 1, 'main line nodes must be aligned on one vertical line')
+test('the main line runs straight: almost no main link bends', () => {
+  // The layout no longer forces the main line into one column (branches spread as the graph
+  // needs), but main-line edges carry ELK's straightness priority. Stage boxes of different
+  // widths cost a jog where the main line crosses from one box into the next. Measured: 10 of
+  // 140 main links bend across the corpus in both orientations; allow a little, not a habit.
+  let total = 0
+  let bent = 0
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), {}, undefined, dir)
+      assert.ok(g.spine.length > 3, `${f}: the main line should be found`)
+      for (const c of g.connections.filter((c) => c.kind === 'main')) {
+        total += 1
+        if (c.points.length > 2) bent += 1
+      }
+    }
+  }
+  assert.ok(bent / total <= 0.08, `${bent} of ${total} main links bend`)
 })
 
-test('back edges are recognised, and the count matches what was measured', () => {
-  const back01 = buildProcedureGraph(load(byPrefix('01-'))).stats.backEdges
-  const back06 = buildProcedureGraph(load(byPrefix('06-'))).stats.backEdges
-  const back07 = buildProcedureGraph(load(byPrefix('07-'))).stats.backEdges
-  assert.equal(back01, 12, '01 has 9 back edges plus 3 added "extension returns to this stage" edges')
-  assert.equal(back06, 3, '06: the rectification loop')
-  assert.equal(back07, 0, '07 is acyclic')
+test('back edges are recognised: only the real loops are left', () => {
+  // With breach, delay and termination written as rules (§11), what loops back is a real loop:
+  // rectify and inspect again, the monthly cycle, renewal
+  const back = (p) => buildProcedureGraph(load(byPrefix(p))).stats.backEdges
+  assert.equal(back('01-'), 3, '01: the three rectify-and-reinspect loops')
+  assert.equal(back('06-'), 2, '06: recommissioning and re-inspection')
+  assert.equal(back('07-'), 0, '07 is acyclic')
 })
 
 test('several edges into the same target merge into one link', () => {
-  const g = buildProcedureGraph(load(byPrefix('03-')))
-  assert.equal(g.stats.groupedEdges, 3, '03 has 3 edges merged away (two groups flowing into the termination node)')
+  const g = buildProcedureGraph(JSON.parse(readFileSync(`${AGENT_DIR}/6-merged-edges.en.json`, 'utf8')))
+  assert.ok(g.stats.groupedEdges > 0, 'the merged-edges example has edges merged away')
   assert.equal(g.stats.connections, g.stats.edges - g.stats.groupedEdges)
   const merged = g.connections.filter((c) => c.merged > 1)
-  assert.equal(merged.length, 2, 'after merging there should be 2 links')
-  assert.ok(merged.some((c) => c.label.includes(' / ')), 'merged conditions must be shown side by side')
+  assert.ok(merged.length > 0)
+  for (const c of merged) assert.ok(c.label.includes(' / '), 'merged conditions are joined with " / "')
 })
 
-test('sizes match what was measured: 06 has 20 layers, 05 has 16, 01 has 12', () => {
-  const layers = (f) => buildProcedureGraph(load(byPrefix(f))).stats.layers
-  assert.equal(layers('06-'), 20)
-  assert.equal(layers('05-'), 16)
-  assert.equal(layers('01-'), 12)
-  assert.equal(layers('04-'), 5)
+test('there are at least as many layers as steps on the main line', () => {
+  // Each step of the main line goes forward, so it lands in a later layer than the one before
+  for (const f of files) {
+    const g = buildProcedureGraph(load(f))
+    assert.ok(g.stats.layers >= g.spine.length, `${f}: ${g.stats.layers} layers for a main line of ${g.spine.length}`)
+  }
 })
 
 test('validation catches each of the thirteen rules', () => {
@@ -189,6 +200,38 @@ test('polyline to SVG path: two points join directly, each extra corner gets a r
   assert.equal(toPathD([]), '')
 })
 
+test('curved style: the same route, straight stays straight, each corner becomes one arc', () => {
+  assert.equal(toCurveD([[0, 0], [0, 100]]), toPathD([[0, 0], [0, 100]]))
+  const pts = [[0, 0], [0, 50], [100, 50], [100, 100]]
+  const d = toCurveD(pts)
+  assert.ok(d.startsWith('M 0 0') && d.endsWith('L 100 100'), 'it starts and ends where the route does')
+  assert.equal((d.match(/C/g) || []).length, 2, 'one arc per corner')
+  assert.equal(toCurveD([]), '')
+})
+
+test('links bend as little as possible: straight first, then one bend, never more than two', () => {
+  // ELK's router leaves every link out of a bottom and into a top, so any two nodes not in line
+  // cost a Z and a loop four bends; straighten.js offers straight and one-bend routes first.
+  // Measured on the corpus, both orientations: 132 bends before, 62 after, none above two.
+  let total = 0
+  let links = 0
+  let straightOrOne = 0
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), {}, undefined, dir)
+      for (const c of g.connections) {
+        const b = bendsOf(c.points)
+        assert.ok(b <= 2, `${f}/${dir}: ${c.id} bends ${b} times`)
+        total += b
+        links += 1
+        if (b <= 1) straightOrOne += 1
+      }
+    }
+  }
+  assert.ok(total <= 70, `${total} bends across the corpus`)
+  assert.ok(straightOrOne / links >= 0.85, `only ${straightOrOne} of ${links} links are straight or bend once`)
+})
+
 test('knowledge registration: procedure is registered with the flow sub-type', () => {
   registerKnowledge('procedure', procedureKnowledge)
   assert.deepEqual(layoutKindsOf('procedure'), ['flow'])
@@ -207,8 +250,8 @@ const AGENT_DIR = 'examples/agent/procedure'
 const agentFiles = readdirSync(AGENT_DIR).filter((f) => f.endsWith('.json')).sort()
 const agentPairs = [...new Set(agentFiles.map((f) => f.replace(/\.(en|zh-CN)\.json$/i, '.json')))]
 
-test('agent examples: six (each with an en and a zh-CN half), all validate and lay out', () => {
-  assert.equal(agentPairs.length, 6)
+test('agent examples: seven (each with an en and a zh-CN half), all validate and lay out', () => {
+  assert.equal(agentPairs.length, 7)
   for (const base of agentPairs) {
     for (const lang of ['en', 'zh-CN']) {
       const f = `${base.replace(/\.json$/, '')}.${lang}.json`
@@ -249,9 +292,16 @@ test('agent examples: no hints such as several entries (copying them hits no tra
 const withBoxes = (f, dir) => {
   const g = buildProcedureGraph(load(f), {}, undefined, dir)
   const box = new Map(
-    g.nodes.map((n) => [n.id, { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }]),
+    g.nodes.map((n) => [n.id, { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h, kind: n.data.node.kind }]),
   )
   return { g, box }
+}
+
+/** On a diamond's outline (a decision meets its links on its four slanted edges) */
+const onDiamond = ([x, y], b) => {
+  const cx = b.x + b.w / 2
+  const cy = b.y + b.h / 2
+  return Math.abs(Math.abs(x - cx) / (b.w / 2) + Math.abs(y - cy) / (b.h / 2) - 1) < 0.01
 }
 
 const onBoxBoundary = (p, b) => {
@@ -273,8 +323,9 @@ test('every link begins and ends on the boundary of its two nodes', () => {
       for (const c of g.connections) {
         const first = c.points[0]
         const last = c.points[c.points.length - 1]
-        assert.ok(onBoxBoundary(first, box.get(c.from)), `${f}/${dir}: ${c.id} starts off the source box`)
-        assert.ok(onBoxBoundary(last, box.get(c.to)), `${f}/${dir}: ${c.id} ends off the target box`)
+        const on = (p, b) => (b.kind === 'decision' ? onDiamond(p, b) : onBoxBoundary(p, b))
+        assert.ok(on(first, box.get(c.from)), `${f}/${dir}: ${c.id} starts off the source's outline`)
+        assert.ok(on(last, box.get(c.to)), `${f}/${dir}: ${c.id} ends off the target's outline`)
         assert.ok(c.d.startsWith('M '), `${f}/${dir}: ${c.id} has no path`)
         for (const [x, y] of c.points) {
           assert.ok(Number.isFinite(x) && Number.isFinite(y), `${f}/${dir}: ${c.id} has a bad point`)
@@ -284,32 +335,258 @@ test('every link begins and ends on the boundary of its two nodes', () => {
   }
 })
 
-test('back edges are routed outside every node, so they cross nothing', () => {
-  let checked = 0
+/**
+ * Which nodes a polyline runs behind. A segment may touch its own two boxes only at its ends
+ * (it leaves one boundary and arrives at another); any other box it enters, it is hidden by.
+ */
+const runsBehind = (c, box) => {
+  const hits = []
+  for (let i = 0; i < c.points.length - 1; i += 1) {
+    const [[x1, y1], [x2, y2]] = [c.points[i], c.points[i + 1]]
+    const [lx, hx, ly, hy] = [Math.min(x1, x2), Math.max(x1, x2), Math.min(y1, y2), Math.max(y1, y2)]
+    for (const [id, b] of box) {
+      // A link meets a diamond on its slanted outline, inside the diamond's own box: that
+      // stretch of its first or last segment is its own business
+      const own = (id === c.from && i === 0) || (id === c.to && i === c.points.length - 2)
+      if (own && b.kind === 'decision') continue
+      if (hx > b.x + 1 && lx < b.x + b.w - 1 && hy > b.y + 1 && ly < b.y + b.h - 1) hits.push(id)
+    }
+  }
+  return hits
+}
+
+test('no link runs behind a node: every real contract, both orientations', () => {
+  // The first rendering had 10 of 37 links in 01 and 8 of 23 in 03 disappearing under boxes
+  // they did not belong to. The reader cannot follow such a line, so this is a hard zero.
   for (const f of files) {
     for (const dir of ['vertical', 'horizontal']) {
-      const { g } = withBoxes(f, dir)
-      const back = g.connections.filter((c) => c.kind === 'back')
-      if (back.length === 0) continue
-      const maxRight = Math.max(...g.nodes.map((n) => n.position.x + n.data.w))
-      const maxBottom = Math.max(...g.nodes.map((n) => n.position.y + n.data.h))
-      for (const c of back) {
-        const lane = dir === 'vertical' ? c.points[1][0] : c.points[1][1]
-        const limit = dir === 'vertical' ? maxRight : maxBottom
-        assert.ok(lane > limit, `${f}/${dir}: ${c.id} runs inside the node field (lane ${lane} <= ${limit})`)
-        checked += 1
+      const { g, box } = withBoxes(f, dir)
+      for (const c of g.connections) {
+        assert.deepEqual(runsBehind(c, box), [], `${f}/${dir}: ${c.id} runs behind these nodes`)
       }
     }
   }
-  assert.ok(checked > 20, `the corpus should contain back edges to check, saw ${checked}`)
 })
 
-test('a link carrying several conditions merges them into one label', () => {
-  const g = buildProcedureGraph(load('03-labour-outsourcing-contract.zh-CN.json'))
-  const merged = g.connections.filter((c) => c.merged > 1)
-  assert.equal(merged.length, 2)
-  for (const c of merged) {
-    assert.ok(c.label.includes(' / '), 'merged conditions are joined with " / "')
-    assert.equal(c.points.length, 4, 'a merged branch link is still one orthogonal polyline')
+test('no two different links lie on top of each other', () => {
+  // Lines may coincide only where they are meant to: the fork shared by one source's branches,
+  // the lane shared by back edges into one target. Anything else is two lines drawn as one.
+  const segs = (c) =>
+    c.points.slice(1).map((p, i) => {
+      const q = c.points[i]
+      return q[0] === p[0]
+        ? { axis: 'v', at: q[0], lo: Math.min(q[1], p[1]), hi: Math.max(q[1], p[1]) }
+        : { axis: 'h', at: q[1], lo: Math.min(q[0], p[0]), hi: Math.max(q[0], p[0]) }
+    })
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), {}, undefined, dir)
+      const cs = g.connections.map((c) => ({ c, s: segs(c) }))
+      for (let i = 0; i < cs.length; i += 1) {
+        for (let j = i + 1; j < cs.length; j += 1) {
+          const [A, B] = [cs[i].c, cs[j].c]
+          if (A.from === B.from || A.to === B.to) continue
+          for (const a of cs[i].s) {
+            for (const b of cs[j].s) {
+              const same = a.axis === b.axis && Math.abs(a.at - b.at) < 0.5
+              const shared = Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo)
+              assert.ok(!(same && shared > 2), `${f}/${dir}: ${A.id} and ${B.id} overlap for ${shared}px`)
+            }
+          }
+        }
+      }
+    }
   }
+})
+
+
+test('the picture does not depend on the order nodes are written in', () => {
+  // A node appended at the end of the list once turned 06's main line upside down (ELK's
+  // model-order cycle breaking reversed an edge that pointed at a node written earlier).
+  // Reverse the node list of every contract: the main line must still run straight and
+  // forward, one layer per step at least.
+  for (const f of files) {
+    const spec = load(f)
+    spec.nodes.reverse()
+    const g = buildProcedureGraph(spec)
+    assert.deepEqual(g.errors, [], f)
+    assert.ok(g.stats.layers >= g.spine.length, `${f}: ${g.stats.layers} layers for a main line of ${g.spine.length}`)
+    const along = new Map(g.nodes.map((n) => [n.id, n.position.y]))
+    for (let i = 1; i < g.spine.length; i += 1) {
+      assert.ok(along.get(g.spine[i]) > along.get(g.spine[i - 1]), `${f}: the main line turns back at ${g.spine[i]}`)
+    }
+  }
+})
+
+// ── What the renderer relies on ──────────────────────────────
+// The flowchart renderer draws straight from these fields, and the canvas fits the viewport
+// (and the image export crops) to `size`. So anything outside `size` is cut off on screen and
+// in the exported PNG, which is how the back-edge lanes were first found missing from it.
+
+// One language of the agent examples is enough here (the pair shares its structure)
+const agentEn = agentFiles.filter((f) => f.endsWith('.en.json'))
+const loadAgent = (f) => JSON.parse(readFileSync(`${AGENT_DIR}/${f}`, 'utf8'))
+
+test('every node and every link point lies inside the content size', () => {
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), {}, undefined, dir)
+      const { width, height } = g.size
+      for (const n of g.nodes) {
+        assert.ok(n.position.x >= 0 && n.position.x + n.data.w <= width, `${f}/${dir}: ${n.id} sticks out sideways`)
+        assert.ok(n.position.y >= 0 && n.position.y + n.data.h <= height, `${f}/${dir}: ${n.id} sticks out vertically`)
+      }
+      for (const c of g.connections) {
+        for (const [x, y] of c.points) {
+          assert.ok(x >= 0 && x <= width && y >= 0 && y <= height, `${f}/${dir}: ${c.id} leaves the content box at (${x}, ${y})`)
+        }
+      }
+    }
+  }
+})
+
+test('the main-line links are exactly the spine, marked or inferred', () => {
+  for (const [name, spec] of [...files.map((f) => [f, load(f)]), ...agentEn.map((f) => [f, loadAgent(f)])]) {
+    const g = buildProcedureGraph(spec)
+    const main = g.connections.filter((c) => c.kind === 'main')
+    assert.equal(main.length, g.spine.length - 1, `${name}: one main link per step along the spine`)
+    for (const c of main) {
+      assert.equal(g.spine[g.spine.indexOf(c.from) + 1], c.to, `${name}: ${c.id} is not a spine step`)
+    }
+  }
+  // The agent example with no `main` flags at all: the highlight must still follow the inferred spine
+  const inferred = buildProcedureGraph(loadAgent('5-inferred-spine.en.json'))
+  assert.ok(inferred.connections.some((c) => c.kind === 'main'), 'an inferred spine still gets main links')
+})
+
+test('stage boxes hold their own nodes and never overlap', () => {
+  let checked = 0
+  const inside = (n, b) =>
+    n.position.x >= b.x && n.position.y >= b.y && n.position.x + n.data.w <= b.x + b.w && n.position.y + n.data.h <= b.y + b.h
+  const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+  for (const f of files) {
+    const spec = load(f)
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(spec, {}, undefined, dir)
+      if (!spec.stages?.length) {
+        assert.equal(g.stageBoxes.length, 0, `${f}: no stages, no boxes`)
+        continue
+      }
+      const used = new Set(spec.nodes.map((n) => n.stageId).filter(Boolean))
+      assert.equal(g.stageBoxes.length, used.size, `${f}/${dir}: one box per stage that has nodes`)
+      for (const b of g.stageBoxes) {
+        assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.w <= g.size.width && b.y + b.h <= g.size.height, `${f}/${dir}: box ${b.label} leaves the content`)
+        for (const n of g.nodes) {
+          if (n.data.node.stageId === b.stageId) assert.ok(inside(n, b), `${f}/${dir}: ${n.id} is outside its box ${b.label}`)
+          else assert.ok(!inside(n, b), `${f}/${dir}: ${n.id} sits in the box of ${b.label}`)
+        }
+      }
+      g.stageBoxes.forEach((a, i) =>
+        g.stageBoxes.slice(i + 1).forEach((b) => assert.ok(!overlap(a, b), `${f}/${dir}: boxes ${a.label} and ${b.label} overlap`)),
+      )
+      checked += 1
+    }
+    // Switched off: no boxes
+    assert.equal(buildProcedureGraph(spec, { stages: false }).stageBoxes.length, 0)
+  }
+  assert.ok(checked >= 8, `the corpus should have staged contracts to check, saw ${checked}`)
+})
+
+test('condition labels sit clear of every node, inside the content', () => {
+  // ELK is given a box per label and places it; nothing is guessed afterwards
+  const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), {}, undefined, dir)
+      const nodes = g.nodes.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }))
+      for (const c of g.connections.filter((c) => c.label)) {
+        const l = { x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height }
+        assert.ok(l.x >= 0 && l.y >= 0 && l.x + l.w <= g.size.width && l.y + l.h <= g.size.height, `${f}/${dir}: ${c.id} label outside`)
+        for (const n of nodes) assert.ok(!overlap(l, n), `${f}/${dir}: ${c.id} label covers ${n.id}`)
+      }
+    }
+  }
+})
+
+
+
+// ── The rule layer (v1.1, §11) ──────
+// Contingent clauses — breach, delay liability, rights to terminate — as `rules` beside the
+// flow instead of edges out of some step. See spec/procedure/schema-draft.md §11.
+
+const RULES_DIR = 'examples/procedure'
+const ruleFiles = readdirSync(RULES_DIR).filter((f) => f.endsWith('.zh-CN.json') && JSON.parse(readFileSync(`${RULES_DIR}/${f}`, 'utf8')).rules?.length).sort()
+const loadRules = (f) => JSON.parse(readFileSync(`${RULES_DIR}/${f}`, 'utf8'))
+
+test('rule-layer drafts validate cleanly, with no hints', () => {
+  assert.ok(ruleFiles.length >= 2)
+  for (const f of ruleFiles) {
+    assert.deepEqual(validateProcedure(loadRules(f)), [], f)
+    // an end reached only through a rule is not a second entry
+    assert.deepEqual(hintsOfProcedure(loadRules(f)), [], f)
+  }
+})
+
+test('rules are validated: references, the end they lead to, the trigger', () => {
+  const cases = [
+    ['stageIds points nowhere', (s) => { s.rules[0].stageIds = ['st-9'] }, /non-existent stage "st-9"/],
+    ['endId is not an end', (s) => { s.rules[4].endId = 'n-3' }, /not a node of kind "end"/],
+    ['endId points nowhere', (s) => { s.rules[4].endId = 'n-99' }, /non-existent node "n-99"/],
+    ['when missing', (s) => { delete s.rules[0].when }, /`when` is required/],
+    ['when list has a blank', (s) => { s.rules[5].when.push(' ') }, /`when` is required/],
+    ['then missing', (s) => { delete s.rules[0].then }, /missing required field `then`/],
+    ['duplicate id', (s) => { s.rules[1].id = s.rules[0].id }, /already used/],
+    ['id shared with a node', (s) => { s.rules[0].id = 'n-1' }, /already used/],
+    ['bad outcome', (s) => { s.rules[0].outcome = 'bad' }, /outcome/],
+    ['rules not an array', (s) => { s.rules = {} }, /`rules` must be an array/],
+  ]
+  for (const [name, mutate, re] of cases) {
+    const s = loadRules('03-labour-outsourcing-contract.zh-CN.json')
+    mutate(s)
+    assert.ok(some(validateProcedure(s), re), `${name}: expected ${re}, got ${JSON.stringify(validateProcedure(s))}`)
+  }
+})
+
+test('rule cards sit beside the flow: no overlap with nodes or each other, inside the content', () => {
+  const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+  for (const f of ruleFiles) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(loadRules(f), {}, undefined, dir)
+      assert.equal(g.rules.length, loadRules(f).rules.length, `${f}/${dir}: a rule was dropped`)
+      const cards = g.rules.map((c) => ({ id: c.rule.id, x: c.x, y: c.y, w: c.w, h: c.h }))
+      const nodes = g.nodes.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }))
+      for (const c of cards) {
+        assert.ok(c.x >= 0 && c.y >= 0 && c.x + c.w <= g.size.width && c.y + c.h <= g.size.height, `${f}/${dir}: ${c.id} outside`)
+        for (const n of nodes) assert.ok(!overlap(c, n), `${f}/${dir}: ${c.id} covers node ${n.id}`)
+        for (const d of cards) if (d !== c) assert.ok(!overlap(c, d), `${f}/${dir}: ${c.id} and ${d.id} overlap`)
+      }
+    }
+  }
+})
+
+test('rules that end the contract join one trunk into their end', () => {
+  for (const dir of ['vertical', 'horizontal']) {
+    const g = buildProcedureGraph(loadRules('03-labour-outsourcing-contract.zh-CN.json'), {}, undefined, dir)
+    const trunks = g.ruleLinks.filter((l) => l.arrow)
+    assert.equal(trunks.length, 1, `${dir}: three terminating rules, one end, one trunk`)
+    const stubs = g.ruleLinks.filter((l) => !l.arrow && !l.scope)
+    assert.equal(stubs.length, 3, `${dir}: one stub per terminating rule`)
+    // the trunk ends on the boundary of the end it leads to
+    const end = g.nodes.find((n) => n.id === trunks[0].to)
+    const [x, y] = trunks[0].points.at(-1)
+    const b = { x: end.position.x, y: end.position.y, w: end.data.w, h: end.data.h }
+    assert.ok(onBoxBoundary([x, y], b), `${dir}: the trunk stops short of its end`)
+    // and the end reached only through rules sits in the last layer, outermost
+    const last = Math.max(...g.nodes.map((n) => (dir === 'vertical' ? n.position.y : n.position.x)))
+    assert.equal(dir === 'vertical' ? end.position.y : end.position.x, last, `${dir}: the rule end is not in the last layer`)
+  }
+})
+
+test('the rule switch gives the lane back', () => {
+  const s = loadRules('01-software-development-contract.zh-CN.json')
+  const on = buildProcedureGraph(s)
+  const off = buildProcedureGraph(s, { rules: false })
+  assert.equal(off.rules.length, 0)
+  assert.equal(off.ruleLinks.length, 0)
+  assert.ok(off.size.width < on.size.width, 'switching rules off should narrow the diagram')
 })

@@ -41,6 +41,8 @@ export const en = {
   'info.slots': ({ n }) => `${n} time slot${n === 1 ? '' : 's'}`,
   'info.actors': ({ n }) => `${n} part${n === 1 ? 'y' : 'ies'}`,
   'info.sources': ({ n }) => `${n} source${n === 1 ? '' : 's'}`,
+  'info.nodes': ({ n }) => `${n} node${n === 1 ? '' : 's'}`,
+  'info.stages': ({ n }) => `${n} stage${n === 1 ? '' : 's'}`,
 
   // ---------- control dock (ControlDock.jsx) ----------
   'dock.actors': 'Parties',
@@ -73,6 +75,23 @@ export const en = {
     date ? `${label}, ${date}` : label,
   'card.dateNote': ({ note }) => `Time note: ${note}`,
   'card.previewHint': 'Click a card to read the full text',
+
+  // ---------- flowchart dock and node overlay (procedure/flow) ----------
+  'flow.conditions': 'Conditions',
+  'flow.detail': 'Detail',
+  'flow.mainLine': 'Main line',
+  'flow.stages': 'Stages',
+  'flow.rules': 'Rules',
+  'flow.linkStraight': 'Straight',
+  'flow.linkCurved': 'Curved',
+  'flow.linkStyle': 'Link style',
+  'rule.if': 'If',
+  'rule.ifAny': 'If any of:',
+  'rule.or': ', or ',
+  'rule.scopeAll': 'Throughout',
+  'rule.scopeOne': ({ stage }) => `During: ${stage}`,
+  'rule.scopeRange': ({ from, to, n }) => `During: ${from} → ${to} (${n} stages)`,
+  'flow.previewHint': 'Click a node to read the full text',
 
   // ---------- canvas accessibility text (Canvas.jsx) ----------
   // The key names come from defaultAriaLabelConfig in @xyflow/system and must correspond one to one for it to take effect
@@ -176,7 +195,8 @@ export const en = {
     `nodes (${id}): unreachable from the start (it would be dropped silently and never appear)`,
   'perr.noEnd': 'no node has `kind: "end"` (a flow needs an end)',
   'perr.deadEnd': ({ id, label }) =>
-    `nodes (${id}): "${label}" is a dead end: it is neither end nor note but has no outgoing edge`,
+    `nodes (${id}): "${label}" is a dead end: it is neither end nor note but has no outgoing edge. ` +
+    'If it is the consequence of a breach, delay or right to terminate, write it as a rule in `rules` (it may fire at any time in its stages) instead of a node that has to lead somewhere',
   'perr.decisionTooFewOut': ({ id, n }) =>
     `nodes (${id}): kind is "decision" but only ${n} outgoing edge(s); a decision needs at least 2`,
   'perr.decisionNoCondition': ({ id, index, to }) =>
@@ -188,6 +208,12 @@ export const en = {
   'perr.mainBroken': ({ id }) =>
     `the main line breaks at node "${id}": the edges marked main do not reach any end. ` +
     'Either add the missing main edge, or repair the chain',
+  'perr.rulesNotArray': '`rules` must be an array',
+  'perr.duplicateRuleId': ({ at, id }) => `${at}: id "${id}" is already used by another rule or node`,
+  'perr.ruleWhen': ({ at }) =>
+    `${at}: \`when\` is required: a non-empty string, or an array of them (any one of them triggers the rule)`,
+  'perr.ruleEndNotEnd': ({ at, id }) =>
+    `${at}: \`endId\` points at "${id}", which is not a node of kind "end"; a rule can only lead to an end`,
   'phint.stageBackwards': ({ from, fromStage, to, toStage }) =>
     `stage runs backwards: ${from} (${fromStage}) -> ${to} (${toStage}); back edges are normal, others need a second look`,
   'phint.decisionOnSpine': ({ id, label }) =>

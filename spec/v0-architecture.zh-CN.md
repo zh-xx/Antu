@@ -36,8 +36,8 @@
 | type | 表达的内容 | 对应法律思维 | 状态 |
 |---|---|---|---|
 | `relationship` | 谁和谁、以什么角色、存在什么法律关系 | 主体与法律关系界定 | 待做 |
-| `fact` | 已发生事实的时间叙事 | 事实认定 | 待做（优先） |
-| `procedure` | 程序路径与可能分支 | 程序运作 | 待做 |
+| `fact` | 已发生事实的时间叙事 | 事实认定 | 时间图已可用 |
+| `procedure` | 程序路径与可能分支 | 程序运作 | 流程图已可用 |
 | `justification` | 规范+事实→结论的推理（说理） | 法律论证 | **搁置**，前三类成熟后开始 |
 
 **分界备忘：**
@@ -172,7 +172,7 @@ JSON (信封) ──> [校验门卫] ──> 按大类路由 ──> 注册表�
 - 新增画法 = 注册一个子类渲染器，**核心本体不动**；
 - 底层渲染技术：React Flow（已选定，事实图已在用）。
 - 布局：**各子类自负**，不用统一布局库。事实图的时间图自己算网格（`src/renderers/fact/timeline/grid.js`）；
-  关系图、程序图计划用 dagre 或 elkjs（**尚未安装**，`package.json` 里目前只有 React Flow）。
+  程序图的流程图用 ELK 的分层算法（elkjs，`src/renderers/procedure/flow/elk.js`），是按实测交叉数在 dagre 与手写排布之间选出的（见 `spec/procedure/schema-draft.zh-CN.md` §6.1）；关系图大概率也会用它。
 - 渲染器内部负责"语义 → React Flow nodes/edges"的翻译（翻译发生在渲染器内，不在规范内）。
 
 ## 6.1 产物形态：一个自包含的 HTML
@@ -229,7 +229,7 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
 - [x] **不要侧栏**：画布占满，左上角标签卡 + 底部控制胶囊 + 缩放/缩略图，共四处浮层（`spec/fact/rendering.md` §4）
 - [x] **来源只标出处、不跳转**；原始材料不打包（§6.1）
 - [x] 取舍原则：业务语言优先于渲染器统一
-- [x] 技术栈：React 19 + Vite + @xyflow/react 12 + dagre，JSX，useState（讨论后沿用）
+- [x] 技术栈：React 19 + Vite + @xyflow/react 12 + elkjs（程序图流程图的布局；原先计划用 dagre），JSX，useState
 - [x] 防过度设计：最小可跑优先；先 relationship 三件套跑通
 - [x] 顶层类型不建"子类型树"：差异分流为 渲染参数 / 预设配置 / 受控枚举；新顶层类型唯一判据 = 元素结构装不进现有类型
 - [x] 命名：中文"案图"，代号 `antu`；发包名暂定 `antu-viz`（未占用，已验证）
@@ -238,7 +238,8 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
 ### 待定（动手前确认）
 - [ ] `specVersion` 的形态（有无必要、怎么演进）
 - [x] fact 内容层 schema：**已定稿**（含 label / summary / detail 的分工，见 `spec/fact/schema-draft.md`）。其余类型未开始
-- [ ] 其余类型（relationship / procedure）内容层 schema 字段细节
+- [x] procedure 内容层 schema：**v1 已确认**（见 `spec/procedure/schema-draft.zh-CN.md`）
+- [ ] relationship 内容层 schema 字段细节
 - [x] 校验层报错信息的形态：**已实现**。每条错误带字段路径与事件 id（如 `slots[0].events[1] (ev-2)`），说明哪里不对、怎么改
 - [ ] 信封层可选元数据范围
 - [ ] 插件壳（dsh 插件 / MCP / 独立网页）——推迟到核心成熟后。
@@ -262,6 +263,6 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
    如果先做别的 fact 子类，可以选不依赖新数据的（如按分组分列的矩阵式排布）
 5. **relationship 类型**：schema + 渲染器。这一类图里 `edges` 就是主要内容，
    画布的边能力在这里才真正用上
-6. **procedure 类型**：schema + 渲染器
+6. [x] **procedure 类型**：schema v1 + 流程图渲染器（`spec/procedure/schema-draft.zh-CN.md` §6.1）
 7. **回顾前几类**，再启动 justification
 8. 数据管线（agent 侧，文书 → JSON）与插件壳：另行规划

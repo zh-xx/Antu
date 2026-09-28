@@ -21,6 +21,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '../../shell/LangContext.jsx'
+import { DockExportButton, DockLangSwitch, DockSegmented } from '../../shell/DockParts.jsx'
 
 /** Optional card fields (title and time are always shown and not listed here). Message keys are stored and resolved per language on use. */
 const OPTIONAL_FIELDS = ['sources', 'actors', 'summary']
@@ -29,12 +30,6 @@ const FIELD_KEYS = { sources: 'dock.sources', actors: 'dock.actors', summary: 'd
 const ORIENTATIONS = [
   ['vertical', 'dock.vertical'],
   ['horizontal', 'dock.horizontal'],
-]
-
-/** Language switch. Each language name is written in its own language, so you recognise your entry even in the wrong language. */
-const LANGS = [
-  ['en', 'dock.langEn'],
-  ['zh', 'dock.langZh'],
 ]
 
 export default function ControlDock({
@@ -53,7 +48,7 @@ export default function ControlDock({
   exporting = false,
   onExport,
 }) {
-  const { t, lang, setLang } = useLang()
+  const { t } = useLang()
 
   // Only one menu is open at a time: opening a new one closes the old
   const [open, setOpen] = useState(false)
@@ -116,17 +111,7 @@ export default function ControlDock({
         <span className="antu-dock-sep" />
 
         {/* Segmented control: only two options, putting both out saves one click compared with a menu */}
-        <div className="antu-dock-seg">
-          {ORIENTATIONS.map(([value, key]) => (
-            <button
-              key={value}
-              className={`antu-dock-seg-item${orientation === value ? ' is-on' : ''}`}
-              onClick={() => onToggleOrientation(value)}
-            >
-              {t(key)}
-            </button>
-          ))}
-        </div>
+        <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} />
 
         <span className="antu-dock-sep" />
 
@@ -141,53 +126,12 @@ export default function ControlDock({
 
         {/* Language affects interface text only, never data: the case content on the diagram
             comes with the JSON. So switching language reloads no data and changes no geometry. */}
-        <div className="antu-dock-seg" title={t('dock.lang')}>
-          {LANGS.map(([value, key]) => (
-            <button
-              key={value}
-              className={`antu-dock-seg-item${lang === value ? ' is-on' : ''}`}
-              onClick={() => setLang(value)}
-            >
-              {t(key)}
-            </button>
-          ))}
-        </div>
+        <DockLangSwitch />
 
         {/* Set off by a divider: everything before is a "how to look at it" switch, this is the only action */}
         <span className="antu-dock-sep" />
 
-        <button
-          className="antu-dock-action"
-          onClick={onExport}
-          disabled={exporting}
-          title={t('dock.exportTitle')}
-        >
-          {/* The conventional download mark (an arrow down onto a line). This cell is an action
-              while the others are states, and giving an action a symbol is standard toolbar
-              practice: four words alone on a dark background read more like a label than
-              something pressable.
-              `fill="none"`: these strokes are drawn as outlines, and leaving the fill on
-              smears them into a solid block.
-              Size 13 rather than 12: a symbol beside small text must be slightly larger to
-              not look small. */}
-          <svg
-            className="antu-dock-action-icon"
-            viewBox="0 0 16 16"
-            width="13"
-            height="13"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M8 1.8v7.4M4.8 6.2 8 9.4l3.2-3.2M2.4 12.6h11.2"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          {exporting ? t('dock.exporting') : t('dock.exportImage')}
-        </button>
+        <DockExportButton exporting={exporting} onExport={onExport} />
       </div>
     </div>
   )

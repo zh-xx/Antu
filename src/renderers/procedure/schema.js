@@ -15,6 +15,7 @@
 
 import { validateProcedure, KINDS, OUTCOMES, DOMAINS } from './flow/rules.js'
 import { buildProcedureGraph } from './flow/layout.js'
+import { fitZoom } from '../../core/canvas.js'
 
 /**
  * Field metadata: **the reference an agent gets is generated from this**, not
@@ -69,6 +70,17 @@ export const PROCEDURE_FIELDS = {
       note: `outcome (drives colour, not shape): ${OUTCOMES.join(' / ')}, default neutral`,
     },
     { name: 'sourceIds', req: 'no', ty: 'string[]', note: 'which materials it rests on' },
+  ],
+  rules: [
+    { name: '', req: '', ty: '', note: 'Optional (v1.1). Contingent clauses: breach, delay liability, rights to terminate' },
+    { name: '', req: '', ty: '', note: 'a rule is NOT a step: write it here, not as a node with edges out of some step' },
+    { name: 'id', req: 'yes', ty: 'string', note: 'unique among rules and nodes' },
+    { name: 'when', req: 'yes', ty: 'string|str[]', note: 'the trigger; an array means "any one of these"' },
+    { name: 'then', req: 'yes', ty: 'string', note: 'the consequence, with amounts, e.g. "penalty 0.1% per day, capped at 5%"' },
+    { name: 'stageIds', req: 'no', ty: 'string[]', note: 'the stages it applies in; omit = throughout. One rule for all its stages, never one copy per stage' },
+    { name: 'outcome', req: 'no', ty: 'string', note: `colour: ${OUTCOMES.join(' / ')}` },
+    { name: 'endId', req: 'no', ty: 'string', note: 'only if it ends the contract: the id of the end node it leads to' },
+    { name: 'sourceIds', req: 'no', ty: 'string[]', note: 'which clause it rests on' },
   ],
   edges: [
     { name: 'from', req: 'yes', ty: 'string', note: 'id of the source node' },
@@ -125,6 +137,84 @@ export const procedureKnowledge = {
 
   fields: PROCEDURE_FIELDS,
   describe: describeProcedureSchema,
+
+  /** The label card's third line, counted in a procedure's own units (see the same entry in fact/schema.js) */
+  info: (spec, t, formatNumber) => {
+    const nodes = Array.isArray(spec.nodes) ? spec.nodes.length : 0
+    const stages = Array.isArray(spec.stages) ? spec.stages.length : 0
+    let first = t('info.nodes', { n: formatNumber(nodes) })
+    if (stages > 0) first += ` · ${t('info.stages', { n: formatNumber(stages) })}`
+    return [
+      first,
+      t('info.actors', { n: formatNumber(spec.actors?.length || 0) }),
+      t('info.sources', { n: formatNumber(spec.sources?.length || 0) }),
+    ]
+  },
+
+  /**
+   * The geometry report for MCP's antu_layout, counted in a procedure's own units: nodes,
+   * links, layers, the widest layer, loops, rules; per orientation the content size and the
+   * fit zoom. A procedure has no views and nothing "does not fit": scale is reported, never
+   * refused (§6.3), and the agent decides whether to split the diagram.
+   */
+  report: (spec, layout, { canvas }) => {
+    const byOrientation = {}
+    let g
+    for (const o of ['vertical', 'horizontal']) {
+      g = layout(spec, {}, undefined, o)
+      byOrientation[o] = { size: g.size, fit: Number(fitZoom(g.size, canvas).toFixed(3)) }
+    }
+    const v = byOrientation.vertical
+    const h = byOrientation.horizontal
+    return {
+      counts: {
+        nodes: g.stats.nodes,
+        edges: g.stats.edges,
+        links: g.stats.connections,
+        layers: g.stats.layers,
+        widest: g.stats.widest,
+        backEdges: g.stats.backEdges,
+        rules: Array.isArray(spec.rules) ? spec.rules.length : 0,
+        stages: Array.isArray(spec.stages) ? spec.stages.length : 0,
+        actors: spec.actors?.length ?? 0,
+        sources: spec.sources?.length ?? 0,
+      },
+      byOrientation,
+      // Whichever keeps the text larger on a screen; a flowchart reads top to bottom on a tie
+      suggestedOrientation: h.fit > v.fit ? 'horizontal' : 'vertical',
+      hints: g.hints,
+    }
+  },
+
+  /** The geometry report as the short text the tool returns to an agent */
+  formatReport: (r) => {
+    const c = r.counts
+    const v = r.byOrientation.vertical
+    const h = r.byOrientation.horizontal
+    const lines = [
+      `Data: ${c.nodes} nodes / ${c.edges} edges (${c.links} links after merging) / ${c.rules} rules / ${c.stages} stages / ${c.actors} parties / ${c.sources} sources`,
+      `Shape: ${c.layers} layers, widest layer ${c.widest} nodes, ${c.backEdges} loop(s) back`,
+      `Vertical: content ${v.size.width}×${v.size.height}, fit zoom ${v.fit}`,
+      `Horizontal: content ${h.size.width}×${h.size.height}, fit zoom ${h.fit}`,
+      `Suggested orientation: ${r.suggestedOrientation} (the one with the larger fit zoom)`,
+    ]
+    if (Math.max(v.fit, h.fit) < 0.45) {
+      lines.push('Note: at this size the text is small on one screen; consider splitting the flow by stage.')
+    }
+    if (r.hints.length) {
+      lines.push('', `${r.hints.length} hint(s):`, ...r.hints.map((x) => `  - ${x}`))
+    }
+    return lines.join('\n')
+  },
+
+  /** One example's size, for MCP's example list */
+  summarize: (spec) => {
+    const nodes = Array.isArray(spec.nodes) ? spec.nodes.length : 0
+    const edges = Array.isArray(spec.edges) ? spec.edges.length : 0
+    const rules = Array.isArray(spec.rules) ? spec.rules.length : 0
+    const stages = Array.isArray(spec.stages) ? spec.stages.length : 0
+    return { nodes, edges, rules, stages, line: `${nodes} nodes / ${edges} edges / ${rules} rules / ${stages} stages` }
+  },
 
   /** Validation: there is only one copy of the rules, in flow/rules.js */
   validate: (spec) => validateProcedure(spec),

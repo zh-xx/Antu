@@ -18,6 +18,8 @@ const DEV_EXAMPLES = [
   'examples/fact/sample-no-groups.zh-CN.json',
   'examples/fact/sample-four-parties-four-slots.zh-CN.json',
   'examples/fact/sample-three-slots.zh-CN.json',
+  'examples/procedure/01-software-development-contract.zh-CN.json',
+  'examples/procedure/03-labour-outsourcing-contract.zh-CN.json',
 ]
 
 /**

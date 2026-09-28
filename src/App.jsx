@@ -24,7 +24,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { validateSpec } from './core/validate.js'
-import { getRenderer, listKinds, listTypes } from './core/registry.js'
+import { getRenderer, knowledgeOf, listKinds, listTypes } from './core/registry.js'
 import { GRAPH_TYPE_KEYS } from './core/labels.js'
 import { useLang } from './shell/LangContext.jsx'
 import DiagramHeader from './shell/DiagramHeader.jsx'
@@ -62,30 +62,14 @@ function FallbackInfo({ errors, spec, hasRenderer, t, labelOf, formatNumber }) {
   return null
 }
 
-/** The label card's third line: size and time span (the type is already in the line above, so not repeated) */
+/**
+ * The label card's third line: size and time span, counted in the type's own units.
+ * The type supplies it through its knowledge (renderers/<type>/schema.js), so App still
+ * knows type only; a type without one simply shows no third line.
+ */
 function diagramInfo(spec, t, formatNumber) {
   if (!spec) return []
-  const out = []
-
-  const slots = Array.isArray(spec.slots) ? spec.slots : []
-  const dates = slots
-    .flatMap((s) => (s?.events || []).map((e) => e?.date))
-    .filter((d) => typeof d === 'string' && d)
-    .sort()
-
-  let slotsLine = t('info.slots', { n: formatNumber(slots.length) })
-  if (dates.length > 0) {
-    const first = dates[0].slice(0, 10)
-    const last = dates[dates.length - 1].slice(0, 10)
-    slotsLine +=
-      first === last
-        ? ` · ${first}`
-        : ` · ${t('info.span', { from: first, to: last })}`
-  }
-  out.push(slotsLine)
-  out.push(t('info.actors', { n: formatNumber(spec.actors?.length || 0) }))
-  out.push(t('info.sources', { n: formatNumber(spec.sources?.length || 0) }))
-  return out
+  return knowledgeOf(spec.type)?.info?.(spec, t, formatNumber) ?? []
 }
 
 export default function App() {

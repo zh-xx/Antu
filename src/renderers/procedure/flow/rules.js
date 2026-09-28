@@ -39,6 +39,14 @@ const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 const list = (v) => (Array.isArray(v) ? v : [])
 
 /**
+ * The ends that rules lead to (`rules[].endId`). Shared by validation, hints and layout, so
+ * that all three agree on which nodes are entries.
+ */
+export function ruleEndIds(spec) {
+  return new Set(list(spec?.rules).filter(isObj).map((r) => r.endId).filter((id) => typeof id === 'string'))
+}
+
+/**
  * Validate a procedure spec, returning an array of errors (an empty array =
  * pass). Every error carries the field path and the node/edge id, so that the
  * agent can correct it directly.
@@ -108,6 +116,46 @@ export function validateProcedure(spec) {
     }
   }
 
+  // ── rules (contingent clauses) ──────────────────────────
+  // A rule is "if <when>, then <then>" that may fire at any point within its stages: breach,
+  // delay liability, a right to terminate. It is **not** a step of the flow and has no edges;
+  // only a rule that ends the contract names the end it leads to (`endId`).
+  if (spec.rules !== undefined) {
+    if (!Array.isArray(spec.rules)) {
+      errors.push(tEn('perr.rulesNotArray'))
+    } else {
+      const ruleIds = new Set()
+      spec.rules.forEach((r, i) => {
+        if (!isObj(r)) {
+          errors.push(tEn('perr.notObject', { at: `rules[${i}]` }))
+          return
+        }
+        const at = `rules[${i}]` + (r.id ? ` (${r.id})` : '')
+        if (!r.id || typeof r.id !== 'string') errors.push(tEn('perr.required', { at, field: 'id' }))
+        else if (ruleIds.has(r.id) || byId.has(r.id)) errors.push(tEn('perr.duplicateRuleId', { at, id: r.id }))
+        else ruleIds.add(r.id)
+        const whens = Array.isArray(r.when) ? r.when : [r.when]
+        if (whens.length === 0 || whens.some((w) => typeof w !== 'string' || !w.trim())) {
+          errors.push(tEn('perr.ruleWhen', { at }))
+        }
+        if (!r.then || typeof r.then !== 'string') errors.push(tEn('perr.required', { at, field: 'then' }))
+        if (r.outcome !== undefined && !OUTCOMES.includes(r.outcome)) {
+          errors.push(tEn('perr.badOutcome', { at, value: r.outcome, allowed: OUTCOMES.join(' / ') }))
+        }
+        for (const id of list(r.stageIds)) {
+          if (!stageIds.has(id)) errors.push(tEn('perr.badRef', { at, field: 'stageIds', kind: 'stage', id }))
+        }
+        for (const id of list(r.sourceIds)) {
+          if (!sourceIds.has(id)) errors.push(tEn('perr.badRef', { at, field: 'sourceIds', kind: 'source', id }))
+        }
+        if (r.endId !== undefined) {
+          if (!byId.has(r.endId)) errors.push(tEn('perr.badRef', { at, field: 'endId', kind: 'node', id: r.endId }))
+          else if (byId.get(r.endId).kind !== 'end') errors.push(tEn('perr.ruleEndNotEnd', { at, id: r.endId }))
+        }
+      })
+    }
+  }
+
   // ── edges ───────────────────────────────────────────────
   const out = new Map()
   const inn = new Map()
@@ -143,7 +191,10 @@ export function validateProcedure(spec) {
   if (errors.length) return errors
 
   // ── entry / reachability / end ──────────────────────────
-  const entries = [...byId.keys()].filter((id) => inn.get(id).length === 0)
+  // An end reached only through a rule has no incoming edge, yet it is not an entry: the rule
+  // is what leads there. It counts as reached.
+  const ruleEnds = ruleEndIds(spec)
+  const entries = [...byId.keys()].filter((id) => inn.get(id).length === 0 && !ruleEnds.has(id))
   if (entries.length === 0) {
     // With no entry, the later rules (reachability, ends) cannot be computed at
     // all, and there is no point flooding the output with them
@@ -152,7 +203,7 @@ export function validateProcedure(spec) {
   }
 
   const reach = new Set()
-  const stack = [...entries]
+  const stack = [...entries, ...ruleEnds]
   while (stack.length) {
     const cur = stack.pop()
     if (reach.has(cur)) continue
@@ -278,8 +329,9 @@ export function hintsOfProcedure(spec) {
   // together on layer 0, which usually means the data is wrong.
   // **A note is not an entry**: a side note is an annotation hung on the diagram
   // and takes no part in the flow anyway.
+  const ruleEnds = ruleEndIds(spec)
   const entries = [...byId.keys()].filter(
-    (id) => inn.get(id).length === 0 && byId.get(id).kind !== 'note',
+    (id) => inn.get(id).length === 0 && byId.get(id).kind !== 'note' && !ruleEnds.has(id),
   )
   if (entries.length > 1) {
     hints.push(tEn('phint.multipleEntries', { n: entries.length, ids: entries.join(', ') }))

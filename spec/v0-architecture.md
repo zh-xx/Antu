@@ -36,8 +36,8 @@ The split is by **what the diagram expresses and why** (not by visual shape; vis
 | type | What it expresses | The legal thinking behind it | Status |
 |---|---|---|---|
 | `relationship` | Who is involved with whom, in what role, under what legal relationship | Defining the parties and the legal relationship | Not started |
-| `fact` | The temporal narrative of facts that have occurred | Finding the facts | Not started (priority) |
-| `procedure` | The procedural path and its possible branches | How procedure operates | Not started |
+| `fact` | The temporal narrative of facts that have occurred | Finding the facts | Timeline available |
+| `procedure` | The procedural path and its possible branches | How procedure operates | Flowchart available |
 | `justification` | Reasoning (argumentation) from norms plus facts to a conclusion | Legal argumentation | **Deferred**; starts once the first three have matured |
 
 **Boundary notes:**
@@ -169,7 +169,7 @@ JSON (envelope) ──> [validation gate] ──> route by top-level type ──
 - **one top-level type = one schema**; **one sub-type = one renderer**. The schema specifies only down to the top-level type, and below it there is no "sub-type" field; for how sub-types divide see §3;
 - adding a way of drawing means registering one sub-type renderer, **with the core itself untouched**;
 - the underlying rendering technology is React Flow (chosen; already in use for the fact diagram).
-- Layout: **each sub-type is on its own**, with no shared layout library. The fact timeline computes its own grid (`src/renderers/fact/timeline/grid.js`); the relationship and procedure diagrams plan to use dagre or elkjs (**not installed yet**; `package.json` currently lists only React Flow).
+- Layout: **each sub-type is on its own**, with no shared layout library. The fact timeline computes its own grid (`src/renderers/fact/timeline/grid.js`); the procedure flowchart uses ELK's layered algorithm (elkjs, `src/renderers/procedure/flow/elk.js`), chosen over dagre and the hand-written layout by measured crossings (`spec/procedure/schema-draft.md` §6.1); the relationship diagram will likely use it too.
 - the renderer is responsible for translating semantics into React Flow nodes/edges (the translation happens inside the renderer, not inside the specification).
 
 ## 6.1 The deliverable: one self-contained HTML file
@@ -225,7 +225,7 @@ The structured locations in `sources` (page 6 of the contract, the case number a
 - [x] **No sidebar**: the canvas fills the space, with a label card at the top left + a control dock at the bottom + zoom/minimap, four floating layers in all (`spec/fact/rendering.md` §4)
 - [x] **Sources state their origin only, with no jumping**; original materials are not bundled (§6.1)
 - [x] Trade-off principle: business language takes priority over renderer uniformity
-- [x] Technology stack: React 19 + Vite + @xyflow/react 12 + dagre, JSX, useState (kept after discussion)
+- [x] Technology stack: React 19 + Vite + @xyflow/react 12 + elkjs (the procedure flowchart's layout; dagre was the earlier plan), JSX, useState
 - [x] Guard against over-design: the smallest thing that runs comes first; get the relationship trio working first
 - [x] No "sub-type tree" under a top-level type: differences are routed to rendering parameters / preset configuration / controlled enums; the only test for a new top-level type is that the element structure does not fit an existing type
 - [x] Naming: 案图 in Chinese, code name `antu`; package name provisionally `antu-viz` (unclaimed, verified)
@@ -234,7 +234,8 @@ The structured locations in `sources` (page 6 of the contract, the case number a
 ### To be decided (confirm before starting)
 - [ ] The shape of `specVersion` (whether it is needed at all, how it evolves)
 - [x] The fact content-layer schema: **final** (including the division of labour between label / summary / detail, see `spec/fact/schema-draft.md`). The other types have not started
-- [ ] The field details of the content-layer schema for the remaining types (relationship / procedure)
+- [x] The procedure content-layer schema: **v1, confirmed** (see `spec/procedure/schema-draft.md`)
+- [ ] The field details of the content-layer schema for relationship
 - [x] The shape of validation error messages: **implemented**. Every error carries a field path and an event id (e.g. `slots[0].events[1] (ev-2)`) and says what is wrong and how to fix it
 - [ ] The range of optional envelope metadata
 - [ ] The plugin shell (a dsh plugin / MCP / a standalone web page): postponed until the core matures.
@@ -258,6 +259,6 @@ The structured locations in `sources` (page 6 of the contract, the case number a
    if another fact sub-type comes first, pick one that needs no new data (for instance a matrix layout with one column per group)
 5. **The relationship type**: schema + renderer. In this kind of diagram `edges` are the main content,
    and the canvas's edge capabilities are really used here for the first time
-6. **The procedure type**: schema + renderer
+6. [x] **The procedure type**: schema v1 + the flowchart renderer (`spec/procedure/schema-draft.md` §6.1)
 7. **Revisit the earlier types**, then start justification
 8. The data pipeline (on the agent side, documents → JSON) and the plugin shell: to be planned separately

@@ -14,12 +14,12 @@
 //  the renderer, 8 of them fact/timeline concepts. See known-issues item 15.)
 // ============================================================
 
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { readPrefs, writePrefs } from '../../../shell/prefs.js'
-import { useLang } from '../../../shell/LangContext.jsx'
-import { PreviewContext } from '../previewContext.js'
+import { useExport } from '../../../shell/useExport.js'
+import { PreviewContext } from '../../../shell/previewContext.js'
 import EventNode from '../EventNode.jsx'
 import ControlDock from '../ControlDock.jsx'
 import ColumnHeaderNode from './ColumnHeaderNode.jsx'
@@ -93,7 +93,6 @@ export default function FactTimeline({ spec }) {
   // The view, like the field switches, is an input to layout: the view decides the side split and
   // which columns exist, the fields decide how many rows a card takes. Change either and the whole
   // diagram is laid out again and the viewport re-fits.
-  const { t } = useLang()
   const views = useMemo(() => viewsOf(spec), [spec])
 
   // Lay out every view once first. **A view that does not fit does not become an option**: an
@@ -134,28 +133,8 @@ export default function FactTimeline({ spec }) {
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
 
-  // Export: the real work is in the canvas shell (only it knows React Flow's DOM and the content
-  // size); this only passes "the current graph + file name" across.
-  // The guard uses a ref rather than state: state is still the old value inside one tick, so two
-  // quick clicks would export twice.
-  const canvasRef = useRef(null)
-  const exportingRef = useRef(false)
-  const [exporting, setExporting] = useState(false)
-  const onExport = async () => {
-    if (exportingRef.current) return
-    exportingRef.current = true
-    setExporting(true)
-    try {
-      await canvasRef.current?.exportPng({ title: spec?.title })
-    } catch (e) {
-      // A failed export must not fail silently: tell the user, rather than a button that does nothing
-      console.error('[antu] export failed:', e)
-      window.alert(t('export.failed', { message: e.message }))
-    } finally {
-      exportingRef.current = false
-      setExporting(false)
-    }
-  }
+  // Export: the guard and the failure message live in the shell hook, shared with every renderer
+  const { canvasRef, exporting, onExport } = useExport(spec?.title)
 
   // Overlay state goes down through Context, avoiding a rebuild of the whole node array that writing into node data would cause
   const preview = useMemo(

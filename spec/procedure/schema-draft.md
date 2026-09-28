@@ -1,8 +1,8 @@
-# procedure · Schema v1
+# procedure · Schema v1.1
 
-> Status: **v1, confirmed** (sponsor, 2026-09). The five items in §7 were approved exactly as proposed, and the seven real contracts in §8 all pass without a new field. This is what the implementation follows.
+> Status: **v1.1, confirmed** (sponsor, 2026-09). v1: the five items in §7 were approved exactly as proposed. v1.1 adds the optional rule layer of §11 (contingent clauses written as `rules`, not as branches); every v1 JSON is still valid. The seven real contracts were rewritten with it (§11.4). This is what the implementation follows.
 > Names, enum values and requiredness can still move if the renderer turns something up, but a change from here is a schema revision rather than a draft edit.
-> The file keeps the `schema-draft` name for consistency with the fact one (and because the tooling refers to it by that name); the status is what says v1.
+> The file keeps the `schema-draft` name for consistency with the fact one (and because the tooling refers to it by that name); the status is what says v1.1.
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (different domain semantics → controlled enum, no new top-level type).
 > Scope: procedure = **a path and its possible branches**. What has already happened → `fact`; who stands in what relation to whom → `relationship`; norms + facts → a conclusion → `justification`.
 > The first sub-type: `flow` (flowchart). This draft serves this one top-level type only; the sub-type split is in §6.
@@ -339,7 +339,7 @@ contract knows, so it must be a data field rather than something hard-coded in t
 ### 4.4 Stages (`stages`)
 
 `stages` is an ordered diagram-level list; nodes reference it via `stageId`. When rendering it is
-drawn as a stage band (a light separator along one side of the main line, plus the stage name).
+drawn as a stage box (a light filled frame round the stage's nodes, its name in the top-left corner).
 
 **Why it deserves a field of its own.** The current Mermaid output writes the stage into the node
 text:
@@ -352,7 +352,7 @@ The consequence: stage boundaries cannot be drawn, nodes of the same stage scatt
 diagram, and the reader has to piece it together from the text. With `stages`, a stage becomes
 **structure**: it can be drawn, and nodes can be grouped by it.
 
-- Omit `stages` and no stage bands are drawn; nothing else changes;
+- Omit `stages` and no stage boxes are drawn; nothing else changes;
 - Write `stages` but leave a node without `stageId`: it belongs to no stage and renders as usual;
 - A `stageId` referencing a non-existent id → error.
 
@@ -487,26 +487,72 @@ one character of the data changes (the hard constraint in §3 of `spec/v0-archit
 
 ### 6.1 The first sub-type, `flow` (flowchart)
 
-**Implementation status (2026-09)**: the layout layer works; the code is in
-`src/renderers/procedure/flow/` (rules.js validation, metrics.js sizing, layout.js layout), with unit
-tests in `test/procedure-layout.test.mjs`. Done and not done:
+**Implementation status (2026-09)**: the flowchart renders; the code is in
+`src/renderers/procedure/flow/` (rules.js validation, metrics.js sizing, layout.js layout, palette.js
+colours, FlowRenderer.jsx and its node / link / stage-band components), with unit tests in
+`test/procedure-layout.test.mjs` and a browser check in `npm run verify`. Done and not done:
 
 ```
-Done     layering (longest path), back-edge detection and routing round the outside, merging
-         several edges into the same target, aligning the main line into one column, both
-         orientations (vertical / horizontal), nodes do not overlap, rounded-corner polyline paths
-Not done the React renderer (not yet wired into the canvas), stage bands, the control capsule,
-         label collision avoidance for conditions, crossing minimisation, **placing note nodes**
-         (the first version treats them as ordinary nodes on the first layer; they take no part
-         in the flow and their position is still not good)
+Done     placement and routing by ELK's layered algorithm (elkjs, flow/elk.js): layering,
+         crossing minimisation, node placement, orthogonal routing, room reserved for every
+         condition label; stages as boxes (ELK compound nodes); main-line edges prioritised for straightness;
+         back-edge detection (drawn dashed), merging several edges into the same target, both
+         orientations; the React renderer (six shapes by kind, three colours by outcome,
+         hover / pinned overlay with provenance), nodes sized to their text, stage boxes, the control capsule (§6.2),
+         image export
+Not done **placing note nodes** (they take no part in the flow; ELK places them like any
+         other node)
 ```
+
+Measured on the 7 contracts and the two rule-layer drafts, both orientations:
+
+| | hand-written layout (replaced) | dagre | **ELK (in use)** |
+|---|---|---|---|
+| crossings, 01 | 12 | 7 | **0** |
+| crossings, 03 | 38 | 11 | **2** |
+| crossings, the other five | 12 | 1 | **0** |
+| labels on a node | avoided by rule | 0 | **0** (ELK reserves the space) |
+
+Pinned by unit tests: no link runs behind a node, no two different links overlap, every label
+clear of every node, links end on their node's outline (a diamond's slanted edge for a decision),
+main links seldom bend (10 of 140), no link bends more than twice, stage boxes hold their own nodes and never overlap.
+
+Why ELK over the hand-written layout: the hand-written one kept the main line in a single column
+and hung everything off it. That made the main line rigid and forced the other branches to cross
+it; the crossing count was the price. ELK treats the main line as a preference (edge priority),
+not a column, and minimises crossings for the whole graph. **Cost:** elkjs adds about 1.4 MB, so
+a generated HTML is about 1.9 MB instead of about 480 KB. It is called synchronously (see the
+header of `flow/elk.js` for how and why); the elkjs version is pinned.
+
+Decisions the renderer made, so they are not undone by accident:
+
+- **Stages are boxes**: each stage is an ELK compound node holding its nodes, drawn as a light
+  filled frame with the stage name in its corner; ELK routes links across the frames and keeps
+  them from overlapping. If ELK cannot lay the boxes out, the diagram is laid out once more
+  without them rather than fail.
+- **A node is as big as its text** (`metrics.js` `sizeOf`): 14px text, wrapped past a cap, at
+  most three lines; a diamond folds its text into a near-square block. Fixed 208×64 boxes left
+  most of every box empty and, fitted to a screen, the text too small to read — what putting the
+  same data through Mermaid showed.
+- **Links bend as little as possible: straight first, then one bend** (`flow/straighten.js`).
+  ELK's router takes every link out of a bottom and into a top, so two nodes not exactly in line
+  cost a Z (two bends) and a loop four. After ELK, each link is offered simpler routes, fewest
+  bends first: straight; out of a side and down into the top (the usual way out of a decision);
+  out of the bottom and into a side; a loop straight back or round in a U. A route is taken only
+  if it is clear of every node, stage title and label, lies on no other link and crosses no more
+  of them. Several node placements are laid out and the one with the least bending is kept.
+  Measured (corpus, both orientations): 132 bends before, 62 after; none above two.
+- **Straight or curved links** is a presentation choice (§6.2): the curved style draws the same
+  route with each turn as a wide arc, so switching moves no node and no label.
+- **The main-line highlight follows the spine the engine settled on**, marked (`main: true`) or
+  inferred, so a diagram with no `main` flags still shows its main line.
 
 Measured (7 real contracts, both orientations lay out): 01 has twelve layers, 05 sixteen, 06 twenty;
 in 03, 3 edges are merged into 2 links; 01 has 12 back edges recognised, 07 has 0.
 
 - **The main line runs down the centre**, branch nodes spread left and right; several branches in one
   layer spread by their order in the `edges` array;
-- **Stage bands**: when `stages` is written, separators and stage names are drawn along one side of
+- **Stage boxes**: when `stages` is written, each stage's nodes are framed, with the stage name; formerly drawn along one side of
   the main line;
 - **Edges**: main edges connect directly; branch edges carry a `condition` label and reserve label
   width; back edges arc round one side of the main line;
@@ -543,14 +589,16 @@ damages …), 05 has 4, 01 has 4. Several ends in one layer sit side by side in 
 | Control | Form | Notes |
 |---|---|---|
 | Orientation | segmented | vertical / horizontal |
+| Link style | segmented | curved (default) / straight; remembered for every diagram |
 | Condition labels | toggle | show / hide the `condition` on edges |
 | Node detail | toggle | whether to show the `detail` line |
 | Main-line highlight | toggle | bolden the main edges |
-| Stage bands | toggle | available when `stages` is written |
+| Stage boxes | toggle | available when `stages` is written |
 | Export image | action | reuses the export the canvas shell already has |
 
 The rules for the four control forms (menu / toggle / segmented / action) follow §4.2 of
-`spec/fact/rendering.md`; no separate set is invented.
+`spec/fact/rendering.md`; no separate set is invented. The language switch sits beside them, the
+same one the timeline has.
 
 ### 6.3 How scale is computed, and what to do when it will not fit
 
@@ -580,7 +628,7 @@ real alternative and the reasoning is what makes a later change cheap to judge.
 | 1 | Free graph of `nodes` + `edges`, or a layered "main line + branches" structure? | **Free graph**. Reason: the schema stops at the top-level type, and later swimlane and state diagrams need to consume the same schema | changing to a layered structure means rewriting the schema and voiding every example. The most expensive of the five |
 | 2 | Is `main` marked on edges or on nodes? | **On edges**. Reason: the main line is a path, and marking nodes produces broken chains validation cannot catch | moving it to nodes means rewriting rule 16 as well |
 | 3 | 6 `kind`s with `outcome` separate, or the old prototype's 9? | **6 + separate `outcome`**. Reason: positive/negative is an attribute, not a shape | reverting to 9 keeps the problem that every "termination" is painted red |
-| 4 | Are `stages` needed? | **Yes**. Reason: contract flows fall into stages naturally, and without it stages can only be mixed into node text | delete `stages` and `stageId`, delete the stage bands, nothing else changes |
+| 4 | Are `stages` needed? | **Yes**. Reason: contract flows fall into stages naturally, and without it stages can only be mixed into node text | delete `stages` and `stageId`, delete the stage boxes, nothing else changes |
 | 5 | Is `domain` needed (fact rejected a classification enum at the time)? | **Yes, but optional and unread by rendering**. Reason: it classifies the whole diagram rather than its elements, and later there is a basis for default parameters by domain | delete it; nothing else moves |
 
 ---
@@ -688,3 +736,97 @@ would have hit both 06 and 03 wrongly.
 The difference in one sentence: **fact is "a narrative on one timeline"; procedure is "the movement on
 one graph".** The former fixes order by array position, the latter fixes movement by edges; the
 former's classification is superfluous, the latter's shape is necessary.
+
+---
+
+## 11. The rule layer (v1.1)
+
+> Status: **part of v1.1** (sponsor, 2026-09). `rules` is optional; every v1 JSON is still
+> valid. All seven contracts in `examples/procedure/` are written with it (02 needs no rule).
+
+### 11.1 Why
+
+Once the flowchart rendered, the 7 contracts were measured by structure, and most of their
+complexity turned out not to come from the flow itself:
+
+| Finding | Evidence | Cause |
+|---|---|---|
+| **The back edges are almost all fake** | 27 back edges, all 27 return to the main line, e.g. "Party B pays penalty → back to requirements confirmation" | Rule 13 (a non-end node needs an outgoing edge) forces the agent to give every consequence a way "back"; §8.1 item 1 added three exactly so |
+| **One clause is copied per stage** | 12 of the 26 nodes in 01 repeat "delay caused by A / B? → extension / penalty", one set per stage | There is no way to say "this applies in stages 2 to 4" |
+| **"At any time" is drawn as a branch of one step** | 03 hangs 10 conditional edges off two ordinary steps ("service period starts", "submit service list") | Termination rights and breach liability can fire at any time in the service period; they are not a decision at a point |
+| **The old diagrams' mistakes are inherited** | 01: "delay caused by B? → no → back to requirements confirmation" | The corpus was reverse-engineered from the old pipeline's Mermaid output (§8 says so), not extracted from the contracts |
+
+A contract's performance is two things: a **line of performance** (milestones, payments,
+acceptance) and a set of **contingent clauses** (breach, delay liability, rights to terminate).
+v1 has one grammar, the flowchart, so the second is folded into the first. The acceptance test
+of §8, "it fits", tested expressiveness, not whether the encoding is right or draws clearly.
+
+### 11.2 Fields
+
+```json
+"rules": [
+  { "id": "r-2", "when": "Delay caused by Party B", "then": "Party B pays a penalty: 0.1% per day, capped at 5%",
+    "outcome": "negative", "stageIds": ["st-2", "st-3", "st-4"], "sourceIds": ["s-1"] },
+  { "id": "r-6", "when": ["Party B fails 80% of staffing for 3 months running", "Party B found not signing employment contracts"],
+    "then": "Party A may terminate", "outcome": "negative", "stageIds": ["st-1"], "endId": "n-9" }
+]
+```
+
+| Field | Required | Meaning |
+|---|---|---|
+| `id` | ✅ | unique among rules and nodes |
+| `when` | ✅ | the trigger; an array means "any one of these" |
+| `then` | ✅ | the consequence, amounts included |
+| `stageIds` | ❌ | the stages it applies in; omitted = throughout. **One rule covers all its stages, never one copy per stage** |
+| `outcome` | ❌ | colour, as on nodes |
+| `endId` | ❌ | only if it ends the contract: the `end` node it leads to |
+| `sourceIds` | ❌ | the clause it rests on |
+
+**The dividing line:** a judgement made at a point that decides where the flow goes (acceptance
+passed or not, renew or not) stays a node with edges; a clause that may fire at any time within a
+period is a rule. A real loop such as "rectify, then inspect again" stays a back edge.
+
+**Validation:** references must exist; `endId` must name an `end`; `when` must not be empty. An
+end reached only through rules has no incoming edge, yet is neither an entry nor unreachable.
+**Rule 13 does not need relaxing**: the consequences moved into rules, and the nodes left no
+longer need a fake way "back".
+
+### 11.3 Presentation
+
+- Rules are **cards** in a lane beside the node field, level with the first stage they apply
+  to, stacked in stage order, never overlapping;
+- Outside the cards a **scope bar** spans the stages a rule covers; rules with the same range
+  share one bar;
+- Rules that end the contract join one **trunk** into their end: five grounds for termination
+  read as five roads into one door, not five lines across the page. An end reached only through
+  rules sits in the last layer, outermost;
+- The capsule gains a "Rules" switch; off, the lane is given back.
+
+### 11.4 Measured (the seven contracts, before → after)
+
+| | Nodes | Edges | Back edges | Rules |
+|---|---|---|---|---|
+| 01 software development | 26 → 14 | 37 → 16 | 12 → 3 (rectify and re-inspect) | 2 |
+| 02 purchase | 12 | 12 | 0 | 0: the quality dispute is a judgement at delivery, a real branch |
+| 03 labour outsourcing | 15 → 9 | 26 → 9 | 6 → 2 (the monthly cycle, renewal) | 7 |
+| 04 non-disclosure | 6 → 4 | 6 → 3 | 0 | 1 |
+| 05 premises lease | 32 → 19 | 34 → 19 | 3 → 2 (the monthly rent, re-inspection) | 4 |
+| 06 EPC | 26 → 21 | 31 → 21 | 3 → 2 (recommissioning, re-inspection) | 4 |
+| 07 share acquisition | 30 → 21 | 30 → 20 | 0 | 4 |
+
+With ELK (§6.1), all seven lay out with no crossing in either orientation.
+
+The rewrite was made **by meaning, from the existing JSON**; the contracts themselves are not in
+the repository. Judgements that should be checked against the originals: 01 drops "delay caused by
+neither → back to requirements confirmation" (read as an error of the old diagram); 03 and 05 split
+the one "terminated" end into expiry and rescission; 03 words Party A's termination trigger as
+"30 days' written notice"; 05 and 03 draw the monthly payment as a cycle until the term ends; 06
+scopes the delay rules to design, procurement and construction; 07 folds the warranty claim
+procedure (notice, acceptance or arbitration) into one rule.
+
+### 11.5 Still open
+
+1. **Re-extract from the contracts**: the corpus is still derived from the old pipeline's `.mmd`,
+   now rewritten by meaning; extracting from the originals would settle the judgements of §11.4;
+2. Whether `when` should be structured (party, deadline, amount): one sentence is enough to draw,
+   not enough to compute with.
