@@ -713,3 +713,84 @@ would have hit both 06 and 03 wrongly.
 The difference in one sentence: **fact is "a narrative on one timeline"; procedure is "the movement on
 one graph".** The former fixes order by array position, the latter fixes movement by edges; the
 former's classification is superfluous, the latter's shape is necessary.
+
+---
+
+## 11. The rule layer (draft, not yet confirmed)
+
+> Status: **draft, not part of v1.** Examples are in `examples/procedure/rules-draft/` (01 and
+> 03). Validation, layout and rendering are implemented; v1 JSON is unaffected (`rules` is
+> optional). Whether to adopt it is for the sponsor to decide.
+
+### 11.1 Why
+
+Once the flowchart rendered, the 7 contracts were measured by structure, and most of their
+complexity turned out not to come from the flow itself:
+
+| Finding | Evidence | Cause |
+|---|---|---|
+| **The back edges are almost all fake** | 27 back edges, all 27 return to the main line, e.g. "Party B pays penalty → back to requirements confirmation" | Rule 13 (a non-end node needs an outgoing edge) forces the agent to give every consequence a way "back"; §8.1 item 1 added three exactly so |
+| **One clause is copied per stage** | 12 of the 26 nodes in 01 repeat "delay caused by A / B? → extension / penalty", one set per stage | There is no way to say "this applies in stages 2 to 4" |
+| **"At any time" is drawn as a branch of one step** | 03 hangs 10 conditional edges off two ordinary steps ("service period starts", "submit service list") | Termination rights and breach liability can fire at any time in the service period; they are not a decision at a point |
+| **The old diagrams' mistakes are inherited** | 01: "delay caused by B? → no → back to requirements confirmation" | The corpus was reverse-engineered from the old pipeline's Mermaid output (§8 says so), not extracted from the contracts |
+
+A contract's performance is two things: a **line of performance** (milestones, payments,
+acceptance) and a set of **contingent clauses** (breach, delay liability, rights to terminate).
+v1 has one grammar, the flowchart, so the second is folded into the first. The acceptance test
+of §8, "it fits", tested expressiveness, not whether the encoding is right or draws clearly.
+
+### 11.2 Fields
+
+```json
+"rules": [
+  { "id": "r-2", "when": "Delay caused by Party B", "then": "Party B pays a penalty: 0.1% per day, capped at 5%",
+    "outcome": "negative", "stageIds": ["st-2", "st-3", "st-4"], "sourceIds": ["s-1"] },
+  { "id": "r-6", "when": ["Party B fails 80% of staffing for 3 months running", "Party B found not signing employment contracts"],
+    "then": "Party A may terminate", "outcome": "negative", "stageIds": ["st-1"], "endId": "n-9" }
+]
+```
+
+| Field | Required | Meaning |
+|---|---|---|
+| `id` | ✅ | unique among rules and nodes |
+| `when` | ✅ | the trigger; an array means "any one of these" |
+| `then` | ✅ | the consequence, amounts included |
+| `stageIds` | ❌ | the stages it applies in; omitted = throughout. **One rule covers all its stages, never one copy per stage** |
+| `outcome` | ❌ | colour, as on nodes |
+| `endId` | ❌ | only if it ends the contract: the `end` node it leads to |
+| `sourceIds` | ❌ | the clause it rests on |
+
+**The dividing line:** a judgement made at a point that decides where the flow goes (acceptance
+passed or not, renew or not) stays a node with edges; a clause that may fire at any time within a
+period is a rule. A real loop such as "rectify, then inspect again" stays a back edge.
+
+**Validation:** references must exist; `endId` must name an `end`; `when` must not be empty. An
+end reached only through rules has no incoming edge, yet is neither an entry nor unreachable.
+**Rule 13 does not need relaxing**: the consequences moved into rules, and the nodes left no
+longer need a fake way "back".
+
+### 11.3 Presentation
+
+- Rules are **cards** in a lane beside the node field, level with the first stage they apply
+  to, stacked in stage order, never overlapping;
+- Outside the cards a **scope bar** spans the stages a rule covers; rules with the same range
+  share one bar;
+- Rules that end the contract join one **trunk** into their end: five grounds for termination
+  read as five roads into one door, not five lines across the page. An end reached only through
+  rules sits in the last layer, outermost;
+- The capsule gains a "Rules" switch; off, the lane is given back.
+
+### 11.4 Measured (before → after the rewrite)
+
+| | Nodes | Edges | Back edges | Rules |
+|---|---|---|---|---|
+| 01 software development | 26 → 14 | 37 → 16 | 12 → 3 (all real rectify-and-reinspect loops) | 0 → 2 |
+| 03 labour outsourcing | 15 → 9 | 26 → 9 | 6 → 2 (the monthly cycle, renewal) | 0 → 7 |
+
+### 11.5 Still open
+
+1. **Whether to adopt it**, and whether rule 13's message should then point to `rules`;
+2. **How to redo the other five**: ideally re-extracted from the contracts, not edited again on
+   top of what was reverse-engineered from `.mmd`;
+3. Whether `when` should be structured (party, deadline, amount): one sentence is enough to draw,
+   not enough to compute with.

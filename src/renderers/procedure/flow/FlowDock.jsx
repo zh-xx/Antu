@@ -3,11 +3,11 @@
 //
 //  The controls are the ones listed in spec/procedure/schema-draft.md §6.2, in the four shapes
 //  of spec/fact/rendering.md §4.2 (no new shapes invented):
-//    condition labels / node detail / main line / stage bands   independent switches → chips
-//    orientation                                                 two exclusive options → segmented
-//    language, export image                                      shared with every dock (shell/DockParts.jsx)
-//  The stage-band switch only appears when the data has stages: a switch that can change
-//  nothing is noise.
+//    condition labels / node detail / main line / stage bands / rules   independent switches → chips
+//    orientation                                                         two exclusive options → segmented
+//    language, export image                                              shared with every dock (shell/DockParts.jsx)
+//  The stage-band and rule switches only appear when the data has stages / rules: a switch
+//  that can change nothing is noise.
 // ============================================================
 
 import { useLang } from '../../../shell/LangContext.jsx'
@@ -19,6 +19,7 @@ const SWITCHES = [
   ['detail', 'flow.detail'],
   ['mainLine', 'flow.mainLine'],
   ['stages', 'flow.stages'],
+  ['rules', 'flow.rules'],
 ]
 
 const ORIENTATIONS = [
@@ -30,6 +31,7 @@ export default function FlowDock({
   fields = {},
   onToggleField,
   hasStages = false,
+  hasRules = false,
   orientation = 'vertical',
   onToggleOrientation,
   exporting = false,
@@ -40,7 +42,7 @@ export default function FlowDock({
   return (
     <div className="antu-dock">
       <div className="antu-dock-bar">
-        {SWITCHES.filter(([key]) => key !== 'stages' || hasStages).map(([key, label]) => (
+        {SWITCHES.filter(([key]) => (key !== 'stages' || hasStages) && (key !== 'rules' || hasRules)).map(([key, label]) => (
           <button
             key={key}
             className={`antu-dock-chip${fields[key] ? ' is-on' : ''}`}

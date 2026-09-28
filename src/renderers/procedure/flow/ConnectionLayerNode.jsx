@@ -14,13 +14,13 @@
 // ============================================================
 
 import { memo } from 'react'
-import { linkPaint } from './palette.js'
+import { linkPaint, SCOPE_PAINT } from './palette.js'
 
 /** The three link kinds. Each has its own arrowhead, so the head takes the line's colour. */
 const KINDS = ['main', 'branch', 'back']
 
 const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
-  const { connections, width, height, showConditions, highlightMain } = data
+  const { connections, ruleLinks = [], width, height, showConditions, highlightMain } = data
 
   return (
     <div className={`antu-plinks${highlightMain ? ' is-main-hl' : ''}`}>
@@ -56,6 +56,23 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
               strokeWidth={p.width}
               strokeDasharray={p.dash}
               markerEnd={`url(#antu-arrow-${c.kind})`}
+            />
+          )
+        })}
+        {/* Rule trunks: the stubs join without a head, the trunk ends in one at its end */}
+        {ruleLinks.map((l) => {
+          // A scope bar is a broad, pale stroke beside the rule lane; a trunk is an ordinary link
+          const p = l.scope ? SCOPE_PAINT : linkPaint('branch', false)
+          return (
+            <path
+              key={l.id}
+              className={`antu-plink ${l.scope ? 'k-scope' : 'k-rule'}`}
+              d={l.d}
+              fill="none"
+              stroke={p.stroke}
+              strokeWidth={p.width}
+              strokeLinecap={l.scope ? 'round' : undefined}
+              markerEnd={l.arrow ? 'url(#antu-arrow-branch)' : undefined}
             />
           )
         })}

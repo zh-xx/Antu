@@ -32,6 +32,9 @@ export function nodePaint(kind, outcome = 'neutral') {
   return OUTCOME_PAINT[outcome] ?? OUTCOME_PAINT.neutral
 }
 
+/** The scope bar beside the rule lane: how far a rule reaches */
+export const SCOPE_PAINT = { stroke: '#cbd5e1', width: 4 }
+
 /**
  * Paint for one link. The main-line highlight is part of this, not a CSS state: with the
  * switch on, the exported picture has to show the main line too.

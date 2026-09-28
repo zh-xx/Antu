@@ -70,6 +70,17 @@ export const PROCEDURE_FIELDS = {
     },
     { name: 'sourceIds', req: 'no', ty: 'string[]', note: 'which materials it rests on' },
   ],
+  rules: [
+    { name: '', req: '', ty: '', note: 'DRAFT (§11). Optional. Contingent clauses: breach, delay liability, rights to terminate' },
+    { name: '', req: '', ty: '', note: 'a rule is NOT a step: write it here, not as a node with edges out of some step' },
+    { name: 'id', req: 'yes', ty: 'string', note: 'unique among rules and nodes' },
+    { name: 'when', req: 'yes', ty: 'string|str[]', note: 'the trigger; an array means "any one of these"' },
+    { name: 'then', req: 'yes', ty: 'string', note: 'the consequence, with amounts, e.g. "penalty 0.1% per day, capped at 5%"' },
+    { name: 'stageIds', req: 'no', ty: 'string[]', note: 'the stages it applies in; omit = throughout. One rule for all its stages, never one copy per stage' },
+    { name: 'outcome', req: 'no', ty: 'string', note: `colour: ${OUTCOMES.join(' / ')}` },
+    { name: 'endId', req: 'no', ty: 'string', note: 'only if it ends the contract: the id of the end node it leads to' },
+    { name: 'sourceIds', req: 'no', ty: 'string[]', note: 'which clause it rests on' },
+  ],
   edges: [
     { name: 'from', req: 'yes', ty: 'string', note: 'id of the source node' },
     { name: 'to', req: 'yes', ty: 'string', note: 'id of the target node' },

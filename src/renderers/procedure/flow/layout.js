@@ -23,13 +23,17 @@
 //    ⑥ link: several edges into the same target merge; then route.js lays every
 //      link on node-free gaps and channels (no link ever runs behind a node)
 //    ⑦ stage bands, cut along the main line
+//    ⑧ the rule lane: contingent clauses as cards beside the stages they apply
+//      to; the rules that end the contract join one trunk into their end
 //
 //  **What it does not do**: crossing minimisation, merging several main-line
 //  nodes in one layer.
 // ============================================================
 
-import { validateProcedure, hintsOfProcedure } from './rules.js'
+import { validateProcedure, hintsOfProcedure, ruleEndIds } from './rules.js'
 import { routeLinks } from './route.js'
+// The same text measure the fact cards use, so a CJK character counts the same everywhere
+import { textEm } from '../../fact/cardGeometry.js'
 import {
   PAD,
   layerGap,
@@ -38,6 +42,13 @@ import {
   OUTER,
   STAGE_GUTTER_V,
   STAGE_GUTTER_H,
+  TRACK,
+  RULE_W,
+  RULE_GAP,
+  RULE_STACK_GAP,
+  SCOPE_BAR_GAP,
+  SCOPE_BAR_PITCH,
+  ruleHeight,
   sizeOf,
   acrossOf,
   extentOf,
@@ -115,6 +126,8 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       rows: [],
       spine: [],
       stageBands: [],
+      rules: [],
+      ruleLinks: [],
       gutter: 0,
       size: { width: 0, height: 0 },
       stats: emptyStats(),
@@ -169,9 +182,18 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     }
   }
 
+  // An end reached only through a rule has no incoming edge but is not an entry: it goes in the
+  // last layer, beside the flow's own end, and is placed outermost there (step ④) so the rule
+  // trunk reaches it from outside without crossing anything
+  const ruleEnds = new Set([...ruleEndIds(spec)].filter((id) => byId.has(id) && inE.get(id).length === 0))
+  if (ruleEnds.size) {
+    const last = Math.max(0, ...ids.filter((id) => !ruleEnds.has(id)).map((id) => layer.get(id) ?? 0))
+    for (const id of ruleEnds) layer.set(id, last)
+  }
+
   // ③ the main line: walk the main edges; when none is marked main, infer it as
   // "the first unconditional, unvisited outgoing edge"
-  const entries = ids.filter((id) => inE.get(id).length === 0)
+  const entries = ids.filter((id) => inE.get(id).length === 0 && !ruleEnds.has(id))
   const spine = []
   const spineSet = new Set()
   {
@@ -211,7 +233,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     inLayer.filter((id) => spineSet.has(id)).forEach((id, i) => col.set(id, i))
     const pull = new Map()
     for (const id of inLayer) {
-      if (col.has(id)) continue
+      if (col.has(id) || ruleEnds.has(id)) continue
       const cs = dagIn.get(id).filter((p) => colOf.has(p)).map((p) => colOf.get(p))
       pull.set(id, cs.length ? cs.reduce((n, c) => n + c, 0) / cs.length : 0)
     }
@@ -230,6 +252,10 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       const c = Math.max(next, Math.round(pull.get(id)))
       col.set(id, c)
       next = c + 1
+    }
+    for (const id of inLayer.filter((id) => ruleEnds.has(id))) {
+      col.set(id, next)
+      next += 1
     }
     next = -1
     for (const id of left.sort(byPull)) {
@@ -365,8 +391,8 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
   // stage's first one; the cut lies in the middle of the gap between the two layers. So bands are
   // contiguous and never overlap, by construction. A stage that never appears on the main line
   // gets no band (its nodes still render as usual).
-  const stageBands = []
-  if (showStages) {
+  const stageSpans = []
+  if (stageById.size) {
     const rowOf = new Map(rows.map((r, i) => [r.layer, i]))
     const edgeOf = (rowIdx) => (rowIdx <= 0 ? PAD : rows[rowIdx].along - gap / 2)
     const endAlong = contentAlong - PAD
@@ -378,10 +404,113 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       const at = edgeOf(rowOf.get(layer.get(id) ?? 0))
       if (cur) cur.to = at
       cur = { stageId: sid, label: stageById.get(sid).label, from: at, to: endAlong }
-      stageBands.push(cur)
+      stageSpans.push(cur)
     }
     // The first band starts at the top of the content, even if the entry sits before any stage
-    if (stageBands.length) stageBands[0].from = Math.min(stageBands[0].from, PAD)
+    if (stageSpans.length) stageSpans[0].from = Math.min(stageSpans[0].from, PAD)
+  }
+  // The spans are computed whether or not the bands are drawn: the rule lane is placed by them
+  const stageBands = showStages ? stageSpans : []
+
+  // ⑧ the rule lane. A rule is a clause that may fire anywhere in its stages ("if the supplier
+  // is late, a penalty of …"); drawn as edges from some step, it would claim a moment it does
+  // not have, and repeat once per stage it covers. So it is a card in a lane of its own, beside
+  // the node field, level with the first stage it applies to; the stages it covers are written
+  // on it. Cards stack in stage order and never overlap.
+  // A rule that ends the contract (`endId`) joins a trunk running between the node field and
+  // the lane, down to its end. One trunk per end, so five termination grounds read as five
+  // roads into one door rather than five lines across the page.
+  const showRules = fields?.rules !== false && Array.isArray(spec.rules) && spec.rules.length > 0
+  const rulesOut = []
+  const ruleLinks = []
+  if (showRules) {
+    const stageOrder = new Map((spec.stages ?? []).map((st, i) => [st.id, i]))
+    const spanOf = new Map(stageSpans.map((b) => [b.stageId, b]))
+    const firstStage = (r) => {
+      const known = (r.stageIds ?? []).filter((id) => stageOrder.has(id))
+      return known.length ? known.reduce((a, b) => (stageOrder.get(a) <= stageOrder.get(b) ? a : b)) : null
+    }
+    const sorted = spec.rules
+      .map((r, i) => ({ r, i, first: firstStage(r) }))
+      .sort((a, b) => (stageOrder.get(a.first) ?? -1) - (stageOrder.get(b.first) ?? -1) || a.i - b.i)
+
+    const fieldEnd = (vertical ? size.width : size.height) - PAD
+    const laneC0 = fieldEnd + RULE_GAP
+    let cursor = PAD
+    let laneAcross = 0
+    for (const { r, first } of sorted) {
+      const h = ruleHeight(r, textEm)
+      const along = vertical ? h : RULE_W
+      const across = vertical ? RULE_W : h
+      const a0 = Math.max(spanOf.get(first)?.from ?? PAD, cursor)
+      cursor = a0 + along + RULE_STACK_GAP
+      laneAcross = Math.max(laneAcross, across)
+      rulesOut.push({
+        rule: r,
+        x: vertical ? laneC0 : a0,
+        y: vertical ? a0 : laneC0,
+        w: RULE_W,
+        h,
+        a0,
+        stageLabels: (r.stageIds ?? []).filter((id) => stageById.has(id)).map((id) => stageById.get(id).label),
+        allStages: !(r.stageIds ?? []).length,
+      })
+    }
+
+    // Trunks: one per end, between the node field and the lane
+    const P = (a, c) => (vertical ? [c, a] : [a, c])
+    const byEnd = new Map()
+    for (const card of rulesOut) {
+      const id = card.rule.endId
+      if (!id || !placed.has(id)) continue
+      if (!byEnd.has(id)) byEnd.set(id, [])
+      byEnd.get(id).push(card)
+    }
+    let k = 0
+    for (const [endId, cards] of byEnd) {
+      const trunkC = laneC0 - RULE_GAP / 2 - k * TRACK
+      k += 1
+      const e = boxes.get(endId)
+      // Each card joins the trunk a little below its top, level with its consequence
+      const stubs = cards.map((c) => c.a0 + 18)
+      for (const [i, a] of stubs.entries()) {
+        const pts = [P(a, laneC0), P(a, trunkC)]
+        ruleLinks.push({ id: `rl:${cards[i].rule.id}`, points: pts, d: toPathD(pts), arrow: false })
+      }
+      const pts = [P(Math.min(...stubs), trunkC), P(e.am, trunkC), P(e.am, e.c1)]
+      ruleLinks.push({ id: `rt:${endId}`, to: endId, points: pts, d: toPathD(pts), arrow: true })
+    }
+
+    // Scope bars: how far a rule reaches, drawn beside the lane across the stages it covers.
+    // One bar per distinct stage range (rules sharing a range share the bar), so "these two
+    // apply from requirements to delivery" is seen, not read off a footer.
+    const scopeBars = new Map()
+    for (const card of rulesOut) {
+      const spans = (card.rule.stageIds ?? []).map((id) => spanOf.get(id)).filter(Boolean)
+      if (!spans.length) continue
+      const from = Math.min(...spans.map((b) => b.from))
+      const to = Math.max(...spans.map((b) => b.to))
+      const key = `${from}|${to}`
+      if (!scopeBars.has(key)) scopeBars.set(key, { from, to })
+    }
+    ;[...scopeBars.values()]
+      .sort((a, b) => a.from - b.from || b.to - a.to)
+      .forEach((bar, i) => {
+        const c = laneC0 + laneAcross + SCOPE_BAR_GAP + i * SCOPE_BAR_PITCH
+        const pts = [P(bar.from + 6, c), P(bar.to - 6, c)]
+        ruleLinks.push({ id: `rs:${bar.from}|${bar.to}`, points: pts, d: toPathD(pts), arrow: false, scope: true })
+        laneAcross = Math.max(laneAcross, c - laneC0 + 4)
+      })
+
+    // The content box grows to hold the lane
+    const alongEnd = Math.max(...rulesOut.map((c) => c.a0 + (vertical ? c.h : RULE_W)))
+    if (vertical) {
+      size.width = Math.max(size.width, laneC0 + laneAcross + PAD)
+      size.height = Math.max(size.height, alongEnd + PAD)
+    } else {
+      size.height = Math.max(size.height, laneC0 + laneAcross + PAD)
+      size.width = Math.max(size.width, alongEnd + PAD)
+    }
   }
 
   // the nodes go to React Flow. Sizes travel in data (the same convention as fact's cards)
@@ -431,6 +560,8 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     rows: rows.map((r) => ({ layer: r.layer, along: r.along, extent: r.extent, count: r.ids.length })),
     spine,
     stageBands,
+    rules: rulesOut,
+    ruleLinks,
     gutter,
     size,
     stats,

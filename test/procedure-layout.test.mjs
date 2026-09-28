@@ -492,3 +492,84 @@ test('side strands stay on their side of the main line', () => {
     }
   }
 })
+
+// ── The rule layer (draft, examples/procedure/rules-draft/) ──────
+// Contingent clauses — breach, delay liability, rights to terminate — as `rules` beside the
+// flow instead of edges out of some step. See spec/procedure/schema-draft.md §11.
+
+const RULES_DIR = 'examples/procedure/rules-draft'
+const ruleFiles = readdirSync(RULES_DIR).filter((f) => f.endsWith('.json')).sort()
+const loadRules = (f) => JSON.parse(readFileSync(`${RULES_DIR}/${f}`, 'utf8'))
+
+test('rule-layer drafts validate cleanly, with no hints', () => {
+  assert.ok(ruleFiles.length >= 2)
+  for (const f of ruleFiles) {
+    assert.deepEqual(validateProcedure(loadRules(f)), [], f)
+    // an end reached only through a rule is not a second entry
+    assert.deepEqual(hintsOfProcedure(loadRules(f)), [], f)
+  }
+})
+
+test('rules are validated: references, the end they lead to, the trigger', () => {
+  const cases = [
+    ['stageIds points nowhere', (s) => { s.rules[0].stageIds = ['st-9'] }, /non-existent stage "st-9"/],
+    ['endId is not an end', (s) => { s.rules[4].endId = 'n-3' }, /not a node of kind "end"/],
+    ['endId points nowhere', (s) => { s.rules[4].endId = 'n-99' }, /non-existent node "n-99"/],
+    ['when missing', (s) => { delete s.rules[0].when }, /`when` is required/],
+    ['when list has a blank', (s) => { s.rules[5].when.push(' ') }, /`when` is required/],
+    ['then missing', (s) => { delete s.rules[0].then }, /missing required field `then`/],
+    ['duplicate id', (s) => { s.rules[1].id = s.rules[0].id }, /already used/],
+    ['id shared with a node', (s) => { s.rules[0].id = 'n-1' }, /already used/],
+    ['bad outcome', (s) => { s.rules[0].outcome = 'bad' }, /outcome/],
+    ['rules not an array', (s) => { s.rules = {} }, /`rules` must be an array/],
+  ]
+  for (const [name, mutate, re] of cases) {
+    const s = loadRules('03-labour-outsourcing-contract.zh-CN.json')
+    mutate(s)
+    assert.ok(some(validateProcedure(s), re), `${name}: expected ${re}, got ${JSON.stringify(validateProcedure(s))}`)
+  }
+})
+
+test('rule cards sit beside the flow: no overlap with nodes or each other, inside the content', () => {
+  const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+  for (const f of ruleFiles) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(loadRules(f), {}, undefined, dir)
+      assert.equal(g.rules.length, loadRules(f).rules.length, `${f}/${dir}: a rule was dropped`)
+      const cards = g.rules.map((c) => ({ id: c.rule.id, x: c.x, y: c.y, w: c.w, h: c.h }))
+      const nodes = g.nodes.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }))
+      for (const c of cards) {
+        assert.ok(c.x >= 0 && c.y >= 0 && c.x + c.w <= g.size.width && c.y + c.h <= g.size.height, `${f}/${dir}: ${c.id} outside`)
+        for (const n of nodes) assert.ok(!overlap(c, n), `${f}/${dir}: ${c.id} covers node ${n.id}`)
+        for (const d of cards) if (d !== c) assert.ok(!overlap(c, d), `${f}/${dir}: ${c.id} and ${d.id} overlap`)
+      }
+    }
+  }
+})
+
+test('rules that end the contract join one trunk into their end', () => {
+  for (const dir of ['vertical', 'horizontal']) {
+    const g = buildProcedureGraph(loadRules('03-labour-outsourcing-contract.zh-CN.json'), {}, undefined, dir)
+    const trunks = g.ruleLinks.filter((l) => l.arrow)
+    assert.equal(trunks.length, 1, `${dir}: three terminating rules, one end, one trunk`)
+    const stubs = g.ruleLinks.filter((l) => !l.arrow && !l.scope)
+    assert.equal(stubs.length, 3, `${dir}: one stub per terminating rule`)
+    // the trunk ends on the boundary of the end it leads to
+    const end = g.nodes.find((n) => n.id === trunks[0].to)
+    const [x, y] = trunks[0].points.at(-1)
+    const b = { x: end.position.x, y: end.position.y, w: end.data.w, h: end.data.h }
+    assert.ok(onBoxBoundary([x, y], b), `${dir}: the trunk stops short of its end`)
+    // and the end reached only through rules sits in the last layer, outermost
+    const last = Math.max(...g.nodes.map((n) => (dir === 'vertical' ? n.position.y : n.position.x)))
+    assert.equal(dir === 'vertical' ? end.position.y : end.position.x, last, `${dir}: the rule end is not in the last layer`)
+  }
+})
+
+test('the rule switch gives the lane back', () => {
+  const s = loadRules('01-software-development-contract.zh-CN.json')
+  const on = buildProcedureGraph(s)
+  const off = buildProcedureGraph(s, { rules: false })
+  assert.equal(off.rules.length, 0)
+  assert.equal(off.ruleLinks.length, 0)
+  assert.ok(off.size.width < on.size.width, 'switching rules off should narrow the diagram')
+})

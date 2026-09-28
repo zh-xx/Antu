@@ -59,6 +59,13 @@ export const zh = {
   'flow.detail': '详情',
   'flow.mainLine': '主干',
   'flow.stages': '阶段',
+  'flow.rules': '条款',
+  'rule.if': '若',
+  'rule.ifAny': '若有下列任一：',
+  'rule.or': '，或',
+  'rule.scopeAll': '全程适用',
+  'rule.scopeOne': ({ stage }) => `适用：${stage}`,
+  'rule.scopeRange': ({ from, to, n }) => `适用：${from} 至 ${to}（${n} 个阶段）`,
   'flow.previewHint': '点击节点查看全文',
 
   // ---------- card and source overlay (EventNode.jsx) ----------

@@ -23,6 +23,7 @@ import { readPrefs, writePrefs } from '../../../shell/prefs.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import FlowNode from './FlowNode.jsx'
+import RuleCardNode from './RuleCardNode.jsx'
 import ConnectionLayerNode from './ConnectionLayerNode.jsx'
 import StageBandNode from './StageBandNode.jsx'
 import FlowDock from './FlowDock.jsx'
@@ -32,6 +33,7 @@ import { PAD } from './metrics.js'
 /** Node types used by the flowchart. Adding one means registering one line here. */
 const nodeTypes = {
   pnode: FlowNode,
+  prule: RuleCardNode,
   plinks: ConnectionLayerNode,
   pstages: StageBandNode,
 }
@@ -41,7 +43,7 @@ const nodeTypes = {
  * Stored under their own preference key, apart from the timeline's card fields: the two
  * sets share no switch, and one key for both would make each overwrite the other.
  */
-const FIELD_DEFAULTS = { conditions: true, detail: true, mainLine: true, stages: true }
+const FIELD_DEFAULTS = { conditions: true, detail: true, mainLine: true, stages: true, rules: true }
 
 /** Attributes shared by decoration nodes; for why 1×1, see cellsNode in fact/timeline/nodes.js */
 const DECORATION = {
@@ -60,6 +62,7 @@ const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : 
 export default function ProcedureFlow({ spec }) {
   const specKey = spec?.title || ''
   const hasStages = Array.isArray(spec?.stages) && spec.stages.length > 0
+  const hasRules = Array.isArray(spec?.rules) && spec.rules.length > 0
 
   const [fields, setFields] = useState(() => ({
     ...FIELD_DEFAULTS,
@@ -86,8 +89,14 @@ export default function ProcedureFlow({ spec }) {
   // stages reserve the gutter. Condition labels and the main-line highlight are paint only,
   // so toggling them re-draws the link layer without re-fitting the viewport.
   const layout = useMemo(
-    () => buildProcedureGraph(spec, { detail: fields.detail, stages: fields.stages }, undefined, orientation),
-    [spec, fields.detail, fields.stages, orientation],
+    () =>
+      buildProcedureGraph(
+        spec,
+        { detail: fields.detail, stages: fields.stages, rules: fields.rules },
+        undefined,
+        orientation,
+      ),
+    [spec, fields.detail, fields.stages, fields.rules, orientation],
   )
 
   const graph = useMemo(() => {
@@ -109,14 +118,31 @@ export default function ProcedureFlow({ spec }) {
       position: { x: 0, y: 0 },
       data: {
         connections: layout.connections,
+        ruleLinks: layout.ruleLinks,
         width,
         height,
         showConditions: fields.conditions,
         highlightMain: fields.mainLine,
       },
     })
-    return { nodes: [...deco, ...layout.nodes], edges: [], size: layout.size }
-  }, [layout, vertical, fields.conditions, fields.mainLine])
+    // Rule cards are ordinary (hoverable, pinnable) nodes; their text and provenance travel in data
+    const sourceById = new Map((spec.sources ?? []).map((s) => [s.id, s]))
+    const cards = layout.rules.map((c) => ({
+      id: `rule:${c.rule.id}`,
+      type: 'prule',
+      position: { x: c.x, y: c.y },
+      data: {
+        rule: c.rule,
+        w: c.w,
+        h: c.h,
+        stageLabels: c.stageLabels,
+        allStages: c.allStages,
+        sources: (c.rule.sourceIds ?? []).map((id) => sourceById.get(id)).filter(Boolean),
+        vertical,
+      },
+    }))
+    return { nodes: [...deco, ...layout.nodes, ...cards], edges: [], size: layout.size }
+  }, [layout, spec, vertical, fields.conditions, fields.mainLine])
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
@@ -140,13 +166,13 @@ export default function ProcedureFlow({ spec }) {
           graph={graph}
           nodeTypes={nodeTypes}
           onNodeMouseEnter={(_, n) => {
-            if (n.type === 'pnode') setHoveredId(n.id)
+            if (n.type === 'pnode' || n.type === 'prule') setHoveredId(n.id)
           }}
           onNodeMouseLeave={(_, n) => {
             setHoveredId((cur) => (cur === n.id ? null : cur))
           }}
           onNodeClick={(_, n) => {
-            if (n.type === 'pnode') setPinnedId(n.id)
+            if (n.type === 'pnode' || n.type === 'prule') setPinnedId(n.id)
           }}
           onPaneClick={() => setPinnedId(null)}
         >
@@ -154,6 +180,7 @@ export default function ProcedureFlow({ spec }) {
             fields={fields}
             onToggleField={toggleField}
             hasStages={hasStages}
+            hasRules={hasRules}
             orientation={orientation}
             onToggleOrientation={toggleOrientation}
             exporting={exporting}

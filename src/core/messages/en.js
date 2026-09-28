@@ -81,6 +81,13 @@ export const en = {
   'flow.detail': 'Detail',
   'flow.mainLine': 'Main line',
   'flow.stages': 'Stages',
+  'flow.rules': 'Rules',
+  'rule.if': 'If',
+  'rule.ifAny': 'If any of:',
+  'rule.or': ', or ',
+  'rule.scopeAll': 'Throughout',
+  'rule.scopeOne': ({ stage }) => `During: ${stage}`,
+  'rule.scopeRange': ({ from, to, n }) => `During: ${from} → ${to} (${n} stages)`,
   'flow.previewHint': 'Click a node to read the full text',
 
   // ---------- canvas accessibility text (Canvas.jsx) ----------
@@ -197,6 +204,12 @@ export const en = {
   'perr.mainBroken': ({ id }) =>
     `the main line breaks at node "${id}": the edges marked main do not reach any end. ` +
     'Either add the missing main edge, or repair the chain',
+  'perr.rulesNotArray': '`rules` must be an array',
+  'perr.duplicateRuleId': ({ at, id }) => `${at}: id "${id}" is already used by another rule or node`,
+  'perr.ruleWhen': ({ at }) =>
+    `${at}: \`when\` is required: a non-empty string, or an array of them (any one of them triggers the rule)`,
+  'perr.ruleEndNotEnd': ({ at, id }) =>
+    `${at}: \`endId\` points at "${id}", which is not a node of kind "end"; a rule can only lead to an end`,
   'phint.stageBackwards': ({ from, fromStage, to, toStage }) =>
     `stage runs backwards: ${from} (${fromStage}) -> ${to} (${toStage}); back edges are normal, others need a second look`,
   'phint.decisionOnSpine': ({ id, label }) =>

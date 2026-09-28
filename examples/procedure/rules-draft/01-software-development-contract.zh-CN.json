@@ -1,0 +1,61 @@
+{
+  "type": "procedure",
+  "title": "软件开发服务合同 · 履行流程（规则层草案）",
+  "domain": "contract-performance",
+  "actors": [
+    { "id": "a-1", "name": "甲方", "role": "委托方" },
+    { "id": "a-2", "name": "乙方", "role": "开发方" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "签约" },
+    { "id": "st-2", "label": "需求确认" },
+    { "id": "st-3", "label": "系统原型" },
+    { "id": "st-4", "label": "系统交付" },
+    { "id": "st-5", "label": "收尾" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "contract", "name": "软件开发服务合同", "loc": { "file": "软件开发服务合同.docx" } }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "合同签署生效", "stageId": "st-1" },
+    { "id": "n-2", "kind": "step", "label": "甲方支付首期款", "detail": "360,000 元", "actorIds": ["a-1"], "stageId": "st-1", "sourceIds": ["s-1"] },
+
+    { "id": "n-3", "kind": "step", "label": "需求确认", "detail": "2026-06-30 前完成", "actorIds": ["a-2"], "stageId": "st-2" },
+    { "id": "n-4", "kind": "decision", "label": "需求确认是否通过", "stageId": "st-2" },
+
+    { "id": "n-5", "kind": "step", "label": "系统原型开发", "detail": "2026-08-31 前完成", "actorIds": ["a-2"], "stageId": "st-3" },
+    { "id": "n-6", "kind": "decision", "label": "原型验收是否合格", "stageId": "st-3" },
+    { "id": "n-8", "kind": "step", "label": "乙方整改", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-3" },
+    { "id": "n-7", "kind": "step", "label": "甲方支付二期款", "detail": "480,000 元", "actorIds": ["a-1"], "stageId": "st-3", "sourceIds": ["s-1"] },
+
+    { "id": "n-9", "kind": "step", "label": "系统交付", "detail": "2026-11-30 前完成", "actorIds": ["a-2"], "stageId": "st-4" },
+    { "id": "n-10", "kind": "decision", "label": "最终验收是否通过", "stageId": "st-4" },
+    { "id": "n-12", "kind": "step", "label": "乙方无条件整改", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-4" },
+    { "id": "n-11", "kind": "step", "label": "甲方支付尾款", "detail": "360,000 元", "actorIds": ["a-1"], "stageId": "st-4", "sourceIds": ["s-1"] },
+
+    { "id": "n-13", "kind": "step", "label": "项目完成", "outcome": "positive", "stageId": "st-5" },
+    { "id": "n-26", "kind": "end", "label": "合同终止", "stageId": "st-5" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "main": true },
+    { "from": "n-4", "to": "n-5", "condition": "通过", "main": true },
+    { "from": "n-4", "to": "n-3", "condition": "未通过" },
+    { "from": "n-5", "to": "n-6", "main": true },
+    { "from": "n-6", "to": "n-7", "condition": "合格", "main": true },
+    { "from": "n-6", "to": "n-8", "condition": "不合格" },
+    { "from": "n-8", "to": "n-6" },
+    { "from": "n-7", "to": "n-9", "main": true },
+    { "from": "n-9", "to": "n-10", "main": true },
+    { "from": "n-10", "to": "n-11", "condition": "通过", "main": true },
+    { "from": "n-10", "to": "n-12", "condition": "未通过" },
+    { "from": "n-12", "to": "n-10" },
+    { "from": "n-11", "to": "n-13", "main": true },
+    { "from": "n-13", "to": "n-26", "main": true }
+  ],
+  "rules": [
+    { "id": "r-1", "when": "甲方原因导致延期", "then": "工期相应顺延", "stageIds": ["st-2", "st-3", "st-4"], "sourceIds": ["s-1"] },
+    { "id": "r-2", "when": "乙方原因导致延期", "then": "乙方支付违约金：每日 0.1%，总额不超 5%", "outcome": "negative", "stageIds": ["st-2", "st-3", "st-4"], "sourceIds": ["s-1"] }
+  ]
+}
