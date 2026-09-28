@@ -101,22 +101,22 @@ test('the main line runs straight: almost no main link bends', () => {
   assert.ok(bent / total <= 0.03, `${bent} of ${total} main links bend`)
 })
 
-test('back edges are recognised, and the count matches what was measured', () => {
-  const back01 = buildProcedureGraph(load(byPrefix('01-'))).stats.backEdges
-  const back06 = buildProcedureGraph(load(byPrefix('06-'))).stats.backEdges
-  const back07 = buildProcedureGraph(load(byPrefix('07-'))).stats.backEdges
-  assert.equal(back01, 12, '01 has 9 back edges plus 3 added "extension returns to this stage" edges')
-  assert.equal(back06, 3, '06: the rectification loop')
-  assert.equal(back07, 0, '07 is acyclic')
+test('back edges are recognised: only the real loops are left', () => {
+  // With breach, delay and termination written as rules (§11), what loops back is a real loop:
+  // rectify and inspect again, the monthly cycle, renewal
+  const back = (p) => buildProcedureGraph(load(byPrefix(p))).stats.backEdges
+  assert.equal(back('01-'), 3, '01: the three rectify-and-reinspect loops')
+  assert.equal(back('06-'), 2, '06: recommissioning and re-inspection')
+  assert.equal(back('07-'), 0, '07 is acyclic')
 })
 
 test('several edges into the same target merge into one link', () => {
-  const g = buildProcedureGraph(load(byPrefix('03-')))
-  assert.equal(g.stats.groupedEdges, 3, '03 has 3 edges merged away (two groups flowing into the termination node)')
+  const g = buildProcedureGraph(JSON.parse(readFileSync(`${AGENT_DIR}/6-merged-edges.en.json`, 'utf8')))
+  assert.ok(g.stats.groupedEdges > 0, 'the merged-edges example has edges merged away')
   assert.equal(g.stats.connections, g.stats.edges - g.stats.groupedEdges)
   const merged = g.connections.filter((c) => c.merged > 1)
-  assert.equal(merged.length, 2, 'after merging there should be 2 links')
-  assert.ok(merged.some((c) => c.label.includes(' / ')), 'merged conditions must be shown side by side')
+  assert.ok(merged.length > 0)
+  for (const c of merged) assert.ok(c.label.includes(' / '), 'merged conditions are joined with " / "')
 })
 
 test('there are at least as many layers as steps on the main line', () => {
@@ -216,8 +216,8 @@ const AGENT_DIR = 'examples/agent/procedure'
 const agentFiles = readdirSync(AGENT_DIR).filter((f) => f.endsWith('.json')).sort()
 const agentPairs = [...new Set(agentFiles.map((f) => f.replace(/\.(en|zh-CN)\.json$/i, '.json')))]
 
-test('agent examples: six (each with an en and a zh-CN half), all validate and lay out', () => {
-  assert.equal(agentPairs.length, 6)
+test('agent examples: seven (each with an en and a zh-CN half), all validate and lay out', () => {
+  assert.equal(agentPairs.length, 7)
   for (const base of agentPairs) {
     for (const lang of ['en', 'zh-CN']) {
       const f = `${base.replace(/\.json$/, '')}.${lang}.json`
@@ -366,12 +366,21 @@ test('no two different links lie on top of each other', () => {
 })
 
 
-test('a link carrying several conditions merges them into one label', () => {
-  const g = buildProcedureGraph(load('03-labour-outsourcing-contract.zh-CN.json'))
-  const merged = g.connections.filter((c) => c.merged > 1)
-  assert.equal(merged.length, 2)
-  for (const c of merged) {
-    assert.ok(c.label.includes(' / '), 'merged conditions are joined with " / "')
+test('the picture does not depend on the order nodes are written in', () => {
+  // A node appended at the end of the list once turned 06's main line upside down (ELK's
+  // model-order cycle breaking reversed an edge that pointed at a node written earlier).
+  // Reverse the node list of every contract: the main line must still run straight and
+  // forward, one layer per step at least.
+  for (const f of files) {
+    const spec = load(f)
+    spec.nodes.reverse()
+    const g = buildProcedureGraph(spec)
+    assert.deepEqual(g.errors, [], f)
+    assert.ok(g.stats.layers >= g.spine.length, `${f}: ${g.stats.layers} layers for a main line of ${g.spine.length}`)
+    const along = new Map(g.nodes.map((n) => [n.id, n.position.y]))
+    for (let i = 1; i < g.spine.length; i += 1) {
+      assert.ok(along.get(g.spine[i]) > along.get(g.spine[i - 1]), `${f}: the main line turns back at ${g.spine[i]}`)
+    }
   }
 })
 
@@ -468,12 +477,12 @@ test('condition labels sit clear of every node, inside the content', () => {
 
 
 
-// ── The rule layer (draft, examples/procedure/rules-draft/) ──────
+// ── The rule layer (v1.1, §11) ──────
 // Contingent clauses — breach, delay liability, rights to terminate — as `rules` beside the
 // flow instead of edges out of some step. See spec/procedure/schema-draft.md §11.
 
-const RULES_DIR = 'examples/procedure/rules-draft'
-const ruleFiles = readdirSync(RULES_DIR).filter((f) => f.endsWith('.json')).sort()
+const RULES_DIR = 'examples/procedure'
+const ruleFiles = readdirSync(RULES_DIR).filter((f) => f.endsWith('.zh-CN.json') && JSON.parse(readFileSync(`${RULES_DIR}/${f}`, 'utf8')).rules?.length).sort()
 const loadRules = (f) => JSON.parse(readFileSync(`${RULES_DIR}/${f}`, 'utf8'))
 
 test('rule-layer drafts validate cleanly, with no hints', () => {

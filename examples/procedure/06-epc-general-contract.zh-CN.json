@@ -3,86 +3,372 @@
   "title": "工程总承包合同 · 履行流程",
   "domain": "contract-performance",
   "actors": [
-    { "id": "a-1", "name": "甲方", "role": "发包方" },
-    { "id": "a-2", "name": "乙方", "role": "总承包方" }
+    {
+      "id": "a-1",
+      "name": "甲方",
+      "role": "发包方"
+    },
+    {
+      "id": "a-2",
+      "name": "乙方",
+      "role": "总承包方"
+    }
   ],
   "stages": [
-    { "id": "st-1", "label": "开工准备" },
-    { "id": "st-2", "label": "设计与采购" },
-    { "id": "st-3", "label": "施工与试车" },
-    { "id": "st-4", "label": "竣工与缺陷责任" }
+    {
+      "id": "st-1",
+      "label": "开工准备"
+    },
+    {
+      "id": "st-2",
+      "label": "设计与采购"
+    },
+    {
+      "id": "st-3",
+      "label": "施工与试车"
+    },
+    {
+      "id": "st-4",
+      "label": "竣工与缺陷责任"
+    }
   ],
   "sources": [
-    { "id": "s-1", "type": "contract", "name": "工程总承包合同", "loc": { "file": "工程总承包合同.docx" } }
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "工程总承包合同",
+      "loc": {
+        "file": "工程总承包合同.docx"
+      }
+    }
   ],
   "nodes": [
-    { "id": "n-1", "kind": "start", "label": "合同签署生效", "stageId": "st-1", "sourceIds": ["s-1"] },
-    { "id": "n-2", "kind": "step", "label": "乙方提交履约保函", "detail": "10% · 3500 万元", "actorIds": ["a-2"], "stageId": "st-1" },
-    { "id": "n-3", "kind": "step", "label": "甲方支付预付款", "detail": "10% · 3500 万元", "actorIds": ["a-1"], "stageId": "st-1" },
-    { "id": "n-4", "kind": "step", "label": "开工令发出", "detail": "工期 24 个月 · 至 2028-07-31", "actorIds": ["a-1"], "stageId": "st-1" },
-
-    { "id": "n-5", "kind": "step", "label": "第 1 月末：提交方案设计", "actorIds": ["a-2"], "stageId": "st-2" },
-    { "id": "n-6", "kind": "step", "label": "第 3 月末：初步设计完成并获批准", "actorIds": ["a-2"], "stageId": "st-2" },
-    { "id": "n-7", "kind": "step", "label": "第 6 月末：施工图设计完成并通过审查", "actorIds": ["a-2"], "stageId": "st-2" },
-    { "id": "n-8", "kind": "step", "label": "第 10 月末：主要设备采购完成并到场", "stageId": "st-2" },
-
-    { "id": "n-9", "kind": "step", "label": "第 12 月末：土建基础完成验收", "detail": "累计支付至 30%", "stageId": "st-3" },
-    { "id": "n-10", "kind": "step", "label": "第 18 月末：设备安装完成", "detail": "累计支付至 55%", "stageId": "st-3" },
-    { "id": "n-11", "kind": "step", "label": "第 22 月末：联动试车完成", "detail": "累计支付至 70%", "stageId": "st-3" },
-
-    { "id": "n-12", "kind": "step", "label": "第 24 月末：竣工验收通过", "detail": "累计支付至 85%", "stageId": "st-4" },
-    { "id": "n-13", "kind": "step", "label": "缺陷责任期", "detail": "24 个月 · 质量保证金 3%", "stageId": "st-4" },
-    { "id": "n-14", "kind": "step", "label": "缺陷责任期满且无未处理缺陷", "detail": "支付至 97%", "stageId": "st-4" },
-    { "id": "n-15", "kind": "step", "label": "结算审计完成", "detail": "支付剩余 3% 尾款", "stageId": "st-4" },
-    { "id": "n-16", "kind": "end", "label": "合同终止", "outcome": "positive", "stageId": "st-4" },
-
-    { "id": "n-17", "kind": "step", "label": "工期延误情形", "outcome": "negative", "stageId": "st-1" },
-    { "id": "n-18", "kind": "step", "label": "甲方原因或不可抗力：可申请工期顺延", "actorIds": ["a-2"], "stageId": "st-1" },
-    { "id": "n-19", "kind": "step", "label": "乙方原因逾期", "detail": "每日 0.05% 违约金 · 上限 10%", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-1" },
-    { "id": "n-20", "kind": "step", "label": "逾期超过一定期限：甲方有权解除合同", "actorIds": ["a-1"], "outcome": "negative", "stageId": "st-1" },
-    { "id": "n-21", "kind": "step", "label": "合同解除：结算已完成工程", "outcome": "negative", "stageId": "st-4" },
-
-    { "id": "n-22", "kind": "step", "label": "性能指标不达标：整改", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-3" },
-    { "id": "n-23", "kind": "step", "label": "整改超过 3 次：每次补偿 0.1%", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-3" },
-    { "id": "n-24", "kind": "step", "label": "整改后达标：继续", "outcome": "positive", "stageId": "st-4" },
-
-    { "id": "n-25", "kind": "step", "label": "验收不合格：整改", "actorIds": ["a-2"], "outcome": "negative", "stageId": "st-4" },
-    { "id": "n-26", "kind": "step", "label": "整改后合格：继续", "outcome": "positive", "stageId": "st-4" }
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "合同签署生效",
+      "stageId": "st-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "n-2",
+      "kind": "step",
+      "label": "乙方提交履约保函",
+      "detail": "10% · 3500 万元",
+      "actorIds": [
+        "a-2"
+      ],
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-3",
+      "kind": "step",
+      "label": "甲方支付预付款",
+      "detail": "10% · 3500 万元",
+      "actorIds": [
+        "a-1"
+      ],
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "开工令发出",
+      "detail": "工期 24 个月 · 至 2028-07-31",
+      "actorIds": [
+        "a-1"
+      ],
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-5",
+      "kind": "step",
+      "label": "第 1 月末：提交方案设计",
+      "actorIds": [
+        "a-2"
+      ],
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-6",
+      "kind": "step",
+      "label": "第 3 月末：初步设计完成并获批准",
+      "actorIds": [
+        "a-2"
+      ],
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-7",
+      "kind": "step",
+      "label": "第 6 月末：施工图设计完成并通过审查",
+      "actorIds": [
+        "a-2"
+      ],
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "第 10 月末：主要设备采购完成并到场",
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-9",
+      "kind": "step",
+      "label": "第 12 月末：土建基础完成验收",
+      "detail": "累计支付至 30%",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-10",
+      "kind": "step",
+      "label": "第 18 月末：设备安装完成",
+      "detail": "累计支付至 55%",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-11",
+      "kind": "step",
+      "label": "第 22 月末：联动试车完成",
+      "detail": "累计支付至 70%",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-12",
+      "kind": "step",
+      "label": "第 24 月末：竣工验收",
+      "detail": "累计支付至 85%",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-13",
+      "kind": "step",
+      "label": "缺陷责任期",
+      "detail": "24 个月 · 质量保证金 3%",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-14",
+      "kind": "step",
+      "label": "缺陷责任期满且无未处理缺陷",
+      "detail": "支付至 97%",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-15",
+      "kind": "step",
+      "label": "结算审计完成",
+      "detail": "支付剩余 3% 尾款",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-16",
+      "kind": "end",
+      "label": "合同终止",
+      "outcome": "positive",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-27",
+      "kind": "decision",
+      "label": "性能指标是否达标",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-28",
+      "kind": "step",
+      "label": "乙方整改后重新试车",
+      "actorIds": [
+        "a-2"
+      ],
+      "outcome": "negative",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-29",
+      "kind": "decision",
+      "label": "竣工验收是否合格",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-30",
+      "kind": "step",
+      "label": "乙方整改后重新验收",
+      "actorIds": [
+        "a-2"
+      ],
+      "outcome": "negative",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-31",
+      "kind": "end",
+      "label": "合同解除：结算已完成工程",
+      "outcome": "negative",
+      "stageId": "st-4"
+    }
   ],
   "edges": [
-    { "from": "n-1", "to": "n-2", "main": true },
-    { "from": "n-2", "to": "n-3", "main": true },
-    { "from": "n-3", "to": "n-4", "main": true },
-    { "from": "n-4", "to": "n-5", "main": true },
-    { "from": "n-5", "to": "n-6", "main": true },
-    { "from": "n-6", "to": "n-7", "main": true },
-    { "from": "n-7", "to": "n-8", "main": true },
-    { "from": "n-8", "to": "n-9", "main": true },
-    { "from": "n-9", "to": "n-10", "main": true },
-    { "from": "n-10", "to": "n-11", "main": true },
-    { "from": "n-11", "to": "n-12", "main": true },
-    { "from": "n-12", "to": "n-13", "main": true },
-    { "from": "n-13", "to": "n-14", "main": true },
-    { "from": "n-14", "to": "n-15", "main": true },
-    { "from": "n-15", "to": "n-16", "main": true },
-
-    { "from": "n-4", "to": "n-17" },
-    { "from": "n-17", "to": "n-18" },
-    { "from": "n-18", "to": "n-4" },
-    { "from": "n-17", "to": "n-19" },
-    { "from": "n-19", "to": "n-20" },
-    { "from": "n-20", "to": "n-21" },
-    { "from": "n-21", "to": "n-16" },
-
-    { "from": "n-11", "to": "n-22" },
-    { "from": "n-22", "to": "n-23" },
-    { "from": "n-23", "to": "n-11" },
-    { "from": "n-22", "to": "n-24" },
-    { "from": "n-24", "to": "n-12" },
-
-    { "from": "n-12", "to": "n-25" },
-    { "from": "n-25", "to": "n-12" },
-    { "from": "n-25", "to": "n-26" },
-    { "from": "n-26", "to": "n-13" }
+    {
+      "from": "n-1",
+      "to": "n-2",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-3",
+      "main": true
+    },
+    {
+      "from": "n-3",
+      "to": "n-4",
+      "main": true
+    },
+    {
+      "from": "n-4",
+      "to": "n-5",
+      "main": true
+    },
+    {
+      "from": "n-5",
+      "to": "n-6",
+      "main": true
+    },
+    {
+      "from": "n-6",
+      "to": "n-7",
+      "main": true
+    },
+    {
+      "from": "n-7",
+      "to": "n-8",
+      "main": true
+    },
+    {
+      "from": "n-8",
+      "to": "n-9",
+      "main": true
+    },
+    {
+      "from": "n-9",
+      "to": "n-10",
+      "main": true
+    },
+    {
+      "from": "n-10",
+      "to": "n-11",
+      "main": true
+    },
+    {
+      "from": "n-13",
+      "to": "n-14",
+      "main": true
+    },
+    {
+      "from": "n-14",
+      "to": "n-15",
+      "main": true
+    },
+    {
+      "from": "n-15",
+      "to": "n-16",
+      "main": true
+    },
+    {
+      "from": "n-11",
+      "to": "n-27",
+      "main": true
+    },
+    {
+      "from": "n-27",
+      "to": "n-12",
+      "condition": "达标",
+      "main": true
+    },
+    {
+      "from": "n-27",
+      "to": "n-28",
+      "condition": "不达标"
+    },
+    {
+      "from": "n-28",
+      "to": "n-27"
+    },
+    {
+      "from": "n-12",
+      "to": "n-29",
+      "main": true
+    },
+    {
+      "from": "n-29",
+      "to": "n-13",
+      "condition": "合格",
+      "main": true
+    },
+    {
+      "from": "n-29",
+      "to": "n-30",
+      "condition": "不合格"
+    },
+    {
+      "from": "n-30",
+      "to": "n-29"
+    }
+  ],
+  "rules": [
+    {
+      "id": "r-1",
+      "when": "甲方原因或不可抗力导致工期延误",
+      "then": "乙方可申请工期顺延",
+      "stageIds": [
+        "st-2",
+        "st-3"
+      ],
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-2",
+      "when": "乙方原因导致工期延误",
+      "then": "乙方支付违约金：每日 0.05%，上限 10%",
+      "outcome": "negative",
+      "stageIds": [
+        "st-2",
+        "st-3"
+      ],
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-3",
+      "when": "乙方原因逾期超过一定期限",
+      "then": "甲方有权解除合同，结算已完成工程",
+      "outcome": "negative",
+      "stageIds": [
+        "st-2",
+        "st-3"
+      ],
+      "endId": "n-31",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-4",
+      "when": "性能整改超过 3 次",
+      "then": "乙方每次补偿 0.1%",
+      "outcome": "negative",
+      "stageIds": [
+        "st-3"
+      ],
+      "sourceIds": [
+        "s-1"
+      ]
+    }
   ]
 }

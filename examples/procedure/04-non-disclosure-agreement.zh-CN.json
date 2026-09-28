@@ -3,26 +3,76 @@
   "title": "保密协议 · 履行流程",
   "domain": "contract-performance",
   "actors": [
-    { "id": "a-1", "name": "披露方" },
-    { "id": "a-2", "name": "接收方" }
+    {
+      "id": "a-1",
+      "name": "披露方"
+    },
+    {
+      "id": "a-2",
+      "name": "接收方"
+    }
   ],
   "sources": [
-    { "id": "s-1", "type": "contract", "name": "保密协议", "loc": { "file": "保密协议.docx" } }
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "保密协议",
+      "loc": {
+        "file": "保密协议.docx"
+      }
+    }
   ],
   "nodes": [
-    { "id": "n-1", "kind": "start", "label": "签署保密协议", "sourceIds": ["s-1"] },
-    { "id": "n-2", "kind": "step", "label": "接收方接触保密信息", "actorIds": ["a-2"] },
-    { "id": "n-3", "kind": "decision", "label": "接收方是否遵守保密义务" },
-    { "id": "n-4", "kind": "step", "label": "保密义务永久有效", "outcome": "positive" },
-    { "id": "n-5", "kind": "step", "label": "接收方支付违约金", "detail": "100 万元", "actorIds": ["a-2"], "outcome": "negative" },
-    { "id": "n-6", "kind": "end", "label": "协议终止" }
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "签署保密协议",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "n-2",
+      "kind": "step",
+      "label": "接收方接触保密信息",
+      "actorIds": [
+        "a-2"
+      ]
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "保密义务永久有效"
+    },
+    {
+      "id": "n-6",
+      "kind": "end",
+      "label": "协议终止"
+    }
   ],
   "edges": [
-    { "from": "n-1", "to": "n-2", "main": true },
-    { "from": "n-2", "to": "n-3", "main": true },
-    { "from": "n-3", "to": "n-4", "condition": "是", "main": true },
-    { "from": "n-3", "to": "n-5", "condition": "否" },
-    { "from": "n-4", "to": "n-6", "main": true },
-    { "from": "n-5", "to": "n-6" }
+    {
+      "from": "n-1",
+      "to": "n-2",
+      "main": true
+    },
+    {
+      "from": "n-4",
+      "to": "n-6",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-4",
+      "main": true
+    }
+  ],
+  "rules": [
+    {
+      "id": "r-1",
+      "when": "接收方违反保密义务",
+      "then": "接收方支付违约金 100 万元",
+      "outcome": "negative"
+    }
   ]
 }

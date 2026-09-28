@@ -74,7 +74,34 @@ procedure 的校验就会长进流程图的排布里**；将来再加泳道图�
 **与 procedure 的关系：没有。** 程序图不吃视角这一维（`spec/procedure/schema-draft.md` §4.7），
 所以这条不挡程序图，可以一直放着。
 
-### 19. MCP 的三个工具还写死着 fact `待修`
+## 已修
+
+> **编号索引。** 代码注释里引用的条号大多已经修完，内容挪到了本节；
+> 修完时**有的保留了编号，有的被并进了相邻条目**。
+> 所以按条号直接搜不一定搜得到，先看这张表。
+> 同理，下面按主题命名的条目，其原始编号也列在这里。
+
+| 条号 | 现状 | 在哪 |
+|---|---|---|
+| 1 | 已修 | 验证脚本收进仓库了（临时脚本写二十来遍） |
+| 2 | 已修 | 注册表拆成"知识"和"组件"两套 |
+| 3 | **待修** | 见上面「待修」一节 |
+| 5 | 已修 | 画布搬进外壳，App 的接口瘦下来 |
+| 9 | 已修 | HTML 生成逻辑合成一份 |
+| 11 | 已修 | 删掉一个凭空加的字段（`spec?.kindHint`） |
+| 14 | 已修 | 示例分成了两批（给人与给 agent 的分开） |
+| 15 | 已修 | 画布搬进外壳，App 的接口瘦下来 |
+| 17 | **待修** | 见上面「待修」一节 |
+| 18 | 已修 | CI 上 Chrome 偶发起不来 |
+| 19 | **待修** | 见上面「待修」一节 |
+| 20 | 已修 | `readExample` 读不出真实案例 |
+
+按主题命名的条目（更早的几轮，编号未保留）：
+浏览器查找可配置 · 加了 CI · 给 agent 的参考资料独立出来了 · 拆开了 timeline/layout.js ·
+小卫生清完了 · 加了错误边界 · 装上了 linter · 数据来源的分叉 ·
+`npm run build` 的产物打开是报错页
+
+### 19. MCP 的三个工具还写死着 fact `已修`
 
 **现象。** `tools/mcp/engine.mjs` 号称"按大类分发，加新图类型时工具不用改"
 （README 的 MCP 那一节就是这么写的），但有三处没做到：
@@ -161,34 +188,23 @@ listExamples({type:'procedure', group:'real'}) → 7 份，每份 events:0 slots
 结果改完源码生成出来的还是旧引擎，**不报错、看不出来**。
 现在按源码修改时间判断，另有 `--rebuild` 强制重建。
 
----
+**修法（2026-09）。** “这份数据怎么算几何报告、怎么概括一份示例”现在由大类自己提供：
+`knowledge.report` / `knowledge.formatReport` / `knowledge.summarize`，
+分别写在 `src/renderers/fact/schema.js` 与 `src/renderers/procedure/schema.js`。
+`tools/mcp/engine.mjs` 只按 `spec.type` 分发，不再 import fact 的 `grid.js`；
+`server.mjs` 的示例列表打印大类给出的那一行。fact 的报告原样搬过去，输出一字未变
+（verify 里按内容断言的那几条照过）。
 
-## 已修
+实测（修后）：
 
-> **编号索引。** 代码注释里引用的条号大多已经修完，内容挪到了本节；
-> 修完时**有的保留了编号，有的被并进了相邻条目**。
-> 所以按条号直接搜不一定搜得到，先看这张表。
-> 同理，下面按主题命名的条目，其原始编号也列在这里。
+```
+listExamples({type:'procedure', group:'real'})
+  → 03-labour-outsourcing-contract.en.json | 9 nodes / 9 edges / 7 rules / 2 stages
+layoutReport(03)
+  → Data: 9 nodes / 9 edges (9 links after merging) / 7 rules / 2 stages / 2 parties / 1 sources
+    Shape: 8 layers, widest layer 2 nodes, 2 loop(s) back
+```
 
-| 条号 | 现状 | 在哪 |
-|---|---|---|
-| 1 | 已修 | 验证脚本收进仓库了（临时脚本写二十来遍） |
-| 2 | 已修 | 注册表拆成"知识"和"组件"两套 |
-| 3 | **待修** | 见上面「待修」一节 |
-| 5 | 已修 | 画布搬进外壳，App 的接口瘦下来 |
-| 9 | 已修 | HTML 生成逻辑合成一份 |
-| 11 | 已修 | 删掉一个凭空加的字段（`spec?.kindHint`） |
-| 14 | 已修 | 示例分成了两批（给人与给 agent 的分开） |
-| 15 | 已修 | 画布搬进外壳，App 的接口瘦下来 |
-| 17 | **待修** | 见上面「待修」一节 |
-| 18 | 已修 | CI 上 Chrome 偶发起不来 |
-| 19 | **待修** | 见上面「待修」一节 |
-| 20 | 已修 | `readExample` 读不出真实案例 |
-
-按主题命名的条目（更早的几轮，编号未保留）：
-浏览器查找可配置 · 加了 CI · 给 agent 的参考资料独立出来了 · 拆开了 timeline/layout.js ·
-小卫生清完了 · 加了错误边界 · 装上了 linter · 数据来源的分叉 ·
-`npm run build` 的产物打开是报错页
 
 ### 浏览器查找可配置（已修，见 `2753f60`）
 

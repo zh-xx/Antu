@@ -3,26 +3,76 @@
   "title": "Non-Disclosure Agreement · Performance Flow",
   "domain": "contract-performance",
   "actors": [
-    { "id": "a-1", "name": "Disclosing Party" },
-    { "id": "a-2", "name": "Receiving Party" }
+    {
+      "id": "a-1",
+      "name": "Disclosing Party"
+    },
+    {
+      "id": "a-2",
+      "name": "Receiving Party"
+    }
   ],
   "sources": [
-    { "id": "s-1", "type": "contract", "name": "Non-Disclosure Agreement", "loc": { "file": "Non-Disclosure Agreement.docx" } }
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "Non-Disclosure Agreement",
+      "loc": {
+        "file": "Non-Disclosure Agreement.docx"
+      }
+    }
   ],
   "nodes": [
-    { "id": "n-1", "kind": "start", "label": "NDA signed", "sourceIds": ["s-1"] },
-    { "id": "n-2", "kind": "step", "label": "Receiving Party accesses confidential information", "actorIds": ["a-2"] },
-    { "id": "n-3", "kind": "decision", "label": "Complies with confidentiality obligations?" },
-    { "id": "n-4", "kind": "step", "label": "Confidentiality obligation survives indefinitely", "outcome": "positive" },
-    { "id": "n-5", "kind": "step", "label": "Receiving Party pays liquidated damages", "detail": "RMB 1,000,000", "actorIds": ["a-2"], "outcome": "negative" },
-    { "id": "n-6", "kind": "end", "label": "Agreement terminated" }
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "NDA signed",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "n-2",
+      "kind": "step",
+      "label": "Receiving Party accesses confidential information",
+      "actorIds": [
+        "a-2"
+      ]
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "Confidentiality obligation survives indefinitely"
+    },
+    {
+      "id": "n-6",
+      "kind": "end",
+      "label": "Agreement terminated"
+    }
   ],
   "edges": [
-    { "from": "n-1", "to": "n-2", "main": true },
-    { "from": "n-2", "to": "n-3", "main": true },
-    { "from": "n-3", "to": "n-4", "condition": "Yes", "main": true },
-    { "from": "n-3", "to": "n-5", "condition": "No" },
-    { "from": "n-4", "to": "n-6", "main": true },
-    { "from": "n-5", "to": "n-6" }
+    {
+      "from": "n-1",
+      "to": "n-2",
+      "main": true
+    },
+    {
+      "from": "n-4",
+      "to": "n-6",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-4",
+      "main": true
+    }
+  ],
+  "rules": [
+    {
+      "id": "r-1",
+      "when": "The Receiving Party breaches its confidentiality obligations",
+      "then": "The Receiving Party pays liquidated damages of RMB 1,000,000",
+      "outcome": "negative"
+    }
   ]
 }

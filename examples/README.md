@@ -47,7 +47,7 @@ agent 照抄结构不会撞到"摆不下"。MCP 的 `antu_examples` 默认给的
 | `zhang-juan-v-peng-yu-private-lending.*` | 真实案例（张娟诉彭宇），民间借贷 |
 | `sample-*.json` | 示意数据：三个时间点、无分组、同侧双主体、两侧各两个主体、四方四个时间点、建设工程付款与结算 |
 
-四批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 6 对、`procedure/` 7 对、`agent/procedure/` 6 对。
+四批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 6 对、`procedure/` 7 对、`agent/procedure/` 7 对。
 
 MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 
@@ -68,7 +68,7 @@ MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 
 ## 给 agent 的：`agent/procedure/`
 
-**这六份必须一直能通过校验**（与 fact 那批同一条规矩）。每份不超过 2 KB。
+**这七份必须一直能通过校验**（与 fact 那批同一条规矩）。每份不超过 2 KB。
 
 **成对存放**：每份都有 `.zh-CN.json`（中文内容）与 `.en.json`（英文内容），
 两份**结构完全相同，只有文本值不同**，与 `fact/` 那批同一个口径。
@@ -81,6 +81,7 @@ MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 | `4-stages.*` | 阶段、主体与 `outcome`，以及 `document` / `note` 两种节点 |
 | `5-inferred-spine.*` | 不标 `main`，让引擎自己认主干 |
 | `6-merged-edges.*` | 同一目标的多条边：条件不同，渲染时合并成一条 |
+| `7-rules.*` | `rules`：违约、延期、解除权这类随时可能触发的条款，写成规则而不是分支（v1.1） |
 
 MCP 的 `antu_examples` 传 `type="procedure"` 默认给的就是这一批；
 要看七份真实合同，加 `group="real"`。

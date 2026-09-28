@@ -1,8 +1,8 @@
-# procedure · Schema v1
+# procedure · Schema v1.1
 
-> Status: **v1, confirmed** (sponsor, 2026-09). The five items in §7 were approved exactly as proposed, and the seven real contracts in §8 all pass without a new field. This is what the implementation follows.
+> Status: **v1.1, confirmed** (sponsor, 2026-09). v1: the five items in §7 were approved exactly as proposed. v1.1 adds the optional rule layer of §11 (contingent clauses written as `rules`, not as branches); every v1 JSON is still valid. The seven real contracts were rewritten with it (§11.4). This is what the implementation follows.
 > Names, enum values and requiredness can still move if the renderer turns something up, but a change from here is a schema revision rather than a draft edit.
-> The file keeps the `schema-draft` name for consistency with the fact one (and because the tooling refers to it by that name); the status is what says v1.
+> The file keeps the `schema-draft` name for consistency with the fact one (and because the tooling refers to it by that name); the status is what says v1.1.
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (different domain semantics → controlled enum, no new top-level type).
 > Scope: procedure = **a path and its possible branches**. What has already happened → `fact`; who stands in what relation to whom → `relationship`; norms + facts → a conclusion → `justification`.
 > The first sub-type: `flow` (flowchart). This draft serves this one top-level type only; the sub-type split is in §6.
@@ -723,11 +723,10 @@ former's classification is superfluous, the latter's shape is necessary.
 
 ---
 
-## 11. The rule layer (draft, not yet confirmed)
+## 11. The rule layer (v1.1)
 
-> Status: **draft, not part of v1.** Examples are in `examples/procedure/rules-draft/` (01 and
-> 03). Validation, layout and rendering are implemented; v1 JSON is unaffected (`rules` is
-> optional). Whether to adopt it is for the sponsor to decide.
+> Status: **part of v1.1** (sponsor, 2026-09). `rules` is optional; every v1 JSON is still
+> valid. All seven contracts in `examples/procedure/` are written with it (02 needs no rule).
 
 ### 11.1 Why
 
@@ -787,17 +786,31 @@ longer need a fake way "back".
   rules sits in the last layer, outermost;
 - The capsule gains a "Rules" switch; off, the lane is given back.
 
-### 11.4 Measured (before → after the rewrite)
+### 11.4 Measured (the seven contracts, before → after)
 
 | | Nodes | Edges | Back edges | Rules |
 |---|---|---|---|---|
-| 01 software development | 26 → 14 | 37 → 16 | 12 → 3 (all real rectify-and-reinspect loops) | 0 → 2 |
-| 03 labour outsourcing | 15 → 9 | 26 → 9 | 6 → 2 (the monthly cycle, renewal) | 0 → 7 |
+| 01 software development | 26 → 14 | 37 → 16 | 12 → 3 (rectify and re-inspect) | 2 |
+| 02 purchase | 12 | 12 | 0 | 0: the quality dispute is a judgement at delivery, a real branch |
+| 03 labour outsourcing | 15 → 9 | 26 → 9 | 6 → 2 (the monthly cycle, renewal) | 7 |
+| 04 non-disclosure | 6 → 4 | 6 → 3 | 0 | 1 |
+| 05 premises lease | 32 → 19 | 34 → 19 | 3 → 2 (the monthly rent, re-inspection) | 4 |
+| 06 EPC | 26 → 21 | 31 → 21 | 3 → 2 (recommissioning, re-inspection) | 4 |
+| 07 share acquisition | 30 → 21 | 30 → 20 | 0 | 4 |
+
+With ELK (§6.1), all seven lay out with no crossing in either orientation.
+
+The rewrite was made **by meaning, from the existing JSON**; the contracts themselves are not in
+the repository. Judgements that should be checked against the originals: 01 drops "delay caused by
+neither → back to requirements confirmation" (read as an error of the old diagram); 03 and 05 split
+the one "terminated" end into expiry and rescission; 03 words Party A's termination trigger as
+"30 days' written notice"; 05 and 03 draw the monthly payment as a cycle until the term ends; 06
+scopes the delay rules to design, procurement and construction; 07 folds the warranty claim
+procedure (notice, acceptance or arbitration) into one rule.
 
 ### 11.5 Still open
 
-1. **Whether to adopt it**, and whether rule 13's message should then point to `rules`;
-2. **How to redo the other five**: ideally re-extracted from the contracts, not edited again on
-   top of what was reverse-engineered from `.mmd`;
-3. Whether `when` should be structured (party, deadline, amount): one sentence is enough to draw,
+1. **Re-extract from the contracts**: the corpus is still derived from the old pipeline's `.mmd`,
+   now rewritten by meaning; extracting from the originals would settle the judgements of §11.4;
+2. Whether `when` should be structured (party, deadline, amount): one sentence is enough to draw,
    not enough to compute with.

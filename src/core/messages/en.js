@@ -192,7 +192,8 @@ export const en = {
     `nodes (${id}): unreachable from the start (it would be dropped silently and never appear)`,
   'perr.noEnd': 'no node has `kind: "end"` (a flow needs an end)',
   'perr.deadEnd': ({ id, label }) =>
-    `nodes (${id}): "${label}" is a dead end: it is neither end nor note but has no outgoing edge`,
+    `nodes (${id}): "${label}" is a dead end: it is neither end nor note but has no outgoing edge. ` +
+    'If it is the consequence of a breach, delay or right to terminate, write it as a rule in `rules` (it may fire at any time in its stages) instead of a node that has to lead somewhere',
   'perr.decisionTooFewOut': ({ id, n }) =>
     `nodes (${id}): kind is "decision" but only ${n} outgoing edge(s); a decision needs at least 2`,
   'perr.decisionNoCondition': ({ id, index, to }) =>

@@ -1,0 +1,29 @@
+{
+  "type": "procedure",
+  "title": "条款：随时可能发生的事",
+  "domain": "contract-performance",
+  "stages": [
+    { "id": "st-1", "label": "交货" },
+    { "id": "st-2", "label": "付款" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "contract", "name": "采购合同", "loc": { "file": "采购合同.docx" } }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "合同签订", "stageId": "st-1" },
+    { "id": "n-2", "kind": "step", "label": "卖方交货", "detail": "2026-10-31 前", "stageId": "st-1" },
+    { "id": "n-3", "kind": "step", "label": "买方付款", "detail": "交货后 30 日内", "stageId": "st-2" },
+    { "id": "n-4", "kind": "end", "label": "合同履行完毕", "outcome": "positive", "stageId": "st-2" },
+    { "id": "n-5", "kind": "end", "label": "合同解除", "outcome": "negative", "stageId": "st-2" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "main": true }
+  ],
+  "rules": [
+    { "id": "r-1", "when": "卖方逾期交货", "then": "卖方每日支付价款 0.1% 违约金，上限 5%", "outcome": "negative", "stageIds": ["st-1"], "sourceIds": ["s-1"] },
+    { "id": "r-2", "when": ["卖方逾期超过 30 日", "货物两次验收不合格"], "then": "买方可解除合同", "outcome": "negative", "stageIds": ["st-1"], "endId": "n-5", "sourceIds": ["s-1"] },
+    { "id": "r-3", "when": "买方逾期付款", "then": "买方按每日 0.05% 支付利息", "outcome": "negative", "stageIds": ["st-2"], "sourceIds": ["s-1"] }
+  ]
+}

@@ -1385,7 +1385,11 @@ async function checkRenderProcedure(sampleFile) {
     const count = (sel) => browser.eval(`document.querySelectorAll(${JSON.stringify(sel)}).length`)
 
     eq('node count', await count('.antu-pn'), spec.nodes.length)
-    eq('link count (several edges into one target merge into one)', await count('.antu-plink'), layout.connections.length)
+    // Flow links only: rule trunks and scope bars are drawn in the same layer with their own classes
+    const FLOW_LINK = '.antu-plink.k-main, .antu-plink.k-branch, .antu-plink.k-back'
+    eq('link count (several edges into one target merge into one)', await count(FLOW_LINK), layout.connections.length)
+    eq('rule cards', await count('.antu-rule'), layout.rules.length)
+    eq('rule trunks and scope bars', await count('.antu-plink.k-rule, .antu-plink.k-scope'), layout.ruleLinks.length)
     eq(
       'condition label count',
       await count('.antu-plabel'),
@@ -1410,7 +1414,7 @@ async function checkRenderProcedure(sampleFile) {
         decisions: document.querySelectorAll('.antu-pn.k-decision').length,
         endRings: document.querySelectorAll('.antu-pn.k-end .antu-pn-ring').length,
         ends: document.querySelectorAll('.antu-pn.k-end').length,
-        arrows: [...document.querySelectorAll('.antu-plink')].filter((p) => (p.getAttribute('marker-end') || '').startsWith('url(')).length,
+        arrows: [...document.querySelectorAll('.antu-plink.k-main, .antu-plink.k-branch, .antu-plink.k-back')].filter((p) => (p.getAttribute('marker-end') || '').startsWith('url(')).length,
         negative: document.querySelectorAll('.antu-pn.o-negative').length,
         // SVG paint set by a CSS class rule does not survive html-to-image: the first export
         // came out as solid black shapes on a correctly sized canvas. Paint must be attributes.
@@ -1454,7 +1458,8 @@ async function checkRenderProcedure(sampleFile) {
     })()`)
     truthy('the flowchart dock is present', dock)
     if (dock) {
-      eq('four switches in the dock', dock.chips, 4)
+      // conditions · detail · main line, plus stages and rules when the data has them
+      eq('the dock has a switch per thing the data has', dock.chips, 3 + (spec.stages?.length ? 1 : 0) + (spec.rules?.length ? 1 : 0))
       eq('four blocks: switches · orientation · language · export', dock.blocks, 4)
       eq('only the export action is solid dark', dock.dark, ['antu-dock-action'])
     }
@@ -1482,6 +1487,14 @@ async function checkRenderProcedure(sampleFile) {
     eq('the stage switch removes the bands', await count('.antu-pstage-name'), 0)
     await clickChip(3)
     await settle()
+
+    // The rule switch (the fifth chip: the sample has stages and rules) gives the lane back
+    await clickChip(4)
+    await settle()
+    eq('the rule switch removes the cards', await count('.antu-rule'), 0)
+    await clickChip(4)
+    await settle()
+    eq('and brings them back', await count('.antu-rule'), layout.rules.length)
 
     // Orientation: the second item of the first segmented control is "horizontal"
     await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[1].click()`, { userGesture: true })

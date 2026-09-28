@@ -166,7 +166,11 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     }
     color.set(u, 2)
   }
-  for (const id of ids) if ((color.get(id) ?? 0) === 0) walk(id)
+  // Start from the entries: a search that happened to start mid-flow (whatever node is written
+  // first) would take the edge back into its own start for the loop and call a forward edge
+  // "back". Only nodes no entry reaches are started from afterwards.
+  const starters = [...ids.filter((id) => inE.get(id).length === 0), ...ids]
+  for (const id of starters) if ((color.get(id) ?? 0) === 0) walk(id)
 
   // An end reached only through a rule has no incoming edge, but it is not an entry
   const ruleEnds = new Set([...ruleEndIds(spec)].filter((id) => byId.has(id) && inE.get(id).length === 0))
@@ -241,10 +245,12 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       'elk.layered.spacing.edgeNodeBetweenLayers': '20',
       'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
-      // Keep the order the author wrote nodes and edges in wherever it costs no crossing, and
-      // break cycles by it: the same JSON always gives the same picture
+      // Keep the order the author wrote nodes and edges in wherever it costs no crossing: the
+      // same JSON always gives the same picture. (Not for cycle breaking: back edges arrive
+      // already reversed, and the MODEL_ORDER breaker would reverse any edge that points at a
+      // node written earlier, loop or not; a node appended at the end of the list then turned
+      // the main line upside down.)
       'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
-      'elk.layered.cycleBreaking.strategy': 'MODEL_ORDER',
       'elk.edgeLabels.inline': 'false',
       'elk.partitioning.activate': String(usePartitions),
       // An end reached only through rules has no edge at all; ELK would lay it out as a
@@ -258,17 +264,32 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       if (ruleEnds.has(n.id)) opts['elk.layered.layering.layerConstraint'] = 'LAST'
       return { id: n.id, width: w, height: h, layoutOptions: opts }
     }),
+    // Back edges go in reversed. The loops were already recognised in step ①; handing ELK a
+    // graph with no cycle means its own cycle breaking has nothing to decide, so the result
+    // cannot depend on the order the nodes happen to be written in. (It did: with a node
+    // appended at the end of the list, ELK reversed a main-line edge instead of the loop, which
+    // then contradicted the stage partitions and crashed.) The points are flipped back below.
     edges: groups.map((g, i) => ({
       id: `g${i}`,
-      sources: [g.from],
-      targets: [g.to],
+      sources: [g.isBack ? g.to : g.from],
+      targets: [g.isBack ? g.from : g.to],
       labels: g.label ? [{ id: `l${i}`, text: g.label, ...labelBox(g.label) }] : [],
       layoutOptions: g.isMain
         ? { 'elk.layered.priority.straightness': '10', 'elk.layered.priority.direction': '10' }
         : {},
     })),
   }
-  const laid = elkLayoutSync(graph)
+  // A forward edge from a later stage back into an earlier one (the "stage runs backwards"
+  // hint) cannot be honoured with partitions. Any valid JSON must render, so if ELK refuses
+  // the partitions, lay out once more without them rather than fail.
+  let laid
+  try {
+    laid = elkLayoutSync(graph)
+  } catch (err) {
+    if (!usePartitions) throw err
+    graph.layoutOptions['elk.partitioning.activate'] = 'false'
+    laid = elkLayoutSync(graph)
+  }
 
   // Everything shifts by the padding, and by the stage gutter on the "across start" side
   // (left when vertical, top when horizontal)
@@ -336,6 +357,8 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     const points = sec
       ? [sec.startPoint, ...(sec.bendPoints ?? []), sec.endPoint].map((p) => [p.x + ox, p.y + oy])
       : []
+    // A back edge went in reversed; turn it round so it starts at its source again
+    if (g.isBack) points.reverse()
     if (points.length >= 2) {
       points[0] = snapToDiamond(points[0], g.from)
       points[points.length - 1] = snapToDiamond(points[points.length - 1], g.to)
