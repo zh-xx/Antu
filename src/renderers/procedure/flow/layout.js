@@ -28,6 +28,7 @@
 import { validateProcedure, hintsOfProcedure, ruleEndIds } from './rules.js'
 import { elkLayoutSync } from './elk.js'
 import { straighten, linkCost } from './straighten.js'
+import { layoutColumns, placeRules } from './columns.js'
 // The same text measure the fact cards use, so a CJK character counts the same everywhere
 import { textEm } from '../../fact/cardGeometry.js'
 import {
@@ -45,6 +46,7 @@ import {
   LABEL_PAD_X,
   LABEL_MAX_W,
   RULE_W,
+  RULE_MIN_W,
   RULE_GAP,
   RULE_STACK_GAP,
   SCOPE_BAR_GAP,
@@ -451,13 +453,25 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     { 'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX' },
     { 'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF' },
   ]
+  // With stages drawn, and every node in one, the stages become columns (columns.js): the flow
+  // runs down inside a stage and the stages run across, so the picture is not one long strip.
+  // Otherwise, one graph as before.
+  const columnMode = showStages && presentStages.length > 1 && nodes.every((n) => stageById.has(n.stageId))
   let best = null
-  for (const placement of PLACEMENTS) {
-    const tried = place(placement)
-    const cost = tried.connections.reduce((n, c) => n + linkCost(c, tried.placed, diamonds), 0)
-    if (!best || cost < best.cost) best = { ...tried, cost }
+  let columnFrame = null
+  if (columnMode) {
+    const laid = layoutColumns({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
+    columnFrame = laid.frame
+    best = laid
+  } else {
+    for (const placement of PLACEMENTS) {
+      const tried = place(placement)
+      const cost = tried.connections.reduce((n, c) => n + linkCost(c, tried.placed, diamonds), 0)
+      if (!best || cost < best.cost) best = { ...tried, cost }
+    }
   }
-  const { placed, stageBoxes, connections, size } = best
+  const { placed, stageBoxes, size } = best
+  const connections = best.connections.map((c) => ({ ...c, d: toPathD(c.points), dCurve: toCurveD(c.points) }))
 
   // Boxes in along/across coordinates (along = the direction the layers run)
   const boxes = new Map(
@@ -507,7 +521,25 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
   const showRules = fields?.rules !== false && Array.isArray(spec.rules) && spec.rules.length > 0
   const rulesOut = []
   const ruleLinks = []
-  if (showRules) {
+  if (showRules && columnMode) {
+    // The column layout: cards under the columns they apply to (columns.js)
+    const placedRules = placeRules({
+      frame: columnFrame,
+      rules: spec.rules,
+      stages: presentStages,
+      vertical,
+      ruleHeight,
+      textEm,
+      gap: RULE_GAP,
+      stackGap: RULE_STACK_GAP,
+      cardW: RULE_W,
+      cardMinW: RULE_MIN_W,
+    })
+    rulesOut.push(...placedRules.cards)
+    for (const l of placedRules.links) ruleLinks.push({ ...l, d: toPathD(l.points), dCurve: toCurveD(l.points) })
+    size.width = Math.max(size.width, placedRules.width)
+    size.height = Math.max(size.height, placedRules.height)
+  } else if (showRules) {
     const stageOrder = new Map((spec.stages ?? []).map((st, i) => [st.id, i]))
     const spanOf = new Map(stageSpans.map((b) => [b.stageId, b]))
     const firstStage = (r) => {

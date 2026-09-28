@@ -229,10 +229,15 @@ export function straighten(connections, placed, obstacles, vertical, diamonds = 
         list.push([P(S.a0, S.cm), P(T.am, S.cm), P(T.am, S.cm > T.cm ? T.c1 : T.c0)])
       }
       // 2 bends: a U round the outside, on either side, as close in as is clear
+      // (and, when a wider node stands in the way, just outside each node the U has to pass)
+      const between = [...placed.keys()].map(box).filter((b) => b.a1 > T.am && b.a0 < S.am)
       for (const s of [-1, 1]) {
         const base = s > 0 ? Math.max(S.c1, T.c1) : Math.min(S.c0, T.c0)
-        for (let k = 0; k < U_TRIES; k += 1) {
-          const x = base + s * (U_GAP + k * U_STEP)
+        const lanes = []
+        for (let k = 0; k < U_TRIES; k += 1) lanes.push(base + s * (U_GAP + k * U_STEP))
+        for (const b of between) lanes.push(s > 0 ? b.c1 + U_GAP : b.c0 - U_GAP)
+        for (const x of lanes) {
+          if (s > 0 ? x < base : x > base) continue
           const ex = s > 0 ? S.c1 : S.c0
           const tx = s > 0 ? T.c1 : T.c0
           list.push([P(S.am, ex), P(S.am, x), P(T.am, x), P(T.am, tx)])
@@ -343,8 +348,10 @@ export function straighten(connections, placed, obstacles, vertical, diamonds = 
       const len = lengthOf(c.points)
       const options = candidatesFor(c)
         .map((pts) => ({ pts, cost: linkCost(c, placed, diamonds, pts), len: lengthOf(pts) }))
-        .filter((o) => must || (o.cost < cost && o.len <= len * 1.6 + 40))
+        .filter((o) => must || (o.cost <= cost && o.len <= len * 1.6 + 40))
         .map((o) => ({ ...o, cross: crossingsWith(o.pts, c) }))
+        // Simpler, or as simple and crossing fewer links (a loop moved to the side nothing leaves by)
+        .filter((o) => must || o.cost < cost || o.cross < was)
         .sort((a, b) => (must ? a.cross - b.cross : 0) || a.cost - b.cost || a.len - b.len)
       for (const o of options) {
         if (!must && o.cross > was) continue

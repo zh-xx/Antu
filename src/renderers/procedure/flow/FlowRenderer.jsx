@@ -145,6 +145,7 @@ export default function ProcedureFlow({ spec }) {
         h: c.h,
         stageLabels: c.stageLabels,
         allStages: c.allStages,
+        spanShown: !!c.spanShown,
         sources: (c.rule.sourceIds ?? []).map((id) => sourceById.get(id)).filter(Boolean),
         vertical,
       },

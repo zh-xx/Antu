@@ -935,17 +935,20 @@
 }
 
 /* ---------- 规则卡片（或有条款：违约、延期责任、解除权） ----------
-   不是流程上的一步，所以不画成节点加连线，而是放在它适用的阶段旁边的一栏里。
-   左边的色条跟 outcome 走（颜色以内联样式写上去，导出图片才带得走）。
+   不是流程上的一步，所以不画成节点加连线：分栏排布时放在它适用的阶段栏下方，
+   宽度正好横跨那几栏（适用范围看宽度就知道）。
+   白底细边，不用色条；outcome 只体现为后果前的一个小圆点（颜色以内联样式写上去，
+   导出图片才带得走）。
    各段的行数上限与 metrics.js 的 ruleHeight 一致：框的高度和里面的字不会对不上。 */
 .antu-rule {
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 10px 10px 10px 10px;
-  border: 1px solid var(--antu-line);
-  border-left: 4px solid #94a3b8;
-  border-radius: 6px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #dfe4ea;
+  border-radius: 8px;
+  background: #ffffff;
   cursor: pointer;
   outline: none;
   overflow: visible;
@@ -954,7 +957,15 @@
 .antu-rule:focus-visible { box-shadow: 0 0 0 2px #2f6fed; }
 .react-flow__node-prule:hover { z-index: 10 !important; }
 .antu-rule-when { font-size: 11.5px; line-height: 16px; color: var(--antu-text-2); }
-.antu-rule-if { font-weight: 700; color: var(--antu-text-3); margin-right: 4px; }
+.antu-rule-if { font-weight: 600; color: var(--antu-text-3); margin-right: 4px; }
+.antu-rule-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 6px 2px 0;
+  border-radius: 50%;
+  vertical-align: middle;
+}
 .antu-rule-when-one {
   display: -webkit-inline-box;
   -webkit-line-clamp: 2;

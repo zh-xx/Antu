@@ -33,14 +33,13 @@ export function nodePaint(kind, outcome = 'neutral') {
 }
 
 /**
- * A rule card: the bar on its leading edge takes the outcome colour, the card itself only a
- * faint tint of it. A card is text to read, not a step to find: a full node fill on a stack of
- * them turns the whole lane into one block of colour.
+ * A rule card is white with a hairline edge; its outcome shows only as a small dot before the
+ * consequence (none for a neutral rule). A card is text to read, not a step to find: a coloured
+ * bar or fill on a stack of them turns the whole row into blocks of colour.
  */
-const RULE_TINT = { neutral: '#f8fafc', positive: '#f0fdf4', negative: '#fef2f2' }
+const RULE_DOT = { neutral: null, positive: '#16a34a', negative: '#dc2626' }
 export function rulePaint(outcome = 'neutral') {
-  const o = OUTCOME_PAINT[outcome] ? outcome : 'neutral'
-  return { stroke: OUTCOME_PAINT[o].stroke, fill: RULE_TINT[o] }
+  return { dot: RULE_DOT[outcome] ?? null }
 }
 
 /** A stage box: a pale wash behind its nodes, a hairline edge, a quiet title */

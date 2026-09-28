@@ -44,6 +44,13 @@ export const STAGE_PAD_TOP = 30
 export const STAGE_PAD = 14
 export const STAGE_TITLE_FONT = 13
 
+/**
+ * The column layout (columns.js): the gap between two stage columns (the channel links between
+ * stages run in), and the least width of a column, so a rule card under it stays readable
+ */
+export const COLUMN_GAP = 56
+export const COLUMN_MIN_W = 180
+
 /** Padding around the content. The image export adds more on top; this one keeps the diagram itself off the edge */
 export const PAD = 32
 
@@ -113,12 +120,13 @@ export const SCOPE_BAR_PITCH = 8
 
 /** Card width, and the gap between the node field and the rule lane */
 export const RULE_W = 248
+/** Column layout: rules over the same stages share the width, but no card gets narrower than this */
+export const RULE_MIN_W = 168
 export const RULE_GAP = 40
 /** Space between two cards stacked in the lane */
-export const RULE_STACK_GAP = 12
-/** Inner padding, the coloured bar on the leading edge, and the text metrics */
-export const RULE_PAD = 10
-export const RULE_BAR = 4
+export const RULE_STACK_GAP = 24
+/** Inner padding and the text metrics */
+export const RULE_PAD = 12
 export const RULE_WHEN_FONT = 11.5
 export const RULE_WHEN_LINE = 16
 export const RULE_THEN_FONT = 12.5
@@ -128,9 +136,13 @@ export const RULE_FOOT = 18
 export const RULE_WHEN_MAX_LINES = 2
 export const RULE_THEN_MAX_LINES = 3
 
-/** Height of one rule card, from its text */
-export function ruleHeight(rule, textEm) {
-  const inner = RULE_W - RULE_PAD * 2 - RULE_BAR
+/**
+ * Height of one rule card, from its text. `width`: the card's width (in the column layout a card
+ * is as wide as the columns it spans). `foot`: whether the footer line is drawn (the column
+ * layout shows the scope by the card's width, so it only has a footer when there are sources).
+ */
+export function ruleHeight(rule, textEm, width = RULE_W, foot = true) {
+  const inner = width - RULE_PAD * 2
   const whens = Array.isArray(rule.when) ? rule.when : [rule.when]
   // A list of triggers is bulleted: the bullet takes about one em of each line
   const whenPerLine = inner / RULE_WHEN_FONT - (whens.length > 1 ? 1 : 0)
@@ -140,5 +152,5 @@ export function ruleHeight(rule, textEm) {
     whens.length > 1 ? 1 : 0,
   )
   const thenLines = Math.min(RULE_THEN_MAX_LINES, Math.max(1, Math.ceil(textEm(rule.then) / (inner / RULE_THEN_FONT))))
-  return RULE_PAD * 2 + whenLines * RULE_WHEN_LINE + 4 + thenLines * RULE_THEN_LINE + 4 + RULE_FOOT
+  return RULE_PAD * 2 + whenLines * RULE_WHEN_LINE + 4 + thenLines * RULE_THEN_LINE + (foot ? 4 + RULE_FOOT : 0)
 }

@@ -5,8 +5,10 @@
 //  liability, a right to terminate). It is not a step of the flow, so it is not drawn as a
 //  node with edges: it is a card beside the stages it covers, which it names on its footer.
 //
-//  Colour follows outcome, as on the flow nodes (palette.js): the bar on the card's leading
-//  edge is set as an inline style, so the exported image keeps it.
+//  The card is white with a hairline edge. Outcome shows only as a small dot before the
+//  consequence (palette.js), set as an inline style so the exported image keeps it; a neutral
+//  rule has none. In the column layout the card is as wide as the stages it covers, so the
+//  scope line is left off (spanShown); the overlay still names the stages.
 //
 //  The card's height was counted by metrics.js (ruleHeight); the stylesheet clamps each part
 //  to the same number of lines. Full text and provenance are in the overlay, as on every node.
@@ -19,7 +21,7 @@ import { useLang } from '../../../shell/LangContext.jsx'
 import { rulePaint } from './palette.js'
 
 const RuleCardNode = memo(function RuleCardNode({ id, data }) {
-  const { rule, w, h, stageLabels, allStages, sources, vertical } = data
+  const { rule, w, h, stageLabels, allStages, sources, vertical, spanShown } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
 
@@ -37,7 +39,7 @@ const RuleCardNode = memo(function RuleCardNode({ id, data }) {
   return (
     <div
       className={`antu-rule o-${rule.outcome || 'neutral'}${rule.endId ? ' ends' : ''}`}
-      style={{ width: w, height: h, borderLeftColor: paint.stroke, background: paint.fill }}
+      style={{ width: w, height: h }}
       role="button"
       tabIndex={0}
       aria-label={`${whens.join(' / ')} → ${rule.then}`}
@@ -67,11 +69,16 @@ const RuleCardNode = memo(function RuleCardNode({ id, data }) {
           </ul>
         )}
       </div>
-      <div className="antu-rule-then">{rule.then}</div>
-      <div className="antu-rule-foot">
-        <span className="antu-rule-scope">{scope}</span>
-        {sources.length > 0 && <span className="antu-rule-src">{t('card.sources', { n: sources.length })}</span>}
+      <div className="antu-rule-then">
+        {paint.dot && <span className="antu-rule-dot" style={{ background: paint.dot }} />}
+        {rule.then}
       </div>
+      {(!spanShown || sources.length > 0) && (
+        <div className="antu-rule-foot">
+          <span className="antu-rule-scope">{spanShown ? '' : scope}</span>
+          {sources.length > 0 && <span className="antu-rule-src">{t('card.sources', { n: sources.length })}</span>}
+        </div>
+      )}
 
       {open && (
         <div
