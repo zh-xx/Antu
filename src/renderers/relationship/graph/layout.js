@@ -110,6 +110,8 @@ const segHits = ([p, q], r, m) =>
  * places along it, and the spot that covers least of anything else wins: entities worst, then other
  * labels and titles, then other lines; the middle of the longest segment on a tie.
  */
+// Places tried along a segment, the middle first: a crowded corridor needs more than a few to find a free one
+const FRACTIONS = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82, 0.1, 0.9, 0.02, 0.98]
 function placeOnLine(points, size, nodeRects, blocks, links, borders) {
   const { width: w, height: h } = size
   const badness = (r) =>
@@ -127,7 +129,7 @@ function placeOnLine(points, size, nodeRects, blocks, links, borders) {
     // Away from the ends of the segment, where a curved corner would run under the label
     const margin = Math.min(22, (len - need) / 2)
     const span = len - need - margin * 2
-    for (const f of [0.5, 0.35, 0.65, 0.2, 0.8, 0.05, 0.95]) {
+    for (const f of FRACTIONS) {
       const t = margin + need / 2 + span * f
       const dir = horizontal ? Math.sign(q[0] - p[0]) : Math.sign(q[1] - p[1])
       const cx = horizontal ? p[0] + dir * t : p[0]
@@ -259,6 +261,24 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     // the left is handed over first and stands on the left: the guarantor of a creditor on the left no
     // longer stood on the far side of its camp, its guarantee going over everything
     const ordered = members.map((e, i) => ({ e, i, pull: pullOf(e, ci) })).sort((a, b) => a.pull - b.pull || a.i - b.i).map((x) => x.e)
+    // A camp whose parties have no relation among themselves (three regulators, each acting on the same
+    // company) is one row to ELK, and the parties at the ends of a row have the others in the way of a
+    // straight line across. Stacked one above another, each has its own line out of the camp.
+    const isolated = members.length > 1 && !relations.some((r) => inside.has(r.from) && inside.has(r.to))
+    const facing = isolated && ordered.every((e) => pullOf(e, ci) !== 0)
+    if (facing) {
+      const sizes = ordered.map(frameSize)
+      const wide = Math.max(...sizes.map((z) => z.w))
+      let y = 0
+      const at = new Map(
+        ordered.map((e, k) => {
+          const r = { x: (wide - sizes[k].w) / 2, y, w: sizes[k].w, h: sizes[k].h }
+          y += sizes[k].h + NODE_GAP
+          return [e.id, r]
+        }),
+      )
+      return { at, width: wide, height: y - NODE_GAP, level: new Map(ordered.map((e) => [e.id, 0])), levels: 1 }
+    }
     const laid = elkLayoutSync({
       id: `camp${ci}`,
       layoutOptions: baseOptions,
@@ -347,6 +367,31 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         .filter((y) => y !== undefined)
       return { e, want: ys.length ? median(ys) : null, size: frameSize(e) }
     })
+    // A straight line between two parties of different camps that stand level runs across this column.
+    // A party here that covers the whole of it sends the line round (three regulators' links into one
+    // company went over the top of the picture: issue #32), so it stands clear of such a line instead,
+    // on whichever side is nearer to where it wanted to be.
+    const bandOf = (id) => {
+      const e = entities.find((x) => x.id === id)
+      const h = frameSize(e).h
+      return [centreY.get(id) - h / 2, centreY.get(id) + h / 2]
+    }
+    const lines = []
+    for (const r of relations) {
+      if (!centreY.has(r.from) || !centreY.has(r.to) || campIndexOf.get(r.from) === campIndexOf.get(r.to)) continue
+      const [a0, a1] = bandOf(r.from)
+      const [b0, b1] = bandOf(r.to)
+      if (Math.min(a1, b1) > Math.max(a0, b0)) lines.push([Math.max(a0, b0), Math.min(a1, b1)])
+    }
+    const ROOM = 14
+    for (const w of want) {
+      if (w.want === null) continue
+      const half = w.size.h / 2
+      const hits = (c) => lines.some(([lo, hi]) => c + half + ROOM > lo && c - half - ROOM < hi)
+      if (!hits(w.want)) continue
+      const options = lines.flatMap(([lo, hi]) => [lo - ROOM - half, hi + ROOM + half]).filter((c) => !hits(c))
+      if (options.length) w.want = options.sort((m, n) => Math.abs(m - w.want) - Math.abs(n - w.want))[0]
+    }
     // Those with nothing to go by come last, in the order written
     const lastY = Math.max(0, ...centreY.values())
     want.forEach((w, i) => {
@@ -368,12 +413,10 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   // ── the channel after each camp: wide enough for the widest label of a link across it ──
   // A label stands on its own line, and a link between neighbouring camps has only the channel to stand
   // in: a fixed channel let a long English label run over the entity at its end ("Passed on CNY 40,000").
-  const campOf = new Map()
-  camps.forEach((camp, ci) => camp.members.forEach((e) => campOf.set(e.id, ci)))
   const gapAfter = camps.map((_, ci) => {
     let need = CAMP_GAP
     relations.forEach((r, i) => {
-      const [m, n] = [campOf.get(r.from), campOf.get(r.to)].sort((u, v) => u - v)
+      const [m, n] = [campIndexOf.get(r.from), campIndexOf.get(r.to)].sort((u, v) => u - v)
       if (m <= ci && n > ci) need = Math.max(need, labels[i].frame.width + 2 * LABEL_MARGIN)
     })
     return need
@@ -441,12 +484,19 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   for (const i of order) {
     const a = placed.get(relations[i].from)
     const b = placed.get(relations[i].to)
-    const points =
+    // A link between two parties of one camp on different levels keeps to top and bottom where it can. It
+    // used to take the side ports too, and the links coming across from the other camp (three regulators
+    // into one company) then found none free and went round the whole picture (issue #32).
+    const sameCamp = campIndexOf.get(relations[i].from) === campIndexOf.get(relations[i].to) && camps[campIndexOf.get(relations[i].from)].group
+    const stacked = sameCamp && (a.y + a.h <= b.y || b.y + b.h <= a.y)
+    const route = (sides) =>
       routeLink({
         from: a,
         to: b,
         nodes: nodeRects,
         blocks: titles,
+        outSides: sides,
+        inSides: sides,
         // Links of one kind into the same party (three regulators each penalising the company) may run
         // along each other and share the port into it: one trunk, not three loops round the picture
         routes: done.map((c) => {
@@ -457,7 +507,8 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         portCost: portCostFor(a, b),
         crossCost: CROSS_COST,
         sidePorts: true,
-      }) ?? fallbackRoute(a, b)
+      })
+    const points = (stacked ? route(['top', 'bottom']) : null) ?? route(undefined) ?? fallbackRoute(a, b)
     const c = { index: i, points, labelAt: null, labelSize: { width: labels[i].frame.width, height: labels[i].frame.height } }
     drawn[i] = c
     done.push(c)

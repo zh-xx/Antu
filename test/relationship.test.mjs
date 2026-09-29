@@ -346,7 +346,7 @@ test('an entity whose links go to the camp on the left stands on the left of its
   assert.equal(bends(guarantee.points), 0, 'the guarantee runs straight')
 })
 
-test('a party in no group stands between the camps, at the height of what it relates to', () => {
+test('a party in no group stands between the camps, and clear of a straight line across them', () => {
   const s = base()
   s.entities.push({ id: 'e-6', kind: 'organization', label: 'Guarantee Fund' })
   s.relations.push({ id: 'r-5', from: 'e-6', to: 'e-1', kind: 'guarantee', label: 'Backstop', secures: 'r-1' })
@@ -355,10 +355,52 @@ test('a party in no group stands between the camps, at the height of what it rel
   const fund = n('e-6')
   const [left, right] = g.groupBoxes
   assert.ok(fund.position.x >= left.x + left.w && fund.position.x + fund.data.w <= right.x, 'between the two camps')
-  // at Zhang San's height (its one neighbour), so its link runs level
-  const mid = (x) => x.position.y + x.data.h / 2
-  assert.ok(Math.abs(mid(fund) - mid(n('e-1'))) < 1, 'level with the entity it relates to')
-  assert.equal(bends(g.connections.find((c) => c.relationId === 'r-5').points), 0, 'its link runs straight')
+  // Zhang San and Wang Wu stand level, so their guarantee runs straight across the column: the fund
+  // does not stand in its way (it stood there once and the line went round the picture)
+  const guarantee = g.connections.find((c) => c.relationId === 'r-2')
+  assert.equal(bends(guarantee.points), 0, 'the guarantee across runs straight')
+  const y = guarantee.points[0][1]
+  assert.ok(y < fund.position.y || y > fund.position.y + fund.data.h, 'the fund is off that line')
+})
+
+test('parties with nothing between them stand one above another, so each has its own way out (#32)', () => {
+  const s = {
+    type: 'relationship',
+    title: 'Regulators',
+    groups: [
+      { id: 'g-1', label: 'Company' },
+      { id: 'g-2', label: 'Regulators' },
+    ],
+    entities: [
+      { id: 'e-1', kind: 'company', label: 'Company', groupId: 'g-1' },
+      { id: 'e-2', kind: 'government', label: 'Bureau A', groupId: 'g-2' },
+      { id: 'e-3', kind: 'government', label: 'Bureau B', groupId: 'g-2' },
+      { id: 'e-4', kind: 'government', label: 'Bureau C', groupId: 'g-2' },
+    ],
+    relations: [
+      { id: 'r-1', from: 'e-2', to: 'e-1', kind: 'other', label: 'Penalty' },
+      { id: 'r-2', from: 'e-3', to: 'e-1', kind: 'other', label: 'Penalty' },
+      { id: 'r-3', from: 'e-4', to: 'e-1', kind: 'other', label: 'Penalty' },
+    ],
+  }
+  for (const orientation of ['vertical', 'horizontal']) {
+    const g = buildRelationshipGraph(s, undefined, undefined, orientation)
+    const v = orientation === 'vertical'
+    const along = (id) => {
+      const nd = g.nodes.find((x) => x.id === id)
+      return v ? nd.position.y : nd.position.x
+    }
+    assert.equal(new Set(['e-2', 'e-3', 'e-4'].map(along)).size, 3, `${orientation}: three different heights`)
+    // Nothing goes round: every link stays within the span of the entities
+    const lo = Math.min(...g.nodes.map((nd) => (v ? nd.position.y : nd.position.x)))
+    const hi = Math.max(...g.nodes.map((nd) => (v ? nd.position.y + nd.data.h : nd.position.x + nd.data.w)))
+    for (const c of g.connections) {
+      for (const p of c.points) {
+        const q = v ? p[1] : p[0]
+        assert.ok(q >= lo - 40 && q <= hi + 40, `${orientation}: ${c.relationId} does not go round the picture`)
+      }
+    }
+  }
 })
 
 test('an entity carries what it is related to, for its overlay', () => {
