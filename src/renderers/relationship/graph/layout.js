@@ -54,6 +54,30 @@ import {
   labelBox,
 } from './metrics.js'
 
+/** Every order of a short list */
+function permutations(list) {
+  if (list.length <= 1) return [list]
+  return list.flatMap((x, k) => permutations([...list.slice(0, k), ...list.slice(k + 1)]).map((rest) => [x, ...rest]))
+}
+/** A small seeded generator: the same JSON always gives the same picture */
+function mulberry32(a) {
+  return () => {
+    a |= 0
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+function shuffled(list, rand) {
+  const out = [...list]
+  for (let k = out.length - 1; k > 0; k -= 1) {
+    const m = Math.floor(rand() * (k + 1))
+    ;[out[k], out[m]] = [out[m], out[k]]
+  }
+  return out
+}
+
 const emptyStats = () => ({ entities: 0, relations: 0, groups: 0, layers: 0, widest: 0, kinds: {} })
 
 /**
@@ -279,22 +303,66 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
       )
       return { at, width: wide, height: y - NODE_GAP, level: new Map(ordered.map((e) => [e.id, 0])), levels: 1 }
     }
-    const laid = elkLayoutSync({
-      id: `camp${ci}`,
-      layoutOptions: baseOptions,
-      children: ordered.map((e) => ({ id: e.id, width: frameSize(e).w, height: frameSize(e).h })),
-      // An undirected relation (a marriage, a contract) sets no level: handed to ELK it put a spouse a row
-      // below. Left out, both stand on one level where nothing else holds them apart; it is routed after.
-      edges: relations
-        .map((r, i) => ({ r, i }))
-        .filter(({ r }) => inside.has(r.from) && inside.has(r.to) && isDirected(r))
-        .map(({ r, i }) => ({
-          id: `r${i}`,
-          sources: [r.from],
-          targets: [r.to],
-          labels: [{ id: `l${i}`, text: labels[i].text, width: labels[i].frame.width, height: labels[i].frame.height }],
-        })),
-    })
+    const inEdges = relations.map((r, i) => ({ r, i })).filter(({ r }) => inside.has(r.from) && inside.has(r.to))
+    const runElk = (order) =>
+      elkLayoutSync({
+        id: `camp${ci}`,
+        layoutOptions: baseOptions,
+        children: order.map((e) => ({ id: e.id, width: frameSize(e).w, height: frameSize(e).h })),
+        // An undirected relation (a marriage, a contract) sets no level: handed to ELK it put a spouse a row
+        // below. Left out, both stand on one level where nothing else holds them apart; it is routed after.
+        edges: inEdges
+          .filter(({ r }) => isDirected(r))
+          .map(({ r, i }) => ({
+            id: `r${i}`,
+            sources: [r.from],
+            targets: [r.to],
+            labels: [{ id: `l${i}`, text: labels[i].text, width: labels[i].frame.width, height: labels[i].frame.height }],
+          })),
+      })
+
+    // ELK cannot see the links that leave the camp, so it does not know that a party with a link to the
+    // camp on the right should not have its own family lined up on that side: they crossed (issue #32).
+    // The order of the parties is what ELK keeps, so a few orders are tried and the one whose picture
+    // crosses fewest lines wins. Judged on straight lines between centres, and on a level line from a
+    // party out to the side it faces: rough, but it is only compared between orders of the same camp.
+    const crossings = (laidOne) => {
+      const c = new Map(laidOne.children.map((n) => [n.id, [n.x + n.width / 2, n.y + n.height / 2]]))
+      const lines = inEdges.map(({ r }) => ({ ends: [r.from, r.to], p: c.get(r.from), q: c.get(r.to) }))
+      const far = laidOne.width + 1e4
+      for (const e of members) {
+        const pull = pullOf(e, ci)
+        if (pull === 0) continue
+        const [x, y] = c.get(e.id)
+        lines.push({ ends: [e.id], p: [x, y], q: [pull > 0 ? x + far : x - far, y] })
+      }
+      const side = (a, b, d) => Math.sign((b[0] - a[0]) * (d[1] - a[1]) - (b[1] - a[1]) * (d[0] - a[0]))
+      let n = 0
+      lines.forEach((u, k) =>
+        lines.slice(k + 1).forEach((v) => {
+          if (u.ends.some((id) => v.ends.includes(id))) return
+          if (side(u.p, u.q, v.p) * side(u.p, u.q, v.q) < 0 && side(v.p, v.q, u.p) * side(v.p, v.q, u.q) < 0) n += 1
+        }),
+      )
+      return n
+    }
+    const tries = [ordered]
+    if (members.length > 2 && inEdges.length && members.some((e) => pullOf(e, ci) !== 0)) {
+      const seed = mulberry32(ci + members.length * 7919)
+      const want = members.length <= 5 ? permutations(ordered) : Array.from({ length: 40 }, () => shuffled(ordered, seed))
+      tries.push(...want)
+    }
+    let laid = null
+    let fewest = Infinity
+    for (const order of tries) {
+      const one = runElk(order)
+      const n = crossings(one)
+      if (n < fewest) {
+        laid = one
+        fewest = n
+      }
+      if (fewest === 0) break
+    }
     const at = new Map(laid.children.map((c) => [c.id, { x: c.x, y: c.y, w: c.width, h: c.height }]))
     // Left out of ELK, an undirected relation got no room for its label: two spouses side by side were
     // NODE_GAP apart and "Spouse" was cut to "pouse". Where two such parties stand level, everything from

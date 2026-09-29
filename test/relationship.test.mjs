@@ -474,3 +474,30 @@ test('a label always has room: between two level partners, and in the channel be
     assert.ok(rightLo - hi(n('e-6')) >= room('r-5'), `${orientation}: the long label fits in the channel`)
   }
 })
+
+test('the real cases stand with (almost) no crossing when the picture runs down (#32)', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs')
+  const segs = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
+  const cross = ([a, b], [c, d]) => {
+    const ah = Math.abs(a[1] - b[1]) < 0.5
+    if (ah === (Math.abs(c[1] - d[1]) < 0.5)) return false
+    const [h, v] = ah ? [[a, b], [c, d]] : [[c, d], [a, b]]
+    const [x, y] = [v[0][0], h[0][1]]
+    return (
+      x > Math.min(h[0][0], h[1][0]) + 1 && x < Math.max(h[0][0], h[1][0]) - 1 &&
+      y > Math.min(v[0][1], v[1][1]) + 1 && y < Math.max(v[0][1], v[1][1]) - 1
+    )
+  }
+  const dir = 'examples/relationship/'
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+    const g = buildRelationshipGraph(JSON.parse(readFileSync(dir + f, 'utf8')))
+    let n = 0
+    g.connections.forEach((c, i) =>
+      g.connections.slice(i + 1).forEach((d) => {
+        if (segs(c.points).some((s) => segs(d.points).some((t) => cross(s, t)))) n += 1
+      }),
+    )
+    // the Kuaibo case had six; one line into a crowded side of the group sample is left
+    assert.ok(n <= (f.startsWith('kuaibo') ? 0 : 1), `${f}: ${n} crossings`)
+  }
+})
