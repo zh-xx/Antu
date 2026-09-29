@@ -257,6 +257,13 @@ test('curved links end on a real segment that points into the node (#23)', () =>
         const [a, b] = lastLeg(c.dCurve)
         const len = Math.hypot(b[0] - a[0], b[1] - a[1])
         assert.ok(len > 0.05, `${f}/${dir}: ${c.id} ends on a segment of length ${len}`)
+        // A short jog before the node is what made the head look wrong (the reported case): the
+        // route itself keeps a straight run of 11px into the node, longer than the arrowhead (7)
+        if (c.points.length > 2) {
+          const [p, q] = c.points.slice(-2)
+          const run = Math.hypot(q[0] - p[0], q[1] - p[1])
+          assert.ok(run >= 10.5, `${f}/${dir}: ${c.id} enters its node after a run of only ${run.toFixed(1)}px`)
+        }
         // the side of the target the link ends on decides which way the head must point
         const t = box.get(c.to)
         const [dx, dy] = [(b[0] - a[0]) / len, (b[1] - a[1]) / len]

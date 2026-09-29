@@ -33,6 +33,9 @@ const CROSS = 1400
 /** An off-centre port costs a little: the middle of a side is where a link is expected */
 const QUARTER = 16
 /** Ports: leaving through the top or arriving through the bottom goes against the flow */
+/** The straight run kept out of and into a node: the first grid line clear of it, longer than the arrowhead (7) */
+const END_RUN = CLEAR + 1
+
 const PORT_COST = { out: { bottom: 0, right: 40, left: 40, top: 700 }, in: { top: 0, left: 40, right: 40, bottom: 700 } }
 
 // Headings: 0 east, 1 south, 2 west, 3 north
@@ -277,6 +280,23 @@ export function routeLink(p) {
     goal.set((j * W + i) * 4 + inward, portCost.in[side] + (quarter ? QUARTER : 0))
   }
 
+  // A link keeps a straight run of END_RUN into its node. Grid lines sit a pixel or two from a
+  // port (another node's clearance line, a neighbouring link), and a turn on one of them leaves a
+  // stub shorter than the arrowhead: the head then sits sideways on a 1px jog. So no turning on
+  // the stretch of an arrival port's own axis nearer than END_RUN (issue #23). Only the arrival
+  // end: the start has no head, and holding it too costs extra bends in tight columns
+  const noTurn = new Set()
+  for (const [x, y, side] of inPorts) {
+    const i = xi.get(Math.round(x * 2) / 2)
+    const j = yi.get(Math.round(y * 2) / 2)
+    if (i === undefined || j === undefined) continue
+    const d = OUTWARD[side]
+    for (let a = i + DX[d], b = j + DY[d]; a >= 0 && b >= 0 && a < W && b < H; a += DX[d], b += DY[d]) {
+      if (Math.abs(xs[a] - x) + Math.abs(ys[b] - y) >= END_RUN) break
+      noTurn.add(b * W + a)
+    }
+  }
+
   const dist = new Map()
   const prev = new Map()
   const heap = new Heap()
@@ -312,7 +332,7 @@ export function routeLink(p) {
     const cell = (s - d) / 4
     const i = cell % W
     const j = (cell - i) / W
-    for (const nd of starts.has(s) ? [d] : [d, (d + 1) % 4, (d + 3) % 4]) {
+    for (const nd of starts.has(s) || noTurn.has(cell) ? [d] : [d, (d + 1) % 4, (d + 3) % 4]) {
       const st = step(i, j, nd)
       if (!st) continue
       const ns = (st.nj * W + st.ni) * 4 + nd
@@ -367,6 +387,9 @@ function centre(points, segCheck) {
       const d = [...pts[k + 2]]
       b[ax] = v
       c[ax] = v
+      // Moving a segment lengthens one neighbour and shortens the other: an end leg keeps END_RUN
+      if (k === 1 && Math.abs(a[ax] - b[ax]) + Math.abs(a[1 - ax] - b[1 - ax]) < END_RUN) return null
+      if (k + 2 === pts.length - 1 && Math.abs(c[ax] - d[ax]) + Math.abs(c[1 - ax] - d[1 - ax]) < END_RUN) return null
       const parts = [segCheck(...a, ...b), segCheck(...b, ...c), segCheck(...c, ...d)]
       return parts.some((x) => x === null) ? null : parts.reduce((s, x) => s + x, 0)
     }
