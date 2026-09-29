@@ -32,6 +32,7 @@ import {
   describeSchema,
   listKnowledgeTypes,
   validate,
+  notesOf,
   layoutReport,
   formatLayoutReport,
   renderHtml,
@@ -172,12 +173,18 @@ server.registerTool(
     title: 'Validate JSON',
     description:
       'Check whether an antu JSON is valid. Returns each problem (with its field path and event id, e.g. slots[0].events[1] (ev-2)). ' +
+      'When it passes it may still add notes: for a fact diagram, each view that does not fit (it is not an error, but that view will not be offered). ' +
       '**Run this right after writing the JSON; do not render first.** It is pure computation, needs no browser, and is fast.',
     inputSchema: { spec: specArg },
   },
   async ({ spec }) => {
     const errors = validate(spec)
-    if (errors.length === 0) return OK('Validation passed. Next: antu_layout for the geometry, or antu_preview to look at it.')
+    if (errors.length === 0) {
+      // Not errors, but not silence either: e.g. a view that does not fit is left out of the view dropdown
+      const notes = notesOf(spec)
+      const head = 'Validation passed. Next: antu_layout for the geometry, or antu_preview to look at it.'
+      return OK(notes.length ? `${head}\n\n${notes.length} note(s), not errors:\n${notes.map((n) => `  - ${n}`).join('\n')}` : head)
+    }
     const lines = errors.map((e, i) => `${i + 1}. ${e}`)
     return FAIL(`Validation failed, ${errors.length} problem(s):\n\n${lines.join('\n')}`)
   },
