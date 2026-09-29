@@ -85,6 +85,9 @@ export function toPathD(points, r = CORNER_R) {
   return d.join(' ')
 }
 
+/** The straight run kept before a link meets its node: longer than the arrowhead (7) */
+const END_RUN = 12
+
 /**
  * The same polyline drawn curved: every turn becomes a wide arc (a cubic that leaves along one
  * leg and arrives along the next), so the ends still leave and meet their nodes straight on and
@@ -102,7 +105,10 @@ export function toCurveD(points, r = CURVE_R) {
     const outLen = Math.hypot(nx - cx, ny - cy)
     // A leg shared by two turns gives each half of it; an end leg is all this turn's
     const inShare = i === 1 ? inLen : inLen / 2
-    const outShare = i === points.length - 2 ? outLen : outLen / 2
+    // The last leg keeps a straight run into the node (END_RUN): the arrowhead points along the last
+    // drawn segment, and a segment of length 0 has no direction (the browser then draws it pointing
+    // right, whichever side the link enters from; issue #23)
+    const outShare = i === points.length - 2 ? Math.max(0, outLen - END_RUN) : outLen / 2
     const rr = Math.max(0, Math.min(r, inShare, outShare))
     if (rr === 0) {
       d.push(`L ${cx} ${cy}`)

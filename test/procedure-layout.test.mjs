@@ -233,6 +233,45 @@ test('the procedure report opens vertical and names the better fit apart (#17)',
   }
 })
 
+test('curved links end on a real segment that points into the node (#23)', () => {
+  // The arrowhead follows the last drawn segment. A segment of length 0 has no direction and the
+  // browser draws the head pointing right, so a link entering from the top or the left of a node
+  // could show a head that points nowhere near where the link goes.
+  const lastLeg = (d) => {
+    const pts = d
+      .split(/(?=[MLC])/)
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .map((t) => {
+        const v = t.slice(1).match(/-?[\d.]+/g).map(Number)
+        return [v.at(-2), v.at(-1)]
+      })
+    return [pts.at(-2), pts.at(-1)]
+  }
+  let checked = 0
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), {}, undefined, dir)
+      const box = new Map(g.nodes.map((n) => [n.id, { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }]))
+      for (const c of g.connections) {
+        const [a, b] = lastLeg(c.dCurve)
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+        assert.ok(len > 0.05, `${f}/${dir}: ${c.id} ends on a segment of length ${len}`)
+        // the side of the target the link ends on decides which way the head must point
+        const t = box.get(c.to)
+        const [dx, dy] = [(b[0] - a[0]) / len, (b[1] - a[1]) / len]
+        const near = (v, w) => Math.abs(v - w) < 1.5
+        if (near(b[1], t.y)) assert.ok(dy > 0.7, `${f}/${dir}: ${c.id} enters a top edge but points ${dx.toFixed(2)},${dy.toFixed(2)}`)
+        else if (near(b[1], t.y + t.h)) assert.ok(dy < -0.7, `${f}/${dir}: ${c.id} enters a bottom edge but points ${dx.toFixed(2)},${dy.toFixed(2)}`)
+        else if (near(b[0], t.x)) assert.ok(dx > 0.7, `${f}/${dir}: ${c.id} enters a left edge but points ${dx.toFixed(2)},${dy.toFixed(2)}`)
+        else if (near(b[0], t.x + t.w)) assert.ok(dx < -0.7, `${f}/${dir}: ${c.id} enters a right edge but points ${dx.toFixed(2)},${dy.toFixed(2)}`)
+        checked += 1
+      }
+    }
+  }
+  assert.ok(checked >= 200, `only ${checked} links checked`)
+})
+
 test('invalid data is not laid out: errors only, never half a diagram', () => {
   const s = base()
   s.edges[0].to = 'n-99'
