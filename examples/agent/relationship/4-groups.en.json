@@ -1,0 +1,67 @@
+{
+  "type": "relationship",
+  "title": "Camps: plaintiff side, defendant side, a neutral party",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Plaintiff side"
+    },
+    {
+      "id": "g-2",
+      "label": "Defendant side"
+    }
+  ],
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "company",
+      "label": "Company A",
+      "role": "Plaintiff",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-2",
+      "kind": "company",
+      "label": "Company B",
+      "role": "Defendant",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-3",
+      "kind": "person",
+      "label": "Zhao",
+      "role": "B's legal representative",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-4",
+      "kind": "government",
+      "label": "Municipal market regulator",
+      "role": "Registry"
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-1",
+      "to": "e-2",
+      "kind": "contract",
+      "label": "Sale contract",
+      "amount": "CNY 800,000"
+    },
+    {
+      "id": "r-2",
+      "from": "e-3",
+      "to": "e-2",
+      "kind": "control",
+      "label": "Legal representative"
+    },
+    {
+      "id": "r-3",
+      "from": "e-4",
+      "to": "e-2",
+      "kind": "other",
+      "label": "Registration"
+    }
+  ]
+}

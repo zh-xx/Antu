@@ -35,6 +35,8 @@ export const NODE_GAP = 32
 
 /** The channel between two camps: the links across run in it, and their labels stand in it */
 export const CAMP_GAP = 110
+/** At least this much clear on each side of a label standing in that channel */
+export const LABEL_MARGIN = 20
 
 /** A group box: room at the top for its title, and around its entities */
 export const GROUP_PAD_TOP = 32
@@ -70,7 +72,7 @@ const emOf = (text, factor) => {
  * always beats a crossing. Here links run across the picture between camps, so a crossing is worth a
  * bend or so and not a trip round the whole diagram (seen on the first horizontal screenshot).
  */
-export const CROSS_COST = 900
+export const CROSS_COST = 450
 
 /** Past this many entities the diagram is reported with a hint (it is not an error) */
 export const SCALE_HINT_ENTITIES = 25

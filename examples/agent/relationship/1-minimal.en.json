@@ -1,0 +1,27 @@
+{
+  "type": "relationship",
+  "title": "Minimal: one loan",
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "person",
+      "label": "Zhang San",
+      "role": "Lender"
+    },
+    {
+      "id": "e-2",
+      "kind": "person",
+      "label": "Li Si",
+      "role": "Borrower"
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-1",
+      "to": "e-2",
+      "kind": "debt",
+      "amount": "CNY 100,000"
+    }
+  ]
+}

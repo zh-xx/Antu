@@ -44,6 +44,7 @@ import {
   LAYER_GAP,
   NODE_GAP,
   CAMP_GAP,
+  LABEL_MARGIN,
   GROUP_PAD_TOP,
   GROUP_PAD,
   GROUP_TITLE_FONT,
@@ -275,10 +276,27 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         })),
     })
     const at = new Map(laid.children.map((c) => [c.id, { x: c.x, y: c.y, w: c.width, h: c.height }]))
+    // Left out of ELK, an undirected relation got no room for its label: two spouses side by side were
+    // NODE_GAP apart and "Spouse" was cut to "pouse". Where two such parties stand level, everything from
+    // the right one on moves over until the label fits between them.
+    let width = laid.width
+    relations
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => inside.has(r.from) && inside.has(r.to) && !isDirected(r))
+      .map(({ r, i }) => ({ i, pair: [at.get(r.from), at.get(r.to)].sort((m, n) => m.x - n.x) }))
+      .filter(({ pair: [m, n] }) => m.y < n.y + n.h && n.y < m.y + m.h)
+      .sort((u, v) => u.pair[1].x - v.pair[1].x)
+      .forEach(({ i, pair: [m, n] }) => {
+        const short = labels[i].frame.width + 2 * LABEL_MARGIN - (n.x - m.x - m.w)
+        if (short <= 0) return
+        const from = n.x
+        for (const r of at.values()) if (r.x >= from) r.x += short
+        width += short
+      })
     // The camp's own levels (for the stats and for which way an overlay opens)
     const tops = [...new Set([...at.values()].map((r) => Math.round(r.y)))].sort((m, n) => m - n)
     const level = new Map([...at].map(([id, r]) => [id, tops.indexOf(Math.round(r.y))]))
-    return { at, width: laid.width, height: laid.height, level, levels: tops.length }
+    return { at, width, height: laid.height, level, levels: tops.length }
   }
 
   // The title strip takes GROUP_PAD_TOP along the real top of a box: the frame's top when vertical, its left when transposed
@@ -347,6 +365,20 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     for (const [id, r] of at) centreY.set(id, r.y + r.h / 2)
   }
 
+  // ── the channel after each camp: wide enough for the widest label of a link across it ──
+  // A label stands on its own line, and a link between neighbouring camps has only the channel to stand
+  // in: a fixed channel let a long English label run over the entity at its end ("Passed on CNY 40,000").
+  const campOf = new Map()
+  camps.forEach((camp, ci) => camp.members.forEach((e) => campOf.set(e.id, ci)))
+  const gapAfter = camps.map((_, ci) => {
+    let need = CAMP_GAP
+    relations.forEach((r, i) => {
+      const [m, n] = [campOf.get(r.from), campOf.get(r.to)].sort((u, v) => u - v)
+      if (m <= ci && n > ci) need = Math.max(need, labels[i].frame.width + 2 * LABEL_MARGIN)
+    })
+    return need
+  })
+
   // ── set everything down: camps left to right, the whole picture moved so its top is at PAD ──
   const tops = []
   camps.forEach((camp, ci) => {
@@ -367,7 +399,7 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         lowest = Math.max(lowest, lift + r.y + r.h)
         levelOf.set(id, 0)
       }
-      cursor += middleCol.width + CAMP_GAP
+      cursor += middleCol.width + gapAfter[ci]
       return
     }
     const lay = laidCamps[ci]
@@ -383,9 +415,9 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     const h = padTop + lay.height + (camp.group ? GROUP_PAD : 0)
     if (camp.group) boxes.push({ groupId: camp.group.id, label: camp.group.label, x: cursor, y: y0, w, h })
     lowest = Math.max(lowest, y0 + h)
-    cursor += w + CAMP_GAP
+    cursor += w + gapAfter[ci]
   })
-  const frameWidth = cursor - CAMP_GAP + PAD
+  const frameWidth = cursor - gapAfter[camps.length - 1] + PAD
   const frameHeight = lowest + PAD
 
   // ── ③ every relation routed, then ④ every label placed ──
@@ -415,7 +447,12 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         to: b,
         nodes: nodeRects,
         blocks: titles,
-        routes: done.map((c) => ({ points: c.points })),
+        // Links of one kind into the same party (three regulators each penalising the company) may run
+        // along each other and share the port into it: one trunk, not three loops round the picture
+        routes: done.map((c) => {
+          const o = relations[c.index]
+          return { points: c.points, share: o.kind === relations[i].kind && o.to === relations[i].to }
+        }),
         borders,
         portCost: portCostFor(a, b),
         crossCost: CROSS_COST,

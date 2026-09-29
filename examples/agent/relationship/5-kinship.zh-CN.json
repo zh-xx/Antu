@@ -1,0 +1,68 @@
+{
+  "type": "relationship",
+  "title": "身份与亲属：无向关系与 directed",
+  "asOf": "2024-01-01",
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "person",
+      "label": "周某",
+      "role": "被继承人"
+    },
+    {
+      "id": "e-2",
+      "kind": "person",
+      "label": "吴某",
+      "role": "配偶"
+    },
+    {
+      "id": "e-3",
+      "kind": "person",
+      "label": "周小某",
+      "role": "子女"
+    },
+    {
+      "id": "e-4",
+      "kind": "company",
+      "label": "周记餐饮有限公司"
+    },
+    {
+      "id": "e-5",
+      "kind": "person",
+      "label": "钱某",
+      "role": "受托人"
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-1",
+      "to": "e-2",
+      "kind": "kinship",
+      "label": "夫妻"
+    },
+    {
+      "id": "r-2",
+      "from": "e-1",
+      "to": "e-3",
+      "kind": "kinship",
+      "label": "父子",
+      "directed": true
+    },
+    {
+      "id": "r-3",
+      "from": "e-4",
+      "to": "e-3",
+      "kind": "employment",
+      "label": "店长"
+    },
+    {
+      "id": "r-4",
+      "from": "e-2",
+      "to": "e-5",
+      "kind": "agency",
+      "label": "委托办理继承",
+      "detail": "吴某书面委托钱某代为办理继承手续"
+    }
+  ]
+}

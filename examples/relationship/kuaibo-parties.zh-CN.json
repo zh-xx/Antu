@@ -1,0 +1,258 @@
+{
+  "type": "relationship",
+  "title": "快播案 · 单位、人员与监管机关",
+  "asOf": "2013-12-31",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "被告单位与被告人"
+    },
+    {
+      "id": "g-2",
+      "label": "监管与查处机关"
+    }
+  ],
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "company",
+      "label": "快播公司",
+      "role": "被告单位",
+      "detail": "深圳市快播科技有限公司，2007-12-26 成立，注册资本 1000 万元；持有网络文化经营许可证，未取得互联网视听节目服务许可",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-2",
+      "kind": "person",
+      "label": "王欣",
+      "role": "法定代表人",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-3",
+      "kind": "person",
+      "label": "吴铭",
+      "role": "事业部总经理",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-4",
+      "kind": "person",
+      "label": "张克东",
+      "role": "股东、技术平台部总监",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-5",
+      "kind": "person",
+      "label": "牛文举",
+      "role": "运营部总监",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-6",
+      "kind": "company",
+      "label": "光通公司",
+      "role": "合作方",
+      "detail": "北京网联光通技术有限公司",
+      "sourceIds": [
+        "s-1",
+        "s-4"
+      ]
+    },
+    {
+      "id": "e-7",
+      "kind": "government",
+      "label": "深圳网监",
+      "detail": "深圳市公安局公安信息网络安全监察分局",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "e-8",
+      "kind": "government",
+      "label": "南山广电局",
+      "detail": "深圳市南山区广播电视局",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "e-9",
+      "kind": "government",
+      "label": "海淀区文委",
+      "detail": "北京市海淀区文化委员会",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-5"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-2",
+      "to": "e-1",
+      "kind": "control",
+      "label": "法定代表人、执行董事、经理",
+      "detail": "王欣同时为快播公司股东，负责公司经营和管理工作（持股比例判决书未载明）",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-2",
+      "from": "e-4",
+      "to": "e-1",
+      "kind": "equity",
+      "label": "股东",
+      "detail": "持股比例判决书未载明",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-3",
+      "from": "e-1",
+      "to": "e-3",
+      "kind": "employment",
+      "label": "事业部总经理（2013）",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-4",
+      "from": "e-1",
+      "to": "e-4",
+      "kind": "employment",
+      "label": "副总经理兼技术平台部总监（2012）",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-5",
+      "from": "e-1",
+      "to": "e-5",
+      "kind": "employment",
+      "label": "副总经理兼运营部总监（2012）",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-6",
+      "from": "e-2",
+      "to": "e-4",
+      "kind": "other",
+      "label": "授意调整缓存存储",
+      "detail": "2013 年底，在王欣授意下，张克东领导的技术部门将缓存服务器的完整文件存储改为碎片化存储",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-7",
+      "from": "e-1",
+      "to": "e-6",
+      "kind": "contract",
+      "label": "战略合作（4 台缓存服务器）",
+      "sourceIds": [
+        "s-4"
+      ]
+    },
+    {
+      "id": "r-8",
+      "from": "e-7",
+      "to": "e-1",
+      "kind": "other",
+      "label": "行政警告（2012-08）",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "r-9",
+      "from": "e-8",
+      "to": "e-1",
+      "kind": "other",
+      "label": "行政处罚（2013-10-11）",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "r-10",
+      "from": "e-9",
+      "to": "e-6",
+      "kind": "other",
+      "label": "查获 4 台服务器（2013-11-18）",
+      "sourceIds": [
+        "s-5"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "case",
+      "name": "本案一审判决",
+      "loc": {
+        "caseNo": "（2015）海刑初字第512号",
+        "court": "北京市海淀区人民法院"
+      }
+    },
+    {
+      "id": "s-2",
+      "type": "document",
+      "name": "深圳网监行政警告处罚",
+      "loc": {
+        "file": "判决书载明的行政处罚记录"
+      }
+    },
+    {
+      "id": "s-3",
+      "type": "document",
+      "name": "南山广电局行政处罚决定书",
+      "loc": {
+        "file": "判决书载明的行政处罚记录"
+      }
+    },
+    {
+      "id": "s-4",
+      "type": "contract",
+      "name": "快播公司与光通公司合作协议",
+      "loc": {
+        "file": "合作协议",
+        "clause": 1
+      }
+    },
+    {
+      "id": "s-5",
+      "type": "evidence",
+      "name": "涉案4台服务器鉴定意见",
+      "loc": {
+        "file": "鉴定意见"
+      }
+    }
+  ]
+}

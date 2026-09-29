@@ -1,0 +1,225 @@
+{
+  "type": "relationship",
+  "title": "于欢案 · 当事人关系",
+  "asOf": "2016-04-14",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "于欢一方"
+    },
+    {
+      "id": "g-2",
+      "label": "出借与讨债一方"
+    }
+  ],
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "person",
+      "label": "于欢",
+      "role": "被告人",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-2",
+      "kind": "person",
+      "label": "苏某",
+      "role": "于欢之母，借款人",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-3",
+      "kind": "person",
+      "label": "于某1",
+      "role": "苏某之夫，共同借款人",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-4",
+      "kind": "company",
+      "label": "源大公司",
+      "role": "苏某经营",
+      "detail": "山东源大工贸有限公司，位于山东省冠县工业园区",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-5",
+      "kind": "other",
+      "label": "吴某、赵某1",
+      "role": "出借人",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-6",
+      "kind": "person",
+      "label": "杜某2",
+      "role": "讨债人员，死亡",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-1",
+        "s-5"
+      ]
+    },
+    {
+      "id": "e-7",
+      "kind": "other",
+      "label": "郭某1、严某、程某等",
+      "role": "讨债人员，受伤",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-1"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-5",
+      "to": "e-2",
+      "kind": "debt",
+      "label": "第一笔借款",
+      "amount": "100 万元",
+      "detail": "2014-07-28，苏某及其丈夫于某1向吴某、赵某1借款，口头约定月息 10%；至 2015-10-20 共还款 154 万元",
+      "sourceIds": [
+        "s-1",
+        "s-2"
+      ]
+    },
+    {
+      "id": "r-2",
+      "from": "e-5",
+      "to": "e-2",
+      "kind": "debt",
+      "label": "第二笔借款",
+      "amount": "35 万元",
+      "detail": "2015-11-01 再借 35 万元：10 万元口头约定月息 10%，25 万元以住房抵押；此后苏某还款 29.8 万元，双方对其用途各执一词",
+      "sourceIds": [
+        "s-1",
+        "s-3"
+      ]
+    },
+    {
+      "id": "r-3",
+      "from": "e-3",
+      "to": "e-5",
+      "kind": "guarantee",
+      "label": "住房抵押（25 万元）",
+      "secures": "r-2",
+      "detail": "以于某1名下住房作抵押，签订房屋买卖合同，约定逾期还款则将住房过户给赵某1",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "r-4",
+      "from": "e-2",
+      "to": "e-3",
+      "kind": "kinship",
+      "label": "夫妻",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-5",
+      "from": "e-2",
+      "to": "e-1",
+      "kind": "kinship",
+      "label": "母子",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-6",
+      "from": "e-2",
+      "to": "e-4",
+      "kind": "control",
+      "label": "经营",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-7",
+      "from": "e-4",
+      "to": "e-1",
+      "kind": "employment",
+      "label": "员工",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-8",
+      "from": "e-5",
+      "to": "e-6",
+      "kind": "agency",
+      "label": "指使催债",
+      "detail": "吴某、赵某1指使杜某2等人实施侮辱苏某、干扰源大公司生产经营等逼债行为",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-9",
+      "from": "e-5",
+      "to": "e-7",
+      "kind": "agency",
+      "label": "指使催债",
+      "sourceIds": [
+        "s-1"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "case",
+      "name": "指导案例 93 号：于欢故意伤害案",
+      "loc": {
+        "caseNo": "（2017）鲁刑终151号",
+        "court": "山东省高级人民法院"
+      }
+    },
+    {
+      "id": "s-2",
+      "type": "document",
+      "name": "借款合同（100 万元）",
+      "loc": {
+        "file": "借款合同"
+      }
+    },
+    {
+      "id": "s-3",
+      "type": "document",
+      "name": "房屋买卖合同（25 万元抵押）",
+      "loc": {
+        "file": "房屋买卖合同"
+      }
+    },
+    {
+      "id": "s-5",
+      "type": "evidence",
+      "name": "尸体检验鉴定意见",
+      "loc": {
+        "file": "尸体检验鉴定意见"
+      }
+    }
+  ]
+}

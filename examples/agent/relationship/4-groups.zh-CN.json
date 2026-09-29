@@ -1,0 +1,67 @@
+{
+  "type": "relationship",
+  "title": "阵营：原告方、被告方与中立方",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "原告方"
+    },
+    {
+      "id": "g-2",
+      "label": "被告方"
+    }
+  ],
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "company",
+      "label": "甲公司",
+      "role": "原告",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-2",
+      "kind": "company",
+      "label": "乙公司",
+      "role": "被告",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-3",
+      "kind": "person",
+      "label": "赵某",
+      "role": "乙公司法定代表人",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-4",
+      "kind": "government",
+      "label": "市市场监督管理局",
+      "role": "登记机关"
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-1",
+      "to": "e-2",
+      "kind": "contract",
+      "label": "买卖合同",
+      "amount": "80 万元"
+    },
+    {
+      "id": "r-2",
+      "from": "e-3",
+      "to": "e-2",
+      "kind": "control",
+      "label": "法定代表人"
+    },
+    {
+      "id": "r-3",
+      "from": "e-4",
+      "to": "e-2",
+      "kind": "other",
+      "label": "登记"
+    }
+  ]
+}
