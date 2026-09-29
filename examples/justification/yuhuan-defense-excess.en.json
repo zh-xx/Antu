@@ -298,7 +298,7 @@
       "id": "f-12",
       "kind": "fact",
       "label": "The stabbing left one dead, two seriously and one slightly injured, one stabbed from behind; the aides returned at 22:26",
-      "date": "2016-04-14T22:26",
+      "date": "2016-04-14",
       "groupId": "g-3",
       "sourceIds": [
         "s-1"
@@ -360,7 +360,6 @@
       "id": "f-13",
       "kind": "fact",
       "label": "Yu truthfully confessed the main crimes after arrest",
-      "date": "2016-04-14",
       "groupId": "g-5",
       "sourceIds": [
         "s-2"
