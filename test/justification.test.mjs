@@ -156,7 +156,7 @@ test('no nodes overlap, and every issue box holds its own nodes', () => {
   const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
   for (const o of ['horizontal', 'vertical']) {
     const g = buildJustificationGraph(spec, {}, undefined, o)
-    const rects = g.nodes.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h, g: n.data.node.groupId }))
+    const rects = g.nodes.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h, g: n.data.groupId }))
     for (let i = 0; i < rects.length; i += 1) {
       for (let j = i + 1; j < rects.length; j += 1) {
         const a = rects[i]
@@ -283,8 +283,62 @@ test('the real example: valid, no hints, 40 nodes in 5 issues', () => {
     assert.deepEqual(validateJustification(spec), [], lang)
     assert.deepEqual(hintsOfJustification(spec), [], lang)
     const g = buildJustificationGraph(spec)
-    assert.equal(g.nodes.length, 40)
+    // 40 nodes in the data; five facts are drawn twice, once in each issue that uses them
+    assert.equal(g.stats.nodes, 40)
+    assert.equal(g.stats.copies, 5)
+    assert.equal(g.nodes.length, 45)
     assert.equal(g.connections.length, 48)
     assert.equal(g.groupBoxes.length, 5)
   }
+})
+
+test('a fact that supports several issues is one node in the data and is drawn once in each of them', () => {
+  const s = base()
+  s.groups.push({ id: 'g-2', label: 'Issue 2' })
+  s.nodes.push(
+    { id: 'c-2', kind: 'conclusion', label: 'A second conclusion', holds: 'yes', groupId: 'g-2' },
+    { id: 'e-2', kind: 'element', label: 'Another element', holds: 'yes', groupId: 'g-2' },
+  )
+  s.links.push({ from: 'f-1', to: 'e-2' }, { from: 'e-2', to: 'c-2' }, { from: 'c-2', to: 'c-1' })
+  for (const o of ['horizontal', 'vertical']) {
+    const g = buildJustificationGraph(s, {}, undefined, o)
+    assert.deepEqual(g.errors, [])
+    const drawn = g.nodes.filter((n) => n.data.node.id === 'f-1')
+    assert.equal(drawn.length, 2, `${o}: f-1 is drawn in both issues`)
+    assert.equal(drawn.filter((n) => n.data.copyOf === null).length, 1, 'one original')
+    assert.equal(drawn.filter((n) => n.data.copyOf === 'f-1').length, 1, 'one copy')
+    assert.ok(drawn.every((n) => n.data.copies === 2))
+    assert.notEqual(drawn[0].id, drawn[1].id, 'each has its own id')
+    // each copy sits in the box of the issue whose element it supports
+    const box = (gid) => g.groupBoxes.find((b) => b.groupId === gid)
+    const inBox = (n, b) => n.position.x >= b.x && n.position.y >= b.y && n.position.x + n.data.w <= b.x + b.w && n.position.y + n.data.h <= b.y + b.h
+    assert.equal(drawn.filter((n) => inBox(n, box('g-1'))).length, 1)
+    assert.equal(drawn.filter((n) => inBox(n, box('g-2'))).length, 1)
+    // the links keep the id of the node they stand for, and run between the placements
+    const links = g.connections.filter((c) => c.fromNode === 'f-1')
+    assert.equal(links.length, 2)
+    assert.notEqual(links[0].from, links[1].from)
+    assert.deepEqual(links.map((c) => c.toNode).sort(), ['e-1', 'e-2'])
+  }
+  // a fact that supports one issue only stands in that issue, whatever groupId it says
+  const t = base()
+  t.groups.push({ id: 'g-2', label: 'Issue 2' })
+  t.nodes.push({ id: 'c-2', kind: 'conclusion', label: 'Second', holds: 'yes', groupId: 'g-2' }, { id: 'f-9', kind: 'fact', label: 'Says g-1, used in g-2', sourceIds: ['s-2'], groupId: 'g-1' })
+  t.links.push({ from: 'f-9', to: 'c-2' }, { from: 'c-2', to: 'c-1' })
+  const g = buildJustificationGraph(t)
+  assert.equal(g.stats.copies, 0)
+  const f = g.nodes.find((n) => n.id === 'f-9')
+  const b2 = g.groupBoxes.find((b) => b.groupId === 'g-2')
+  assert.ok(f.position.x >= b2.x && f.position.x + f.data.w <= b2.x + b2.w, 'f-9 stands in the second issue')
+})
+
+test('the layout of a diagram is remembered: the same content is laid out once', () => {
+  const s = base()
+  const a = buildJustificationGraph(s, {}, undefined, 'horizontal')
+  const b = buildJustificationGraph(JSON.parse(JSON.stringify(s)), {}, undefined, 'horizontal')
+  assert.equal(a, b, 'the same object comes back')
+  const c = buildJustificationGraph(s, {}, undefined, 'vertical')
+  assert.notEqual(a, c)
+  s.nodes[0].label = 'Not guilty'
+  assert.notEqual(buildJustificationGraph(s, {}, undefined, 'horizontal'), a, 'a change lays it out again')
 })

@@ -225,15 +225,17 @@ Structural errors block drawing; hints do not. The same split as relationship an
 `src/renderers/justification/tree/layout.js`, pure geometry, no browser.
 
 - **A tree from the conclusion down.** A link runs from the supporting side to the supported one, so ELK is given every link the other way round, and the conclusion is on top (on the left when horizontal).
+- **A fact (or a norm) is one node in the data and is drawn once in every issue that uses it.** Facts and norms are leaves and can support things in several issues (the abuse supports both "was it defensive" and "the victims' fault"). It is written once, and drawn once in each issue box that uses it; a copy's tag says "same as". Each issue box then holds all it needs, and no line runs across the picture to a fact in another box. A leaf used in one issue only stands in that issue, whatever its own `groupId` says.
+- **A norm stands one layer above its elements**, beside the issue's conclusion, with its lines running down to the elements. It is close to them, and its lines do not have to go round to the facts' layer.
 - **One box per issue, each laid out on its own.** ELK's layered algorithm lays out each issue from the links inside it, so a box is as big as its content (ELK cannot lay out a box around nodes in different layers; the relationship diagram's camps are the same). Nodes in no issue (the end conclusion) form a group of their own above all the issues, centred.
 - **Issues stand side by side, tops aligned** (across when vertical; stacked when horizontal).
-- **Links use the same orthogonal router** (`procedure/flow/router.js`): fewest bends, then shortest, clear of every node and issue title. Links of one stance into one node share a trunk (five facts into one element read as one bundle). A link inside an issue is first sought inside that issue's box, a link between issues in the rectangle around its two ends, and only then among everything; with every link seeing every node the example took six seconds.
+- **Links use the same orthogonal router** (`procedure/flow/router.js`): fewest bends, then shortest, clear of every node and issue title. Links of one stance into one node share a trunk (five facts into one element read as one bundle). A link inside an issue is first sought inside that issue's box, a link between issues in the rectangle around its two ends, and only then among everything; with every link seeing every node the example took several seconds.
 - **Only a link that has a `label` gets one**, on its own line.
 - **The written order is kept** among nodes that share a parent (ELK's `forceNodeModelOrder`).
 - **Horizontal is the vertical picture transposed**, one code path. **Horizontal is the default**: the conclusion at the left, the facts at the right, read like a sentence; vertically the facts of a big issue make one very wide row.
 - `holds` and `stance` are paint only and do not change the geometry.
 
-Known shortcomings: a link across issues (one fact supporting several issues) goes round outside the boxes, in long bundles; the example (40 nodes, 48 links) takes about 2 seconds to lay out.
+Known shortcomings: the lines from each issue's conclusion to the end conclusion are long (unavoidable with issues side by side); the example (40 nodes, 48 links, five facts drawn twice) takes about a second to lay out, and the last few layouts are cached by content.
 
 ### 6.2 Look (the renderer, not built)
 

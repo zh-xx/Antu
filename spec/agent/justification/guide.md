@@ -60,7 +60,9 @@ have no `holds`. Leave it out when the reasoning does not say.
 
 `groups` is one box per issue. A node is in at most one group. Put a norm in the issue it settles (a
 norm used in two issues is two `norm` nodes with the same `sourceIds`). Nodes in no group (the end
-conclusion) stand above the issues.
+conclusion) stand above the issues. **A fact that supports things in several issues is written once**: link it to each
+element it supports, and the engine draws it in each of those issues (a copy says "same as"). Do not write
+it twice.
 
 ## After writing
 

@@ -56,7 +56,7 @@ import {
   labelBox,
 } from './metrics.js'
 
-const emptyStats = () => ({ nodes: 0, links: 0, groups: 0, layers: 0, widest: 0, kinds: {} })
+const emptyStats = () => ({ nodes: 0, copies: 0, links: 0, groups: 0, layers: 0, widest: 0, kinds: {} })
 
 /** ELK's options: layers down, the written order breaks ties, links orthogonal (only the nodes are used) */
 const ELK_OPTIONS = {
@@ -86,6 +86,33 @@ const ELK_OPTIONS = {
  * accepted and unused.
  */
 export function buildJustificationGraph(spec, _fields = {}, view, orientation = 'horizontal') {
+  // The interface, the geometry report and an export all lay out the same diagram again and again, and a big
+  // one takes a second: the last few layouts are kept, keyed by the diagram's content and the orientation.
+  // What is returned is read, never changed.
+  let key
+  try {
+    key = `${orientation}|${JSON.stringify(spec)}`
+  } catch {
+    key = null
+  }
+  if (key !== null && cache.has(key)) {
+    const hit = cache.get(key)
+    cache.delete(key)
+    cache.set(key, hit)
+    return hit
+  }
+  const built = layOut(spec, orientation)
+  if (key !== null) {
+    cache.set(key, built)
+    if (cache.size > CACHE_SIZE) cache.delete(cache.keys().next().value)
+  }
+  return built
+}
+
+const CACHE_SIZE = 6
+const cache = new Map()
+
+function layOut(spec, orientation) {
   const errors = validateJustification(spec)
   const hints = hintsOfJustification(spec)
   const vertical = orientation !== 'horizontal'
@@ -113,16 +140,51 @@ export function buildJustificationGraph(spec, _fields = {}, view, orientation = 
     hints.push(tEn('jhint.tooLarge', { n: nodes.length, limit: SCALE_HINT_NODES }))
   }
 
+  // ── where each node stands ──
+  // A fact or a norm is a leaf and may support things in several issues. It stays one node in the data,
+  // and is drawn once in every issue that uses it (a copy carries the id of the node it copies, and the
+  // reader sees it is the same one): the issue box then holds all it needs, and no line has to run across
+  // the picture to a fact that stands in another box. A leaf that only supports things in one issue stands
+  // in that issue, wherever it says its own `groupId` is; one that supports only unboxed nodes stays where
+  // it says.
+  const nodeById = new Map(nodes.map((n) => [n.id, n]))
+  const isBoxed = (gid) => groups.some((g) => g.id === gid)
+  const homeOf = (n) => (isBoxed(n.groupId) ? n.groupId : null)
+  const placements = []
+  const standsIn = new Map() // node id -> its placements
+  for (const n of nodes) {
+    let homes = [homeOf(n)]
+    if (n.kind === 'fact' || n.kind === 'norm') {
+      const used = []
+      for (const k of links) {
+        const g = k.from === n.id ? homeOf(nodeById.get(k.to)) : null
+        if (g !== null && !used.includes(g)) used.push(g)
+      }
+      if (used.length) homes = used.includes(homes[0]) ? [homes[0], ...used.filter((g) => g !== homes[0])] : used
+    }
+    const mine = homes.map((g, j) => ({ pid: j === 0 ? n.id : `${n.id}~${g}`, node: n, group: g, copyOf: j === 0 ? null : n.id }))
+    standsIn.set(n.id, mine)
+    placements.push(...mine)
+  }
+  // The placement a link meets at each end: a copy is chosen by the issue of the node at the other end
+  const pidAt = (id, otherId) => {
+    const mine = standsIn.get(id)
+    if (mine.length === 1) return mine[0].pid
+    const g = homeOf(nodeById.get(otherId))
+    return (mine.find((m) => m.group === g) ?? mine[0]).pid
+  }
+  const ends = links.map((k) => ({ from: pidAt(k.from, k.to), to: pidAt(k.to, k.from) }))
+
   // ── the issues, in the order written; whoever belongs to none is laid above them ──
-  const boxed = groups.map((g) => ({ group: g, members: nodes.filter((n) => n.groupId === g.id) })).filter((c) => c.members.length)
-  const loose = nodes.filter((n) => !boxed.some((c) => c.group.id === n.groupId))
-  const camps = boxed.length ? boxed : [{ group: null, members: nodes }]
+  const boxed = groups.map((g) => ({ group: g, members: placements.filter((m) => m.group === g.id) })).filter((c) => c.members.length)
+  const loose = placements.filter((m) => m.group === null)
+  const camps = boxed.length ? boxed : [{ group: null, members: placements }]
   const top = boxed.length && loose.length ? { group: null, members: loose } : null
 
   // ── sizes and label boxes, in the frame (transposed when the picture runs left to right) ──
   const sizes = new Map(nodes.map((n) => [n.id, sizeOf(n)]))
-  const frameSize = (n) => {
-    const { w, h } = sizes.get(n.id)
+  const frameSize = (m) => {
+    const { w, h } = sizes.get(m.node.id)
     return vertical ? { w, h } : { w: h, h: w }
   }
   const labelFrame = links.map((k) => {
@@ -133,19 +195,21 @@ export function buildJustificationGraph(spec, _fields = {}, view, orientation = 
 
   // ── ① each issue by ELK, on its own, compact ──
   const layCamp = (members, ci) => {
-    const inside = new Set(members.map((n) => n.id))
+    const inside = new Set(members.map((m) => m.pid))
     const laid = elkLayoutSync({
       id: `issue${ci}`,
       layoutOptions: ELK_OPTIONS,
-      children: members.map((n) => ({ id: n.id, width: frameSize(n).w, height: frameSize(n).h })),
+      children: members.map((m) => ({ id: m.pid, width: frameSize(m).w, height: frameSize(m).h })),
       // every link the other way round: the supported node is the parent, so the conclusion stands on top
       edges: links
         .map((k, i) => ({ k, i }))
-        .filter(({ k }) => inside.has(k.from) && inside.has(k.to))
+        .filter(({ i }) => inside.has(ends[i].from) && inside.has(ends[i].to))
         .map(({ k, i }) => ({
           id: `k${i}`,
-          sources: [k.to],
-          targets: [k.from],
+          // a norm is the parent of what it is the basis of: it stands one layer above its elements, beside the
+          // issue's conclusion, and not among the facts where its line had to go round to reach them
+          sources: [stanceOf(k) === 'basis' ? ends[i].from : ends[i].to],
+          targets: [stanceOf(k) === 'basis' ? ends[i].to : ends[i].from],
           ...(labelFrame[i] ? { labels: [{ id: `l${i}`, text: k.label, width: labelFrame[i].width, height: labelFrame[i].height }] } : {}),
         })),
     })
@@ -199,28 +263,28 @@ export function buildJustificationGraph(spec, _fields = {}, view, orientation = 
   const nodeRects = [...placed.values()]
   const titles = boxes.map((b) => titleBoxOf(b, b.label, vertical))
   const borders = boxes.flatMap(edgesOfBox)
-  const nodeGroup = new Map(nodes.map((n) => [n.id, boxes.some((bx) => bx.groupId === n.groupId) ? n.groupId : null]))
+  const nodeGroup = new Map(placements.map((m) => [m.pid, boxes.some((bx) => bx.groupId === m.group) ? m.group : null]))
   const boxOf = new Map(boxes.map((bx) => [bx.groupId, bx]))
   const touches = (r, bx) => r.x < bx.x + bx.w && bx.x < r.x + r.w && r.y < bx.y + bx.h && bx.y < r.y + r.h
   const segTouches = ([p, q], bx) =>
     Math.max(p[0], q[0]) >= bx.x && Math.min(p[0], q[0]) <= bx.x + bx.w && Math.max(p[1], q[1]) >= bx.y && Math.min(p[1], q[1]) <= bx.y + bx.h
-  const dist = (k) => {
-    const a = placed.get(k.from)
-    const b = placed.get(k.to)
+  const dist = (i) => {
+    const a = placed.get(ends[i].from)
+    const b = placed.get(ends[i].to)
     return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
   }
   // Short ones first, so the long ones go round them
-  const order = links.map((k, i) => i).sort((a, b) => dist(links[a]) - dist(links[b]) || a - b)
+  const order = links.map((k, i) => i).sort((a, b) => dist(a) - dist(b) || a - b)
   const drawn = new Array(links.length)
   const done = []
   for (const i of order) {
     const k = links[i]
-    const a = placed.get(k.from)
-    const b = placed.get(k.to)
+    const a = placed.get(ends[i].from)
+    const b = placed.get(ends[i].to)
     // Links of one stance into one node may run along each other and share the port into it
     const routes = done.map((c) => {
       const o = links[c.index]
-      return { points: c.points, share: o.to === k.to && stanceOf(o) === stanceOf(k) }
+      return { points: c.points, share: ends[c.index].to === ends[i].to && stanceOf(o) === stanceOf(k) }
     })
     // A link inside one issue is first sought inside that issue's box only (a link between two issues,
     // in the rectangle around its two ends): the router's grid grows with
@@ -233,7 +297,9 @@ export function buildJustificationGraph(spec, _fields = {}, view, orientation = 
       return { x: x0, y: y0, w: Math.max(a.x + a.w, b.x + b.w) + m - x0, h: Math.max(a.y + a.h, b.y + b.h) + m - y0 }
     }
     const box =
-      nodeGroup.get(k.from) && nodeGroup.get(k.from) === nodeGroup.get(k.to) ? boxOf.get(nodeGroup.get(k.from)) : around(SEARCH_MARGIN)
+      nodeGroup.get(ends[i].from) && nodeGroup.get(ends[i].from) === nodeGroup.get(ends[i].to)
+        ? boxOf.get(nodeGroup.get(ends[i].from))
+        : around(SEARCH_MARGIN)
     const route = (inBox) =>
       routeLink({
         from: a,
@@ -271,8 +337,11 @@ export function buildJustificationGraph(spec, _fields = {}, view, orientation = 
     const k = links[c.index]
     return {
       id: `k:${c.index}`,
-      from: k.from,
-      to: k.to,
+      // the placements the line runs between (a copy has its own id); the nodes they stand for
+      from: ends[c.index].from,
+      to: ends[c.index].to,
+      fromNode: k.from,
+      toNode: k.to,
       stance: stanceOf(k),
       label: k.label ?? null,
       points: c.points,
@@ -301,24 +370,30 @@ export function buildJustificationGraph(spec, _fields = {}, view, orientation = 
     links.filter((k) => k.to === id).map((k) => ({ id: k.from, stance: stanceOf(k), text: nameOf.get(k.from), label: k.label ?? null }))
   const supportsOf = (id) =>
     links.filter((k) => k.from === id).map((k) => ({ id: k.to, stance: stanceOf(k), text: nameOf.get(k.to), label: k.label ?? null }))
-  const rfNodes = nodes.map((n) => {
-    const p = real.placed.get(n.id)
+  const rfNodes = placements.map((m) => {
+    const n = m.node
+    const p = real.placed.get(m.pid)
     return {
-      id: n.id,
+      id: m.pid,
       type: 'jnode',
       position: { x: p.x, y: p.y },
       data: {
         node: n,
+        // set on a copy: the id of the node it copies. `copies` is how many places the node is drawn in.
+        copyOf: m.copyOf,
+        copies: standsIn.get(n.id).length,
+        // the issue this placement stands in (a copy's differs from the node's own `groupId`)
+        groupId: m.group,
         w: p.w,
         h: p.h,
         // the width of the text column the size was computed for; the node draws its text in it
         textW: sizes.get(n.id).textW,
-        groupLabel: groupById.get(n.groupId)?.label ?? '',
+        groupLabel: groupById.get(m.group)?.label ?? '',
         sources: (n.sourceIds ?? []).map((id) => sourceById.get(id)).filter(Boolean),
         sourceCount: (n.sourceIds ?? []).filter((id) => sourceById.has(id)).length,
         grounds: groundsOf(n.id),
         supports: supportsOf(n.id),
-        layer: levelOf.get(n.id),
+        layer: levelOf.get(m.pid),
         vertical,
       },
     }
@@ -338,6 +413,6 @@ export function buildJustificationGraph(spec, _fields = {}, view, orientation = 
     connections,
     groupBoxes: real.stageBoxes.map((b) => ({ groupId: b.groupId, label: b.label, x: b.x, y: b.y, w: b.w, h: b.h })),
     size,
-    stats: { nodes: nodes.length, links: links.length, groups: boxes.length, layers, widest, kinds },
+    stats: { nodes: nodes.length, copies: placements.length - nodes.length, links: links.length, groups: boxes.length, layers, widest, kinds },
   }
 }
