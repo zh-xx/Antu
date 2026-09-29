@@ -7,7 +7,7 @@
 //
 //  Why a file of its own: the registry keeps "knowledge" and "components" apart.
 //  Components are .jsx and only a browser can load them; MCP needs the rules and cannot load components.
-//  Once the two are apart, MCP no longer hand-writes a dispatch table of its own (see known-issues item 2).
+//  Once the two are apart, MCP no longer hand-writes a dispatch table of its own.
 //
 //  Note: **the validation rules are not here**. There is only one copy, in timeline/grid.js (errors are collected along the way while laying out),
 //  and this file only wraps it in a public interface, repeating not one line.
@@ -19,7 +19,7 @@ import { fitZoom } from '../../core/canvas.js'
 
 /**
  * Field metadata: **the agent-facing reference is generated from here**, not copied by hand
- * (this project has been bitten four times by writing one fact in two places; see known-issues item 2).
+ * (this project has been bitten four times by writing one fact in two places).
  * **Fixed English, not following the interface language**: it goes into a model's context via MCP's
  * antu_schema, where English costs fewer tokens and needs no second copy (see core/i18n.js).
  * req = required; ty = type; note = one-line explanation an agent can act on. Only **field-level**

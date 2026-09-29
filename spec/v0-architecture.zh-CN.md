@@ -172,7 +172,7 @@ JSON (信封) ──> [校验门卫] ──> 按大类路由 ──> 注册表�
 - 新增画法 = 注册一个子类渲染器，**核心本体不动**；
 - 底层渲染技术：React Flow（已选定，事实图已在用）。
 - 布局：**各子类自负**，不用统一布局库。事实图的时间图自己算网格（`src/renderers/fact/timeline/grid.js`）；
-  程序图的流程图用 ELK 的分层算法（elkjs，`src/renderers/procedure/flow/elk.js`），是按实测交叉数在 dagre 与手写排布之间选出的（见 `spec/procedure/schema-draft.zh-CN.md` §6.1）；关系图大概率也会用它。
+  程序图的流程图把每个阶段单独交给 ELK 的分层算法排（elkjs，`src/renderers/procedure/flow/elk.js`），是按实测交叉数在 dagre 与手写排布之间选出的，阶段之间的线由自写的正交寻路走（`flow/router.js`，见 `spec/procedure/schema-draft.zh-CN.md` §6.1）；关系图大概率两者都会复用。
 - 渲染器内部负责"语义 → React Flow nodes/edges"的翻译（翻译发生在渲染器内，不在规范内）。
 
 ## 6.1 产物形态：一个自包含的 HTML
@@ -237,7 +237,7 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
 
 ### 待定（动手前确认）
 - [ ] `specVersion` 的形态（有无必要、怎么演进）
-- [x] fact 内容层 schema：**已定稿**（含 label / summary / detail 的分工，见 `spec/fact/schema-draft.md`）。其余类型未开始
+- [x] fact 内容层 schema：**已定稿**（含 label / summary / detail 的分工，见 `spec/fact/schema-draft.md`）
 - [x] procedure 内容层 schema：**v1 已确认**（见 `spec/procedure/schema-draft.zh-CN.md`）
 - [ ] relationship 内容层 schema 字段细节
 - [x] 校验层报错信息的形态：**已实现**。每条错误带字段路径与事件 id（如 `slots[0].events[1] (ev-2)`），说明哪里不对、怎么改

@@ -329,4 +329,4 @@ looking only at "the content area has ink" would pass a margin added on one side
 after switching to an inline SVG, the extra 6px it takes was forgotten in the content size and it was cropped out of the frame.
 Both assertions **have been verified to be able to fail** (set `ARROW_EXTENT` to 0 and they report an error with exit code 1).
 
-`spec/known-issues.md` repeatedly stresses "what can be judged automatically must not be left to a human", and export is exactly that kind of thing.
+This project's standing practice is that "what can be judged automatically must not be left to a human", and export is exactly that kind of thing.

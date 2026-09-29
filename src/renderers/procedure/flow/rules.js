@@ -5,7 +5,7 @@
 //  not compute coordinates, does not build nodes.
 //
 //  Why a layer of its own: on the fact side validation and layout are stirred
-//  together (known-issues item 3), with two consequences — "validate without
+//  together, with two consequences — "validate without
 //  laying out" could not be done, and "the data is wrong" and "this version will
 //  not fit" came out as the same sentence, so the reader could not tell whether
 //  to fix the data or switch kind. procedure separated them from day one: the

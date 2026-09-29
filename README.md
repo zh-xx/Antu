@@ -93,11 +93,16 @@ npm run diagram -- examples/fact/elevator-smoking-case.en.json
 
 An agent can read the specification, view examples, validate, compute geometry, produce output, and take a screenshot to check the result. Validation confirms only that the JSON is well formed; it cannot confirm that the diagram is satisfactory, so taking a screenshot is a necessary step. The reference material for an agent is 4.5k tokens (a 2.9k-character field table plus a 4.0k-character mechanism note).
 
-Without MCP, read the documents in this order: [spec/fact/schema-draft.md](spec/fact/schema-draft.md) (field definitions), then [spec/fact/timeline-rules.md](spec/fact/timeline-rules.md) (event placement rules), and consult [examples/fact/elevator-smoking-case.en.json](examples/fact/elevator-smoking-case.en.json).
+Without MCP, read the documents in this order.
+
+- **Fact (timeline)**: [spec/fact/schema-draft.md](spec/fact/schema-draft.md) (field definitions), then [spec/fact/timeline-rules.md](spec/fact/timeline-rules.md) (event placement rules), and consult [examples/fact/elevator-smoking-case.en.json](examples/fact/elevator-smoking-case.en.json).
+- **Procedure (flowchart)**: [spec/agent/procedure/guide.md](spec/agent/procedure/guide.md) (a one-page note on the mechanism), then [spec/procedure/schema-draft.md](spec/procedure/schema-draft.md) (field definitions and layout rules), and consult [examples/agent/procedure/7-rules.en.json](examples/agent/procedure/7-rules.en.json) or a real contract such as [examples/procedure/05-premises-lease.en.json](examples/procedure/05-premises-lease.en.json).
 
 ## Design documents
 
-Under `spec/`, written for human readers: architecture [v0-architecture.md](spec/v0-architecture.md), the seven source types [source-schema-draft.md](spec/source-schema-draft.md), MCP server [mcp-server.md](spec/mcp-server.md).
+Under `spec/`, written for human readers: architecture [v0-architecture.md](spec/v0-architecture.md), the seven source types [source-schema-draft.md](spec/source-schema-draft.md), the fact diagram ([spec/fact/](spec/fact/)), the procedure diagram [spec/procedure/schema-draft.md](spec/procedure/schema-draft.md), MCP server [mcp-server.md](spec/mcp-server.md). The notes written for agents are under [spec/agent/](spec/agent/).
+
+Known problems and requests are tracked as [GitHub issues](https://github.com/zh-xx/Antu/issues). Working rules for contributors are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

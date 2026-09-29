@@ -91,11 +91,16 @@ npm run diagram -- examples/fact/elevator-smoking-case.zh-CN.json
 
 agent 可以读取规范、查看示例、校验、计算几何、生成成品，并截图核对效果。校验仅能确认 JSON 合法，不能确认成图效果合格，因此截图核对是必要步骤。agent 的参考资料为 4.5k token（字段表 2.9k 字符 + 机制说明 4.0k 字符）。
 
-未接入 MCP 时，按以下顺序阅读：[spec/fact/schema-draft.md](spec/fact/schema-draft.md)（字段定义）、[spec/fact/timeline-rules.md](spec/fact/timeline-rules.md)（事件排布规则），并参考 [examples/fact/elevator-smoking-case.zh-CN.json](examples/fact/elevator-smoking-case.zh-CN.json)。
+未接入 MCP 时，按以下顺序阅读。
+
+- **事实图（时间图）**：[spec/fact/schema-draft.md](spec/fact/schema-draft.md)（字段定义）、[spec/fact/timeline-rules.md](spec/fact/timeline-rules.md)（事件排布规则），并参考 [examples/fact/elevator-smoking-case.zh-CN.json](examples/fact/elevator-smoking-case.zh-CN.json)。
+- **程序图（流程图）**：[spec/agent/procedure/guide.md](spec/agent/procedure/guide.md)（一页机制说明）、[spec/procedure/schema-draft.zh-CN.md](spec/procedure/schema-draft.zh-CN.md)（字段定义与排布规则），并参考 [examples/agent/procedure/7-rules.zh-CN.json](examples/agent/procedure/7-rules.zh-CN.json)，或一份真实合同，如 [examples/procedure/05-premises-lease.zh-CN.json](examples/procedure/05-premises-lease.zh-CN.json)。
 
 ## 设计文档
 
-`spec/` 目录下，供人阅读：架构 [v0-architecture.md](spec/v0-architecture.md)、来源的 7 类字段 [source-schema-draft.md](spec/source-schema-draft.md)、MCP 服务端 [mcp-server.md](spec/mcp-server.md)。
+`spec/` 目录下，供人阅读：架构 [v0-architecture.md](spec/v0-architecture.md)、来源的 7 类字段 [source-schema-draft.md](spec/source-schema-draft.md)、事实图 [spec/fact/](spec/fact/)、程序图 [spec/procedure/schema-draft.zh-CN.md](spec/procedure/schema-draft.zh-CN.md)、MCP 服务端 [mcp-server.md](spec/mcp-server.md)。给 agent 看的说明在 [spec/agent/](spec/agent/)。
+
+已知问题与需求在 [GitHub issues](https://github.com/zh-xx/Antu/issues) 里管理。贡献者的做事规矩见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## License
 

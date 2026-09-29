@@ -438,7 +438,7 @@ nodes[2] (n-3): dead end; a node that is neither end nor note must have an outgo
 | 8 | self-loops forbidden (`from === to`) | error |
 | 9 | duplicate edges forbidden (the same `from` + `to` + `condition` appearing twice) | error |
 | 10 | at least one entry node with in-degree 0; the entries are the `start` nodes (with none, the first node without an incoming edge). Any other node without an incoming edge, apart from a `note` or a rule's `endId`, is an orphan (issue #18) | error |
-| 11 | **every node must be reachable from the entry** (unreachable means silently dropped, invisible in the diagram) | error |
+| 11 | **every node must be reachable from an entry, a `start` node** (a cycle nothing leads into is otherwise silently dropped, invisible in the diagram) | error |
 | 12 | at least one `kind = "end"` | error |
 | 13 | a node that is neither `end` nor `note` must have an outgoing edge (the flow breaks here) | error |
 | 14 | a `kind = "decision"` node must have ≥ 2 outgoing edges | error |
@@ -493,11 +493,14 @@ colours, FlowRenderer.jsx and its node / link / stage-band components), with uni
 `test/procedure-layout.test.mjs` and a browser check in `npm run verify`. Done and not done:
 
 ```
-Done     placement and routing by ELK's layered algorithm (elkjs, flow/elk.js): layering,
-         crossing minimisation, node placement, orthogonal routing, room reserved for every
-         condition label; stages as boxes (ELK compound nodes); main-line edges prioritised for straightness;
-         back-edge detection (drawn dashed), merging several edges into the same target, both
-         orientations; the React renderer (six shapes by kind, three colours by outcome,
+Done     stages as columns (flow/columns.js): each stage is laid out on its own by ELK's layered
+         algorithm (elkjs, flow/elk.js) with the main-line edges prioritised for straightness, a much taller
+         stage is folded into two columns, stages can be mirrored to free the side facing the next one;
+         links between stages are routed by our own orthogonal router (flow/router.js: fewest bends,
+         then shortest, clear of nodes, stage names and labels, a straight run of 11px into every node);
+         room reserved for every condition label; back-edge detection (drawn dashed), merging several edges
+         into the same target, both orientations; the rules as a table under the diagram
+         (flow/ruleTable.js); the React renderer (six shapes by kind, three colours by outcome,
          hover / pinned overlay with provenance), nodes sized to their text, stage boxes, the control capsule (§6.2),
          image export
 Not done **placing note nodes** (they take no part in the flow; ELK places them like any
@@ -601,7 +604,14 @@ damages …), 05 has 4, 01 has 4. Several ends in one layer sit side by side in 
 | Node detail | toggle | whether to show the `detail` line |
 | Main-line highlight | toggle | bolden the main edges |
 | Stage boxes | toggle | available when `stages` is written |
+| Rule table | toggle | available when `rules` is written; hides the table and the "N rules" badges together |
 | Export image | action | reuses the export the canvas shell already has |
+
+**What is remembered.** Orientation and the five toggles (condition labels, node detail, main-line
+highlight, stage boxes, rule table) are remembered **per diagram**, keyed by the title: what to show is a
+choice about this data (many diagrams have no stages at all), so turning stages off on one diagram
+must not turn them off on every other. Link style is one choice for every diagram. A toggle whose content
+the diagram does not have is not shown.
 
 The rules for the four control forms (menu / toggle / segmented / action) follow §4.2 of
 `spec/fact/rendering.md`; no separate set is invented. The language switch sits beside them, the

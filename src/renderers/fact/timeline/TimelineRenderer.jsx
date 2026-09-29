@@ -11,7 +11,7 @@
 //
 //  Presentation state belongs here, not in App: App should only know "there is a spec, look up
 //  the renderer by type". (These states used to live in App, which forced App to pass 9 props to
-//  the renderer, 8 of them fact/timeline concepts. See known-issues item 15.)
+//  the renderer, 8 of them fact/timeline concepts.)
 // ============================================================
 
 import { useMemo, useState } from 'react'

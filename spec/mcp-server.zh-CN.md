@@ -62,7 +62,7 @@ agent 和人一样，**看不见自己画出来的东西**。校验全过、几�
 在 `spec/agent/<大类>/` 放一份 `guide.md`、在 `examples/agent/<大类>/` 放几份小示例。
 **工具那边一行都不用改。**
 | `antu_validate` | 校验，逐条报错（带字段路径与事件 id） | —— | 不要 |
-| `antu_layout` | 算几何：内容尺寸、适配缩放、建议方向、每个视角能不能排下 | —— | 不要 |
+| `antu_layout` | 算几何：内容尺寸、适配缩放、建议方向、每个视角能不能排下。程序图的建议方向固定是图打开时的方向（竖排），哪个方向更适合屏幕另外报 | —— | 不要 |
 | `antu_render` | 生成自包含 HTML | —— | 不要 |
 | `antu_preview` | 截成 PNG 返回 | 一张图 | **要** |
 
@@ -93,7 +93,7 @@ antu://agent/<大类>/guide    那个大类的机制说明（现在只有 antu:/
 只此一个。`spec/agent/` 下有什么，这里就有什么；上一层的东西一律不出现。
 
 **验证器里有断言守着这条线**：MCP 的服务端代码里不许出现任何一份人类文档的名字
-（spec/fact/schema-draft.md、spec/known-issues.md……）。
+（spec/fact/schema-draft.md、spec/v0-architecture.md……）。
 
 ### 为什么不手抄一份"给 agent 的规范"
 

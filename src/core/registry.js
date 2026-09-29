@@ -30,7 +30,7 @@ const registry = new Map()
  * (how to validate, how to lay out). The split exists because the Node-side MCP
  * needs "how fact is validated, which kinds exist", yet cannot load .jsx. It
  * used to keep a hand-written dispatch table of its own, so the same fact lived
- * in two places (see known-issues item 2). Now both sides read this one table.
+ * in two places. Now both sides read this one table.
  */
 const knowledge = new Map()
 

@@ -65,7 +65,7 @@ than an empty table (an empty table reads as "this type exists, it is just empty
 | `antu_guide` | One page of mechanism notes: where an event is drawn, how views change, the "one event per cell" limit | 4042 characters ≈ 2.6k tokens | no |
 | `antu_examples` | Lists examples (by default the six small ones in `examples/agent/fact/`); pass `file` to fetch any one | about 1 KB each | no |
 | `antu_validate` | Validates, reporting each problem (with field path and event id) | — | no |
-| `antu_layout` | Computes the geometry: content size, fit zoom, suggested orientation, whether each view fits | — | no |
+| `antu_layout` | Computes the geometry: content size, fit zoom, suggested orientation, whether each view fits. For a procedure the suggested orientation is always the one the diagram opens with (vertical), and which orientation fits a screen better is reported apart | — | no |
 | `antu_render` | Produces the self-contained HTML | — | no |
 | `antu_preview` | Returns a PNG screenshot | one image | **yes** |
 
@@ -109,7 +109,7 @@ Only that one. Whatever is under `spec/agent/` is here; nothing from the level a
 ever appears.
 
 **An assertion in the verifier guards that line**: the name of no human-facing document
-(`spec/fact/schema-draft.md`, `spec/known-issues.md`, …) may appear in the MCP server
+(`spec/fact/schema-draft.md`, `spec/v0-architecture.md`, …) may appear in the MCP server
 code.
 
 ### Why not hand-copy a "specification for agents"
