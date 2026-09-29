@@ -44,6 +44,18 @@ export function validate(spec) {
 }
 
 /**
+ * What validation does not call an error but the author should see (for fact: a view that does
+ * not fit, so it will be left out of the view dropdown). Each type supplies its own (knowledge.notes).
+ */
+export function notesOf(spec) {
+  try {
+    return knowledgeOf(spec?.type)?.notes?.(spec) ?? []
+  } catch (e) {
+    return [`the notes layer itself threw: ${e.message}`]
+  }
+}
+
+/**
  * Geometry report: compute only, no rendering.
  * This is the main basis on which an agent judges whether the diagram will be too wide
  * or too empty.

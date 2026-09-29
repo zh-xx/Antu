@@ -127,12 +127,13 @@ export const zh = {
   // ---------- validation errors and hints: fixed English, not translated here, taken straight from the English dictionary ----------
   // The spread rather than rewriting each entry makes "there is only one English copy of the errors" obvious in the code.
   //
-  // One prefix per major type: err. (fact field rules), perr. (procedure errors), phint. (procedure hints).
+  // One prefix per major type: err. (fact field rules), perr. (procedure errors), phint. (procedure hints),
+  // note. (what validation passes but the author should see, e.g. a view that does not fit).
   // Validation error keys for a new major type get their own prefix, and **that prefix must be added here too**,
   // or the key-consistency check reports "zh is missing a key", which is exactly its job.
   ...Object.fromEntries(
     Object.keys(en)
-      .filter((k) => k.startsWith('err.') || k.startsWith('perr.') || k.startsWith('phint.'))
+      .filter((k) => k.startsWith('err.') || k.startsWith('perr.') || k.startsWith('phint.') || k.startsWith('note.'))
       .map((k) => [k, en[k]]),
   ),
 }

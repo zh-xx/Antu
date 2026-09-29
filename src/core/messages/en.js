@@ -205,6 +205,8 @@ export const en = {
     `nodes (${id}): "${label}" has no incoming edge and is not a start, so nothing leads to it: it would float beside the flow. ` +
     'If it is a consequence (a breach, a resignation, a right to terminate), write it as a rule in `rules`; ' +
     'if it belongs to the flow, add the edge that leads to it',
+  'note.viewBlocked': ({ label, reason }) =>
+    `view "${label}" does not fit, so it will not appear in the view dropdown: ${reason}`,
   'perr.noEnd': 'no node has `kind: "end"` (a flow needs an end)',
   'perr.deadEnd': ({ id, label }) =>
     `nodes (${id}): "${label}" is a dead end: it is neither end nor note but has no outgoing edge. ` +

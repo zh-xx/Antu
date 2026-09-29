@@ -64,7 +64,7 @@ than an empty table (an empty table reads as "this type exists, it is just empty
 | `antu_schema` | Field table: what is required, of what type, one line of explanation | 2858 characters ≈ 1.9k tokens | no |
 | `antu_guide` | One page of mechanism notes: where an event is drawn, how views change, the "one event per cell" limit | 4042 characters ≈ 2.6k tokens | no |
 | `antu_examples` | Lists examples (by default the six small ones in `examples/agent/fact/`); pass `file` to fetch any one | about 1 KB each | no |
-| `antu_validate` | Validates, reporting each problem (with field path and event id) | — | no |
+| `antu_validate` | Validates, reporting each problem (with field path and event id); when it passes, notes each view that does not fit (not an error, but that view is left out of the view dropdown) | — | no |
 | `antu_layout` | Computes the geometry: content size, fit zoom, suggested orientation, whether each view fits. For a procedure the suggested orientation is always the one the diagram opens with (vertical), and which orientation fits a screen better is reported apart | — | no |
 | `antu_render` | Produces the self-contained HTML | — | no |
 | `antu_preview` | Returns a PNG screenshot | one image | **yes** |

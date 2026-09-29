@@ -16,6 +16,7 @@
 import { buildGrid, viewsOf } from './timeline/grid.js'
 import { buildFactGraph } from './timeline/layout.js'
 import { fitZoom } from '../../core/canvas.js'
+import { tEn } from '../../core/i18n.js'
 
 /**
  * Field metadata: **the agent-facing reference is generated from here**, not copied by hand
@@ -120,6 +121,19 @@ export const factKnowledge = {
    * so the two can never tell different stories.
    */
   validate: (spec) => buildGrid(spec).errors,
+
+  /**
+   * What validation cannot call an error: a view that does not fit. `validate` checks the data
+   * once (through the first view), and a view whose events collide in a lane is by design left out
+   * of the view dropdown rather than rejected, so it is not an error. But it must not go unseen
+   * either: with only the errors, a data set whose second view could never be drawn came back as
+   * "passed". Every view is laid out here and the ones that do not fit are named.
+   */
+  notes: (spec) =>
+    viewsOf(spec)
+      .map((view) => ({ label: view.label, reason: buildGrid(spec, view).errors[0] }))
+      .filter((v) => v.reason)
+      .map((v) => tEn('note.viewBlocked', v)),
 
   /**
    * The label card's third line: size and time span (the type is already in the line above).
