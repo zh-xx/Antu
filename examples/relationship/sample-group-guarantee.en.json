@@ -1,0 +1,137 @@
+{
+  "type": "relationship",
+  "title": "Xinghe Group · Shareholdings and guarantees",
+  "asOf": "2024-06-30",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Plaintiff side"
+    },
+    {
+      "id": "g-2",
+      "label": "Defendant side"
+    }
+  ],
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "company",
+      "label": "Huafeng Investment Co.",
+      "role": "Lender",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-2",
+      "kind": "person",
+      "label": "Mr. Chen",
+      "role": "Huafeng's controlling shareholder",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-3",
+      "kind": "company",
+      "label": "Xinghe Group Co.",
+      "role": "Borrower",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-4",
+      "kind": "person",
+      "label": "Li Ming",
+      "role": "Chairman of Xinghe Group",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-5",
+      "kind": "company",
+      "label": "Xinghe Trading Co.",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-6",
+      "kind": "company",
+      "label": "Xinghe Logistics Co.",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-7",
+      "kind": "organization",
+      "label": "Rong'an Guarantee Co.",
+      "role": "Guarantor"
+    },
+    {
+      "id": "e-8",
+      "kind": "government",
+      "label": "Municipal Market Regulation Bureau",
+      "role": "Registration authority"
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-2",
+      "to": "e-1",
+      "kind": "equity",
+      "share": 70
+    },
+    {
+      "id": "r-2",
+      "from": "e-4",
+      "to": "e-3",
+      "kind": "equity",
+      "share": 55
+    },
+    {
+      "id": "r-3",
+      "from": "e-3",
+      "to": "e-5",
+      "kind": "equity",
+      "share": 100
+    },
+    {
+      "id": "r-4",
+      "from": "e-3",
+      "to": "e-6",
+      "kind": "equity",
+      "share": 80
+    },
+    {
+      "id": "r-5",
+      "from": "e-1",
+      "to": "e-3",
+      "kind": "debt",
+      "amount": "CNY 30,000,000",
+      "label": "Loan"
+    },
+    {
+      "id": "r-6",
+      "from": "e-7",
+      "to": "e-1",
+      "kind": "guarantee",
+      "label": "Joint and several guarantee",
+      "secures": "r-5"
+    },
+    {
+      "id": "r-7",
+      "from": "e-4",
+      "to": "e-1",
+      "kind": "guarantee",
+      "label": "Personal joint and several guarantee",
+      "secures": "r-5"
+    },
+    {
+      "id": "r-8",
+      "from": "e-3",
+      "to": "e-7",
+      "kind": "contract",
+      "label": "Counter-guarantee contract"
+    },
+    {
+      "id": "r-9",
+      "from": "e-8",
+      "to": "e-3",
+      "kind": "other",
+      "label": "Registration"
+    }
+  ]
+}

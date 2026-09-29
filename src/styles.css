@@ -238,6 +238,7 @@
 /* 渲染器的根容器：只负责把自己撑满，画布本身在外壳里 */
 .antu-fact,
 .antu-procedure { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
+.antu-relationship { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
 
 .antu-canvas {
   position: relative;      /* 必须留：里面的缩放控件、缩略图、控制胶囊都相对它绝对定位 */
@@ -1014,3 +1015,90 @@
   pointer-events: none;
 }
 .antu-pn.is-lit .antu-pn-shape { filter: drop-shadow(0 0 6px rgba(245, 158, 11, .8)); }
+
+/* ==============================================================
+   关系图（relationship/graph）
+   一个当事方是一个盒子：形状与描边由类型定（EntityNode），颜色由 palette.js 以属性挂上，
+   导出图片才带得走；这里只放屏幕上才有的效果：悬停阴影、焦点环、被看着的那个当事方之外的淡出。
+   连线与标签在一层自画的 SVG 里（ConnectionLayerNode），压在当事方下面；分组框在最底下。
+   ============================================================== */
+.antu-rn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transition: opacity .15s;
+}
+.antu-rn.is-dim { opacity: .35; }
+.antu-rn-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-rn-shape { transition: stroke .15s, filter .15s; }
+.antu-rn:hover .antu-rn-shape { filter: drop-shadow(0 3px 8px rgba(15, 23, 42, .12)); }
+.antu-rn.is-lit .antu-rn-shape { filter: drop-shadow(0 0 6px rgba(47, 111, 237, .55)); }
+.react-flow__node-rnode:hover { z-index: 10 !important; }
+.react-flow__node.selected .antu-rn-shape { stroke-width: 2; }
+.antu-rn:focus-visible .antu-rn-shape { stroke: #2f6fed; stroke-width: 2; }
+.antu-rn-body { position: relative; flex: none; text-align: center; pointer-events: none; }
+/* 字号行高必须与 relationship/graph/metrics.js 一致（名字 14/20，角色 12/16） */
+.antu-rn-label {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--antu-text);
+  overflow-wrap: anywhere;
+}
+.antu-rn-role {
+  margin-top: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--antu-text-2);
+}
+.antu-rn .antu-preview { width: 280px; left: 50%; margin-left: -140px; text-align: left; }
+.antu-rn .antu-preview.right,
+.antu-rn .antu-preview.left { margin-left: 0; }
+.antu-rn .antu-preview.right { left: calc(100% + 10px); }
+.antu-rn .antu-preview.left { left: auto; }
+/* 浮层里"这个当事方和谁有什么关系" */
+.antu-rn-relations { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+.antu-rn-relation { display: flex; gap: 6px; align-items: baseline; font-size: 12px; line-height: 16px; color: var(--antu-text-2); }
+.antu-rn-relation-arrow { flex: none; width: 14px; text-align: center; color: var(--antu-text-3); }
+.antu-rn-relation-other { flex: none; font-weight: 600; color: var(--antu-text); }
+.antu-rn-relation-text { min-width: 0; overflow-wrap: anywhere; }
+
+.antu-rlinks { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+.antu-rlinks-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-rlink { transition: opacity .15s; }
+.antu-rlabel {
+  position: absolute;
+  box-sizing: border-box;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .85);
+  font-size: 12px;
+  line-height: 16px;
+  color: #334155;
+  text-align: center;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  transition: opacity .15s;
+}
+
+.antu-rgroups { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+.antu-rgroups-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-rgroup-name {
+  position: absolute;
+  font-weight: 650;
+  line-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

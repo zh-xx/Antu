@@ -35,7 +35,7 @@ The split is by **what the diagram expresses and why** (not by visual shape; vis
 
 | type | What it expresses | The legal thinking behind it | Status |
 |---|---|---|---|
-| `relationship` | Who is involved with whom, in what role, under what legal relationship | Defining the parties and the legal relationship | Not started |
+| `relationship` | Who is involved with whom, in what role, under what legal relationship | Defining the parties and the legal relationship | Graph available (schema provisional) |
 | `fact` | The temporal narrative of facts that have occurred | Finding the facts | Timeline available |
 | `procedure` | The procedural path and its possible branches | How procedure operates | Flowchart available |
 | `justification` | Reasoning (argumentation) from norms plus facts to a conclusion | Legal argumentation | **Deferred**; starts once the first three have matured |

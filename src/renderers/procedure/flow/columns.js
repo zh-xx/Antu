@@ -557,7 +557,7 @@ const segsOf = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
  * A spot for a label beside its route: along each segment, the longest first, near the start or
  * in the middle, on either side; clear of nodes, other labels, titles and every link.
  */
-export function placeLabel(points, size, nodeRects, blocks, links, borders = []) {
+export function placeLabel(points, size, nodeRects, blocks, links, borders = [], opts = {}) {
   const { width: w, height: h } = size
   // What is wrong with a spot, weighted: 0 is clear. Past the top or left of the picture (the
   // content grows right and down only) or over a node is worst; over another link or label, or
@@ -592,6 +592,19 @@ export function placeLabel(points, size, nodeRects, blocks, links, borders = [])
           if (!best || bad < best.bad || (bad === best.bad && len > best.len)) best = { bad, len, x: r.x, y: r.y }
         }
       }
+    }
+  }
+  // Where no spot beside the line is clear (a crowded corridor), a diagram may allow the label ON its
+  // line: the middle of a segment, the label's own background hiding the line under it. It only wins
+  // over a beside spot that is worse than this one, and only where the segment is longer than the label.
+  if (opts.onLine) {
+    for (const [p, q] of segsOf(points)) {
+      const horizontal = Math.abs(p[1] - q[1]) < 0.5
+      const len = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1])
+      if (len < (horizontal ? w : h) + 8) continue
+      const r = { x: (p[0] + q[0]) / 2 - w / 2, y: (p[1] + q[1]) / 2 - h / 2, w, h }
+      const bad = badness(r) - 30 + 4
+      if (!best || bad < best.bad) best = { bad, len, x: r.x, y: r.y }
     }
   }
   if (best) return { x: best.x, y: best.y }

@@ -34,7 +34,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 import { REPO, renderToFile } from '../lib/make-html.mjs'
-import { launchBrowser, findChrome } from '../lib/chrome.mjs'
+import { launchBrowser, findChrome, ITEM_SELECTOR } from '../lib/chrome.mjs'
 // The knowledge of every major type must be registered first (plain JS), otherwise
 // validateSpec finds nothing in the table and silently returns "pass". This trap really
 // happened: after moving files, this line was forgotten, bad data was not stopped, and
@@ -53,6 +53,8 @@ import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 import { buildProcedureGraph } from '../../src/renderers/procedure/flow/layout.js'
 import { sizeOf } from '../../src/renderers/procedure/flow/metrics.js'
+import { buildRelationshipGraph } from '../../src/renderers/relationship/graph/layout.js'
+import { translate } from '../../src/core/i18n.js'
 
 const argv = process.argv.slice(2)
 const skipBrowser = argv.includes('--no-browser')
@@ -595,7 +597,10 @@ function checkData() {
   const procedureSample = 'examples/procedure/01-software-development-contract.zh-CN.json'
   truthy('the procedure render sample exists', existsSync(join(REPO, procedureSample)))
 
-  return { files, sample, procedureSample, combos, views }
+  const relationshipSample = 'examples/relationship/sample-group-guarantee.zh-CN.json'
+  truthy('the relationship render sample exists', existsSync(join(REPO, relationshipSample)))
+
+  return { files, sample, procedureSample, relationshipSample, combos, views }
 }
 
 // ---------------------------------------------------------------
@@ -1602,6 +1607,148 @@ async function checkRenderProcedure(sampleFile) {
   }
 }
 
+/**
+ * The relationship graph opened over file://, the way a user opens it. What only a browser can
+ * show: every entity and relation actually on screen, paint carried as attributes (the exported
+ * image needs it), the kind filter hiding lines without moving anything, looking at an entity
+ * lighting it and fading the rest without throwing a zoomed-in reader back to the overview, and
+ * the choices being remembered per diagram. The geometry is pinned by test/relationship.test.mjs;
+ * the counts here come from the same layout function, so the page is compared against it.
+ */
+async function checkRenderRelationship(sampleFile) {
+  section('render: relationship graph')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+
+  const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
+  // The page's default presentation: everything on, vertical, the Chinese interface the page is opened in
+  const layout = buildRelationshipGraph(spec, { t: (k, v) => translate('zh', k, v) }, undefined, 'vertical')
+  const html = join(OUT, 'render-relationship.html')
+  renderToFile(spec, { outPath: html, quiet: true })
+
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    await browser.open(`file://${html}?lang=zh`)
+    const count = (sel) => browser.eval(`document.querySelectorAll(${JSON.stringify(sel)}).length`)
+    const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms))
+    const zoomOf = () => browser.eval(`+(parseFloat(document.querySelector('.react-flow__viewport').style.transform.split('scale(')[1])).toFixed(3)`)
+    // Where every entity is on the page, to see whether anything moved
+    const positions = () =>
+      browser.eval(`[...document.querySelectorAll('.react-flow__node-rnode')].map((n) => n.style.transform).sort().join('|')`)
+
+    eq('entity count', await count('.antu-rn'), spec.entities.length)
+    // The page-ready wait of the preview looks for this: a type it does not know sits out the 15-second timeout
+    eq('the preview finds the relationship items it waits for', await count(ITEM_SELECTOR), spec.entities.length)
+    eq('relation count', await count('.antu-rlink'), spec.relations.length)
+    eq('relation label count', await count('.antu-rlabel'), spec.relations.length)
+    eq('group box count', await count('.antu-rgroup-box'), layout.groupBoxes.length)
+    eq('each group box has its title', await count('.antu-rgroup-name'), layout.groupBoxes.length)
+    truthy(
+      'the label card counts parties and relations',
+      (await browser.eval(`document.querySelector('.antu-header-info')?.textContent || ''`)).includes(`${spec.entities.length} 个当事方`),
+    )
+    // The shapes: one per kind the data has, each a real outline
+    for (const kind of new Set(spec.entities.map((e) => e.kind))) {
+      eq(`entities of kind ${kind} are drawn`, await count(`.antu-rn.k-${kind}`), spec.entities.filter((e) => e.kind === kind).length)
+    }
+    eq('a government organ has its second ring', await count('.antu-rn.k-government .antu-rn-ring'), spec.entities.filter((e) => e.kind === 'government').length)
+    // Paint as attributes, so the exported image keeps it (see palette.js)
+    truthy(
+      'entity outlines and link lines carry their paint as attributes',
+      await browser.eval(`[...document.querySelectorAll('.antu-rn-shape, .antu-rlink path')].every((e) => e.getAttribute('stroke') && e.getAttribute('fill'))`),
+    )
+    const directed = layout.connections.filter((c) => c.directed).length
+    eq('arrowheads: one per directed relation', await browser.eval(`[...document.querySelectorAll('.antu-rlink path')].filter((p) => (p.getAttribute('marker-end') || '').startsWith('url(')).length`), directed)
+
+    const dock = await browser.eval(`(() => {
+      const bar = document.querySelector('.antu-dock-bar')
+      if (!bar) return null
+      const lum = (b) => {
+        const m = getComputedStyle(b).backgroundColor.match(/[\\d.]+/g).map(Number)
+        const a = m.length === 4 ? m[3] : 1
+        return a * ((m[0] + m[1] + m[2]) / 3) + (1 - a) * 255
+      }
+      return {
+        kindChips: bar.querySelectorAll('.antu-rkind').length,
+        chips: bar.querySelectorAll('.antu-dock-chip').length,
+        dark: [...bar.querySelectorAll('button')].filter((b) => lum(b) < 128).map((b) => b.className.split(' ')[0]),
+      }
+    })()`)
+    truthy('the dock is present', dock)
+    if (dock) {
+      const kinds = new Set(spec.relations.map((r) => r.kind)).size
+      eq('one chip per kind of relation the data uses', dock.kindChips, kinds)
+      eq('the dock has those, plus labels and groups', dock.chips, kinds + 2)
+      eq('only the export action is solid dark', dock.dark, ['antu-dock-action'])
+    }
+
+    // The kind filter: a kind switched off is not drawn, its labels go with it, and nothing moves
+    const before = await positions()
+    const firstKind = spec.relations[0].kind
+    const ofKind = spec.relations.filter((r) => r.kind === firstKind).length
+    const kindChip = `document.querySelector('.antu-dock-bar .antu-rkind.k-${firstKind}').click()`
+    await browser.eval(kindChip, { userGesture: true })
+    await settle()
+    eq(`switching ${firstKind} off leaves the other relations`, await count('.antu-rlink'), spec.relations.length - ofKind)
+    eq('its labels go with it', await count('.antu-rlabel'), spec.relations.length - ofKind)
+    eq('the entities are all still there', await count('.antu-rn'), spec.entities.length)
+    eq('and nothing moved', await positions(), before)
+    const saved = await browser.eval(`JSON.parse(localStorage.getItem('antu.prefs') || '{}')`)
+    truthy('the choice is remembered under this diagram', saved.relationshipFieldsByDiagram?.[`rel:${spec.title}`]?.hiddenKinds?.includes(firstKind), JSON.stringify(saved))
+    await browser.eval(kindChip, { userGesture: true })
+    await settle()
+    eq('switching it on again brings them back', await count('.antu-rlink'), spec.relations.length)
+
+    // Labels and groups
+    await browser.eval(`document.querySelectorAll('.antu-dock-bar .antu-dock-chip:not(.antu-rkind)')[0].click()`, { userGesture: true })
+    await settle()
+    eq('the label switch hides every label', await count('.antu-rlabel'), 0)
+    await browser.eval(`document.querySelectorAll('.antu-dock-bar .antu-dock-chip:not(.antu-rkind)')[0].click()`, { userGesture: true })
+    await settle()
+    await browser.eval(`document.querySelectorAll('.antu-dock-bar .antu-dock-chip:not(.antu-rkind)')[1].click()`, { userGesture: true })
+    await settle()
+    eq('the group switch removes the boxes', await count('.antu-rgroup-box'), 0)
+    eq('and every entity is still drawn', await count('.antu-rn'), spec.entities.length)
+    await browser.eval(`document.querySelectorAll('.antu-dock-bar .antu-dock-chip:not(.antu-rkind)')[1].click()`, { userGesture: true })
+    await settle()
+    eq('the group switch brings them back', await count('.antu-rgroup-box'), layout.groupBoxes.length)
+
+    // Looking at an entity: it lights, what does not touch it fades, and the zoom stays where the reader put it
+    for (let i = 0; i < 3; i += 1) {
+      await browser.eval(`document.querySelector('.react-flow__controls-zoomin').click(); 1`, { userGesture: true })
+      await settle(150)
+    }
+    await settle(500)
+    const zoomedIn = await zoomOf()
+    await browser.eval(`document.querySelector('.react-flow__node-rnode').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); 1`)
+    await settle(1200)
+    eq('exactly one entity is lit', await count('.antu-rn.is-lit'), 1)
+    truthy('the relations that do not touch it fade', (await browser.eval(`[...document.querySelectorAll('.antu-rlink')].some((g) => +g.getAttribute('opacity') < 1)`)))
+    eq('looking at an entity keeps the zoom', await zoomOf(), zoomedIn)
+    await browser.eval(`document.querySelector('.react-flow__node-rnode').dispatchEvent(new MouseEvent('mouseout', { bubbles: true })); 1`)
+    await browser.eval(`document.querySelector('.react-flow__controls-fitview').click(); 1`, { userGesture: true })
+    await settle(600)
+
+    // Orientation, remembered per diagram
+    await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[1].click()`, { userGesture: true })
+    await settle()
+    eq('horizontal: no entity is lost', await count('.antu-rn'), spec.entities.length)
+    eq('horizontal: no relation is lost', await count('.antu-rlink'), spec.relations.length)
+    truthy('horizontal: the group boxes are still drawn', (await count('.antu-rgroup-box')) === layout.groupBoxes.length)
+    await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[0].click()`, { userGesture: true })
+    await settle()
+
+    // The interface language changes text only
+    await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg:last-of-type')?.children?.[0]?.click()`, { userGesture: true })
+    await settle()
+    eq('entities are the same after a language switch', await count('.antu-rn'), spec.entities.length)
+  } finally {
+    await browser.close()
+  }
+}
+
 // ---------------------------------------------------------------
 // 7. MCP self-test
 // ---------------------------------------------------------------
@@ -1702,6 +1849,7 @@ if (!shotOnly && !skipBrowser) {
   const profilesBefore = profilesInTmp().length
   if (data.sample) await checkRender(data.sample)
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
+  if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   checkMcp()
   // This stretch launched a browser twice (once for the render, once for the MCP preview), and
   // both must be closed cleanly. Identity, not "equal to 0": this machine may already have

@@ -46,7 +46,7 @@ const hitsRect = (x0, y0, x1, y1, r, m) =>
   Math.max(x0, x1) > r.x - m && Math.min(x0, x1) < r.x + r.w + m && Math.max(y0, y1) > r.y - m && Math.min(y0, y1) < r.y + r.h + m
 
 /** The ports of a node box: [x, y, side, offCentre] */
-function portsOf(r, diamond) {
+function portsOf(r, diamond, sidePorts = false) {
   const cx = r.x + r.w / 2
   const cy = r.y + r.h / 2
   const list = [
@@ -58,6 +58,13 @@ function portsOf(r, diamond) {
   if (!diamond) {
     for (const f of [0.25, 0.75]) {
       list.push([r.x + r.w * f, r.y, 'top', true], [r.x + r.w * f, r.y + r.h, 'bottom', true])
+    }
+    // A diagram whose links leave and arrive on the sides as much as top and bottom asks for a
+    // quarter port there too: with one port a side takes one link, and the next one has to go round
+    if (sidePorts) {
+      for (const f of [0.25, 0.75]) {
+        list.push([r.x, r.y + r.h * f, 'left', true], [r.x + r.w, r.y + r.h * f, 'right', true])
+      }
     }
   }
   return list
@@ -159,11 +166,16 @@ class Heap {
  * @param {number[][][]} [p.borders]  box edges ([[x0,y0],[x1,y1]]) a route may cross but not run along
  * @param {{x,y,w,h}} [p.bounds]  keep the whole route inside this rectangle (a link inside one stage)
  * @param {number[][]} [p.taken]  more points no route may start or end at (ends of links left out of `routes`)
+ * @param {boolean} [p.sidePorts]  also offer a quarter port on each side (left and right), not only top and bottom
+ * @param {number} [p.crossCost]  what crossing another link costs, in pixels of length (default: more than two bends)
  * @returns {number[][] | null}  the polyline, first point on the source, last on the target
  */
 export function routeLink(p) {
   const { from, to, nodes, blocks = [], routes = [], borders = [], bounds = null } = p
   const portCost = { out: { ...PORT_COST.out, ...p.portCost?.out }, in: { ...PORT_COST.in, ...p.portCost?.in } }
+  // What crossing another link costs. The flowchart keeps it high (a detour always beats a crossing);
+  // a diagram with links across the whole picture may lower it, so a link does not go right round
+  const crossCost = p.crossCost ?? CROSS
   // A port another link already leaves or arrives at is taken: two links out of one point read
   // as one link that forks (links allowed to merge, `share`, may use it)
   const taken = [
@@ -171,8 +183,8 @@ export function routeLink(p) {
     ...(p.taken ?? []),
   ]
   const free = ([x, y]) => !taken.some(([tx, ty]) => Math.abs(tx - x) < 1 && Math.abs(ty - y) < 1)
-  const outPorts = portsOf(from, p.fromDiamond).filter(([x, y, s]) => (!p.outSides || p.outSides.includes(s)) && free([x, y]))
-  const inPorts = portsOf(to, p.toDiamond).filter(([x, y, s]) => (!p.inSides || p.inSides.includes(s)) && free([x, y]))
+  const outPorts = portsOf(from, p.fromDiamond, p.sidePorts).filter(([x, y, s]) => (!p.outSides || p.outSides.includes(s)) && free([x, y]))
+  const inPorts = portsOf(to, p.toDiamond, p.sidePorts).filter(([x, y, s]) => (!p.inSides || p.inSides.includes(s)) && free([x, y]))
 
   // Obstacles: nodes with clearance, the two ends without (the route starts on their edge)
   const isEnd = (r) => r === from || r === to || (r.x === from.x && r.y === from.y) || (r.x === to.x && r.y === to.y)
@@ -264,7 +276,7 @@ export function routeLink(p) {
     const nj = j + DY[d]
     if (ni >= 0 && nj >= 0 && ni < W && nj < H) {
       const cross = segCheck(xs[i], ys[j], xs[ni], ys[nj])
-      if (cross !== null) res = { ni, nj, cost: Math.abs(xs[ni] - xs[i]) + Math.abs(ys[nj] - ys[j]) + cross * CROSS }
+      if (cross !== null) res = { ni, nj, cost: Math.abs(xs[ni] - xs[i]) + Math.abs(ys[nj] - ys[j]) + cross * crossCost }
     }
     stepCache.set(key, res)
     return res

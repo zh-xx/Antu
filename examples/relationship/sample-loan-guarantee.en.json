@@ -1,0 +1,121 @@
+{
+  "type": "relationship",
+  "title": "Zhang San v. Li Si · Parties and relations",
+  "asOf": "2023-03-10",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Creditor side"
+    },
+    {
+      "id": "g-2",
+      "label": "Debtor side"
+    }
+  ],
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "person",
+      "label": "Zhang San",
+      "role": "Lender",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-2",
+      "kind": "person",
+      "label": "Li Si",
+      "role": "Borrower",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-3",
+      "kind": "person",
+      "label": "Wang Wu",
+      "role": "Guarantor",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-4",
+      "kind": "company",
+      "label": "Xinghe Trading Co.",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-5",
+      "kind": "person",
+      "label": "Zhao Liu",
+      "role": "Li Si's spouse",
+      "groupId": "g-2"
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-1",
+      "to": "e-2",
+      "kind": "debt",
+      "label": "Loan",
+      "amount": "CNY 500,000",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-2",
+      "from": "e-3",
+      "to": "e-1",
+      "kind": "guarantee",
+      "label": "Joint and several guarantee",
+      "secures": "r-1",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "r-3",
+      "from": "e-2",
+      "to": "e-4",
+      "kind": "equity",
+      "share": 60,
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "r-4",
+      "from": "e-2",
+      "to": "e-5",
+      "kind": "kinship",
+      "label": "Spouses"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "Loan contract",
+      "loc": {
+        "file": "loan-contract.pdf",
+        "page": 1
+      }
+    },
+    {
+      "id": "s-2",
+      "type": "contract",
+      "name": "Guarantee contract",
+      "loc": {
+        "file": "guarantee.pdf",
+        "page": 1
+      }
+    },
+    {
+      "id": "s-3",
+      "type": "evidence",
+      "name": "Business registration record",
+      "loc": {
+        "file": "registry.pdf",
+        "page": 2
+      }
+    }
+  ]
+}

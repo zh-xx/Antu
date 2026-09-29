@@ -19,6 +19,7 @@ import { translate } from '../src/core/i18n.js'
 import { validateRelationship, hintsOfRelationship, isDirected } from '../src/renderers/relationship/graph/rules.js'
 import { buildRelationshipGraph, labelOf } from '../src/renderers/relationship/graph/layout.js'
 import { describeSchema, layoutReport, formatLayoutReport, notesOf } from '../tools/mcp/engine.mjs'
+import { midpointOf, nearestOn, securesTies, lookedAt } from '../src/renderers/relationship/graph/secures.js'
 
 /** The spec's example: a loan, a guarantee, a shareholding and a marriage, in two camps */
 const base = () => ({
@@ -49,6 +50,13 @@ const base = () => ({
   ],
 })
 const some = (errs, re) => errs.some((e) => re.test(e))
+/** Bends of a polyline, collinear points not counted */
+const bends = (pts) =>
+  pts.slice(1, -1).filter((c, i) => {
+    const p = pts[i]
+    const q = pts[i + 2]
+    return !((p[0] === c[0] && c[0] === q[0]) || (p[1] === c[1] && c[1] === q[1]))
+  }).length
 
 test('the spec example: valid, no hints, both orientations lay out', () => {
   assert.deepEqual(validateRelationship(base()), [])
@@ -303,4 +311,100 @@ test('every required field in the field table is required by the validator', () 
     }
   }
   assert.ok(checked >= 8, `only ${checked} required fields were checked`)
+})
+
+test('camps are compact: a box fits its members, and within a camp a holder stands above what it holds', () => {
+  const g = buildRelationshipGraph(base(), {}, undefined, 'vertical')
+  const at = (id) => {
+    const n = g.nodes.find((x) => x.id === id)
+    return { ...n.position, w: n.data.w, h: n.data.h }
+  }
+  // Li Si holds 60% of the company, in the same camp: he stands above it
+  assert.ok(at('e-2').y + at('e-2').h <= at('e-4').y, 'the holder above the company it holds')
+  // No box keeps an empty level: its height is its members' span plus the title strip and the padding
+  for (const box of g.groupBoxes) {
+    const members = base().entities.filter((e) => e.groupId === box.groupId).map((e) => at(e.id))
+    const top = Math.min(...members.map((m) => m.y))
+    const bottom = Math.max(...members.map((m) => m.y + m.h))
+    assert.ok(box.h - (bottom - top) <= 32 + 18 + 1, `"${box.label}" is ${box.h - (bottom - top)}px taller than its members need`)
+  }
+})
+
+test('an undirected relation sets no level: spouses stand side by side', () => {
+  const g = buildRelationshipGraph(base())
+  const y = (id) => g.nodes.find((n) => n.id === id).position.y
+  assert.equal(y('e-5'), y('e-2'), 'Zhao Liu stands on Li Si\'s level')
+})
+
+test('an entity whose links go to the camp on the left stands on the left of its camp', () => {
+  // Wang Wu's only link is his guarantee to Zhang San (left camp); Li Si also holds shares and is married
+  // inside his camp. Wang Wu stands left of Li Si, so his guarantee runs straight across the channel.
+  const g = buildRelationshipGraph(base())
+  const x = (id) => g.nodes.find((n) => n.id === id).position.x
+  assert.ok(x('e-3') < x('e-2'))
+  const guarantee = g.connections.find((c) => c.relationId === 'r-2')
+  assert.equal(bends(guarantee.points), 0, 'the guarantee runs straight')
+})
+
+test('a party in no group stands between the camps, at the height of what it relates to', () => {
+  const s = base()
+  s.entities.push({ id: 'e-6', kind: 'organization', label: 'Guarantee Fund' })
+  s.relations.push({ id: 'r-5', from: 'e-6', to: 'e-1', kind: 'guarantee', label: 'Backstop', secures: 'r-1' })
+  const g = buildRelationshipGraph(s)
+  const n = (id) => g.nodes.find((x) => x.id === id)
+  const fund = n('e-6')
+  const [left, right] = g.groupBoxes
+  assert.ok(fund.position.x >= left.x + left.w && fund.position.x + fund.data.w <= right.x, 'between the two camps')
+  // at Zhang San's height (its one neighbour), so its link runs level
+  const mid = (x) => x.position.y + x.data.h / 2
+  assert.ok(Math.abs(mid(fund) - mid(n('e-1'))) < 1, 'level with the entity it relates to')
+  assert.equal(bends(g.connections.find((c) => c.relationId === 'r-5').points), 0, 'its link runs straight')
+})
+
+test('an entity carries what it is related to, for its overlay', () => {
+  const g = buildRelationshipGraph(base())
+  const li = g.nodes.find((n) => n.id === 'e-2').data.relations
+  assert.equal(li.length, 3, 'Li Si: the loan, the shareholding, the marriage')
+  const loan = li.find((r) => r.id === 'r-1')
+  assert.deepEqual([loan.out, loan.other, loan.text, loan.directed], [false, 'Zhang San', 'Loan', true])
+  assert.equal(li.find((r) => r.id === 'r-4').directed, false, 'a marriage has no arrow')
+})
+
+test('secures: the tie joins a guarantee to the claim it secures, and only when they are near', () => {
+  assert.deepEqual(midpointOf([[0, 0], [0, 100]]), [0, 50])
+  assert.deepEqual(midpointOf([[0, 0], [100, 0], [100, 100]]), [100, 0], 'halfway along the length, round a corner')
+  assert.deepEqual(nearestOn([[0, 0], [100, 0]], [40, 30]), { at: [40, 0], d: 30 })
+  assert.deepEqual(nearestOn([[0, 0], [100, 0]], [140, 0]).at, [100, 0], 'clamped to the end of the segment')
+  const cs = [
+    { id: 'r:claim', relationId: 'claim', points: [[0, 100], [200, 100]], secures: null },
+    { id: 'r:g', relationId: 'g', points: [[100, 0], [100, 60]], secures: 'claim' },
+    { id: 'r:far', relationId: 'far', points: [[100, -400], [100, -300]], secures: 'claim' },
+    { id: 'r:none', relationId: 'none', points: [[0, 0], [10, 0]], secures: null },
+  ]
+  const ties = securesTies(cs)
+  assert.equal(ties.length, 1, 'the far one would be a long slanting line and is left out')
+  assert.deepEqual([ties[0].id, ties[0].claimId, ties[0].from, ties[0].to], ['r:g', 'r:claim', [100, 30], [100, 100]])
+  assert.equal(securesTies(cs, 1000).length, 2, 'the distance is a parameter')
+  const g = buildRelationshipGraph(base())
+  assert.equal(g.connections.find((c) => c.relationId === 'r-2').secures, 'r-1', 'layout hands the renderer the pair')
+})
+
+test('text slack goes on Latin letters only, so a Chinese diagram is not left loose', () => {
+  const latin = buildRelationshipGraph({ ...base(), entities: base().entities.map((e) => ({ ...e, label: 'Wang Wu Wang', role: undefined })) })
+  const cjk = buildRelationshipGraph({ ...base(), entities: base().entities.map((e) => ({ ...e, label: '星河商贸有限公司', role: undefined })) })
+  const w = (g) => g.nodes[0].data.textW
+  assert.ok(w(latin) > 12 * 14 * 0.5, 'Latin text is given room for a bold face')
+  assert.equal(w(cjk), Math.ceil(8 * 14), 'eight CJK characters are eight ems, not more')
+})
+
+test('looking at an entity brings out its relations and the claims its guarantees secure', () => {
+  const g = buildRelationshipGraph(base())
+  // Wang Wu guarantees the loan: looking at him shows the guarantee, and the loan it secures, and both ends of the loan
+  const wang = lookedAt(g.connections, 'e-3')
+  assert.deepEqual([...wang.lines].sort(), ['r-1', 'r-2'])
+  assert.deepEqual([...wang.entities].sort(), ['e-1', 'e-2', 'e-3'])
+  // Li Si: the loan, the shareholding, the marriage; not the guarantee (it touches Wang Wu and Zhang San, not him)
+  const li = lookedAt(g.connections, 'e-2')
+  assert.deepEqual([...li.lines].sort(), ['r-1', 'r-3', 'r-4'])
+  assert.ok(!li.entities.has('e-3'), 'the guarantor is not one of Li Si\'s own relations')
 })
