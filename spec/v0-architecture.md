@@ -169,7 +169,7 @@ JSON (envelope) ──> [validation gate] ──> route by top-level type ──
 - **one top-level type = one schema**; **one sub-type = one renderer**. The schema specifies only down to the top-level type, and below it there is no "sub-type" field; for how sub-types divide see §3;
 - adding a way of drawing means registering one sub-type renderer, **with the core itself untouched**;
 - the underlying rendering technology is React Flow (chosen; already in use for the fact diagram).
-- Layout: **each sub-type is on its own**, with no shared layout library. The fact timeline computes its own grid (`src/renderers/fact/timeline/grid.js`); the procedure flowchart uses ELK's layered algorithm (elkjs, `src/renderers/procedure/flow/elk.js`), chosen over dagre and the hand-written layout by measured crossings (`spec/procedure/schema-draft.md` §6.1); the relationship diagram will likely use it too.
+- Layout: **each sub-type is on its own**, with no shared layout library. The fact timeline computes its own grid (`src/renderers/fact/timeline/grid.js`); the procedure flowchart lays each stage out on its own with ELK's layered algorithm (elkjs, `src/renderers/procedure/flow/elk.js`), chosen over dagre and the hand-written layout by measured crossings, and routes the links between stages with its own orthogonal router (`flow/router.js`; `spec/procedure/schema-draft.md` §6.1); the relationship diagram will likely reuse both.
 - the renderer is responsible for translating semantics into React Flow nodes/edges (the translation happens inside the renderer, not inside the specification).
 
 ## 6.1 The deliverable: one self-contained HTML file
@@ -233,7 +233,7 @@ The structured locations in `sources` (page 6 of the contract, the case number a
 
 ### To be decided (confirm before starting)
 - [ ] The shape of `specVersion` (whether it is needed at all, how it evolves)
-- [x] The fact content-layer schema: **final** (including the division of labour between label / summary / detail, see `spec/fact/schema-draft.md`). The other types have not started
+- [x] The fact content-layer schema: **final** (including the division of labour between label / summary / detail, see `spec/fact/schema-draft.md`)
 - [x] The procedure content-layer schema: **v1, confirmed** (see `spec/procedure/schema-draft.md`)
 - [ ] The field details of the content-layer schema for relationship
 - [x] The shape of validation error messages: **implemented**. Every error carries a field path and an event id (e.g. `slots[0].events[1] (ev-2)`) and says what is wrong and how to fix it

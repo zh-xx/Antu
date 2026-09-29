@@ -9,7 +9,7 @@
 //
 //  Why validation lives in rules.js and not in the layout: on the fact side the
 //  two were stirred together, and the result was that "validate without laying
-//  out" could not be done (known-issues item 3). procedure kept them apart from
+//  out" could not be done. procedure kept them apart from
 //  day one.
 // ============================================================
 

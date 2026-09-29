@@ -56,19 +56,19 @@ MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 七份真实合同的履行流程，取自法析（faxi）的黄金样本，逐份对着它已生成的
 `business_flowchart.mmd` 反推。**写程序图时以它们为准**，schema 定稿的验收标准就是这七份。
 
-| 文件（同名前缀） | 节点 / 边 | 特点 |
-|---|---|---|
-| `01-software-development-contract.*` | 26 / 37 | 三个阶段各挂一组延期分支，9 条回边 |
-| `02-purchase-contract.*` | 12 / 12 | 最短的一份，无回边、无阶段 |
-| `03-labour-outsourcing-contract.*` | 15 / 26 | 一个节点 7 条出边，其中 5 条汇进 2 个目标 |
-| `04-non-disclosure-agreement.*` | 6 / 6 | 最小的一份 |
-| `05-premises-lease.*` | 32 / 34 | 节点最多，16 层，4 个终止节点 |
-| `06-epc-general-contract.*` | 26 / 31 | **20 层、一个菱形都没有**，分支全靠普通节点多出边 |
-| `07-share-acquisition-agreement.*` | 30 / 30 | 9 个终止节点，分支条件最全 |
+| 文件（同名前缀） | 节点 / 边 | 阶段 / 条款 | 特点 |
+|---|---|---|---|
+| `01-software-development-contract.*` | 14 / 16 | 5 / 2 | 3 个判定点，3 条整改后复验的回边 |
+| `02-purchase-contract.*` | 12 / 12 | 0 / 0 | 没有阶段和条款的一份，11 层，2 个终点 |
+| `03-labour-outsourcing-contract.*` | 9 / 9 | 2 / 7 | 条款最多，其中一条导致合同解除；2 条回边（每月循环） |
+| `04-non-disclosure-agreement.*` | 4 / 3 | 0 / 1 | 最小的一份，没有判定点 |
+| `05-premises-lease.*` | 19 / 19 | 4 / 4 | 14 层，3 个终点，2 条回边 |
+| `06-epc-general-contract.*` | 21 / 21 | 4 / 4 | 15 层，2 个判定点，2 条回边 |
+| `07-share-acquisition-agreement.*` | 21 / 20 | 4 / 4 | 5 个终点，一个节点 4 条出边，没有回边 |
 
 ## 给 agent 的：`agent/procedure/`
 
-**这七份必须一直能通过校验**（与 fact 那批同一条规矩）。每份不超过 2 KB。
+**这七份必须一直能通过校验**（与 fact 那批同一条规矩）。每份不超过 2 KB（实际 0.5~1.6 KB）。
 
 **成对存放**：每份都有 `.zh-CN.json`（中文内容）与 `.en.json`（英文内容），
 两份**结构完全相同，只有文本值不同**，与 `fact/` 那批同一个口径。

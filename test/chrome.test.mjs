@@ -9,7 +9,7 @@
 //  profile directory made Chrome kill itself (the SingletonLock already existed),
 //  so the second and third variants could not even start and the fallback chain was
 //  dead. The symptom was an intermittent "all three variants failed to start" on CI
-//  (see known-issues item 18).
+//  (fixed in commits 384d52b and 5bbd087).
 // ============================================================
 
 import { test } from 'node:test'

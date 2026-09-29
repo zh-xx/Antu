@@ -218,8 +218,8 @@ async function terminate(child, ms = 3000) {
  *
  * Killing only the main process leaves the child that is writing the profile
  * alive, and deleting the directory right after hits
- * `ENOTEMPTY: directory not empty`. This happened on CI for real (see known-issues
- * item 18): the main process exited on SIGTERM while the child was still writing
+ * `ENOTEMPTY: directory not empty`. This happened on CI for real (commits 384d52b and
+ * 5bbd087 fixed it): the main process exited on SIGTERM while the child was still writing
  * into the profile, so `rmSync` reached its final rmdir with the directory
  * non-empty again. Launching the child with detached makes it its own process
  * group, so it can be reaped group and all here.

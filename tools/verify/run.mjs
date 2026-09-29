@@ -4,7 +4,7 @@
 //
 //  How this project used to verify: after each change, write a CDP script on the
 //  spot in /tmp and throw it away. The same code was written about twenty times
-//  (see known-issues item 1). It now lives here, one command runs it all, and a
+//  It now lives here, one command runs it all, and a
 //  failure exits non-zero.
 //
 //  Usage:
@@ -378,7 +378,7 @@ function checkData() {
   // one has no leak check. spec/procedure/schema-draft was missed once, found only when
   // procedure was translated.
   const humanDocs = ['spec/fact/schema-draft', 'spec/fact/timeline-rules', 'spec/fact/rendering',
-    'spec/source-schema-draft', 'spec/v0-architecture', 'spec/known-issues', 'spec/mcp-server',
+    'spec/source-schema-draft', 'spec/v0-architecture', 'spec/mcp-server',
     'spec/react-flow-features', 'spec/procedure/schema-draft']
   const leaked2 = humanDocs.filter((n) => serverSrc.includes(n))
   truthy('no human-facing design document leaks into MCP', leaked2.length === 0)
@@ -481,7 +481,6 @@ function checkData() {
   //   2. a path in a shell command or code fence, backticked or not — this is how the
   //      README's `npm run diagram -- examples/...` line is written, and it pointed at a
   //      file that no longer existed because the examples had been split into language pairs.
-  // known-issues.md is skipped: it is a historical log and quotes paths as they were then.
   const refMissing = []
   // Two traps, both hit while writing this:
   //   · extension prefixes: without care `src/App.jsx` matches as the non-existent
@@ -499,7 +498,6 @@ function checkData() {
   const PLACEHOLDER = /(^|\/)(x|xxx|some-file|your-file)\.[\w]+$/
   for (const f of listFilesUnder(REPO, ['.md', '.mjs', '.js', '.jsx'])) {
     if (f.includes('node_modules') || f.includes('/dist')) continue
-    if (f.endsWith('spec/known-issues.md')) continue
     const text = readFileSync(f, 'utf8')
     for (const m of text.matchAll(PATH_RE)) {
       if (PLACEHOLDER.test(m[1])) continue
@@ -632,11 +630,11 @@ function checkBrowserLookup() {
 
 /**
  * The path where launching fails: the error must explain itself, and the three attempts must
- * **not tread on each other**. Bought with known-issues item 18, where the variants shared one
+ * **not tread on each other**. Bought on CI (commits 384d52b and 5bbd087), where the variants shared one
  * profile and one port (so once the first failed to start, Chrome killed the rest on the
  * SingletonLock and the fallback chain was dead), `child.kill()` sent one SIGTERM and gave up,
  * and `stdio: 'ignore'` threw away Chrome's own error. A fake browser verifies all of it, so
- * this can go in verify:fast; the real-browser reproduction is in known-issues item 18.
+ * this can go in verify:fast.
  */
 async function checkLaunchFailure() {
   const fake = join(OUT, 'fake-browser.sh')
@@ -720,7 +718,7 @@ async function checkLaunchFailure() {
 }
 /**
  * Chrome is still writing into the profile while it winds down, and the directory must come out
- * clean anyway. On CI (known-issues item 18) this surfaced as `ENOTEMPTY: directory not empty`,
+ * clean anyway. On CI (commit 5bbd087) this surfaced as `ENOTEMPTY: directory not empty`,
  * because the child writing the profile outlived the main process. Shutdown therefore has to
  * **kill the whole process group**. A fake browser whose background process keeps writing files
  * into the profile verifies it, so no real browser is needed.
