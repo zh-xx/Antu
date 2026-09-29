@@ -63,14 +63,15 @@ export default function ProcedureFlow({ spec }) {
   const hasStages = Array.isArray(spec?.stages) && spec.stages.length > 0
   const hasRules = Array.isArray(spec?.rules) && spec.rules.length > 0
 
-  const [fields, setFields] = useState(() => ({
-    ...FIELD_DEFAULTS,
-    ...readPrefs().flowFields,
-    ...(PRESET?.fields || {}),
-  }))
+  // The switches are remembered per diagram, like the orientation: what to show is a choice about
+  // this data (many diagrams have no stages at all), so turning stages off on one must not turn
+  // them off everywhere (issue #22)
+  const [fieldPrefs, setFieldPrefs] = useState(() => readPrefs().flowFieldsByDiagram || {})
+  const fields = { ...FIELD_DEFAULTS, ...fieldPrefs[specKey], ...(PRESET?.fields || {}) }
   const toggleField = (key, value) => {
-    setFields((f) => ({ ...f, [key]: value }))
-    writePrefs({ flowFields: { ...readPrefs().flowFields, [key]: value } })
+    const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], [key]: value } }
+    setFieldPrefs(map)
+    writePrefs({ flowFieldsByDiagram: map })
   }
 
   // Orientation: remembered per diagram, as with the timeline. With nothing chosen a
@@ -184,6 +185,7 @@ export default function ProcedureFlow({ spec }) {
         <Canvas
           ref={canvasRef}
           graph={graph}
+          fitKey={layout}
           nodeTypes={nodeTypes}
           onNodeMouseEnter={(_, n) => {
             if (n.type === 'pnode') setHoveredId(n.id)

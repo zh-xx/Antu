@@ -1411,6 +1411,20 @@ async function checkRenderProcedure(sampleFile) {
     truthy('hovering a rule row lights its stages', (await count('.antu-rtable-row.is-lit')) === 1 && (await browser.eval(`[...document.querySelectorAll('.antu-pstage-box')].some((r) => r.getAttribute('stroke') === '#f59e0b')`)))
     await browser.eval(`document.querySelector('.antu-rtable-row').dispatchEvent(new MouseEvent('mouseout', { bubbles: true })); 1`)
     await new Promise((r) => setTimeout(r, 400))
+    // Issue #21: hovering a row is paint only, so it must not throw a zoomed-in reader back to the overview
+    const zoomOf = () => browser.eval(`+(parseFloat(document.querySelector('.react-flow__viewport').style.transform.split('scale(')[1])).toFixed(3)`)
+    for (let i = 0; i < 3; i += 1) {
+      await browser.eval(`document.querySelector('.react-flow__controls-zoomin').click(); 1`, { userGesture: true })
+      await new Promise((r) => setTimeout(r, 150))
+    }
+    await new Promise((r) => setTimeout(r, 500))
+    const zoomedIn = await zoomOf()
+    await browser.eval(`document.querySelector('.antu-rtable-row').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); 1`)
+    await new Promise((r) => setTimeout(r, 1200))
+    eq('hovering a rule row keeps the zoom', await zoomOf(), zoomedIn)
+    await browser.eval(`document.querySelector('.antu-rtable-row').dispatchEvent(new MouseEvent('mouseout', { bubbles: true })); 1`)
+    await browser.eval(`document.querySelector('.react-flow__controls-fitview').click(); 1`, { userGesture: true })
+    await new Promise((r) => setTimeout(r, 600))
     eq(
       'condition label count',
       await count('.antu-plabel'),
@@ -1514,6 +1528,10 @@ async function checkRenderProcedure(sampleFile) {
     await clickChip(3)
     await settle()
     eq('the stage switch removes the boxes', await count('.antu-pstage-box'), 0)
+    // Issue #22: the choice is kept for this diagram only, not as a global switch
+    const saved = await browser.eval(`JSON.parse(localStorage.getItem('antu.prefs') || '{}')`)
+    eq('the stage choice is stored under this diagram', saved.flowFieldsByDiagram?.[spec.title]?.stages, false)
+    truthy('and no global switch is written', saved.flowFields === undefined)
     await clickChip(3)
     await settle()
 
