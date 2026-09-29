@@ -181,8 +181,9 @@ export function hintsOfJustification(spec) {
     // Rule 15 and 16: where was it found, which provision
     if (n.kind === 'fact' && !list(n.sourceIds).length) hints.push(tEn('jhint.factNoSource', { id: n.id, label: name(n) }))
     if (n.kind === 'norm' && !list(n.sourceIds).length) hints.push(tEn('jhint.normNoSource', { id: n.id, label: name(n) }))
-    // Rule 18: nothing supports a conclusion or an element
-    if (n.kind === 'conclusion' || n.kind === 'element') {
+    // Rule 18: nothing supports a conclusion or an element. A rejected one (`holds: "no"`) needs no support:
+    // the reasoning shows why it fails, and what its proponent leaned on is not part of this reasoning.
+    if ((n.kind === 'conclusion' || n.kind === 'element') && n.holds !== 'no') {
       const ins = into.get(n.id) ?? []
       if (!ins.some((k) => stanceOf(k) === 'for' || stanceOf(k) === 'basis')) {
         hints.push(tEn('jhint.unsupported', { id: n.id, label: name(n) }))

@@ -1,0 +1,83 @@
+{
+  "specVersion": 1,
+  "type": "justification",
+  "title": "最小可用：一个结论，靠一条规范、一个要件、两条事实",
+  "nodes": [
+    {
+      "id": "c-1",
+      "kind": "conclusion",
+      "label": "乙应向甲支付拖欠的租金",
+      "holds": "yes"
+    },
+    {
+      "id": "n-1",
+      "kind": "norm",
+      "label": "民法典第 509 条第 1 款：当事人应当按照约定全面履行自己的义务",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-1",
+      "kind": "element",
+      "label": "乙没有按约定履行付租金的义务",
+      "holds": "yes"
+    },
+    {
+      "id": "f-1",
+      "kind": "fact",
+      "label": "合同约定乙每月 5 日前付租金 3000 元",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-2",
+      "kind": "fact",
+      "label": "乙自 2024 年 3 月起没有再付租金",
+      "sourceIds": [
+        "s-2"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "from": "n-1",
+      "to": "e-1",
+      "stance": "basis"
+    },
+    {
+      "from": "f-1",
+      "to": "e-1"
+    },
+    {
+      "from": "f-2",
+      "to": "e-1"
+    },
+    {
+      "from": "e-1",
+      "to": "c-1"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "statute",
+      "name": "民法典第 509 条",
+      "loc": {
+        "lawName": "中华人民共和国民法典",
+        "article": 509,
+        "version": "2020"
+      }
+    },
+    {
+      "id": "s-2",
+      "type": "evidence",
+      "name": "租赁合同和付款记录",
+      "loc": {
+        "file": "lease.pdf",
+        "page": 1
+      }
+    }
+  ]
+}

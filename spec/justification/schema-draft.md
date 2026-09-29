@@ -212,7 +212,7 @@ A draft; there is no code. Errors are reported one by one, with the field path a
 | 15 | A `fact` with no `sourceIds` | **hint** (where was it found?) |
 | 16 | A `norm` with no `sourceIds` | **hint** (which provision?) |
 | 17 | An element with `holds: "yes"` whose `for` links all come from `holds: "no"` nodes | **hint** (premises rejected, conclusion upheld) |
-| 18 | A conclusion or element with no `for` or `basis` among its incoming links | **hint** (nothing supports it) |
+| 18 | A conclusion or element with no `for` or `basis` among its incoming links (not one with `holds: "no"`: a rejected node needs no support) | **hint** (nothing supports it) |
 
 Structural errors block drawing; hints do not. The same split as relationship and procedure.
 

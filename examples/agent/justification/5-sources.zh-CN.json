@@ -1,0 +1,97 @@
+{
+  "specVersion": 1,
+  "type": "justification",
+  "title": "时间和出处：事实带时间，规范和事实都指向来源",
+  "speaker": "某法院（二审）",
+  "nodes": [
+    {
+      "id": "c-1",
+      "kind": "conclusion",
+      "label": "驳回上诉，维持原判",
+      "holds": "yes"
+    },
+    {
+      "id": "n-1",
+      "kind": "norm",
+      "label": "民法典第 509 条第 1 款：当事人应当按照约定全面履行自己的义务",
+      "detail": "当事人应当按照约定全面履行自己的义务。",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-1",
+      "kind": "element",
+      "label": "乙没有按约定付租金",
+      "holds": "yes"
+    },
+    {
+      "id": "f-1",
+      "kind": "fact",
+      "label": "乙在 2024 年 3 月 5 日的付款期限届满时没有付款",
+      "date": "2024-03-05",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-2",
+      "kind": "fact",
+      "label": "乙于当天 14 时 30 分回复称资金紧张",
+      "date": "2024-03-05T14:30",
+      "detail": "回复原文：本月资金紧张，下月一并付。",
+      "sourceIds": [
+        "s-3"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "from": "n-1",
+      "to": "e-1",
+      "stance": "basis"
+    },
+    {
+      "from": "f-1",
+      "to": "e-1"
+    },
+    {
+      "from": "f-2",
+      "to": "e-1"
+    },
+    {
+      "from": "e-1",
+      "to": "c-1"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "statute",
+      "name": "民法典第 509 条",
+      "loc": {
+        "lawName": "中华人民共和国民法典",
+        "article": 509,
+        "version": "2020"
+      }
+    },
+    {
+      "id": "s-2",
+      "type": "case",
+      "name": "一审判决书 · 本院查明",
+      "loc": {
+        "caseNo": "（2024）京 0105 民初 1 号",
+        "court": "某区人民法院"
+      }
+    },
+    {
+      "id": "s-3",
+      "type": "evidence",
+      "name": "微信聊天记录",
+      "loc": {
+        "file": "chat.pdf",
+        "page": 3
+      }
+    }
+  ]
+}

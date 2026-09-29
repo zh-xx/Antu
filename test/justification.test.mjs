@@ -7,7 +7,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 
 import '../src/renderers/index.js'
 import { validateSpec } from '../src/core/validate.js'
@@ -109,6 +109,11 @@ test('hints (rules 13 to 18) are hints: they never fail validation or stop the l
   assert.ok(hints.some((h) => /norm "A norm with no source" has no source/.test(h)), '16')
   assert.ok(hints.some((h) => /e-2.*holds although everything that supports it is rejected/.test(h)), '17')
   assert.ok(hints.some((h) => /nothing supports "Another end"/.test(h)), '18')
+  // a rejected element needs no support: e-2 is held on rejected grounds and has a norm, and a rejected one with none is not hinted
+  const rej = base()
+  rej.nodes.push({ id: 'e-9', kind: 'element', label: 'A defence that fails', holds: 'no', groupId: 'g-1' }, { id: 'j-9', kind: 'judgement', label: 'It does not stand', holds: 'yes', groupId: 'g-1' })
+  rej.links.push({ from: 'j-9', to: 'e-9', stance: 'against' }, { from: 'e-9', to: 'c-1', stance: 'against' })
+  assert.ok(!hintsOfJustification(rej).some((h) => /e-9/.test(h) && /nothing supports/.test(h)), '18: a rejected node needs no support')
   assert.deepEqual(validateJustification(s), [], 'hints are not errors')
   const g = buildJustificationGraph(s)
   assert.deepEqual(g.errors, [])
@@ -370,4 +375,41 @@ test('looking at a copy lights every copy of the fact, each with the way up from
   const lit = new Set([...c.nodes].map((id) => g.nodes.find((n) => n.id === id).data.node.id))
   assert.ok(lit.has('e-1') && lit.has('c-2') && lit.has('j-5') && lit.has('c-5') && lit.has('c-1'))
   assert.ok(!lit.has('e-2'), 'an element it does not support is not lit')
+})
+
+test('the small examples for an agent: valid, no hints, each in both languages, small, and both orientations lay out', () => {
+  const dir = 'examples/agent/justification/'
+  const names = readdirSync(dir).filter((f) => f.endsWith('.json'))
+  assert.equal(names.length, 10, 'five pairs')
+  for (const f of names) {
+    const text = readFileSync(dir + f, 'utf8')
+    const spec = JSON.parse(text)
+    assert.deepEqual(validateJustification(spec), [], f)
+    assert.deepEqual(hintsOfJustification(spec), [], `${f}: no notes`)
+    assert.ok(text.length < 2500, `${f}: small (${text.length} bytes)`)
+    for (const o of ['horizontal', 'vertical']) assert.deepEqual(buildJustificationGraph(spec, {}, undefined, o).errors, [], `${f} ${o}`)
+  }
+  for (const stem of new Set(names.map((f) => f.replace(/\.(zh-CN|en)\.json$/, '')))) {
+    const zh = JSON.parse(readFileSync(`${dir}${stem}.zh-CN.json`, 'utf8'))
+    const en = JSON.parse(readFileSync(`${dir}${stem}.en.json`, 'utf8'))
+    assert.deepEqual(zh.nodes.map((n) => [n.id, n.kind, n.holds]), en.nodes.map((n) => [n.id, n.kind, n.holds]), `${stem}: the pair has the same structure`)
+    assert.deepEqual(zh.links.map((k) => [k.from, k.to, k.stance]), en.links.map((k) => [k.from, k.to, k.stance]), `${stem}: and the same links`)
+  }
+  // the shared-fact example draws its fact twice
+  const shared = buildJustificationGraph(JSON.parse(readFileSync(`${dir}4-shared-fact.en.json`, 'utf8')))
+  assert.equal(shared.stats.copies, 1)
+})
+
+test('the elevator case: valid, no hints, the rejected branches drawn, nothing overlaps', () => {
+  for (const lang of ['zh-CN', 'en']) {
+    const spec = JSON.parse(readFileSync(`examples/justification/elevator-smoking-liability.${lang}.json`, 'utf8'))
+    assert.deepEqual(validateJustification(spec), [], lang)
+    assert.deepEqual(hintsOfJustification(spec), [], lang)
+    for (const o of ['horizontal', 'vertical']) {
+      const g = buildJustificationGraph(spec, {}, undefined, o)
+      assert.equal(g.stats.nodes, 34)
+      assert.equal(g.groupBoxes.length, 3)
+      assert.ok(g.nodes.filter((n) => n.data.node.holds === 'no').length >= 6, 'the rejected claims are drawn')
+    }
+  }
 })

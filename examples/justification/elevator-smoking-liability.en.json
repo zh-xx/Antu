@@ -1,0 +1,570 @@
+{
+  "specVersion": 1,
+  "type": "justification",
+  "title": "The elevator smoking case · the appeal court's reasoning",
+  "speaker": "Zhengzhou Intermediate People's Court, Henan (appeal)",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Issue 1: is Yang Fan liable in ordinary tort?"
+    },
+    {
+      "id": "g-2",
+      "label": "Issue 2: does the first instance's fairness liability apply?"
+    },
+    {
+      "id": "g-3",
+      "label": "Issue 3: Yang Fan did not appeal; may the appeal court change the judgment?"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "c-1",
+      "kind": "conclusion",
+      "label": "The first-instance judgment is set aside and Tian Jiuju's claim dismissed: Yang Fan bears no tort liability",
+      "holds": "yes"
+    },
+    {
+      "id": "n-5",
+      "kind": "norm",
+      "label": "Civil Procedure Law Art. 170(1)(2): the ground on which an appeal court changes a judgment",
+      "sourceIds": [
+        "s-6"
+      ]
+    },
+    {
+      "id": "c-2",
+      "kind": "conclusion",
+      "label": "Yang Fan is liable in ordinary tort (fault liability)",
+      "holds": "no",
+      "groupId": "g-1"
+    },
+    {
+      "id": "n-1",
+      "kind": "norm",
+      "label": "Tort Liability Law Art. 6(1): a person who infringes another's civil rights through fault bears tort liability",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "e-1",
+      "kind": "element",
+      "label": "The dissuasion was improper and went beyond what was necessary",
+      "holds": "no",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-2",
+      "kind": "element",
+      "label": "There is a legal causal link between the dissuasion and Duan Xiaoli's death",
+      "holds": "no",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-3",
+      "kind": "element",
+      "label": "Yang Fan acted intentionally or negligently",
+      "holds": "no",
+      "groupId": "g-1"
+    },
+    {
+      "id": "j-1",
+      "kind": "judgement",
+      "label": "Yang Fan's dissuasion was rational and calm and stayed within what was necessary: it was proper",
+      "holds": "yes",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-2",
+      "kind": "judgement",
+      "label": "The dissuasion and the death are only one after the other in time; there is no legal causal link",
+      "holds": "yes",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-3",
+      "kind": "judgement",
+      "label": "Yang Fan dissuaded a smoker as a citizen's duty to society, and had no intent to harm Duan Xiaoli",
+      "holds": "yes",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "i-1",
+      "kind": "inference",
+      "label": "The dissuasion of smoking cannot in itself cause Duan Xiaoli's death",
+      "holds": "yes",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "i-2",
+      "kind": "inference",
+      "label": "Yang Fan could not foresee Duan Xiaoli's death, and was not careless or negligent",
+      "holds": "yes",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-1",
+      "kind": "fact",
+      "label": "Lift camera (clock 09:24): Duan Xiaoli was smoking in the lift; after Yang Fan came in the two began to talk",
+      "date": "2017-05-02",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-2",
+      "kind": "fact",
+      "label": "The three videos have pictures and no sound; the two only talked, with no pulling and no physical clash",
+      "date": "2017-05-02",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-3",
+      "kind": "fact",
+      "label": "Throughout, Yang Fan was relatively calm and restrained; Duan Xiaoli was agitated, and more so as time went on",
+      "date": "2017-05-02",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-4",
+      "kind": "fact",
+      "label": "There is no evidence that Yang Fan shouted at Duan Xiaoli or did anything else improper",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-5",
+      "kind": "fact",
+      "label": "Yang Fan and Duan Xiaoli were in contact for less than five minutes",
+      "date": "2017-05-02",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-6",
+      "kind": "fact",
+      "label": "120 was called at 09:31 and the paramedics reached the patient at 09:37",
+      "date": "2017-05-02T09:31",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-7",
+      "kind": "fact",
+      "label": "Yang Fan had not known Duan Xiaoli, and did not know of his medical history or his heart bypass operation",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-8",
+      "kind": "fact",
+      "label": "Once he knew, Yang Fan promptly used his professional skill to help Duan Xiaoli",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "c-3",
+      "kind": "conclusion",
+      "label": "Yang Fan should pay Tian Jiuju 15,000 yuan on the fairness principle (what the first instance did)",
+      "holds": "no",
+      "groupId": "g-2"
+    },
+    {
+      "id": "n-2",
+      "kind": "norm",
+      "label": "Tort Liability Law Art. 24: where neither victim nor actor was at fault, the loss may be shared as the facts require",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-4"
+      ]
+    },
+    {
+      "id": "e-4",
+      "kind": "element",
+      "label": "There is a legal causal link between the act and the harm, and neither side was at fault",
+      "holds": "no",
+      "groupId": "g-2"
+    },
+    {
+      "id": "j-4",
+      "kind": "judgement",
+      "label": "There is no legal causal link between the dissuasion and the death, so the precondition of Art. 24 is not met",
+      "holds": "yes",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-5",
+      "kind": "judgement",
+      "label": "In applying Art. 24 and the fairness principle the first instance applied the law wrongly",
+      "holds": "yes",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-9",
+      "kind": "fact",
+      "label": "The first instance, because Duan Xiaoli died suddenly after the quarrel with Yang Fan, ordered Yang Fan to pay Tian Jiuju 15,000 yuan",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "c-4",
+      "kind": "conclusion",
+      "label": "The appeal court should change the first-instance judgment",
+      "holds": "yes",
+      "groupId": "g-3"
+    },
+    {
+      "id": "n-3",
+      "kind": "norm",
+      "label": "Civil Procedure Interpretation Art. 323: an appeal is tried on the grounds of appeal, unless the judgment breaks a legal prohibition or harms the State, the public interest or another's rights",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-5"
+      ]
+    },
+    {
+      "id": "n-4",
+      "kind": "norm",
+      "label": "Zhengzhou's rules: smoking is banned in lifts and other public places, and citizens may stop it",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-7"
+      ]
+    },
+    {
+      "id": "n-6",
+      "kind": "norm",
+      "label": "The basic principles and purpose of civil law: protect the environment, uphold the public interest and public order and good morals, promote core socialist values",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-8"
+      ]
+    },
+    {
+      "id": "e-5",
+      "kind": "element",
+      "label": "The first-instance judgment harms the public interest (the exception to trying an appeal only on its grounds)",
+      "holds": "yes",
+      "groupId": "g-3"
+    },
+    {
+      "id": "j-6",
+      "kind": "judgement",
+      "label": "Yang Fan's dissuasion was lawful and proper: a conscious act to uphold public order and the public interest",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-7",
+      "kind": "judgement",
+      "label": "Making a citizen who dissuaded properly share the loss would dampen citizens' will to defend the public interest, harm it, and run against the purpose of civil law",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-10",
+      "kind": "fact",
+      "label": "Yang Fan did not appeal after the first-instance judgment",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "from": "n-5",
+      "to": "c-1",
+      "stance": "basis"
+    },
+    {
+      "from": "n-1",
+      "to": "e-1",
+      "stance": "basis"
+    },
+    {
+      "from": "e-1",
+      "to": "c-2"
+    },
+    {
+      "from": "n-1",
+      "to": "e-2",
+      "stance": "basis"
+    },
+    {
+      "from": "e-2",
+      "to": "c-2"
+    },
+    {
+      "from": "n-1",
+      "to": "e-3",
+      "stance": "basis"
+    },
+    {
+      "from": "e-3",
+      "to": "c-2"
+    },
+    {
+      "from": "c-2",
+      "to": "c-1",
+      "stance": "against"
+    },
+    {
+      "from": "f-2",
+      "to": "j-1"
+    },
+    {
+      "from": "f-3",
+      "to": "j-1"
+    },
+    {
+      "from": "f-4",
+      "to": "j-1"
+    },
+    {
+      "from": "j-1",
+      "to": "e-1",
+      "stance": "against"
+    },
+    {
+      "from": "f-2",
+      "to": "i-1"
+    },
+    {
+      "from": "f-3",
+      "to": "i-1"
+    },
+    {
+      "from": "f-5",
+      "to": "i-1"
+    },
+    {
+      "from": "f-6",
+      "to": "i-1"
+    },
+    {
+      "from": "i-1",
+      "to": "j-2"
+    },
+    {
+      "from": "j-2",
+      "to": "e-2",
+      "stance": "against"
+    },
+    {
+      "from": "f-7",
+      "to": "i-2"
+    },
+    {
+      "from": "f-8",
+      "to": "i-2"
+    },
+    {
+      "from": "i-2",
+      "to": "e-3",
+      "stance": "against"
+    },
+    {
+      "from": "f-1",
+      "to": "j-3"
+    },
+    {
+      "from": "f-7",
+      "to": "j-3"
+    },
+    {
+      "from": "j-3",
+      "to": "e-3",
+      "stance": "against"
+    },
+    {
+      "from": "n-2",
+      "to": "e-4",
+      "stance": "basis"
+    },
+    {
+      "from": "e-4",
+      "to": "c-3"
+    },
+    {
+      "from": "j-4",
+      "to": "e-4",
+      "stance": "against"
+    },
+    {
+      "from": "j-5",
+      "to": "c-3",
+      "stance": "against"
+    },
+    {
+      "from": "f-9",
+      "to": "c-3"
+    },
+    {
+      "from": "c-3",
+      "to": "c-1",
+      "stance": "against"
+    },
+    {
+      "from": "n-3",
+      "to": "e-5",
+      "stance": "basis"
+    },
+    {
+      "from": "n-4",
+      "to": "j-6",
+      "stance": "basis"
+    },
+    {
+      "from": "n-6",
+      "to": "j-7",
+      "stance": "basis"
+    },
+    {
+      "from": "j-6",
+      "to": "j-7"
+    },
+    {
+      "from": "j-7",
+      "to": "e-5"
+    },
+    {
+      "from": "e-5",
+      "to": "c-4"
+    },
+    {
+      "from": "f-10",
+      "to": "c-4",
+      "stance": "against",
+      "label": "outside the grounds of appeal"
+    },
+    {
+      "from": "c-4",
+      "to": "c-1"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "case",
+      "name": "(2017) Yu 01 Min Zhong No. 14848 · facts found on appeal",
+      "loc": {
+        "caseNo": "（2017）豫01民终14848号",
+        "court": "Zhengzhou Intermediate People's Court, Henan"
+      }
+    },
+    {
+      "id": "s-2",
+      "type": "case",
+      "name": "(2017) Yu 01 Min Zhong No. 14848 · the court's reasons",
+      "loc": {
+        "caseNo": "（2017）豫01民终14848号",
+        "court": "Zhengzhou Intermediate People's Court, Henan"
+      }
+    },
+    {
+      "id": "s-3",
+      "type": "statute",
+      "name": "Tort Liability Law, Art. 6",
+      "loc": {
+        "lawName": "Tort Liability Law of the People's Republic of China",
+        "article": 6,
+        "version": "2009"
+      }
+    },
+    {
+      "id": "s-4",
+      "type": "statute",
+      "name": "Tort Liability Law, Art. 24",
+      "loc": {
+        "lawName": "Tort Liability Law of the People's Republic of China",
+        "article": 24,
+        "version": "2009"
+      }
+    },
+    {
+      "id": "s-5",
+      "type": "statute",
+      "name": "Civil Procedure Interpretation, Art. 323",
+      "loc": {
+        "lawName": "Supreme People's Court Interpretation on the Application of the Civil Procedure Law",
+        "article": 323,
+        "version": "2015"
+      }
+    },
+    {
+      "id": "s-6",
+      "type": "statute",
+      "name": "Civil Procedure Law, Art. 170",
+      "loc": {
+        "lawName": "Civil Procedure Law of the People's Republic of China",
+        "article": 170,
+        "version": "2017修正"
+      }
+    },
+    {
+      "id": "s-7",
+      "type": "other",
+      "name": "Zhengzhou's rules (no smoking in lifts and other public places)",
+      "loc": {
+        "note": "The judgment says only \"according to Zhengzhou's rules\" and gives no title or article"
+      }
+    },
+    {
+      "id": "s-8",
+      "type": "other",
+      "name": "The basic principles and purpose of civil law",
+      "loc": {
+        "note": "The judgment cites no provision"
+      }
+    }
+  ]
+}
