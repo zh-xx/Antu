@@ -9,7 +9,7 @@ examples/
 └── raw/              原始材料（裁判文书原文），不属于任何一批示例
 ```
 
-现在有事实图与程序图两类：`fact/`、`procedure/`。
+现在有事实图、程序图、关系图三类：`fact/`、`procedure/`、`relationship/`。
 
 ## 给 agent 的：`agent/fact/`
 
@@ -47,7 +47,7 @@ agent 照抄结构不会撞到"摆不下"。MCP 的 `antu_examples` 默认给的
 | `zhang-juan-v-peng-yu-private-lending.*` | 真实案例（张娟诉彭宇），民间借贷 |
 | `sample-*.json` | 示意数据：三个时间点、无分组、同侧双主体、两侧各两个主体、四方四个时间点、建设工程付款与结算 |
 
-四批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 6 对、`procedure/` 7 对、`agent/procedure/` 7 对。
+六批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 6 对、`procedure/` 7 对、`agent/procedure/` 7 对、`relationship/` 5 对、`agent/relationship/` 5 对。
 
 MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 
@@ -85,6 +85,35 @@ MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 
 MCP 的 `antu_examples` 传 `type="procedure"` 默认给的就是这一批；
 要看七份真实合同，加 `group="real"`。
+
+## 给人和调试用的：`relationship/`
+
+案件当事方一览：谁和谁有关系，某一天的横截面（`asOf`）。三份真实案例的当事方取自
+`fact/` 里同名案件的裁判文书，两份示意数据从零写成。**成对存放**，口径与上面两类相同。
+
+| 文件（同名前缀） | 主体 / 关系 | 说明 |
+|---|---|---|
+| `yuhuan-parties.*` | 7 / 9 | 真实案例（于欢案）：借贷、房产抵押担保、夫妻与母子、指使催债，两个阵营 |
+| `kuaibo-parties.*` | 9 / 10 | 真实案例（快播案）：控制、持股、雇佣、合作与三家机关的查处，光通公司居中 |
+| `zhang-juan-v-peng-yu-parties.*` | 3 / 4 | 真实案例（张娟诉彭宇）：两笔借款，案外人居中，最小的一份 |
+| `sample-loan-guarantee.*` | 5 / 4 | 示意数据：一笔借款加担保 |
+| `sample-group-guarantee.*` | 8 / 9 | 示意数据：集团股权结构与为它担保的两方 |
+
+MCP 的 `antu_examples` 传 `type="relationship", group="real"` 列出这一批。
+
+## 给 agent 的：`agent/relationship/`
+
+**这五份必须一直能通过校验**，也不带任何提示（note）。每份 0.4~1.3 KB，成对存放。
+
+| 文件（同名前缀） | 讲什么 |
+|---|---|
+| `1-minimal.*` | 最小可用：两个主体、一条关系，必填字段各出现一次 |
+| `2-equity.*` | 股权与控制：`share` 写持股比例，箭头从持有人指向被持有的公司 |
+| `3-guarantee.*` | 合同、债权与担保：`secures` 指向被担保的那笔债 |
+| `4-groups.*` | `groups` + `groupId`：两个阵营，不分组的主体居中 |
+| `5-kinship.*` | 身份与雇佣、代理：亲属默认无向，`directed` 改写；`asOf` 写横截面日期 |
+
+MCP 的 `antu_examples` 传 `type="relationship"` 默认给的就是这一批。
 
 ## `raw/` —— 原始材料
 

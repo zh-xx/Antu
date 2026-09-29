@@ -1,0 +1,139 @@
+{
+  "type": "relationship",
+  "title": "Zhang Juan v. Peng Yu, private lending · Parties and relations",
+  "asOf": "2020-12-13",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Plaintiff"
+    },
+    {
+      "id": "g-2",
+      "label": "Defendant"
+    }
+  ],
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "person",
+      "label": "Zhang Juan",
+      "role": "Lender",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-5"
+      ]
+    },
+    {
+      "id": "e-2",
+      "kind": "person",
+      "label": "Peng Yu",
+      "role": "Borrower",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-5"
+      ]
+    },
+    {
+      "id": "e-3",
+      "kind": "other",
+      "label": "A third party",
+      "role": "Passed the money on",
+      "sourceIds": [
+        "s-4"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-1",
+      "to": "e-2",
+      "kind": "debt",
+      "label": "First loan",
+      "amount": "CNY 40,000",
+      "detail": "Transferred 3 Nov 2020 against an IOU, due 3 Dec; not repaid",
+      "sourceIds": [
+        "s-1",
+        "s-3"
+      ]
+    },
+    {
+      "id": "r-2",
+      "from": "e-1",
+      "to": "e-2",
+      "kind": "debt",
+      "label": "Second loan",
+      "amount": "CNY 40,000",
+      "detail": "Paid 13 Nov 2020 through a third party, due 13 Dec; not repaid",
+      "sourceIds": [
+        "s-2",
+        "s-4"
+      ]
+    },
+    {
+      "id": "r-3",
+      "from": "e-1",
+      "to": "e-3",
+      "kind": "other",
+      "label": "Paid through for the second loan",
+      "sourceIds": [
+        "s-4"
+      ]
+    },
+    {
+      "id": "r-4",
+      "from": "e-3",
+      "to": "e-2",
+      "kind": "other",
+      "label": "Passed on CNY 40,000",
+      "sourceIds": [
+        "s-4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "IOU (first CNY 40,000)",
+      "loc": {
+        "file": "IOU",
+        "clause": 1
+      }
+    },
+    {
+      "id": "s-2",
+      "type": "contract",
+      "name": "IOU (second CNY 40,000)",
+      "loc": {
+        "file": "IOU",
+        "clause": 1
+      }
+    },
+    {
+      "id": "s-3",
+      "type": "evidence",
+      "name": "China Construction Bank statement",
+      "loc": {
+        "file": "Bank statement"
+      }
+    },
+    {
+      "id": "s-4",
+      "type": "evidence",
+      "name": "WeChat and Alipay transfer records",
+      "loc": {
+        "file": "Transfer records"
+      }
+    },
+    {
+      "id": "s-5",
+      "type": "case",
+      "name": "First-instance judgment",
+      "loc": {
+        "caseNo": "（2023）湘1202民初2736号",
+        "court": "Hecheng District People's Court, Huaihua, Hunan"
+      }
+    }
+  ]
+}

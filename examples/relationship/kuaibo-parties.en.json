@@ -1,0 +1,258 @@
+{
+  "type": "relationship",
+  "title": "The Kuaibo case · The company, its people and the regulators",
+  "asOf": "2013-12-31",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Defendant company and defendants"
+    },
+    {
+      "id": "g-2",
+      "label": "Regulators"
+    }
+  ],
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "company",
+      "label": "Kuaibo",
+      "role": "Defendant company",
+      "detail": "Shenzhen Kuaibo Technology Co., founded 26 Dec 2007, registered capital CNY 10,000,000; licensed for online culture, never for online audiovisual programmes",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-2",
+      "kind": "person",
+      "label": "Wang Xin",
+      "role": "Legal representative",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-3",
+      "kind": "person",
+      "label": "Wu Ming",
+      "role": "Head of the Kuaibo division",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-4",
+      "kind": "person",
+      "label": "Zhang Kedong",
+      "role": "Shareholder, head of technology",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-5",
+      "kind": "person",
+      "label": "Niu Wenju",
+      "role": "Head of operations",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-6",
+      "kind": "company",
+      "label": "Guangtong",
+      "role": "Partner",
+      "detail": "Beijing Wanglian Guangtong Technology Co.",
+      "sourceIds": [
+        "s-1",
+        "s-4"
+      ]
+    },
+    {
+      "id": "e-7",
+      "kind": "government",
+      "label": "Shenzhen cyber police",
+      "detail": "Public Information Network Security Supervision Branch, Shenzhen Public Security Bureau",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "e-8",
+      "kind": "government",
+      "label": "Nanshan broadcasting bureau",
+      "detail": "Radio and Television Bureau of Nanshan District, Shenzhen",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "e-9",
+      "kind": "government",
+      "label": "Haidian culture commission",
+      "detail": "Culture Commission of Haidian District, Beijing",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-5"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-2",
+      "to": "e-1",
+      "kind": "control",
+      "label": "Legal representative, executive director, manager",
+      "detail": "Wang Xin was also a shareholder and ran the company (the judgment does not give his share)",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-2",
+      "from": "e-4",
+      "to": "e-1",
+      "kind": "equity",
+      "label": "Shareholder",
+      "detail": "The judgment does not give the share",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-3",
+      "from": "e-1",
+      "to": "e-3",
+      "kind": "employment",
+      "label": "Division head (2013)",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-4",
+      "from": "e-1",
+      "to": "e-4",
+      "kind": "employment",
+      "label": "Deputy head and head of technology (2012)",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-5",
+      "from": "e-1",
+      "to": "e-5",
+      "kind": "employment",
+      "label": "Deputy head and head of operations (2012)",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-6",
+      "from": "e-2",
+      "to": "e-4",
+      "kind": "other",
+      "label": "Directed the change to cache storage",
+      "detail": "Late 2013: at Wang Xin's instigation, Zhang Kedong's technical department changed the cache servers from whole files to fragments",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "r-7",
+      "from": "e-1",
+      "to": "e-6",
+      "kind": "contract",
+      "label": "Strategic cooperation (4 cache servers)",
+      "sourceIds": [
+        "s-4"
+      ]
+    },
+    {
+      "id": "r-8",
+      "from": "e-7",
+      "to": "e-1",
+      "kind": "other",
+      "label": "Administrative warning (Aug 2012)",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "r-9",
+      "from": "e-8",
+      "to": "e-1",
+      "kind": "other",
+      "label": "Administrative penalty (11 Oct 2013)",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "r-10",
+      "from": "e-9",
+      "to": "e-6",
+      "kind": "other",
+      "label": "Seized the 4 servers (18 Nov 2013)",
+      "sourceIds": [
+        "s-5"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "case",
+      "name": "First-instance judgment",
+      "loc": {
+        "caseNo": "（2015）海刑初字第512号",
+        "court": "Haidian District People's Court, Beijing"
+      }
+    },
+    {
+      "id": "s-2",
+      "type": "document",
+      "name": "Shenzhen cyber police: administrative warning",
+      "loc": {
+        "file": "Penalty record cited in the judgment"
+      }
+    },
+    {
+      "id": "s-3",
+      "type": "document",
+      "name": "Nanshan broadcasting bureau: penalty decision",
+      "loc": {
+        "file": "Penalty record cited in the judgment"
+      }
+    },
+    {
+      "id": "s-4",
+      "type": "contract",
+      "name": "Kuaibo–Guangtong cooperation agreement",
+      "loc": {
+        "file": "Cooperation agreement",
+        "clause": 1
+      }
+    },
+    {
+      "id": "s-5",
+      "type": "evidence",
+      "name": "Expert opinion on the 4 servers",
+      "loc": {
+        "file": "Expert opinion"
+      }
+    }
+  ]
+}

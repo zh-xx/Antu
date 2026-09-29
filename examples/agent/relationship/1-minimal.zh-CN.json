@@ -1,0 +1,27 @@
+{
+  "type": "relationship",
+  "title": "最小可用：一笔借款",
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "person",
+      "label": "张三",
+      "role": "出借人"
+    },
+    {
+      "id": "e-2",
+      "kind": "person",
+      "label": "李四",
+      "role": "借款人"
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-1",
+      "to": "e-2",
+      "kind": "debt",
+      "amount": "10 万元"
+    }
+  ]
+}

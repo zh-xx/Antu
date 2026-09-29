@@ -408,3 +408,27 @@ test('looking at an entity brings out its relations and the claims its guarantee
   assert.deepEqual([...li.lines].sort(), ['r-1', 'r-3', 'r-4'])
   assert.ok(!li.entities.has('e-3'), 'the guarantor is not one of Li Si\'s own relations')
 })
+
+test('a label always has room: between two level partners, and in the channel between camps', () => {
+  for (const orientation of ['vertical', 'horizontal']) {
+    const s = base()
+    // A long label on a link from a camp to the party in the middle
+    s.entities.push({ id: 'e-6', kind: 'person', label: 'A third party' })
+    s.relations.push({ id: 'r-5', from: 'e-6', to: 'e-2', kind: 'other', label: 'Passed on CNY 40,000 in cash' })
+    const g = buildRelationshipGraph(s, undefined, undefined, orientation)
+    const v = orientation === 'vertical'
+    const n = (id) => g.nodes.find((x) => x.id === id)
+    // along the frame's cross axis: x when vertical, y when horizontal
+    const lo = (x) => (v ? x.position.x : x.position.y)
+    const hi = (x) => lo(x) + (v ? x.data.w : x.data.h)
+    const room = (id) => {
+      const c = g.connections.find((x) => x.relationId === id)
+      return v ? c.labelSize.width : c.labelSize.height
+    }
+    const [a, b] = [n('e-2'), n('e-5')].sort((m, k) => lo(m) - lo(k))
+    assert.ok(lo(b) - hi(a) >= room('r-4'), `${orientation}: "Spouses" fits between the spouses`)
+    const [, right] = g.groupBoxes
+    const rightLo = v ? right.x : right.y
+    assert.ok(rightLo - hi(n('e-6')) >= room('r-5'), `${orientation}: the long label fits in the channel`)
+  }
+})
