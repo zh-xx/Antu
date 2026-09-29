@@ -32,22 +32,10 @@ export function nodePaint(kind, outcome = 'neutral') {
   return OUTCOME_PAINT[outcome] ?? OUTCOME_PAINT.neutral
 }
 
-/**
- * A rule card: the bar on its leading edge takes the outcome colour, the card itself only a
- * faint tint of it. A card is text to read, not a step to find: a full node fill on a stack of
- * them turns the whole lane into one block of colour.
- */
-const RULE_TINT = { neutral: '#f8fafc', positive: '#f0fdf4', negative: '#fef2f2' }
-export function rulePaint(outcome = 'neutral') {
-  const o = OUTCOME_PAINT[outcome] ? outcome : 'neutral'
-  return { stroke: OUTCOME_PAINT[o].stroke, fill: RULE_TINT[o] }
-}
-
 /** A stage box: a pale wash behind its nodes, a hairline edge, a quiet title */
 export const STAGE_PAINT = { fill: '#f8fafc', stroke: '#cbd5e1', title: '#475569' }
-
-/** The scope bar beside the rule lane: how far a rule reaches */
-export const SCOPE_PAINT = { stroke: '#cbd5e1', width: 4 }
+/** A stage box a looked-at rule applies in: a warmer wash and a stronger edge */
+export const STAGE_LIT_PAINT = { fill: '#fff7ed', stroke: '#f59e0b', title: '#b45309' }
 
 /**
  * Paint for one link. The main-line highlight is part of this, not a CSS state: with the

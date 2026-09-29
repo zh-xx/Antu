@@ -934,63 +934,83 @@
   text-overflow: ellipsis;
 }
 
-/* ---------- 规则卡片（或有条款：违约、延期责任、解除权） ----------
-   不是流程上的一步，所以不画成节点加连线，而是放在它适用的阶段旁边的一栏里。
-   左边的色条跟 outcome 走（颜色以内联样式写上去，导出图片才带得走）。
-   各段的行数上限与 metrics.js 的 ruleHeight 一致：框的高度和里面的字不会对不上。 */
-.antu-rule {
+/* ---------- 条款表（或有条款：违约、延期责任、解除权） ----------
+   在流程图下方，一行一条：情形 | 后果 | 适用阶段。按"导致哪个终点"分组，其余一组。
+   表、列、每一行的尺寸都由 ruleTable.js 算好传进来（字号行高与 metrics.js 的 TABLE_* 一致），
+   这里只管样式，不自己决定尺寸：表的高度和画布对得上，导出图片不会截掉。 */
+.antu-rtable {
+  box-sizing: border-box;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--antu-text-2);
+  cursor: default;
+}
+.antu-rtable-title {
+  box-sizing: border-box;
+  height: 52px;
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.antu-rtable-title b { font-size: 15px; color: var(--antu-text); margin-right: 10px; }
+.antu-rtable-title span { font-size: 12.5px; color: var(--antu-text-3); }
+.antu-rtable-head {
+  display: grid;
+  box-sizing: border-box;
+  height: 32px;
+  align-items: end;
+  border-bottom: 1px solid #cbd5e1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--antu-text-3);
+}
+.antu-rtable-head span { padding: 0 12px 7px; }
+.antu-rtable-ghead {
+  box-sizing: border-box;
+  height: 40px;
+  padding: 16px 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--antu-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.antu-rtable-ghead.is-end { color: #b91c1c; }
+.antu-rtable-ghead span { margin-left: 8px; font-weight: 400; color: #94a3b8; }
+.antu-rtable-row {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  padding: 10px 10px 10px 10px;
-  border: 1px solid var(--antu-line);
-  border-left: 4px solid #94a3b8;
-  border-radius: 6px;
+  display: grid;
+  box-sizing: border-box;
+  border-bottom: 1px solid #eef1f5;
   cursor: pointer;
   outline: none;
-  overflow: visible;
 }
-.antu-rule:hover { box-shadow: 0 3px 10px rgba(15, 23, 42, .10); }
-.antu-rule:focus-visible { box-shadow: 0 0 0 2px #2f6fed; }
-.react-flow__node-prule:hover { z-index: 10 !important; }
-.antu-rule-when { font-size: 11.5px; line-height: 16px; color: var(--antu-text-2); }
-.antu-rule-if { font-weight: 700; color: var(--antu-text-3); margin-right: 4px; }
-.antu-rule-when-one {
-  display: -webkit-inline-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.antu-rule-when-list { margin: 0; padding-left: 14px; }
-.antu-rule-when-list > .antu-rule-if { display: block; margin-left: -14px; line-height: 16px; }
-.antu-rule-when-list li {
-  display: list-item;
-  overflow: hidden;
-  max-height: 32px;
-}
-.antu-rule-then {
-  margin-top: 4px;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  font-size: 12.5px;
-  line-height: 18px;
-  font-weight: 650;
-  color: var(--antu-text);
-}
-.antu-rule-foot {
-  margin-top: auto;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 10.5px;
+.antu-rtable-row > div { padding: 9px 12px; overflow-wrap: anywhere; overflow: hidden; }
+.antu-rtable-row:hover, .antu-rtable-row.is-lit { background: #fffbeb; }
+.antu-rtable-row:focus-visible { box-shadow: inset 0 0 0 2px #2f6fed; }
+.antu-rtable-then { font-weight: 600; color: var(--antu-text); }
+.antu-rtable-scope { color: var(--antu-text-3); }
+.antu-rtable-any { color: var(--antu-text-3); }
+.antu-rtable-when ul { margin: 0; padding-left: 16px; }
+.antu-rtable-row > .antu-rtable-pop { overflow: visible; padding: 0; }
+.antu-rtable-pop { width: 320px; left: 34%; top: calc(100% - 4px); cursor: default; }
+.react-flow__node-prtable { z-index: 5 !important; }
+
+/* 规则会导致的终点：右上角注明几项条款；鼠标移到表中对应的一行时，终点和它适用的阶段一起点亮 */
+.antu-pn-rules {
+  position: absolute;
+  top: -9px;
+  right: 6px;
+  padding: 0 6px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 11px;
   line-height: 16px;
-  color: var(--antu-text-3);
+  color: #b91c1c;
   white-space: nowrap;
+  pointer-events: none;
 }
-.antu-rule-scope { overflow: hidden; text-overflow: ellipsis; }
-.antu-rule .antu-preview { width: 280px; }
-.antu-rule .antu-preview.left { right: calc(100% + 10px); left: auto; }
+.antu-pn.is-lit .antu-pn-shape { filter: drop-shadow(0 0 6px rgba(245, 158, 11, .8)); }

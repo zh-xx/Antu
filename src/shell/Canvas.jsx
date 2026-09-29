@@ -31,6 +31,7 @@ const PAN_PAD = 160
 export default function Canvas({
   ref,
   graph,
+  fitKey,
   nodeTypes,
   showGrid = false,
   style,
@@ -63,6 +64,10 @@ export default function Canvas({
     setEdges(graph.edges)
   }, [graph, setNodes, setEdges])
 
+  // `fitKey` says when the *layout* changed. Without it every new graph object re-fits, which is
+  // right for a view switch but wrong for paint-only changes (a lit box while hovering a rule row):
+  // they rebuilt the graph and threw a zoomed-in reader back to the overview (issue #21).
+  //
   // The graph changed, so the viewport must be fitted again, or the bottom is cut
   // off-screen. fitView only runs once on init; this covers the later ones. Later fits
   // animate, so the view slides over instead of flashing (the first open does not
@@ -79,7 +84,7 @@ export default function Canvas({
       firstFitRef.current = false
     })
     return () => cancelAnimationFrame(id)
-  }, [graph])
+  }, [fitKey ?? graph])
 
   const translateExtent = useMemo(
     () => [

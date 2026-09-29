@@ -88,7 +88,7 @@ function Outline({ kind, outcome, w, h }) {
 }
 
 const FlowNode = memo(function FlowNode({ id, data }) {
-  const { node, w, h, textW, isSpine, stageLabel, actorNames, sources, showDetail, vertical, layer } = data
+  const { node, w, h, textW, ruleCount = 0, lit = false, isSpine, stageLabel, actorNames, sources, showDetail, vertical, layer } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
 
@@ -106,7 +106,7 @@ const FlowNode = memo(function FlowNode({ id, data }) {
 
   return (
     <div
-      className={`antu-pn k-${kind} o-${outcome}${isSpine ? ' is-spine' : ''}`}
+      className={`antu-pn k-${kind} o-${outcome}${isSpine ? ' is-spine' : ''}${lit ? ' is-lit' : ''}`}
       style={{ width: w, height: h }}
       role="button"
       tabIndex={0}
@@ -131,6 +131,9 @@ const FlowNode = memo(function FlowNode({ id, data }) {
         <div className="antu-pn-label">{node.label}</div>
         {detail && <div className="antu-pn-detail">{detail}</div>}
       </div>
+
+      {/* An end the rules lead to says how many: the table below lists them under its name */}
+      {ruleCount > 0 && <span className="antu-pn-rules">{t('flow.ruleBadge', { n: ruleCount })}</span>}
 
       {open && (
         <div

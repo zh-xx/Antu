@@ -28,6 +28,8 @@
 import { validateProcedure, hintsOfProcedure, ruleEndIds } from './rules.js'
 import { elkLayoutSync } from './elk.js'
 import { straighten, linkCost } from './straighten.js'
+import { layoutColumns } from './columns.js'
+import { layoutRuleTable } from './ruleTable.js'
 // The same text measure the fact cards use, so a CJK character counts the same everywhere
 import { textEm } from '../../fact/cardGeometry.js'
 import {
@@ -39,18 +41,12 @@ import {
   STAGE_PAD_TOP,
   STAGE_PAD,
   STAGE_TITLE_FONT,
-  TRACK,
   LABEL_FONT,
   LABEL_LINE,
   LABEL_PAD_X,
   LABEL_MAX_W,
-  RULE_W,
-  RULE_GAP,
-  RULE_STACK_GAP,
-  SCOPE_BAR_GAP,
-  SCOPE_BAR_PITCH,
-  ruleHeight,
   sizeOf,
+  TABLE_GAP,
 } from './metrics.js'
 
 const keyOf = (e) => `${e.from}|${e.to}|${e.condition ?? ''}`
@@ -89,6 +85,9 @@ export function toPathD(points, r = CORNER_R) {
   return d.join(' ')
 }
 
+/** The straight run kept before a link meets its node: longer than the arrowhead (7) */
+const END_RUN = 12
+
 /**
  * The same polyline drawn curved: every turn becomes a wide arc (a cubic that leaves along one
  * leg and arrives along the next), so the ends still leave and meet their nodes straight on and
@@ -106,7 +105,10 @@ export function toCurveD(points, r = CURVE_R) {
     const outLen = Math.hypot(nx - cx, ny - cy)
     // A leg shared by two turns gives each half of it; an end leg is all this turn's
     const inShare = i === 1 ? inLen : inLen / 2
-    const outShare = i === points.length - 2 ? outLen : outLen / 2
+    // The last leg keeps a straight run into the node (END_RUN): the arrowhead points along the last
+    // drawn segment, and a segment of length 0 has no direction (the browser then draws it pointing
+    // right, whichever side the link enters from; issue #23)
+    const outShare = i === points.length - 2 ? Math.max(0, outLen - END_RUN) : outLen / 2
     const rr = Math.max(0, Math.min(r, inShare, outShare))
     if (rr === 0) {
       d.push(`L ${cx} ${cy}`)
@@ -176,8 +178,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       rows: [],
       spine: [],
       stageBoxes: [],
-      rules: [],
-      ruleLinks: [],
+      ruleTable: null,
       size: { width: 0, height: 0 },
       stats: emptyStats(),
     }
@@ -451,13 +452,22 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     { 'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX' },
     { 'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF' },
   ]
+  // With stages drawn, and every node in one, the stages become columns (columns.js): the flow
+  // runs down inside a stage and the stages run across, so the picture is not one long strip.
+  // Otherwise, one graph as before.
+  const columnMode = showStages && presentStages.length > 1 && nodes.every((n) => stageById.has(n.stageId))
   let best = null
-  for (const placement of PLACEMENTS) {
-    const tried = place(placement)
-    const cost = tried.connections.reduce((n, c) => n + linkCost(c, tried.placed, diamonds), 0)
-    if (!best || cost < best.cost) best = { ...tried, cost }
+  if (columnMode) {
+    best = layoutColumns({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
+  } else {
+    for (const placement of PLACEMENTS) {
+      const tried = place(placement)
+      const cost = tried.connections.reduce((n, c) => n + linkCost(c, tried.placed, diamonds), 0)
+      if (!best || cost < best.cost) best = { ...tried, cost }
+    }
   }
-  const { placed, stageBoxes, connections, size } = best
+  const { placed, stageBoxes, size } = best
+  const connections = best.connections.map((c) => ({ ...c, d: toPathD(c.points), dCurve: toCurveD(c.points) }))
 
   // Boxes in along/across coordinates (along = the direction the layers run)
   const boxes = new Map(
@@ -480,129 +490,26 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     return { layer: i, along: a, extent: Math.max(...inRow.map((id) => boxes.get(id).a1 - a)), count: inRow.length }
   })
 
-  // ④ stage spans along the flow, for the rule lane: from the stage boxes when drawn, from the
-  // stage's nodes otherwise
-  const stageSpans = []
-  {
-    const extent = presentStages.map((st) => {
-      const box = stageBoxes.find((b) => b.stageId === st.id)
-      if (box) {
-        const lo = vertical ? box.y : box.x
-        return { st, lo, hi: lo + (vertical ? box.h : box.w) }
-      }
-      const own = nodes.filter((n) => n.stageId === st.id).map((n) => boxes.get(n.id))
-      return { st, lo: Math.min(...own.map((b) => b.a0)), hi: Math.max(...own.map((b) => b.a1)) }
-    })
-    for (const x of extent) stageSpans.push({ stageId: x.st.id, label: x.st.label, from: x.lo, to: Math.max(x.hi, x.lo + 1) })
-  }
-
-  // ⑤ the rule lane. A rule is a clause that may fire anywhere in its stages ("if the supplier
-  // is late, a penalty of …"); drawn as edges from some step, it would claim a moment it does
-  // not have, and repeat once per stage it covers. So it is a card in a lane of its own, beside
-  // the node field, level with the first stage it applies to; the stages it covers are written
-  // on it. Cards stack in stage order and never overlap.
-  // A rule that ends the contract (`endId`) joins a trunk running between the node field and
-  // the lane, down to its end. One trunk per end, so five termination grounds read as five
-  // roads into one door rather than five lines across the page.
+  // ④ The rules: a table under the diagram, whatever the orientation (a list turned on its side
+  // does not read). See ruleTable.js for why a table and not cards among the nodes.
   const showRules = fields?.rules !== false && Array.isArray(spec.rules) && spec.rules.length > 0
-  const rulesOut = []
-  const ruleLinks = []
+  let ruleTable = null
   if (showRules) {
-    const stageOrder = new Map((spec.stages ?? []).map((st, i) => [st.id, i]))
-    const spanOf = new Map(stageSpans.map((b) => [b.stageId, b]))
-    const firstStage = (r) => {
-      const known = (r.stageIds ?? []).filter((id) => stageOrder.has(id))
-      return known.length ? known.reduce((a, b) => (stageOrder.get(a) <= stageOrder.get(b) ? a : b)) : null
-    }
-    const sorted = spec.rules
-      .map((r, i) => ({ r, i, first: firstStage(r) }))
-      .sort((a, b) => (stageOrder.get(a.first) ?? -1) - (stageOrder.get(b.first) ?? -1) || a.i - b.i)
-
-    const fieldEnd = (vertical ? size.width : size.height) - PAD
-    const laneC0 = fieldEnd + RULE_GAP
-    let cursor = PAD
-    let laneAcross = 0
-    for (const { r, first } of sorted) {
-      const h = ruleHeight(r, textEm)
-      const along = vertical ? h : RULE_W
-      const across = vertical ? RULE_W : h
-      const a0 = Math.max(spanOf.get(first)?.from ?? PAD, cursor)
-      cursor = a0 + along + RULE_STACK_GAP
-      laneAcross = Math.max(laneAcross, across)
-      rulesOut.push({
-        rule: r,
-        x: vertical ? laneC0 : a0,
-        y: vertical ? a0 : laneC0,
-        w: RULE_W,
-        h,
-        a0,
-        stageLabels: (r.stageIds ?? []).filter((id) => stageById.has(id)).map((id) => stageById.get(id).label),
-        allStages: !(r.stageIds ?? []).length,
-      })
-    }
-
-    // Trunks: one per end, between the node field and the lane
-    const P = (a, c) => (vertical ? [c, a] : [a, c])
-    const byEnd = new Map()
-    for (const card of rulesOut) {
-      const id = card.rule.endId
-      if (!id || !placed.has(id)) continue
-      if (!byEnd.has(id)) byEnd.set(id, [])
-      byEnd.get(id).push(card)
-    }
-    // A trunk runs down the gap between the node field and the lane, past the last layer, then
-    // across to its end and into it from beyond: nothing lies past the last layer, so the trunk
-    // crosses no node on the way.
-    const lastA1 = Math.max(...[...boxes.values()].map((b) => b.a1))
-    let k = 0
-    for (const [endId, cards] of byEnd) {
-      const trunkC = laneC0 - RULE_GAP / 2 - k * TRACK
-      const bottom = lastA1 + LAYER_GAP / 2 + k * TRACK
-      k += 1
-      const e = boxes.get(endId)
-      // Each card joins the trunk a little below its top, level with its consequence
-      const stubs = cards.map((c) => c.a0 + 18)
-      for (const [n, a] of stubs.entries()) {
-        const pts = [P(a, laneC0), P(a, trunkC)]
-        ruleLinks.push({ id: `rl:${cards[n].rule.id}`, points: pts, d: toPathD(pts), dCurve: toPathD(pts), arrow: false })
-      }
-      const pts = [P(Math.min(...stubs), trunkC), P(bottom, trunkC), P(bottom, e.cm), P(e.a1, e.cm)]
-      ruleLinks.push({ id: `rt:${endId}`, to: endId, points: pts, d: toPathD(pts), dCurve: toCurveD(pts), arrow: true })
-      if (vertical) size.height = Math.max(size.height, bottom + PAD)
-      else size.width = Math.max(size.width, bottom + PAD)
-    }
-
-    // Scope bars: how far a rule reaches, drawn beside the lane across the stages it covers.
-    // One bar per distinct stage range (rules sharing a range share the bar), so "these two
-    // apply from requirements to delivery" is seen, not read off a footer.
-    const scopeBars = new Map()
-    for (const card of rulesOut) {
-      const spans = (card.rule.stageIds ?? []).map((id) => spanOf.get(id)).filter(Boolean)
-      if (!spans.length) continue
-      const from = Math.min(...spans.map((b) => b.from))
-      const to = Math.max(...spans.map((b) => b.to))
-      const key = `${from}|${to}`
-      if (!scopeBars.has(key)) scopeBars.set(key, { from, to })
-    }
-    ;[...scopeBars.values()]
-      .sort((a, b) => a.from - b.from || b.to - a.to)
-      .forEach((bar, i) => {
-        const c = laneC0 + laneAcross + SCOPE_BAR_GAP + i * SCOPE_BAR_PITCH
-        const pts = [P(bar.from + 6, c), P(bar.to - 6, c)]
-        ruleLinks.push({ id: `rs:${bar.from}|${bar.to}`, points: pts, d: toPathD(pts), dCurve: toPathD(pts), arrow: false, scope: true })
-        laneAcross = Math.max(laneAcross, c - laneC0 + 4)
-      })
-
-    // The content box grows to hold the lane
-    const alongEnd = Math.max(...rulesOut.map((c) => c.a0 + (vertical ? c.h : RULE_W)))
-    if (vertical) {
-      size.width = Math.max(size.width, laneC0 + laneAcross + PAD)
-      size.height = Math.max(size.height, alongEnd + PAD)
-    } else {
-      size.height = Math.max(size.height, laneC0 + laneAcross + PAD)
-      size.width = Math.max(size.width, alongEnd + PAD)
-    }
+    ruleTable = layoutRuleTable({
+      rules: spec.rules,
+      stages: spec.stages ?? [],
+      byId,
+      x: PAD,
+      y: size.height - PAD + TABLE_GAP,
+      available: size.width - PAD * 2,
+    })
+    size.width = Math.max(size.width, ruleTable.x + ruleTable.w + PAD)
+    size.height = ruleTable.y + ruleTable.h + PAD
   }
+  // How many rules lead to each end: shown on the end, so the table and the diagram point at
+  // each other
+  const rulesInto = new Map()
+  for (const r of spec.rules ?? []) if (r.endId) rulesInto.set(r.endId, (rulesInto.get(r.endId) ?? 0) + 1)
 
   // the nodes go to React Flow. Sizes travel in data (the same convention as fact's cards)
   const actorById = new Map((spec.actors ?? []).map((a) => [a.id, a]))
@@ -625,6 +532,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
         sources: (n.sourceIds ?? []).map((id) => sourceById.get(id)).filter(Boolean),
         sourceCount: (n.sourceIds ?? []).filter((id) => sourceById.has(id)).length,
         layer: layerOf(n.id),
+        ruleCount: showRules ? (rulesInto.get(n.id) ?? 0) : 0,
         showDetail: fields?.detail !== false,
         vertical,
       },
@@ -653,8 +561,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     rows,
     spine,
     stageBoxes,
-    rules: rulesOut,
-    ruleLinks,
+    ruleTable,
     // Whole pixels: ELK places on fractions, and the canvas and the exported image want integers
     size: { width: Math.ceil(size.width), height: Math.ceil(size.height) },
     stats,

@@ -44,11 +44,15 @@ export const STAGE_PAD_TOP = 30
 export const STAGE_PAD = 14
 export const STAGE_TITLE_FONT = 13
 
+/**
+ * The column layout (columns.js): the gap between two stage columns (the channel links between
+ * stages run in), and the least width of a column, so a rule card under it stays readable
+ */
+export const COLUMN_GAP = 56
+export const COLUMN_MIN_W = 180
+
 /** Padding around the content. The image export adds more on top; this one keeps the diagram itself off the edge */
 export const PAD = 32
-
-/** Distance between two parallel rule trunks */
-export const TRACK = 6
 
 /**
  * Condition labels: ELK is given a box per label and keeps it clear of every node. The box is
@@ -101,44 +105,26 @@ export function sizeOf(node) {
   }
 }
 
-// ── Rule cards (the contingent clauses beside the flow) ──────
-// A rule card is sized from its text, not fixed: "if … then …" runs from four characters to
-// three triggers of twenty. The estimate uses the same text measure as the fact cards
-// (textEm), and the stylesheet clamps each part to the lines counted here, so the box and the
-// text inside it cannot disagree.
+// ── The rule table (ruleTable.js, RuleTableNode.jsx) ─────────
+// The contingent clauses, as a table under the diagram. The layout counts each row's lines from
+// its text with these numbers, and the stylesheet sets the text with the same ones.
 
-/** Scope bars: beside the lane, one per distinct stage range, this far apart */
-export const SCOPE_BAR_GAP = 12
-export const SCOPE_BAR_PITCH = 8
-
-/** Card width, and the gap between the node field and the rule lane */
-export const RULE_W = 248
-export const RULE_GAP = 40
-/** Space between two cards stacked in the lane */
-export const RULE_STACK_GAP = 12
-/** Inner padding, the coloured bar on the leading edge, and the text metrics */
-export const RULE_PAD = 10
-export const RULE_BAR = 4
-export const RULE_WHEN_FONT = 11.5
-export const RULE_WHEN_LINE = 16
-export const RULE_THEN_FONT = 12.5
-export const RULE_THEN_LINE = 18
-export const RULE_FOOT = 18
-/** At most this many lines per trigger and for the consequence; the rest is in the popover */
-export const RULE_WHEN_MAX_LINES = 2
-export const RULE_THEN_MAX_LINES = 3
-
-/** Height of one rule card, from its text */
-export function ruleHeight(rule, textEm) {
-  const inner = RULE_W - RULE_PAD * 2 - RULE_BAR
-  const whens = Array.isArray(rule.when) ? rule.when : [rule.when]
-  // A list of triggers is bulleted: the bullet takes about one em of each line
-  const whenPerLine = inner / RULE_WHEN_FONT - (whens.length > 1 ? 1 : 0)
-  // A list opens with its own line ("if any of:")
-  const whenLines = whens.reduce(
-    (n, w) => n + Math.min(RULE_WHEN_MAX_LINES, Math.max(1, Math.ceil(textEm(w) / whenPerLine))),
-    whens.length > 1 ? 1 : 0,
-  )
-  const thenLines = Math.min(RULE_THEN_MAX_LINES, Math.max(1, Math.ceil(textEm(rule.then) / (inner / RULE_THEN_FONT))))
-  return RULE_PAD * 2 + whenLines * RULE_WHEN_LINE + 4 + thenLines * RULE_THEN_LINE + 4 + RULE_FOOT
-}
+/** Text in the cells, the padding of a cell, and the indent of a listed trigger */
+export const TABLE_FONT = 13
+export const TABLE_LINE = 20
+export const TABLE_PAD_X = 12
+export const TABLE_PAD_Y = 9
+export const TABLE_LIST_INDENT = 16
+/** The table follows the diagram's width, within these limits (a very wide row reads badly) */
+export const TABLE_MIN_W = 640
+export const TABLE_MAX_W = 1100
+/** Gap between the diagram and the table */
+export const TABLE_GAP = 40
+/** The title block, the column headings, and a group heading */
+export const TABLE_TITLE_H = 52
+export const TABLE_HEAD_H = 32
+export const TABLE_GROUP_H = 40
+/** Column shares: situation, consequence, stages */
+export const TABLE_COLS = [0.34, 0.44, 0.22]
+/** Margin on the text measure: a row one line too short would cut its text off */
+export const TABLE_SLACK = 1.1

@@ -194,24 +194,41 @@ export function validateProcedure(spec) {
   // An end reached only through a rule has no incoming edge, yet it is not an entry: the rule
   // is what leads there. It counts as reached.
   const ruleEnds = ruleEndIds(spec)
-  const entries = [...byId.keys()].filter((id) => inn.get(id).length === 0 && !ruleEnds.has(id))
-  if (entries.length === 0) {
+  // A note takes no part in the flow: it needs no incoming edge and is never unreachable
+  const isNote = (id) => byId.get(id).kind === 'note'
+  const sources = [...byId.keys()].filter((id) => inn.get(id).length === 0 && !ruleEnds.has(id) && !isNote(id))
+  if (sources.length === 0) {
     // With no entry, the later rules (reachability, ends) cannot be computed at
     // all, and there is no point flooding the output with them
     errors.push(tEn('perr.noEntry'))
     return errors
   }
+  // The entries are the start nodes. A node with no incoming edge that is not a start is not a
+  // second way in: it floats beside the flow (issue #18: "resignation" written as a chain of
+  // nodes rendered as an island above the real start, and the whole diagram read as starting
+  // there). Data with no start node at all keeps its first such node as the entry.
+  const starts = sources.filter((id) => byId.get(id).kind === 'start')
+  const entries = starts.length ? starts : [sources[0]]
+  const orphans = sources.filter((id) => !entries.includes(id))
 
-  const reach = new Set()
-  const stack = [...entries, ...ruleEnds]
-  while (stack.length) {
-    const cur = stack.pop()
-    if (reach.has(cur)) continue
-    reach.add(cur)
-    for (const e of out.get(cur)) stack.push(e.to)
+  const flood = (from) => {
+    const seen = new Set()
+    const stack = [...from]
+    while (stack.length) {
+      const cur = stack.pop()
+      if (seen.has(cur)) continue
+      seen.add(cur)
+      for (const e of out.get(cur)) stack.push(e.to)
+    }
+    return seen
   }
+  const reach = flood([...entries, ...ruleEnds])
+  for (const id of orphans) errors.push(tEn('perr.orphan', { id, label: byId.get(id).label }))
+  // What hangs off a floating node is not reported once more, node by node: fixing the one
+  // above fixes them all
+  const hanging = flood(orphans)
   for (const id of byId.keys()) {
-    if (!reach.has(id)) {
+    if (!reach.has(id) && !hanging.has(id) && !isNote(id)) {
       errors.push(tEn('perr.unreachable', { id }))
     }
   }
@@ -331,7 +348,7 @@ export function hintsOfProcedure(spec) {
   // and takes no part in the flow anyway.
   const ruleEnds = ruleEndIds(spec)
   const entries = [...byId.keys()].filter(
-    (id) => inn.get(id).length === 0 && byId.get(id).kind !== 'note' && !ruleEnds.has(id),
+    (id) => inn.get(id).length === 0 && byId.get(id).kind === 'start' && !ruleEnds.has(id),
   )
   if (entries.length > 1) {
     hints.push(tEn('phint.multipleEntries', { n: entries.length, ids: entries.join(', ') }))
