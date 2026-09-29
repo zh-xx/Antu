@@ -54,6 +54,30 @@ import {
   labelBox,
 } from './metrics.js'
 
+/** Every order of a short list */
+function permutations(list) {
+  if (list.length <= 1) return [list]
+  return list.flatMap((x, k) => permutations([...list.slice(0, k), ...list.slice(k + 1)]).map((rest) => [x, ...rest]))
+}
+/** A small seeded generator: the same JSON always gives the same picture */
+function mulberry32(a) {
+  return () => {
+    a |= 0
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+function shuffled(list, rand) {
+  const out = [...list]
+  for (let k = out.length - 1; k > 0; k -= 1) {
+    const m = Math.floor(rand() * (k + 1))
+    ;[out[k], out[m]] = [out[m], out[k]]
+  }
+  return out
+}
+
 const emptyStats = () => ({ entities: 0, relations: 0, groups: 0, layers: 0, widest: 0, kinds: {} })
 
 /**
@@ -110,6 +134,8 @@ const segHits = ([p, q], r, m) =>
  * places along it, and the spot that covers least of anything else wins: entities worst, then other
  * labels and titles, then other lines; the middle of the longest segment on a tie.
  */
+// Places tried along a segment, the middle first: a crowded corridor needs more than a few to find a free one
+const FRACTIONS = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82, 0.1, 0.9, 0.02, 0.98]
 function placeOnLine(points, size, nodeRects, blocks, links, borders) {
   const { width: w, height: h } = size
   const badness = (r) =>
@@ -127,7 +153,7 @@ function placeOnLine(points, size, nodeRects, blocks, links, borders) {
     // Away from the ends of the segment, where a curved corner would run under the label
     const margin = Math.min(22, (len - need) / 2)
     const span = len - need - margin * 2
-    for (const f of [0.5, 0.35, 0.65, 0.2, 0.8, 0.05, 0.95]) {
+    for (const f of FRACTIONS) {
       const t = margin + need / 2 + span * f
       const dir = horizontal ? Math.sign(q[0] - p[0]) : Math.sign(q[1] - p[1])
       const cx = horizontal ? p[0] + dir * t : p[0]
@@ -259,22 +285,84 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     // the left is handed over first and stands on the left: the guarantor of a creditor on the left no
     // longer stood on the far side of its camp, its guarantee going over everything
     const ordered = members.map((e, i) => ({ e, i, pull: pullOf(e, ci) })).sort((a, b) => a.pull - b.pull || a.i - b.i).map((x) => x.e)
-    const laid = elkLayoutSync({
-      id: `camp${ci}`,
-      layoutOptions: baseOptions,
-      children: ordered.map((e) => ({ id: e.id, width: frameSize(e).w, height: frameSize(e).h })),
-      // An undirected relation (a marriage, a contract) sets no level: handed to ELK it put a spouse a row
-      // below. Left out, both stand on one level where nothing else holds them apart; it is routed after.
-      edges: relations
-        .map((r, i) => ({ r, i }))
-        .filter(({ r }) => inside.has(r.from) && inside.has(r.to) && isDirected(r))
-        .map(({ r, i }) => ({
-          id: `r${i}`,
-          sources: [r.from],
-          targets: [r.to],
-          labels: [{ id: `l${i}`, text: labels[i].text, width: labels[i].frame.width, height: labels[i].frame.height }],
-        })),
-    })
+    // A camp whose parties have no relation among themselves (three regulators, each acting on the same
+    // company) is one row to ELK, and the parties at the ends of a row have the others in the way of a
+    // straight line across. Stacked one above another, each has its own line out of the camp.
+    const isolated = members.length > 1 && !relations.some((r) => inside.has(r.from) && inside.has(r.to))
+    const facing = isolated && ordered.every((e) => pullOf(e, ci) !== 0)
+    if (facing) {
+      const sizes = ordered.map(frameSize)
+      const wide = Math.max(...sizes.map((z) => z.w))
+      let y = 0
+      const at = new Map(
+        ordered.map((e, k) => {
+          const r = { x: (wide - sizes[k].w) / 2, y, w: sizes[k].w, h: sizes[k].h }
+          y += sizes[k].h + NODE_GAP
+          return [e.id, r]
+        }),
+      )
+      return { at, width: wide, height: y - NODE_GAP, level: new Map(ordered.map((e) => [e.id, 0])), levels: 1 }
+    }
+    const inEdges = relations.map((r, i) => ({ r, i })).filter(({ r }) => inside.has(r.from) && inside.has(r.to))
+    const runElk = (order) =>
+      elkLayoutSync({
+        id: `camp${ci}`,
+        layoutOptions: baseOptions,
+        children: order.map((e) => ({ id: e.id, width: frameSize(e).w, height: frameSize(e).h })),
+        // An undirected relation (a marriage, a contract) sets no level: handed to ELK it put a spouse a row
+        // below. Left out, both stand on one level where nothing else holds them apart; it is routed after.
+        edges: inEdges
+          .filter(({ r }) => isDirected(r))
+          .map(({ r, i }) => ({
+            id: `r${i}`,
+            sources: [r.from],
+            targets: [r.to],
+            labels: [{ id: `l${i}`, text: labels[i].text, width: labels[i].frame.width, height: labels[i].frame.height }],
+          })),
+      })
+
+    // ELK cannot see the links that leave the camp, so it does not know that a party with a link to the
+    // camp on the right should not have its own family lined up on that side: they crossed (issue #32).
+    // The order of the parties is what ELK keeps, so a few orders are tried and the one whose picture
+    // crosses fewest lines wins. Judged on straight lines between centres, and on a level line from a
+    // party out to the side it faces: rough, but it is only compared between orders of the same camp.
+    const crossings = (laidOne) => {
+      const c = new Map(laidOne.children.map((n) => [n.id, [n.x + n.width / 2, n.y + n.height / 2]]))
+      const lines = inEdges.map(({ r }) => ({ ends: [r.from, r.to], p: c.get(r.from), q: c.get(r.to) }))
+      const far = laidOne.width + 1e4
+      for (const e of members) {
+        const pull = pullOf(e, ci)
+        if (pull === 0) continue
+        const [x, y] = c.get(e.id)
+        lines.push({ ends: [e.id], p: [x, y], q: [pull > 0 ? x + far : x - far, y] })
+      }
+      const side = (a, b, d) => Math.sign((b[0] - a[0]) * (d[1] - a[1]) - (b[1] - a[1]) * (d[0] - a[0]))
+      let n = 0
+      lines.forEach((u, k) =>
+        lines.slice(k + 1).forEach((v) => {
+          if (u.ends.some((id) => v.ends.includes(id))) return
+          if (side(u.p, u.q, v.p) * side(u.p, u.q, v.q) < 0 && side(v.p, v.q, u.p) * side(v.p, v.q, u.q) < 0) n += 1
+        }),
+      )
+      return n
+    }
+    const tries = [ordered]
+    if (members.length > 2 && inEdges.length && members.some((e) => pullOf(e, ci) !== 0)) {
+      const seed = mulberry32(ci + members.length * 7919)
+      const want = members.length <= 5 ? permutations(ordered) : Array.from({ length: 40 }, () => shuffled(ordered, seed))
+      tries.push(...want)
+    }
+    let laid = null
+    let fewest = Infinity
+    for (const order of tries) {
+      const one = runElk(order)
+      const n = crossings(one)
+      if (n < fewest) {
+        laid = one
+        fewest = n
+      }
+      if (fewest === 0) break
+    }
     const at = new Map(laid.children.map((c) => [c.id, { x: c.x, y: c.y, w: c.width, h: c.height }]))
     // Left out of ELK, an undirected relation got no room for its label: two spouses side by side were
     // NODE_GAP apart and "Spouse" was cut to "pouse". Where two such parties stand level, everything from
@@ -347,6 +435,31 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         .filter((y) => y !== undefined)
       return { e, want: ys.length ? median(ys) : null, size: frameSize(e) }
     })
+    // A straight line between two parties of different camps that stand level runs across this column.
+    // A party here that covers the whole of it sends the line round (three regulators' links into one
+    // company went over the top of the picture: issue #32), so it stands clear of such a line instead,
+    // on whichever side is nearer to where it wanted to be.
+    const bandOf = (id) => {
+      const e = entities.find((x) => x.id === id)
+      const h = frameSize(e).h
+      return [centreY.get(id) - h / 2, centreY.get(id) + h / 2]
+    }
+    const lines = []
+    for (const r of relations) {
+      if (!centreY.has(r.from) || !centreY.has(r.to) || campIndexOf.get(r.from) === campIndexOf.get(r.to)) continue
+      const [a0, a1] = bandOf(r.from)
+      const [b0, b1] = bandOf(r.to)
+      if (Math.min(a1, b1) > Math.max(a0, b0)) lines.push([Math.max(a0, b0), Math.min(a1, b1)])
+    }
+    const ROOM = 14
+    for (const w of want) {
+      if (w.want === null) continue
+      const half = w.size.h / 2
+      const hits = (c) => lines.some(([lo, hi]) => c + half + ROOM > lo && c - half - ROOM < hi)
+      if (!hits(w.want)) continue
+      const options = lines.flatMap(([lo, hi]) => [lo - ROOM - half, hi + ROOM + half]).filter((c) => !hits(c))
+      if (options.length) w.want = options.sort((m, n) => Math.abs(m - w.want) - Math.abs(n - w.want))[0]
+    }
     // Those with nothing to go by come last, in the order written
     const lastY = Math.max(0, ...centreY.values())
     want.forEach((w, i) => {
@@ -368,12 +481,10 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   // ── the channel after each camp: wide enough for the widest label of a link across it ──
   // A label stands on its own line, and a link between neighbouring camps has only the channel to stand
   // in: a fixed channel let a long English label run over the entity at its end ("Passed on CNY 40,000").
-  const campOf = new Map()
-  camps.forEach((camp, ci) => camp.members.forEach((e) => campOf.set(e.id, ci)))
   const gapAfter = camps.map((_, ci) => {
     let need = CAMP_GAP
     relations.forEach((r, i) => {
-      const [m, n] = [campOf.get(r.from), campOf.get(r.to)].sort((u, v) => u - v)
+      const [m, n] = [campIndexOf.get(r.from), campIndexOf.get(r.to)].sort((u, v) => u - v)
       if (m <= ci && n > ci) need = Math.max(need, labels[i].frame.width + 2 * LABEL_MARGIN)
     })
     return need
@@ -441,12 +552,19 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   for (const i of order) {
     const a = placed.get(relations[i].from)
     const b = placed.get(relations[i].to)
-    const points =
+    // A link between two parties of one camp on different levels keeps to top and bottom where it can. It
+    // used to take the side ports too, and the links coming across from the other camp (three regulators
+    // into one company) then found none free and went round the whole picture (issue #32).
+    const sameCamp = campIndexOf.get(relations[i].from) === campIndexOf.get(relations[i].to) && camps[campIndexOf.get(relations[i].from)].group
+    const stacked = sameCamp && (a.y + a.h <= b.y || b.y + b.h <= a.y)
+    const route = (sides) =>
       routeLink({
         from: a,
         to: b,
         nodes: nodeRects,
         blocks: titles,
+        outSides: sides,
+        inSides: sides,
         // Links of one kind into the same party (three regulators each penalising the company) may run
         // along each other and share the port into it: one trunk, not three loops round the picture
         routes: done.map((c) => {
@@ -457,7 +575,8 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         portCost: portCostFor(a, b),
         crossCost: CROSS_COST,
         sidePorts: true,
-      }) ?? fallbackRoute(a, b)
+      })
+    const points = (stacked ? route(['top', 'bottom']) : null) ?? route(undefined) ?? fallbackRoute(a, b)
     const c = { index: i, points, labelAt: null, labelSize: { width: labels[i].frame.width, height: labels[i].frame.height } }
     drawn[i] = c
     done.push(c)
