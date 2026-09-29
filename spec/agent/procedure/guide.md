@@ -11,7 +11,7 @@
 
 A procedure JSON describes: **what happens in what order, where the path splits, and what
 may happen at any time along the way**. The engine draws a flowchart: steps are nodes,
-the order is edges, contingent clauses are cards beside the flow.
+the order is edges, contingent clauses are a table under the flow.
 
 ## Three things, three places
 
@@ -73,8 +73,11 @@ node with no incoming edge usually means a missing edge.
 ## Stages
 
 `stages` is an ordered list; a node joins one with `stageId`. Each stage is drawn as a
-framed box holding its nodes. Keep a stage's nodes consecutive along the flow: an edge
-into an earlier stage draws backwards (fine for a loop, a hint otherwise).
+framed box holding its nodes; the stages stand side by side as columns, the flow running down
+each (a stage much taller than the rest is folded into two columns). Keep a stage's nodes
+consecutive along the flow: an edge into an earlier stage draws backwards (fine for a loop, a
+hint otherwise). Put every node in a stage, or none: with stages on only some nodes, the whole
+diagram falls back to one long column.
 
 Orientation and link style (curved / straight) are the reader's choice in the interface;
 they are not in the data.

@@ -526,10 +526,17 @@ header of `flow/elk.js` for how and why); the elkjs version is pinned.
 
 Decisions the renderer made, so they are not undone by accident:
 
-- **Stages are boxes**: each stage is an ELK compound node holding its nodes, drawn as a light
-  filled frame with the stage name in its corner; ELK routes links across the frames and keeps
-  them from overlapping. If ELK cannot lay the boxes out, the diagram is laid out once more
-  without them rather than fail.
+- **Stages are columns** (`flow/columns.js`): when stages are drawn and every node has one, each
+  stage is a framed box, the boxes stand side by side left to right and the flow runs down inside
+  each (transposed when horizontal). One graph laid out whole is a strip whichever way it runs
+  (01: 750×1610 or 2388×412); in columns 01 is 1390×578. ELK lays out each stage on its own (it
+  cannot do "boxes across, flow down" in one pass: measured, it either stacks the stages and
+  leaves links unrouted or ignores the direction inside them); links between stages are routed by
+  `flow/router.js` (fewest bends, then shortest; clear of nodes, titles and labels; never along a
+  box's edge). A stage far taller than the rest is folded into two columns in its box; a stage
+  may be mirrored so the side facing the next stage is free; a loop gives way to the main line
+  when they cross, unless that costs more than one extra bend. Without stages, or with stages on
+  only some nodes, the diagram is one graph as before, stages then drawn as ELK compound nodes.
 - **A node is as big as its text** (`metrics.js` `sizeOf`): 14px text, wrapped past a cap, at
   most three lines; a diamond folds its text into a near-square block. Fixed 208×64 boxes left
   most of every box empty and, fitted to a screen, the text too small to read — what putting the
@@ -793,14 +800,25 @@ longer need a fake way "back".
 
 ### 11.3 Presentation
 
-- Rules are **cards** in a lane beside the node field, level with the first stage they apply
-  to, stacked in stage order, never overlapping;
-- Outside the cards a **scope bar** spans the stages a rule covers; rules with the same range
-  share one bar;
-- Rules that end the contract join one **trunk** into their end: five grounds for termination
-  read as five roads into one door, not five lines across the page. An end reached only through
-  rules sits in the last layer, outermost;
-- The capsule gains a "Rules" switch; off, the lane is given back.
+The rules are a **table under the diagram**, one row per rule: situation (`when`), consequence
+(`then`), the stages it applies in. Grouped: one group per end the rules lead to ("may lead to
+«contract terminated»"), then the other rules; inside a group, by the first stage a rule applies
+in, then as written. Scope and outcome are **written out**, not implied by position:
+
+- the stages: one name, "first to last", or "throughout" when `stageIds` is empty;
+- an end the rules lead to carries a small count ("3 rules"), and the group heading names it:
+  the table and the diagram point at each other, **no line runs between them**;
+- hovering a row lights up the stage boxes it applies in and its end; clicking it pins the full
+  text and the sources, as for a node;
+- the table stays under the diagram in both orientations (a list turned on its side does not
+  read); the capsule's "Rules" switch removes it.
+
+Why a table, after two tries that read worse: cards in a lane beside the flow with scope bars and
+trunks into the end, then cards under the stage columns as wide as the stages they cover. Both
+made the reader decode geometry (a card's height, a card's width, which trunk goes where) for
+what is a list to be read and compared, and the trunks tangled with the flow's own links.
+Measured against a card wall of the same rules, the table reads fastest. An end reached only
+through rules still sits in the last layer of its stage.
 
 ### 11.4 Measured (the seven contracts, before → after)
 

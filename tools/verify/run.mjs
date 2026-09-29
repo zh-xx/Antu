@@ -1401,8 +1401,16 @@ async function checkRenderProcedure(sampleFile) {
     // Flow links only: rule trunks and scope bars are drawn in the same layer with their own classes
     const FLOW_LINK = '.antu-plink.k-main, .antu-plink.k-branch, .antu-plink.k-back'
     eq('link count (several edges into one target merge into one)', await count(FLOW_LINK), layout.connections.length)
-    eq('rule cards', await count('.antu-rule'), layout.rules.length)
-    eq('rule trunks and scope bars', await count('.antu-plink.k-rule, .antu-plink.k-scope'), layout.ruleLinks.length)
+    // The rules are a table under the diagram, one row per rule, no lines into the diagram
+    const ruleRows = layout.ruleTable ? layout.ruleTable.groups.reduce((n, g) => n + g.rows.length, 0) : 0
+    eq('rule table rows', await count('.antu-rtable-row'), ruleRows)
+    eq('the ends the rules lead to carry their count', await count('.antu-pn-rules'), layout.nodes.filter((n) => n.data.ruleCount > 0).length)
+    // Hovering a row lights up the stages it applies in
+    await browser.eval(`document.querySelector('.antu-rtable-row').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); 1`)
+    await new Promise((r) => setTimeout(r, 400))
+    truthy('hovering a rule row lights its stages', (await count('.antu-rtable-row.is-lit')) === 1 && (await browser.eval(`[...document.querySelectorAll('.antu-pstage-box')].some((r) => r.getAttribute('stroke') === '#f59e0b')`)))
+    await browser.eval(`document.querySelector('.antu-rtable-row').dispatchEvent(new MouseEvent('mouseout', { bubbles: true })); 1`)
+    await new Promise((r) => setTimeout(r, 400))
     eq(
       'condition label count',
       await count('.antu-plabel'),
@@ -1512,10 +1520,10 @@ async function checkRenderProcedure(sampleFile) {
     // The rule switch (the fifth chip: the sample has stages and rules) gives the lane back
     await clickChip(4)
     await settle()
-    eq('the rule switch removes the cards', await count('.antu-rule'), 0)
+    eq('the rule switch removes the table', await count('.antu-rtable'), 0)
     await clickChip(4)
     await settle()
-    eq('and brings them back', await count('.antu-rule'), layout.rules.length)
+    eq('and brings it back', await count('.antu-rtable-row'), ruleRows)
 
     // Orientation: the second item of the first segmented control is "horizontal"
     await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[1].click()`, { userGesture: true })

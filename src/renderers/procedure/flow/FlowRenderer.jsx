@@ -23,7 +23,7 @@ import { readPrefs, writePrefs } from '../../../shell/prefs.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import FlowNode from './FlowNode.jsx'
-import RuleCardNode from './RuleCardNode.jsx'
+import RuleTableNode from './RuleTableNode.jsx'
 import ConnectionLayerNode from './ConnectionLayerNode.jsx'
 import StageBoxNode from './StageBoxNode.jsx'
 import FlowDock from './FlowDock.jsx'
@@ -32,7 +32,7 @@ import { buildProcedureGraph } from './layout.js'
 /** Node types used by the flowchart. Adding one means registering one line here. */
 const nodeTypes = {
   pnode: FlowNode,
-  prule: RuleCardNode,
+  prtable: RuleTableNode,
   plinks: ConnectionLayerNode,
   pstages: StageBoxNode,
 }
@@ -82,7 +82,6 @@ export default function ProcedureFlow({ spec }) {
     setOrientationPrefs(map)
     writePrefs({ orientations: map })
   }
-  const vertical = orientation !== 'horizontal'
 
   // Link style: curved (the default, the reader's choice: it reads softer, like Mermaid) or
   // straight (orthogonal). Both draw the same route. One choice for every diagram, remembered.
@@ -106,16 +105,38 @@ export default function ProcedureFlow({ spec }) {
     [spec, fields.detail, fields.stages, fields.rules, orientation],
   )
 
+  const [hoveredId, setHoveredId] = useState(null)
+  const [pinnedId, setPinnedId] = useState(null)
+  const preview = useMemo(
+    () => ({
+      hoveredId,
+      pinnedId,
+      pin: (id) => setPinnedId(id),
+      unpin: () => setPinnedId(null),
+      // The rule table's rows are not canvas nodes of their own, so they report hover themselves
+      hover: (id) => setHoveredId(id),
+    }),
+    [hoveredId, pinnedId],
+  )
+
+  // The rule being looked at (pinned, else hovered): its stage boxes and its end light up, which
+  // is how a row of the table points into the diagram
+  const activeRule = useMemo(() => {
+    const id = pinnedId?.startsWith('rule:') ? pinnedId : !pinnedId && hoveredId?.startsWith('rule:') ? hoveredId : null
+    return id ? (spec.rules ?? []).find((r) => `rule:${r.id}` === id) ?? null : null
+  }, [hoveredId, pinnedId, spec])
+
   const graph = useMemo(() => {
     const { width, height } = layout.size
     const deco = []
+    const litStages = activeRule ? (activeRule.stageIds?.length ? activeRule.stageIds : layout.stageBoxes.map((b) => b.stageId)) : []
     if (layout.stageBoxes.length) {
       deco.push({
         ...DECORATION,
         id: '__stages__',
         type: 'pstages',
         position: { x: 0, y: 0 },
-        data: { boxes: layout.stageBoxes, width, height },
+        data: { boxes: layout.stageBoxes, width, height, lit: litStages },
       })
     }
     deco.push({
@@ -125,7 +146,6 @@ export default function ProcedureFlow({ spec }) {
       position: { x: 0, y: 0 },
       data: {
         connections: layout.connections,
-        ruleLinks: layout.ruleLinks,
         width,
         height,
         showConditions: fields.conditions,
@@ -133,37 +153,28 @@ export default function ProcedureFlow({ spec }) {
         curved: linkStyle === 'curved',
       },
     })
-    // Rule cards are ordinary (hoverable, pinnable) nodes; their text and provenance travel in data
-    const sourceById = new Map((spec.sources ?? []).map((s) => [s.id, s]))
-    const cards = layout.rules.map((c) => ({
-      id: `rule:${c.rule.id}`,
-      type: 'prule',
-      position: { x: c.x, y: c.y },
-      data: {
-        rule: c.rule,
-        w: c.w,
-        h: c.h,
-        stageLabels: c.stageLabels,
-        allStages: c.allStages,
-        spanShown: !!c.spanShown,
-        sources: (c.rule.sourceIds ?? []).map((id) => sourceById.get(id)).filter(Boolean),
-        vertical,
-      },
-    }))
-    return { nodes: [...deco, ...layout.nodes, ...cards], edges: [], size: layout.size }
-  }, [layout, spec, vertical, fields.conditions, fields.mainLine, linkStyle])
-
-  const [hoveredId, setHoveredId] = useState(null)
-  const [pinnedId, setPinnedId] = useState(null)
-  const preview = useMemo(
-    () => ({
-      hoveredId,
-      pinnedId,
-      pin: (id) => setPinnedId(id),
-      unpin: () => setPinnedId(null),
-    }),
-    [hoveredId, pinnedId],
-  )
+    const nodes = activeRule?.endId
+      ? layout.nodes.map((n) => (n.id === activeRule.endId ? { ...n, data: { ...n.data, lit: true } } : n))
+      : layout.nodes
+    // The rule table: one node, not draggable, its rows hover and pin themselves
+    const table = layout.ruleTable
+      ? [
+          {
+            id: '__rules__',
+            type: 'prtable',
+            position: { x: layout.ruleTable.x, y: layout.ruleTable.y },
+            width: layout.ruleTable.w,
+            height: layout.ruleTable.h,
+            draggable: false,
+            selectable: false,
+            connectable: false,
+            focusable: false,
+            data: { table: layout.ruleTable, sourceById: new Map((spec.sources ?? []).map((s) => [s.id, s])) },
+          },
+        ]
+      : []
+    return { nodes: [...deco, ...nodes, ...table], edges: [], size: layout.size }
+  }, [layout, spec, fields.conditions, fields.mainLine, linkStyle, activeRule])
 
   const { canvasRef, exporting, onExport } = useExport(spec?.title)
 
@@ -175,13 +186,13 @@ export default function ProcedureFlow({ spec }) {
           graph={graph}
           nodeTypes={nodeTypes}
           onNodeMouseEnter={(_, n) => {
-            if (n.type === 'pnode' || n.type === 'prule') setHoveredId(n.id)
+            if (n.type === 'pnode') setHoveredId(n.id)
           }}
           onNodeMouseLeave={(_, n) => {
             setHoveredId((cur) => (cur === n.id ? null : cur))
           }}
           onNodeClick={(_, n) => {
-            if (n.type === 'pnode' || n.type === 'prule') setPinnedId(n.id)
+            if (n.type === 'pnode') setPinnedId(n.id)
           }}
           onPaneClick={() => setPinnedId(null)}
         >
