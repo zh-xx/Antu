@@ -235,7 +235,7 @@ The structured locations in `sources` (page 6 of the contract, the case number a
 - [ ] The shape of `specVersion` (whether it is needed at all, how it evolves)
 - [x] The fact content-layer schema: **final** (including the division of labour between label / summary / detail, see `spec/fact/schema-draft.md`)
 - [x] The procedure content-layer schema: **v1, confirmed** (see `spec/procedure/schema-draft.md`)
-- [ ] The field details of the content-layer schema for relationship
+- [ ] The field details of the content-layer schema for relationship: **draft v0 written, awaiting the sponsor's review** (`spec/relationship/schema-draft.md`)
 - [x] The shape of validation error messages: **implemented**. Every error carries a field path and an event id (e.g. `slots[0].events[1] (ev-2)`) and says what is wrong and how to fix it
 - [ ] The range of optional envelope metadata
 - [ ] The plugin shell (a dsh plugin / MCP / a standalone web page): postponed until the core matures.
