@@ -1,0 +1,635 @@
+{
+  "specVersion": 1,
+  "type": "justification",
+  "title": "The Yu Huan case · the reasoning on excessive defence",
+  "speaker": "Shandong Higher People's Court (appeal)",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Issue 1: was the stabbing defensive?"
+    },
+    {
+      "id": "g-2",
+      "label": "Issue 2: was it special defence?"
+    },
+    {
+      "id": "g-3",
+      "label": "Issue 3: did it clearly exceed the necessary limit?"
+    },
+    {
+      "id": "g-4",
+      "label": "Issue 4: which offence?"
+    },
+    {
+      "id": "g-5",
+      "label": "Issue 5: sentence"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "c-1",
+      "kind": "conclusion",
+      "label": "Excessive defence; guilty of intentional injury; five years' imprisonment",
+      "holds": "yes"
+    },
+    {
+      "id": "c-2",
+      "kind": "conclusion",
+      "label": "Yu Huan's stabbing was defensive",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "n-1",
+      "kind": "norm",
+      "label": "Criminal Law Art. 20(1): lawful defence needs five conditions together (the limit is issue 3)",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "e-1",
+      "kind": "element",
+      "label": "Cause: an unlawful attack exists",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-2",
+      "kind": "element",
+      "label": "Time: the attack is under way",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-3",
+      "kind": "element",
+      "label": "Target: the attacker himself",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-4",
+      "kind": "element",
+      "label": "Purpose: to stop the attack",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "f-1",
+      "kind": "fact",
+      "label": "Du 2 and others entered the reception room to press for payment and took Su's and Yu's phones",
+      "date": "2016-04-14T21:53",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-2",
+      "kind": "fact",
+      "label": "Du 2 abused Su, Yu and their family, flicked a cigarette end onto Su's chest, pulled his trousers down and exposed himself, and took off Yu's shoe for Su to smell",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-3",
+      "kind": "fact",
+      "label": "Du 2 slapped Yu's face; the others pulled Yu's hair and pressed his shoulders to keep him seated",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-4",
+      "kind": "fact",
+      "label": "Wu abused Su and pushed her head into a toilet bowl to near the water",
+      "date": "2016-04-13",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-5",
+      "kind": "fact",
+      "label": "Earlier, Wu and Zhao 1 had people camp in the Yuanda Company shed and cook outside its office to press for payment",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-6",
+      "kind": "fact",
+      "label": "The police officer warned both sides not to fight, then left the room with his aides to look for the caller",
+      "date": "2016-04-14T22:22",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-7",
+      "kind": "fact",
+      "label": "Yu and Su tried to leave with the police; Du 2 and others blocked them and forced Yu to sit",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-8",
+      "kind": "fact",
+      "label": "Du 2 and others gripped Yu's neck and pushed and pulled him to the south-east corner of the room",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-9",
+      "kind": "fact",
+      "label": "Yu held a 15.3 cm single-edged knife and warned Du 2 and others to keep back; Du 2 taunted him and came closer",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-10",
+      "kind": "fact",
+      "label": "Yu stabbed Du 2 in the abdomen, then Cheng in the chest, Yan in the abdomen and Guo 1 in the back, one stab each",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "c-3",
+      "kind": "conclusion",
+      "label": "It was special defence: no criminal liability",
+      "holds": "no",
+      "groupId": "g-2"
+    },
+    {
+      "id": "n-2",
+      "kind": "norm",
+      "label": "Criminal Law Art. 20(3): defence against violent crime gravely endangering the person (assault, murder, robbery, rape, kidnapping) is never excessive",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "e-5",
+      "kind": "element",
+      "label": "A violent crime gravely endangering the person is under way",
+      "holds": "no",
+      "groupId": "g-2"
+    },
+    {
+      "id": "j-1",
+      "kind": "judgement",
+      "label": "The acts were unlawful detention, insult and minor beating, not a violent crime gravely endangering the person",
+      "holds": "yes",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "n-3",
+      "kind": "norm",
+      "label": "Criminal Law Art. 20(2): defence that clearly exceeds the necessary limit and causes great harm carries liability",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "e-6",
+      "kind": "element",
+      "label": "Clearly exceeded the necessary limit, causing great harm",
+      "holds": "yes",
+      "groupId": "g-3"
+    },
+    {
+      "id": "j-2",
+      "kind": "judgement",
+      "label": "The attack Yu faced was neither urgent nor serious",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "i-1",
+      "kind": "inference",
+      "label": "Du 2's side meant to pressure for payment and carried and used no weapon",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "i-2",
+      "kind": "inference",
+      "label": "When the police came in there was no fierce standoff or physical fight, and after the warning the other side did not fight",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "i-3",
+      "kind": "inference",
+      "label": "The police car's flashing lights were plainly visible, so Yu should have known the police had not left",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "i-4",
+      "kind": "inference",
+      "label": "Du 2 and others taunted and crowded him but launched no violent attack",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-11",
+      "kind": "fact",
+      "label": "The police car in the yard had its lights flashing, visible through the glass of the reception room",
+      "date": "2016-04-14",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-3",
+      "kind": "judgement",
+      "label": "The means of defence and its consequences were too severe",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-12",
+      "kind": "fact",
+      "label": "The stabbing left one dead, two seriously and one slightly injured, one stabbed from behind; the aides returned at 22:26",
+      "date": "2016-04-14",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "c-4",
+      "kind": "conclusion",
+      "label": "Intentional injury under excessive defence, not murder",
+      "holds": "yes",
+      "groupId": "g-4"
+    },
+    {
+      "id": "n-4",
+      "kind": "norm",
+      "label": "Criminal Law Art. 234: intentional injury causing death carries ten years to death",
+      "groupId": "g-4",
+      "sourceIds": [
+        "s-4"
+      ]
+    },
+    {
+      "id": "i-5",
+      "kind": "inference",
+      "label": "The evidence does not show Yu sought or allowed death: one stab each, no repeat stabs, only those crowding him, aiming to leave",
+      "holds": "yes",
+      "groupId": "g-4",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-4",
+      "kind": "judgement",
+      "label": "Yu was indifferent to the excessive result of injury and death",
+      "holds": "yes",
+      "groupId": "g-4",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "c-5",
+      "kind": "conclusion",
+      "label": "Yu's sentence is reduced to five years",
+      "holds": "yes",
+      "groupId": "g-5"
+    },
+    {
+      "id": "n-5",
+      "kind": "norm",
+      "label": "Criminal Law Art. 20(2): excessive defence shall receive a reduced or waived sentence",
+      "groupId": "g-5",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "f-13",
+      "kind": "fact",
+      "label": "Yu truthfully confessed the main crimes after arrest",
+      "groupId": "g-5",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-5",
+      "kind": "judgement",
+      "label": "The victims were gravely at fault in bringing about the incident",
+      "holds": "yes",
+      "groupId": "g-5",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-6",
+      "kind": "judgement",
+      "label": "The harm far outweighed the interest protected, and the other three took no part in insulting Su",
+      "holds": "yes",
+      "groupId": "g-5",
+      "sourceIds": [
+        "s-2"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "from": "n-1",
+      "to": "e-1",
+      "stance": "basis"
+    },
+    {
+      "from": "e-1",
+      "to": "c-2"
+    },
+    {
+      "from": "n-1",
+      "to": "e-2",
+      "stance": "basis"
+    },
+    {
+      "from": "e-2",
+      "to": "c-2"
+    },
+    {
+      "from": "n-1",
+      "to": "e-3",
+      "stance": "basis"
+    },
+    {
+      "from": "e-3",
+      "to": "c-2"
+    },
+    {
+      "from": "n-1",
+      "to": "e-4",
+      "stance": "basis"
+    },
+    {
+      "from": "e-4",
+      "to": "c-2"
+    },
+    {
+      "from": "f-1",
+      "to": "e-1"
+    },
+    {
+      "from": "f-2",
+      "to": "e-1"
+    },
+    {
+      "from": "f-3",
+      "to": "e-1"
+    },
+    {
+      "from": "f-4",
+      "to": "e-1"
+    },
+    {
+      "from": "f-5",
+      "to": "e-1"
+    },
+    {
+      "from": "f-6",
+      "to": "e-2"
+    },
+    {
+      "from": "f-7",
+      "to": "e-2"
+    },
+    {
+      "from": "f-8",
+      "to": "e-2"
+    },
+    {
+      "from": "f-10",
+      "to": "e-3"
+    },
+    {
+      "from": "f-9",
+      "to": "e-4"
+    },
+    {
+      "from": "c-2",
+      "to": "c-1"
+    },
+    {
+      "from": "n-2",
+      "to": "e-5",
+      "stance": "basis"
+    },
+    {
+      "from": "j-1",
+      "to": "e-5",
+      "stance": "against"
+    },
+    {
+      "from": "e-5",
+      "to": "c-3"
+    },
+    {
+      "from": "c-3",
+      "to": "c-1",
+      "stance": "against"
+    },
+    {
+      "from": "n-3",
+      "to": "e-6",
+      "stance": "basis"
+    },
+    {
+      "from": "f-6",
+      "to": "i-2"
+    },
+    {
+      "from": "f-11",
+      "to": "i-3"
+    },
+    {
+      "from": "f-9",
+      "to": "i-4"
+    },
+    {
+      "from": "i-1",
+      "to": "j-2"
+    },
+    {
+      "from": "i-2",
+      "to": "j-2"
+    },
+    {
+      "from": "i-3",
+      "to": "j-2"
+    },
+    {
+      "from": "i-4",
+      "to": "j-2"
+    },
+    {
+      "from": "j-2",
+      "to": "e-6"
+    },
+    {
+      "from": "f-9",
+      "to": "j-3"
+    },
+    {
+      "from": "f-12",
+      "to": "j-3"
+    },
+    {
+      "from": "j-3",
+      "to": "e-6"
+    },
+    {
+      "from": "e-6",
+      "to": "c-1"
+    },
+    {
+      "from": "n-4",
+      "to": "c-4",
+      "stance": "basis"
+    },
+    {
+      "from": "f-10",
+      "to": "i-5"
+    },
+    {
+      "from": "i-5",
+      "to": "c-4"
+    },
+    {
+      "from": "j-4",
+      "to": "c-4"
+    },
+    {
+      "from": "c-4",
+      "to": "c-1"
+    },
+    {
+      "from": "n-5",
+      "to": "c-5",
+      "stance": "basis"
+    },
+    {
+      "from": "f-13",
+      "to": "c-5"
+    },
+    {
+      "from": "f-2",
+      "to": "j-5"
+    },
+    {
+      "from": "f-5",
+      "to": "j-5"
+    },
+    {
+      "from": "j-5",
+      "to": "c-5"
+    },
+    {
+      "from": "j-6",
+      "to": "c-5",
+      "stance": "against",
+      "label": "limits how far the sentence is reduced"
+    },
+    {
+      "from": "c-5",
+      "to": "c-1"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "case",
+      "name": "Guiding Case No. 93 · facts of the case",
+      "loc": {
+        "caseNo": "（2017）鲁刑终151号",
+        "court": "Shandong Higher People's Court"
+      }
+    },
+    {
+      "id": "s-2",
+      "type": "case",
+      "name": "Guiding Case No. 93 · reasons for the judgment",
+      "loc": {
+        "caseNo": "（2017）鲁刑终151号",
+        "court": "Shandong Higher People's Court"
+      }
+    },
+    {
+      "id": "s-3",
+      "type": "statute",
+      "name": "Criminal Law, Art. 20",
+      "loc": {
+        "lawName": "Criminal Law of the People's Republic of China",
+        "article": 20,
+        "version": "2015修正"
+      }
+    },
+    {
+      "id": "s-4",
+      "type": "statute",
+      "name": "Criminal Law, Art. 234",
+      "loc": {
+        "lawName": "Criminal Law of the People's Republic of China",
+        "article": 234,
+        "version": "2015修正"
+      }
+    }
+  ]
+}
