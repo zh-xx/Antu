@@ -239,7 +239,7 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
 - [ ] `specVersion` 的形态（有无必要、怎么演进）
 - [x] fact 内容层 schema：**已定稿**（含 label / summary / detail 的分工，见 `spec/fact/schema-draft.md`）
 - [x] procedure 内容层 schema：**v1 已确认**（见 `spec/procedure/schema-draft.zh-CN.md`）
-- [ ] relationship 内容层 schema 字段细节
+- [ ] relationship 内容层 schema 字段细节：**schema 暂定 v0，发起人认可为暂用**（`spec/relationship/schema-draft.zh-CN.md`）
 - [x] 校验层报错信息的形态：**已实现**。每条错误带字段路径与事件 id（如 `slots[0].events[1] (ev-2)`），说明哪里不对、怎么改
 - [ ] 信封层可选元数据范围
 - [ ] 插件壳（dsh 插件 / MCP / 独立网页）——推迟到核心成熟后。

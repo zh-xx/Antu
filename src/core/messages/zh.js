@@ -38,6 +38,8 @@ export const zh = {
   'info.sources': ({ n }) => `${n} 个来源`,
   'info.nodes': ({ n }) => `${n} 个节点`,
   'info.stages': ({ n }) => `${n} 个阶段`,
+  'info.entities': ({ n }) => `${n} 个当事方`,
+  'info.relations': ({ n }) => `${n} 条关系`,
 
   // ---------- control dock (ControlDock.jsx) ----------
   'dock.actors': '主体',
@@ -117,6 +119,7 @@ export const zh = {
 
   'graphKind.timeline': '时间图',
   'graphKind.flow': '流程图',
+  'graphKind.graph': '关系图',
 
   // ---------- graph types ----------
   'graphType.fact': '事实图',
@@ -124,16 +127,28 @@ export const zh = {
   'graphType.procedure': '程序图',
   'graphType.justification': '证成图',
 
+  // 关系上没写 label 时的默认文字（界面文字，跟随界面语言）
+  'rel.auto.equity': ({ share }) => (share === undefined ? '持有股权' : `持股 ${share}%`),
+  'rel.auto.control': '控制',
+  'rel.auto.contract': ({ amount }) => (amount ? `合同，${amount}` : '合同'),
+  'rel.auto.debt': ({ amount }) => (amount ? `债权，${amount}` : '债权'),
+  'rel.auto.guarantee': '担保',
+  'rel.auto.kinship': '亲属',
+  'rel.auto.employment': '雇佣',
+  'rel.auto.agency': '代理',
+  'rel.auto.other': '有关联',
+
   // ---------- validation errors and hints: fixed English, not translated here, taken straight from the English dictionary ----------
   // The spread rather than rewriting each entry makes "there is only one English copy of the errors" obvious in the code.
   //
   // One prefix per major type: err. (fact field rules), perr. (procedure errors), phint. (procedure hints),
-  // note. (what validation passes but the author should see, e.g. a view that does not fit).
+  // note. (what validation passes but the author should see, e.g. a view that does not fit),
+  // rerr. / rhint. (relationship errors and hints).
   // Validation error keys for a new major type get their own prefix, and **that prefix must be added here too**,
   // or the key-consistency check reports "zh is missing a key", which is exactly its job.
   ...Object.fromEntries(
     Object.keys(en)
-      .filter((k) => k.startsWith('err.') || k.startsWith('perr.') || k.startsWith('phint.') || k.startsWith('note.'))
+      .filter((k) => k.startsWith('err.') || k.startsWith('perr.') || k.startsWith('phint.') || k.startsWith('note.') || k.startsWith('rerr.') || k.startsWith('rhint.'))
       .map((k) => [k, en[k]]),
   ),
 }

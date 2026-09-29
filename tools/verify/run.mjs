@@ -388,7 +388,7 @@ function checkData() {
 
   // Reference material for the agent must be dispatched **by major type**, with fact never
   // hard-wired into a tool. antu_schema used to call describeFactSchema() directly and
-  // antu_guide read one fixed file: once the relationship diagram arrives the whole path
+  // antu_guide read one fixed file: once another major type arrives the whole path
   // needs rework. Now all three tools take a type argument and read it from the registry.
   const hasTypeArg = (tool) =>
     new RegExp(`registerTool\\(\\s*'${tool}'[\\s\\S]{0,1500}?type: z`).test(serverSrc)
@@ -397,11 +397,11 @@ function checkData() {
   truthy('antu_examples takes a type argument', hasTypeArg('antu_examples'))
   truthy('nothing like factKnowledge is hard-wired in MCP', !/from '.*renderers\/fact\/schema\.js'/.test(serverSrc))
   truthy('the field table can be fetched by major type', describeSchema('fact').ok === true)
-  truthy('a missing major type says so instead of returning an empty table', describeSchema('relationship').ok === false)
+  truthy('a missing major type says so instead of returning an empty table', describeSchema('justification').ok === false)
   // The "not built yet" wording is the agent-facing text of tools/mcp/engine.mjs. Its language
   // is pinned here so a rewrite cannot quietly empty it; a bare `ok === false` assertion passes
   // even when `reason` is undefined.
-  const noType = describeSchema('relationship').reason ?? ''
+  const noType = describeSchema('justification').reason ?? ''
   truthy('a missing major type gives a readable reason (not undefined)', noType.startsWith('no reference material for type'), noType)
   truthy('the mechanism guide is fetched by major type', listAgentGuides().includes('fact'))
   // Every type the engine can draw has its guide: antu_guide(type="procedure") once answered
