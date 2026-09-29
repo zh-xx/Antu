@@ -1,0 +1,636 @@
+{
+  "specVersion": 1,
+  "type": "justification",
+  "title": "于欢案 · 防卫过当的说理",
+  "speaker": "山东省高级人民法院（二审）",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "争点一：是否具有防卫性"
+    },
+    {
+      "id": "g-2",
+      "label": "争点二：是否属于特殊防卫"
+    },
+    {
+      "id": "g-3",
+      "label": "争点三：是否明显超过必要限度"
+    },
+    {
+      "id": "g-4",
+      "label": "争点四：定什么罪"
+    },
+    {
+      "id": "g-5",
+      "label": "争点五：如何量刑"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "c-1",
+      "kind": "conclusion",
+      "label": "防卫过当，构成故意伤害罪，判处有期徒刑五年",
+      "holds": "yes"
+    },
+    {
+      "id": "c-2",
+      "kind": "conclusion",
+      "label": "于欢的捅刺行为具有防卫性",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "n-1",
+      "kind": "norm",
+      "label": "刑法第 20 条第 1 款：正当防卫须同时具备五项条件（防卫限度见争点三）",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "e-1",
+      "kind": "element",
+      "label": "起因：不法侵害客观存在",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-2",
+      "kind": "element",
+      "label": "时间：不法侵害正在进行",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-3",
+      "kind": "element",
+      "label": "对象：针对不法侵害者本人",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-4",
+      "kind": "element",
+      "label": "意图：为制止不法侵害",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "f-1",
+      "kind": "fact",
+      "label": "杜某2等人进入接待室讨债，收走苏某、于欢的手机",
+      "date": "2016-04-14T21:53",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-2",
+      "kind": "fact",
+      "label": "杜某2辱骂苏某、于欢及家人；将烟头弹到苏某胸前；褪裤裸露下体；脱于欢的鞋让苏某闻",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-3",
+      "kind": "fact",
+      "label": "杜某2拍打于欢面颊；其他讨债人员揪抓于欢头发、按压其肩部不准起身",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-4",
+      "kind": "fact",
+      "label": "吴某责骂苏某，将苏某头部按入座便器接近水面位置",
+      "date": "2016-04-13",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-5",
+      "kind": "fact",
+      "label": "此前吴某、赵某1指使杜某2等人在源大公司车棚驻扎、办公楼前支锅做饭等方式催债",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-6",
+      "kind": "fact",
+      "label": "民警警告双方不能打架后，带辅警离开接待室去院内寻找报警人",
+      "date": "2016-04-14T22:22",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-7",
+      "kind": "fact",
+      "label": "于欢、苏某想随民警离开，杜某2等人阻拦，并强迫于欢坐下",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-8",
+      "kind": "fact",
+      "label": "杜某2等人卡于欢颈部，将其推拉至接待室东南角",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-9",
+      "kind": "fact",
+      "label": "于欢持刃长 15.3 厘米的单刃尖刀，警告杜某2等人不要靠近；杜某2出言挑衅并逼近",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-10",
+      "kind": "fact",
+      "label": "于欢捅刺杜某2腹部，又各捅刺围逼在身边的程某胸部、严某腹部、郭某1背部一刀",
+      "date": "2016-04-14",
+      "groupId": "g-1",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "c-3",
+      "kind": "conclusion",
+      "label": "属于特殊防卫，不负刑事责任",
+      "holds": "no",
+      "groupId": "g-2"
+    },
+    {
+      "id": "n-2",
+      "kind": "norm",
+      "label": "刑法第 20 条第 3 款：对正在进行的行凶、杀人、抢劫、强奸、绑架等严重危及人身安全的暴力犯罪防卫，不属于防卫过当",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "e-5",
+      "kind": "element",
+      "label": "正在进行严重危及人身安全的暴力犯罪",
+      "holds": "no",
+      "groupId": "g-2"
+    },
+    {
+      "id": "j-1",
+      "kind": "judgement",
+      "label": "这些侵害是非法限制自由、侮辱、轻微殴打，不是严重危及人身安全的暴力犯罪",
+      "holds": "yes",
+      "groupId": "g-2",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "n-3",
+      "kind": "norm",
+      "label": "刑法第 20 条第 2 款：正当防卫明显超过必要限度造成重大损害的，应当负刑事责任",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "e-6",
+      "kind": "element",
+      "label": "明显超过必要限度造成重大损害",
+      "holds": "yes",
+      "groupId": "g-3"
+    },
+    {
+      "id": "j-2",
+      "kind": "judgement",
+      "label": "于欢面临的侵害并不紧迫、不严重",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "i-1",
+      "kind": "inference",
+      "label": "杜某2一方意图是施压催债，未携带、使用任何器械",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "i-2",
+      "kind": "inference",
+      "label": "民警进入时双方没有激烈对峙和肢体冲突；警告后对方无打架言行",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "i-3",
+      "kind": "inference",
+      "label": "警车警灯闪烁清晰可见，于欢应当知道民警并未离开",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "i-4",
+      "kind": "inference",
+      "label": "杜某2等人虽挑衅、围逼，但没有实施强烈的攻击行为",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-11",
+      "kind": "fact",
+      "label": "院内停着的警车警灯闪烁，接待室内透过玻璃可以看见",
+      "date": "2016-04-14",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-3",
+      "kind": "judgement",
+      "label": "防卫手段与后果过重",
+      "holds": "yes",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-12",
+      "kind": "fact",
+      "label": "捅刺造成一死、二重伤、一轻伤，其中一人被从背后捅伤；22 时 26 分辅警闻声返回",
+      "date": "2016-04-14T22:26",
+      "groupId": "g-3",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "c-4",
+      "kind": "conclusion",
+      "label": "构成防卫过当下的故意伤害罪，而非故意杀人罪",
+      "holds": "yes",
+      "groupId": "g-4"
+    },
+    {
+      "id": "n-4",
+      "kind": "norm",
+      "label": "刑法第 234 条：故意伤害致人死亡的，处十年以上有期徒刑、无期徒刑或者死刑",
+      "groupId": "g-4",
+      "sourceIds": [
+        "s-4"
+      ]
+    },
+    {
+      "id": "i-5",
+      "kind": "inference",
+      "label": "在案证据不能证实于欢追求或放任致人死亡：每人一刀，不连刺同一人，只刺围逼者，目的是离开",
+      "holds": "yes",
+      "groupId": "g-4",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-4",
+      "kind": "judgement",
+      "label": "于欢对过当的伤亡结果持听之任之的态度",
+      "holds": "yes",
+      "groupId": "g-4",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "c-5",
+      "kind": "conclusion",
+      "label": "对于欢减轻处罚，判处有期徒刑五年",
+      "holds": "yes",
+      "groupId": "g-5"
+    },
+    {
+      "id": "n-5",
+      "kind": "norm",
+      "label": "刑法第 20 条第 2 款：防卫过当，应当减轻或者免除处罚",
+      "groupId": "g-5",
+      "sourceIds": [
+        "s-3"
+      ]
+    },
+    {
+      "id": "f-13",
+      "kind": "fact",
+      "label": "于欢归案后如实供述主要罪行",
+      "date": "2016-04-14",
+      "groupId": "g-5",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-5",
+      "kind": "judgement",
+      "label": "被害方对引发本案有严重过错",
+      "holds": "yes",
+      "groupId": "g-5",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "j-6",
+      "kind": "judgement",
+      "label": "损害远大于所保护的合法权益，且除杜某2外另三人并未侮辱苏某",
+      "holds": "yes",
+      "groupId": "g-5",
+      "sourceIds": [
+        "s-2"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "from": "n-1",
+      "to": "e-1",
+      "stance": "basis"
+    },
+    {
+      "from": "e-1",
+      "to": "c-2"
+    },
+    {
+      "from": "n-1",
+      "to": "e-2",
+      "stance": "basis"
+    },
+    {
+      "from": "e-2",
+      "to": "c-2"
+    },
+    {
+      "from": "n-1",
+      "to": "e-3",
+      "stance": "basis"
+    },
+    {
+      "from": "e-3",
+      "to": "c-2"
+    },
+    {
+      "from": "n-1",
+      "to": "e-4",
+      "stance": "basis"
+    },
+    {
+      "from": "e-4",
+      "to": "c-2"
+    },
+    {
+      "from": "f-1",
+      "to": "e-1"
+    },
+    {
+      "from": "f-2",
+      "to": "e-1"
+    },
+    {
+      "from": "f-3",
+      "to": "e-1"
+    },
+    {
+      "from": "f-4",
+      "to": "e-1"
+    },
+    {
+      "from": "f-5",
+      "to": "e-1"
+    },
+    {
+      "from": "f-6",
+      "to": "e-2"
+    },
+    {
+      "from": "f-7",
+      "to": "e-2"
+    },
+    {
+      "from": "f-8",
+      "to": "e-2"
+    },
+    {
+      "from": "f-10",
+      "to": "e-3"
+    },
+    {
+      "from": "f-9",
+      "to": "e-4"
+    },
+    {
+      "from": "c-2",
+      "to": "c-1"
+    },
+    {
+      "from": "n-2",
+      "to": "e-5",
+      "stance": "basis"
+    },
+    {
+      "from": "j-1",
+      "to": "e-5",
+      "stance": "against"
+    },
+    {
+      "from": "e-5",
+      "to": "c-3"
+    },
+    {
+      "from": "c-3",
+      "to": "c-1",
+      "stance": "against"
+    },
+    {
+      "from": "n-3",
+      "to": "e-6",
+      "stance": "basis"
+    },
+    {
+      "from": "f-6",
+      "to": "i-2"
+    },
+    {
+      "from": "f-11",
+      "to": "i-3"
+    },
+    {
+      "from": "f-9",
+      "to": "i-4"
+    },
+    {
+      "from": "i-1",
+      "to": "j-2"
+    },
+    {
+      "from": "i-2",
+      "to": "j-2"
+    },
+    {
+      "from": "i-3",
+      "to": "j-2"
+    },
+    {
+      "from": "i-4",
+      "to": "j-2"
+    },
+    {
+      "from": "j-2",
+      "to": "e-6"
+    },
+    {
+      "from": "f-9",
+      "to": "j-3"
+    },
+    {
+      "from": "f-12",
+      "to": "j-3"
+    },
+    {
+      "from": "j-3",
+      "to": "e-6"
+    },
+    {
+      "from": "e-6",
+      "to": "c-1"
+    },
+    {
+      "from": "n-4",
+      "to": "c-4",
+      "stance": "basis"
+    },
+    {
+      "from": "f-10",
+      "to": "i-5"
+    },
+    {
+      "from": "i-5",
+      "to": "c-4"
+    },
+    {
+      "from": "j-4",
+      "to": "c-4"
+    },
+    {
+      "from": "c-4",
+      "to": "c-1"
+    },
+    {
+      "from": "n-5",
+      "to": "c-5",
+      "stance": "basis"
+    },
+    {
+      "from": "f-13",
+      "to": "c-5"
+    },
+    {
+      "from": "f-2",
+      "to": "j-5"
+    },
+    {
+      "from": "f-5",
+      "to": "j-5"
+    },
+    {
+      "from": "j-5",
+      "to": "c-5"
+    },
+    {
+      "from": "j-6",
+      "to": "c-5",
+      "stance": "against",
+      "label": "限制从轻的幅度"
+    },
+    {
+      "from": "c-5",
+      "to": "c-1"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "case",
+      "name": "指导案例 93 号 · 基本案情",
+      "loc": {
+        "caseNo": "（2017）鲁刑终151号",
+        "court": "山东省高级人民法院"
+      }
+    },
+    {
+      "id": "s-2",
+      "type": "case",
+      "name": "指导案例 93 号 · 裁判理由",
+      "loc": {
+        "caseNo": "（2017）鲁刑终151号",
+        "court": "山东省高级人民法院"
+      }
+    },
+    {
+      "id": "s-3",
+      "type": "statute",
+      "name": "刑法第 20 条",
+      "loc": {
+        "lawName": "中华人民共和国刑法",
+        "article": 20,
+        "version": "2015修正"
+      }
+    },
+    {
+      "id": "s-4",
+      "type": "statute",
+      "name": "刑法第 234 条",
+      "loc": {
+        "lawName": "中华人民共和国刑法",
+        "article": 234,
+        "version": "2015修正"
+      }
+    }
+  ]
+}
