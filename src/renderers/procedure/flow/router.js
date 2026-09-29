@@ -159,11 +159,15 @@ class Heap {
  * @param {number[][][]} [p.borders]  box edges ([[x0,y0],[x1,y1]]) a route may cross but not run along
  * @param {{x,y,w,h}} [p.bounds]  keep the whole route inside this rectangle (a link inside one stage)
  * @param {number[][]} [p.taken]  more points no route may start or end at (ends of links left out of `routes`)
+ * @param {number} [p.crossCost]  what crossing another link costs, in pixels of length (default: more than two bends)
  * @returns {number[][] | null}  the polyline, first point on the source, last on the target
  */
 export function routeLink(p) {
   const { from, to, nodes, blocks = [], routes = [], borders = [], bounds = null } = p
   const portCost = { out: { ...PORT_COST.out, ...p.portCost?.out }, in: { ...PORT_COST.in, ...p.portCost?.in } }
+  // What crossing another link costs. The flowchart keeps it high (a detour always beats a crossing);
+  // a diagram with links across the whole picture may lower it, so a link does not go right round
+  const crossCost = p.crossCost ?? CROSS
   // A port another link already leaves or arrives at is taken: two links out of one point read
   // as one link that forks (links allowed to merge, `share`, may use it)
   const taken = [
@@ -264,7 +268,7 @@ export function routeLink(p) {
     const nj = j + DY[d]
     if (ni >= 0 && nj >= 0 && ni < W && nj < H) {
       const cross = segCheck(xs[i], ys[j], xs[ni], ys[nj])
-      if (cross !== null) res = { ni, nj, cost: Math.abs(xs[ni] - xs[i]) + Math.abs(ys[nj] - ys[j]) + cross * CROSS }
+      if (cross !== null) res = { ni, nj, cost: Math.abs(xs[ni] - xs[i]) + Math.abs(ys[nj] - ys[j]) + cross * crossCost }
     }
     stepCache.set(key, res)
     return res

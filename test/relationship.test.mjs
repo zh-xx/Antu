@@ -19,6 +19,7 @@ import { translate } from '../src/core/i18n.js'
 import { validateRelationship, hintsOfRelationship, isDirected } from '../src/renderers/relationship/graph/rules.js'
 import { buildRelationshipGraph, labelOf } from '../src/renderers/relationship/graph/layout.js'
 import { describeSchema, layoutReport, formatLayoutReport, notesOf } from '../tools/mcp/engine.mjs'
+import { midpointOf, nearestOn, securesTies } from '../src/renderers/relationship/graph/secures.js'
 
 /** The spec's example: a loan, a guarantee, a shareholding and a marriage, in two camps */
 const base = () => ({
@@ -303,4 +304,56 @@ test('every required field in the field table is required by the validator', () 
     }
   }
   assert.ok(checked >= 8, `only ${checked} required fields were checked`)
+})
+
+test('rows are shared by every camp: a holder stands above what it holds, a creditor above the debtor, a guarantor above the creditor', () => {
+  // The spec's example has the guarantor and the debtor in one camp and the creditor in the other. Worked out camp by
+  // camp they would all stand on one row (nothing inside a camp relates them); worked out on the whole graph the
+  // guarantor is above the creditor and the creditor above the debtor, whichever camp each is in.
+  const at = (g, id) => g.nodes.find((n) => n.id === id).position
+  const v = buildRelationshipGraph(base(), {}, undefined, 'vertical')
+  assert.ok(at(v, 'e-3').y < at(v, 'e-1').y, 'guarantor (Wang Wu) above the creditor (Zhang San)')
+  assert.ok(at(v, 'e-1').y < at(v, 'e-2').y, 'creditor above the debtor (Li Si)')
+  assert.ok(at(v, 'e-2').y < at(v, 'e-4').y, 'the holder (Li Si) above the company he holds')
+  const h = buildRelationshipGraph(base(), {}, undefined, 'horizontal')
+  assert.ok(at(h, 'e-3').x < at(h, 'e-1').x && at(h, 'e-1').x < at(h, 'e-2').x, 'the same order, left to right, when horizontal')
+  // and the stats count the shared rows
+  assert.equal(v.stats.layers, 4)
+  assert.equal(v.nodes.find((n) => n.id === 'e-4').data.layer, 3)
+})
+
+test('an entity carries what it is related to, for its overlay', () => {
+  const g = buildRelationshipGraph(base())
+  const li = g.nodes.find((n) => n.id === 'e-2').data.relations
+  assert.equal(li.length, 3, 'Li Si: the loan, the shareholding, the marriage')
+  const loan = li.find((r) => r.id === 'r-1')
+  assert.deepEqual([loan.out, loan.other, loan.text, loan.directed], [false, 'Zhang San', 'Loan', true])
+  assert.equal(li.find((r) => r.id === 'r-4').directed, false, 'a marriage has no arrow')
+})
+
+test('secures: the tie joins a guarantee to the claim it secures, and only when they are near', () => {
+  assert.deepEqual(midpointOf([[0, 0], [0, 100]]), [0, 50])
+  assert.deepEqual(midpointOf([[0, 0], [100, 0], [100, 100]]), [100, 0], 'halfway along the length, round a corner')
+  assert.deepEqual(nearestOn([[0, 0], [100, 0]], [40, 30]), { at: [40, 0], d: 30 })
+  assert.deepEqual(nearestOn([[0, 0], [100, 0]], [140, 0]).at, [100, 0], 'clamped to the end of the segment')
+  const cs = [
+    { id: 'r:claim', relationId: 'claim', points: [[0, 100], [200, 100]], secures: null },
+    { id: 'r:g', relationId: 'g', points: [[100, 0], [100, 60]], secures: 'claim' },
+    { id: 'r:far', relationId: 'far', points: [[100, -400], [100, -300]], secures: 'claim' },
+    { id: 'r:none', relationId: 'none', points: [[0, 0], [10, 0]], secures: null },
+  ]
+  const ties = securesTies(cs)
+  assert.equal(ties.length, 1, 'the far one would be a long slanting line and is left out')
+  assert.deepEqual([ties[0].id, ties[0].claimId, ties[0].from, ties[0].to], ['r:g', 'r:claim', [100, 30], [100, 100]])
+  assert.equal(securesTies(cs, 1000).length, 2, 'the distance is a parameter')
+  const g = buildRelationshipGraph(base())
+  assert.equal(g.connections.find((c) => c.relationId === 'r-2').secures, 'r-1', 'layout hands the renderer the pair')
+})
+
+test('text slack goes on Latin letters only, so a Chinese diagram is not left loose', () => {
+  const latin = buildRelationshipGraph({ ...base(), entities: base().entities.map((e) => ({ ...e, label: 'Wang Wu Wang', role: undefined })) })
+  const cjk = buildRelationshipGraph({ ...base(), entities: base().entities.map((e) => ({ ...e, label: '星河商贸有限公司', role: undefined })) })
+  const w = (g) => g.nodes[0].data.textW
+  assert.ok(w(latin) > 12 * 14 * 0.5, 'Latin text is given room for a bold face')
+  assert.equal(w(cjk), Math.ceil(8 * 14), 'eight CJK characters are eight ems, not more')
 })

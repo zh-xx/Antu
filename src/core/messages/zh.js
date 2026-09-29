@@ -127,6 +127,20 @@ export const zh = {
   'graphType.procedure': '程序图',
   'graphType.justification': '证成图',
 
+  'rel.kind.equity': '股权',
+  'rel.kind.control': '控制',
+  'rel.kind.contract': '合同',
+  'rel.kind.debt': '债权债务',
+  'rel.kind.guarantee': '担保',
+  'rel.kind.kinship': '亲属',
+  'rel.kind.employment': '雇佣',
+  'rel.kind.agency': '代理',
+  'rel.kind.other': '其他',
+  'rel.kindChipTitle': ({ n }) => `显示或隐藏这一类（${n} 条关系）`,
+  'rel.labels': '标签',
+  'rel.groups': '分组',
+  'rel.previewHint': '点击当事方查看全文',
+
   // 关系上没写 label 时的默认文字（界面文字，跟随界面语言）
   'rel.auto.equity': ({ share }) => (share === undefined ? '持有股权' : `持股 ${share}%`),
   'rel.auto.control': '控制',

@@ -1,0 +1,184 @@
+// ============================================================
+//  src/renderers/relationship/graph/RelationshipRenderer.jsx — the relationship graph
+//
+//  This file owns the "graph" way of drawing a relationship diagram:
+//    1. lay the spec out (graph/layout.js, pure computation, unit-tested)
+//    2. hold the presentation state: orientation, link style, which kinds are shown, labels, groups
+//    3. hand the entities, the decoration layers and the control dock to the canvas shell
+//
+//  Like the flowchart it **does not touch React Flow**: viewport, zoom, minimap and export live in
+//  shell/Canvas.jsx, and the links are one self-drawn layer (ConnectionLayerNode).
+//
+//  What reaches React Flow, in drawing order (later ones sit on top):
+//    group boxes → link layer → entities
+//
+//  Two kinds of state, kept apart on purpose:
+//    · what changes the geometry (orientation, the group boxes) goes into layout and re-fits the view;
+//    · what is paint only (which kinds are drawn, the labels, the entity being looked at) never
+//      touches layout, and `fitKey` tells the canvas so: looking at something must not throw a
+//      zoomed-in reader back to the overview (issue #21), and switching a kind off must not move
+//      anything.
+// ============================================================
+
+import { useMemo, useState } from 'react'
+
+import Canvas from '../../../shell/Canvas.jsx'
+import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { PreviewContext } from '../../../shell/previewContext.js'
+import { useExport } from '../../../shell/useExport.js'
+import { useLang } from '../../../shell/LangContext.jsx'
+import EntityNode from './EntityNode.jsx'
+import ConnectionLayerNode from './ConnectionLayerNode.jsx'
+import GroupBoxNode from './GroupBoxNode.jsx'
+import RelationshipDock from './RelationshipDock.jsx'
+import { buildRelationshipGraph } from './layout.js'
+
+/** Node types used by the graph. Adding one means registering one line here. */
+const nodeTypes = {
+  rnode: EntityNode,
+  rlinks: ConnectionLayerNode,
+  rgroups: GroupBoxNode,
+}
+
+/** Defaults: everything on. A first look should show everything the data says. */
+const FIELD_DEFAULTS = { labels: true, groups: true, hiddenKinds: [] }
+
+/** Attributes shared by decoration nodes; for why 1×1, see cellsNode in fact/timeline/nodes.js */
+const DECORATION = {
+  width: 1,
+  height: 1,
+  draggable: false,
+  selectable: false,
+  connectable: false,
+  focusable: false,
+  style: { pointerEvents: 'none' },
+}
+
+/** External preset: used only by MCP's antu_preview (same convention as the other renderers) */
+const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
+
+export default function RelationshipGraph({ spec }) {
+  // Namespaced: the flowchart keys its remembered choices by title too, and two diagrams of
+  // different types may share a title
+  const specKey = `rel:${spec?.title || ''}`
+  const hasGroups = Array.isArray(spec?.groups) && spec.groups.length > 0
+  const { t, lang } = useLang()
+
+  // What to show is a choice about this data, so it is remembered per diagram (as in the flowchart)
+  const [fieldPrefs, setFieldPrefs] = useState(() => readPrefs().relationshipFieldsByDiagram || {})
+  const fields = { ...FIELD_DEFAULTS, ...fieldPrefs[specKey], ...(PRESET?.fields || {}) }
+  const setField = (patch) => {
+    const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], ...patch } }
+    setFieldPrefs(map)
+    writePrefs({ relationshipFieldsByDiagram: map })
+  }
+  const toggleKind = (kind) => {
+    const hidden = fields.hiddenKinds.includes(kind) ? fields.hiddenKinds.filter((k) => k !== kind) : [...fields.hiddenKinds, kind]
+    setField({ hiddenKinds: hidden })
+  }
+
+  // Orientation: remembered per diagram. With nothing chosen a holder stands above what it holds.
+  const [orientationPrefs, setOrientationPrefs] = useState(() => readPrefs().orientations || {})
+  const orientation = PRESET?.orientation || orientationPrefs[specKey] || 'vertical'
+  const toggleOrientation = (next) => {
+    const map = { ...orientationPrefs, [specKey]: next }
+    setOrientationPrefs(map)
+    writePrefs({ orientations: map })
+  }
+
+  // Link style: curved (the default) or straight, one choice for every diagram, remembered
+  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || readPrefs().linkStyle || 'curved')
+  const toggleLinkStyle = (next) => {
+    setLinkStyle(next)
+    writePrefs({ linkStyle: next })
+  }
+
+  // Only the switches that move geometry go into layout: the group boxes turn camps into columns;
+  // the interface language changes the default text on a relation and so the size of its label
+  const layout = useMemo(
+    () => buildRelationshipGraph(spec, { groups: fields.groups, t }, undefined, orientation),
+    // `t` follows `lang`, so the language is what the layout depends on
+    [spec, fields.groups, orientation, lang],
+  )
+
+  const [hoveredId, setHoveredId] = useState(null)
+  const [pinnedId, setPinnedId] = useState(null)
+  const preview = useMemo(
+    () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),
+    [hoveredId, pinnedId],
+  )
+  // The entity being looked at (pinned, else hovered): the relations that touch it stay, the rest fade
+  const litEntity = pinnedId ?? hoveredId
+
+  const graph = useMemo(() => {
+    const { width, height } = layout.size
+    const deco = []
+    if (layout.groupBoxes.length) {
+      deco.push({ ...DECORATION, id: '__groups__', type: 'rgroups', position: { x: 0, y: 0 }, data: { boxes: layout.groupBoxes, width, height } })
+    }
+    deco.push({
+      ...DECORATION,
+      id: '__rlinks__',
+      type: 'rlinks',
+      position: { x: 0, y: 0 },
+      data: {
+        connections: layout.connections,
+        width,
+        height,
+        hiddenKinds: fields.hiddenKinds,
+        showLabels: fields.labels,
+        curved: linkStyle === 'curved',
+        litEntity,
+      },
+    })
+    const nodes = litEntity
+      ? layout.nodes.map((n) => {
+          const touches = n.id === litEntity || n.data.relations.some((r) => layout.connections.some((c) => c.relationId === r.id && (c.from === litEntity || c.to === litEntity)))
+          return { ...n, data: { ...n.data, lit: n.id === litEntity, dim: !touches } }
+        })
+      : layout.nodes
+    return { nodes: [...deco, ...nodes], edges: [], size: layout.size }
+  }, [layout, fields.hiddenKinds, fields.labels, linkStyle, litEntity])
+
+  const { canvasRef, exporting, onExport } = useExport(spec?.title)
+
+  return (
+    <div className="antu-relationship">
+      <PreviewContext.Provider value={preview}>
+        <Canvas
+          ref={canvasRef}
+          graph={graph}
+          fitKey={layout}
+          nodeTypes={nodeTypes}
+          onNodeMouseEnter={(_, n) => {
+            if (n.type === 'rnode') setHoveredId(n.id)
+          }}
+          onNodeMouseLeave={(_, n) => {
+            setHoveredId((cur) => (cur === n.id ? null : cur))
+          }}
+          onNodeClick={(_, n) => {
+            if (n.type === 'rnode') setPinnedId(n.id)
+          }}
+          onPaneClick={() => setPinnedId(null)}
+        >
+          <RelationshipDock
+            kinds={layout.stats.kinds}
+            hiddenKinds={fields.hiddenKinds}
+            onToggleKind={toggleKind}
+            showLabels={fields.labels}
+            onToggleLabels={(v) => setField({ labels: v })}
+            hasGroups={hasGroups}
+            showGroups={fields.groups}
+            onToggleGroups={(v) => setField({ groups: v })}
+            orientation={orientation}
+            onToggleOrientation={toggleOrientation}
+            linkStyle={linkStyle}
+            onToggleLinkStyle={toggleLinkStyle}
+            exporting={exporting}
+            onExport={onExport}
+          />
+        </Canvas>
+      </PreviewContext.Provider>
+    </div>
+  )
+}

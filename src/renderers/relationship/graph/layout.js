@@ -48,6 +48,7 @@ import {
   GROUP_PAD,
   GROUP_TITLE_FONT,
   SCALE_HINT_ENTITIES,
+  CROSS_COST,
   sizeOf,
   labelBox,
 } from './metrics.js'
@@ -63,10 +64,15 @@ export function labelOf(relation, t = tEn) {
   return t(`rel.auto.${relation.kind}`, { share: relation.share, amount: relation.amount })
 }
 
-/** The box of a group's title, in the frame: where a link must not run */
-const titleBoxOf = (box, label) => {
-  const w = Math.min(box.w - GROUP_PAD * 2, textEm(label) * GROUP_TITLE_FONT + 4)
-  return { x: box.x + GROUP_PAD - 2, y: box.y + 7, w, h: 18 }
+/**
+ * The box of a group's title, in the frame: where a link must not run. The title strip runs along
+ * the real top of the box: the frame's top when vertical, its left when the picture is transposed.
+ */
+const titleBoxOf = (box, label, vertical) => {
+  const w = Math.min((vertical ? box.w : box.h) - GROUP_PAD * 2, textEm(label) * GROUP_TITLE_FONT + 4)
+  return vertical
+    ? { x: box.x + GROUP_PAD - 2, y: box.y + 7, w, h: 18 }
+    : { x: box.x + 7, y: box.y + GROUP_PAD - 2, w: 18, h: w }
 }
 
 /** The four edges of a box, as [[x0,y0],[x1,y1]]: a route may cross them but not run along them */
@@ -164,7 +170,11 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     return { text, frame: vertical ? b : { width: b.height, height: b.width } }
   })
 
-  // ── ① each camp by ELK, on its own ──
+  // ── the rows: one level for the whole picture ──
+  // A holder above what it holds, a creditor above the debtor: the level of each entity is worked out
+  // on the whole graph once, camps ignored (ELK's layered algorithm does exactly this). Every camp then
+  // stands on the same rows, so a link across the channel between two entities of one level runs
+  // straight, and the guarantor of a debt sits above the creditor whichever camp it is in.
   const spacing = {
     'elk.spacing.nodeNode': String(NODE_GAP),
     'elk.layered.spacing.nodeNodeBetweenLayers': String(LAYER_GAP),
@@ -173,25 +183,41 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     'elk.spacing.edgeLabel': '4',
     'elk.layered.spacing.edgeNodeBetweenLayers': '16',
   }
+  const baseOptions = {
+    'elk.algorithm': 'layered',
+    'elk.direction': 'DOWN',
+    'elk.padding': '[top=0,left=0,bottom=0,right=0]',
+    'elk.edgeRouting': 'ORTHOGONAL',
+    ...spacing,
+    'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+    'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+    'elk.edgeLabels.inline': 'false',
+    'elk.separateConnectedComponents': 'false',
+  }
+  const leaves = (list, extra) =>
+    list.map((e) => {
+      const { w, h } = frameSize(e)
+      return { id: e.id, width: w, height: h, ...(extra ? { layoutOptions: extra(e) } : {}) }
+    })
+  const flat = elkLayoutSync({
+    id: 'levels',
+    layoutOptions: baseOptions,
+    children: leaves(entities),
+    edges: relations.map((r, i) => ({ id: `r${i}`, sources: [r.from], targets: [r.to] })),
+  })
+  const levelStarts = [...new Set(flat.children.map((c) => Math.round(c.y)))].sort((a, b) => a - b)
+  const levelOf = new Map(flat.children.map((c) => [c.id, levelStarts.indexOf(Math.round(c.y))]))
+  const levelCount = levelStarts.length
+
+  // ── ① each camp by ELK, on its own: only for how its entities stand side by side ──
+  // Each entity is held to its level, so ELK orders and spaces a level the way it will really be. Only
+  // the across-position is taken; the down-position comes from the rows below.
   const layCamp = (camp, ci) => {
     const inside = new Set(camp.members.map((e) => e.id))
-    const graph = {
+    const graph = (held) => ({
       id: `camp${ci}`,
-      layoutOptions: {
-        'elk.algorithm': 'layered',
-        'elk.direction': 'DOWN',
-        'elk.padding': '[top=0,left=0,bottom=0,right=0]',
-        'elk.edgeRouting': 'ORTHOGONAL',
-        ...spacing,
-        'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
-        'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
-        'elk.edgeLabels.inline': 'false',
-        'elk.separateConnectedComponents': 'false',
-      },
-      children: camp.members.map((e) => {
-        const { w, h } = frameSize(e)
-        return { id: e.id, width: w, height: h }
-      }),
+      layoutOptions: baseOptions,
+      children: leaves(camp.members, held ? (e) => ({ 'elk.layered.layering.layerChoiceConstraint': String(levelOf.get(e.id)) }) : undefined),
       // Only the relations inside the camp shape it; the ones across are routed afterwards
       edges: relations
         .map((r, i) => ({ r, i }))
@@ -202,35 +228,60 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
           targets: [r.to],
           labels: [{ id: `l${i}`, text: labels[i].text, width: labels[i].frame.width, height: labels[i].frame.height }],
         })),
+    })
+    let laid
+    try {
+      laid = elkLayoutSync(graph(true))
+    } catch {
+      laid = elkLayoutSync(graph(false))
     }
-    const laid = elkLayoutSync(graph)
-    const at = new Map(laid.children.map((c) => [c.id, { x: c.x, y: c.y, w: c.width, h: c.height }]))
-    return { at, width: laid.width, height: laid.height }
+    return { at: new Map(laid.children.map((c) => [c.id, { x: c.x, w: c.width, h: c.height }])), width: laid.width }
   }
 
-  // ── ② the camps side by side, tops aligned ──
+  // ── ② the camps side by side; the rows shared, tops aligned ──
+  // The title strip takes GROUP_PAD_TOP along the real top of a box: the frame's top when vertical, its left when transposed
+  const PAD_A0 = vertical ? GROUP_PAD_TOP : GROUP_PAD
+  const PAD_C0 = vertical ? GROUP_PAD : GROUP_PAD_TOP
+  const inBox = camps.some((c) => c.group)
+  const contentTop = PAD + (inBox ? PAD_A0 : 0)
+  const laidCamps = camps.map((camp, ci) => layCamp(camp, ci))
+  const rowH = Array.from({ length: levelCount }, () => 0)
+  for (const e of entities) rowH[levelOf.get(e.id)] = Math.max(rowH[levelOf.get(e.id)], frameSize(e).h)
+  const rowY = []
+  rowH.reduce((y, h, i) => {
+    rowY[i] = y
+    return y + h + LAYER_GAP
+  }, contentTop)
+
   const placed = new Map()
   const boxes = []
   let cursor = PAD
-  let tallest = 0
+  let lowest = contentTop
   camps.forEach((camp, ci) => {
-    const lay = layCamp(camp, ci)
-    const padX = camp.group ? GROUP_PAD : 0
-    const padTop = camp.group ? GROUP_PAD_TOP : 0
-    const padBottom = camp.group ? GROUP_PAD : 0
-    for (const [id, r] of lay.at) placed.set(id, { x: cursor + padX + r.x, y: PAD + padTop + r.y, w: r.w, h: r.h })
-    const w = lay.width + padX * 2
-    const h = lay.height + padTop + padBottom
-    if (camp.group) boxes.push({ groupId: camp.group.id, label: camp.group.label, x: cursor, y: PAD, w, h })
-    tallest = Math.max(tallest, h)
+    const lay = laidCamps[ci]
+    const padX = camp.group ? PAD_C0 : 0
+    let bottom = contentTop
+    for (const [id, r] of lay.at) {
+      const y = rowY[levelOf.get(id)] + (rowH[levelOf.get(id)] - r.h) / 2
+      placed.set(id, { x: cursor + padX + r.x, y, w: r.w, h: r.h })
+      bottom = Math.max(bottom, y + r.h)
+    }
+    const w = lay.width + padX + (camp.group ? GROUP_PAD : 0)
+    // A camp's box runs from the top of the picture to below its own lowest member
+    if (camp.group) boxes.push({ groupId: camp.group.id, label: camp.group.label, x: cursor, y: PAD, w, h: bottom + GROUP_PAD - PAD })
+    lowest = Math.max(lowest, bottom + (camp.group ? GROUP_PAD : 0))
     cursor += w + CAMP_GAP
   })
   const frameWidth = cursor - CAMP_GAP + PAD
-  const frameHeight = tallest + PAD * 2
+  const frameHeight = lowest + PAD
 
-  // ── ③ every relation routed, ④ every label placed ──
+  // ── ③ every relation routed, then ④ every label placed ──
+  // Lines first, labels after: a label is small and can stand in another spot, while a line held off by
+  // a label already set down went right round the picture (the first horizontal screenshot). So the
+  // routes see only the entities and the titles; each label then looks for room beside its own line,
+  // clear of every entity, title, other line and other label.
   const nodeRects = [...placed.values()]
-  const titles = boxes.map((b) => titleBoxOf(b, b.label))
+  const titles = boxes.map((b) => titleBoxOf(b, b.label, vertical))
   const borders = boxes.flatMap(edgesOfBox)
   const labelRect = (c) => ({ x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height })
 
@@ -244,25 +295,30 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   const drawn = new Array(relations.length)
   const done = []
   for (const i of order) {
-    const r = relations[i]
-    const a = placed.get(r.from)
-    const b = placed.get(r.to)
-    const labelsSoFar = done.map(labelRect)
+    const a = placed.get(relations[i].from)
+    const b = placed.get(relations[i].to)
     const points =
       routeLink({
         from: a,
         to: b,
         nodes: nodeRects,
-        blocks: [...titles, ...labelsSoFar],
+        blocks: titles,
         routes: done.map((c) => ({ points: c.points })),
         borders,
         portCost: portCostFor(a, b),
+        crossCost: CROSS_COST,
       }) ?? fallbackRoute(a, b)
-    const size = { width: labels[i].frame.width, height: labels[i].frame.height }
-    const labelAt = placeLabel(points, size, nodeRects, [...titles, ...labelsSoFar], done, borders)
-    const c = { index: i, points, labelAt, labelSize: size }
+    const c = { index: i, points, labelAt: null, labelSize: { width: labels[i].frame.width, height: labels[i].frame.height } }
     drawn[i] = c
     done.push(c)
+  }
+  const placedLabels = []
+  for (const i of order) {
+    const c = drawn[i]
+    // Every other line is in the way of this label; the lines of the relations it belongs to are not special
+    const others = drawn.filter((o) => o !== c)
+    c.labelAt = placeLabel(c.points, c.labelSize, nodeRects, [...titles, ...placedLabels.map(labelRect)], others, borders, { onLine: true })
+    placedLabels.push(c)
   }
 
   // ── out of the frame, transposed when the picture runs left to right ──
@@ -297,11 +353,8 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     size.height = Math.max(size.height, c.labelAt.y + c.labelSize.height + PAD)
   }
 
-  // Layers, read back from where ELK put the entities (for the stats). Entities of different camps
-  // at the same level count as one layer: a layer is a level, whichever camp it is in.
-  const a0 = (id) => Math.round(vertical ? real.placed.get(id).y : real.placed.get(id).x)
-  const layerStarts = [...new Set(entities.map((e) => a0(e.id)))].sort((a, b) => a - b)
-  const perLayer = layerStarts.map((a) => entities.filter((e) => a0(e.id) === a).length)
+  // Layers are the shared rows: a level is a level, whichever camp its entities are in
+  const perLayer = Array.from({ length: levelCount }, (_, i) => entities.filter((e) => levelOf.get(e.id) === i).length)
 
   const sourceById = new Map((spec.sources ?? []).map((s) => [s.id, s]))
   const degree = new Map(entities.map((e) => [e.id, 0]))
@@ -309,6 +362,20 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     degree.set(r.from, degree.get(r.from) + 1)
     degree.set(r.to, degree.get(r.to) + 1)
   }
+  // What each party is related to, for its overlay: the other end and the text on the line
+  const nameOf = new Map(entities.map((e) => [e.id, e.label]))
+  const relationsOf = (id) =>
+    relations
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => r.from === id || r.to === id)
+      .map(({ r, i }) => ({
+        id: r.id,
+        kind: r.kind,
+        directed: isDirected(r),
+        out: r.from === id,
+        other: nameOf.get(r.from === id ? r.to : r.from),
+        text: labels[i].text,
+      }))
   const rfNodes = entities.map((e) => {
     const p = real.placed.get(e.id)
     return {
@@ -325,7 +392,8 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         sources: (e.sourceIds ?? []).map((id) => sourceById.get(id)).filter(Boolean),
         sourceCount: (e.sourceIds ?? []).filter((id) => sourceById.has(id)).length,
         relationCount: degree.get(e.id),
-        layer: layerStarts.indexOf(a0(e.id)),
+        relations: relationsOf(e.id),
+        layer: levelOf.get(e.id),
         vertical,
       },
     }
@@ -348,7 +416,7 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
       entities: entities.length,
       relations: relations.length,
       groups: presentGroups.length,
-      layers: layerStarts.length,
+      layers: levelCount,
       widest: Math.max(...perLayer),
       kinds,
     },

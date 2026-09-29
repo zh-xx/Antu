@@ -208,6 +208,20 @@ export const en = {
     `${n} entities: past about ${limit} the diagram gets hard to read on one screen; consider splitting it by group`,
   'rhint.equityCycle': ({ path }) => `shareholdings loop back (${path}); allowed, but check it is what the registry says`,
 
+  'rel.kind.equity': 'Equity',
+  'rel.kind.control': 'Control',
+  'rel.kind.contract': 'Contracts',
+  'rel.kind.debt': 'Debts',
+  'rel.kind.guarantee': 'Guarantees',
+  'rel.kind.kinship': 'Family',
+  'rel.kind.employment': 'Employment',
+  'rel.kind.agency': 'Agency',
+  'rel.kind.other': 'Other',
+  'rel.kindChipTitle': ({ n }) => (n === 1 ? 'Show or hide this kind (1 relation)' : `Show or hide this kind (${n} relations)`),
+  'rel.labels': 'Labels',
+  'rel.groups': 'Groups',
+  'rel.previewHint': 'Click a party to read the full text',
+
   // The default text on a relation that has no label of its own (interface text: it follows the interface language)
   'rel.auto.equity': ({ share }) => (share === undefined ? 'Holds shares' : `Holds ${share}%`),
   'rel.auto.control': 'Controls',
