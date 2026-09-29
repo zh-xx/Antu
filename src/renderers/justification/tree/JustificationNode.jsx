@@ -2,8 +2,8 @@
 //  src/renderers/justification/tree/JustificationNode.jsx — one node of the justification tree
 //
 //  The kind fixes the shape and the colour of the outline (palette.js): a conclusion a heavy blue box,
-//  a norm a violet box with a bar down its left, an element an amber pill, a fact a plain grey box, an
-//  inference a green box, a judgement a rose box. A line above the sentence names the kind, and carries
+//  a norm a square-cornered violet box, an element an amber pill, a fact a plain grey box, an
+//  inference a green box, a judgement a rose box. No node has a bar or a stripe down its side. A line above the sentence names the kind, and carries
 //  a fact's date and what the node holds. The size comes from metrics.js through layout.js (data.w /
 //  data.h); this file never decides a size of its own. The outline is SVG, the text sits on top in HTML
 //  so it wraps and clamps like the rest of the interface.
@@ -40,13 +40,7 @@ function Outline({ kind, w, h, rejected }) {
     case 'conclusion':
       return <rect className="antu-jn-shape" {...paint} x={x} y={y} width={W} height={H} rx={9} />
     case 'norm':
-      // A violet bar down the left edge: the mark of something that comes from a text, a provision
-      return (
-        <>
-          <rect className="antu-jn-shape" {...paint} x={x} y={y} width={W} height={H} rx={3} />
-          <rect className="antu-jn-bar" fill={p.stroke} x={x} y={y} width={5} height={H} rx={2} />
-        </>
-      )
+      return <rect className="antu-jn-shape" {...paint} x={x} y={y} width={W} height={H} rx={3} />
     case 'element':
       return <rect className="antu-jn-shape" {...paint} x={x} y={y} width={W} height={H} rx={Math.min(16, H / 2)} />
     case 'inference':
