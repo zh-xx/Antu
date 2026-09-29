@@ -17,6 +17,7 @@ import { buildGrid } from '../src/renderers/fact/timeline/grid.js'
 // dedicated test below guards it.
 import '../src/renderers/index.js'
 import { validateSpec } from '../src/core/validate.js'
+import { notesOf } from '../tools/mcp/engine.mjs'
 
 const base = () => JSON.parse(readFileSync('examples/fact/elevator-smoking-case.zh-CN.json', 'utf8'))
 const errorsOf = (spec) => buildGrid(spec).errors
@@ -100,4 +101,24 @@ test('validation is layout: a grid is still returned on error so the caller can 
   assert.ok(g.errors.length > 0)
   assert.ok(Array.isArray(g.rows) && g.rows.length > 0, 'an error must not mean no grid')
   assert.ok(Array.isArray(g.columns))
+})
+
+test('a view that does not fit is not an error but is named (#25)', () => {
+  // The elevator case has a view whose events collide in one lane. By design such a view is left out of
+  // the view dropdown rather than rejected, so validation passes. But "passed" used to be all an
+  // author heard, and a view that could never be drawn went unseen.
+  const spec = base()
+  assert.deepEqual(validateSpec(spec), [], 'a view that does not fit must not turn into an error')
+  const notes = notesOf(spec)
+  assert.equal(notes.length, 1, `expected the one view that does not fit, got ${JSON.stringify(notes)}`)
+  assert.match(notes[0], /view "[^"]+" does not fit/)
+  assert.match(notes[0], /will not appear in the view dropdown/)
+  assert.match(notes[0], /slots\[0\]/, 'the reason from the layout is carried along')
+})
+
+test('notes: nothing to say for data whose views all fit, and for types without notes (#25)', () => {
+  const small = JSON.parse(readFileSync('examples/agent/fact/4-views.en.json', 'utf8'))
+  assert.deepEqual(notesOf(small), [], 'the small agent examples are written so that every view fits')
+  assert.deepEqual(notesOf({ type: 'procedure', title: 'x', nodes: [], edges: [] }), [])
+  assert.deepEqual(notesOf(null), [])
 })

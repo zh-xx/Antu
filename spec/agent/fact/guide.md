@@ -50,8 +50,10 @@ rules above are applied. It **never changes the data**:
 ## One limit: one event per cell
 
 **A time point holds at most one event per lane.** Two events in the same lane of the
-same slot is an error, and that view also disappears from the interface options
-(an option that cannot be clicked is noise).
+same slot means that view cannot be drawn, and it disappears from the interface options
+(an option that cannot be clicked is noise). `antu_validate` checks the data once and does not call
+this an error, since a data set may keep a view that does not fit on purpose; it does list each such
+view as a note after "Validation passed", so it never goes unseen. `antu_layout` reports the same views.
 
 Three ways to fix it, most common first:
 
@@ -68,7 +70,8 @@ After splitting, check again that each slot holds exactly one event.
 
 ```
 antu_validate   reports each problem, with the field path and the event id
-                (e.g. slots[0].events[1] (ev-2))
+                (e.g. slots[0].events[1] (ev-2)); when it passes, notes any view that
+                does not fit (not an error, but that view will not be offered)
 antu_layout     no rendering: how large, which orientation, which views do not fit
 antu_preview    take a screenshot and look: are cards cramped, is the text small,
                 is there too much empty space
