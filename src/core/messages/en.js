@@ -176,6 +176,52 @@ export const en = {
   'err.slotShape': ({ at }) => `${at}: must be an object of the form { events: [ … ] }`,
   'err.eventsNotArray': ({ at }) => `${at}.events must be an array`,
 
+  // ---------- relationship: validation errors (rerr.*) and hints (rhint.*) ----------
+  // Fixed English, like the other agent-facing messages; zh.js takes these keys from here.
+  'rerr.entitiesEmpty': '`entities` must not be empty (a diagram needs at least two parties)',
+  'rerr.relationsEmpty': '`relations` must not be empty (the parties have to be related)',
+  'rerr.notArray': ({ field }) => `\`${field}\` must be an array`,
+  'rerr.notObject': ({ at }) => `${at}: must be an object`,
+  'rerr.required': ({ at, field }) => `${at}: missing required field \`${field}\``,
+  'rerr.duplicateId': ({ at, id, what }) => `${at}: id "${id}" duplicates an earlier ${what}`,
+  'rerr.badEntityKind': ({ at, value, allowed }) => `${at}: kind is "${value}", which is not one of: ${allowed}`,
+  'rerr.badRelationKind': ({ at, value, allowed }) => `${at}: kind is "${value}", which is not one of: ${allowed}`,
+  'rerr.mustBeString': ({ at, field }) => `${at}: \`${field}\` must be a non-empty string`,
+  'rerr.mustBeBoolean': ({ at, field }) => `${at}: \`${field}\` must be true or false`,
+  'rerr.badRef': ({ at, field, kind, id }) => `${at}: \`${field}\` refers to a non-existent ${kind} "${id}"`,
+  'rerr.badEnd': ({ at, end, id }) => `${at}: \`${end}\` refers to a non-existent entity "${id}"`,
+  'rerr.selfRelation': ({ at, id }) => `${at}: an entity cannot be related to itself ("${id}" on both ends)`,
+  'rerr.duplicateRelation': ({ at, from, to, kind }) =>
+    `${at}: duplicate relation ${from} -> ${to} (${kind}, same label); give the second one its own label, or drop it`,
+  'rerr.fieldNotHere': ({ at, field, kinds }) => `${at}: \`${field}\` only belongs on a relation of kind ${kinds}`,
+  'rerr.badShare': ({ at, value }) => `${at}: \`share\` must be a number from 0 to 100, got ${value}`,
+  'rerr.badSecures': ({ at, id }) => `${at}: \`secures\` refers to a non-existent relation "${id}"`,
+  'rerr.securesNotClaim': ({ at, id, kind, claims }) =>
+    `${at}: \`secures\` points at relation "${id}", which is a ${kind}; a guarantee secures a claim (${claims})`,
+  'rerr.badAsOf': ({ value }) => `asOf: "${value}" is not an ISO date (YYYY, YYYY-MM or YYYY-MM-DD)`,
+  'rhint.shareOver100': ({ id, label, total }) =>
+    `entities (${id}): the shares held in "${label}" add up to ${total}%, more than the whole; check the figures or the source`,
+  'rhint.isolated': ({ id, label }) =>
+    `entities (${id}): "${label}" has no relation to anyone, so it will float beside the diagram; relate it or drop it`,
+  'rhint.noSecures': ({ id }) => `relations (${id}): a guarantee that does not say which claim it secures; add \`secures\` with that relation's id`,
+  'rhint.tooLarge': ({ n, limit }) =>
+    `${n} entities: past about ${limit} the diagram gets hard to read on one screen; consider splitting it by group`,
+  'rhint.equityCycle': ({ path }) => `shareholdings loop back (${path}); allowed, but check it is what the registry says`,
+
+  // The default text on a relation that has no label of its own (interface text: it follows the interface language)
+  'rel.auto.equity': ({ share }) => (share === undefined ? 'Holds shares' : `Holds ${share}%`),
+  'rel.auto.control': 'Controls',
+  'rel.auto.contract': ({ amount }) => (amount ? `Contract, ${amount}` : 'Contract'),
+  'rel.auto.debt': ({ amount }) => (amount ? `Claim, ${amount}` : 'Claim'),
+  'rel.auto.guarantee': 'Guarantee',
+  'rel.auto.kinship': 'Family',
+  'rel.auto.employment': 'Employment',
+  'rel.auto.agency': 'Agency',
+  'rel.auto.other': 'Related',
+  'info.entities': ({ n }) => `${n} part${n === 1 ? 'y' : 'ies'}`,
+  'info.relations': ({ n }) => `${n} relation${n === 1 ? '' : 's'}`,
+  'graphKind.graph': 'Relationship graph',
+
   // ---------- procedure: validation errors (perr.*) and hints (phint.*) ----------
   // Same rule as err.*: fixed English, they do not follow the interface language.
   // zh.js spreads these straight from here (see the prefix list at the end of zh.js).

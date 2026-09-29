@@ -90,8 +90,8 @@ test('envelope: a missing type is reported', () => {
   assert.ok(validateSpec(spec).length > 0)
 })
 
-test('a type with no registered knowledge is not validated (only fact exists, so empty)', () => {
-  assert.deepEqual(validateSpec({ type: 'relationship', title: '还没做' }), [])
+test('a type with no registered knowledge is not validated (justification is not built, so empty)', () => {
+  assert.deepEqual(validateSpec({ type: 'justification', title: '还没做' }), [])
 })
 
 test('validation is layout: a grid is still returned on error so the caller can show the problem', () => {
