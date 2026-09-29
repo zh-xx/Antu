@@ -36,7 +36,7 @@ import { validateRelationship, hintsOfRelationship, isDirected } from './rules.j
 import { elkLayoutSync } from '../../procedure/flow/elk.js'
 import { toPathD, toCurveD } from '../../procedure/flow/layout.js'
 import { routeLink } from '../../procedure/flow/router.js'
-import { placeLabel, toReal } from '../../procedure/flow/columns.js'
+import { toReal } from '../../procedure/flow/columns.js'
 import { textEm } from '../../fact/cardGeometry.js'
 import { tEn } from '../../../core/i18n.js'
 import {
@@ -94,6 +94,52 @@ function portCostFor(a, b) {
   if (below) return undefined
   if (above) return { out: { bottom: 700, top: 0 }, in: { top: 700, bottom: 0 } }
   return { out: { bottom: 200, top: 200, left: 0, right: 0 }, in: { top: 200, bottom: 200, left: 0, right: 0 } }
+}
+
+const segsOf = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
+const overlaps = (a, b, m) => a.x < b.x + b.w + m && b.x < a.x + a.w + m && a.y < b.y + b.h + m && b.y < a.y + a.h + m
+const segHits = ([p, q], r, m) =>
+  Math.max(p[0], q[0]) > r.x - m && Math.min(p[0], q[0]) < r.x + r.w + m && Math.max(p[1], q[1]) > r.y - m && Math.min(p[1], q[1]) < r.y + r.h + m
+
+/**
+ * Where a relation's label stands: ON its own line, the label's background hiding the line under it,
+ * as in most diagrams. Beside the line (what the flowchart does) is ambiguous in a picture where
+ * several relations run through one corridor, and it kept landing on some other relation's line; on
+ * its own line a label can only be read as that line's. Every long enough segment is tried at a few
+ * places along it, and the spot that covers least of anything else wins: entities worst, then other
+ * labels and titles, then other lines; the middle of the longest segment on a tie.
+ */
+function placeOnLine(points, size, nodeRects, blocks, links, borders) {
+  const { width: w, height: h } = size
+  const badness = (r) =>
+    (r.x < PAD / 2 || r.y < PAD / 2 ? 100 : 0) +
+    nodeRects.filter((n) => overlaps(r, n, 2)).length * 50 +
+    blocks.filter((b) => overlaps(r, b, 2)).length * 20 +
+    links.filter((c) => segsOf(c.points).some((s) => segHits(s, r, 2))).length * 10 +
+    borders.filter((s) => segHits(s, r, 2)).length * 3
+  let best = null
+  for (const [p, q] of segsOf(points)) {
+    const horizontal = Math.abs(p[1] - q[1]) < 0.5
+    const len = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1])
+    const need = horizontal ? w : h
+    if (len < need + 8) continue
+    // Away from the ends of the segment, where a curved corner would run under the label
+    const margin = Math.min(22, (len - need) / 2)
+    const span = len - need - margin * 2
+    for (const f of [0.5, 0.35, 0.65, 0.2, 0.8, 0.05, 0.95]) {
+      const t = margin + need / 2 + span * f
+      const dir = horizontal ? Math.sign(q[0] - p[0]) : Math.sign(q[1] - p[1])
+      const cx = horizontal ? p[0] + dir * t : p[0]
+      const cy = horizontal ? p[1] : p[1] + dir * t
+      const r = { x: cx - w / 2, y: cy - h / 2, w, h }
+      const bad = badness(r) + Math.abs(f - 0.5) * 2
+      if (!best || bad < best.bad - 1e-9 || (Math.abs(bad - best.bad) < 1e-9 && len > best.len)) best = { bad, len, x: r.x, y: r.y }
+    }
+  }
+  if (best) return { x: best.x, y: best.y }
+  // No segment long enough: the middle of the longest one
+  const [p, q] = segsOf(points).sort((a, b) => Math.abs(b[1][0] - b[0][0]) + Math.abs(b[1][1] - b[0][1]) - (Math.abs(a[1][0] - a[0][0]) + Math.abs(a[1][1] - a[0][1])))[0]
+  return { x: Math.max(PAD / 2, (p[0] + q[0]) / 2 - w / 2), y: Math.max(PAD / 2, (p[1] + q[1]) / 2 - h / 2) }
 }
 
 /** Only if the router finds nothing (it should not): out of the side, across, into the side */
@@ -247,10 +293,15 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   const laidCamps = camps.map((camp, ci) => layCamp(camp, ci))
   const rowH = Array.from({ length: levelCount }, () => 0)
   for (const e of entities) rowH[levelOf.get(e.id)] = Math.max(rowH[levelOf.get(e.id)], frameSize(e).h)
+  // The gap between two rows holds the labels of the links that run down it. In the vertical picture that
+  // is a label's height; in the transposed one it is a label's width, which is why the horizontal picture
+  // needs the wider gap (a label longer than the gap ran over the entity at its end).
+  const labelSpan = Math.max(0, ...labels.map((lb) => lb.frame.height))
+  const rowGap = Math.max(LAYER_GAP, labelSpan + 56)
   const rowY = []
   rowH.reduce((y, h, i) => {
     rowY[i] = y
-    return y + h + LAYER_GAP
+    return y + h + rowGap
   }, contentTop)
 
   const placed = new Map()
@@ -278,8 +329,7 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   // ── ③ every relation routed, then ④ every label placed ──
   // Lines first, labels after: a label is small and can stand in another spot, while a line held off by
   // a label already set down went right round the picture (the first horizontal screenshot). So the
-  // routes see only the entities and the titles; each label then looks for room beside its own line,
-  // clear of every entity, title, other line and other label.
+  // routes see only the entities and the titles; each label then finds its place on its own line.
   const nodeRects = [...placed.values()]
   const titles = boxes.map((b) => titleBoxOf(b, b.label, vertical))
   const borders = boxes.flatMap(edgesOfBox)
@@ -307,6 +357,7 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         borders,
         portCost: portCostFor(a, b),
         crossCost: CROSS_COST,
+        sidePorts: true,
       }) ?? fallbackRoute(a, b)
     const c = { index: i, points, labelAt: null, labelSize: { width: labels[i].frame.width, height: labels[i].frame.height } }
     drawn[i] = c
@@ -317,7 +368,7 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     const c = drawn[i]
     // Every other line is in the way of this label; the lines of the relations it belongs to are not special
     const others = drawn.filter((o) => o !== c)
-    c.labelAt = placeLabel(c.points, c.labelSize, nodeRects, [...titles, ...placedLabels.map(labelRect)], others, borders, { onLine: true })
+    c.labelAt = placeOnLine(c.points, c.labelSize, nodeRects, [...titles, ...placedLabels.map(labelRect)], others, borders)
     placedLabels.push(c)
   }
 

@@ -16,21 +16,26 @@
 
 import { memo, useMemo } from 'react'
 import { relationPaint, RELATION_PAINT, DIM_OPACITY } from './palette.js'
-import { securesTies } from './secures.js'
+import { securesTies, lookedAt } from './secures.js'
 
 const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
   const { connections, width, height, hiddenKinds = [], showLabels, curved, litEntity = null } = data
 
   const visible = useMemo(() => connections.filter((c) => !hiddenKinds.includes(c.kind)), [connections, hiddenKinds])
   const kindsDrawn = useMemo(() => [...new Set(visible.filter((c) => c.directed).map((c) => c.kind))], [visible])
-  // A tie is drawn only when both the guarantee and its claim are on show
+  // A tie joins a guarantee to the claim it secures. Drawn for every guarantee, the ties made a busy
+  // picture busier and some ran a long way; so it shows while one of the guarantee's two parties is
+  // looked at, which is when the reader asks "what is this guarantee for". Both lines must be on show.
   const ties = useMemo(() => {
+    if (litEntity === null) return []
     const ids = new Set(visible.map((c) => c.id))
-    return securesTies(connections).filter((t) => ids.has(t.id) && ids.has(t.claimId))
-  }, [connections, visible])
+    const mine = new Set(connections.filter((c) => c.from === litEntity || c.to === litEntity).map((c) => c.id))
+    return securesTies(connections, Infinity).filter((t) => mine.has(t.id) && ids.has(t.id) && ids.has(t.claimId))
+  }, [connections, visible, litEntity])
 
-  const touches = (c) => litEntity === null || c.from === litEntity || c.to === litEntity
-  const opacityOf = (c) => (touches(c) ? 1 : DIM_OPACITY)
+  // Looking at an entity: its relations stay, and so do the claims its guarantees secure; the rest fade
+  const shown = useMemo(() => (litEntity === null ? null : lookedAt(connections, litEntity).lines), [connections, litEntity])
+  const opacityOf = (c) => (shown === null || shown.has(c.relationId) ? 1 : DIM_OPACITY)
 
   return (
     <div className="antu-rlinks">
@@ -67,7 +72,7 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
         })}
 
         {ties.map((t) => (
-          <g key={`tie:${t.id}`} className="antu-rtie" opacity={litEntity === null ? 1 : DIM_OPACITY}>
+          <g key={`tie:${t.id}`} className="antu-rtie">
             <line x1={t.from[0]} y1={t.from[1]} x2={t.to[0]} y2={t.to[1]} stroke={RELATION_PAINT.guarantee.stroke} strokeWidth={1.2} strokeDasharray="2 3" />
             <circle cx={t.to[0]} cy={t.to[1]} r={3.2} fill={RELATION_PAINT.guarantee.stroke} />
           </g>

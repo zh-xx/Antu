@@ -32,6 +32,7 @@ import ConnectionLayerNode from './ConnectionLayerNode.jsx'
 import GroupBoxNode from './GroupBoxNode.jsx'
 import RelationshipDock from './RelationshipDock.jsx'
 import { buildRelationshipGraph } from './layout.js'
+import { lookedAt } from './secures.js'
 
 /** Node types used by the graph. Adding one means registering one line here. */
 const nodeTypes = {
@@ -131,12 +132,8 @@ export default function RelationshipGraph({ spec }) {
         litEntity,
       },
     })
-    const nodes = litEntity
-      ? layout.nodes.map((n) => {
-          const touches = n.id === litEntity || n.data.relations.some((r) => layout.connections.some((c) => c.relationId === r.id && (c.from === litEntity || c.to === litEntity)))
-          return { ...n, data: { ...n.data, lit: n.id === litEntity, dim: !touches } }
-        })
-      : layout.nodes
+    const seen = litEntity ? lookedAt(layout.connections, litEntity).entities : null
+    const nodes = seen ? layout.nodes.map((n) => ({ ...n, data: { ...n.data, lit: n.id === litEntity, dim: !seen.has(n.id) } })) : layout.nodes
     return { nodes: [...deco, ...nodes], edges: [], size: layout.size }
   }, [layout, fields.hiddenKinds, fields.labels, linkStyle, litEntity])
 

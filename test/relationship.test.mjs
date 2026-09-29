@@ -19,7 +19,7 @@ import { translate } from '../src/core/i18n.js'
 import { validateRelationship, hintsOfRelationship, isDirected } from '../src/renderers/relationship/graph/rules.js'
 import { buildRelationshipGraph, labelOf } from '../src/renderers/relationship/graph/layout.js'
 import { describeSchema, layoutReport, formatLayoutReport, notesOf } from '../tools/mcp/engine.mjs'
-import { midpointOf, nearestOn, securesTies } from '../src/renderers/relationship/graph/secures.js'
+import { midpointOf, nearestOn, securesTies, lookedAt } from '../src/renderers/relationship/graph/secures.js'
 
 /** The spec's example: a loan, a guarantee, a shareholding and a marriage, in two camps */
 const base = () => ({
@@ -356,4 +356,16 @@ test('text slack goes on Latin letters only, so a Chinese diagram is not left lo
   const w = (g) => g.nodes[0].data.textW
   assert.ok(w(latin) > 12 * 14 * 0.5, 'Latin text is given room for a bold face')
   assert.equal(w(cjk), Math.ceil(8 * 14), 'eight CJK characters are eight ems, not more')
+})
+
+test('looking at an entity brings out its relations and the claims its guarantees secure', () => {
+  const g = buildRelationshipGraph(base())
+  // Wang Wu guarantees the loan: looking at him shows the guarantee, and the loan it secures, and both ends of the loan
+  const wang = lookedAt(g.connections, 'e-3')
+  assert.deepEqual([...wang.lines].sort(), ['r-1', 'r-2'])
+  assert.deepEqual([...wang.entities].sort(), ['e-1', 'e-2', 'e-3'])
+  // Li Si: the loan, the shareholding, the marriage; not the guarantee (it touches Wang Wu and Zhang San, not him)
+  const li = lookedAt(g.connections, 'e-2')
+  assert.deepEqual([...li.lines].sort(), ['r-1', 'r-3', 'r-4'])
+  assert.ok(!li.entities.has('e-3'), 'the guarantor is not one of Li Si\'s own relations')
 })

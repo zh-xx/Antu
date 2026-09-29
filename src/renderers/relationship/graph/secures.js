@@ -59,3 +59,17 @@ export function securesTies(connections, maxDist = 140) {
   }
   return ties
 }
+
+/**
+ * What looking at one entity brings out: the relations that touch it, the claims those of its guarantees
+ * secure (so the reader sees what a guarantee is for), and every entity on the end of any of those.
+ * Everything else fades. Pure, so the link layer and the entities agree, and a unit test can pin it.
+ * @returns {{ lines: Set<string>, entities: Set<string> }}  relation ids and entity ids
+ */
+export function lookedAt(connections, entityId) {
+  const lines = new Set(connections.filter((c) => c.from === entityId || c.to === entityId).map((c) => c.relationId))
+  for (const c of connections) if (lines.has(c.relationId) && c.secures) lines.add(c.secures)
+  const entities = new Set([entityId])
+  for (const c of connections) if (lines.has(c.relationId)) [c.from, c.to].forEach((id) => entities.add(id))
+  return { lines, entities }
+}
