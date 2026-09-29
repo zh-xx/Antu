@@ -40,6 +40,7 @@ export const zh = {
   'info.stages': ({ n }) => `${n} 个阶段`,
   'info.entities': ({ n }) => `${n} 个当事方`,
   'info.relations': ({ n }) => `${n} 条关系`,
+  'info.links': ({ n }) => `${n} 条连线`,
 
   // ---------- control dock (ControlDock.jsx) ----------
   'dock.actors': '主体',
@@ -162,7 +163,7 @@ export const zh = {
   // or the key-consistency check reports "zh is missing a key", which is exactly its job.
   ...Object.fromEntries(
     Object.keys(en)
-      .filter((k) => k.startsWith('err.') || k.startsWith('perr.') || k.startsWith('phint.') || k.startsWith('note.') || k.startsWith('rerr.') || k.startsWith('rhint.'))
+      .filter((k) => k.startsWith('err.') || k.startsWith('perr.') || k.startsWith('phint.') || k.startsWith('note.') || k.startsWith('rerr.') || k.startsWith('rhint.') || k.startsWith('jerr.') || k.startsWith('jhint.'))
       .map((k) => [k, en[k]]),
   ),
 }

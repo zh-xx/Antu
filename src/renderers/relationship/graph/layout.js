@@ -55,7 +55,7 @@ import {
 } from './metrics.js'
 
 /** Every order of a short list */
-function permutations(list) {
+export function permutations(list) {
   if (list.length <= 1) return [list]
   return list.flatMap((x, k) => permutations([...list.slice(0, k), ...list.slice(k + 1)]).map((rest) => [x, ...rest]))
 }
@@ -93,7 +93,7 @@ export function labelOf(relation, t = tEn) {
  * The box of a group's title, in the frame: where a link must not run. The title strip runs along
  * the real top of the box: the frame's top when vertical, its left when the picture is transposed.
  */
-const titleBoxOf = (box, label, vertical) => {
+export const titleBoxOf = (box, label, vertical) => {
   const w = Math.min((vertical ? box.w : box.h) - GROUP_PAD * 2, textEm(label) * GROUP_TITLE_FONT + 4)
   return vertical
     ? { x: box.x + GROUP_PAD - 2, y: box.y + 7, w, h: 18 }
@@ -101,7 +101,7 @@ const titleBoxOf = (box, label, vertical) => {
 }
 
 /** The four edges of a box, as [[x0,y0],[x1,y1]]: a route may cross them but not run along them */
-const edgesOfBox = (b) => [
+export const edgesOfBox = (b) => [
   [[b.x, b.y], [b.x + b.w, b.y]],
   [[b.x, b.y + b.h], [b.x + b.w, b.y + b.h]],
   [[b.x, b.y], [b.x, b.y + b.h]],
@@ -113,7 +113,7 @@ const edgesOfBox = (b) => [
  * assumes the flow runs down (out of the bottom, into the top); a relation to something above, or
  * beside, wants the other sides.
  */
-function portCostFor(a, b) {
+export function portCostFor(a, b) {
   const above = b.y + b.h < a.y
   const below = b.y > a.y + a.h
   if (below) return undefined
@@ -121,7 +121,7 @@ function portCostFor(a, b) {
   return { out: { bottom: 200, top: 200, left: 0, right: 0 }, in: { top: 200, bottom: 200, left: 0, right: 0 } }
 }
 
-const segsOf = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
+export const segsOf = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
 const overlaps = (a, b, m) => a.x < b.x + b.w + m && b.x < a.x + a.w + m && a.y < b.y + b.h + m && b.y < a.y + a.h + m
 const segHits = ([p, q], r, m) =>
   Math.max(p[0], q[0]) > r.x - m && Math.min(p[0], q[0]) < r.x + r.w + m && Math.max(p[1], q[1]) > r.y - m && Math.min(p[1], q[1]) < r.y + r.h + m
@@ -136,7 +136,7 @@ const segHits = ([p, q], r, m) =>
  */
 // Places tried along a segment, the middle first: a crowded corridor needs more than a few to find a free one
 const FRACTIONS = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82, 0.1, 0.9, 0.02, 0.98]
-function placeOnLine(points, size, nodeRects, blocks, links, borders) {
+export function placeOnLine(points, size, nodeRects, blocks, links, borders) {
   const { width: w, height: h } = size
   const badness = (r) =>
     (r.x < PAD / 2 || r.y < PAD / 2 ? 100 : 0) +
@@ -170,7 +170,7 @@ function placeOnLine(points, size, nodeRects, blocks, links, borders) {
 }
 
 /** Only if the router finds nothing (it should not): out of the side, across, into the side */
-function fallbackRoute(a, b) {
+export function fallbackRoute(a, b) {
   const y0 = a.y + a.h / 2
   const y1 = b.y + b.h / 2
   const right = b.x >= a.x

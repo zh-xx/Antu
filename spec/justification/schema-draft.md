@@ -1,6 +1,6 @@
 # justification · Schema draft v0
 
-> Status: **draft v0**. Only prose and one hand-written example; **nothing is implemented** (no validation, no rendering). Items marked **⚠ proposal** stand until the sponsor changes them; §7 lists the questions still open and how the schema goes on until they are answered.
+> Status: **draft v0**. Validation (§5) and layout (§6.1) are implemented; **the renderer and the interface are not built yet**. Items marked **⚠ proposal** stand until the sponsor changes them; §7 lists the questions still open and how the schema goes on until they are answered.
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (a new top-level type only when the elements do not fit an existing one). Written after `spec/relationship/schema-draft.md`.
 > Scope: justification = **one side's reasoning for "why the decision goes this way"**: norms plus facts, and how they lead, layer by layer, to a conclusion. What happened over time → `fact`; who stands in what relation to whom → `relationship`; the path of a procedure → `procedure`.
 
@@ -218,9 +218,25 @@ Structural errors block drawing; hints do not. The same split as relationship an
 
 ---
 
-## 6. Presentation (the renderer's job)  **⚠ proposal, not built**
+## 6. Presentation  **⚠ proposal**
 
-- The layout is a tree read from the top down: the conclusion at the top, then elements and judgements, inferences, facts; norms beside the elements they define. ELK layered, the same route as relationship and procedure.
+### 6.1 Layout (implemented)
+
+`src/renderers/justification/tree/layout.js`, pure geometry, no browser.
+
+- **A tree from the conclusion down.** A link runs from the supporting side to the supported one, so ELK is given every link the other way round, and the conclusion is on top (on the left when horizontal).
+- **One box per issue, each laid out on its own.** ELK's layered algorithm lays out each issue from the links inside it, so a box is as big as its content (ELK cannot lay out a box around nodes in different layers; the relationship diagram's camps are the same). Nodes in no issue (the end conclusion) form a group of their own above all the issues, centred.
+- **Issues stand side by side, tops aligned** (across when vertical; stacked when horizontal).
+- **Links use the same orthogonal router** (`procedure/flow/router.js`): fewest bends, then shortest, clear of every node and issue title. Links of one stance into one node share a trunk (five facts into one element read as one bundle). A link inside an issue is first sought inside that issue's box, a link between issues in the rectangle around its two ends, and only then among everything; with every link seeing every node the example took six seconds.
+- **Only a link that has a `label` gets one**, on its own line.
+- **The written order is kept** among nodes that share a parent (ELK's `forceNodeModelOrder`).
+- **Horizontal is the vertical picture transposed**, one code path. **Horizontal is the default**: the conclusion at the left, the facts at the right, read like a sentence; vertically the facts of a big issue make one very wide row.
+- `holds` and `stance` are paint only and do not change the geometry.
+
+Known shortcomings: a link across issues (one fact supporting several issues) goes round outside the boxes, in long bundles; the example (40 nodes, 48 links) takes about 2 seconds to lay out.
+
+### 6.2 Look (the renderer, not built)
+
 - The three kinds look different: a fact carries its time (the first thing the eye should find); inferences and judgements have different borders, a `holds: "no"` node is faded and struck through; `against` links have another colour.
 - Issues are boxes (`groups`), with the title on top.
 - Pointing at a node lights the whole chain of support from it to the conclusion, and down to all its grounds.
@@ -243,7 +259,7 @@ The look is settled after the schema is.
 
 ## 8. Not in this round
 
-- Validation code, rendering, MCP wiring;
+- The renderer and the interface (how a node looks, pointing to highlight);
 - an evidence layer;
 - prosecution against defence;
 - richer forms of reasoning (exceptions, qualifiers, weights).

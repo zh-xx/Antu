@@ -399,11 +399,11 @@ function checkData() {
   truthy('antu_examples takes a type argument', hasTypeArg('antu_examples'))
   truthy('nothing like factKnowledge is hard-wired in MCP', !/from '.*renderers\/fact\/schema\.js'/.test(serverSrc))
   truthy('the field table can be fetched by major type', describeSchema('fact').ok === true)
-  truthy('a missing major type says so instead of returning an empty table', describeSchema('justification').ok === false)
+  truthy('a missing major type says so instead of returning an empty table', describeSchema('no-such-type').ok === false)
   // The "not built yet" wording is the agent-facing text of tools/mcp/engine.mjs. Its language
   // is pinned here so a rewrite cannot quietly empty it; a bare `ok === false` assertion passes
   // even when `reason` is undefined.
-  const noType = describeSchema('justification').reason ?? ''
+  const noType = describeSchema('no-such-type').reason ?? ''
   truthy('a missing major type gives a readable reason (not undefined)', noType.startsWith('no reference material for type'), noType)
   truthy('the mechanism guide is fetched by major type', listAgentGuides().includes('fact'))
   // Every type the engine can draw has its guide: antu_guide(type="procedure") once answered

@@ -17,7 +17,9 @@ import { registerKnowledge } from '../core/registry.js'
 import { factKnowledge } from './fact/schema.js'
 import { procedureKnowledge } from './procedure/schema.js'
 import { relationshipKnowledge } from './relationship/schema.js'
+import { justificationKnowledge } from './justification/schema.js'
 
 registerKnowledge('fact', factKnowledge)
 registerKnowledge('procedure', procedureKnowledge)
 registerKnowledge('relationship', relationshipKnowledge)
+registerKnowledge('justification', justificationKnowledge)
