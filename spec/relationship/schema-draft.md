@@ -1,6 +1,6 @@
 # relationship · Schema draft v0
 
-> Status: **draft v0, for the sponsor to review**. Nothing here is implemented. Items marked **⚠ proposal** are my proposals, not decisions; §7 lists the questions that need an answer before the schema is final.
+> Status: **provisional v0** (the sponsor accepted it as good enough for now, 2026-09; not final). Nothing here is implemented yet. Items marked **⚠ proposal** are proposals that stand until the sponsor changes them; §7 lists the open questions and what the schema does for each in the meantime. Sub-types are not decided here (the first one, `graph`, is in §6.1).
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (different domain semantics → controlled enum, no new top-level type). The shape follows `spec/procedure/schema-draft.md`.
 > Scope: relationship = **who stands in what relation to whom, at one point in time**. What happened over time → `fact`; the path of a procedure → `procedure`; norms + facts → a conclusion → `justification`.
 
@@ -224,14 +224,16 @@ A cross-section of a case has few parties, usually 4 to 15. Past about 25 entiti
 
 ---
 
-## 7. Questions for the sponsor
+## 7. Open questions, and what the schema does meanwhile
 
-1. **Names.** `entities` / `relations` (mine) or `entities` / `edges` (the same words as procedure)? Only the words differ.
-2. **The kind enum.** Nine kinds (§4.1), or fewer? Candidates to merge: `control` into `equity`, `employment` and `agency` into one `authority`. More kinds read better; fewer are easier for a model to choose between.
-3. **Undirected relations.** `contract` and `kinship` default to no arrowhead. Is that right, or should a contract always show who is the offeror?
-4. **Dedicated fields.** Only `share`, `amount`, `secures` in v1? Others that come to mind: `guaranteeMode` (surety / mortgage / pledge), `since` (when the relation began). The time question (§0.3) says no, but a bare `since` date shown in the popover would be cheap.
-5. **Groups.** Should an entity be allowed in several groups (a person on both the family side and the company side)? Boxes cannot overlap in a drawing, so I said no.
-6. **First corpus.** I propose rewriting the parties of existing fact examples (于欢案, 张娟诉彭宇, 快播案) as relationship diagrams, plus one equity structure and one guarantee case written from scratch, the way procedure was tested on seven contracts. Are there real cases you would rather I use?
+The sponsor has not answered these. **Until one is answered, the default below is what is built.** Changing a default touches the schema and validation, not the layout or the renderer.
+
+1. **Names.** `entities` / `relations` (mine) or `entities` / `edges` (the same words as procedure)? Only the words differ. **Default now:** `entities` / `relations`.
+2. **The kind enum.** Nine kinds (§4.1), or fewer? Candidates to merge: `control` into `equity`, `employment` and `agency` into one `authority`. More kinds read better; fewer are easier for a model to choose between. **Default now:** the nine kinds of §4.1.
+3. **Undirected relations.** `contract` and `kinship` default to no arrowhead. Is that right, or should a contract always show who is the offeror? **Default now:** no arrowhead for those two.
+4. **Dedicated fields.** Only `share`, `amount`, `secures` in v1? Others that come to mind: `guaranteeMode` (surety / mortgage / pledge), `since` (when the relation began). The time question (§0.3) says no, but a bare `since` date shown in the popover would be cheap. **Default now:** only those three.
+5. **Groups.** Should an entity be allowed in several groups (a person on both the family side and the company side)? Boxes cannot overlap in a drawing, so I said no. **Default now:** at most one group per entity.
+6. **First corpus.** I propose rewriting the parties of existing fact examples (于欢案, 张娟诉彭宇, 快播案) as relationship diagrams, plus one equity structure and one guarantee case written from scratch, the way procedure was tested on seven contracts. Are there real cases you would rather I use? **Default now:** the three fact cases plus one equity structure and one guarantee case.
 
 ---
 
