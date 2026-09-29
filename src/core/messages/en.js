@@ -201,6 +201,10 @@ export const en = {
   'perr.noEntry': 'no node has zero incoming edges (a flow needs a start)',
   'perr.unreachable': ({ id }) =>
     `nodes (${id}): unreachable from the start (it would be dropped silently and never appear)`,
+  'perr.orphan': ({ id, label }) =>
+    `nodes (${id}): "${label}" has no incoming edge and is not a start, so nothing leads to it: it would float beside the flow. ` +
+    'If it is a consequence (a breach, a resignation, a right to terminate), write it as a rule in `rules`; ' +
+    'if it belongs to the flow, add the edge that leads to it',
   'perr.noEnd': 'no node has `kind: "end"` (a flow needs an end)',
   'perr.deadEnd': ({ id, label }) =>
     `nodes (${id}): "${label}" is a dead end: it is neither end nor note but has no outgoing edge. ` +

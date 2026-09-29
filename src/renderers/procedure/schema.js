@@ -180,8 +180,11 @@ export const procedureKnowledge = {
         sources: spec.sources?.length ?? 0,
       },
       byOrientation,
-      // Whichever keeps the text larger on a screen; a flowchart reads top to bottom on a tie
-      suggestedOrientation: h.fit > v.fit ? 'horizontal' : 'vertical',
+      // The orientation the app opens with: always vertical (§6, FlowRenderer.jsx). Reporting
+      // "the one with the larger fit zoom" here once told an agent "horizontal" for 4 of 14
+      // examples that opened vertical (issue #17); which one fits better is a separate fact
+      suggestedOrientation: 'vertical',
+      betterFit: h.fit > v.fit ? 'horizontal' : 'vertical',
       hints: g.hints,
     }
   },
@@ -196,8 +199,11 @@ export const procedureKnowledge = {
       `Shape: ${c.layers} layers, widest layer ${c.widest} nodes, ${c.backEdges} loop(s) back`,
       `Vertical: content ${v.size.width}×${v.size.height}, fit zoom ${v.fit}`,
       `Horizontal: content ${h.size.width}×${h.size.height}, fit zoom ${h.fit}`,
-      `Suggested orientation: ${r.suggestedOrientation} (the one with the larger fit zoom)`,
+      `Suggested orientation: ${r.suggestedOrientation} (what the diagram opens with; a flowchart reads top to bottom)`,
     ]
+    if (r.betterFit !== r.suggestedOrientation) {
+      lines.push(`Horizontal fits a screen better (${h.fit} vs ${v.fit}); the reader can switch to it.`)
+    }
     if (Math.max(v.fit, h.fit) < 0.45) {
       lines.push('Note: at this size the text is small on one screen; consider splitting the flow by stage.')
     }

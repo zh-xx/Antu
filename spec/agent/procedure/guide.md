@@ -67,8 +67,9 @@ outcome  colour:  positive (green) / negative (red) / neutral (grey, default)
 
 **Every node must lead somewhere**: all but `end` and `note` need an outgoing edge, and all
 must be reachable from the start. A step that leads nowhere is almost always a
-consequence that belongs in `rules` (the error says so). One start is normal; a second
-node with no incoming edge usually means a missing edge.
+consequence that belongs in `rules` (the error says so). Only a `start` may have no
+incoming edge (a `note`, and a rule's `endId`, aside): any other node without one is an
+error, since nothing leads to it. Several `start` nodes are allowed, with a hint.
 
 ## Stages
 

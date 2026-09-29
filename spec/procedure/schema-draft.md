@@ -437,7 +437,7 @@ nodes[2] (n-3): dead end; a node that is neither end nor note must have an outgo
 | 7 | `edge.from` / `edge.to` point to existing nodes | error |
 | 8 | self-loops forbidden (`from === to`) | error |
 | 9 | duplicate edges forbidden (the same `from` + `to` + `condition` appearing twice) | error |
-| 10 | at least one entry node with in-degree 0 | error |
+| 10 | at least one entry node with in-degree 0; the entries are the `start` nodes (with none, the first node without an incoming edge). Any other node without an incoming edge, apart from a `note` or a rule's `endId`, is an orphan (issue #18) | error |
 | 11 | **every node must be reachable from the entry** (unreachable means silently dropped, invisible in the diagram) | error |
 | 12 | at least one `kind = "end"` | error |
 | 13 | a node that is neither `end` nor `note` must have an outgoing edge (the flow breaks here) | error |

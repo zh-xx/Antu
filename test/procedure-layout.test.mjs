@@ -192,13 +192,45 @@ test('the decision error offers two ways out (add conditions, or change kind to 
   assert.ok(err.includes('step'), 'must suggest changing to step')
 })
 
-test('hints are separate from errors: several entries only hint, they do not block rendering', () => {
+test('hints are separate from errors: several start nodes only hint, they do not block rendering', () => {
   const s = base()
-  s.nodes.push({ id: 'n-20', kind: 'end', label: 'second entry' })
-  assert.deepEqual(validateProcedure(s), [], 'several entries must not be an error')
+  s.nodes.push({ id: 'n-20', kind: 'start', label: 'second entry' })
+  s.edges.push({ from: 'n-20', to: s.edges[0].to })
+  assert.deepEqual(validateProcedure(s), [], 'several starts must not be an error')
   assert.ok(some(hintsOfProcedure(s), /entries/), 'but a hint must be given')
   const g = buildProcedureGraph(s)
   assert.deepEqual(g.errors, [], 'a hint must not stop the layout')
+})
+
+test('a node that is not a start and has no incoming edge is an orphan error (#18)', () => {
+  const s = base()
+  // An orphan step with a chain hanging off it: only the orphan is reported
+  s.nodes.push({ id: 'n-20', kind: 'step', label: 'forgotten step' })
+  s.nodes.push({ id: 'n-21', kind: 'step', label: 'after it' })
+  s.edges.push({ from: 'n-20', to: 'n-21' })
+  s.edges.push({ from: 'n-21', to: s.edges[0].to })
+  const errs = validateProcedure(s)
+  assert.ok(errs.some((e) => e.includes('n-20') && /incoming/.test(e)), `the orphan is named: ${JSON.stringify(errs)}`)
+  assert.ok(!errs.some((e) => e.includes('n-21')), 'the chain hanging off it is not reported again')
+
+  // A note stands outside the flow: no incoming edge is fine
+  const t = base()
+  t.nodes.push({ id: 'n-20', kind: 'note', label: 'an explanation' })
+  assert.deepEqual(validateProcedure(t), [])
+})
+
+test('the procedure report opens vertical and names the better fit apart (#17)', () => {
+  // A wide canvas makes horizontal the better fit for some documents; the diagram still opens
+  // vertical, and the report must say so rather than suggest the better fit
+  for (const f of files) {
+    const r = procedureKnowledge.report(load(f), buildProcedureGraph, { canvas: { width: 1600, height: 900 } })
+    assert.equal(r.suggestedOrientation, 'vertical', `${f}: the diagram opens vertical`)
+    const betterFit = r.byOrientation.horizontal.fit > r.byOrientation.vertical.fit ? 'horizontal' : 'vertical'
+    assert.equal(r.betterFit, betterFit, `${f}: the better fit is reported apart`)
+    const text = procedureKnowledge.formatReport(r)
+    assert.ok(text.includes('Suggested orientation: vertical'))
+    assert.equal(text.includes('fits a screen better'), betterFit === 'horizontal')
+  }
 })
 
 test('invalid data is not laid out: errors only, never half a diagram', () => {
