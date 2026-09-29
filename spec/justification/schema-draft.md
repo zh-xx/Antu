@@ -1,6 +1,6 @@
 # justification · Schema draft v0
 
-> Status: **draft v0**. Validation (§5) and layout (§6.1) are implemented; **the renderer and the interface are not built yet**. Items marked **⚠ proposal** stand until the sponsor changes them; §7 lists the questions still open and how the schema goes on until they are answered.
+> Status: **draft v0**. Validation (§5), layout (§6.1), the look and the interface (§6.2) are implemented; **there is no corpus (beyond one Yu Huan diagram) and no small examples for an agent yet**. Items marked **⚠ proposal** stand until the sponsor changes them; §7 lists the questions still open and how the schema goes on until they are answered.
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (a new top-level type only when the elements do not fit an existing one). Written after `spec/relationship/schema-draft.md`.
 > Scope: justification = **one side's reasoning for "why the decision goes this way"**: norms plus facts, and how they lead, layer by layer, to a conclusion. What happened over time → `fact`; who stands in what relation to whom → `relationship`; the path of a procedure → `procedure`.
 
@@ -237,13 +237,17 @@ Structural errors block drawing; hints do not. The same split as relationship an
 
 Known shortcomings: the lines from each issue's conclusion to the end conclusion are long (unavoidable with issues side by side); the example (40 nodes, 48 links, five facts drawn twice) takes about a second to lay out, and the last few layouts are cached by content.
 
-### 6.2 Look (the renderer, not built)
+### 6.2 Look (implemented)
 
-- The three kinds look different: a fact carries its time (the first thing the eye should find); inferences and judgements have different borders, a `holds: "no"` node is faded and struck through; `against` links have another colour.
-- Issues are boxes (`groups`), with the title on top.
-- Pointing at a node lights the whole chain of support from it to the conclusion, and down to all its grounds.
+`src/renderers/justification/tree/`: `JustificationNode.jsx`, `LinkLayerNode.jsx`, `JustificationRenderer.jsx`, `JustificationDock.jsx`. The issue boxes are the relationship graph's group boxes.
 
-The look is settled after the schema is.
+- **Six kinds of node, six looks** (the colours are in `palette.js`, put on as SVG attributes so an exported picture keeps them): a conclusion is a heavy blue box; a norm a violet box with a bar down its left edge (something that comes from a text); an element an amber pill; a fact a plain grey box; an inference a green box; a judgement a rose box. A small line at the top names the kind ("Fact", "Element", ...); a fact carries its time on it, `holds` shows as "✓ upheld" or "✗ rejected", and a copy says "shown again".
+- **A rejected node** (`holds: "no"`) is faded, has a dashed outline and its text struck through, so it reads in greyscale too.
+- **The stance of a link**: support is the plain grey line; opposition is red and dashed; a norm's basis is violet and dotted. One arrowhead per stance.
+- **Pointing at a node lights its whole chain**: everything it rests on (down to the facts and norms) and everything it leads to (up to the end conclusion) stay, the rest fades. Every copy of a fact lights together, each with its own way up. That is the natural question about a node in a reasoning: "what is this based on, and where does it lead?"
+- Hover peeks, click pins: the popover holds the full text (`detail`), what it rests on, what it leads to, and the sources.
+- **The dock**: a labels switch (only when a link has a `label`), horizontal / vertical (horizontal first, and the default), curved / straight, language, export image. There is no "filter by kind of node": a reader of a reasoning follows a chain, they do not filter by kind.
+- Lighting, fading and the labels switch are paint only; they do not change the geometry, and the view is never thrown back to the overview (issue #21).
 
 ---
 

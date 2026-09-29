@@ -268,6 +268,25 @@ export const en = {
     `nodes (${id}): "${label}" holds although everything that supports it is rejected; check the \`holds\` values`,
   'jhint.tooLarge': ({ n, limit }) => `${n} nodes: past about ${limit} the tree gets hard to read on one screen; consider one diagram per issue`,
   'graphKind.graph': 'Relationship graph',
+  'graphKind.tree': 'Reasoning tree',
+
+  // ---------- justification: interface text (jus.*) ----------
+  'jus.kind.conclusion': 'Conclusion',
+  'jus.kind.norm': 'Norm',
+  'jus.kind.element': 'Element',
+  'jus.kind.fact': 'Fact',
+  'jus.kind.inference': 'Inference',
+  'jus.kind.judgement': 'Judgement',
+  'jus.holds.yes': '✓ upheld',
+  'jus.holds.no': '✗ rejected',
+  'jus.copy': 'shown again',
+  'jus.copies': ({ n }) => `The same node is drawn in ${n} issues`,
+  'jus.grounds': 'Rests on',
+  'jus.supports': 'Leads to',
+  'jus.stance.for': 'supports',
+  'jus.stance.against': 'opposes',
+  'jus.stance.basis': 'basis',
+  'jus.previewHint': 'Click a node to read the full text and see what it rests on',
 
   // ---------- procedure: validation errors (perr.*) and hints (phint.*) ----------
   // Same rule as err.*: fixed English, they do not follow the interface language.

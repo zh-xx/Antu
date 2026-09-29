@@ -238,7 +238,8 @@
 /* 渲染器的根容器：只负责把自己撑满，画布本身在外壳里 */
 .antu-fact,
 .antu-procedure { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
-.antu-relationship { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
+.antu-relationship,
+.antu-justification { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
 
 .antu-canvas {
   position: relative;      /* 必须留：里面的缩放控件、缩略图、控制胶囊都相对它绝对定位 */
@@ -1102,3 +1103,76 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+
+/* ==============================================================
+   证成图（justification/tree）
+   一个节点是一个盒子：形状与描边由类型定（JustificationNode），颜色由 palette.js 以属性挂上，
+   导出图片才带得走；这里只放屏幕上才有的效果：悬停阴影、焦点环、淡出、被否定的节点。
+   连线在一层自画的 SVG 里（LinkLayerNode），压在节点下面；争点框在最底下（用关系图的分组框）。
+   ============================================================== */
+.antu-jn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  outline: none;
+  transition: opacity .15s;
+}
+.antu-jn.is-dim { opacity: .35; }
+.antu-jn-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-jn-shape { transition: stroke .15s, filter .15s; }
+.antu-jn:hover .antu-jn-shape { filter: drop-shadow(0 3px 8px rgba(15, 23, 42, .12)); }
+.antu-jn.is-lit .antu-jn-shape { filter: drop-shadow(0 0 6px rgba(47, 111, 237, .55)); }
+.react-flow__node-jnode:hover { z-index: 10 !important; }
+.react-flow__node.selected .antu-jn-shape { stroke-width: 2; }
+.antu-jn:focus-visible .antu-jn-shape { stroke: #2f6fed; stroke-width: 2; }
+.antu-jn-body { position: relative; flex: none; text-align: left; pointer-events: none; }
+/* 字号行高必须与 justification/tree/metrics.js 一致（正文 13/19，第一行 16） */
+.antu-jn-tag {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  height: 16px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 10.5px;
+  line-height: 16px;
+  color: var(--antu-text-3);
+}
+.antu-jn-kind { font-weight: 600; letter-spacing: .02em; }
+.antu-jn-holds { font-weight: 600; }
+.antu-jn-holds.is-yes { color: #15803d; }
+.antu-jn-holds.is-no { color: #b91c1c; }
+.antu-jn-copy { margin-left: auto; font-style: italic; }
+.antu-jn-label {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--antu-text);
+  overflow-wrap: anywhere;
+}
+.antu-jn.k-conclusion .antu-jn-label { font-weight: 600; }
+.antu-jn.is-rejected .antu-jn-label { text-decoration: line-through; text-decoration-color: rgba(100, 116, 139, .7); }
+.antu-jn .antu-preview { width: 300px; left: 50%; margin-left: -150px; text-align: left; }
+.antu-jn .antu-preview.right,
+.antu-jn .antu-preview.left { margin-left: 0; }
+.antu-jn .antu-preview.right { left: calc(100% + 10px); }
+.antu-jn .antu-preview.left { left: auto; }
+/* 浮层里"它依据什么、指向什么" */
+.antu-jn-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+.antu-jn-rows-title { font-size: 11px; font-weight: 600; color: var(--antu-text-3); letter-spacing: .04em; }
+.antu-jn-row { display: flex; gap: 8px; align-items: baseline; font-size: 12px; line-height: 16px; color: var(--antu-text-2); }
+.antu-jn-row-stance { flex: none; min-width: 44px; font-weight: 600; color: var(--antu-text); }
+.antu-jn-row.is-against .antu-jn-row-stance { color: #b91c1c; }
+.antu-jn-row.is-basis .antu-jn-row-stance { color: #6d28d9; }
+.antu-jn-row-text { min-width: 0; overflow-wrap: anywhere; }
+
+.antu-jlinks { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
+.antu-jlinks-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-jlink { transition: opacity .15s; }

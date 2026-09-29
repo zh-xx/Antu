@@ -121,6 +121,25 @@ export const zh = {
   'graphKind.timeline': '时间图',
   'graphKind.flow': '流程图',
   'graphKind.graph': '关系图',
+  'graphKind.tree': '说理树',
+
+  // ---------- 证成图：界面文案（jus.*） ----------
+  'jus.kind.conclusion': '结论',
+  'jus.kind.norm': '规范',
+  'jus.kind.element': '要件',
+  'jus.kind.fact': '事实',
+  'jus.kind.inference': '推断',
+  'jus.kind.judgement': '评价',
+  'jus.holds.yes': '✓ 成立',
+  'jus.holds.no': '✗ 否定',
+  'jus.copy': '同上',
+  'jus.copies': ({ n }) => `同一个节点在 ${n} 个争点里出现`,
+  'jus.grounds': '依据',
+  'jus.supports': '指向',
+  'jus.stance.for': '支持',
+  'jus.stance.against': '反对',
+  'jus.stance.basis': '规范依据',
+  'jus.previewHint': '点一下节点，看全文和它的依据',
 
   // ---------- graph types ----------
   'graphType.fact': '事实图',

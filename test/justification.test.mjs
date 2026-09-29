@@ -14,6 +14,7 @@ import { validateSpec } from '../src/core/validate.js'
 import { knowledgeOf } from '../src/core/registry.js'
 import { validateJustification, hintsOfJustification } from '../src/renderers/justification/tree/rules.js'
 import { buildJustificationGraph } from '../src/renderers/justification/tree/layout.js'
+import { chainOf } from '../src/renderers/justification/tree/chain.js'
 import { describeSchema, layoutReport, formatLayoutReport, notesOf } from '../tools/mcp/engine.mjs'
 
 const base = () => ({
@@ -341,4 +342,32 @@ test('the layout of a diagram is remembered: the same content is laid out once',
   assert.notEqual(a, c)
   s.nodes[0].label = 'Not guilty'
   assert.notEqual(buildJustificationGraph(s, {}, undefined, 'horizontal'), a, 'a change lays it out again')
+})
+
+test('looking at a node lights its chain: what it rests on, and what it leads to', () => {
+  const g = buildJustificationGraph(base())
+  const c = chainOf(g.connections, g.nodes, 'e-1')
+  // the element rests on its norm and its two facts, and leads to the conclusion
+  assert.deepEqual([...c.nodes].sort(), ['c-1', 'e-1', 'f-1', 'f-2', 'n-1'])
+  assert.equal(c.lines.size, 4, 'all four links are in it')
+  // a fact leads up to the element and the conclusion, and does not light the other fact
+  const f = chainOf(g.connections, g.nodes, 'f-1')
+  assert.deepEqual([...f.nodes].sort(), ['c-1', 'e-1', 'f-1'])
+  assert.ok(!f.nodes.has('f-2'), 'a sibling is not in the chain')
+  assert.ok(!f.nodes.has('n-1'), 'nor is the norm the element rests on')
+  // the end conclusion rests on everything
+  assert.equal(chainOf(g.connections, g.nodes, 'c-1').nodes.size, 5)
+})
+
+test('looking at a copy lights every copy of the fact, each with the way up from it', () => {
+  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const g = buildJustificationGraph(spec)
+  const copies = g.nodes.filter((n) => n.data.node.id === 'f-2')
+  assert.equal(copies.length, 2)
+  const c = chainOf(g.connections, g.nodes, copies[0].id)
+  assert.ok(copies.every((n) => c.nodes.has(n.id)), 'both copies light')
+  // f-2 supports "cause" (issue 1) and "the victims' fault" (issue 5), so both chains up light
+  const lit = new Set([...c.nodes].map((id) => g.nodes.find((n) => n.id === id).data.node.id))
+  assert.ok(lit.has('e-1') && lit.has('c-2') && lit.has('j-5') && lit.has('c-5') && lit.has('c-1'))
+  assert.ok(!lit.has('e-2'), 'an element it does not support is not lit')
 })

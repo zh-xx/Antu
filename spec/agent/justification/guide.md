@@ -70,9 +70,12 @@ it twice.
 antu_validate   each problem with its path and id: links[3] (f-9 -> e-9): `to` refers to ...
                 on a pass it can still add notes (a fact with no source, nothing supports a conclusion)
 antu_layout     counts, layers, size per orientation; no rendering
+antu_preview    a screenshot: is each issue clear, do the lines cross badly, is anything cut off
+antu_render     the self-contained HTML
 ```
 
-Passing validation is only the pass mark. The tree cannot be previewed yet (no renderer).
+**Passing validation is only the pass mark.** Always look with `antu_preview` before delivering. A big diagram
+(past about 40 nodes) is small on one screen: split it, one diagram per issue.
 
 ## Also easy to get wrong
 
