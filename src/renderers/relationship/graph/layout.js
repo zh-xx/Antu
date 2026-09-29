@@ -216,11 +216,11 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     return { text, frame: vertical ? b : { width: b.height, height: b.width } }
   })
 
-  // ── the rows: one level for the whole picture ──
-  // A holder above what it holds, a creditor above the debtor: the level of each entity is worked out
-  // on the whole graph once, camps ignored (ELK's layered algorithm does exactly this). Every camp then
-  // stands on the same rows, so a link across the channel between two entities of one level runs
-  // straight, and the guarantor of a debt sits above the creditor whichever camp it is in.
+  // ── ① each camp by ELK, on its own, compact ──
+  // A camp is laid out from the relations inside it only: a holder above what it holds, a creditor above
+  // the debtor, within the camp. Its box is as tall as its own content. (Shared rows across the whole
+  // picture were tried: they kept the up-and-down order across camps too, but left most of a small camp's
+  // box empty and pushed the links between camps round each other; the reader did not gain enough.)
   const spacing = {
     'elk.spacing.nodeNode': String(NODE_GAP),
     'elk.layered.spacing.nodeNodeBetweenLayers': String(LAYER_GAP),
@@ -237,37 +237,36 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     ...spacing,
     'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
     'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+    'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
     'elk.edgeLabels.inline': 'false',
     'elk.separateConnectedComponents': 'false',
   }
-  const leaves = (list, extra) =>
-    list.map((e) => {
-      const { w, h } = frameSize(e)
-      return { id: e.id, width: w, height: h, ...(extra ? { layoutOptions: extra(e) } : {}) }
-    })
-  const flat = elkLayoutSync({
-    id: 'levels',
-    layoutOptions: baseOptions,
-    children: leaves(entities),
-    edges: relations.map((r, i) => ({ id: `r${i}`, sources: [r.from], targets: [r.to] })),
-  })
-  const levelStarts = [...new Set(flat.children.map((c) => Math.round(c.y)))].sort((a, b) => a - b)
-  const levelOf = new Map(flat.children.map((c) => [c.id, levelStarts.indexOf(Math.round(c.y))]))
-  const levelCount = levelStarts.length
-
-  // ── ① each camp by ELK, on its own: only for how its entities stand side by side ──
-  // Each entity is held to its level, so ELK orders and spaces a level the way it will really be. Only
-  // the across-position is taken; the down-position comes from the rows below.
-  const layCamp = (camp, ci) => {
-    const inside = new Set(camp.members.map((e) => e.id))
-    const graph = (held) => ({
+  // How hard an entity is pulled toward another camp: the sum of its links' directions (-1 to a camp on
+  // the left, +1 to the right, 0 inside its own) over all its links. An entity whose only link goes left
+  // (a guarantor of the creditor) is pulled harder than one that also has links inside (the debtor).
+  const campIndexOf = new Map()
+  camps.forEach((c, ci) => c.members.forEach((e) => campIndexOf.set(e.id, ci)))
+  const pullOf = (e, ci) => {
+    const sides = relations
+      .filter((r) => r.from === e.id || r.to === e.id)
+      .map((r) => Math.sign(campIndexOf.get(r.from === e.id ? r.to : r.from) - ci))
+    return sides.length ? sides.reduce((a, b) => a + b, 0) / sides.length : 0
+  }
+  const layCamp = (members, ci) => {
+    const inside = new Set(members.map((e) => e.id))
+    // Written order decides ties in ELK (considerModelOrder), so an entity whose links go to the camp on
+    // the left is handed over first and stands on the left: the guarantor of a creditor on the left no
+    // longer stood on the far side of its camp, its guarantee going over everything
+    const ordered = members.map((e, i) => ({ e, i, pull: pullOf(e, ci) })).sort((a, b) => a.pull - b.pull || a.i - b.i).map((x) => x.e)
+    const laid = elkLayoutSync({
       id: `camp${ci}`,
       layoutOptions: baseOptions,
-      children: leaves(camp.members, held ? (e) => ({ 'elk.layered.layering.layerChoiceConstraint': String(levelOf.get(e.id)) }) : undefined),
-      // Only the relations inside the camp shape it; the ones across are routed afterwards
+      children: ordered.map((e) => ({ id: e.id, width: frameSize(e).w, height: frameSize(e).h })),
+      // An undirected relation (a marriage, a contract) sets no level: handed to ELK it put a spouse a row
+      // below. Left out, both stand on one level where nothing else holds them apart; it is routed after.
       edges: relations
         .map((r, i) => ({ r, i }))
-        .filter(({ r }) => inside.has(r.from) && inside.has(r.to))
+        .filter(({ r }) => inside.has(r.from) && inside.has(r.to) && isDirected(r))
         .map(({ r, i }) => ({
           id: `r${i}`,
           sources: [r.from],
@@ -275,52 +274,115 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
           labels: [{ id: `l${i}`, text: labels[i].text, width: labels[i].frame.width, height: labels[i].frame.height }],
         })),
     })
-    let laid
-    try {
-      laid = elkLayoutSync(graph(true))
-    } catch {
-      laid = elkLayoutSync(graph(false))
-    }
-    return { at: new Map(laid.children.map((c) => [c.id, { x: c.x, w: c.width, h: c.height }])), width: laid.width }
+    const at = new Map(laid.children.map((c) => [c.id, { x: c.x, y: c.y, w: c.width, h: c.height }]))
+    // The camp's own levels (for the stats and for which way an overlay opens)
+    const tops = [...new Set([...at.values()].map((r) => Math.round(r.y)))].sort((m, n) => m - n)
+    const level = new Map([...at].map(([id, r]) => [id, tops.indexOf(Math.round(r.y))]))
+    return { at, width: laid.width, height: laid.height, level, levels: tops.length }
   }
 
-  // ── ② the camps side by side; the rows shared, tops aligned ──
   // The title strip takes GROUP_PAD_TOP along the real top of a box: the frame's top when vertical, its left when transposed
   const PAD_A0 = vertical ? GROUP_PAD_TOP : GROUP_PAD
   const PAD_C0 = vertical ? GROUP_PAD : GROUP_PAD_TOP
-  const inBox = camps.some((c) => c.group)
-  const contentTop = PAD + (inBox ? PAD_A0 : 0)
-  const laidCamps = camps.map((camp, ci) => layCamp(camp, ci))
-  const rowH = Array.from({ length: levelCount }, () => 0)
-  for (const e of entities) rowH[levelOf.get(e.id)] = Math.max(rowH[levelOf.get(e.id)], frameSize(e).h)
-  // The gap between two rows holds the labels of the links that run down it. In the vertical picture that
-  // is a label's height; in the transposed one it is a label's width, which is why the horizontal picture
-  // needs the wider gap (a label longer than the gap ran over the entity at its end).
-  const labelSpan = Math.max(0, ...labels.map((lb) => lb.frame.height))
-  const rowGap = Math.max(LAYER_GAP, labelSpan + 56)
-  const rowY = []
-  rowH.reduce((y, h, i) => {
-    rowY[i] = y
-    return y + h + rowGap
-  }, contentTop)
+  const median = (xs) => {
+    const s = [...xs].sort((m, n) => m - n)
+    return s.length ? (s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : 0
+  }
 
+  // Which camp is the middle column of neutral parties (none when every entity is boxed, or with no groups)
+  const middle = camps.findIndex((c) => !c.group && camps.some((o) => o.group))
+  const laidCamps = camps.map((camp, ci) => (ci === middle ? null : layCamp(camp.members, ci)))
+
+  // ── ② the camps side by side; each moved up or down so the links between camps run level ──
+  // The first boxed camp stands at the top. Every next one is moved so the links between it and the camps
+  // already set run as level as they can: by the median of the heights those links would climb. A shift of
+  // the whole camp, never a change inside it.
+  const centreY = new Map() // entity id -> centre height in the frame, for entities in a placed boxed camp
+  const campTop = []
+  camps.forEach((camp, ci) => {
+    if (ci === middle) return
+    const lay = laidCamps[ci]
+    const top = (camp.group ? PAD_A0 : 0)
+    const diffs = []
+    for (const r of relations) {
+      for (const [mine, other] of [[r.from, r.to], [r.to, r.from]]) {
+        if (!lay.at.has(mine) || !centreY.has(other)) continue
+        const m = lay.at.get(mine)
+        diffs.push(centreY.get(other) - (top + m.y + m.h / 2))
+      }
+    }
+    campTop[ci] = diffs.length ? median(diffs) : 0
+    for (const [id, r] of lay.at) centreY.set(id, campTop[ci] + top + r.y + r.h / 2)
+  })
+
+  // ── ③ the neutral parties: a column between the camps, each at the height of what it relates to ──
+  // A party in no group used to stand wherever the whole graph's levels put it, often across the path of
+  // the links between the camps. Now each stands at the median height of the entities it is related to,
+  // so its own links run level; the column keeps them apart, in that order.
+  let middleCol = null
+  if (middle >= 0) {
+    const members = camps[middle].members
+    const want = members.map((e) => {
+      const ys = relations
+        .filter((r) => r.from === e.id || r.to === e.id)
+        .map((r) => centreY.get(r.from === e.id ? r.to : r.from))
+        .filter((y) => y !== undefined)
+      return { e, want: ys.length ? median(ys) : null, size: frameSize(e) }
+    })
+    // Those with nothing to go by come last, in the order written
+    const lastY = Math.max(0, ...centreY.values())
+    want.forEach((w, i) => {
+      if (w.want === null) w.want = lastY + (i + 1) * (w.size.h + NODE_GAP)
+    })
+    want.sort((m, n) => m.want - n.want)
+    const at = new Map()
+    let floor = -Infinity
+    const colW = Math.max(...want.map((w) => w.size.w))
+    for (const w of want) {
+      const y = Math.max(w.want - w.size.h / 2, floor)
+      at.set(w.e.id, { x: (colW - w.size.w) / 2, y, w: w.size.w, h: w.size.h })
+      floor = y + w.size.h + LAYER_GAP
+    }
+    middleCol = { at, width: colW }
+    for (const [id, r] of at) centreY.set(id, r.y + r.h / 2)
+  }
+
+  // ── set everything down: camps left to right, the whole picture moved so its top is at PAD ──
+  const tops = []
+  camps.forEach((camp, ci) => {
+    if (ci === middle) tops.push(Math.min(...[...middleCol.at.values()].map((r) => r.y)))
+    else tops.push(campTop[ci])
+  })
+  const lift = PAD - Math.min(...tops)
   const placed = new Map()
   const boxes = []
+  const levelOf = new Map()
+  let levelCount = 1
   let cursor = PAD
-  let lowest = contentTop
+  let lowest = PAD
   camps.forEach((camp, ci) => {
+    if (ci === middle) {
+      for (const [id, r] of middleCol.at) {
+        placed.set(id, { x: cursor + r.x, y: lift + r.y, w: r.w, h: r.h })
+        lowest = Math.max(lowest, lift + r.y + r.h)
+        levelOf.set(id, 0)
+      }
+      cursor += middleCol.width + CAMP_GAP
+      return
+    }
     const lay = laidCamps[ci]
     const padX = camp.group ? PAD_C0 : 0
-    let bottom = contentTop
+    const padTop = camp.group ? PAD_A0 : 0
+    const y0 = lift + campTop[ci]
     for (const [id, r] of lay.at) {
-      const y = rowY[levelOf.get(id)] + (rowH[levelOf.get(id)] - r.h) / 2
-      placed.set(id, { x: cursor + padX + r.x, y, w: r.w, h: r.h })
-      bottom = Math.max(bottom, y + r.h)
+      placed.set(id, { x: cursor + padX + r.x, y: y0 + padTop + r.y, w: r.w, h: r.h })
+      levelOf.set(id, lay.level.get(id))
     }
+    levelCount = Math.max(levelCount, lay.levels)
     const w = lay.width + padX + (camp.group ? GROUP_PAD : 0)
-    // A camp's box runs from the top of the picture to below its own lowest member
-    if (camp.group) boxes.push({ groupId: camp.group.id, label: camp.group.label, x: cursor, y: PAD, w, h: bottom + GROUP_PAD - PAD })
-    lowest = Math.max(lowest, bottom + (camp.group ? GROUP_PAD : 0))
+    const h = padTop + lay.height + (camp.group ? GROUP_PAD : 0)
+    if (camp.group) boxes.push({ groupId: camp.group.id, label: camp.group.label, x: cursor, y: y0, w, h })
+    lowest = Math.max(lowest, y0 + h)
     cursor += w + CAMP_GAP
   })
   const frameWidth = cursor - CAMP_GAP + PAD

@@ -50,6 +50,13 @@ const base = () => ({
   ],
 })
 const some = (errs, re) => errs.some((e) => re.test(e))
+/** Bends of a polyline, collinear points not counted */
+const bends = (pts) =>
+  pts.slice(1, -1).filter((c, i) => {
+    const p = pts[i]
+    const q = pts[i + 2]
+    return !((p[0] === c[0] && c[0] === q[0]) || (p[1] === c[1] && c[1] === q[1]))
+  }).length
 
 test('the spec example: valid, no hints, both orientations lay out', () => {
   assert.deepEqual(validateRelationship(base()), [])
@@ -306,20 +313,52 @@ test('every required field in the field table is required by the validator', () 
   assert.ok(checked >= 8, `only ${checked} required fields were checked`)
 })
 
-test('rows are shared by every camp: a holder stands above what it holds, a creditor above the debtor, a guarantor above the creditor', () => {
-  // The spec's example has the guarantor and the debtor in one camp and the creditor in the other. Worked out camp by
-  // camp they would all stand on one row (nothing inside a camp relates them); worked out on the whole graph the
-  // guarantor is above the creditor and the creditor above the debtor, whichever camp each is in.
-  const at = (g, id) => g.nodes.find((n) => n.id === id).position
-  const v = buildRelationshipGraph(base(), {}, undefined, 'vertical')
-  assert.ok(at(v, 'e-3').y < at(v, 'e-1').y, 'guarantor (Wang Wu) above the creditor (Zhang San)')
-  assert.ok(at(v, 'e-1').y < at(v, 'e-2').y, 'creditor above the debtor (Li Si)')
-  assert.ok(at(v, 'e-2').y < at(v, 'e-4').y, 'the holder (Li Si) above the company he holds')
-  const h = buildRelationshipGraph(base(), {}, undefined, 'horizontal')
-  assert.ok(at(h, 'e-3').x < at(h, 'e-1').x && at(h, 'e-1').x < at(h, 'e-2').x, 'the same order, left to right, when horizontal')
-  // and the stats count the shared rows
-  assert.equal(v.stats.layers, 4)
-  assert.equal(v.nodes.find((n) => n.id === 'e-4').data.layer, 3)
+test('camps are compact: a box fits its members, and within a camp a holder stands above what it holds', () => {
+  const g = buildRelationshipGraph(base(), {}, undefined, 'vertical')
+  const at = (id) => {
+    const n = g.nodes.find((x) => x.id === id)
+    return { ...n.position, w: n.data.w, h: n.data.h }
+  }
+  // Li Si holds 60% of the company, in the same camp: he stands above it
+  assert.ok(at('e-2').y + at('e-2').h <= at('e-4').y, 'the holder above the company it holds')
+  // No box keeps an empty level: its height is its members' span plus the title strip and the padding
+  for (const box of g.groupBoxes) {
+    const members = base().entities.filter((e) => e.groupId === box.groupId).map((e) => at(e.id))
+    const top = Math.min(...members.map((m) => m.y))
+    const bottom = Math.max(...members.map((m) => m.y + m.h))
+    assert.ok(box.h - (bottom - top) <= 32 + 18 + 1, `"${box.label}" is ${box.h - (bottom - top)}px taller than its members need`)
+  }
+})
+
+test('an undirected relation sets no level: spouses stand side by side', () => {
+  const g = buildRelationshipGraph(base())
+  const y = (id) => g.nodes.find((n) => n.id === id).position.y
+  assert.equal(y('e-5'), y('e-2'), 'Zhao Liu stands on Li Si\'s level')
+})
+
+test('an entity whose links go to the camp on the left stands on the left of its camp', () => {
+  // Wang Wu's only link is his guarantee to Zhang San (left camp); Li Si also holds shares and is married
+  // inside his camp. Wang Wu stands left of Li Si, so his guarantee runs straight across the channel.
+  const g = buildRelationshipGraph(base())
+  const x = (id) => g.nodes.find((n) => n.id === id).position.x
+  assert.ok(x('e-3') < x('e-2'))
+  const guarantee = g.connections.find((c) => c.relationId === 'r-2')
+  assert.equal(bends(guarantee.points), 0, 'the guarantee runs straight')
+})
+
+test('a party in no group stands between the camps, at the height of what it relates to', () => {
+  const s = base()
+  s.entities.push({ id: 'e-6', kind: 'organization', label: 'Guarantee Fund' })
+  s.relations.push({ id: 'r-5', from: 'e-6', to: 'e-1', kind: 'guarantee', label: 'Backstop', secures: 'r-1' })
+  const g = buildRelationshipGraph(s)
+  const n = (id) => g.nodes.find((x) => x.id === id)
+  const fund = n('e-6')
+  const [left, right] = g.groupBoxes
+  assert.ok(fund.position.x >= left.x + left.w && fund.position.x + fund.data.w <= right.x, 'between the two camps')
+  // at Zhang San's height (its one neighbour), so its link runs level
+  const mid = (x) => x.position.y + x.data.h / 2
+  assert.ok(Math.abs(mid(fund) - mid(n('e-1'))) < 1, 'level with the entity it relates to')
+  assert.equal(bends(g.connections.find((c) => c.relationId === 'r-5').points), 0, 'its link runs straight')
 })
 
 test('an entity carries what it is related to, for its overlay', () => {

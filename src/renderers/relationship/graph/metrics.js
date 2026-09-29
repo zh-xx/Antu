@@ -27,10 +27,10 @@ export const TEXT_MIN_W = 76
 export const TEXT_MAX_W = 160
 
 /**
- * ELK spacing. Wider than procedure's: a relation carries a label on its line, and that label
- * needs room between two layers.
+ * ELK spacing between two levels of a camp. ELK adds room for a relation's label on top of this, so it
+ * only has to keep two levels apart; wider left a tall empty stretch between a holder and what it holds.
  */
-export const LAYER_GAP = 92
+export const LAYER_GAP = 48
 export const NODE_GAP = 32
 
 /** The channel between two camps: the links across run in it, and their labels stand in it */
