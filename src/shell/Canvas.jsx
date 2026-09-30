@@ -73,14 +73,21 @@ export default function Canvas({
   // animate, so the view slides over instead of flashing (the first open does not
   // animate, otherwise the page moves by itself the moment it appears).
   const rfRef = useRef(null)
+  // Fit to the size the layout computed (graph.size), not to what React Flow can measure: the decoration
+  // layers are declared 1×1 (see fact/timeline/nodes.js), so their real extent — a group box wider than
+  // its nodes — never reached fitView's bounds and was cut off (issue #42). graph.size is also what
+  // fitZoom and the pan limits use, so the three now agree.
+  const fit = (duration = 300) => {
+    const { width, height } = graph.size
+    if (!rfRef.current) return
+    if (width && height) rfRef.current.fitBounds({ x: 0, y: 0, width, height }, { padding: FIT_PADDING, duration })
+    else rfRef.current.fitView({ padding: FIT_PADDING, duration })
+  }
   const firstFitRef = useRef(true)
   useEffect(() => {
     // Wait one frame so React Flow measures the new sizes first
     const id = requestAnimationFrame(() => {
-      rfRef.current?.fitView({
-        padding: FIT_PADDING,
-        duration: firstFitRef.current ? 0 : 300,
-      })
+      fit(firstFitRef.current ? 0 : 300)
       firstFitRef.current = false
     })
     return () => cancelAnimationFrame(id)
@@ -176,7 +183,7 @@ export default function Canvas({
         {/* The background dot grid also uses the separator colour from the palette; do not introduce a new grey */}
         <Background gap={20} color="#e8ebef" />
         {/* The padding must match the initial fit, or clicking the button once makes the zoom jump */}
-        <Controls showInteractive={false} fitViewOptions={{ padding: FIT_PADDING }} />
+        <Controls showInteractive={false} onFitView={() => fit(300)} />
         {/* The display controls float centred below the canvas: the zoom controls are bottom left and the minimap bottom right, so the three do not collide */}
         <Panel position="bottom-center">{children}</Panel>
         <MiniMap pannable zoomable nodeColor="#cbd5e1" />

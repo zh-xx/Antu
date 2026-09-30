@@ -19,13 +19,13 @@
 //      overview (issue #21).
 // ============================================================
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { readPrefs, writePrefs } from '../../../shell/prefs.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
-import GroupBoxNode from '../../relationship/graph/GroupBoxNode.jsx'
+import IssueBoxNode from './IssueBoxNode.jsx'
 import JustificationNode from './JustificationNode.jsx'
 import LinkLayerNode from './LinkLayerNode.jsx'
 import JustificationDock from './JustificationDock.jsx'
@@ -36,7 +36,7 @@ import { chainOf } from './chain.js'
 const nodeTypes = {
   jnode: JustificationNode,
   jlinks: LinkLayerNode,
-  jgroups: GroupBoxNode,
+  jgroups: IssueBoxNode,
 }
 
 /** Attributes shared by decoration nodes; for why 1×1, see cellsNode in fact/timeline/nodes.js */
@@ -84,7 +84,45 @@ export default function JustificationTree({ spec }) {
     writePrefs({ linkStyle: next })
   }
 
-  const layout = useMemo(() => buildJustificationGraph(spec, {}, undefined, orientation), [spec, orientation])
+  // Issues folded up: remembered per diagram. They change the geometry, so they go into layout and re-fit the view.
+  const issueIds = useMemo(() => (Array.isArray(spec?.groups) ? spec.groups.map((g) => g?.id).filter(Boolean) : []), [spec])
+  const [foldPrefs, setFoldPrefs] = useState(() => readPrefs().justificationFolded || {})
+  const folded = useMemo(() => (PRESET?.fields?.collapsed ?? foldPrefs[specKey] ?? []).filter((id) => issueIds.includes(id)), [foldPrefs, specKey, issueIds])
+  // The latest choice is kept in a ref too: two clicks before a render (a fast double click) must both count
+  const foldedRef = useRef(folded)
+  const foldMapRef = useRef(foldPrefs)
+  const setFolded = (list) => {
+    foldedRef.current = list
+    foldMapRef.current = { ...foldMapRef.current, [specKey]: list }
+    setFoldPrefs(foldMapRef.current)
+    writePrefs({ justificationFolded: foldMapRef.current })
+  }
+  const toggleIssue = (id) => {
+    const cur = foldedRef.current.filter((g) => issueIds.includes(g))
+    setFolded(cur.includes(id) ? cur.filter((g) => g !== id) : [...cur, id])
+  }
+  const allFolded = issueIds.length > 0 && issueIds.every((id) => folded.includes(id))
+  const toggleAll = () => setFolded(foldedRef.current.length === issueIds.length ? [] : issueIds)
+
+  // Repeats: a fact used in several places of one issue is drawn beside each use, unless the reader merges them
+  // (fewer nodes, longer lines). It changes the geometry, so it goes into layout and re-fits the view.
+  const hasShared = useMemo(() => {
+    const uses = new Map()
+    const kinds = new Map((Array.isArray(spec?.nodes) ? spec.nodes : []).map((n) => [n?.id, n?.kind]))
+    for (const k of Array.isArray(spec?.links) ? spec.links : []) {
+      if (kinds.get(k?.from) === 'fact') uses.set(k.from, (uses.get(k.from) ?? 0) + 1)
+    }
+    return [...uses.values()].some((n) => n > 1)
+  }, [spec])
+  const [mergePrefs, setMergePrefs] = useState(() => readPrefs().justificationMerged || {})
+  const merged = PRESET?.fields?.merged ?? mergePrefs[specKey] ?? false
+  const toggleMerged = (v) => {
+    const map = { ...mergePrefs, [specKey]: v }
+    setMergePrefs(map)
+    writePrefs({ justificationMerged: map })
+  }
+
+  const layout = useMemo(() => buildJustificationGraph(spec, { collapsed: folded, merged }, undefined, orientation), [spec, orientation, folded, merged])
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
@@ -99,7 +137,7 @@ export default function JustificationTree({ spec }) {
     const { width, height } = layout.size
     const deco = []
     if (layout.groupBoxes.length) {
-      deco.push({ ...DECORATION, id: '__groups__', type: 'jgroups', position: { x: 0, y: 0 }, data: { boxes: layout.groupBoxes, width, height } })
+      deco.push({ ...DECORATION, id: '__groups__', type: 'jgroups', position: { x: 0, y: 0 }, data: { boxes: layout.groupBoxes, width, height, onToggle: toggleIssue } })
     }
     const chain = litNode ? chainOf(layout.connections, layout.nodes, litNode) : null
     deco.push({
@@ -137,6 +175,12 @@ export default function JustificationTree({ spec }) {
           onPaneClick={() => setPinnedId(null)}
         >
           <JustificationDock
+            hasShared={hasShared}
+            merged={merged}
+            onToggleMerged={toggleMerged}
+            hasIssues={issueIds.length > 1}
+            allFolded={allFolded}
+            onToggleAll={toggleAll}
             hasLabels={hasLabels}
             showLabels={showLabels}
             onToggleLabels={toggleLabels}

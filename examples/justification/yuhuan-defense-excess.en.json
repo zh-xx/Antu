@@ -37,6 +37,7 @@
       "kind": "conclusion",
       "label": "Yu Huan's stabbing was defensive",
       "holds": "yes",
+      "combine": "all",
       "groupId": "g-1"
     },
     {

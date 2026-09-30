@@ -47,7 +47,7 @@ agent 照抄结构不会撞到"摆不下"。MCP 的 `antu_examples` 默认给的
 | `zhang-juan-v-peng-yu-private-lending.*` | 真实案例（张娟诉彭宇），民间借贷 |
 | `sample-*.json` | 示意数据：三个时间点、无分组、同侧双主体、两侧各两个主体、四方四个时间点、建设工程付款与结算 |
 
-八批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 6 对、`procedure/` 7 对、`agent/procedure/` 7 对、`relationship/` 5 对、`agent/relationship/` 5 对、`justification/` 2 对、`agent/justification/` 5 对。
+八批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 6 对、`procedure/` 7 对、`agent/procedure/` 7 对、`relationship/` 5 对、`agent/relationship/` 5 对、`justification/` 2 对、`agent/justification/` 6 对。
 
 MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 
@@ -129,7 +129,7 @@ MCP 的 `antu_examples` 传 `type="justification", group="real"` 列出这一批
 
 ## 给 agent 的：`agent/justification/`
 
-**这五份必须一直能通过校验**，也不带任何提示（note）。每份 1.5~2.1 KB，成对存放。
+**这六份必须一直能通过校验**，也不带任何提示（note）。每份 1.5~2.3 KB，成对存放。
 
 | 文件（同名前缀） | 讲什么 |
 |---|---|
@@ -138,6 +138,7 @@ MCP 的 `antu_examples` 传 `type="justification", group="real"` 列出这一批
 | `3-issues.*` | `groups`：一个争点一个框，终点结论摆在框之上 |
 | `4-shared-fact.*` | 一条事实支持两个争点：写一遍，图上在两个争点里各画一份 |
 | `5-sources.*` | 事实的 `date`，`detail` 放不进节点的全文，规范和事实指向 `statute` / `case` / `evidence` 来源 |
+| `6-all-or-any.*` | `combine`：要件须全部具备（`all`，且），理由具备一个即可（`any`，或） |
 
 MCP 的 `antu_examples` 传 `type="justification"` 默认给的就是这一批。
 

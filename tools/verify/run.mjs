@@ -1804,6 +1804,7 @@ async function checkRenderJustification(sampleFile) {
     )
     eq('only a link with a label of its own has one', await count('.antu-jlabel'), spec.links.filter((k) => k.label).length)
     truthy('a fact carries its date', await browser.eval(`document.querySelectorAll('.antu-jn.k-fact .antu-jn-date').length > 0`))
+    eq('a node that says and / or carries the mark', await count('.antu-jn-combine'), layout.nodes.filter((n) => n.data.node.combine).length)
 
     // Looking at a node: its chain lights and the rest fades, and the zoom stays where the reader put it
     for (let i = 0; i < 3; i += 1) {
@@ -1824,6 +1825,42 @@ async function checkRenderJustification(sampleFile) {
     await browser.eval(`document.querySelector('.react-flow__controls-fitview').click(); 1`, { userGesture: true })
     await settle(600)
     eq('nothing stays lit', await count('.antu-jn.is-lit'), 0)
+
+    // Folding an issue: the box's title is the control, the diagram lays out again with what is left, and opens again
+    const issueIds = spec.groups.map((g) => g.id)
+    const folded1 = buildJustificationGraph(spec, { collapsed: [issueIds[0]] }, undefined, 'horizontal')
+    const foldedAll = buildJustificationGraph(spec, { collapsed: issueIds }, undefined, 'horizontal')
+    eq('every issue title is a button', await count('.antu-jissue-toggle'), issueIds.length)
+    await browser.eval(`document.querySelector('.antu-jissue-toggle').click()`, { userGesture: true })
+    await settle(900)
+    eq('folding the first issue leaves out its nodes', await count('.antu-jn'), folded1.nodes.length)
+    eq('its title says how many are folded', await browser.eval(`document.querySelector('.antu-jissue-toggle.is-folded')?.textContent.includes('已收起 ' + ${folded1.stats.hidden})`), true)
+    eq('the other issues are as they were', await count('.antu-rgroup-box'), issueIds.length)
+    eq('the links follow', await count('.antu-jlink'), folded1.connections.length)
+    await browser.eval(`document.querySelector('.antu-jissue-toggle').click()`, { userGesture: true })
+    await settle(900)
+    eq('opening it again brings the nodes back', await count('.antu-jn'), layout.nodes.length)
+    // the dock folds and opens them all
+    await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].find((b) => b.textContent.includes('收起争点')).click()`, { userGesture: true })
+    await settle(900)
+    eq('the dock folds every issue', await count('.antu-jn'), foldedAll.nodes.length)
+    eq('and the chip shows it is on', await count('.antu-dock-chip.is-on'), 1 + (spec.links.some((k) => k.label) ? 1 : 0))
+    const savedFold = await browser.eval(`JSON.parse(localStorage.getItem('antu.prefs') || '{}')`)
+    truthy('the fold is remembered under this diagram', savedFold.justificationFolded?.[`jus:${spec.title}`]?.length === issueIds.length, JSON.stringify(savedFold.justificationFolded))
+    await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].find((b) => b.textContent.includes('收起争点')).click()`, { userGesture: true })
+    await settle(900)
+    eq('the dock opens them all again', await count('.antu-jn'), layout.nodes.length)
+
+    // Repeats: a fact used in several places is drawn beside each use; the chip merges them back to one
+    const mergedLayout = buildJustificationGraph(spec, { merged: true }, undefined, 'horizontal')
+    truthy('the merge chip is there when a fact is used more than once', await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].some((b) => b.textContent.includes('合并重复'))`))
+    truthy('merging draws fewer nodes', mergedLayout.nodes.length < layout.nodes.length, `${mergedLayout.nodes.length} vs ${layout.nodes.length}`)
+    await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].find((b) => b.textContent.includes('合并重复')).click()`, { userGesture: true })
+    await settle(1500)
+    eq('merged: the nodes are drawn once per issue', await count('.antu-jn'), mergedLayout.nodes.length)
+    await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].find((b) => b.textContent.includes('合并重复')).click()`, { userGesture: true })
+    await settle(1500)
+    eq('and split again', await count('.antu-jn'), layout.nodes.length)
 
     // Orientation, remembered per diagram: horizontal comes first, vertical second
     await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[1].click()`, { userGesture: true })

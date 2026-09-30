@@ -79,6 +79,8 @@ test('validation catches each error rule of the spec (§5, rules 1 to 12)', () =
   assert.ok(some(bad((s) => (s.nodes[1].holds = 'no')), /does not hold or fail/), '8: a norm does not hold either')
   assert.ok(some(bad((s) => (s.nodes[2].date = '2016-04-14')), /only belongs on a fact/), '9')
   assert.ok(some(bad((s) => (s.nodes[3].date = 'last Tuesday')), /not an ISO date/), '9')
+  assert.ok(some(bad((s) => (s.nodes[2].combine = 'both')), /`combine` is "both"/), '19: combine is all or any')
+  assert.ok(some(bad((s) => (s.nodes[3].combine = 'all')), /only belongs on/), '19: a fact is not supported by other nodes')
   assert.ok(some(bad((s) => s.links.push({ from: 'c-1', to: 'e-1' })), /cycle/), '10')
   assert.ok(some(bad((s) => s.links.push({ from: 'e-1', to: 'f-1' })), /is a leaf/), '11: a fact has no supporter')
   assert.ok(some(bad((s) => s.links.push({ from: 'e-1', to: 'n-1' })), /is a leaf/), '11: nor a norm')
@@ -289,10 +291,15 @@ test('the real example: valid, no hints, 40 nodes in 5 issues', () => {
     assert.deepEqual(validateJustification(spec), [], lang)
     assert.deepEqual(hintsOfJustification(spec), [], lang)
     const g = buildJustificationGraph(spec)
-    // 40 nodes in the data; five facts are drawn twice, once in each issue that uses them
+    // 40 nodes in the data; a fact used in several places is drawn beside each use, and so is the norm that is
+    // the basis of four elements: nine more drawn than written
     assert.equal(g.stats.nodes, 40)
-    assert.equal(g.stats.copies, 5)
-    assert.equal(g.nodes.length, 45)
+    assert.equal(g.stats.copies, 9)
+    assert.equal(g.nodes.length, 49)
+    // merged: a fact and a norm are drawn once in each issue that uses them, as before
+    const merged = buildJustificationGraph(spec, { merged: true })
+    assert.equal(merged.stats.copies, 5)
+    assert.equal(merged.nodes.length, 45)
     assert.equal(g.connections.length, 48)
     assert.equal(g.groupBoxes.length, 5)
   }
@@ -380,7 +387,7 @@ test('looking at a copy lights every copy of the fact, each with the way up from
 test('the small examples for an agent: valid, no hints, each in both languages, small, and both orientations lay out', () => {
   const dir = 'examples/agent/justification/'
   const names = readdirSync(dir).filter((f) => f.endsWith('.json'))
-  assert.equal(names.length, 10, 'five pairs')
+  assert.equal(names.length, 12, 'six pairs')
   for (const f of names) {
     const text = readFileSync(dir + f, 'utf8')
     const spec = JSON.parse(text)
@@ -411,5 +418,119 @@ test('the elevator case: valid, no hints, the rejected branches drawn, nothing o
       assert.equal(g.groupBoxes.length, 3)
       assert.ok(g.nodes.filter((n) => n.data.node.holds === 'no').length >= 6, 'the rejected claims are drawn')
     }
+  }
+})
+
+test('combine (and / or): valid values, hints when it has nothing to combine or contradicts holds (rules 19 to 21)', () => {
+  const ok = base()
+  ok.nodes[2].combine = 'all'
+  assert.deepEqual(validateJustification(ok), [])
+  assert.deepEqual(hintsOfJustification(ok), [], 'the element rests on a norm and two facts: two for-links to combine')
+  // 19: fewer than two supporters
+  const alone = base()
+  alone.nodes[0].combine = 'any'
+  assert.ok(hintsOfJustification(alone).some((h) => /c-1.*fewer than two links/.test(h)), '19')
+  // 20: all, upheld, and something it rests on is rejected
+  const bad = base()
+  bad.nodes[2].combine = 'all'
+  bad.nodes.push({ id: 'j-9', kind: 'judgement', label: 'Rejected', holds: 'no', groupId: 'g-1' })
+  bad.links.push({ from: 'j-9', to: 'e-1' })
+  assert.ok(hintsOfJustification(bad).some((h) => /e-1.*needs all it rests on, but "Rejected" is rejected/.test(h)), '20')
+  // 21: any, rejected, and one of them holds
+  const any = base()
+  any.nodes[2].combine = 'any'
+  any.nodes[2].holds = 'no'
+  any.nodes.push({ id: 'j-8', kind: 'judgement', label: 'Upheld ground', holds: 'yes', groupId: 'g-1' })
+  any.links.push({ from: 'j-8', to: 'e-1' })
+  assert.ok(hintsOfJustification(any).some((h) => /e-1.*rejected although any one it rests on would do/.test(h)), '21')
+  // and: combine changes no geometry
+  const a = buildJustificationGraph(base())
+  const b = buildJustificationGraph(ok)
+  assert.deepEqual(a.nodes.map((n) => n.position), b.nodes.map((n) => n.position))
+})
+
+test('folding an issue keeps what it sums up to and says how many nodes it leaves out (#39)', () => {
+  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const open = buildJustificationGraph(spec, {}, undefined, 'horizontal')
+  const one = buildJustificationGraph(spec, { collapsed: ['g-1'] }, undefined, 'horizontal')
+  assert.equal(open.nodes.length, 49)
+  // issue 1 draws 19 nodes (its conclusion, the norm and its three copies, four elements and ten facts); only its conclusion stays
+  assert.equal(one.nodes.length, 49 - 18)
+  const box = (g, id) => g.groupBoxes.find((b) => b.groupId === id)
+  assert.equal(box(one, 'g-1').collapsed, true)
+  assert.equal(box(one, 'g-1').hidden, 18)
+  assert.equal(box(one, 'g-1').total, 19)
+  assert.equal(box(one, 'g-2').collapsed, false)
+  assert.equal(box(one, 'g-2').hidden, 0)
+  assert.ok(one.nodes.some((n) => n.id === 'c-2'), 'the issue conclusion stays')
+  assert.ok(!one.nodes.some((n) => n.id === 'e-1'), 'its elements are left out')
+  // the other issues are as they were, and the link from the kept conclusion to the end conclusion stays
+  assert.ok(one.connections.some((c) => c.fromNode === 'c-2' && c.toNode === 'c-1'))
+  assert.ok(one.size.height < open.size.height, 'the picture is shorter')
+  // the data is not touched: the counts of the spec are the same
+  assert.equal(one.stats.nodes, 40)
+  assert.equal(one.stats.hidden, 18)
+})
+
+test('a fact that another issue still uses stays there when its own issue is folded', () => {
+  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const g = buildJustificationGraph(spec, { collapsed: ['g-1'] }, undefined, 'horizontal')
+  // f-2 is written in issue 1 and drawn again in issue 5, which is open
+  assert.ok(g.nodes.some((n) => n.data.node.id === 'f-2' && n.data.copyOf === 'f-2'), 'the copy in issue 5 stays')
+  assert.ok(!g.nodes.some((n) => n.id === 'f-2'), 'and the one in the folded issue is gone')
+  // what a kept node rests on is still told in its overlay, folded or not
+  const rest = (gr) => gr.nodes.find((n) => n.id === 'c-2').data.grounds.length
+  assert.equal(rest(g), rest(buildJustificationGraph(spec, {}, undefined, 'horizontal')))
+})
+
+test('folding every issue leaves the end conclusion and each issue\'s summary; unknown ids are ignored', () => {
+  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const ids = spec.groups.map((g) => g.id)
+  const g = buildJustificationGraph(spec, { collapsed: ids }, undefined, 'horizontal')
+  // issue 3 has no conclusion of its own: its element goes straight to the end conclusion, and is what it sums up to
+  assert.deepEqual(g.nodes.map((n) => n.id).sort(), ['c-1', 'c-2', 'c-3', 'c-4', 'c-5', 'e-6'])
+  assert.deepEqual(g.errors, [])
+  const ignored = buildJustificationGraph(spec, { collapsed: ['g-nope'] }, undefined, 'horizontal')
+  assert.equal(ignored.nodes.length, 49)
+  for (const o of ['horizontal', 'vertical']) {
+    const all = buildJustificationGraph(spec, { collapsed: ids }, undefined, o)
+    assert.ok(all.size.width < 2000 && all.size.height < 1000, `${o}: all folded fits a screen (${all.size.width}x${all.size.height})`)
+  }
+  // folding is part of the layout cache key
+  assert.notEqual(g, buildJustificationGraph(spec, {}, undefined, 'horizontal'))
+  assert.equal(buildJustificationGraph(spec, { collapsed: [...ids].reverse() }, undefined, 'horizontal'), g, 'the order of the ids does not matter')
+})
+
+test('a single issue has nothing to fold into, and a folded issue can be opened again', () => {
+  const s = base()
+  const g = buildJustificationGraph(s, { collapsed: ['g-1'] }, undefined, 'horizontal')
+  assert.deepEqual(g.errors, [])
+  assert.ok(g.nodes.some((n) => n.id === 'c-1'))
+  assert.ok(g.groupBoxes[0].collapsed)
+  const open = buildJustificationGraph(s, { collapsed: [] }, undefined, 'horizontal')
+  assert.equal(open.nodes.length, 5)
+})
+
+test('the real cases have no crossing between their links', async () => {
+  const { routedCrossings } = await import('../src/renderers/justification/tree/crossings.js')
+  // before: elevator 11 / 11, Yu Huan 6 / 5 (horizontal / vertical). Facts are drawn beside each use, a norm with
+  // three or more elements beside each of them, and each issue is laid out several ways with the best kept.
+  const bound = { 'elevator-smoking-liability': 0, 'yuhuan-defense-excess': 0 }
+  for (const [name, most] of Object.entries(bound)) {
+    const spec = JSON.parse(readFileSync(`examples/justification/${name}.zh-CN.json`, 'utf8'))
+    for (const o of ['horizontal', 'vertical']) {
+      const g = buildJustificationGraph(spec, {}, undefined, o)
+      const n = routedCrossings(g.connections.map((c) => c.points))
+      assert.ok(n <= most, `${name} ${o}: ${n} crossings, at most ${most}`)
+    }
+  }
+})
+
+test('the small examples have no crossing at all', async () => {
+  const { routedCrossings } = await import('../src/renderers/justification/tree/crossings.js')
+  const dir = 'examples/agent/justification/'
+  for (const f of readdirSync(dir).filter((f) => f.endsWith('.json'))) {
+    const g = buildJustificationGraph(JSON.parse(readFileSync(dir + f, 'utf8')), {}, undefined, 'horizontal')
+    assert.equal(routedCrossings(g.connections.map((c) => c.points)), 0, f)
   }
 })

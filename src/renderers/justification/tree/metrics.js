@@ -37,6 +37,9 @@ export const GROUP_PAD_TOP = 32
 export const GROUP_PAD = 18
 export const GROUP_TITLE_FONT = 13
 
+/** What a folded issue's title needs beyond the issue's name: " · N folded", in either language, and the arrow */
+export const FOLD_NOTE_W = 140
+
 /** Padding around the content */
 export const PAD = 32
 

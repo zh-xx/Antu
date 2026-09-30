@@ -37,6 +37,7 @@
       "kind": "conclusion",
       "label": "于欢的捅刺行为具有防卫性",
       "holds": "yes",
+      "combine": "all",
       "groupId": "g-1"
     },
     {

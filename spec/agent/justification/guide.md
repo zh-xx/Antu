@@ -56,6 +56,14 @@ basis    from is the norm to rests on     (only from a norm)
 special defence" with `holds: "no"`, and the reasons it fails pointing `against` it. A fact and a norm
 have no `holds`. Leave it out when the reasoning does not say.
 
+## and / or: `combine`
+
+When a node rests on several things, say whether all are needed or one is enough: `combine: "all"` (every
+`for` link into it is needed: the five conditions of lawful defence) or `combine: "any"` (one is enough).
+Leave it out when the reasoning does not say. Only `for` links count, and it belongs only on a conclusion,
+element, inference or judgement. Keep it consistent with `holds`: an `"all"` node that holds cannot rest on a
+rejected node.
+
 ## Issues
 
 `groups` is one box per issue. A node is in at most one group. Put a norm in the issue it settles (a
@@ -63,6 +71,12 @@ norm used in two issues is two `norm` nodes with the same `sourceIds`). Nodes in
 conclusion) stand above the issues. **A fact that supports things in several issues is written once**: link it to each
 element it supports, and the engine draws it in each of those issues (a copy says "same as"). Do not write
 it twice.
+
+## Big diagrams
+
+A reader can fold each issue up to its conclusion (its box title is a button; the dock has "Fold issues"), so a
+diagram of several issues can be read at a glance. Nothing to write for it: it is not in the JSON. Still split a
+diagram that grows past about 60 nodes.
 
 ## After writing
 

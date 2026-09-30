@@ -116,6 +116,7 @@ An extract of the reasoning of the Yu Huan appeal judgment; the whole is `exampl
 | `label` | ✅ | string | The one sentence shown on the node |
 | `detail` | ❌ | string | Full text that does not fit in the node (the text of a statute, the judgment's own words); in the popover |
 | `holds` | ❌ | `yes` / `no` | Whether the statement holds in this reasoning; **only for** `conclusion`, `element`, `inference`, `judgement` |
+| `combine` | ❌ | `all` / `any` | How what it rests on combines: `all` = every one is needed ("and"), `any` = one is enough ("or"); **only on** `conclusion`, `element`, `inference`, `judgement`; omitted = not stated, see §4.6 |
 | `date` | ❌ | ISO date or date-time | **`fact` only**: when it happened (`2016-04-14` or `2016-04-14T22:22`) |
 | `groupId` | ❌ | string | Refers to an id in `groups` |
 | `sourceIds` | ❌ | string[] | Refers to ids in this diagram's `sources` |
@@ -171,6 +172,20 @@ Omitting `holds` means the reasoning does not say.
 
 **One conclusion can have both `for` and `against`**, as sentencing issues usually do: "truthful confession" and "serious fault of the victims" are `for` (mitigating), "harm far outweighs the interest protected" is `against` (limits how far the sentence is reduced).
 
+### 4.6 `combine`: and, or
+
+When a node rests on several things, the reader's first question is "does it fall if one is missing?" The five conditions of lawful defence must **all** be met; some norms say "any one will do".
+
+- `combine: "all"`: everything it rests on (the `for` links into it) is needed. Without one, it does not hold.
+- `combine: "any"`: any one is enough.
+- Omitted: the reasoning does not say; the reader takes it from the norm (the earlier reading).
+
+Only `for` links count. `against` and `basis` do not: a norm the node rests on is its premise, and opposition is a different thing.
+
+On the diagram a small mark stands in the node's top line: `all of` or `any of` (`且` / `或` in Chinese); the popover says it in full ("All of what it rests on is needed"). Paint only, no change to the geometry.
+
+`combine` and `holds` on one node should agree, and validation says so when they do not (rules 20, 21).
+
 ### 4.4 Issues (`groups`)
 
 A judgment's reasoning is usually organised by issue ("was it defensive", "was it special defence", "was it excessive"). An issue is a group; a node is in at most one group.
@@ -213,6 +228,9 @@ A draft; there is no code. Errors are reported one by one, with the field path a
 | 16 | A `norm` with no `sourceIds` | **hint** (which provision?) |
 | 17 | An element with `holds: "yes"` whose `for` links all come from `holds: "no"` nodes | **hint** (premises rejected, conclusion upheld) |
 | 18 | A conclusion or element with no `for` or `basis` among its incoming links (not one with `holds: "no"`: a rejected node needs no support) | **hint** (nothing supports it) |
+| 19 | `combine` is `all` / `any`, and only on the four kinds that can be supported (error); a node with fewer than two `for` links says `combine` (hint: nothing to combine) | error / **hint** |
+| 20 | `combine: "all"` and `holds: "yes"`, yet something it rests on is rejected | **hint** (all needed, one rejected) |
+| 21 | `combine: "any"` and `holds: "no"`, yet something it rests on holds | **hint** (one is enough, and one holds) |
 
 Structural errors block drawing; hints do not. The same split as relationship and procedure.
 
@@ -226,6 +244,8 @@ Structural errors block drawing; hints do not. The same split as relationship an
 
 - **A tree from the conclusion down.** A link runs from the supporting side to the supported one, so ELK is given every link the other way round, and the conclusion is on top (on the left when horizontal).
 - **A fact (or a norm) is one node in the data and is drawn once in every issue that uses it.** Facts and norms are leaves and can support things in several issues (the abuse supports both "was it defensive" and "the victims' fault"). It is written once, and drawn once in each issue box that uses it; a copy's tag says "same as". Each issue box then holds all it needs, and no line runs across the picture to a fact in another box. A leaf used in one issue only stands in that issue, whatever its own `groupId` says.
+- **Inside one issue, a fact used by several nodes is drawn beside each of them** (and a norm that is the basis of three or more elements likewise). With one copy the lines to the nodes it supports run across the layers between them and cross whatever stands there; with a copy at each use the facts form a tree and cross nothing. The dock has "Merge repeats" to draw each once instead (fewer nodes, longer lines, more crossings); it is the reader's choice, remembered per diagram, and the data does not change. Measured on the two real cases: crossings between links went from 11 and 6 (elevator, Yu Huan, horizontal) to 0 and 0, at the cost of 5 and 4 more nodes drawn than in the merged picture (the Yu Huan diagram: 49 drawn, 45 merged).
+- **Each issue is laid out several ways and the one with fewest crossings is kept**: ELK is run with several seeds and two ways of layering, with the norm above its elements or among the facts; the best of each kind is then routed for real and the one with fewest real crossings wins. The seeds are fixed, so the same data gives the same picture (seed 0 of ELK is time-based, so it is never used).
 - **A norm stands one layer above its elements**, beside the issue's conclusion, with its lines running down to the elements. It is close to them, and its lines do not have to go round to the facts' layer.
 - **One box per issue, each laid out on its own.** ELK's layered algorithm lays out each issue from the links inside it, so a box is as big as its content (ELK cannot lay out a box around nodes in different layers; the relationship diagram's camps are the same). Nodes in no issue (the end conclusion) form a group of their own above all the issues, centred.
 - **Issues stand side by side, tops aligned** (across when vertical; stacked when horizontal).
@@ -247,13 +267,14 @@ Known shortcomings: the lines from each issue's conclusion to the end conclusion
 - **Pointing at a node lights its whole chain**: everything it rests on (down to the facts and norms) and everything it leads to (up to the end conclusion) stay, the rest fades. Every copy of a fact lights together, each with its own way up. That is the natural question about a node in a reasoning: "what is this based on, and where does it lead?"
 - Hover peeks, click pins: the popover holds the full text (`detail`), what it rests on, what it leads to, and the sources.
 - **The dock**: a labels switch (only when a link has a `label`), horizontal / vertical (horizontal first, and the default), curved / straight, language, export image. There is no "filter by kind of node": a reader of a reasoning follows a chain, they do not filter by kind.
+- **Folding an issue** is the reader's choice, not something in the data. The title of each issue box is a button (with a small arrow): a click folds the issue up to what it sums up to (its conclusion; for an issue with none, the element that goes straight to the end conclusion). The box becomes a small dashed one, its title ends with "N folded", and the other nodes of the issue, and the links that touched them, are not drawn. Another click opens it. The dock has "Fold issues": fold all, or open all. Folding lays the diagram out again and refits the view (the geometry changes), and is remembered per diagram in the browser. A fact that another issue still uses keeps its copy there. A folded node's popover still tells everything it rests on. With every issue folded the Yu Huan diagram is six nodes and fits a screen.
 - Lighting, fading and the labels switch are paint only; they do not change the geometry, and the view is never thrown back to the overview (issue #21).
 
 ---
 
 ## 7. Questions still open, and how to go on meanwhile
 
-1. **"And" or "or" between elements?** The five conditions of lawful defence must **all** be met; some norms say "any one will do". **For now:** several `for` links into one conclusion are read by the reader according to the norm; the diagram does not express and/or.
+1. **"And" or "or" between elements? (answered, see §4.6)** A node has an optional `combine: "all" | "any"`; omitted means not stated.
 2. **An evidence layer.** What evidence was each fact found from? A judgment's reasons often do not say; one needs the first-instance judgment or the file. **For now:** a `fact` is a leaf with only `sourceIds`; the evidence layer is left for later (a source of type `evidence` can already be cited).
 3. **Two sides in opposition.** Prosecution and defence, one tree each, and the judge choosing on each issue. **For now:** one side's reasoning only, see decision 3.
 4. **Defeasibility.** Legal norms have exceptions and defences, and a conclusion may fall when it is rebutted (the "rebuttal" and "qualifier" of Toulmin's model). **For now:** `against` and rejected `holds: "no"` nodes express the commonest kind, nothing more.

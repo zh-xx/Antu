@@ -96,6 +96,11 @@ const JustificationNode = memo(function JustificationNode({ id, data }) {
           <span className="antu-jn-kind">{t(`jus.kind.${node.kind}`)}</span>
           {node.date && <span className="antu-jn-date">{showDate(node.date)}</span>}
           {node.holds && <span className={`antu-jn-holds is-${node.holds}`}>{t(`jus.holds.${node.holds}`)}</span>}
+          {node.combine && (
+            <span className={`antu-jn-combine is-${node.combine}`} title={t(`jus.combine.${node.combine}Long`)}>
+              {t(`jus.combine.${node.combine}`)}
+            </span>
+          )}
           {copyOf && <span className="antu-jn-copy">{t('jus.copy')}</span>}
         </div>
         <div className="antu-jn-label">{node.label}</div>
@@ -134,7 +139,10 @@ const JustificationNode = memo(function JustificationNode({ id, data }) {
           {/* What this node rests on and what it leads to: the point of the diagram, so it is in the overlay too */}
           {grounds.length > 0 && (
             <div className="antu-jn-rows">
-              <div className="antu-jn-rows-title">{t('jus.grounds')}</div>
+              <div className="antu-jn-rows-title">
+                {t('jus.grounds')}
+                {node.combine ? ` · ${t(`jus.combine.${node.combine}Long`)}` : ''}
+              </div>
               {grounds.map((g) => (
                 <div key={`${g.id}:${g.stance}`} className={`antu-jn-row is-${g.stance}`}>
                   <span className="antu-jn-row-stance">{t(`jus.stance.${g.stance}`)}</span>

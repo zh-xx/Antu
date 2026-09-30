@@ -25,6 +25,12 @@ const LINK_STYLES = [
 ]
 
 export default function JustificationDock({
+  hasIssues = false,
+  hasShared = false,
+  merged = false,
+  onToggleMerged,
+  allFolded = false,
+  onToggleAll,
   hasLabels = false,
   showLabels = true,
   onToggleLabels,
@@ -39,6 +45,22 @@ export default function JustificationDock({
   return (
     <div className="antu-dock">
       <div className="antu-dock-bar">
+        {hasIssues && (
+          <>
+            <button className={`antu-dock-chip${allFolded ? ' is-on' : ''}`} onClick={onToggleAll} title={t('jus.foldAllTitle')}>
+              {t('jus.foldAll')}
+            </button>
+            {!hasLabels && <span className="antu-dock-sep" />}
+          </>
+        )}
+        {hasShared && (
+          <>
+            <button className={`antu-dock-chip${merged ? ' is-on' : ''}`} onClick={() => onToggleMerged(!merged)} title={t('jus.mergeTitle')}>
+              {t('jus.merge')}
+            </button>
+            {!hasLabels && <span className="antu-dock-sep" />}
+          </>
+        )}
         {hasLabels && (
           <>
             <button className={`antu-dock-chip${showLabels ? ' is-on' : ''}`} onClick={() => onToggleLabels(!showLabels)}>
