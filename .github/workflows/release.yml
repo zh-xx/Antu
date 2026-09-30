@@ -1,27 +1,43 @@
-name: 发布
+name: Release
 
-# 什么时候跑：只有手动触发（Actions 页 → 发布 → Run workflow）。
-# 存在的理由：
-# 版本规则（spec/versioning.md）说"合并后在合并提交上打 tag vX.Y.Z"。这一步做成工作流，
-# 有两个好处：任何有仓库写权限的人在网页或手机上点一下就行，不用本机推 tag；
-# 以后往 npm 发布（issue #43）也挂在这一条上，不用另起流程。
+# When it runs: only when started by hand (Actions tab -> Release -> Run workflow).
+# Why it exists:
+# The versioning rules (spec/versioning.md) say "tag vX.Y.Z on the merge commit after merging". Doing that in a
+# workflow has two benefits: anyone with write access can click it on the web or on a phone, with no tag pushed from
+# a local machine; and publishing to npm later (issue #43) can hang on this same workflow instead of a new process.
 #
-# 它做什么：读那个提交里 package.json 的版本号，建 tag v<版本> 和一个 GitHub release，
-# release 的说明取自 CHANGELOG.md 里同版本号的那一节；并把 skills/antu/（给 agent 的技能包）
-# 打成 antu-skill-<版本>.zip 挂在 release 上，供「导入本地技能包」的客户端（如 WorkBuddy）下载。
-# 发布前先确认 skills/antu/ 就是这个版本的构建结果（node tools/build-skill.mjs --check）：
-# 技能包是上一次发布的状态，在发布的 PR 里重新生成，忘了的话这里会停下来。
-# 它不做什么：不改任何文件，不发布到别处，不删任何东西。
+# What it does: reads the version in package.json at that commit, makes the tag v<version> and a GitHub release whose
+# notes are the section of CHANGELOG.md with the same version; packs skills/antu/ (the agent skill) into
+# antu-skill-<version>.zip and attaches it to the release, for clients that "import a local skill package"
+# (such as WorkBuddy).
+#
+# Before it publishes, it stops unless:
+#   - the commit is on main, the version looks like X.Y.Z, the tag does not exist yet, CHANGELOG has a non-empty section;
+#   - every check on the commit has finished and passed (tools/verify/ci-green.mjs);
+#   - skills/antu/ is the build of this version (node tools/build-skill.mjs --check): the skill is the state of the
+#     last release and is rebuilt in the release PR, so forgetting that stops here;
+#   - the zip it just packed, unpacked into an empty folder, passes the skill's own checks
+#     (tools/verify/skill-cli.mjs --skill): what users download is what was tested.
+# What it does not do: change any file, publish anywhere else, delete anything.
+#
+# Dry run: with dry_run ticked it does every check and packs and tests the zip, but creates no tag and no release
+# (and an existing tag is only a warning, so the latest version can be rehearsed). Use it to try a change to this
+# file without releasing anything.
 on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 要发布的提交（默认 main 的最新提交；必须已经在 main 上）
+        description: 'The commit to release. Default: the latest commit of main. It must already be on main.'
         required: false
         default: main
+      dry_run:
+        description: 'Do every check and test the zip, but create no tag and no release'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+  checks: read
 
 jobs:
   release:
@@ -37,10 +53,10 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: 安装依赖
+      - name: Install dependencies
         run: npm ci
 
-      - name: 检查这个提交能不能发布
+      - name: Check that this commit can be released
         id: check
         run: |
           set -euo pipefail
@@ -48,29 +64,33 @@ jobs:
           version="$(node -p "require('./package.json').version")"
           tag="v${version}"
 
-          # 只发布已经合并进 main 的提交，不从分支发
+          # Only commits already merged into main are released, never a branch
           git fetch --quiet origin main
           if ! git merge-base --is-ancestor "$sha" origin/main; then
-            echo "::error::$sha 不在 main 上，不发布（版本规则：不从分支发布）"
+            echo "::error::$sha is not on main; not releasing (versioning rules: never release from a branch)"
             exit 1
           fi
 
-          # 版本号格式：主.次.补丁
+          # The version must look like MAJOR.MINOR.PATCH
           if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::package.json 的版本号 '$version' 不是 主.次.补丁"
+            echo "::error::the version '$version' in package.json is not MAJOR.MINOR.PATCH"
             exit 1
           fi
 
-          # tag 已经有了就停：一个版本号只能对应一个提交
+          # Stop if the tag already exists: one version number, one commit (a dry run only warns)
           if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-            echo "::error::tag ${tag} 已经存在"
-            exit 1
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "::warning::the tag ${tag} already exists; a real release would stop here"
+            else
+              echo "::error::the tag ${tag} already exists"
+              exit 1
+            fi
           fi
 
-          # CHANGELOG 里必须有这个版本的一节，并且不是空的
+          # CHANGELOG must have a section for this version, and it must not be empty
           awk -v v="## ${version}" '$0==v {f=1; next} /^## /{f=0} f' CHANGELOG.md > release-notes.md
           if [ ! -s release-notes.md ]; then
-            echo "::error::CHANGELOG.md 里没有 '## ${version}' 这一节，或者这一节是空的"
+            echo "::error::CHANGELOG.md has no '## ${version}' section, or it is empty"
             exit 1
           fi
 
@@ -80,17 +100,37 @@ jobs:
             echo "tag=${tag}"
           } >> "$GITHUB_OUTPUT"
 
-      # 技能包必须是这个版本的构建：说明、字段表、示例和 VERSION 与源码一致，viewer.html 是这个版本的模板
-      - name: 检查技能包
+      # The commit may be on main and still red: a merge that bypassed the branch rule, or a check that failed
+      # after the merge. Every check on it (except this job) must have finished and passed.
+      - name: Check that CI is green on this commit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/verify/ci-green.mjs "${{ steps.check.outputs.sha }}" --ignore "$GITHUB_JOB"
+
+      # The skill must be the build of this version: the guide, field tables, examples and VERSION match the sources,
+      # and viewer.html is this version's template
+      - name: Check the skill folder
         run: node tools/build-skill.mjs --check
 
-      - name: 打技能包
+      - name: Pack the skill
         run: |
           set -euo pipefail
           cd skills
           zip -qr "../antu-skill-${{ steps.check.outputs.version }}.zip" antu
 
-      - name: 建 tag 和 release
+      # Test the thing users download, not the folder it was packed from: a file missing from the zip, or a wrong
+      # path inside it, shows up here and nowhere else.
+      - name: Test the packed zip, unpacked into an empty folder
+        env:
+          ANTU_REQUIRE_PYTHON: '1'
+        run: |
+          set -euo pipefail
+          dir="$(mktemp -d)"
+          unzip -q "antu-skill-${{ steps.check.outputs.version }}.zip" -d "$dir"
+          node tools/verify/skill-cli.mjs --skill "$dir/antu"
+
+      - name: Create the tag and the release
+        if: ${{ inputs.dry_run != true }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -100,4 +140,9 @@ jobs:
             --target "${{ steps.check.outputs.sha }}" \
             --title "${{ steps.check.outputs.version }}" \
             --notes-file release-notes.md
-          echo "已发布 ${{ steps.check.outputs.tag }}（提交 ${{ steps.check.outputs.sha }}）" >> "$GITHUB_STEP_SUMMARY"
+          echo "Released ${{ steps.check.outputs.tag }} (commit ${{ steps.check.outputs.sha }})" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dry run finished
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          echo "Dry run: every check passed. No tag and no release were created." >> "$GITHUB_STEP_SUMMARY"

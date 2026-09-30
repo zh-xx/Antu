@@ -7,6 +7,10 @@
 //  nothing newer than Node 18, so CI runs it under every version we promise, on Linux, macOS and Windows
 //  (.github/workflows/verify.yml), and so can anyone:   node tools/verify/skill-cli.mjs
 //
+//  By default it holds the repository's skills/antu/ to it. With --skill <dir> it holds another copy to it: the
+//  release workflow unpacks the zip it is about to publish and points this script at that, so what users download is
+//  what was tested.   node tools/verify/skill-cli.mjs --skill /path/to/unpacked/antu
+//
 //  It also runs the skill's Python script (scripts/make_html.py) with whatever Python 3 is on the machine. Without
 //  one it is skipped, unless ANTU_REQUIRE_PYTHON is set (CI sets it), in which case a missing Python is a failure.
 // ============================================================
@@ -19,6 +23,8 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const argv = process.argv.slice(2)
+const SKILL_DIR = resolve(argv.includes('--skill') ? argv[argv.indexOf('--skill') + 1] : join(REPO, 'skills/antu'))
 const TYPES = ['fact', 'procedure', 'relationship', 'justification']
 const failures = []
 let passed = 0
@@ -30,7 +36,7 @@ const check = (name, ok, detail = '') => {
 
 const work = mkdtempSync(join(tmpdir(), 'antu-skill-cli-'))
 try {
-  cpSync(join(REPO, 'skills/antu'), join(work, 'antu'), { recursive: true })
+  cpSync(SKILL_DIR, join(work, 'antu'), { recursive: true })
   const cli = join(work, 'antu/scripts/antu.mjs')
   const run = (...args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', cwd: work })
   const version = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version

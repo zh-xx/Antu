@@ -59,12 +59,13 @@ the engine was updated. (A new *hint* is not a break: a hint never stops a diagr
    the changelog on how to migrate).
 3. A small pull request of its own for the release: `version` in `package.json` (and `package-lock.json`),
    the new section of `CHANGELOG.md`, and the agent skill rebuilt with `npm run build:skill` (see below).
-4. After it merges, run the **发布 (Release)** workflow (Actions tab → Run workflow; the default is the latest commit of
+4. After it merges, run the **Release** workflow (Actions tab → Run workflow; the default is the latest commit of
    `main`). It reads `version` from that commit's `package.json`, refuses if the commit is not on `main`, if the tag
    already exists, or if `CHANGELOG.md` has no section for the version, and then creates the tag `vX.Y.Z` and a
    GitHub release whose notes are that section, with the skill attached as `antu-skill-X.Y.Z.zip`. It also refuses if
-   `skills/antu/` is not what a build of that version writes. Nothing is released from a branch, and nothing is
-   tagged by hand.
+   a check on the commit is red or has not finished (so wait for CI after the merge), if `skills/antu/` is not what
+   a build of that version writes, or if the packed zip, unpacked into an empty folder, fails the skill's own checks
+   (`tools/verify/skill-cli.mjs --skill`). Nothing is released from a branch, and nothing is tagged by hand.
 
 ## The agent skill (`skills/antu/`)
 
