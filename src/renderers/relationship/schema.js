@@ -12,7 +12,8 @@
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateRelationship, hintsOfRelationship, ENTITY_KINDS, RELATION_KINDS } from './graph/rules.js'
 import { buildRelationshipGraph } from './graph/layout.js'
-import { fitZoom } from '../../core/canvas.js'
+import { fitZoom, textSizeLines } from '../../core/canvas.js'
+import { ENTITY_FONT } from './graph/metrics.js'
 
 /**
  * Field metadata: req = required; ty = type; note = a one-line explanation. Cross-field rules
@@ -118,6 +119,7 @@ export const relationshipKnowledge = {
     const v = byOrientation.vertical
     const h = byOrientation.horizontal
     return {
+      text: { font: ENTITY_FONT, canvas, open: { name: 'vertical', fit: v.fit }, other: { name: 'horizontal', fit: h.fit } },
       counts: {
         entities: g.stats.entities,
         relations: g.stats.relations,
@@ -153,9 +155,7 @@ export const relationshipKnowledge = {
     if (r.betterFit !== r.suggestedOrientation) {
       lines.push(`Horizontal fits a screen better (${h.fit} vs ${v.fit}); the reader can switch to it.`)
     }
-    if (Math.max(v.fit, h.fit) < 0.45) {
-      lines.push('Note: at this size the text is small on one screen; consider splitting the diagram by group.')
-    }
+    lines.push(...textSizeLines(r.text, 'splitting the diagram by group'))
     if (r.hints.length) {
       lines.push('', `${r.hints.length} hint(s):`, ...r.hints.map((x) => `  - ${x}`))
     }

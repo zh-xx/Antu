@@ -43,6 +43,7 @@ import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
 import { en, zh } from '../../src/core/messages/index.js'
 import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
+import { textPx } from '../../src/core/canvas.js'
 import { readExample, listExamples, listAgentGuides, describeSchema, layoutReport, formatLayoutReport,
   readAgentGuide,
 } from '../mcp/engine.mjs'
@@ -1831,6 +1832,54 @@ async function checkUndatedEvent() {
   }
 }
 
+/**
+ * The guard (#43): what `layout` says about the text on one screen must be what the page draws. For a real case of
+ * each kind, the page is opened at 1600×900 (the screen the report assumes) and the body text's drawn size (its font
+ * size times the viewport's scale) is compared with the report. The report may be a little smaller than the page (it
+ * is the safe side: the page fits a little tighter than the formula), never larger, and by no more than 5%. A
+ * diagram the report calls full size is drawn at full size or larger.
+ */
+async function checkTextSize() {
+  section('the guard: the text size layout reports is the one the page draws')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const cases = [
+    ['examples/justification/yuhuan-defense-excess.zh-CN.json', '.antu-jn-label'],
+    ['examples/fact/yuhuan-loan-and-conflict.zh-CN.json', '.antu-card-label'],
+    ['examples/procedure/05-premises-lease.zh-CN.json', '.antu-pn-label'],
+    ['examples/relationship/kuaibo-parties.zh-CN.json', '.antu-rn-label'],
+  ]
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    for (const [file, selector] of cases) {
+      const spec = JSON.parse(readFileSync(join(REPO, file), 'utf8'))
+      const r = layoutReport(spec)
+      const reported = textPx(r.text.font, r.text.open.fit)
+      const html = join(OUT, 'render-textsize.html')
+      renderToFile(spec, { outPath: html, quiet: true })
+      await browser.open(`file://${html}?lang=zh`, { settleMs: 1500 })
+      const drawn = await browser.eval(`(() => {
+        const scale = new DOMMatrix(getComputedStyle(document.querySelector('.react-flow__viewport')).transform).a
+        return scale * parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(selector)})).fontSize)
+      })()`)
+      const name = file.split('/').pop()
+      if (r.text.open.fit >= 1) {
+        truthy(`${name}: reported full size (${r.text.font} px), drawn at least that`, drawn >= r.text.font - 0.05, `${drawn.toFixed(2)} px`)
+      } else {
+        truthy(
+          `${name}: reported ${reported} px, drawn within 5% and not smaller`,
+          reported <= drawn + 0.05 && drawn - reported <= drawn * 0.05,
+          `drawn ${drawn.toFixed(2)} px`,
+        )
+      }
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderJustification(sampleFile) {
   section('render: justification tree')
   if (!findChrome()) {
@@ -2070,6 +2119,7 @@ if (!shotOnly && !skipBrowser) {
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)
   await checkSkillPage()
   await checkUndatedEvent()
+  await checkTextSize()
   checkMcp()
   // This stretch launched a browser twice (once for the render, once for the MCP preview), and
   // both must be closed cleanly. Identity, not "equal to 0": this machine may already have

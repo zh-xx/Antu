@@ -110,12 +110,18 @@ ignore it.
   check each by hand. For the fact diagram, the guide's section "one event per cell" says how to see and fix
   the last one.
 
-**When `layout` says the text is small on one screen** (it adds a note when even the better orientation is shrunk
-to about 0.4 to 0.45 of its size or less): there is too much in the diagram for one screen. Split it the way the
-note says: a justification tree **by issue** (or leave it whole: the reader can fold issues up with the
-"收起争点" / "Fold issues" switch), a procedure **by stage**, a relationship diagram **by group**. Write one JSON for
-each piece from the same material, give each piece a clear title of its own (for example the issue's name), check
-each, and tell the user it is in pieces and why. Do not drop facts to make it fit.
+**Whether the reader can read it.** You cannot look at the page, so `layout` tells you: its line
+`Text on one screen (1600×900): … px` is the size the body text is drawn at when the page opens fitted to a
+1600×900 screen (it matches the page to within a few percent, a little on the small side). It adds a note when
+the text is **under 11 px** (small; the reader can zoom in) and when it is **under 9 px** (too small to read
+without zooming in). `render` does not print it: run `layout` before you make the page.
+
+When it says too small, split the diagram the way the note says: a justification tree **by issue** (or leave it
+whole when the note says that with every issue folded the text reads well: the reader can fold issues with the
+"收起争点" / "Fold issues" switch), a procedure **by stage**, a relationship diagram **by group**, a timeline **into
+periods**. Write one JSON for each piece from the same material, give each piece a clear title of its own (for
+example the issue's name), check each with `layout` again, and tell the user it is in pieces and why. **Never drop
+facts to make it fit.** When it only says small, you may leave it whole and tell the user they can zoom in.
 
 The guides mention tools named `antu_*`. They exist only with the MCP server; without it, use the command
 above if you can, and otherwise the field tables and examples in this skill.
