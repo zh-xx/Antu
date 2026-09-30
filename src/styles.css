@@ -1175,6 +1175,18 @@
 .antu-jn-row.is-basis .antu-jn-row-stance { color: #6d28d9; }
 .antu-jn-row-text { min-width: 0; overflow-wrap: anywhere; }
 
+.antu-jissue-toggle {
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 0 4px 0 0;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+}
+.antu-jissue-toggle:hover { color: #2f6fed !important; }
+.antu-jissue-arrow { display: inline-block; width: 12px; margin-right: 2px; font-size: 11px; }
+.antu-jissue-toggle.is-folded { font-style: italic; }
 .antu-jlinks { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
 .antu-jlinks-svg { position: absolute; left: 0; top: 0; overflow: visible; }
 .antu-jlink { transition: opacity .15s; }

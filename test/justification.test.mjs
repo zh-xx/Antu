@@ -443,3 +443,65 @@ test('combine (and / or): valid values, hints when it has nothing to combine or 
   const b = buildJustificationGraph(ok)
   assert.deepEqual(a.nodes.map((n) => n.position), b.nodes.map((n) => n.position))
 })
+
+test('folding an issue keeps what it sums up to and says how many nodes it leaves out (#39)', () => {
+  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const open = buildJustificationGraph(spec, {}, undefined, 'horizontal')
+  const one = buildJustificationGraph(spec, { collapsed: ['g-1'] }, undefined, 'horizontal')
+  assert.equal(open.nodes.length, 45)
+  // issue 1 draws 16 nodes (its conclusion, the norm, four elements and ten facts); only its conclusion stays
+  assert.equal(one.nodes.length, 45 - 15)
+  const box = (g, id) => g.groupBoxes.find((b) => b.groupId === id)
+  assert.equal(box(one, 'g-1').collapsed, true)
+  assert.equal(box(one, 'g-1').hidden, 15)
+  assert.equal(box(one, 'g-1').total, 16)
+  assert.equal(box(one, 'g-2').collapsed, false)
+  assert.equal(box(one, 'g-2').hidden, 0)
+  assert.ok(one.nodes.some((n) => n.id === 'c-2'), 'the issue conclusion stays')
+  assert.ok(!one.nodes.some((n) => n.id === 'e-1'), 'its elements are left out')
+  // the other issues are as they were, and the link from the kept conclusion to the end conclusion stays
+  assert.ok(one.connections.some((c) => c.fromNode === 'c-2' && c.toNode === 'c-1'))
+  assert.ok(one.size.height < open.size.height, 'the picture is shorter')
+  // the data is not touched: the counts of the spec are the same
+  assert.equal(one.stats.nodes, 40)
+  assert.equal(one.stats.hidden, 15)
+})
+
+test('a fact that another issue still uses stays there when its own issue is folded', () => {
+  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const g = buildJustificationGraph(spec, { collapsed: ['g-1'] }, undefined, 'horizontal')
+  // f-2 is written in issue 1 and drawn again in issue 5, which is open
+  assert.ok(g.nodes.some((n) => n.data.node.id === 'f-2' && n.data.copyOf === 'f-2'), 'the copy in issue 5 stays')
+  assert.ok(!g.nodes.some((n) => n.id === 'f-2'), 'and the one in the folded issue is gone')
+  // what a kept node rests on is still told in its overlay, folded or not
+  const rest = (gr) => gr.nodes.find((n) => n.id === 'c-2').data.grounds.length
+  assert.equal(rest(g), rest(buildJustificationGraph(spec, {}, undefined, 'horizontal')))
+})
+
+test('folding every issue leaves the end conclusion and each issue\'s summary; unknown ids are ignored', () => {
+  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const ids = spec.groups.map((g) => g.id)
+  const g = buildJustificationGraph(spec, { collapsed: ids }, undefined, 'horizontal')
+  // issue 3 has no conclusion of its own: its element goes straight to the end conclusion, and is what it sums up to
+  assert.deepEqual(g.nodes.map((n) => n.id).sort(), ['c-1', 'c-2', 'c-3', 'c-4', 'c-5', 'e-6'])
+  assert.deepEqual(g.errors, [])
+  const ignored = buildJustificationGraph(spec, { collapsed: ['g-nope'] }, undefined, 'horizontal')
+  assert.equal(ignored.nodes.length, 45)
+  for (const o of ['horizontal', 'vertical']) {
+    const all = buildJustificationGraph(spec, { collapsed: ids }, undefined, o)
+    assert.ok(all.size.width < 2000 && all.size.height < 1000, `${o}: all folded fits a screen (${all.size.width}x${all.size.height})`)
+  }
+  // folding is part of the layout cache key
+  assert.notEqual(g, buildJustificationGraph(spec, {}, undefined, 'horizontal'))
+  assert.equal(buildJustificationGraph(spec, { collapsed: [...ids].reverse() }, undefined, 'horizontal'), g, 'the order of the ids does not matter')
+})
+
+test('a single issue has nothing to fold into, and a folded issue can be opened again', () => {
+  const s = base()
+  const g = buildJustificationGraph(s, { collapsed: ['g-1'] }, undefined, 'horizontal')
+  assert.deepEqual(g.errors, [])
+  assert.ok(g.nodes.some((n) => n.id === 'c-1'))
+  assert.ok(g.groupBoxes[0].collapsed)
+  const open = buildJustificationGraph(s, { collapsed: [] }, undefined, 'horizontal')
+  assert.equal(open.nodes.length, 5)
+})

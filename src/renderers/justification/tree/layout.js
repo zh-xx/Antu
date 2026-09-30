@@ -41,6 +41,7 @@ import { routeLink } from '../../procedure/flow/router.js'
 import { toReal } from '../../procedure/flow/columns.js'
 import { titleBoxOf, edgesOfBox, portCostFor, segsOf, placeOnLine, fallbackRoute } from '../../relationship/graph/layout.js'
 import { tEn } from '../../../core/i18n.js'
+import { textEm } from '../../fact/cardGeometry.js'
 import {
   PAD,
   LAYER_GAP,
@@ -52,11 +53,13 @@ import {
   SCALE_HINT_NODES,
   CROSS_COST,
   SEARCH_MARGIN,
+  FOLD_NOTE_W,
+  GROUP_TITLE_FONT,
   sizeOf,
   labelBox,
 } from './metrics.js'
 
-const emptyStats = () => ({ nodes: 0, copies: 0, links: 0, groups: 0, layers: 0, widest: 0, kinds: {} })
+const emptyStats = () => ({ nodes: 0, copies: 0, links: 0, groups: 0, layers: 0, widest: 0, kinds: {}, hidden: 0 })
 
 /** ELK's options: layers down, the written order breaks ties, links orthogonal (only the nodes are used) */
 const ELK_OPTIONS = {
@@ -85,13 +88,15 @@ const ELK_OPTIONS = {
  * calls them all with the same four parameters. justification has no views (spec §0.10); view is
  * accepted and unused.
  */
-export function buildJustificationGraph(spec, _fields = {}, view, orientation = 'horizontal') {
+export function buildJustificationGraph(spec, fields = {}, view, orientation = 'horizontal') {
   // The interface, the geometry report and an export all lay out the same diagram again and again, and a big
   // one takes a second: the last few layouts are kept, keyed by the diagram's content and the orientation.
   // What is returned is read, never changed.
+  // The issues folded up are part of what is laid out, so they are part of the key
+  const collapsed = Array.isArray(fields?.collapsed) ? [...fields.collapsed].sort() : []
   let key
   try {
-    key = `${orientation}|${JSON.stringify(spec)}`
+    key = `${orientation}|${collapsed.join(',')}|${JSON.stringify(spec)}`
   } catch {
     key = null
   }
@@ -101,7 +106,7 @@ export function buildJustificationGraph(spec, _fields = {}, view, orientation = 
     cache.set(key, hit)
     return hit
   }
-  const built = layOut(spec, orientation)
+  const built = layOut(spec, orientation, new Set(collapsed))
   if (key !== null) {
     cache.set(key, built)
     if (cache.size > CACHE_SIZE) cache.delete(cache.keys().next().value)
@@ -112,7 +117,7 @@ export function buildJustificationGraph(spec, _fields = {}, view, orientation = 
 const CACHE_SIZE = 6
 const cache = new Map()
 
-function layOut(spec, orientation) {
+function layOut(spec, orientation, collapsed) {
   const errors = validateJustification(spec)
   const hints = hintsOfJustification(spec)
   const vertical = orientation !== 'horizontal'
@@ -133,7 +138,7 @@ function layOut(spec, orientation) {
   }
 
   const nodes = spec.nodes
-  const links = spec.links
+  const allLinks = spec.links
   const groups = Array.isArray(spec.groups) ? spec.groups : []
   const groupById = new Map(groups.map((g) => [g.id, g]))
   if (nodes.length > SCALE_HINT_NODES) {
@@ -150,13 +155,13 @@ function layOut(spec, orientation) {
   const nodeById = new Map(nodes.map((n) => [n.id, n]))
   const isBoxed = (gid) => groups.some((g) => g.id === gid)
   const homeOf = (n) => (isBoxed(n.groupId) ? n.groupId : null)
-  const placements = []
+  const allPlacements = []
   const standsIn = new Map() // node id -> its placements
   for (const n of nodes) {
     let homes = [homeOf(n)]
     if (n.kind === 'fact' || n.kind === 'norm') {
       const used = []
-      for (const k of links) {
+      for (const k of allLinks) {
         const g = k.from === n.id ? homeOf(nodeById.get(k.to)) : null
         if (g !== null && !used.includes(g)) used.push(g)
       }
@@ -164,7 +169,7 @@ function layOut(spec, orientation) {
     }
     const mine = homes.map((g, j) => ({ pid: j === 0 ? n.id : `${n.id}~${g}`, node: n, group: g, copyOf: j === 0 ? null : n.id }))
     standsIn.set(n.id, mine)
-    placements.push(...mine)
+    allPlacements.push(...mine)
   }
   // The placement a link meets at each end: a copy is chosen by the issue of the node at the other end
   const pidAt = (id, otherId) => {
@@ -173,7 +178,39 @@ function layOut(spec, orientation) {
     const g = homeOf(nodeById.get(otherId))
     return (mine.find((m) => m.group === g) ?? mine[0]).pid
   }
-  const ends = links.map((k) => ({ from: pidAt(k.from, k.to), to: pidAt(k.to, k.from) }))
+  const allEnds = allLinks.map((k) => ({ from: pidAt(k.from, k.to), to: pidAt(k.to, k.from) }))
+
+  // ── issues folded up ──
+  // A folded issue keeps only what it sums up to: the nodes (not the facts and norms) that lead out of it, its
+  // conclusion, or the element that goes straight to the end conclusion. Everything else in the issue, and
+  // every link that touched it, is left out of the picture, and the issue's box says how many were. Nothing
+  // is lost from the data, and a fact that another issue still uses stays there (each placement is judged
+  // on its own).
+  const leaf = (m) => m.node.kind === 'fact' || m.node.kind === 'norm'
+  const placeOf = new Map(allPlacements.map((m) => [m.pid, m]))
+  const leavesIssue = (m, gid) => allLinks.some((_, i) => allEnds[i].from === m.pid && placeOf.get(allEnds[i].to)?.group !== gid)
+  const drop = new Set()
+  const hiddenIn = new Map()
+  for (const gid of collapsed) {
+    if (!isBoxed(gid)) continue
+    const inside = allPlacements.filter((m) => m.group === gid)
+    let keep = inside.filter((m) => !leaf(m) && leavesIssue(m, gid))
+    if (!keep.length) keep = inside.filter((m) => !leaf(m) && !allLinks.some((_, i) => allEnds[i].from === m.pid))
+    if (!keep.length) keep = inside.slice(0, 1)
+    const kept = new Set(keep.map((m) => m.pid))
+    let n = 0
+    for (const m of inside) {
+      if (!kept.has(m.pid)) {
+        drop.add(m.pid)
+        n += 1
+      }
+    }
+    hiddenIn.set(gid, n)
+  }
+  const placements = allPlacements.filter((m) => !drop.has(m.pid))
+  const shownIdx = allLinks.map((_, i) => i).filter((i) => !drop.has(allEnds[i].from) && !drop.has(allEnds[i].to))
+  const links = shownIdx.map((i) => allLinks[i])
+  const ends = shownIdx.map((i) => allEnds[i])
 
   // ── the issues, in the order written; whoever belongs to none is laid above them ──
   const boxed = groups.map((g) => ({ group: g, members: placements.filter((m) => m.group === g.id) })).filter((c) => c.members.length)
@@ -242,9 +279,28 @@ function layOut(spec, orientation) {
       placed.set(id, { x: cursor + padC + r.x, y: y0 + padA + r.y, w: r.w, h: r.h })
       levelOf.set(id, l.level.get(id) + (layTop ? 1 : 0))
     }
-    const w = l.width + padC + (camp.group ? GROUP_PAD : 0)
-    const h = padA + l.height + (camp.group ? GROUP_PAD : 0)
-    if (camp.group) boxes.push({ groupId: camp.group.id, label: camp.group.label, x: cursor, y: y0, w, h })
+    let w = l.width + padC + (camp.group ? GROUP_PAD : 0)
+    let h = padA + l.height + (camp.group ? GROUP_PAD : 0)
+    // A folded issue is a small box, and its title (the issue's name and how many are folded) has to fit on the
+    // real top of it: the frame's width when vertical, its depth when the picture is transposed
+    if (camp.group && collapsed.has(camp.group.id)) {
+      const need = textEm(camp.group.label) * GROUP_TITLE_FONT + FOLD_NOTE_W + GROUP_PAD * 2
+      if (vertical) w = Math.max(w, need)
+      else h = Math.max(h, need)
+    }
+    if (camp.group) {
+      boxes.push({
+        groupId: camp.group.id,
+        label: camp.group.label,
+        x: cursor,
+        y: y0,
+        w,
+        h,
+        collapsed: collapsed.has(camp.group.id),
+        hidden: hiddenIn.get(camp.group.id) ?? 0,
+        total: allPlacements.filter((m) => m.group === camp.group.id).length,
+      })
+    }
     lowest = Math.max(lowest, y0 + h)
     cursor += w + ISSUE_GAP
   })
@@ -367,9 +423,9 @@ function layOut(spec, orientation) {
   const nameOf = new Map(nodes.map((n) => [n.id, n.label]))
   // What each node is joined to, for its overlay: its grounds (links into it) and what it supports (links out of it)
   const groundsOf = (id) =>
-    links.filter((k) => k.to === id).map((k) => ({ id: k.from, stance: stanceOf(k), text: nameOf.get(k.from), label: k.label ?? null }))
+    allLinks.filter((k) => k.to === id).map((k) => ({ id: k.from, stance: stanceOf(k), text: nameOf.get(k.from), label: k.label ?? null }))
   const supportsOf = (id) =>
-    links.filter((k) => k.from === id).map((k) => ({ id: k.to, stance: stanceOf(k), text: nameOf.get(k.to), label: k.label ?? null }))
+    allLinks.filter((k) => k.from === id).map((k) => ({ id: k.to, stance: stanceOf(k), text: nameOf.get(k.to), label: k.label ?? null }))
   const rfNodes = placements.map((m) => {
     const n = m.node
     const p = real.placed.get(m.pid)
@@ -411,8 +467,8 @@ function layOut(spec, orientation) {
     nodes: rfNodes,
     edges: [],
     connections,
-    groupBoxes: real.stageBoxes.map((b) => ({ groupId: b.groupId, label: b.label, x: b.x, y: b.y, w: b.w, h: b.h })),
+    groupBoxes: real.stageBoxes.map((b) => ({ groupId: b.groupId, label: b.label, x: b.x, y: b.y, w: b.w, h: b.h, collapsed: b.collapsed, hidden: b.hidden, total: b.total })),
     size,
-    stats: { nodes: nodes.length, copies: placements.length - nodes.length, links: links.length, groups: boxes.length, layers, widest, kinds },
+    stats: { nodes: nodes.length, copies: allPlacements.length - nodes.length, links: allLinks.length, groups: boxes.length, layers, widest, kinds, hidden: drop.size },
   }
 }

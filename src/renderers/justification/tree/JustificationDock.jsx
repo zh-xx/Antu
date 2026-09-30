@@ -25,6 +25,9 @@ const LINK_STYLES = [
 ]
 
 export default function JustificationDock({
+  hasIssues = false,
+  allFolded = false,
+  onToggleAll,
   hasLabels = false,
   showLabels = true,
   onToggleLabels,
@@ -39,6 +42,14 @@ export default function JustificationDock({
   return (
     <div className="antu-dock">
       <div className="antu-dock-bar">
+        {hasIssues && (
+          <>
+            <button className={`antu-dock-chip${allFolded ? ' is-on' : ''}`} onClick={onToggleAll} title={t('jus.foldAllTitle')}>
+              {t('jus.foldAll')}
+            </button>
+            {!hasLabels && <span className="antu-dock-sep" />}
+          </>
+        )}
         {hasLabels && (
           <>
             <button className={`antu-dock-chip${showLabels ? ' is-on' : ''}`} onClick={() => onToggleLabels(!showLabels)}>

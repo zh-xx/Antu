@@ -72,6 +72,12 @@ conclusion) stand above the issues. **A fact that supports things in several iss
 element it supports, and the engine draws it in each of those issues (a copy says "same as"). Do not write
 it twice.
 
+## Big diagrams
+
+A reader can fold each issue up to its conclusion (its box title is a button; the dock has "Fold issues"), so a
+diagram of several issues can be read at a glance. Nothing to write for it: it is not in the JSON. Still split a
+diagram that grows past about 60 nodes.
+
 ## After writing
 
 ```
