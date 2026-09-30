@@ -23,7 +23,7 @@ antu renders four kinds of legal content as diagrams. Its specification is defin
 | Relationship | Parties, roles, legal relationships | Graph sub-type available (schema provisional) |
 | Fact | Timeline, participants, sequence of events | Timeline sub-type available |
 | Procedure | Procedural path and possible branches | Flowchart sub-type available |
-| Justification | Conclusion derived from norms and facts | Deferred |
+| Justification | Conclusion derived from norms and facts | Reasoning tree available (schema draft) |
 
 ## Why use antu
 
@@ -96,6 +96,7 @@ An agent can read the specification, view examples, validate, compute geometry, 
 Without MCP, read the documents in this order.
 
 - **Fact (timeline)**: [spec/fact/schema-draft.md](spec/fact/schema-draft.md) (field definitions), then [spec/fact/timeline-rules.md](spec/fact/timeline-rules.md) (event placement rules), and consult [examples/fact/elevator-smoking-case.en.json](examples/fact/elevator-smoking-case.en.json).
+- **Justification (reasoning tree)**: [spec/agent/justification/guide.md](spec/agent/justification/guide.md) (a one-page note on the mechanism), then [spec/justification/schema-draft.md](spec/justification/schema-draft.md) (field definitions, rules, layout and look; a draft), and consult [examples/agent/justification/2-against-and-rejected.en.json](examples/agent/justification/2-against-and-rejected.en.json) or a real case such as [examples/justification/elevator-smoking-liability.en.json](examples/justification/elevator-smoking-liability.en.json).
 - **Procedure (flowchart)**: [spec/agent/procedure/guide.md](spec/agent/procedure/guide.md) (a one-page note on the mechanism), then [spec/procedure/schema-draft.md](spec/procedure/schema-draft.md) (field definitions and layout rules), and consult [examples/agent/procedure/7-rules.en.json](examples/agent/procedure/7-rules.en.json) or a real contract such as [examples/procedure/05-premises-lease.en.json](examples/procedure/05-premises-lease.en.json).
 - **Relationship (graph)**: [spec/agent/relationship/guide.md](spec/agent/relationship/guide.md) (a one-page note on the mechanism), then [spec/relationship/schema-draft.md](spec/relationship/schema-draft.md) (field definitions and layout rules, provisional), and consult [examples/agent/relationship/3-guarantee.en.json](examples/agent/relationship/3-guarantee.en.json) or a real case such as [examples/relationship/yuhuan-parties.en.json](examples/relationship/yuhuan-parties.en.json).
 

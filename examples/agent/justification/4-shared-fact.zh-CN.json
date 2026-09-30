@@ -1,0 +1,111 @@
+{
+  "specVersion": 1,
+  "type": "justification",
+  "title": "一条事实支持两个争点：写一遍，图上画两份",
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "争点一：乙是否违约"
+    },
+    {
+      "id": "g-2",
+      "label": "争点二：甲是否有权解除合同"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "c-1",
+      "kind": "conclusion",
+      "label": "甲有权解除合同，乙应付租金",
+      "holds": "yes"
+    },
+    {
+      "id": "c-2",
+      "kind": "conclusion",
+      "label": "乙违约",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "e-1",
+      "kind": "element",
+      "label": "乙逾期未付租金",
+      "holds": "yes",
+      "groupId": "g-1"
+    },
+    {
+      "id": "c-3",
+      "kind": "conclusion",
+      "label": "甲有权解除合同",
+      "holds": "yes",
+      "groupId": "g-2"
+    },
+    {
+      "id": "e-2",
+      "kind": "element",
+      "label": "乙经催告后仍未付租金",
+      "holds": "yes",
+      "groupId": "g-2"
+    },
+    {
+      "id": "f-1",
+      "kind": "fact",
+      "label": "乙自 2024 年 3 月起没有再付租金",
+      "sourceIds": [
+        "s-1"
+      ],
+      "groupId": "g-1"
+    },
+    {
+      "id": "f-2",
+      "kind": "fact",
+      "label": "甲在 5 月 10 日书面催告，乙没有回复",
+      "date": "2024-05-10",
+      "sourceIds": [
+        "s-1"
+      ],
+      "groupId": "g-2"
+    }
+  ],
+  "links": [
+    {
+      "from": "f-1",
+      "to": "e-1"
+    },
+    {
+      "from": "f-1",
+      "to": "e-2"
+    },
+    {
+      "from": "f-2",
+      "to": "e-2"
+    },
+    {
+      "from": "e-1",
+      "to": "c-2"
+    },
+    {
+      "from": "c-2",
+      "to": "c-1"
+    },
+    {
+      "from": "e-2",
+      "to": "c-3"
+    },
+    {
+      "from": "c-3",
+      "to": "c-1"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "evidence",
+      "name": "租赁合同、付款记录和催告函",
+      "loc": {
+        "file": "lease.pdf",
+        "page": 1
+      }
+    }
+  ]
+}

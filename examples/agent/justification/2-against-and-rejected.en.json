@@ -1,0 +1,82 @@
+{
+  "specVersion": 1,
+  "type": "justification",
+  "title": "The rejected side: B's defence fails",
+  "nodes": [
+    {
+      "id": "c-1",
+      "kind": "conclusion",
+      "label": "B must pay the rent",
+      "holds": "yes"
+    },
+    {
+      "id": "e-1",
+      "kind": "element",
+      "label": "B did not pay the rent",
+      "holds": "yes"
+    },
+    {
+      "id": "f-1",
+      "kind": "fact",
+      "label": "B has paid no rent since March 2024",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "e-2",
+      "kind": "element",
+      "label": "B may withhold rent because of the leak",
+      "holds": "no"
+    },
+    {
+      "id": "j-1",
+      "kind": "judgement",
+      "label": "The leak did not stop B living there normally",
+      "holds": "yes"
+    },
+    {
+      "id": "f-2",
+      "kind": "fact",
+      "label": "The leak was on the balcony only, and B stayed in the flat",
+      "sourceIds": [
+        "s-2"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "from": "f-1",
+      "to": "e-1"
+    },
+    {
+      "from": "e-1",
+      "to": "c-1"
+    },
+    {
+      "from": "f-2",
+      "to": "j-1"
+    },
+    {
+      "from": "j-1",
+      "to": "e-2",
+      "stance": "against"
+    },
+    {
+      "from": "e-2",
+      "to": "c-1",
+      "stance": "against"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-2",
+      "type": "evidence",
+      "name": "The lease and the payment record",
+      "loc": {
+        "file": "lease.pdf",
+        "page": 1
+      }
+    }
+  ]
+}

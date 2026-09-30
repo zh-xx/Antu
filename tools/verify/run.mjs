@@ -54,6 +54,7 @@ import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 import { buildProcedureGraph } from '../../src/renderers/procedure/flow/layout.js'
 import { sizeOf } from '../../src/renderers/procedure/flow/metrics.js'
 import { buildRelationshipGraph } from '../../src/renderers/relationship/graph/layout.js'
+import { buildJustificationGraph } from '../../src/renderers/justification/tree/layout.js'
 import { translate } from '../../src/core/i18n.js'
 
 const argv = process.argv.slice(2)
@@ -399,11 +400,11 @@ function checkData() {
   truthy('antu_examples takes a type argument', hasTypeArg('antu_examples'))
   truthy('nothing like factKnowledge is hard-wired in MCP', !/from '.*renderers\/fact\/schema\.js'/.test(serverSrc))
   truthy('the field table can be fetched by major type', describeSchema('fact').ok === true)
-  truthy('a missing major type says so instead of returning an empty table', describeSchema('justification').ok === false)
+  truthy('a missing major type says so instead of returning an empty table', describeSchema('no-such-type').ok === false)
   // The "not built yet" wording is the agent-facing text of tools/mcp/engine.mjs. Its language
   // is pinned here so a rewrite cannot quietly empty it; a bare `ok === false` assertion passes
   // even when `reason` is undefined.
-  const noType = describeSchema('justification').reason ?? ''
+  const noType = describeSchema('no-such-type').reason ?? ''
   truthy('a missing major type gives a readable reason (not undefined)', noType.startsWith('no reference material for type'), noType)
   truthy('the mechanism guide is fetched by major type', listAgentGuides().includes('fact'))
   // Every type the engine can draw has its guide: antu_guide(type="procedure") once answered
@@ -600,7 +601,9 @@ function checkData() {
   const relationshipSample = 'examples/relationship/sample-group-guarantee.zh-CN.json'
   truthy('the relationship render sample exists', existsSync(join(REPO, relationshipSample)))
 
-  return { files, sample, procedureSample, relationshipSample, combos, views }
+  const justificationSample = 'examples/justification/yuhuan-defense-excess.zh-CN.json'
+  truthy('the justification render sample exists', existsSync(join(REPO, justificationSample)))
+  return { files, sample, procedureSample, relationshipSample, justificationSample, combos, views }
 }
 
 // ---------------------------------------------------------------
@@ -1749,6 +1752,98 @@ async function checkRenderRelationship(sampleFile) {
   }
 }
 
+/**
+ * A justification diagram in the real browser: the nodes and links are all there, the shapes and marks are
+ * drawn, a rejected node is marked, looking at a node lights its chain and keeps the zoom, and switching
+ * the orientation loses nothing. The counts come from the same layout function, so the page is compared
+ * against it (a copy of a fact is a node on the page, so the page has more nodes than the data).
+ */
+async function checkRenderJustification(sampleFile) {
+  section('render: justification tree')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+
+  const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
+  // The page's default presentation: horizontal, everything on, the Chinese interface the page is opened in
+  const layout = buildJustificationGraph(spec, {}, undefined, 'horizontal')
+  const html = join(OUT, 'render-justification.html')
+  renderToFile(spec, { outPath: html, quiet: true })
+
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    await browser.open(`file://${html}?lang=zh`)
+    const count = (sel) => browser.eval(`document.querySelectorAll(${JSON.stringify(sel)}).length`)
+    const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms))
+    const zoomOf = () => browser.eval(`+(parseFloat(document.querySelector('.react-flow__viewport').style.transform.split('scale(')[1])).toFixed(3)`)
+
+    eq('node count (the data, plus the copies of shared facts)', await count('.antu-jn'), layout.nodes.length)
+    eq('copies are marked', await count('.antu-jn.is-copy'), layout.stats.copies)
+    // The page-ready wait of the preview looks for this: a type it does not know sits out the 15-second timeout
+    eq('the preview finds the justification items it waits for', await count(ITEM_SELECTOR), layout.nodes.length)
+    eq('link count', await count('.antu-jlink'), spec.links.length)
+    eq('issue box count', await count('.antu-rgroup-box'), spec.groups.length)
+    eq('each issue box has its title', await count('.antu-rgroup-name'), spec.groups.length)
+    truthy(
+      'the label card counts nodes and links',
+      (await browser.eval(`document.querySelector('.antu-header-info')?.textContent || ''`)).includes(`${spec.nodes.length} 个节点`),
+    )
+    for (const kind of new Set(spec.nodes.map((n) => n.kind))) {
+      eq(`nodes of kind ${kind} are drawn`, await count(`.antu-jn.k-${kind}`), layout.nodes.filter((n) => n.data.node.kind === kind).length)
+    }
+    eq('a rejected node is marked', await count('.antu-jn.is-rejected'), layout.nodes.filter((n) => n.data.node.holds === 'no').length)
+    truthy(
+      'node outlines and link lines carry their paint as attributes',
+      await browser.eval(`[...document.querySelectorAll('.antu-jn-shape, .antu-jlink path')].every((e) => e.getAttribute('stroke') && e.getAttribute('fill'))`),
+    )
+    eq(
+      'arrowheads: one per link',
+      await browser.eval(`[...document.querySelectorAll('.antu-jlink path')].filter((p) => (p.getAttribute('marker-end') || '').startsWith('url(')).length`),
+      spec.links.length,
+    )
+    eq('only a link with a label of its own has one', await count('.antu-jlabel'), spec.links.filter((k) => k.label).length)
+    truthy('a fact carries its date', await browser.eval(`document.querySelectorAll('.antu-jn.k-fact .antu-jn-date').length > 0`))
+
+    // Looking at a node: its chain lights and the rest fades, and the zoom stays where the reader put it
+    for (let i = 0; i < 3; i += 1) {
+      await browser.eval(`document.querySelector('.react-flow__controls-zoomin').click(); 1`, { userGesture: true })
+      await settle(150)
+    }
+    await settle(500)
+    const zoomedIn = await zoomOf()
+    const nodeWith = (text) => `[...document.querySelectorAll('.react-flow__node-jnode')].find((n) => n.textContent.includes(${JSON.stringify(text)}))`
+    await browser.eval(`${nodeWith('杜某2辱骂')}.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); 1`)
+    await settle(1200)
+    eq('exactly one node is lit', await count('.antu-jn.is-lit'), 1)
+    truthy('what is not in its chain fades', await browser.eval(`document.querySelectorAll('.antu-jn.is-dim').length > 0`))
+    truthy('the links of the chain stay and the rest fade', await browser.eval(`[...document.querySelectorAll('.antu-jlink')].some((g) => +g.getAttribute('opacity') < 1) && [...document.querySelectorAll('.antu-jlink')].some((g) => +g.getAttribute('opacity') === 1)`))
+    truthy('the overlay says what it rests on and leads to', await browser.eval(`document.querySelectorAll('.antu-jn .antu-jn-rows').length > 0`))
+    eq('looking at a node keeps the zoom', await zoomOf(), zoomedIn)
+    await browser.eval(`${nodeWith('杜某2辱骂')}.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })); 1`)
+    await browser.eval(`document.querySelector('.react-flow__controls-fitview').click(); 1`, { userGesture: true })
+    await settle(600)
+    eq('nothing stays lit', await count('.antu-jn.is-lit'), 0)
+
+    // Orientation, remembered per diagram: horizontal comes first, vertical second
+    await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[1].click()`, { userGesture: true })
+    await settle(800)
+    eq('vertical: no node is lost', await count('.antu-jn'), layout.nodes.length)
+    eq('vertical: no link is lost', await count('.antu-jlink'), spec.links.length)
+    truthy('vertical: the issue boxes are still drawn', (await count('.antu-rgroup-box')) === spec.groups.length)
+    await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[0].click()`, { userGesture: true })
+    await settle(800)
+    eq('back to horizontal: the same nodes', await count('.antu-jn'), layout.nodes.length)
+
+    // The interface language changes text only
+    await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg:last-of-type')?.children?.[0]?.click()`, { userGesture: true })
+    await settle()
+    eq('nodes are the same after a language switch', await count('.antu-jn'), layout.nodes.length)
+  } finally {
+    await browser.close()
+  }
+}
+
 // ---------------------------------------------------------------
 // 7. MCP self-test
 // ---------------------------------------------------------------
@@ -1850,6 +1945,7 @@ if (!shotOnly && !skipBrowser) {
   if (data.sample) await checkRender(data.sample)
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
+  if (data.justificationSample) await checkRenderJustification(data.justificationSample)
   checkMcp()
   // This stretch launched a browser twice (once for the render, once for the MCP preview), and
   // both must be closed cleanly. Identity, not "equal to 0": this machine may already have

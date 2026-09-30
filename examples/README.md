@@ -9,7 +9,7 @@ examples/
 └── raw/              原始材料（裁判文书原文），不属于任何一批示例
 ```
 
-现在有事实图、程序图、关系图三类：`fact/`、`procedure/`、`relationship/`。
+现在有事实图、程序图、关系图、证成图四类：`fact/`、`procedure/`、`relationship/`、`justification/`。
 
 ## 给 agent 的：`agent/fact/`
 
@@ -47,7 +47,7 @@ agent 照抄结构不会撞到"摆不下"。MCP 的 `antu_examples` 默认给的
 | `zhang-juan-v-peng-yu-private-lending.*` | 真实案例（张娟诉彭宇），民间借贷 |
 | `sample-*.json` | 示意数据：三个时间点、无分组、同侧双主体、两侧各两个主体、四方四个时间点、建设工程付款与结算 |
 
-六批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 6 对、`procedure/` 7 对、`agent/procedure/` 7 对、`relationship/` 5 对、`agent/relationship/` 5 对。
+八批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 6 对、`procedure/` 7 对、`agent/procedure/` 7 对、`relationship/` 5 对、`agent/relationship/` 5 对、`justification/` 2 对、`agent/justification/` 5 对。
 
 MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 
@@ -114,6 +114,32 @@ MCP 的 `antu_examples` 传 `type="relationship", group="real"` 列出这一批�
 | `5-kinship.*` | 身份与雇佣、代理：亲属默认无向，`directed` 改写；`asOf` 写横截面日期 |
 
 MCP 的 `antu_examples` 传 `type="relationship"` 默认给的就是这一批。
+
+## 给人和调试用的：`justification/`
+
+一方对"为什么这样裁判"的说理：规范加事实，一层一层推出结论，按争点分框。两份都取自裁判文书的说理部分，
+**成对存放**，口径与上面几类相同。
+
+| 文件（同名前缀） | 节点 / 连线 | 说明 |
+|---|---|---|
+| `yuhuan-defense-excess.*` | 40 / 48 | 真实案例（于欢案二审）：五个争点，被否定的特殊防卫，量刑里"从轻"与"限制从轻"并存，5 条事实在两个争点里各画一份 |
+| `elevator-smoking-liability.*` | 34 / 38 | 真实案例（电梯劝烟案二审）：三个争点，被否定的一般侵权和公平责任，二审为什么可以对没上诉的部分改判 |
+
+MCP 的 `antu_examples` 传 `type="justification", group="real"` 列出这一批。
+
+## 给 agent 的：`agent/justification/`
+
+**这五份必须一直能通过校验**，也不带任何提示（note）。每份 1.5~2.1 KB，成对存放。
+
+| 文件（同名前缀） | 讲什么 |
+|---|---|
+| `1-minimal.*` | 最小可用：一个结论、一条规范、一个要件、两条事实，连线的方向 |
+| `2-against-and-rejected.*` | 被否定的一方：`holds: "no"` 的要件，和以 `against` 指向它的评价 |
+| `3-issues.*` | `groups`：一个争点一个框，终点结论摆在框之上 |
+| `4-shared-fact.*` | 一条事实支持两个争点：写一遍，图上在两个争点里各画一份 |
+| `5-sources.*` | 事实的 `date`，`detail` 放不进节点的全文，规范和事实指向 `statute` / `case` / `evidence` 来源 |
+
+MCP 的 `antu_examples` 传 `type="justification"` 默认给的就是这一批。
 
 ## `raw/` —— 原始材料
 

@@ -1,6 +1,6 @@
 # justification · Schema draft v0
 
-> Status: **draft v0**. Only prose and one hand-written example; **nothing is implemented** (no validation, no rendering). Items marked **⚠ proposal** stand until the sponsor changes them; §7 lists the questions still open and how the schema goes on until they are answered.
+> Status: **draft v0**. Validation (§5), layout (§6.1), the look and the interface (§6.2) are implemented; **there is no corpus (beyond one Yu Huan diagram) and no small examples for an agent yet**. Items marked **⚠ proposal** stand until the sponsor changes them; §7 lists the questions still open and how the schema goes on until they are answered.
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (a new top-level type only when the elements do not fit an existing one). Written after `spec/relationship/schema-draft.md`.
 > Scope: justification = **one side's reasoning for "why the decision goes this way"**: norms plus facts, and how they lead, layer by layer, to a conclusion. What happened over time → `fact`; who stands in what relation to whom → `relationship`; the path of a procedure → `procedure`.
 
@@ -212,20 +212,42 @@ A draft; there is no code. Errors are reported one by one, with the field path a
 | 15 | A `fact` with no `sourceIds` | **hint** (where was it found?) |
 | 16 | A `norm` with no `sourceIds` | **hint** (which provision?) |
 | 17 | An element with `holds: "yes"` whose `for` links all come from `holds: "no"` nodes | **hint** (premises rejected, conclusion upheld) |
-| 18 | A conclusion or element with no `for` or `basis` among its incoming links | **hint** (nothing supports it) |
+| 18 | A conclusion or element with no `for` or `basis` among its incoming links (not one with `holds: "no"`: a rejected node needs no support) | **hint** (nothing supports it) |
 
 Structural errors block drawing; hints do not. The same split as relationship and procedure.
 
 ---
 
-## 6. Presentation (the renderer's job)  **⚠ proposal, not built**
+## 6. Presentation  **⚠ proposal**
 
-- The layout is a tree read from the top down: the conclusion at the top, then elements and judgements, inferences, facts; norms beside the elements they define. ELK layered, the same route as relationship and procedure.
-- The three kinds look different: a fact carries its time (the first thing the eye should find); inferences and judgements have different borders, a `holds: "no"` node is faded and struck through; `against` links have another colour.
-- Issues are boxes (`groups`), with the title on top.
-- Pointing at a node lights the whole chain of support from it to the conclusion, and down to all its grounds.
+### 6.1 Layout (implemented)
 
-The look is settled after the schema is.
+`src/renderers/justification/tree/layout.js`, pure geometry, no browser.
+
+- **A tree from the conclusion down.** A link runs from the supporting side to the supported one, so ELK is given every link the other way round, and the conclusion is on top (on the left when horizontal).
+- **A fact (or a norm) is one node in the data and is drawn once in every issue that uses it.** Facts and norms are leaves and can support things in several issues (the abuse supports both "was it defensive" and "the victims' fault"). It is written once, and drawn once in each issue box that uses it; a copy's tag says "same as". Each issue box then holds all it needs, and no line runs across the picture to a fact in another box. A leaf used in one issue only stands in that issue, whatever its own `groupId` says.
+- **A norm stands one layer above its elements**, beside the issue's conclusion, with its lines running down to the elements. It is close to them, and its lines do not have to go round to the facts' layer.
+- **One box per issue, each laid out on its own.** ELK's layered algorithm lays out each issue from the links inside it, so a box is as big as its content (ELK cannot lay out a box around nodes in different layers; the relationship diagram's camps are the same). Nodes in no issue (the end conclusion) form a group of their own above all the issues, centred.
+- **Issues stand side by side, tops aligned** (across when vertical; stacked when horizontal).
+- **Links use the same orthogonal router** (`procedure/flow/router.js`): fewest bends, then shortest, clear of every node and issue title. Links of one stance into one node share a trunk (five facts into one element read as one bundle). A link inside an issue is first sought inside that issue's box, a link between issues in the rectangle around its two ends, and only then among everything; with every link seeing every node the example took several seconds.
+- **Only a link that has a `label` gets one**, on its own line.
+- **The written order is kept** among nodes that share a parent (ELK's `forceNodeModelOrder`).
+- **Horizontal is the vertical picture transposed**, one code path. **Horizontal is the default**: the conclusion at the left, the facts at the right, read like a sentence; vertically the facts of a big issue make one very wide row.
+- `holds` and `stance` are paint only and do not change the geometry.
+
+Known shortcomings: the lines from each issue's conclusion to the end conclusion are long (unavoidable with issues side by side); the example (40 nodes, 48 links, five facts drawn twice) takes about a second to lay out, and the last few layouts are cached by content.
+
+### 6.2 Look (implemented)
+
+`src/renderers/justification/tree/`: `JustificationNode.jsx`, `LinkLayerNode.jsx`, `JustificationRenderer.jsx`, `JustificationDock.jsx`. The issue boxes are the relationship graph's group boxes.
+
+- **Six kinds of node, six looks** (the colours are in `palette.js`, put on as SVG attributes so an exported picture keeps them): a conclusion is a heavy blue box; a norm a square-cornered violet box; an element an amber pill; a fact a plain grey box; an inference a green box; a judgement a rose box. A small line at the top names the kind ("Fact", "Element", ...); a fact carries its time on it, `holds` shows as "✓ upheld" or "✗ rejected", and a copy says "shown again".
+- **A rejected node** (`holds: "no"`) is faded, has a dashed outline and its text struck through, so it reads in greyscale too.
+- **The stance of a link**: support is the plain grey line; opposition is red and dashed; a norm's basis is violet and dotted. One arrowhead per stance.
+- **Pointing at a node lights its whole chain**: everything it rests on (down to the facts and norms) and everything it leads to (up to the end conclusion) stay, the rest fades. Every copy of a fact lights together, each with its own way up. That is the natural question about a node in a reasoning: "what is this based on, and where does it lead?"
+- Hover peeks, click pins: the popover holds the full text (`detail`), what it rests on, what it leads to, and the sources.
+- **The dock**: a labels switch (only when a link has a `label`), horizontal / vertical (horizontal first, and the default), curved / straight, language, export image. There is no "filter by kind of node": a reader of a reasoning follows a chain, they do not filter by kind.
+- Lighting, fading and the labels switch are paint only; they do not change the geometry, and the view is never thrown back to the overview (issue #21).
 
 ---
 
@@ -243,7 +265,7 @@ The look is settled after the schema is.
 
 ## 8. Not in this round
 
-- Validation code, rendering, MCP wiring;
+- The renderer and the interface (how a node looks, pointing to highlight);
 - an evidence layer;
 - prosecution against defence;
 - richer forms of reasoning (exceptions, qualifiers, weights).

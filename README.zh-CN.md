@@ -21,7 +21,7 @@
 | 关系图 | 主体、角色、法律关系 | 关系图子类可用（schema 暂定） |
 | 事实图 | 时间、参与人、事件经过 | 时间图已可用 |
 | 程序图 | 程序路径与可能分支 | 流程图已可用 |
-| 证成图 | 规范与事实推出结论 | 搁置 |
+| 证成图 | 规范与事实推出结论 | 说理树可用（schema 草案） |
 
 ## 为什么用案图
 
@@ -94,6 +94,7 @@ agent 可以读取规范、查看示例、校验、计算几何、生成成品�
 未接入 MCP 时，按以下顺序阅读。
 
 - **事实图（时间图）**：[spec/fact/schema-draft.md](spec/fact/schema-draft.md)（字段定义）、[spec/fact/timeline-rules.md](spec/fact/timeline-rules.md)（事件排布规则），并参考 [examples/fact/elevator-smoking-case.zh-CN.json](examples/fact/elevator-smoking-case.zh-CN.json)。
+- **证成图（说理树）**：[spec/agent/justification/guide.md](spec/agent/justification/guide.md)（一页机制说明）、[spec/justification/schema-draft.zh-CN.md](spec/justification/schema-draft.zh-CN.md)（字段定义、规则、排布和画法，草案），并参考 [examples/agent/justification/2-against-and-rejected.zh-CN.json](examples/agent/justification/2-against-and-rejected.zh-CN.json)，或一份真实案例，如 [examples/justification/elevator-smoking-liability.zh-CN.json](examples/justification/elevator-smoking-liability.zh-CN.json)。
 - **程序图（流程图）**：[spec/agent/procedure/guide.md](spec/agent/procedure/guide.md)（一页机制说明）、[spec/procedure/schema-draft.zh-CN.md](spec/procedure/schema-draft.zh-CN.md)（字段定义与排布规则），并参考 [examples/agent/procedure/7-rules.zh-CN.json](examples/agent/procedure/7-rules.zh-CN.json)，或一份真实合同，如 [examples/procedure/05-premises-lease.zh-CN.json](examples/procedure/05-premises-lease.zh-CN.json)。
 - **关系图**：[spec/agent/relationship/guide.md](spec/agent/relationship/guide.md)（一页机制说明）、[spec/relationship/schema-draft.zh-CN.md](spec/relationship/schema-draft.zh-CN.md)（字段定义与排布规则，暂定），并参考 [examples/agent/relationship/3-guarantee.zh-CN.json](examples/agent/relationship/3-guarantee.zh-CN.json)，或一份真实案例，如 [examples/relationship/yuhuan-parties.zh-CN.json](examples/relationship/yuhuan-parties.zh-CN.json)。
 

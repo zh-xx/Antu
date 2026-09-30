@@ -59,7 +59,7 @@ function isBrowserFile(p) {
  * the full 15-second timeout before a screenshot, and report "0 cards"; the relationship graph
  * did the same until its entity was added here (16 seconds for a preview).
  */
-export const ITEM_SELECTOR = '.antu-card, .antu-pn, .antu-rn'
+export const ITEM_SELECTOR = '.antu-card, .antu-pn, .antu-rn, .antu-jn'
 
 /**
  * Find the browser on this machine. Order: ANTU_CHROME environment variable > known paths > PATH.
