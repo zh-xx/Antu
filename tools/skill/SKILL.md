@@ -110,6 +110,13 @@ ignore it.
   check each by hand. For the fact diagram, the guide's section "one event per cell" says how to see and fix
   the last one.
 
+**When `layout` says the text is small on one screen** (it adds a note when even the better orientation is shrunk
+to about 0.4 to 0.45 of its size or less): there is too much in the diagram for one screen. Split it the way the
+note says: a justification tree **by issue** (or leave it whole: the reader can fold issues up with the
+"收起争点" / "Fold issues" switch), a procedure **by stage**, a relationship diagram **by group**. Write one JSON for
+each piece from the same material, give each piece a clear title of its own (for example the issue's name), check
+each, and tell the user it is in pieces and why. Do not drop facts to make it fit.
+
 The guides mention tools named `antu_*`. They exist only with the MCP server; without it, use the command
 above if you can, and otherwise the field tables and examples in this skill.
 
@@ -137,10 +144,29 @@ again; the HTML is the product.
 ## 5. Tell the user
 
 Give the path of the HTML file. Say what it shows and what you had to leave out or could not tell from their
-material, in a few lines. In the page the reader can hover and click the items for detail, switch
-orientation, and export an image from the bar at the bottom. The page's own labels follow the browser's
-language (a Chinese browser shows Chinese); if the user sees them in the wrong language, the EN / 中文 switch in
-that bar changes them.
+material, in a few lines. In the page the reader can hover and click the items for detail, and use the bar at the
+bottom: switch orientation (vertical / horizontal), switch the language, export an image. The page's own labels
+follow the browser's language (a Chinese browser shows Chinese); if the user sees them in the wrong language,
+the EN / 中文 switch in that bar changes them.
+
+**The bar also has switches that show or hide things on the diagram.** Some of them are **off until the reader
+turns them on**, so do not count on them for what the diagram has to say; tell the user where to look.
+
+| Kind | Switches in the bar (on by default unless it says off) |
+| --- | --- |
+| fact | Summary (on), **Parties** (off), **Sources** (off), Grid (off); the views menu at the top left when the data has more than one view |
+| procedure | Conditions, Detail, Main line, Stages (only if the data has stages), Rules (only if it has rules); all on |
+| relationship | one switch per kind of relation (when the data uses more than one kind), Labels, Groups (only if the data has groups); all on |
+| justification | Labels (only if a link has one; on), Fold issues (only if there are several issues; none folded), Merge repeats (off) |
+
+What this means for what you write:
+
+- **Fact diagram: a card shows its title, its summary and its time.** Its party names and its source marks are
+  off by default. So if who did it matters, say so in the title or the summary, or give the diagram `groups` so
+  each party has its own side (see section 2); and tell the user that **Parties** and **Sources** in the bar show
+  them on the cards.
+- A `detail` (the full text that did not fit) and the `sources` are in the overlay that opens when the reader
+  points at or clicks an item, in every kind.
 
 ## Updating this skill
 

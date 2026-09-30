@@ -3,6 +3,23 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.4.1
+
+Two more fixes to what the skill tells an agent (#49). No engine change.
+
+### Fixed
+- `SKILL.md` did not say that the page has switches in its bar, or that some of them are **off until the reader turns
+  them on**: in a fact diagram a card shows its title, summary and time, and its party names and source marks need
+  **Parties** and **Sources**. An agent could not know, so it could not tell the user where to look. It now lists the
+  switches of each kind with their defaults, says what that means for what to write, and says the detail and the
+  sources are in the overlay.
+- `layout` adds a note when the text would be small on one screen, and `SKILL.md` did not say what to do about it. It
+  now says: split by issue (or fold issues), by stage, or by group as the note names, one JSON per piece with a title
+  of its own, and do not drop facts to make it fit.
+
+### Breaking
+- None.
+
 ## 0.4.0
 
 ### Changed
