@@ -267,7 +267,7 @@ export const en = {
   'jhint.supportsNothing': ({ id, label }) => `nodes (${id}): "${label}" supports nothing; link it to what it supports, or drop it`,
   'jhint.factNoSource': ({ id, label }) => `nodes (${id}): the fact "${label}" has no source; where was it found?`,
   'jhint.normNoSource': ({ id, label }) => `nodes (${id}): the norm "${label}" has no source; which provision is it?`,
-  'jhint.unsupported': ({ id, label }) => `nodes (${id}): nothing supports "${label}"; add a fact, an element or a norm that does`,
+  'jhint.unsupported': ({ id, label }) => `nodes (${id}): nothing supports "${label}"; add a fact, an element or a norm that does (if it stands only because what argued against it was rejected, this note can be left as it is)`,
   'jhint.holdsOnRejected': ({ id, label }) =>
     `nodes (${id}): "${label}" holds although everything that supports it is rejected; check the \`holds\` values`,
   'jhint.combineAlone': ({ id, label, combine }) =>

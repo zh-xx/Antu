@@ -48,6 +48,33 @@ chart of numbers, an org chart of a firm), say that antu does not draw it.
   that does not fit on the node in `detail`, and where it came from in `sources`.
 - When you are not sure a legal point is right, do not dress it as certain: say so to the user in your
   reply, and do not put it in the diagram.
+- **Something the user says they are unsure of** ("好像", "不确定", "可能"): leave it out of the diagram, and say in
+  your reply that you left it out and why. Offer to add it once they have confirmed it.
+- **An event with no date** ("之后一直没有回复"): do not give it a date of its own. Put it in the `detail` of the
+  event it follows, or ask. Only if the diagram needs it as a card of its own, reuse the date of the event it
+  follows with `approx: true` and a `dateNote` that says the date only places it in order, and tell the user.
+- Leave the optional marks that the material does not say out: `combine` (and / or) only when the reasoning
+  says all or any of what it rests on is needed; `approx` only for a date you really cannot give exactly.
+- If the user gave no source document, leave `sources` out. The checker's notes that a fact or a norm has no
+  source are **notes, not errors**: the diagram is right without them. Tell the user that no sources are
+  recorded.
+
+## 2b. Reading the guides without the MCP server
+
+The guides in `references/` were written for agents that have the MCP server, so they talk about its tools.
+Here is what each means in this folder:
+
+| The guide says | Here |
+| --- | --- |
+| `antu_validate` | `node scripts/antu.mjs validate spec.json` (section 3) |
+| `antu_layout` | `node scripts/antu.mjs layout spec.json` |
+| `antu_render` | `node scripts/antu.mjs render spec.json -o diagram.html`, or the Python script (section 4) |
+| `antu_schema` | `references/fields-<kind>.md` |
+| `antu_examples` | `examples/<kind>/` |
+| `antu_preview` ("look at the picture before you deliver") | **There is no equivalent. You cannot look at the page.** Do not say you checked how it looks. Use `layout` for the size and the suggested orientation, and tell the user you could not view the result |
+
+A path in a guide that begins `spec/` or `src/` is for the people who maintain antu and is not in this folder:
+ignore it.
 
 ## 3. Check the data
 
