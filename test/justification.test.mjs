@@ -291,10 +291,15 @@ test('the real example: valid, no hints, 40 nodes in 5 issues', () => {
     assert.deepEqual(validateJustification(spec), [], lang)
     assert.deepEqual(hintsOfJustification(spec), [], lang)
     const g = buildJustificationGraph(spec)
-    // 40 nodes in the data; five facts are drawn twice, once in each issue that uses them
+    // 40 nodes in the data; a fact used in several places is drawn beside each use, and so is the norm that is
+    // the basis of four elements: nine more drawn than written
     assert.equal(g.stats.nodes, 40)
-    assert.equal(g.stats.copies, 5)
-    assert.equal(g.nodes.length, 45)
+    assert.equal(g.stats.copies, 9)
+    assert.equal(g.nodes.length, 49)
+    // merged: a fact and a norm are drawn once in each issue that uses them, as before
+    const merged = buildJustificationGraph(spec, { merged: true })
+    assert.equal(merged.stats.copies, 5)
+    assert.equal(merged.nodes.length, 45)
     assert.equal(g.connections.length, 48)
     assert.equal(g.groupBoxes.length, 5)
   }
@@ -448,13 +453,13 @@ test('folding an issue keeps what it sums up to and says how many nodes it leave
   const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
   const open = buildJustificationGraph(spec, {}, undefined, 'horizontal')
   const one = buildJustificationGraph(spec, { collapsed: ['g-1'] }, undefined, 'horizontal')
-  assert.equal(open.nodes.length, 45)
-  // issue 1 draws 16 nodes (its conclusion, the norm, four elements and ten facts); only its conclusion stays
-  assert.equal(one.nodes.length, 45 - 15)
+  assert.equal(open.nodes.length, 49)
+  // issue 1 draws 19 nodes (its conclusion, the norm and its three copies, four elements and ten facts); only its conclusion stays
+  assert.equal(one.nodes.length, 49 - 18)
   const box = (g, id) => g.groupBoxes.find((b) => b.groupId === id)
   assert.equal(box(one, 'g-1').collapsed, true)
-  assert.equal(box(one, 'g-1').hidden, 15)
-  assert.equal(box(one, 'g-1').total, 16)
+  assert.equal(box(one, 'g-1').hidden, 18)
+  assert.equal(box(one, 'g-1').total, 19)
   assert.equal(box(one, 'g-2').collapsed, false)
   assert.equal(box(one, 'g-2').hidden, 0)
   assert.ok(one.nodes.some((n) => n.id === 'c-2'), 'the issue conclusion stays')
@@ -464,7 +469,7 @@ test('folding an issue keeps what it sums up to and says how many nodes it leave
   assert.ok(one.size.height < open.size.height, 'the picture is shorter')
   // the data is not touched: the counts of the spec are the same
   assert.equal(one.stats.nodes, 40)
-  assert.equal(one.stats.hidden, 15)
+  assert.equal(one.stats.hidden, 18)
 })
 
 test('a fact that another issue still uses stays there when its own issue is folded', () => {
@@ -486,7 +491,7 @@ test('folding every issue leaves the end conclusion and each issue\'s summary; u
   assert.deepEqual(g.nodes.map((n) => n.id).sort(), ['c-1', 'c-2', 'c-3', 'c-4', 'c-5', 'e-6'])
   assert.deepEqual(g.errors, [])
   const ignored = buildJustificationGraph(spec, { collapsed: ['g-nope'] }, undefined, 'horizontal')
-  assert.equal(ignored.nodes.length, 45)
+  assert.equal(ignored.nodes.length, 49)
   for (const o of ['horizontal', 'vertical']) {
     const all = buildJustificationGraph(spec, { collapsed: ids }, undefined, o)
     assert.ok(all.size.width < 2000 && all.size.height < 1000, `${o}: all folded fits a screen (${all.size.width}x${all.size.height})`)
@@ -506,10 +511,11 @@ test('a single issue has nothing to fold into, and a folded issue can be opened 
   assert.equal(open.nodes.length, 5)
 })
 
-test('the real cases keep few crossings between their links (a bound, not a promise of zero)', async () => {
+test('the real cases have no crossing between their links', async () => {
   const { routedCrossings } = await import('../src/renderers/justification/tree/crossings.js')
-  // before the layouts were tried with several seeds: elevator 11 / 11, Yu Huan 6 / 5 (horizontal / vertical)
-  const bound = { 'elevator-smoking-liability': 6, 'yuhuan-defense-excess': 5 }
+  // before: elevator 11 / 11, Yu Huan 6 / 5 (horizontal / vertical). Facts are drawn beside each use, a norm with
+  // three or more elements beside each of them, and each issue is laid out several ways with the best kept.
+  const bound = { 'elevator-smoking-liability': 0, 'yuhuan-defense-excess': 0 }
   for (const [name, most] of Object.entries(bound)) {
     const spec = JSON.parse(readFileSync(`examples/justification/${name}.zh-CN.json`, 'utf8'))
     for (const o of ['horizontal', 'vertical']) {

@@ -294,6 +294,8 @@ export const en = {
   'jus.unfold': 'Open this issue',
   'jus.folded': ({ n }) => `${n} folded`,
   'jus.foldAll': 'Fold issues',
+  'jus.merge': 'Merge repeats',
+  'jus.mergeTitle': 'A fact (or a norm with many elements) used several times in one issue is drawn beside each use; merge draws each once, with longer lines',
   'jus.foldAllTitle': 'Fold every issue up to its conclusion, or open them all again',
   'jus.combine.all': 'all of',
   'jus.combine.any': 'any of',

@@ -104,7 +104,25 @@ export default function JustificationTree({ spec }) {
   const allFolded = issueIds.length > 0 && issueIds.every((id) => folded.includes(id))
   const toggleAll = () => setFolded(foldedRef.current.length === issueIds.length ? [] : issueIds)
 
-  const layout = useMemo(() => buildJustificationGraph(spec, { collapsed: folded }, undefined, orientation), [spec, orientation, folded])
+  // Repeats: a fact used in several places of one issue is drawn beside each use, unless the reader merges them
+  // (fewer nodes, longer lines). It changes the geometry, so it goes into layout and re-fits the view.
+  const hasShared = useMemo(() => {
+    const uses = new Map()
+    const kinds = new Map((Array.isArray(spec?.nodes) ? spec.nodes : []).map((n) => [n?.id, n?.kind]))
+    for (const k of Array.isArray(spec?.links) ? spec.links : []) {
+      if (kinds.get(k?.from) === 'fact') uses.set(k.from, (uses.get(k.from) ?? 0) + 1)
+    }
+    return [...uses.values()].some((n) => n > 1)
+  }, [spec])
+  const [mergePrefs, setMergePrefs] = useState(() => readPrefs().justificationMerged || {})
+  const merged = PRESET?.fields?.merged ?? mergePrefs[specKey] ?? false
+  const toggleMerged = (v) => {
+    const map = { ...mergePrefs, [specKey]: v }
+    setMergePrefs(map)
+    writePrefs({ justificationMerged: map })
+  }
+
+  const layout = useMemo(() => buildJustificationGraph(spec, { collapsed: folded, merged }, undefined, orientation), [spec, orientation, folded, merged])
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
@@ -157,6 +175,9 @@ export default function JustificationTree({ spec }) {
           onPaneClick={() => setPinnedId(null)}
         >
           <JustificationDock
+            hasShared={hasShared}
+            merged={merged}
+            onToggleMerged={toggleMerged}
             hasIssues={issueIds.length > 1}
             allFolded={allFolded}
             onToggleAll={toggleAll}

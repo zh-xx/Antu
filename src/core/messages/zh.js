@@ -139,6 +139,8 @@ export const zh = {
   'jus.unfold': '展开这个争点',
   'jus.folded': ({ n }) => `已收起 ${n} 个`,
   'jus.foldAll': '收起争点',
+  'jus.merge': '合并重复',
+  'jus.mergeTitle': '同一争点里被多处用到的事实（或支持多个要件的规范）默认在每处旁边各画一份；合并后各画一份，线会更长、更容易交叉',
   'jus.foldAllTitle': '把每个争点收起到只剩它的结论，或者全部展开',
   'jus.combine.all': '且',
   'jus.combine.any': '或',

@@ -61,10 +61,14 @@ import {
 } from './metrics.js'
 
 /** How many seeds ELK is tried with for each issue */
-const LAYOUT_TRIES = 8
+/** A norm that is the basis of this many elements or more in one issue is drawn beside each */
+const SPLIT_NORM_USES = 3
 
-/** How many of the best-ranked placements of an issue are routed for real, to choose among them */
-const REAL_TRIES = 4
+const LAYOUT_TRIES = 4
+
+/** How ELK puts the nodes into layers: they give different pictures, and the one with fewer crossings is kept */
+const LAYERINGS = ['NETWORK_SIMPLEX', 'LONGEST_PATH']
+
 
 const emptyStats = () => ({ nodes: 0, copies: 0, links: 0, groups: 0, layers: 0, widest: 0, kinds: {}, hidden: 0 })
 
@@ -102,7 +106,7 @@ export function buildJustificationGraph(spec, fields = {}, view, orientation = '
   const collapsed = Array.isArray(fields?.collapsed) ? [...fields.collapsed].sort() : []
   let key
   try {
-    key = `${orientation}|${collapsed.join(',')}|${JSON.stringify(spec)}`
+    key = `${orientation}|${collapsed.join(',')}|${fields?.merged ? 'merged' : 'split'}|${JSON.stringify(spec)}`
   } catch {
     key = null
   }
@@ -112,7 +116,7 @@ export function buildJustificationGraph(spec, fields = {}, view, orientation = '
     cache.set(key, hit)
     return hit
   }
-  const built = layOut(spec, orientation, new Set(collapsed))
+  const built = layOut(spec, orientation, new Set(collapsed), Boolean(fields?.merged))
   if (key !== null) {
     cache.set(key, built)
     if (cache.size > CACHE_SIZE) cache.delete(cache.keys().next().value)
@@ -123,7 +127,7 @@ export function buildJustificationGraph(spec, fields = {}, view, orientation = '
 const CACHE_SIZE = 6
 const cache = new Map()
 
-function layOut(spec, orientation, collapsed) {
+function layOut(spec, orientation, collapsed, merged) {
   const errors = validateJustification(spec)
   const hints = hintsOfJustification(spec)
   const vertical = orientation !== 'horizontal'
@@ -164,23 +168,50 @@ function layOut(spec, orientation, collapsed) {
   const allPlacements = []
   const standsIn = new Map() // node id -> its placements
   for (const n of nodes) {
-    let homes = [homeOf(n)]
-    if (n.kind === 'fact' || n.kind === 'norm') {
-      const used = []
+    let mine
+    if (n.kind === 'fact' && !merged) {
+      // A fact that supports several nodes is drawn once beside each of them: with one copy the lines to the
+      // nodes it supports would run across the layers between them and cross whatever stands there. What each
+      // copy supports is in `use`; the ones that support unboxed nodes (or nothing) share the first.
+      const uses = []
       for (const k of allLinks) {
-        const g = k.from === n.id ? homeOf(nodeById.get(k.to)) : null
-        if (g !== null && !used.includes(g)) used.push(g)
+        if (k.from === n.id && !uses.some((u) => u.to === k.to)) uses.push({ to: k.to, g: homeOf(nodeById.get(k.to)) })
       }
-      if (used.length) homes = used.includes(homes[0]) ? [homes[0], ...used.filter((g) => g !== homes[0])] : used
+      const boxedUses = uses.filter((u) => u.g !== null)
+      const list = boxedUses.length ? boxedUses : [{ to: null, g: homeOf(n) }]
+      mine = list.map((u, j) => ({ pid: j === 0 ? n.id : `${n.id}~${u.to}`, node: n, group: u.g, use: boxedUses.length ? u.to : null, copyOf: j === 0 ? null : n.id }))
+    } else {
+      let homes = [homeOf(n)]
+      const usesIn = new Map() // issue -> the nodes it supports there
+      if (n.kind === 'fact' || n.kind === 'norm') {
+        const used = []
+        for (const k of allLinks) {
+          const g = k.from === n.id ? homeOf(nodeById.get(k.to)) : null
+          if (g !== null && !used.includes(g)) used.push(g)
+          if (g !== null) usesIn.set(g, [...(usesIn.get(g) ?? []), k.to])
+        }
+        if (used.length) homes = used.includes(homes[0]) ? [homes[0], ...used.filter((g) => g !== homes[0])] : used
+      }
+      mine = []
+      for (const g of homes) {
+        // A norm that is the basis of many elements in one issue cannot stand clear of their links whichever side
+        // it is put on, so it is drawn beside each of them (fewer are left as one: a norm's text is long)
+        const uses = !merged && n.kind === 'norm' && (usesIn.get(g)?.length ?? 0) >= SPLIT_NORM_USES ? [...new Set(usesIn.get(g))] : [null]
+        for (const u of uses) {
+          const first = mine.length === 0
+          mine.push({ pid: first ? n.id : `${n.id}~${u ?? g}`, node: n, group: g, use: u, copyOf: first ? null : n.id })
+        }
+      }
     }
-    const mine = homes.map((g, j) => ({ pid: j === 0 ? n.id : `${n.id}~${g}`, node: n, group: g, copyOf: j === 0 ? null : n.id }))
     standsIn.set(n.id, mine)
     allPlacements.push(...mine)
   }
-  // The placement a link meets at each end: a copy is chosen by the issue of the node at the other end
+  // The placement a link meets at each end: a copy is chosen by the node it supports, else by the issue of the node at the other end
   const pidAt = (id, otherId) => {
     const mine = standsIn.get(id)
     if (mine.length === 1) return mine[0].pid
+    const byUse = mine.find((m) => m.use === otherId)
+    if (byUse) return byUse.pid
     const g = homeOf(nodeById.get(otherId))
     return (mine.find((m) => m.group === g) ?? mine[0]).pid
   }
@@ -302,9 +333,9 @@ function layOut(spec, orientation, collapsed) {
   const layCamp = (members, ci) => {
     const inside = new Set(members.map((m) => m.pid))
     const inner = links.map((k, i) => i).filter((i) => inside.has(ends[i].from) && inside.has(ends[i].to))
-    const graphOf = (seed, normAbove) => ({
+    const graphOf = (seed, normAbove, layering) => ({
       id: `issue${ci}`,
-      layoutOptions: { ...ELK_OPTIONS, 'elk.randomSeed': String(seed) },
+      layoutOptions: { ...ELK_OPTIONS, 'elk.randomSeed': String(seed), 'elk.layered.layering.strategy': layering },
       children: members.map((m) => ({ id: m.pid, width: frameSize(m).w, height: frameSize(m).h })),
       // every link the other way round: the supported node is the parent, so the conclusion stands on top
       edges: inner.map((i) => {
@@ -327,21 +358,35 @@ function layOut(spec, orientation, collapsed) {
     const hasNorm = inner.some((i) => stanceOf(links[i]) === 'basis')
     const candidates = []
     for (const normAbove of hasNorm ? [true, false] : [true]) {
-      for (let seed = 0; seed < LAYOUT_TRIES; seed += 1) {
-        const tried = elkLayoutSync(graphOf(seed, normAbove))
-        const rect = new Map(tried.children.map((c) => [c.id, { x: c.x, y: c.y, w: c.width, h: c.height }]))
-        // a norm placed among the facts is a little worse off than one above: it has to be clearly better
-        candidates.push({ tried, rect, score: crossScore(rect, inner.map((i) => ends[i])) + (normAbove ? 0 : 0.5) })
+      for (const layering of LAYERINGS) {
+        for (let seed = 1; seed <= LAYOUT_TRIES; seed += 1) {
+          const tried = elkLayoutSync(graphOf(seed, normAbove, layering))
+          const rect = new Map(tried.children.map((c) => [c.id, { x: c.x, y: c.y, w: c.width, h: c.height }]))
+          // a norm placed among the facts is a little worse off than one above: it has to be clearly better
+          candidates.push({ normAbove, layering, tried, rect, score: crossScore(rect, inner.map((i) => ends[i])) + (normAbove ? 0 : 0.5) })
+          if (candidates[candidates.length - 1].score === 0) break
+        }
         if (candidates[candidates.length - 1].score === 0) break
       }
+      if (candidates[candidates.length - 1].score === 0) break
     }
     candidates.sort((a, b) => a.score - b.score)
     // The straight-line count only ranks them roughly (it cannot see which side a line leaves a node by), so the
     // best few are drawn for real, inside a box of their own, and the one with fewest real crossings wins.
+    // the best of each kind of picture (norm above or among the facts, each way of layering) goes forward: the
+    // seeds of one kind mostly give the same picture, and the straight-line count may put the kind that draws
+    // best behind another
+    const seen = new Set()
+    const finalists = candidates.filter((c) => {
+      const kind = `${c.normAbove}|${c.layering}`
+      if (seen.has(kind)) return false
+      seen.add(kind)
+      return true
+    })
     let laid = candidates[0].tried
     if (candidates[0].score > 0 && inner.length > 1) {
       let best = Infinity
-      for (const cand of candidates.slice(0, REAL_TRIES).filter((c) => c.score <= candidates[0].score + 3)) {
+      for (const cand of finalists) {
         const padC = camps[ci]?.group ? PAD_C0 : 0
         const padA = camps[ci]?.group ? PAD_A0 : 0
         const at = new Map([...cand.rect].map(([id, r]) => [id, { ...r, x: padC + r.x, y: padA + r.y }]))

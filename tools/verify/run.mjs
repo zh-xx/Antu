@@ -1851,6 +1851,17 @@ async function checkRenderJustification(sampleFile) {
     await settle(900)
     eq('the dock opens them all again', await count('.antu-jn'), layout.nodes.length)
 
+    // Repeats: a fact used in several places is drawn beside each use; the chip merges them back to one
+    const mergedLayout = buildJustificationGraph(spec, { merged: true }, undefined, 'horizontal')
+    truthy('the merge chip is there when a fact is used more than once', await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].some((b) => b.textContent.includes('合并重复'))`))
+    truthy('merging draws fewer nodes', mergedLayout.nodes.length < layout.nodes.length, `${mergedLayout.nodes.length} vs ${layout.nodes.length}`)
+    await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].find((b) => b.textContent.includes('合并重复')).click()`, { userGesture: true })
+    await settle(1500)
+    eq('merged: the nodes are drawn once per issue', await count('.antu-jn'), mergedLayout.nodes.length)
+    await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].find((b) => b.textContent.includes('合并重复')).click()`, { userGesture: true })
+    await settle(1500)
+    eq('and split again', await count('.antu-jn'), layout.nodes.length)
+
     // Orientation, remembered per diagram: horizontal comes first, vertical second
     await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-seg').children[1].click()`, { userGesture: true })
     await settle(800)
