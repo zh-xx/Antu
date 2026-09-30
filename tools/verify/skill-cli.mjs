@@ -4,8 +4,11 @@
 //  The command line (skills/antu/scripts/antu.mjs) promises Node 18 or newer and nothing installed beside it. This
 //  script holds it to that: it copies the skill folder to a temporary place with no node_modules anywhere near,
 //  and runs each command on a small example of each kind. It imports nothing but Node's own modules and uses
-//  nothing newer than Node 18, so CI runs it under every version we promise (.github/workflows/verify.yml), and so
-//  can anyone:   node tools/verify/skill-cli.mjs
+//  nothing newer than Node 18, so CI runs it under every version we promise, on Linux, macOS and Windows
+//  (.github/workflows/verify.yml), and so can anyone:   node tools/verify/skill-cli.mjs
+//
+//  It also runs the skill's Python script (scripts/make_html.py) with whatever Python 3 is on the machine. Without
+//  one it is skipped, unless ANTU_REQUIRE_PYTHON is set (CI sets it), in which case a missing Python is a failure.
 // ============================================================
 
 import { spawnSync } from 'node:child_process'
@@ -45,6 +48,25 @@ try {
     const ren = run('render', spec, '-o', out)
     const html = existsSync(out) ? readFileSync(out, 'utf8') : ''
     check(`${type}: render writes the page`, ren.status === 0 && html.includes('window.__ANTU_SPEC__ = {') && !html.includes('/*ANTU_SPEC*/null'), ren.stderr.trim())
+  }
+
+  // the Python script: the other way the skill has of making the page
+  const python = ['python3', 'python'].find((name) => {
+    const r = spawnSync(name, ['--version'], { encoding: 'utf8' })
+    return r.status === 0 && /^Python 3/.test(`${r.stdout}${r.stderr}`)
+  })
+  if (python) {
+    for (const type of TYPES) {
+      const spec = join(work, `antu/examples/${type}/1-minimal.zh-CN.json`)
+      const out = join(work, `${type}-py.html`)
+      const r = spawnSync(python, [join(work, 'antu/scripts/make_html.py'), spec, '-o', out], { encoding: 'utf8', cwd: work })
+      const html = existsSync(out) ? readFileSync(out, 'utf8') : ''
+      check(`${type}: python script writes the page`, r.status === 0 && html.includes('window.__ANTU_SPEC__ = {') && !html.includes('/*ANTU_SPEC*/null'), r.stderr.trim())
+    }
+  } else if (process.env.ANTU_REQUIRE_PYTHON) {
+    check('python 3 is available', false, 'neither python3 nor python found')
+  } else {
+    console.log('  (python 3 not available, the Python script was not checked)')
   }
 
   // a diagram with a problem: named, exit code 1, and render writes nothing

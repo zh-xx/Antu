@@ -46,14 +46,17 @@ jobs:
           path: .verify/screenshot.png
           if-no-files-found: ignore
 
-  # 技能包里的命令行（skills/antu/scripts/antu.mjs）承诺"Node 18 及以上，旁边什么都不用装"。
-  # 这一组把承诺落成检查：把 skills/antu/ 拷到一个没有 node_modules 的临时目录，
-  # 在每个承诺的 Node 版本上各跑一遍。故意不 npm ci：装了依赖就测不出"什么都不用装"了。
+  # The skill's command line (skills/antu/scripts/antu.mjs) promises "Node 18 or newer, nothing installed beside it",
+  # and the Python script (scripts/make_html.py) promises "Python 3, standard library only". This job holds them to
+  # it on each system a user may have (Linux, macOS, Windows) and on each Node version we promise: it copies
+  # skills/antu/ to a temporary folder with no node_modules and runs every command there. It deliberately does
+  # not run npm ci: with the dependencies installed, "nothing to install" could no longer be tested.
   skill-cli:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         node: [18, 20, 22, 24]
     steps:
       - uses: actions/checkout@v4
@@ -62,5 +65,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      - name: 技能包的命令行（Node ${{ matrix.node }}，不装依赖）
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Skill command line and Python script (${{ matrix.os }}, Node ${{ matrix.node }}, no dependencies installed)
         run: node tools/verify/skill-cli.mjs
+        env:
+          ANTU_REQUIRE_PYTHON: '1'
