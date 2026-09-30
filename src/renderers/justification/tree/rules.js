@@ -16,6 +16,8 @@ export const NODE_KINDS = ['conclusion', 'norm', 'element', 'fact', 'inference',
 export const STANCES = ['for', 'against', 'basis']
 /** Kinds that can hold or be rejected; a fact is found, a norm applies */
 export const HOLDS_KINDS = ['conclusion', 'element', 'inference', 'judgement']
+/** How what a node rests on combines: all of it is needed ("and"), or any one of it is enough ("or") */
+export const COMBINES = ['all', 'any']
 
 const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/
 
@@ -85,6 +87,11 @@ export function validateJustification(spec) {
     if (n.holds !== undefined) {
       if (n.holds !== 'yes' && n.holds !== 'no') errors.push(tEn('jerr.badHolds', { at, value: String(n.holds) }))
       else if (!HOLDS_KINDS.includes(n.kind)) errors.push(tEn('jerr.holdsNotHere', { at, kind: String(n.kind), kinds: HOLDS_KINDS.join(' / ') }))
+    }
+    // Rule 19 (part): combine is all or any, and only on what can be supported
+    if (n.combine !== undefined) {
+      if (!COMBINES.includes(n.combine)) errors.push(tEn('jerr.badCombine', { at, value: String(n.combine), allowed: COMBINES.join(' / ') }))
+      else if (!HOLDS_KINDS.includes(n.kind)) errors.push(tEn('jerr.combineNotHere', { at, kind: String(n.kind), kinds: HOLDS_KINDS.join(' / ') }))
     }
     // Rule 9: a date belongs on a fact and is a date
     if (n.date !== undefined) {
@@ -194,6 +201,19 @@ export function hintsOfJustification(spec) {
       const fors = (into.get(n.id) ?? []).filter((k) => stanceOf(k) === 'for')
       if (fors.length && fors.every((k) => byId.get(k.from)?.holds === 'no')) {
         hints.push(tEn('jhint.holdsOnRejected', { id: n.id, label: name(n) }))
+      }
+    }
+    // Rules 19 to 21: what `combine` says has to be true of what the node rests on
+    if (COMBINES.includes(n.combine)) {
+      const fors = (into.get(n.id) ?? []).filter((k) => stanceOf(k) === 'for')
+      if (fors.length < 2) hints.push(tEn('jhint.combineAlone', { id: n.id, label: name(n), combine: n.combine }))
+      const rejected = fors.filter((k) => byId.get(k.from)?.holds === 'no')
+      const upheld = fors.filter((k) => byId.get(k.from)?.holds === 'yes')
+      if (n.combine === 'all' && n.holds === 'yes' && rejected.length) {
+        hints.push(tEn('jhint.allNeedsAll', { id: n.id, label: name(n), other: name(byId.get(rejected[0].from)) }))
+      }
+      if (n.combine === 'any' && n.holds === 'no' && upheld.length) {
+        hints.push(tEn('jhint.anyOneHolds', { id: n.id, label: name(n), other: name(byId.get(upheld[0].from)) }))
       }
     }
   }

@@ -37,6 +37,7 @@
       "kind": "conclusion",
       "label": "Yang Fan is liable in ordinary tort (fault liability)",
       "holds": "no",
+      "combine": "all",
       "groupId": "g-1"
     },
     {

@@ -116,6 +116,7 @@ An extract of the reasoning of the Yu Huan appeal judgment; the whole is `exampl
 | `label` | ✅ | string | The one sentence shown on the node |
 | `detail` | ❌ | string | Full text that does not fit in the node (the text of a statute, the judgment's own words); in the popover |
 | `holds` | ❌ | `yes` / `no` | Whether the statement holds in this reasoning; **only for** `conclusion`, `element`, `inference`, `judgement` |
+| `combine` | ❌ | `all` / `any` | How what it rests on combines: `all` = every one is needed ("and"), `any` = one is enough ("or"); **only on** `conclusion`, `element`, `inference`, `judgement`; omitted = not stated, see §4.6 |
 | `date` | ❌ | ISO date or date-time | **`fact` only**: when it happened (`2016-04-14` or `2016-04-14T22:22`) |
 | `groupId` | ❌ | string | Refers to an id in `groups` |
 | `sourceIds` | ❌ | string[] | Refers to ids in this diagram's `sources` |
@@ -171,6 +172,20 @@ Omitting `holds` means the reasoning does not say.
 
 **One conclusion can have both `for` and `against`**, as sentencing issues usually do: "truthful confession" and "serious fault of the victims" are `for` (mitigating), "harm far outweighs the interest protected" is `against` (limits how far the sentence is reduced).
 
+### 4.6 `combine`: and, or
+
+When a node rests on several things, the reader's first question is "does it fall if one is missing?" The five conditions of lawful defence must **all** be met; some norms say "any one will do".
+
+- `combine: "all"`: everything it rests on (the `for` links into it) is needed. Without one, it does not hold.
+- `combine: "any"`: any one is enough.
+- Omitted: the reasoning does not say; the reader takes it from the norm (the earlier reading).
+
+Only `for` links count. `against` and `basis` do not: a norm the node rests on is its premise, and opposition is a different thing.
+
+On the diagram a small mark stands in the node's top line: `all of` or `any of` (`且` / `或` in Chinese); the popover says it in full ("All of what it rests on is needed"). Paint only, no change to the geometry.
+
+`combine` and `holds` on one node should agree, and validation says so when they do not (rules 20, 21).
+
 ### 4.4 Issues (`groups`)
 
 A judgment's reasoning is usually organised by issue ("was it defensive", "was it special defence", "was it excessive"). An issue is a group; a node is in at most one group.
@@ -213,6 +228,9 @@ A draft; there is no code. Errors are reported one by one, with the field path a
 | 16 | A `norm` with no `sourceIds` | **hint** (which provision?) |
 | 17 | An element with `holds: "yes"` whose `for` links all come from `holds: "no"` nodes | **hint** (premises rejected, conclusion upheld) |
 | 18 | A conclusion or element with no `for` or `basis` among its incoming links (not one with `holds: "no"`: a rejected node needs no support) | **hint** (nothing supports it) |
+| 19 | `combine` is `all` / `any`, and only on the four kinds that can be supported (error); a node with fewer than two `for` links says `combine` (hint: nothing to combine) | error / **hint** |
+| 20 | `combine: "all"` and `holds: "yes"`, yet something it rests on is rejected | **hint** (all needed, one rejected) |
+| 21 | `combine: "any"` and `holds: "no"`, yet something it rests on holds | **hint** (one is enough, and one holds) |
 
 Structural errors block drawing; hints do not. The same split as relationship and procedure.
 
@@ -253,7 +271,7 @@ Known shortcomings: the lines from each issue's conclusion to the end conclusion
 
 ## 7. Questions still open, and how to go on meanwhile
 
-1. **"And" or "or" between elements?** The five conditions of lawful defence must **all** be met; some norms say "any one will do". **For now:** several `for` links into one conclusion are read by the reader according to the norm; the diagram does not express and/or.
+1. **"And" or "or" between elements? (answered, see §4.6)** A node has an optional `combine: "all" | "any"`; omitted means not stated.
 2. **An evidence layer.** What evidence was each fact found from? A judgment's reasons often do not say; one needs the first-instance judgment or the file. **For now:** a `fact` is a leaf with only `sourceIds`; the evidence layer is left for later (a source of type `evidence` can already be cited).
 3. **Two sides in opposition.** Prosecution and defence, one tree each, and the judge choosing on each issue. **For now:** one side's reasoning only, see decision 3.
 4. **Defeasibility.** Legal norms have exceptions and defences, and a conclusion may fall when it is rebutted (the "rebuttal" and "qualifier" of Toulmin's model). **For now:** `against` and rejected `holds: "no"` nodes express the commonest kind, nothing more.

@@ -79,6 +79,8 @@ test('validation catches each error rule of the spec (§5, rules 1 to 12)', () =
   assert.ok(some(bad((s) => (s.nodes[1].holds = 'no')), /does not hold or fail/), '8: a norm does not hold either')
   assert.ok(some(bad((s) => (s.nodes[2].date = '2016-04-14')), /only belongs on a fact/), '9')
   assert.ok(some(bad((s) => (s.nodes[3].date = 'last Tuesday')), /not an ISO date/), '9')
+  assert.ok(some(bad((s) => (s.nodes[2].combine = 'both')), /`combine` is "both"/), '19: combine is all or any')
+  assert.ok(some(bad((s) => (s.nodes[3].combine = 'all')), /only belongs on/), '19: a fact is not supported by other nodes')
   assert.ok(some(bad((s) => s.links.push({ from: 'c-1', to: 'e-1' })), /cycle/), '10')
   assert.ok(some(bad((s) => s.links.push({ from: 'e-1', to: 'f-1' })), /is a leaf/), '11: a fact has no supporter')
   assert.ok(some(bad((s) => s.links.push({ from: 'e-1', to: 'n-1' })), /is a leaf/), '11: nor a norm')
@@ -380,7 +382,7 @@ test('looking at a copy lights every copy of the fact, each with the way up from
 test('the small examples for an agent: valid, no hints, each in both languages, small, and both orientations lay out', () => {
   const dir = 'examples/agent/justification/'
   const names = readdirSync(dir).filter((f) => f.endsWith('.json'))
-  assert.equal(names.length, 10, 'five pairs')
+  assert.equal(names.length, 12, 'six pairs')
   for (const f of names) {
     const text = readFileSync(dir + f, 'utf8')
     const spec = JSON.parse(text)
@@ -412,4 +414,32 @@ test('the elevator case: valid, no hints, the rejected branches drawn, nothing o
       assert.ok(g.nodes.filter((n) => n.data.node.holds === 'no').length >= 6, 'the rejected claims are drawn')
     }
   }
+})
+
+test('combine (and / or): valid values, hints when it has nothing to combine or contradicts holds (rules 19 to 21)', () => {
+  const ok = base()
+  ok.nodes[2].combine = 'all'
+  assert.deepEqual(validateJustification(ok), [])
+  assert.deepEqual(hintsOfJustification(ok), [], 'the element rests on a norm and two facts: two for-links to combine')
+  // 19: fewer than two supporters
+  const alone = base()
+  alone.nodes[0].combine = 'any'
+  assert.ok(hintsOfJustification(alone).some((h) => /c-1.*fewer than two links/.test(h)), '19')
+  // 20: all, upheld, and something it rests on is rejected
+  const bad = base()
+  bad.nodes[2].combine = 'all'
+  bad.nodes.push({ id: 'j-9', kind: 'judgement', label: 'Rejected', holds: 'no', groupId: 'g-1' })
+  bad.links.push({ from: 'j-9', to: 'e-1' })
+  assert.ok(hintsOfJustification(bad).some((h) => /e-1.*needs all it rests on, but "Rejected" is rejected/.test(h)), '20')
+  // 21: any, rejected, and one of them holds
+  const any = base()
+  any.nodes[2].combine = 'any'
+  any.nodes[2].holds = 'no'
+  any.nodes.push({ id: 'j-8', kind: 'judgement', label: 'Upheld ground', holds: 'yes', groupId: 'g-1' })
+  any.links.push({ from: 'j-8', to: 'e-1' })
+  assert.ok(hintsOfJustification(any).some((h) => /e-1.*rejected although any one it rests on would do/.test(h)), '21')
+  // and: combine changes no geometry
+  const a = buildJustificationGraph(base())
+  const b = buildJustificationGraph(ok)
+  assert.deepEqual(a.nodes.map((n) => n.position), b.nodes.map((n) => n.position))
 })

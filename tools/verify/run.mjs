@@ -1804,6 +1804,7 @@ async function checkRenderJustification(sampleFile) {
     )
     eq('only a link with a label of its own has one', await count('.antu-jlabel'), spec.links.filter((k) => k.label).length)
     truthy('a fact carries its date', await browser.eval(`document.querySelectorAll('.antu-jn.k-fact .antu-jn-date').length > 0`))
+    eq('a node that says and / or carries the mark', await count('.antu-jn-combine'), layout.nodes.filter((n) => n.data.node.combine).length)
 
     // Looking at a node: its chain lights and the rest fades, and the zoom stays where the reader put it
     for (let i = 0; i < 3; i += 1) {

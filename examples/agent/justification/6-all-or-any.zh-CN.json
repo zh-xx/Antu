@@ -1,0 +1,98 @@
+{
+  "specVersion": 1,
+  "type": "justification",
+  "title": "且与或：要件须全部具备，理由具备一个即可",
+  "nodes": [
+    {
+      "id": "c-1",
+      "kind": "conclusion",
+      "label": "乙应承担侵权责任",
+      "holds": "yes",
+      "combine": "all"
+    },
+    {
+      "id": "e-1",
+      "kind": "element",
+      "label": "乙有过错",
+      "holds": "yes",
+      "combine": "any"
+    },
+    {
+      "id": "e-2",
+      "kind": "element",
+      "label": "甲受到了损害",
+      "holds": "yes"
+    },
+    {
+      "id": "e-3",
+      "kind": "element",
+      "label": "过错与损害之间有因果关系",
+      "holds": "yes"
+    },
+    {
+      "id": "f-1",
+      "kind": "fact",
+      "label": "乙明知路面结冰而没有设置警示牌",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-2",
+      "kind": "fact",
+      "label": "乙没有及时清理积雪",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "f-3",
+      "kind": "fact",
+      "label": "甲在结冰处滑倒，造成骨折",
+      "sourceIds": [
+        "s-1"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "from": "f-1",
+      "to": "e-1"
+    },
+    {
+      "from": "f-2",
+      "to": "e-1"
+    },
+    {
+      "from": "f-3",
+      "to": "e-2"
+    },
+    {
+      "from": "f-3",
+      "to": "e-3"
+    },
+    {
+      "from": "e-1",
+      "to": "c-1"
+    },
+    {
+      "from": "e-2",
+      "to": "c-1"
+    },
+    {
+      "from": "e-3",
+      "to": "c-1"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "evidence",
+      "name": "现场照片和就诊记录",
+      "loc": {
+        "file": "scene.pdf",
+        "page": 1
+      }
+    }
+  ]
+}

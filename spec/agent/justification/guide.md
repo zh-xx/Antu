@@ -56,6 +56,14 @@ basis    from is the norm to rests on     (only from a norm)
 special defence" with `holds: "no"`, and the reasons it fails pointing `against` it. A fact and a norm
 have no `holds`. Leave it out when the reasoning does not say.
 
+## and / or: `combine`
+
+When a node rests on several things, say whether all are needed or one is enough: `combine: "all"` (every
+`for` link into it is needed: the five conditions of lawful defence) or `combine: "any"` (one is enough).
+Leave it out when the reasoning does not say. Only `for` links count, and it belongs only on a conclusion,
+element, inference or judgement. Keep it consistent with `holds`: an `"all"` node that holds cannot rest on a
+rejected node.
+
 ## Issues
 
 `groups` is one box per issue. A node is in at most one group. Put a norm in the issue it settles (a

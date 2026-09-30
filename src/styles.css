@@ -1145,6 +1145,8 @@
 .antu-jn-holds { font-weight: 600; }
 .antu-jn-holds.is-yes { color: #15803d; }
 .antu-jn-holds.is-no { color: #b91c1c; }
+.antu-jn-combine { padding: 0 5px; border: 1px solid currentColor; border-radius: 8px; font-weight: 600; line-height: 13px; color: #475569; }
+.antu-jn-combine.is-any { border-style: dashed; }
 .antu-jn-copy { margin-left: auto; font-style: italic; }
 .antu-jn-label {
   display: -webkit-box;

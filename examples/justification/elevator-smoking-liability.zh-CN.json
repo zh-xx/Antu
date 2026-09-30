@@ -37,6 +37,7 @@
       "kind": "conclusion",
       "label": "杨帆应承担一般侵权责任（过错责任）",
       "holds": "no",
+      "combine": "all",
       "groupId": "g-1"
     },
     {

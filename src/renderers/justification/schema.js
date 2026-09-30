@@ -9,7 +9,7 @@
 //  copied by hand. The specification is spec/justification/schema-draft.md.
 // ============================================================
 
-import { validateJustification, hintsOfJustification, NODE_KINDS, STANCES, HOLDS_KINDS } from './tree/rules.js'
+import { validateJustification, hintsOfJustification, NODE_KINDS, STANCES, HOLDS_KINDS, COMBINES } from './tree/rules.js'
 import { buildJustificationGraph } from './tree/layout.js'
 import { fitZoom } from '../../core/canvas.js'
 
@@ -40,6 +40,7 @@ export const JUSTIFICATION_FIELDS = {
     { name: 'label', req: 'yes', ty: 'string', note: 'the one sentence shown on the node' },
     { name: 'detail', req: 'no', ty: 'string', note: 'full text that does not fit (a statute, the judgment\'s own words); in the popover' },
     { name: 'holds', req: 'no', ty: 'yes|no', note: `whether the statement holds in this reasoning; only on ${HOLDS_KINDS.join(' / ')}; omit = not stated` },
+    { name: 'combine', req: 'no', ty: 'all|any', note: `${COMBINES.join(' | ')}: all = every one of what it rests on is needed ("and"), any = one is enough ("or"); only on ${HOLDS_KINDS.join(' / ')}; omit = not stated` },
     { name: 'date', req: 'no', ty: 'ISO date', note: 'facts only: when it happened, YYYY-MM-DD or YYYY-MM-DDTHH:MM' },
     { name: 'groupId', req: 'no', ty: 'string', note: 'references groups' },
     { name: 'sourceIds', req: 'no', ty: 'string[]', note: 'which materials it rests on (a norm: the statute or case)' },
