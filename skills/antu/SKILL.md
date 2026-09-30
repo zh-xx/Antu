@@ -129,8 +129,9 @@ again; the HTML is the product.
 
 Give the path of the HTML file. Say what it shows and what you had to leave out or could not tell from their
 material, in a few lines. In the page the reader can hover and click the items for detail, switch
-orientation, and export an image from the bar at the bottom. The page's own labels start in English; the
-EN / 中文 switch in that bar changes them, so tell a Chinese-speaking user where it is.
+orientation, and export an image from the bar at the bottom. The page's own labels follow the browser's
+language (a Chinese browser shows Chinese); if the user sees them in the wrong language, the EN / 中文 switch in
+that bar changes them.
 
 ## Updating this skill
 
