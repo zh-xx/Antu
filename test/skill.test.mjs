@@ -62,6 +62,17 @@ test('SKILL.md tells an agent that a fact diagram of two parties needs groups or
   assert.match(text, /3-groups/)
 })
 
+test('SKILL.md says what the page bar switches and that some are off by default, and what to do when layout says the text is small (#49 C, F)', () => {
+  const text = readFileSync('skills/antu/SKILL.md', 'utf8')
+  assert.match(text, /\*\*Parties\*\* \(off\)/)
+  assert.match(text, /\*\*Sources\*\* \(off\)/)
+  assert.match(text, /off until the reader/)
+  assert.match(text, /Split it the way the\s+note says/)
+  assert.match(text, /by issue/)
+  assert.match(text, /by stage/)
+  assert.match(text, /by group/)
+})
+
 test('SKILL.md is a valid skill: name = folder, a description within the limit, no placeholder left', () => {
   const text = readFileSync('skills/antu/SKILL.md', 'utf8')
   const front = /^---\n([\s\S]*?)\n---\n/.exec(text)
