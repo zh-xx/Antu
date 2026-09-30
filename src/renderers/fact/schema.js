@@ -59,9 +59,9 @@ export const FACT_FIELDS = {
   ],
   events: [
     { name: 'id', req: 'yes', ty: 'string', note: 'unique within the diagram' },
-    { name: 'date', req: 'yes', ty: 'string', note: 'ISO 8601. Go to seconds when known, otherwise stop at the day' },
+    { name: 'date', req: 'no', ty: 'string', note: 'ISO 8601. Go to seconds when known, otherwise stop at the day. **Leave it out when the material gives no date: never make one up.** The card then says the date is unknown; the order is the order of slots, so nothing moves' },
     { name: 'label', req: 'yes', ty: 'string', note: 'card title; about 20 characters per line, at most two lines' },
-    { name: 'dateEnd', req: 'no', ty: 'string', note: 'for a span, the end instant; must not be earlier than date' },
+    { name: 'dateEnd', req: 'no', ty: 'string', note: 'for a span, the end instant; needs date, and must not be earlier than it' },
     { name: 'approx', req: 'no', ty: 'boolean', note: 'time is not exact (estimated or inferred); the diagram shows "approx."' },
     { name: 'dateNote', req: 'no', ty: 'string', note: 'why the time is not exact, and how it was derived' },
     { name: 'summary', req: 'no', ty: 'string', note: 'the line under the card title; about 22 characters' },

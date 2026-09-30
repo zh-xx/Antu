@@ -580,7 +580,7 @@ function checkData() {
 
   // Validation errors must speak plainly: deliberately build a broken one and see whether the
   // message carries the field path.
-  const broken = { type: 'fact', title: '坏的', slots: [{ id: 's1', events: [{ id: 'e1', label: '没时间' }] }] }
+  const broken = { type: 'fact', title: '坏的', slots: [{ id: 's1', events: [{ id: 'e1', date: '2023-01-01' }] }] } // no label: date is optional since #50, label is not
   const errs = validateSpec(broken)
   truthy('bad data is stopped', errs.length > 0)
   truthy('the error carries the field path', errs.some((e) => /slots\[\d+\]/.test(e)))
@@ -1804,6 +1804,33 @@ async function checkSkillPage() {
   }
 }
 
+/**
+ * An event with no date (#50): the material gives none, so the event has none. The card says the date is unknown, in
+ * the language of the interface, and is marked so a reader can tell it apart from a date that is just short.
+ */
+async function checkUndatedEvent() {
+  section('render: an event with no date')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const spec = JSON.parse(readFileSync(join(REPO, 'examples/agent/fact/7-undated.zh-CN.json'), 'utf8'))
+  const html = join(OUT, 'render-undated.html')
+  renderToFile(spec, { outPath: html, quiet: true })
+  const browser = await launchBrowser({ width: 1400, height: 900 })
+  try {
+    for (const [lang, word] of [['zh', '日期不详'], ['en', 'date unknown']]) {
+      await browser.open(`file://${html}?lang=${lang}`)
+      const cards = await browser.eval(`document.querySelectorAll('.antu-card').length`)
+      eq(`${lang}: every event is drawn, the undated one too`, cards, 3)
+      eq(`${lang}: exactly one card says the date is unknown`, await browser.eval(`[...document.querySelectorAll('.antu-card-time.is-unknown')].map((e) => e.textContent)`), [word])
+      truthy(`${lang}: the others show their dates`, await browser.eval(`[...document.querySelectorAll('.antu-card-time:not(.is-unknown)')].every((e) => /\\d{4}-\\d{2}-\\d{2}/.test(e.textContent))`))
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderJustification(sampleFile) {
   section('render: justification tree')
   if (!findChrome()) {
@@ -2042,6 +2069,7 @@ if (!shotOnly && !skipBrowser) {
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)
   await checkSkillPage()
+  await checkUndatedEvent()
   checkMcp()
   // This stretch launched a browser twice (once for the render, once for the MCP preview), and
   // both must be closed cleanly. Identity, not "equal to 0": this machine may already have

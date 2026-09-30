@@ -88,6 +88,7 @@ export const zh = {
   'card.sourcesList': ({ n, names }) => `来源 ${n} 项：${names}`,
   'card.duration': ({ duration }) => `持续 ${duration}`,
   'card.approxPrefix': '约 ',
+  'card.dateUnknown': '日期不详',
   'card.unitDay': ({ n }) => `${n} 天`,
   'card.unitHour': ({ n }) => `${n} 小时`,
   'card.unitMinute': ({ n }) => `${n} 分`,

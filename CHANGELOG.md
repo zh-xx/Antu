@@ -3,6 +3,21 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.4.0
+
+### Changed
+- **Fact diagram: `date` is optional** (#50). An event the material gives no date for is left without one, and its card
+  says the date is unknown ("日期不详" / "date unknown", in italics), instead of carrying a date made up to satisfy the
+  format. Order was always the `slots` array and `date` only shown, so nothing in the layout moves. `dateEnd` needs a
+  `date`; a `date` that is written must still be valid. A new agent example `7-undated`. `SKILL.md` and the fact
+  guide drop the workaround of borrowing a neighbour's date with `approx`.
+  `specVersion` stays 1: a file that has dates is still right.
+- The agent reference material of the fact diagram is 5.4k tokens (it was 4.5k): the guide says whom to list on an
+  event and what to do without a date, and the field table says so too.
+
+### Breaking
+- None.
+
 ## 0.3.1
 
 Two fixes to what the skill tells an agent (#49). No engine change.

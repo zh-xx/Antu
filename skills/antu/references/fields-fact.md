@@ -31,9 +31,9 @@ Fields of a fact spec. "yes" means required.
 
 [events]
   id           yes string          unique within the diagram
-  date         yes string          ISO 8601. Go to seconds when known, otherwise stop at the day
+  date         no  string          ISO 8601. Go to seconds when known, otherwise stop at the day. **Leave it out when the material gives no date: never make one up.** The card then says the date is unknown; the order is the order of slots, so nothing moves
   label        yes string          card title; about 20 characters per line, at most two lines
-  dateEnd      no  string          for a span, the end instant; must not be earlier than date
+  dateEnd      no  string          for a span, the end instant; needs date, and must not be earlier than it
   approx       no  boolean         time is not exact (estimated or inferred); the diagram shows "approx."
   dateNote     no  string          why the time is not exact, and how it was derived
   summary      no  string          the line under the card title; about 22 characters

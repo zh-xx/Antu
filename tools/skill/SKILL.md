@@ -59,9 +59,9 @@ chart of numbers, an org chart of a firm), say that antu does not draw it.
   reply, and do not put it in the diagram.
 - **Something the user says they are unsure of** ("好像", "不确定", "可能"): leave it out of the diagram, and say in
   your reply that you left it out and why. Offer to add it once they have confirmed it.
-- **An event with no date** ("之后一直没有回复"): do not give it a date of its own. Put it in the `detail` of the
-  event it follows, or ask. Only if the diagram needs it as a card of its own, reuse the date of the event it
-  follows with `approx: true` and a `dateNote` that says the date only places it in order, and tell the user.
+- **An event with no date** ("之后一直没有回复"): leave `date` out of it. It is optional, and the card then says the
+  date is unknown. Do not borrow the date of the event before it, and do not use `approx` for a date that is
+  missing (`approx` is for one that was estimated). Its place in the `slots` array puts it in order.
 - Leave the optional marks that the material does not say out: `combine` (and / or) only when the reasoning
   says all or any of what it rests on is needed; `approx` only for a date you really cannot give exactly.
 - If the user gave no source document, leave `sources` out. The checker's notes that a fact or a norm has no

@@ -24,6 +24,7 @@ examples/
 | `4-views.*` | `views` 的完整写法（三种看法） |
 | `5-duration.*` | `dateEnd` / `approx` / `dateNote` |
 | `6-sources.*` | `sources` + `sourceIds` |
+| `7-undated.*` | 材料没给日期的事件：不写 `date`，卡片上显示“日期不详”（同时演示两个主体用 `groups` 分两侧） |
 
 每份 0.8~1.2 KB，读三份约 3 KB。**六份的所有视角都排得下**，
 agent 照抄结构不会撞到"摆不下"。MCP 的 `antu_examples` 默认给的就是这一批。
@@ -47,7 +48,7 @@ agent 照抄结构不会撞到"摆不下"。MCP 的 `antu_examples` 默认给的
 | `zhang-juan-v-peng-yu-private-lending.*` | 真实案例（张娟诉彭宇），民间借贷 |
 | `sample-*.json` | 示意数据：三个时间点、无分组、同侧双主体、两侧各两个主体、四方四个时间点、建设工程付款与结算 |
 
-八批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 6 对、`procedure/` 7 对、`agent/procedure/` 7 对、`relationship/` 5 对、`agent/relationship/` 5 对、`justification/` 2 对、`agent/justification/` 6 对。
+八批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 7 对、`procedure/` 7 对、`agent/procedure/` 7 对、`relationship/` 5 对、`agent/relationship/` 5 对、`justification/` 2 对、`agent/justification/` 6 对。
 
 MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 

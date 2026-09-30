@@ -514,6 +514,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.antu-card-time.is-unknown {
+  font-style: italic;
+}
 /* 有来源：实心点；没列来源：空心点。区别靠虚实，不靠颜色喊。 */
 .antu-card-src {
   display: inline-flex;

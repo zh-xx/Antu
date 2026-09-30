@@ -91,7 +91,7 @@ npm run diagram -- examples/fact/elevator-smoking-case.en.json
 }
 ```
 
-An agent can read the specification, view examples, validate, compute geometry, produce output, and take a screenshot to check the result. Validation confirms only that the JSON is well formed; it cannot confirm that the diagram is satisfactory, so taking a screenshot is a necessary step. The reference material for an agent is 4.5k tokens (a 2.9k-character field table plus a 4.0k-character mechanism note).
+An agent can read the specification, view examples, validate, compute geometry, produce output, and take a screenshot to check the result. Validation confirms only that the JSON is well formed; it cannot confirm that the diagram is satisfactory, so taking a screenshot is a necessary step. The reference material for an agent is 5.4k tokens (a 3.2k-character field table plus a 5.1k-character mechanism note).
 
 ### The skill (no MCP)
 
