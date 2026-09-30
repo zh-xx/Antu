@@ -16,7 +16,8 @@
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateProcedure, KINDS, OUTCOMES, DOMAINS } from './flow/rules.js'
 import { buildProcedureGraph } from './flow/layout.js'
-import { fitZoom } from '../../core/canvas.js'
+import { fitZoom, textSizeLines } from '../../core/canvas.js'
+import { NODE_FONT } from './flow/metrics.js'
 
 /**
  * Field metadata: **the reference an agent gets is generated from this**, not
@@ -173,6 +174,7 @@ export const procedureKnowledge = {
     const v = byOrientation.vertical
     const h = byOrientation.horizontal
     return {
+      text: { font: NODE_FONT, canvas, open: { name: 'vertical', fit: v.fit }, other: { name: 'horizontal', fit: h.fit } },
       counts: {
         nodes: g.stats.nodes,
         edges: g.stats.edges,
@@ -210,9 +212,7 @@ export const procedureKnowledge = {
     if (r.betterFit !== r.suggestedOrientation) {
       lines.push(`Horizontal fits a screen better (${h.fit} vs ${v.fit}); the reader can switch to it.`)
     }
-    if (Math.max(v.fit, h.fit) < 0.45) {
-      lines.push('Note: at this size the text is small on one screen; consider splitting the flow by stage.')
-    }
+    lines.push(...textSizeLines(r.text, 'splitting the flow by stage'))
     if (r.hints.length) {
       lines.push('', `${r.hints.length} hint(s):`, ...r.hints.map((x) => `  - ${x}`))
     }

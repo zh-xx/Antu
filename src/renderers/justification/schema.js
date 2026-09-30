@@ -12,7 +12,8 @@
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateJustification, hintsOfJustification, NODE_KINDS, STANCES, HOLDS_KINDS, COMBINES } from './tree/rules.js'
 import { buildJustificationGraph } from './tree/layout.js'
-import { fitZoom } from '../../core/canvas.js'
+import { fitZoom, textSizeLines } from '../../core/canvas.js'
+import { NODE_FONT } from './tree/metrics.js'
 
 /**
  * Field metadata: req = required; ty = type; note = a one-line explanation. Cross-field rules
@@ -112,7 +113,11 @@ export const justificationKnowledge = {
     }
     const v = byOrientation.vertical
     const h = byOrientation.horizontal
+    // With every issue folded: the reader's way of seeing a big reasoning whole, without splitting it
+    const issues = Array.isArray(spec.groups) ? spec.groups.map((x) => x?.id).filter(Boolean) : []
+    const folded = issues.length > 1 ? fitZoom(layout(spec, { collapsed: issues }, undefined, 'horizontal').size, canvas) : undefined
     return {
+      text: { font: NODE_FONT, canvas, open: { name: 'horizontal', fit: h.fit }, other: { name: 'vertical', fit: v.fit }, folded },
       counts: {
         nodes: g.stats.nodes,
         links: g.stats.links,
@@ -148,9 +153,7 @@ export const justificationKnowledge = {
     if (r.betterFit !== r.suggestedOrientation) {
       lines.push(`Vertical fits a screen better (${v.fit} vs ${h.fit}); the reader can switch to it.`)
     }
-    if (Math.max(v.fit, h.fit) < 0.4) {
-      lines.push('Note: at this size the text is small on one screen; consider one diagram per issue.')
-    }
+    lines.push(...textSizeLines(r.text, 'one diagram per issue'))
     if (r.hints.length) {
       lines.push('', `${r.hints.length} hint(s):`, ...r.hints.map((x) => `  - ${x}`))
     }

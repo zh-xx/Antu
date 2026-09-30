@@ -3,6 +3,30 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.5.0
+
+The guard (#43): an agent that cannot look at the page is told whether the reader can read it.
+
+### Added
+- **Every kind's geometry report (`layout`, `antu_layout`) says how big the body text is on one screen**, in px:
+  `Text on one screen (1600×900): 7.0 px as it opens (vertical), 4.7 px horizontal. Full size is 13 px.` It is the
+  kind's body font times the fit zoom, and a browser check holds it to the page: the page draws it within 5%, never
+  smaller than reported (the report is on the safe side).
+- One pair of thresholds for every kind: under 11 px a note that the text is small and the reader can zoom in; under
+  9 px a note that it is too small to read without zooming in, with how this kind is split (by issue, by stage, by
+  group, into periods) and "do not drop facts to make it fit". A justification of several issues also says how big
+  the text is with every issue folded, so the agent can leave it whole when folding is enough.
+
+### Changed
+- These notes replace the ones each kind had: a justification compared its fit zoom with 0.4 and a procedure and a
+  relationship diagram with 0.45, which said nothing about the elevator case (5.6 px); **a fact diagram had no such
+  note at all** (the Yu Huan loan timeline opens at 7.0 px).
+- `render` in the skill's command line prints the same lines after it writes the page. `SKILL.md` says to run
+  `layout` before making the page and what to do with each level.
+
+### Breaking
+- None. The words of `antu_layout` changed; they are not part of the contract (spec/versioning.md).
+
 ## 0.4.1
 
 Two more fixes to what the skill tells an agent (#49). No engine change.

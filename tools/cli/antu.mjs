@@ -96,6 +96,9 @@ function main(argv) {
   const out = resolve(option('-o', '--out') ?? file.replace(/\.json$/i, '') + '.html')
   writeFileSync(out, fillViewer(viewer, spec))
   say(out)
+  // How big the text is on one screen (#43): an agent that only renders still hears whether the reader can read it
+  const size = layoutMessage(spec).text.split('\n').filter((l) => /^(Text on one screen|Note: the text|With every issue folded)/.test(l))
+  if (size.length) say(`\n${size.join('\n')}`)
   const notes = notesOf(spec)
   if (notes.length) say(`\n${notes.length} note(s), not errors:\n${notes.map((n) => `  - ${n}`).join('\n')}`)
 }

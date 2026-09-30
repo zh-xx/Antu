@@ -16,7 +16,8 @@
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { buildGrid, viewsOf } from './timeline/grid.js'
 import { buildFactGraph } from './timeline/layout.js'
-import { fitZoom } from '../../core/canvas.js'
+import { fitZoom, textSizeLines } from '../../core/canvas.js'
+import { LABEL_FONT } from './cardGeometry.js'
 import { tEn } from '../../core/i18n.js'
 
 /**
@@ -197,7 +198,10 @@ export const factKnowledge = {
       byOrientation[o] = { size: g.size, fit: Number(fitZoom(g.size, canvas).toFixed(3)) }
     }
     const slotCount = Array.isArray(spec.slots) ? spec.slots.length : 0
+    const opens = orientation ?? (slotCount >= 5 ? 'vertical' : 'horizontal')
+    const others = opens === 'vertical' ? 'horizontal' : 'vertical'
     return {
+      text: { font: LABEL_FONT, canvas, open: { name: opens, fit: byOrientation[opens].fit }, other: { name: others, fit: byOrientation[others].fit } },
       views,
       counts: {
         slots: slotCount,
@@ -225,6 +229,7 @@ export const factKnowledge = {
         ? `Suggested orientation: vertical (by the slot-count rule, ${r.counts.slots} slots >= 5)`
         : `Suggested orientation: horizontal (by the slot-count rule, ${r.counts.slots} slots < 5)`,
     )
+    lines.push(...textSizeLines(r.text, 'splitting the timeline into periods, one diagram each'))
     lines.push(`${r.views.length} view(s):`)
     for (const row of r.rows) {
       const c = row.columns
