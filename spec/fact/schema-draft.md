@@ -243,7 +243,7 @@ This is normal: **a view is a judgment, not a fact.** If output is later require
 | Field | Required | Type | Notes |
 |---|---|---|---|
 | `id` | yes | string | unique within the diagram |
-| `date` | yes | string (ISO 8601, **precision may be truncated**) | ISO 8601. Go to seconds when known, otherwise stop at the day; **the array order is the authoritative order** (see below) |
+| `date` | no | string (ISO 8601, **precision may be truncated**) | ISO 8601. Go to seconds when known, otherwise stop at the day; **the array order is the authoritative order** (see below). **Optional since 0.4.0 (#50):** an event the material gives no date for is left without one, and its card says the date is unknown; never make one up. `dateEnd` needs a `date` |
 | `label` | yes | string | card title; about 20 characters per line, at most two lines |
 | `actorIds` | no | string[] | parties involved. Two or more puts this event on the centre axis; references the diagram-level `actors` ids (see "Actor mechanism" below) |
 | `groupId` | no | string | which side this event falls on; references a diagram-level `groups` id (one only, mutually exclusive groups); see "Group mechanism" below |

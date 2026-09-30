@@ -77,7 +77,7 @@ examples are all split by type, and adding a type means only: write its `schema.
 (with field metadata), put a `guide.md` in `spec/agent/<type>/`, and put a few small
 examples in `examples/agent/<type>/`. **Not one line of the tools changes.**
 
-Together **4.5k tokens** is enough to start work, replacing the old "read the schema
+Together **5.4k tokens** is enough to start work, replacing the old "read the schema
 document 8k + layout rules 3k + examples 5k".
 
 **The three tools point at each other** (a chain in order of use) so an agent need not

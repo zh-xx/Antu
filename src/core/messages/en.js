@@ -66,6 +66,7 @@ export const en = {
   'card.sourcesList': ({ n, names }) => `${n} source${n === 1 ? '' : 's'}: ${names}`,
   'card.duration': ({ duration }) => `Duration ${duration}`,
   'card.approxPrefix': 'approx. ',
+  'card.dateUnknown': 'date unknown',
   // Duration units. English needs plurals, so the whole phrase is assembled from these entries rather than hard-coded as one format string.
   'card.unitDay': ({ n }) => `${n} day${n === 1 ? '' : 's'}`,
   'card.unitHour': ({ n }) => `${n} hour${n === 1 ? '' : 's'}`,
@@ -156,6 +157,7 @@ export const en = {
     `${at}: two events share the same lane in one time slot ("${a}" and "${b}"); one cell holds one event`,
   'err.badDate': ({ at, field, value }) =>
     `${at}: \`${field}\` is not ISO 8601 (e.g. 2017-05-02T09:24:03), got "${value}"`,
+  'err.dateEndNeedsDate': ({ at }) => `${at}: \`dateEnd\` is written but \`date\` is not; a span needs its start`,
   'err.dateEndBeforeDate': ({ at, end, start }) =>
     `${at}: \`dateEnd\` (${end}) is earlier than \`date\` (${start}); a span cannot run backwards`,
   // The report is by **display width**, not character count: width is what actually fails to fit (see textEm in cardGeometry.js).

@@ -89,7 +89,7 @@ npm run diagram -- examples/fact/elevator-smoking-case.zh-CN.json
 }
 ```
 
-agent 可以读取规范、查看示例、校验、计算几何、生成成品，并截图核对效果。校验仅能确认 JSON 合法，不能确认成图效果合格，因此截图核对是必要步骤。agent 的参考资料为 4.5k token（字段表 2.9k 字符 + 机制说明 4.0k 字符）。
+agent 可以读取规范、查看示例、校验、计算几何、生成成品，并截图核对效果。校验仅能确认 JSON 合法，不能确认成图效果合格，因此截图核对是必要步骤。agent 的参考资料为 5.4k token（字段表 3.2k 字符 + 机制说明 5.1k 字符）。
 
 ### 技能包（不装 MCP）
 

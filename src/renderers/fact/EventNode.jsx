@@ -49,6 +49,8 @@ function formatEnd(start, end, lang) {
  * would deceive (in the elevator case 4 seconds and 264 seconds take the same distance).
  */
 function formatTimeText(event, lang) {
+  // An event with no date (the material gives none): say so, do not show a blank or a made-up one
+  if (!event.date) return translate(lang, 'card.dateUnknown')
   const start = formatDate(event.date, event.approx, lang)
   if (!event.dateEnd) return start
   return `${start} - ${formatEnd(event.date, event.dateEnd, lang)}`
@@ -84,7 +86,7 @@ const EventNode = memo(function EventNode({ data }) {
   const showPreview = !pinnedId && hoveredId === event.id
   const open = isPinned || showPreview
   // Leave the duration empty when it cannot be computed (dateEnd before date, etc.), so that the overlay never shows "Duration" with nothing after it
-  const duration = event.dateEnd ? formatDuration(event.date, event.dateEnd, t) : ''
+  const duration = event.date && event.dateEnd ? formatDuration(event.date, event.dateEnd, t) : ''
 
   return (
     <div
@@ -131,7 +133,7 @@ const EventNode = memo(function EventNode({ data }) {
       )}
 
       <div className="antu-card-foot">
-        <span className="antu-card-time" title={event.dateNote || ''}>
+        <span className={`antu-card-time${event.date ? '' : ' is-unknown'}`} title={event.dateNote || ''}>
           {formatTimeText(event, lang)}
         </span>
         {fields.sources && (

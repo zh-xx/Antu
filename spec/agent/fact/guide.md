@@ -95,6 +95,11 @@ diagram looks good. Always run `antu_preview` and look before delivering.
   there is no need to list the whole case file.
 - **approx is not "roughly written".** It is the formal marker that the time is not
   exact, and the diagram then shows "approx."; explain why in `dateNote`.
+- **No date in the material: leave `date` out.** It is optional, and the card then says the date
+  is unknown. Do not borrow a neighbour's date, and do not use `approx` for it: `approx` is for a
+  date that was estimated or worked out, not for one that is missing. The place in the array still
+  puts the event in order ("and afterwards they never replied" goes after the event it follows).
+  `dateEnd` needs a `date`.
 - **Keep the summary short.** `summary` fits one line of the card (about 22 full-width
   characters); a longer one is **rejected**, not truncated, because it would overflow
   the card. Put the long text in `detail`.

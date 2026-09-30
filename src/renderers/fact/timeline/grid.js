@@ -233,8 +233,10 @@ export function buildGrid(spec, view) {
       else if (eventIds.has(e.id)) errors.push(tEn('err.duplicateId', { at: eAt, id: e.id }))
       else eventIds.add(e.id)
 
-      if (!e.date) errors.push(tEn('err.required', { at: eAt, field: 'date' }))
-      else if (!ISO_RE.test(e.date)) {
+      // date is optional (#50): the order is the slots array and date is only shown, so an event the material gives no
+      // date for is left without one (the card says the date is unknown) rather than given a made-up one. Once
+      // written, it must be valid.
+      if (e.date && !ISO_RE.test(e.date)) {
         errors.push(tEn('err.badDate', { at: eAt, field: 'date', value: e.date }))
       }
       if (!e.label) errors.push(tEn('err.required', { at: eAt, field: 'label' }))
@@ -245,6 +247,8 @@ export function buildGrid(spec, view) {
           errors.push(
             tEn('err.badDate', { at: eAt, field: 'dateEnd', value: e.dateEnd }),
           )
+        } else if (!e.date) {
+          errors.push(tEn('err.dateEndNeedsDate', { at: eAt }))
         } else if (isBefore(e.dateEnd, e.date)) {
           errors.push(tEn('err.dateEndBeforeDate', { at: eAt, end: e.dateEnd, start: e.date }))
         }

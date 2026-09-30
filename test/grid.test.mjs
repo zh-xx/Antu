@@ -29,11 +29,11 @@ test('valid data produces no errors', () => {
 
 test('missing required fields: the error carries the field path and the event id', () => {
   const spec = base()
-  delete spec.slots[0].events[0].date
+  delete spec.slots[0].events[0].label
   const errs = errorsOf(spec)
   assert.ok(errs.length > 0)
   assert.ok(some(errs, /slots\[0\]/), 'must say which slot')
-  assert.ok(some(errs, /date/), 'must say which field is missing')
+  assert.ok(some(errs, /label/), 'must say which field is missing')
   assert.ok(some(errs, new RegExp(spec.slots[0].events[0].id)), 'must carry the event id')
 })
 
@@ -80,7 +80,7 @@ test('validateSpec dispatches by type to the fact validator (registration is not
   // finds nothing in the table and silently returns "pass", letting bad data through
   // (this really happened, and the verifier caught it).
   const spec = base()
-  delete spec.slots[0].events[0].date
+  delete spec.slots[0].events[0].label
   assert.ok(validateSpec(spec).length > 0, 'after the envelope passes, the fact layer must still be checked')
 })
 
@@ -96,7 +96,7 @@ test('a type with no registered knowledge is not validated (an unknown type name
 
 test('validation is layout: a grid is still returned on error so the caller can show the problem', () => {
   const spec = base()
-  delete spec.slots[0].events[0].date
+  delete spec.slots[0].events[0].label
   const g = buildGrid(spec)
   assert.ok(g.errors.length > 0)
   assert.ok(Array.isArray(g.rows) && g.rows.length > 0, 'an error must not mean no grid')
@@ -121,4 +121,40 @@ test('notes: nothing to say for data whose views all fit, and for types without 
   assert.deepEqual(notesOf(small), [], 'the small agent examples are written so that every view fits')
   assert.deepEqual(notesOf({ type: 'procedure', title: 'x', nodes: [], edges: [] }), [])
   assert.deepEqual(notesOf(null), [])
+})
+
+// ---- an event with no date (#50) ----
+
+test('date is optional: an event the material gives no date for is valid, and does not move', () => {
+  const spec = base()
+  const before = buildGrid(spec)
+  delete spec.slots[1].events[0].date
+  assert.deepEqual(validateSpec(spec), [], 'no date is not an error')
+  const after = buildGrid(spec)
+  assert.deepEqual(after.errors, [])
+  // the order is the slots array, so nothing about the layout depends on the date
+  assert.deepEqual(after.rows.map((r) => r.length ?? r), before.rows.map((r) => r.length ?? r))
+})
+
+test('a date that is written must still be valid, and dateEnd needs a date', () => {
+  const bad = base()
+  bad.slots[0].events[0].date = 'yesterday'
+  assert.ok(some(errorsOf(bad), /date/), 'a bad date is reported')
+  const span = base()
+  delete span.slots[0].events[0].date
+  span.slots[0].events[0].dateEnd = '2023-12-31'
+  const errs = errorsOf(span)
+  assert.ok(some(errs, /dateEnd/) && some(errs, /needs its start|date/), 'dateEnd without date is reported')
+  assert.ok(some(errs, new RegExp(span.slots[0].events[0].id)), 'and names the event')
+})
+
+test('the field table says date is optional, and the info line skips an undated event', async () => {
+  const { knowledgeOf } = await import('../src/core/registry.js')
+  const k = knowledgeOf('fact')
+  const row = k.fields.events.find((f) => f.name === 'date')
+  assert.equal(row.req, 'no')
+  const spec = base()
+  delete spec.slots[0].events[0].date
+  const lines = k.info(spec, (key, v) => `${key}${v ? JSON.stringify(v) : ''}`, (n) => String(n))
+  assert.ok(lines.length > 0)
 })
