@@ -18,14 +18,18 @@
 //    node tools/build-skill.mjs --check    say whether skills/antu/ is what a build would write (exit 1 if not)
 // ============================================================
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { build as viteBuild } from 'vite'
 
 import { REPO, SPEC_MARKER, buildViewerHtml, engineVersion, ensureEngine, readEngine } from './lib/make-html.mjs'
 import { describeSchema, listKnowledgeTypes, readAgentGuide } from './mcp/engine.mjs'
 
 export const SKILL_DIR = join(REPO, 'skills/antu')
 const VIEWER = 'assets/viewer.html'
+/** The command line, bundled into one file (vite.cli.config.js): large, and rebuilt by every build like the viewer */
+const CLI = 'scripts/antu.mjs'
 
 /** Every file of the skill except the viewer (which is large and is checked by its stamp), as path -> text */
 export function skillFiles() {
@@ -61,7 +65,13 @@ function viewerHtml() {
   return buildViewerHtml({ js, css })
 }
 
-function write() {
+/** The command line as one file: every dependency inside, so it runs with nothing installed beside it */
+async function buildCli() {
+  await viteBuild({ configFile: join(REPO, 'vite.cli.config.js') })
+  copyFileSync(join(REPO, 'dist-cli/antu.mjs'), join(SKILL_DIR, CLI))
+}
+
+async function write() {
   rmSync(SKILL_DIR, { recursive: true, force: true })
   for (const [path, text] of skillFiles()) {
     mkdirSync(dirname(join(SKILL_DIR, path)), { recursive: true })
@@ -69,6 +79,7 @@ function write() {
   }
   mkdirSync(join(SKILL_DIR, 'assets'), { recursive: true })
   writeFileSync(join(SKILL_DIR, VIEWER), viewerHtml())
+  await buildCli()
 }
 
 /** Differences between the skill folder and a build: [] when there are none */
@@ -90,7 +101,7 @@ export function checkSkill() {
     }
   }
   walk(SKILL_DIR)
-  for (const path of have) if (!want.has(path) && path !== VIEWER) problems.push(`not part of a build: ${path}`)
+  for (const path of have) if (!want.has(path) && path !== VIEWER && path !== CLI) problems.push(`not part of a build: ${path}`)
 
   // The viewer is 2 MB and changes with every source change, so it is not compared byte for byte: it must be
   // a viewer template of this version.
@@ -100,6 +111,19 @@ export function checkSkill() {
     const html = readFileSync(viewer, 'utf8')
     if (html.split(SPEC_MARKER).length !== 2) problems.push(`${VIEWER} does not hold exactly one ${SPEC_MARKER}`)
     if (!html.includes(`<meta name="generator" content="antu ${version}">`)) problems.push(`${VIEWER} is not a build of antu ${version}`)
+  }
+
+  // The command line is 1.5 MB of bundled code: like the viewer it is not compared byte for byte. It is run, and
+  // must say it is this version.
+  const cli = join(SKILL_DIR, CLI)
+  if (!existsSync(cli)) problems.push(`missing: ${CLI}`)
+  else {
+    try {
+      const said = execFileSync(process.execPath, [cli, '--version'], { encoding: 'utf8' }).trim()
+      if (said !== `antu ${version}`) problems.push(`${CLI} says "${said}", not "antu ${version}"`)
+    } catch (e) {
+      problems.push(`${CLI} does not run: ${String(e.message).split('\n')[0]}`)
+    }
   }
   return problems
 }
@@ -113,7 +137,7 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
     }
     console.log(`skills/antu is a build of ${engineVersion()}`)
   } else {
-    write()
+    await write()
     console.log(`wrote ${SKILL_DIR}`)
   }
 }

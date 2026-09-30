@@ -55,6 +55,7 @@ export default [
   },
 
   {
-    ignores: ['dist/**', 'dist-engine/**', 'dist-html/**', 'node_modules/**'],
+    // skills/ is generated (tools/build-skill.mjs); its scripts/antu.mjs is one bundled file
+    ignores: ['dist/**', 'dist-engine/**', 'dist-cli/**', 'dist-html/**', 'skills/**', 'node_modules/**'],
   },
 ]

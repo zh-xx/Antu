@@ -53,30 +53,46 @@ chart of numbers, an org chart of a firm), say that antu does not draw it.
 
 - **If the tools `antu_validate` and `antu_layout` are available** (the antu MCP server is installed): call
   `antu_validate` until it passes, then `antu_layout` to see how big the picture is and which orientation fits.
+- **Else, if `node` runs** (Node 18 or newer): the file `scripts/antu.mjs` is the same checker, with nothing to
+  install. Run it from the skill folder:
+
+  ```
+  node scripts/antu.mjs validate spec.json
+  node scripts/antu.mjs layout spec.json
+  ```
+
+  `validate` prints each problem with its field path (exit code 1 when there are any) or "Validation passed";
+  fix the JSON and run it again until it passes. `layout` says how big the picture is and which orientation
+  suits it, and, for a fact diagram, which views do not fit. Do this before you make the page.
 - **Otherwise** there is no checker you can run. Go through the field table once more against your JSON:
   required fields present, ids unique, every reference (`actorIds`, `sourceIds`, `from`, `to`, `groupId` …)
   points at an id that exists. The page checks the data again when it opens and **lists every problem it
   finds instead of the diagram**: tell the user to send you that list if they see one, then fix the JSON and
   make the file again.
 - The "cross-field rules" that the end of a field table says `antu_validate` reports (a dangling reference, a
-  span running backwards, two events in one lane of one time slot …) are real rules: check each by hand. For
-  the fact diagram, the guide's section "one event per cell" says how to see and fix the last one.
+  span running backwards, two events in one lane of one time slot …) are real rules: when you have no checker,
+  check each by hand. For the fact diagram, the guide's section "one event per cell" says how to see and fix
+  the last one.
 
-The guides mention tools named `antu_*`. They exist only with the MCP server; without it, use the field
-tables and examples in this skill.
+The guides mention tools named `antu_*`. They exist only with the MCP server; without it, use the command
+above if you can, and otherwise the field tables and examples in this skill.
 
 ## 4. Make the HTML
 
-**With Python 3** (standard library only):
+**With Node** (the same file): it checks the data first and refuses a diagram that has problems.
+
+```
+node scripts/antu.mjs render spec.json -o diagram.html
+```
+
+**With Python 3** (standard library only; it does not check the data beyond "parses, known `type`"):
 
 ```
 python3 scripts/make_html.py spec.json -o diagram.html
 ```
 
-The script checks that the JSON parses and names a known `type`, then writes the page.
-
-**Without Python**: copy `assets/viewer.html` to the new file and replace the **one** piece of text
-`/*ANTU_SPEC*/null` with the JSON of the diagram, written on one line, with every `<` written as `<`.
+**Without either**: copy `assets/viewer.html` to the new file and replace the **one** piece of text
+`/*ANTU_SPEC*/null` with the JSON of the diagram, written on one line, with every `<` written as `\u003c`.
 Change nothing else in the file.
 
 Keep the JSON next to the HTML (same name, `.json`): the JSON is the source and can be edited and made

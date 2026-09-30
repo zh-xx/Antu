@@ -70,7 +70,8 @@ the engine was updated. (A new *hint* is not a break: a hint never stops a diagr
 
 The skill is what an agent is given to draw with antu when it has no MCP server: a `SKILL.md` (how to choose a
 diagram, how to write the JSON honestly, how to make the page), the guide and field table of each kind,
-examples, a viewer page (the engine with a place for the data), and a Python script that fills it. It is the
+examples, a viewer page (the engine with a place for the data), a Python script that fills it, and a command
+line (`scripts/antu.mjs`: validate, layout, render; one bundled file, Node 18+). It is the
 folder the skill installers of Claude Code, Codex and others read, and it is also attached to each release as
 a zip for clients that import a local package (WorkBuddy).
 
@@ -82,4 +83,6 @@ a zip for clients that import a local package (WorkBuddy).
   `package.json`; the release workflow checks that it equals a build.
 - **Its version is the engine's version.** The viewer and every page made from it carry
   `<meta name="generator" content="antu X.Y.Z">`, so anyone can tell which engine drew a forwarded page.
-- The viewer is 2 MB (0.6 MB in git), and is committed once per release.
+- The viewer (2 MB, 0.6 MB in git) and the command line (1.5 MB, 0.5 MB in git) are committed once per release.
+  Neither is compared byte for byte: the viewer must carry the marker and the version, the command line must run
+  and say `antu X.Y.Z`.

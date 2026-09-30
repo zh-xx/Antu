@@ -31,16 +31,13 @@ import { join } from 'node:path'
 import {
   describeSchema,
   listKnowledgeTypes,
-  validate,
-  notesOf,
-  layoutReport,
-  formatLayoutReport,
   renderHtml,
   listExamples,
   readExample,
   listAgentGuides,
   readAgentGuide,
 } from './engine.mjs'
+import { validate, validationMessage, layoutMessage } from '../lib/report.mjs'
 import { screenshot, findChrome } from './preview.mjs'
 
 // The version is written once, in package.json (spec/versioning.md)
@@ -181,15 +178,11 @@ server.registerTool(
     inputSchema: { spec: specArg },
   },
   async ({ spec }) => {
-    const errors = validate(spec)
-    if (errors.length === 0) {
-      // Not errors, but not silence either: e.g. a view that does not fit is left out of the view dropdown
-      const notes = notesOf(spec)
-      const head = 'Validation passed. Next: antu_layout for the geometry, or antu_preview to look at it.'
-      return OK(notes.length ? `${head}\n\n${notes.length} note(s), not errors:\n${notes.map((n) => `  - ${n}`).join('\n')}` : head)
-    }
-    const lines = errors.map((e, i) => `${i + 1}. ${e}`)
-    return FAIL(`Validation failed, ${errors.length} problem(s):\n\n${lines.join('\n')}`)
+    const m = validationMessage(spec)
+    // the words are shared with the command line in the skill (tools/lib/report.mjs); the next step is this server's own
+    return m.ok
+      ? OK(m.text.replace(/^Validation passed\./, 'Validation passed. Next: antu_layout for the geometry, or antu_preview to look at it.'))
+      : FAIL(m.text)
   },
 )
 
@@ -212,12 +205,8 @@ server.registerTool(
     },
   },
   async ({ spec, orientation, summary = true }) => {
-    const errors = validate(spec)
-    if (errors.length > 0) {
-      return FAIL(`Validation has not passed yet; fix these before looking at the geometry:\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`)
-    }
-    const report = layoutReport(spec, { orientation, fields: { summary } })
-    return report.ok ? OK(formatLayoutReport(report)) : FAIL(report.reason)
+    const m = layoutMessage(spec, { orientation, fields: { summary } })
+    return m.ok ? OK(m.text) : FAIL(m.text)
   },
 )
 
