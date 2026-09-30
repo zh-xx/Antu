@@ -18,71 +18,15 @@ import { knowledgeOf, listKnowledgeTypes } from '../../src/core/registry.js'
 // Registers the knowledge for each type (pure JS, no components). With it, validation
 // and layout both come from the registry.
 import '../../src/renderers/index.js'
-import { layoutOf as layoutFromRegistry, layoutKindsOf } from '../../src/core/registry.js'
-
-import { validateSpec } from '../../src/core/validate.js'
 import { tEn } from '../../src/core/i18n.js'
 
 // The repository root is provided once by tools/lib/make-html.mjs (the server may be
 // started from any cwd, so everything resolves relative to that location); this uses
 // the REPO it exports directly.
 
-/** The default assumption for canvas size: used to compute the "fit zoom". The same size the verify script uses */
-const CANVAS = { width: 1600, height: 900 }
-
-// The layout functions no longer keep their own list: they go through the registry
-// (registered in renderers/index.js). There used to be a hand-written LAYOUTS here
-// duplicating the registry, so adding a sub-type meant changing two places.
-
-/** Validation. Returns errors one by one (already in Chinese, for humans and agents) */
-export function validate(spec) {
-  try {
-    return validateSpec(spec)
-  } catch (e) {
-    return [`the validation layer itself threw: ${e.message}`]
-  }
-}
-
-/**
- * What validation does not call an error but the author should see (for fact: a view that does
- * not fit, so it will be left out of the view dropdown). Each type supplies its own (knowledge.notes).
- */
-export function notesOf(spec) {
-  try {
-    return knowledgeOf(spec?.type)?.notes?.(spec) ?? []
-  } catch (e) {
-    return [`the notes layer itself threw: ${e.message}`]
-  }
-}
-
-/**
- * Geometry report: compute only, no rendering.
- * This is the main basis on which an agent judges whether the diagram will be too wide
- * or too empty.
- *
- * What is counted belongs to the type (time slots and views for a fact diagram; nodes,
- * layers and rules for a procedure), so the report itself comes from the type's knowledge
- * (renderers/<type>/schema.js); this only dispatches. It used to count fact's slots for
- * every type, and a procedure came back as "0 events / 0 time slots".
- */
-export function layoutReport(spec, { orientation, fields } = {}) {
-  const type = spec?.type
-  // Ask the registry which rendering kinds this type has and default to the first.
-  // (This used to read spec?.kindHint, a field the schema does not have.)
-  const kind = layoutKindsOf(type)[0] ?? null
-  const layout = layoutFromRegistry(type, kind)
-  const k = knowledgeOf(type)
-  if (!layout || !k?.report) {
-    return { ok: false, reason: `no geometry computation for type="${type}" kind="${kind}" yet` }
-  }
-  return { ok: true, type, ...k.report(spec, layout, { orientation, fields, canvas: CANVAS }) }
-}
-
-/** Turn the geometry report into a short human-readable text (the part the tool returns to an agent) */
-export function formatLayoutReport(r) {
-  if (!r.ok) return r.reason
-  return knowledgeOf(r.type).formatReport(r)
-}
+// validate / notesOf / layoutReport / formatLayoutReport and the texts built from them live in
+// tools/lib/report.mjs: the command line in the skill (tools/cli/) gives the agent the same words.
+export { CANVAS, validate, notesOf, layoutReport, formatLayoutReport } from '../lib/report.mjs'
 
 /**
  * Generate the self-contained HTML.
@@ -223,7 +167,7 @@ export function readAgentGuide(type = 'fact') {
 }
 
 /** The default assumption for canvas size (used when MCP reports the "fit zoom") */
-export { CANVAS, listKnowledgeTypes }
+export { listKnowledgeTypes }
 
 /**
  * The field table, **fetched by type**.

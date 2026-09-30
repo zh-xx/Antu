@@ -16,6 +16,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { SPEC_MARKER, escapeForScript } from './fill.mjs'
+
 /** The repository root. This file is under tools/lib/, so two levels up. */
 export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -24,17 +26,6 @@ const ENGINE_CSS = join(REPO, 'dist-engine/engine.css')
 
 /** The engine sources. If the products are older than these, a rebuild is due. */
 const ENGINE_SOURCES = ['src', 'vite.engine.config.js']
-
-/**
- * Escaping when inlining.
- *
- * Two pitfalls:
- *   a `</script` in the data closes the script block early → escape `<` in the JSON as \u003c too
- *   a `</script` can equally appear in the engine code (inside string constants) → handled the same way
- */
-export function escapeForScript(text) {
-  return String(text).replace(/</g, '\\u003c')
-}
 
 /** Engine code only: handle `</script` and keep every other character as it is */
 export function escapeEngineCode(code) {
@@ -93,12 +84,8 @@ export function readEngine() {
  * @param engine { js, css } the engine products (the caller does ensureEngine + readEngine first)
  * @param preset optional. Render with the given orientation/fields/view from the start (MCP preview needs to specify these)
  */
-/**
- * The marker a viewer template carries where the data goes (see buildViewerHtml). It is valid JavaScript
- * (`null`), so an unfilled template still loads and says that no data was found; a filler replaces the
- * whole marker, `/*ANTU_SPEC*\/null`, with the JSON of the diagram.
- */
-export const SPEC_MARKER = '/*ANTU_SPEC*/null'
+// SPEC_MARKER and escapeForScript are in ./fill.mjs (the command line in the skill bundles that file alone)
+export { SPEC_MARKER, escapeForScript }
 
 /** The engine's version, from package.json (written once there; spec/versioning.md) */
 export function engineVersion() {

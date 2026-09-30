@@ -1759,13 +1759,14 @@ async function checkRenderRelationship(sampleFile) {
  * against it (a copy of a fact is a node on the page, so the page has more nodes than the data).
  */
 /**
- * The skill's viewer page (skills/antu/), filled in with the skill's own Python script, for each kind: it shows
+ * The skill's viewer page (skills/antu/), filled in with the skill's own Python script and with its Node command
+ * line, for each kind: it shows
  * the diagram, names the tab after the diagram (issue #47: the title used to come only from the Node way of
  * making the page), and says which engine it is. Skipped without python3 (the test/skill.test.mjs checks the
  * script itself).
  */
 async function checkSkillPage() {
-  section('skill: the viewer page filled in by the Python script')
+  section('skill: the viewer page filled in by the Python script and the Node command line')
   if (!findChrome()) {
     bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
     return
@@ -1777,20 +1778,26 @@ async function checkSkillPage() {
   const browser = await launchBrowser({ width: 1400, height: 900 })
   try {
     const version = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version
+    // the two ways the skill has of making the page: the Python script, and the Node command line
+    const makers = {
+      python: (src, out) => spawnSync('python3', [join(REPO, 'skills/antu/scripts/make_html.py'), src, '-o', out]),
+      node: (src, out) => spawnSync(process.execPath, [join(REPO, 'skills/antu/scripts/antu.mjs'), 'render', src, '-o', out]),
+    }
     for (const type of ['fact', 'procedure', 'relationship', 'justification']) {
       const file = join(REPO, 'examples/agent', type, `1-minimal.zh-CN.json`)
       const spec = JSON.parse(readFileSync(file, 'utf8'))
       // a title the page has to escape to show: <, & and a quote
       spec.title = `${spec.title} <&> "q"`
       const src = join(OUT, `skill-${type}.json`)
-      const out = join(OUT, `skill-${type}.html`)
       writeFileSync(src, JSON.stringify(spec))
-      const made = spawnSync('python3', [join(REPO, 'skills/antu/scripts/make_html.py'), src, '-o', out])
-      eq(`${type}: the script makes the page`, made.status, 0)
-      await browser.open(`file://${out}?lang=zh`)
-      truthy(`${type}: the diagram is drawn`, await browser.eval(`document.querySelectorAll(${JSON.stringify(ITEM_SELECTOR)}).length > 0`))
-      eq(`${type}: the tab is named after the diagram`, await browser.eval('document.title'), `${spec.title} · antu`)
-      eq(`${type}: the page says which engine made it`, await browser.eval(`document.querySelector('meta[name=generator]')?.content`), `antu ${version}`)
+      for (const [how, make] of Object.entries(makers)) {
+        const out = join(OUT, `skill-${type}-${how}.html`)
+        eq(`${type} (${how}): the page is made`, make(src, out).status, 0)
+        await browser.open(`file://${out}?lang=zh`)
+        truthy(`${type} (${how}): the diagram is drawn`, await browser.eval(`document.querySelectorAll(${JSON.stringify(ITEM_SELECTOR)}).length > 0`))
+        eq(`${type} (${how}): the tab is named after the diagram`, await browser.eval('document.title'), `${spec.title} · antu`)
+        eq(`${type} (${how}): the page says which engine made it`, await browser.eval(`document.querySelector('meta[name=generator]')?.content`), `antu ${version}`)
+      }
     }
   } finally {
     await browser.close()

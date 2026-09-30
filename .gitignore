@@ -2,6 +2,7 @@
 node_modules/
 dist/
 dist-engine/
+dist-cli/
 dist-html/
 .verify/
 build/

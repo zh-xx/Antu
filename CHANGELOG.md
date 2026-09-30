@@ -3,6 +3,32 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.3.0
+
+The agent skill gets a command line, so an agent without the MCP server can check its diagram before it draws it.
+
+### Added
+- **`scripts/antu.mjs` in the skill**: `validate`, `layout` and `render`, in one file with every dependency inside
+  (Node 18 or newer, nothing to install, no network). It says the same words as the MCP tools `antu_validate` and
+  `antu_layout`; `render` checks the data first and refuses a diagram with problems. `SKILL.md` tells the agent
+  to use it when `node` runs, then the Python script, then a text replacement.
+
+### Changed
+- The texts of validation and of the geometry report now come from one place (`tools/lib/report.mjs`), shared
+  by the MCP server and the command line. The words the MCP tools return are the same as before.
+- `SKILL.md` says what the guides' `antu_*` tools are in the skill folder (and that there is no way to look at the
+  page), and what to do with something the user is unsure of, an event with no date, and a missing source. Found
+  by giving three agents the skill and one sentence each (a fact timeline, a relationship diagram, a justification
+  tree): all three used the command line, left nothing invented out of the JSON and made a page that opens; the
+  gaps they named are what this fixes.
+- The fact guide says whom to list on an event (who did it; both only when both acted).
+- The note "nothing supports X" says it can be left as it is when X stands only because what argued against it
+  was rejected.
+- The skill folder is 1.5 MB larger (the bundled command line; 0.5 MB in git and in the zip).
+
+### Breaking
+- None.
+
 ## 0.2.0
 
 The first release with a changelog, and the first with all four kinds of diagram. The four JSON formats

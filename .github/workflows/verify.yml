@@ -45,3 +45,22 @@ jobs:
           name: 截图
           path: .verify/screenshot.png
           if-no-files-found: ignore
+
+  # 技能包里的命令行（skills/antu/scripts/antu.mjs）承诺"Node 18 及以上，旁边什么都不用装"。
+  # 这一组把承诺落成检查：把 skills/antu/ 拷到一个没有 node_modules 的临时目录，
+  # 在每个承诺的 Node 版本上各跑一遍。故意不 npm ci：装了依赖就测不出"什么都不用装"了。
+  skill-cli:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: 技能包的命令行（Node ${{ matrix.node }}，不装依赖）
+        run: node tools/verify/skill-cli.mjs

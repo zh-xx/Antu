@@ -32,6 +32,10 @@ Column (lane) actorIds decides the lane:
 **An event with several parties lands on the axis.** That is a hard rule: it means
 "both sides did this" or "this happened objectively", and belongs to neither side.
 
+So list in `actorIds` **the party who did it**: "A pays B" is A's act (one party, A's lane); "A and B sign a
+contract" is both's (two parties, the axis). Name the other party in the label or the summary, not in `actorIds`,
+unless both acted.
+
 ## What a view is
 
 The same data can be looked at in several ways. A view only changes how the two
