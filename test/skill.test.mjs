@@ -48,6 +48,20 @@ test('the skill folder is complete and carries the version of package.json', () 
   assert.ok(readFileSync('skills/antu/SKILL.md', 'utf8').includes(`version: "${version}"`))
 })
 
+test('SKILL.md commands name the skill folder, so they run from any directory (#49)', () => {
+  const text = readFileSync('skills/antu/SKILL.md', 'utf8')
+  assert.ok(text.includes('<skill-dir>'), 'says what <skill-dir> is')
+  assert.ok(!/\bnode scripts\//.test(text) && !/\bpython3 scripts\//.test(text), 'no command relies on the current directory being the skill folder')
+  // and the command line does run from elsewhere: tools/verify/skill-cli.mjs runs it with another directory as cwd
+})
+
+test('SKILL.md tells an agent that a fact diagram of two parties needs groups or views (#49)', () => {
+  const text = readFileSync('skills/antu/SKILL.md', 'utf8')
+  assert.match(text, /two or more parties/)
+  assert.match(text, /groups/)
+  assert.match(text, /3-groups/)
+})
+
 test('SKILL.md is a valid skill: name = folder, a description within the limit, no placeholder left', () => {
   const text = readFileSync('skills/antu/SKILL.md', 'utf8')
   const front = /^---\n([\s\S]*?)\n---\n/.exec(text)

@@ -3,6 +3,21 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.3.1
+
+Two fixes to what the skill tells an agent (#49). No engine change.
+
+### Fixed
+- A fact diagram of two parties written after `1-minimal` had no `groups`, so every card stood on the middle axis
+  and the page did not show who did what. `SKILL.md` now says that a diagram of two or more parties needs
+  `groups` (see `3-groups`) or `views` that split by party (see `4-views`).
+- The commands in `SKILL.md` were written `node scripts/antu.mjs …`, which only works with the skill folder as the
+  current directory, and an agent's current directory is usually the user's. They are now written with
+  `<skill-dir>`, and `SKILL.md` says where the agent's own files go (where the user works, not in the skill folder).
+
+### Breaking
+- None.
+
 ## 0.3.0
 
 The agent skill gets a command line, so an agent without the MCP server can check its diagram before it draws it.
