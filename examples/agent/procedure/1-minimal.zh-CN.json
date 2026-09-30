@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "最小示例：三步直线",
   "actors": [{ "id": "a-1", "name": "甲方" }],
   "nodes": [

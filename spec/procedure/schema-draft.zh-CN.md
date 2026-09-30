@@ -36,7 +36,7 @@
 }
 ```
 
-`specVersion` 的形态沿用 v0 主文档的待定项，本草案不单独表态。
+`specVersion` 是这个格式的代数，规则见 `spec/versioning.md`。
 
 ---
 

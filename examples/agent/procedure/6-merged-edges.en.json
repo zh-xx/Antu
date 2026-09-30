@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "Several edges to one target: different conditions, merged on render",
   "nodes": [
     { "id": "n-1", "kind": "start", "label": "Service period starts" },

@@ -1,5 +1,6 @@
 {
   "type": "fact",
+  "specVersion": 1,
   "title": "来源：每个事实都标明出处",
   "actors": [
     { "id": "a-1", "name": "杨某" },

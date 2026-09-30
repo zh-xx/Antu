@@ -7,7 +7,8 @@
 //  validation only, then dispatches by looking the type up.
 // ============================================================
 
-import { validatorOf } from './registry.js'
+import { validatorOf, knowledgeOf } from './registry.js'
+import { checkSpecVersion } from './specVersion.js'
 import { tEn } from './i18n.js'
 
 /** Validate the envelope layer: shared by all diagram types */
@@ -20,6 +21,10 @@ function validateEnvelope(spec) {
   else if (typeof spec.type !== 'string') errors.push(tEn('err.envelopeTypeString'))
   if (spec.title !== undefined && typeof spec.title !== 'string') {
     errors.push(tEn('err.envelopeTitleString'))
+  }
+  if (typeof spec.type === 'string') {
+    const bad = checkSpecVersion(spec, knowledgeOf(spec.type)?.specVersion)
+    if (bad) errors.push(tEn(bad.key, bad.params))
   }
   return errors
 }

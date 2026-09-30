@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "不标 main：让引擎自己认主干",
   "nodes": [
     { "id": "n-1", "kind": "start", "label": "立案" },

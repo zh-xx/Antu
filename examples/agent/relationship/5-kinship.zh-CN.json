@@ -1,5 +1,6 @@
 {
   "type": "relationship",
+  "specVersion": 1,
   "title": "身份与亲属：无向关系与 directed",
   "asOf": "2024-01-01",
   "entities": [

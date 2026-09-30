@@ -1,5 +1,6 @@
 {
   "type": "fact",
+  "specVersion": 1,
   "title": "视角：同一份数据，两种看法",
   "actors": [
     { "id": "a-1", "name": "华远贸易" },

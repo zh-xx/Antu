@@ -1,5 +1,6 @@
 {
   "type": "fact",
+  "specVersion": 1,
   "title": "最小示例：两个主体、三个时间点",
   "actors": [
     { "id": "a-1", "name": "华远贸易", "role": "原告" },

@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "阶段、主体与结果",
   "domain": "contract-performance",
   "actors": [

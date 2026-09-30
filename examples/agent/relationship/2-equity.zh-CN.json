@@ -1,5 +1,6 @@
 {
   "type": "relationship",
+  "specVersion": 1,
   "title": "股权：谁持有谁、持多少",
   "entities": [
     {

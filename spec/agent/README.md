@@ -46,3 +46,10 @@ or is this something a human wants to know?**
 
 Only the former belongs here. Design rationale, history, pitfalls and the to-fix list
 all go one level up.
+
+## Write `specVersion`
+
+Put `"specVersion": 1` in the envelope of every diagram you write (the field table shows the number the engine
+knows for that type). Without it the file is read as the current generation, which is fine today; with it, a file
+written now can still be recognised as older after a later format change. A number higher than the engine
+knows is an error. The rules are in `spec/versioning.md`.

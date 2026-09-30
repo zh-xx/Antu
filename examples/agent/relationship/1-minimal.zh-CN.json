@@ -1,5 +1,6 @@
 {
   "type": "relationship",
+  "specVersion": 1,
   "title": "最小可用：一笔借款",
   "entities": [
     {

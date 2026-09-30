@@ -1,5 +1,6 @@
 {
   "type": "relationship",
+  "specVersion": 1,
   "title": "Status and kinship: undirected relations and directed",
   "asOf": "2024-01-01",
   "entities": [

@@ -170,6 +170,8 @@ export const en = {
   'err.envelopeTypeRequired': 'missing required field `type` (the engine uses it to pick a renderer)',
   'err.envelopeTypeString': '`type` must be a string',
   'err.envelopeTitleString': '`title` must be a string',
+  'err.specVersionForm': '`specVersion` must be a whole number from 1 up, got {value}',
+  'err.specVersionNewer': '`specVersion` is {value}, newer than this engine knows for "{type}" ({known}): update the engine, or write the file for the older format',
   'err.viewsNotArray': '`views` must be an array',
   'err.splitByDoc': '`splitBy` must be "actor" (split by party) or "group" (split by group)',
   'err.slotNotArray': '`slots` must be an array (one slot = one time point)',

@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "Minimal example: three steps in a straight line",
   "actors": [{ "id": "a-1", "name": "Party A" }],
   "nodes": [

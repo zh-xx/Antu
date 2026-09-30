@@ -9,6 +9,7 @@
 //  copied by hand. The specification is spec/justification/schema-draft.md.
 // ============================================================
 
+import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateJustification, hintsOfJustification, NODE_KINDS, STANCES, HOLDS_KINDS, COMBINES } from './tree/rules.js'
 import { buildJustificationGraph } from './tree/layout.js'
 import { fitZoom } from '../../core/canvas.js'
@@ -18,9 +19,13 @@ import { fitZoom } from '../../core/canvas.js'
  * (dangling references, cycles, a leaf with a supporter) are not in this table; rules.js reports
  * them one by one at run time.
  */
+/** The generation of this type's JSON format (core/specVersion.js, spec/versioning.md): +1 on a breaking change */
+export const JUSTIFICATION_SPEC_VERSION = 1
+
 export const JUSTIFICATION_FIELDS = {
   envelope: [
     { name: 'type', req: 'yes', ty: 'string', note: 'always "justification"' },
+    specVersionFieldRow(JUSTIFICATION_SPEC_VERSION),
     { name: 'title', req: 'yes', ty: 'string', note: 'diagram title, shown at the top left' },
     { name: 'speaker', req: 'no', ty: 'string', note: 'whose reasoning this is, e.g. the court; one side only' },
   ],
@@ -80,6 +85,7 @@ export function describeJustificationSchema() {
 }
 
 export const justificationKnowledge = {
+  specVersion: JUSTIFICATION_SPEC_VERSION,
   /** The display name of the type: a message key, resolved per language by the consumer (core/labels.js) */
   label: 'graphType.justification',
 

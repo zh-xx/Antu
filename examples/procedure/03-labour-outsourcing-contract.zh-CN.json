@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "劳务外包合同 · 履行流程",
   "domain": "contract-performance",
   "actors": [

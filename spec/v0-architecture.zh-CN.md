@@ -118,7 +118,7 @@ fact 的 JSON          ← schema 规定到这一层为止，没有"我是什么
 
 ```jsonc
 {
-  "specVersion": 1,          // 规范版本（是否必填/如何演进：待定）
+  "specVersion": 1,          // 这个图种格式的代数（可不写，见 spec/versioning.md）
   "type": "relationship",    // 路由钥匙，必填
   "title": "张三诉李四民间借贷纠纷"
   // 其他可选元数据（案件编号、备注…）：待定
@@ -236,7 +236,7 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
 - [x] source 规范定稿：7 类（statute/case/contract/evidence/document/web/other）字段全部精雕完成（见 source-schema-draft.md）
 
 ### 待定（动手前确认）
-- [ ] `specVersion` 的形态（有无必要、怎么演进）
+- [x] `specVersion` 的形态：**已定**：每个图种一个整数，只有该图种的 JSON 破坏了按旧版写的文件时才加一；文件里可以不写（见 `spec/versioning.md`）
 - [x] fact 内容层 schema：**已定稿**（含 label / summary / detail 的分工，见 `spec/fact/schema-draft.md`）
 - [x] procedure 内容层 schema：**v1 已确认**（见 `spec/procedure/schema-draft.zh-CN.md`）
 - [ ] relationship 内容层 schema 字段细节：**schema 暂定 v0，发起人认可为暂用**（`spec/relationship/schema-draft.zh-CN.md`）

@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "Labour Outsourcing Contract · Performance Flow",
   "domain": "contract-performance",
   "actors": [

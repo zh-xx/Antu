@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "股权收购协议 · 履行流程",
   "domain": "contract-performance",
   "actors": [

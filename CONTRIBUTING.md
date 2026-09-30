@@ -39,6 +39,16 @@ npm run verify       # 含浏览器渲染和 MCP 全流程
    规则一旦写两处，迟早各说各话。
 8. **新加的断言，反着改一遍验证它真的会失败。** 一个永远通过的检查器比没有更糟。
 
+## 版本与发布
+
+规则在 [spec/versioning.md](spec/versioning.md)，改动记录在 [CHANGELOG.md](CHANGELOG.md)。要点：
+
+- 发布版本号只在 `package.json` 写一处（MCP 服务器从那里读），遵循语义化版本；现在是 0.x 阶段。
+- 每个图种的 JSON 格式有自己的 `specVersion`（整数，在该图种的 `schema.js`）。**只有破坏性改动才加一**：
+  改名、删字段、改含义、把规则变严。加一个可选字段不算，规则变松也不算。
+- PR 说明里写清这一次动没动“契约”（字段、报错的规则、MCP 工具的参数）。破坏契约的，同时改 `specVersion` 和 CHANGELOG 的 *Breaking*。
+- 发版本是一个单独的小 PR（`package.json`、`package-lock.json`、CHANGELOG 新的一节），合并后在合并提交上打 tag `vX.Y.Z`。
+
 ## 目录
 
 - `spec/`：给人看的设计文档（英文为主，另有 `.zh-CN.md`）；`spec/agent/`：给 agent 看的说明，只有英文。

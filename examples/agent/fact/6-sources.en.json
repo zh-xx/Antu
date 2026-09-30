@@ -1,5 +1,6 @@
 {
   "type": "fact",
+  "specVersion": 1,
   "title": "Sources: every fact is traced to its source",
   "actors": [
     { "id": "a-1", "name": "Yang" },

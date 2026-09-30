@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "判定点：菱形 + 条件 + 回边",
   "nodes": [
     { "id": "n-1", "kind": "start", "label": "提交成果" },

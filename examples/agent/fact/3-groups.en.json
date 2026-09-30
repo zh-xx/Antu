@@ -1,5 +1,6 @@
 {
   "type": "fact",
+  "specVersion": 1,
   "title": "Groups: groupId decides which side an event falls on",
   "actors": [
     { "id": "a-1", "name": "Party A" },

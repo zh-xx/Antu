@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "Decision point: diamond + conditions + back edge",
   "nodes": [
     { "id": "n-1", "kind": "start", "label": "Deliverables submitted" },

@@ -1,5 +1,6 @@
 {
   "type": "relationship",
+  "specVersion": 1,
   "title": "Equity: who holds whom, and how much",
   "entities": [
     {

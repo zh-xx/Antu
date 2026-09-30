@@ -1,5 +1,6 @@
 {
   "type": "fact",
+  "specVersion": 1,
   "title": "分组：用 groupId 决定事件落在哪一侧",
   "actors": [
     { "id": "a-1", "name": "发包方" },

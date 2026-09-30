@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "分支：一个过程节点挂多条出边",
   "nodes": [
     { "id": "n-1", "kind": "start", "label": "服务期开始" },
