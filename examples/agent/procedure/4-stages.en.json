@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "Stages, actors and outcomes",
   "domain": "contract-performance",
   "actors": [

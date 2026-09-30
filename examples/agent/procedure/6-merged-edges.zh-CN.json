@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "同一目标的多条边：条件不同，渲染时合并",
   "nodes": [
     { "id": "n-1", "kind": "start", "label": "服务期开始" },

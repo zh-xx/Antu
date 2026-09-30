@@ -1,5 +1,6 @@
 {
   "type": "fact",
+  "specVersion": 1,
   "title": "Minimal: two parties, three time slots",
   "actors": [
     {

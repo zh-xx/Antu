@@ -1,5 +1,6 @@
 {
   "type": "fact",
+  "specVersion": 1,
   "title": "Views: the same data, seen two ways",
   "actors": [
     { "id": "a-1", "name": "Huayuan Trading" },

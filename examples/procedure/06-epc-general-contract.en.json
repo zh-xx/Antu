@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "EPC General Contract · Performance Flow",
   "domain": "contract-performance",
   "actors": [

@@ -1,5 +1,6 @@
 {
   "type": "relationship",
+  "specVersion": 1,
   "title": "张三诉李四 · 当事方及其关系",
   "asOf": "2023-03-10",
   "groups": [

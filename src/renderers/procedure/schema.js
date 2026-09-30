@@ -13,6 +13,7 @@
 //  day one.
 // ============================================================
 
+import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateProcedure, KINDS, OUTCOMES, DOMAINS } from './flow/rules.js'
 import { buildProcedureGraph } from './flow/layout.js'
 import { fitZoom } from '../../core/canvas.js'
@@ -26,9 +27,13 @@ import { fitZoom } from '../../core/canvas.js'
  * connectivity, a broken main line) are not in this table; rules.js reports them
  * one by one at run time.
  */
+/** The generation of this type's JSON format (core/specVersion.js, spec/versioning.md): +1 on a breaking change */
+export const PROCEDURE_SPEC_VERSION = 1
+
 export const PROCEDURE_FIELDS = {
   envelope: [
     { name: 'type', req: 'yes', ty: 'string', note: 'always "procedure"' },
+    specVersionFieldRow(PROCEDURE_SPEC_VERSION),
     { name: 'title', req: 'yes', ty: 'string', note: 'diagram title, shown at the top left' },
   ],
   domain: [
@@ -127,6 +132,7 @@ export function describeProcedureSchema() {
 }
 
 export const procedureKnowledge = {
+  specVersion: PROCEDURE_SPEC_VERSION,
   /**
    * The display name of the type. What is stored is a **message key**, not the
    * message: the registry is also used on the Node side (MCP), which has no

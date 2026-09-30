@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "Branches: one step node with several outgoing edges",
   "nodes": [
     { "id": "n-1", "kind": "start", "label": "Service period starts" },

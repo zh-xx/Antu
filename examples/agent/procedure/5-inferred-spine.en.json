@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "No main flags: let the engine infer the spine",
   "nodes": [
     { "id": "n-1", "kind": "start", "label": "Case filed" },

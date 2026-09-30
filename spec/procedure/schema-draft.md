@@ -46,8 +46,7 @@
 }
 ```
 
-The form of `specVersion` follows the open item in the v0 main document; this draft states no
-separate position.
+`specVersion` is the generation of this format: see `spec/versioning.md`.
 
 ---
 

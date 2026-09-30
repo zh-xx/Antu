@@ -24,7 +24,7 @@ import { tEn } from '../../src/core/i18n.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -43,7 +43,10 @@ import {
 } from './engine.mjs'
 import { screenshot, findChrome } from './preview.mjs'
 
-const server = new McpServer({ name: 'antu', version: '0.1.0' })
+// The version is written once, in package.json (spec/versioning.md)
+const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
+
+const server = new McpServer({ name: 'antu', version: pkg.version })
 
 /** The JSON in the spec is an arbitrarily nested structure; the schema is not redefined here: validation is the engine's job */
 const specArg = z.looseObject({}).describe('the antu JSON (envelope + content layer; see the spec resources)')

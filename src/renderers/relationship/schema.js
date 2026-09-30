@@ -9,6 +9,7 @@
 //  copied by hand. The specification is spec/relationship/schema-draft.md.
 // ============================================================
 
+import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateRelationship, hintsOfRelationship, ENTITY_KINDS, RELATION_KINDS } from './graph/rules.js'
 import { buildRelationshipGraph } from './graph/layout.js'
 import { fitZoom } from '../../core/canvas.js'
@@ -18,9 +19,13 @@ import { fitZoom } from '../../core/canvas.js'
  * (dangling references, a guarantee that secures nothing, shares over 100) are not in this
  * table; rules.js reports them one by one at run time.
  */
+/** The generation of this type's JSON format (core/specVersion.js, spec/versioning.md): +1 on a breaking change */
+export const RELATIONSHIP_SPEC_VERSION = 1
+
 export const RELATIONSHIP_FIELDS = {
   envelope: [
     { name: 'type', req: 'yes', ty: 'string', note: 'always "relationship"' },
+    specVersionFieldRow(RELATIONSHIP_SPEC_VERSION),
     { name: 'title', req: 'yes', ty: 'string', note: 'diagram title, shown at the top left' },
     { name: 'asOf', req: 'no', ty: 'ISO date', note: 'the date these relations hold; the diagram is a cross-section at one point in time' },
   ],
@@ -85,6 +90,7 @@ export function describeRelationshipSchema() {
 }
 
 export const relationshipKnowledge = {
+  specVersion: RELATIONSHIP_SPEC_VERSION,
   /** The display name of the type: a message key, resolved per language by the consumer (core/labels.js) */
   label: 'graphType.relationship',
 

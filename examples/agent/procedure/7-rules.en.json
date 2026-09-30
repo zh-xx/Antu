@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "Rules: what may happen at any time",
   "domain": "contract-performance",
   "stages": [

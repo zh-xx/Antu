@@ -1,5 +1,6 @@
 {
   "type": "fact",
+  "specVersion": 1,
   "title": "单主体：一个主体，按性质分两侧",
   "actors": [{ "id": "a-1", "name": "郭某", "role": "原告" }],
   "groups": [

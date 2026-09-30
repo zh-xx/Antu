@@ -1,5 +1,6 @@
 {
   "type": "fact",
+  "specVersion": 1,
   "title": "Time: spans, approximations, and why they are recorded this way",
   "actors": [{ "id": "a-1", "name": "Yang" }],
   "slots": [

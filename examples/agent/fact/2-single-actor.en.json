@@ -1,5 +1,6 @@
 {
   "type": "fact",
+  "specVersion": 1,
   "title": "Single actor: one party, two sides by nature",
   "actors": [
     {

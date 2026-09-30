@@ -1,5 +1,6 @@
 {
   "type": "relationship",
+  "specVersion": 1,
   "title": "阵营：原告方、被告方与中立方",
   "groups": [
     {

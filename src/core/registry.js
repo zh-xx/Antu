@@ -37,12 +37,13 @@ const knowledge = new Map()
 /**
  * Register the knowledge of one type.
  * @param type the type
- * @param k    { validate(spec) => string[], layouts: { kind: buildGraph } }
+ * @param k    { specVersion, validate(spec) => string[], layouts: { kind: buildGraph } }
  */
 export function registerKnowledge(type, k) {
   if (!type) throw new Error('registerKnowledge: type must not be empty')
   if (!k?.validate) throw new Error('registerKnowledge: validate is required')
   if (!k?.describe) throw new Error('registerKnowledge: describe is required (the agent-facing field table)')
+  if (!Number.isInteger(k.specVersion) || k.specVersion < 1) throw new Error('registerKnowledge: specVersion is required, a whole number (the generation of this type\'s JSON format, core/specVersion.js)')
   knowledge.set(type, k)
 }
 

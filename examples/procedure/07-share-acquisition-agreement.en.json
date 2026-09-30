@@ -1,5 +1,6 @@
 {
   "type": "procedure",
+  "specVersion": 1,
   "title": "Share Acquisition Agreement · Performance Flow",
   "domain": "contract-performance",
   "actors": [

@@ -117,7 +117,7 @@ Two key distinctions:
 
 ```jsonc
 {
-  "specVersion": 1,          // specification version (required? how it evolves: to be decided)
+  "specVersion": 1,          // format generation of this type (optional; see spec/versioning.md)
   "type": "relationship",    // the routing key, required
   "title": "Zhang San v. Li Si, private lending dispute"
   // other optional metadata (case number, notes…): to be decided
@@ -232,7 +232,7 @@ The structured locations in `sources` (page 6 of the contract, the case number a
 - [x] The source specification is final: all fields of the seven types (statute/case/contract/evidence/document/web/other) are fully refined (see `spec/source-schema-draft.md`)
 
 ### To be decided (confirm before starting)
-- [ ] The shape of `specVersion` (whether it is needed at all, how it evolves)
+- [x] The shape of `specVersion`: **decided**: a whole number per type, raised only when a type's JSON breaks a file written for the old one; optional in a file (see `spec/versioning.md`)
 - [x] The fact content-layer schema: **final** (including the division of labour between label / summary / detail, see `spec/fact/schema-draft.md`)
 - [x] The procedure content-layer schema: **v1, confirmed** (see `spec/procedure/schema-draft.md`)
 - [ ] The field details of the content-layer schema for relationship: **schema provisional v0, accepted by the sponsor as good enough for now** (`spec/relationship/schema-draft.md`)

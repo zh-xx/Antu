@@ -1,5 +1,6 @@
 {
   "type": "relationship",
+  "specVersion": 1,
   "title": "Camps: plaintiff side, defendant side, a neutral party",
   "groups": [
     {

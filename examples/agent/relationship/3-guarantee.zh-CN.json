@@ -1,5 +1,6 @@
 {
   "type": "relationship",
+  "specVersion": 1,
   "title": "担保：指向它所担保的那笔债权",
   "entities": [
     {

@@ -13,6 +13,7 @@
 //  and this file only wraps it in a public interface, repeating not one line.
 // ============================================================
 
+import { specVersionFieldRow } from '../../core/specVersion.js'
 import { buildGrid, viewsOf } from './timeline/grid.js'
 import { buildFactGraph } from './timeline/layout.js'
 import { fitZoom } from '../../core/canvas.js'
@@ -26,9 +27,13 @@ import { tEn } from '../../core/i18n.js'
  * req = required; ty = type; note = one-line explanation an agent can act on. Only **field-level**
  * rules are listed; cross-field rules are reported by the validator at run time (see spec/agent/fact/guide.md).
  */
+/** The generation of this type's JSON format (core/specVersion.js, spec/versioning.md): +1 on a breaking change */
+export const FACT_SPEC_VERSION = 1
+
 export const FACT_FIELDS = {
   envelope: [
     { name: 'type', req: 'yes', ty: 'string', note: 'always "fact"' },
+    specVersionFieldRow(FACT_SPEC_VERSION),
     { name: 'title', req: 'yes', ty: 'string', note: 'diagram title, shown at the top left' },
   ],
   actors: [
@@ -99,6 +104,7 @@ export function describeFactSchema() {
 }
 
 export const factKnowledge = {
+  specVersion: FACT_SPEC_VERSION,
   /**
    * Display name of the top-level type. What is stored is a **message key**, not the message:
    * the Node side of the registry (MCP) needs it too and has no interface language there,

@@ -1844,6 +1844,18 @@ async function checkRenderJustification(sampleFile) {
     await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].find((b) => b.textContent.includes('收起争点')).click()`, { userGesture: true })
     await settle(900)
     eq('the dock folds every issue', await count('.antu-jn'), foldedAll.nodes.length)
+    // issue #42: a folded issue's box is widened for its title and must not be cut off by the canvas
+    await settle(600)
+    const inside = await browser.eval(`(() => {
+      const cv = document.querySelector('.antu-canvas').getBoundingClientRect()
+      let l = 1e9, t = 1e9, r = -1e9, b = -1e9
+      document.querySelectorAll('.antu-jn, .antu-rgroup-box, .antu-jissue-toggle').forEach((e) => {
+        const q = e.getBoundingClientRect()
+        l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); b = Math.max(b, q.bottom)
+      })
+      return Math.min(l - cv.left, t - cv.top, cv.right - r, cv.bottom - b)
+    })()`)
+    truthy('folded: every node, box and title is inside the canvas', inside >= 0, `nearest edge: ${Math.round(inside)}px`)
     eq('and the chip shows it is on', await count('.antu-dock-chip.is-on'), 1 + (spec.links.some((k) => k.label) ? 1 : 0))
     const savedFold = await browser.eval(`JSON.parse(localStorage.getItem('antu.prefs') || '{}')`)
     truthy('the fold is remembered under this diagram', savedFold.justificationFolded?.[`jus:${spec.title}`]?.length === issueIds.length, JSON.stringify(savedFold.justificationFolded))
