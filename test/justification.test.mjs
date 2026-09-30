@@ -505,3 +505,26 @@ test('a single issue has nothing to fold into, and a folded issue can be opened 
   const open = buildJustificationGraph(s, { collapsed: [] }, undefined, 'horizontal')
   assert.equal(open.nodes.length, 5)
 })
+
+test('the real cases keep few crossings between their links (a bound, not a promise of zero)', async () => {
+  const { routedCrossings } = await import('../src/renderers/justification/tree/crossings.js')
+  // before the layouts were tried with several seeds: elevator 11 / 11, Yu Huan 6 / 5 (horizontal / vertical)
+  const bound = { 'elevator-smoking-liability': 6, 'yuhuan-defense-excess': 5 }
+  for (const [name, most] of Object.entries(bound)) {
+    const spec = JSON.parse(readFileSync(`examples/justification/${name}.zh-CN.json`, 'utf8'))
+    for (const o of ['horizontal', 'vertical']) {
+      const g = buildJustificationGraph(spec, {}, undefined, o)
+      const n = routedCrossings(g.connections.map((c) => c.points))
+      assert.ok(n <= most, `${name} ${o}: ${n} crossings, at most ${most}`)
+    }
+  }
+})
+
+test('the small examples have no crossing at all', async () => {
+  const { routedCrossings } = await import('../src/renderers/justification/tree/crossings.js')
+  const dir = 'examples/agent/justification/'
+  for (const f of readdirSync(dir).filter((f) => f.endsWith('.json'))) {
+    const g = buildJustificationGraph(JSON.parse(readFileSync(dir + f, 'utf8')), {}, undefined, 'horizontal')
+    assert.equal(routedCrossings(g.connections.map((c) => c.points)), 0, f)
+  }
+})

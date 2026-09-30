@@ -42,6 +42,7 @@ import { toReal } from '../../procedure/flow/columns.js'
 import { titleBoxOf, edgesOfBox, portCostFor, segsOf, placeOnLine, fallbackRoute } from '../../relationship/graph/layout.js'
 import { tEn } from '../../../core/i18n.js'
 import { textEm } from '../../fact/cardGeometry.js'
+import { crossScore, routedCrossings } from './crossings.js'
 import {
   PAD,
   LAYER_GAP,
@@ -58,6 +59,12 @@ import {
   sizeOf,
   labelBox,
 } from './metrics.js'
+
+/** How many seeds ELK is tried with for each issue */
+const LAYOUT_TRIES = 8
+
+/** How many of the best-ranked placements of an issue are routed for real, to choose among them */
+const REAL_TRIES = 4
 
 const emptyStats = () => ({ nodes: 0, copies: 0, links: 0, groups: 0, layers: 0, widest: 0, kinds: {}, hidden: 0 })
 
@@ -76,7 +83,6 @@ const ELK_OPTIONS = {
   'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
   'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
   'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
-  'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
   'elk.edgeLabels.inline': 'false',
   'elk.separateConnectedComponents': 'false',
 }
@@ -230,26 +236,131 @@ function layOut(spec, orientation, collapsed) {
     return vertical ? b : { width: b.height, height: b.width }
   })
 
+  // The title strip takes GROUP_PAD_TOP along the real top of a box: the frame's top when vertical, its left when transposed
+  const PAD_A0 = vertical ? GROUP_PAD_TOP : GROUP_PAD
+  const PAD_C0 = vertical ? GROUP_PAD : GROUP_PAD_TOP
+
+  // ── routing a set of links: used for the real thing, and to try an issue's candidate placements ──
+  const routeSet = (idxs, at, ctx) => {
+    const { nodeRects, titles, borders, boxOf, nodeGroup } = ctx
+    const touches = (r, bx) => r.x < bx.x + bx.w && bx.x < r.x + r.w && r.y < bx.y + bx.h && bx.y < r.y + r.h
+    const segTouches = ([p, q], bx) =>
+      Math.max(p[0], q[0]) >= bx.x && Math.min(p[0], q[0]) <= bx.x + bx.w && Math.max(p[1], q[1]) >= bx.y && Math.min(p[1], q[1]) <= bx.y + bx.h
+    const dist = (i) => {
+      const a = at.get(ends[i].from)
+      const b = at.get(ends[i].to)
+      return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
+    }
+    // Short ones first, so the long ones go round them
+    const order = [...idxs].sort((a, b) => dist(a) - dist(b) || a - b)
+    const drawn = new Array(links.length)
+    const done = []
+    for (const i of order) {
+      const k = links[i]
+      const a = at.get(ends[i].from)
+      const b = at.get(ends[i].to)
+      // Links of one stance into one node may run along each other and share the port into it
+      const routes = done.map((c) => {
+        const o = links[c.index]
+        return { points: c.points, share: ends[c.index].to === ends[i].to && stanceOf(o) === stanceOf(k) }
+      })
+      // A link inside one issue is first sought inside that issue's box only (a link between two issues,
+      // in the rectangle that spans its two ends and a margin): the router's grid grows with everything it
+      // is given, and a 40-node tree took six seconds when every link saw every node. Only what touches the
+      // box is passed in; a link that cannot be routed there is routed among everything.
+      const around = (m) => {
+        const x0 = Math.min(a.x, b.x) - m
+        const y0 = Math.min(a.y, b.y) - m
+        return { x: x0, y: y0, w: Math.max(a.x + a.w, b.x + b.w) + m - x0, h: Math.max(a.y + a.h, b.y + b.h) + m - y0 }
+      }
+      const box =
+        nodeGroup.get(ends[i].from) && nodeGroup.get(ends[i].from) === nodeGroup.get(ends[i].to)
+          ? boxOf.get(nodeGroup.get(ends[i].from))
+          : around(SEARCH_MARGIN)
+      const route = (inBox) =>
+        routeLink({
+          from: a,
+          to: b,
+          nodes: inBox ? nodeRects.filter((r) => touches(r, inBox)) : nodeRects,
+          blocks: inBox ? titles.filter((r) => touches(r, inBox)) : titles,
+          routes: inBox ? routes.filter((r) => segsOf(r.points).some((sg) => segTouches(sg, inBox))) : routes,
+          borders: inBox ? borders.filter((sg) => segTouches(sg, inBox)) : borders,
+          bounds: inBox ?? undefined,
+          portCost: portCostFor(a, b),
+          crossCost: CROSS_COST,
+          sidePorts: true,
+        })
+      const points = route(box) ?? route(null) ?? fallbackRoute(a, b)
+      const c = { index: i, points, labelAt: null, labelSize: labelFrame[i] ?? null }
+      drawn[i] = c
+      done.push(c)
+    }
+    return { drawn, order }
+  }
+
   // ── ① each issue by ELK, on its own, compact ──
   const layCamp = (members, ci) => {
     const inside = new Set(members.map((m) => m.pid))
-    const laid = elkLayoutSync({
+    const inner = links.map((k, i) => i).filter((i) => inside.has(ends[i].from) && inside.has(ends[i].to))
+    const graphOf = (seed, normAbove) => ({
       id: `issue${ci}`,
-      layoutOptions: ELK_OPTIONS,
+      layoutOptions: { ...ELK_OPTIONS, 'elk.randomSeed': String(seed) },
       children: members.map((m) => ({ id: m.pid, width: frameSize(m).w, height: frameSize(m).h })),
       // every link the other way round: the supported node is the parent, so the conclusion stands on top
-      edges: links
-        .map((k, i) => ({ k, i }))
-        .filter(({ i }) => inside.has(ends[i].from) && inside.has(ends[i].to))
-        .map(({ k, i }) => ({
+      edges: inner.map((i) => {
+        const k = links[i]
+        return {
           id: `k${i}`,
-          // a norm is the parent of what it is the basis of: it stands one layer above its elements, beside the
-          // issue's conclusion, and not among the facts where its line had to go round to reach them
-          sources: [stanceOf(k) === 'basis' ? ends[i].from : ends[i].to],
-          targets: [stanceOf(k) === 'basis' ? ends[i].to : ends[i].from],
+          // a norm is either the parent of what it is the basis of (one layer above its elements, beside the issue's
+          // conclusion) or one more supporter among the facts on the far side of them. The first reads best;
+          // the second is the only way to keep every line apart when a norm is the basis of several elements
+          // that all lead to one conclusion (conclusion and norm on the two sides of the elements).
+          sources: [normAbove && stanceOf(k) === 'basis' ? ends[i].from : ends[i].to],
+          targets: [normAbove && stanceOf(k) === 'basis' ? ends[i].to : ends[i].from],
           ...(labelFrame[i] ? { labels: [{ id: `l${i}`, text: k.label, width: labelFrame[i].width, height: labelFrame[i].height }] } : {}),
-        })),
+        }
+      }),
     })
+    // ELK's sweep is a heuristic and its outcome depends on a seed: lay the issue out with several, and keep
+    // the picture whose links (drawn as straight lines between the node centres) cross least. The seeds are
+    // fixed, so the same data always gives the same picture.
+    const hasNorm = inner.some((i) => stanceOf(links[i]) === 'basis')
+    const candidates = []
+    for (const normAbove of hasNorm ? [true, false] : [true]) {
+      for (let seed = 0; seed < LAYOUT_TRIES; seed += 1) {
+        const tried = elkLayoutSync(graphOf(seed, normAbove))
+        const rect = new Map(tried.children.map((c) => [c.id, { x: c.x, y: c.y, w: c.width, h: c.height }]))
+        // a norm placed among the facts is a little worse off than one above: it has to be clearly better
+        candidates.push({ tried, rect, score: crossScore(rect, inner.map((i) => ends[i])) + (normAbove ? 0 : 0.5) })
+        if (candidates[candidates.length - 1].score === 0) break
+      }
+    }
+    candidates.sort((a, b) => a.score - b.score)
+    // The straight-line count only ranks them roughly (it cannot see which side a line leaves a node by), so the
+    // best few are drawn for real, inside a box of their own, and the one with fewest real crossings wins.
+    let laid = candidates[0].tried
+    if (candidates[0].score > 0 && inner.length > 1) {
+      let best = Infinity
+      for (const cand of candidates.slice(0, REAL_TRIES).filter((c) => c.score <= candidates[0].score + 3)) {
+        const padC = camps[ci]?.group ? PAD_C0 : 0
+        const padA = camps[ci]?.group ? PAD_A0 : 0
+        const at = new Map([...cand.rect].map(([id, r]) => [id, { ...r, x: padC + r.x, y: padA + r.y }]))
+        const box = { groupId: 'try', x: 0, y: 0, w: cand.tried.width + padC + GROUP_PAD, h: padA + cand.tried.height + GROUP_PAD }
+        const ctx = {
+          nodeRects: [...at.values()],
+          titles: camps[ci]?.group ? [titleBoxOf(box, camps[ci].group.label, vertical)] : [],
+          borders: edgesOfBox(box),
+          boxOf: new Map([['try', box]]),
+          nodeGroup: new Map(members.map((m) => [m.pid, camps[ci]?.group ? 'try' : null])),
+        }
+        const { drawn } = routeSet(inner, at, ctx)
+        const score = routedCrossings(inner.map((i) => drawn[i].points)) * 100 + cand.score
+        if (score < best) {
+          best = score
+          laid = cand.tried
+        }
+      }
+    }
     const at = new Map(laid.children.map((c) => [c.id, { x: c.x, y: c.y, w: c.width, h: c.height }]))
     const tops = [...new Set([...at.values()].map((r) => Math.round(r.y)))].sort((m, n) => m - n)
     const level = new Map([...at].map(([id, r]) => [id, tops.indexOf(Math.round(r.y))]))
@@ -258,10 +369,6 @@ function layOut(spec, orientation, collapsed) {
   }
   const lay = camps.map((c, ci) => layCamp(c.members, ci))
   const layTop = top ? layCamp(top.members, camps.length) : null
-
-  // The title strip takes GROUP_PAD_TOP along the real top of a box: the frame's top when vertical, its left when transposed
-  const PAD_A0 = vertical ? GROUP_PAD_TOP : GROUP_PAD
-  const PAD_C0 = vertical ? GROUP_PAD : GROUP_PAD_TOP
 
   // ── ② the issues side by side, tops aligned; the unboxed nodes centred above ──
   const placed = new Map()
@@ -321,59 +428,7 @@ function layOut(spec, orientation, collapsed) {
   const borders = boxes.flatMap(edgesOfBox)
   const nodeGroup = new Map(placements.map((m) => [m.pid, boxes.some((bx) => bx.groupId === m.group) ? m.group : null]))
   const boxOf = new Map(boxes.map((bx) => [bx.groupId, bx]))
-  const touches = (r, bx) => r.x < bx.x + bx.w && bx.x < r.x + r.w && r.y < bx.y + bx.h && bx.y < r.y + r.h
-  const segTouches = ([p, q], bx) =>
-    Math.max(p[0], q[0]) >= bx.x && Math.min(p[0], q[0]) <= bx.x + bx.w && Math.max(p[1], q[1]) >= bx.y && Math.min(p[1], q[1]) <= bx.y + bx.h
-  const dist = (i) => {
-    const a = placed.get(ends[i].from)
-    const b = placed.get(ends[i].to)
-    return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
-  }
-  // Short ones first, so the long ones go round them
-  const order = links.map((k, i) => i).sort((a, b) => dist(a) - dist(b) || a - b)
-  const drawn = new Array(links.length)
-  const done = []
-  for (const i of order) {
-    const k = links[i]
-    const a = placed.get(ends[i].from)
-    const b = placed.get(ends[i].to)
-    // Links of one stance into one node may run along each other and share the port into it
-    const routes = done.map((c) => {
-      const o = links[c.index]
-      return { points: c.points, share: ends[c.index].to === ends[i].to && stanceOf(o) === stanceOf(k) }
-    })
-    // A link inside one issue is first sought inside that issue's box only (a link between two issues,
-    // in the rectangle around its two ends): the router's grid grows with
-    // everything it is given, and a 40-node tree took six seconds when every link saw every node. Only
-    // what touches the box is passed in; a link that cannot be routed there is routed among everything.
-    // A link between two issues is first sought in the rectangle that spans its two ends and a margin.
-    const around = (m) => {
-      const x0 = Math.min(a.x, b.x) - m
-      const y0 = Math.min(a.y, b.y) - m
-      return { x: x0, y: y0, w: Math.max(a.x + a.w, b.x + b.w) + m - x0, h: Math.max(a.y + a.h, b.y + b.h) + m - y0 }
-    }
-    const box =
-      nodeGroup.get(ends[i].from) && nodeGroup.get(ends[i].from) === nodeGroup.get(ends[i].to)
-        ? boxOf.get(nodeGroup.get(ends[i].from))
-        : around(SEARCH_MARGIN)
-    const route = (inBox) =>
-      routeLink({
-        from: a,
-        to: b,
-        nodes: inBox ? nodeRects.filter((r) => touches(r, inBox)) : nodeRects,
-        blocks: inBox ? titles.filter((r) => touches(r, inBox)) : titles,
-        routes: inBox ? routes.filter((r) => segsOf(r.points).some((sg) => segTouches(sg, inBox))) : routes,
-        borders: inBox ? borders.filter((sg) => segTouches(sg, inBox)) : borders,
-        bounds: inBox ?? undefined,
-        portCost: portCostFor(a, b),
-        crossCost: CROSS_COST,
-        sidePorts: true,
-      })
-    const points = route(box) ?? route(null) ?? fallbackRoute(a, b)
-    const c = { index: i, points, labelAt: null, labelSize: labelFrame[i] ?? null }
-    drawn[i] = c
-    done.push(c)
-  }
+  const { drawn, order } = routeSet(links.map((k, i) => i), placed, { nodeRects, titles, borders, boxOf, nodeGroup })
 
   // ── ④ the labels that exist, each on its own line ──
   const placedLabels = []
