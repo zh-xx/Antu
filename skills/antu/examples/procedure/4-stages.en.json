@@ -1,0 +1,34 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "Stages, actors and outcomes",
+  "domain": "contract-performance",
+  "actors": [
+    { "id": "a-1", "name": "Party A", "role": "Client" },
+    { "id": "a-2", "name": "Party B", "role": "Developer" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "Signing" },
+    { "id": "st-2", "label": "Development" },
+    { "id": "st-3", "label": "Wrap-up" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "contract", "name": "Software development services contract", "loc": { "file": "software-development-services-contract.docx" } }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "Contract signed and effective", "stageId": "st-1" },
+    { "id": "n-2", "kind": "step", "label": "Party A pays first instalment", "detail": "RMB 360,000", "actorIds": ["a-1"], "stageId": "st-1", "sourceIds": ["s-1"] },
+    { "id": "n-3", "kind": "step", "label": "Requirements confirmed", "detail": "Due by 2026-06-30", "actorIds": ["a-2"], "stageId": "st-2" },
+    { "id": "n-4", "kind": "document", "label": "Requirements confirmation", "stageId": "st-2" },
+    { "id": "n-5", "kind": "note", "label": "Changes need written confirmation", "stageId": "st-2" },
+    { "id": "n-6", "kind": "step", "label": "Project complete", "outcome": "positive", "stageId": "st-3" },
+    { "id": "n-7", "kind": "end", "label": "Contract terminated", "stageId": "st-3" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "main": true },
+    { "from": "n-4", "to": "n-6", "main": true },
+    { "from": "n-6", "to": "n-7", "main": true }
+  ]
+}

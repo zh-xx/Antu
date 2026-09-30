@@ -1,0 +1,15 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "最小示例：三步直线",
+  "actors": [{ "id": "a-1", "name": "甲方" }],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "合同生效" },
+    { "id": "n-2", "kind": "step", "label": "甲方付款", "actorIds": ["a-1"] },
+    { "id": "n-3", "kind": "end", "label": "履行完毕", "outcome": "positive" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true }
+  ]
+}

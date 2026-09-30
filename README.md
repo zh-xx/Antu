@@ -93,7 +93,17 @@ npm run diagram -- examples/fact/elevator-smoking-case.en.json
 
 An agent can read the specification, view examples, validate, compute geometry, produce output, and take a screenshot to check the result. Validation confirms only that the JSON is well formed; it cannot confirm that the diagram is satisfactory, so taking a screenshot is a necessary step. The reference material for an agent is 4.5k tokens (a 2.9k-character field table plus a 4.0k-character mechanism note).
 
-Without MCP, read the documents in this order.
+### The skill (no MCP)
+
+Without MCP, give the agent the **skill** [`skills/antu/`](skills/antu/): a `SKILL.md` (how to choose a diagram, how to write the JSON honestly, how to make the page), the guide and field table of each kind, examples, and a viewer page with a Python script that puts the data in. It needs no Node and no network.
+
+- **Claude Code**: copy the whole `skills/antu/` folder to `~/.claude/skills/antu/` (or `.claude/skills/antu/` in a project).
+- **Codex**: copy it to `~/.codex/skills/antu/` (or `.codex/skills/antu/` in a project) and restart Codex.
+- **WorkBuddy and other clients that "import a local skill package"**: download `antu-skill-<version>.zip` from [Releases](https://github.com/zh-xx/Antu/releases) and import it. **We have not tried this in WorkBuddy yet.**
+
+**These three ways come from each client's public material; we have not run each of them in a real client yet**, and this will be updated once we have. The skill is the state of the **last release** (rules in [spec/versioning.md](spec/versioning.md)); the pages it makes carry the version: `<meta name="generator" content="antu X.Y.Z">`.
+
+Without MCP and without the skill, read the documents in this order.
 
 - **Fact (timeline)**: [spec/fact/schema-draft.md](spec/fact/schema-draft.md) (field definitions), then [spec/fact/timeline-rules.md](spec/fact/timeline-rules.md) (event placement rules), and consult [examples/fact/elevator-smoking-case.en.json](examples/fact/elevator-smoking-case.en.json).
 - **Justification (reasoning tree)**: [spec/agent/justification/guide.md](spec/agent/justification/guide.md) (a one-page note on the mechanism), then [spec/justification/schema-draft.md](spec/justification/schema-draft.md) (field definitions, rules, layout and look; a draft), and consult [examples/agent/justification/2-against-and-rejected.en.json](examples/agent/justification/2-against-and-rejected.en.json) or a real case such as [examples/justification/elevator-smoking-liability.en.json](examples/justification/elevator-smoking-liability.en.json).

@@ -1,0 +1,30 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "Rules: what may happen at any time",
+  "domain": "contract-performance",
+  "stages": [
+    { "id": "st-1", "label": "Delivery" },
+    { "id": "st-2", "label": "Payment" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "contract", "name": "Purchase contract", "loc": { "file": "purchase-contract.docx" } }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "Contract signed", "stageId": "st-1" },
+    { "id": "n-2", "kind": "step", "label": "Seller delivers", "detail": "by 2026-10-31", "stageId": "st-1" },
+    { "id": "n-3", "kind": "step", "label": "Buyer pays", "detail": "within 30 days of delivery", "stageId": "st-2" },
+    { "id": "n-4", "kind": "end", "label": "Contract performed", "outcome": "positive", "stageId": "st-2" },
+    { "id": "n-5", "kind": "end", "label": "Contract terminated early", "outcome": "negative", "stageId": "st-2" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "main": true }
+  ],
+  "rules": [
+    { "id": "r-1", "when": "Seller delivers late", "then": "Seller pays 0.1% of the price per day, capped at 5%", "outcome": "negative", "stageIds": ["st-1"], "sourceIds": ["s-1"] },
+    { "id": "r-2", "when": ["Seller is more than 30 days late", "Goods fail inspection twice"], "then": "Buyer may terminate", "outcome": "negative", "stageIds": ["st-1"], "endId": "n-5", "sourceIds": ["s-1"] },
+    { "id": "r-3", "when": "Buyer pays late", "then": "Buyer pays interest at 0.05% per day", "outcome": "negative", "stageIds": ["st-2"], "sourceIds": ["s-1"] }
+  ]
+}

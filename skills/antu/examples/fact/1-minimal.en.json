@@ -1,0 +1,57 @@
+{
+  "type": "fact",
+  "specVersion": 1,
+  "title": "Minimal: two parties, three time slots",
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "Party A",
+      "role": "plaintiff"
+    },
+    {
+      "id": "a-2",
+      "name": "Party B",
+      "role": "defendant"
+    }
+  ],
+  "slots": [
+    {
+      "events": [
+        {
+          "id": "ev-1",
+          "date": "2023-03-10",
+          "label": "The parties sign the loan contract",
+          "summary": "RMB 5m, 12 months",
+          "actorIds": [
+            "a-1",
+            "a-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-2",
+          "date": "2023-03-12",
+          "label": "Party A disburses RMB 5m",
+          "actorIds": [
+            "a-1"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-3",
+          "date": "2024-03-11",
+          "label": "Repayment falls due; Party B fails to pay",
+          "actorIds": [
+            "a-2"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -15,6 +15,10 @@ are at `specVersion` 1.
   in issues; `holds`, `combine` (and / or on an element), norms and facts, sources.
   - An issue can be folded up to its conclusion (the box title, or "Fold issues" in the dock).
   - A fact used by several nodes of one issue is drawn beside each use; "Merge repeats" draws each once.
+- **Agent skill** (`skills/antu/`, and a zip attached to each release): `SKILL.md` and the guides, field tables
+  and examples of the four kinds, a viewer page and a Python script that fills it. For agents without the MCP
+  server: Claude Code, Codex, WorkBuddy and the like read a folder with a `SKILL.md`. Needs no Node and no
+  network. Pages now carry `<meta name="generator" content="antu X.Y.Z">`.
 - `specVersion` now has a meaning: a whole number per type, checked by the validator (spec/versioning.md).
 - MCP: `antu_validate` names the views of a fact diagram that do not fit; the tools dispatch by `type`.
 - Bilingual messages (English by default, Chinese as an option); paired examples in both.

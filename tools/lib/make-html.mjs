@@ -93,6 +93,26 @@ export function readEngine() {
  * @param engine { js, css } the engine products (the caller does ensureEngine + readEngine first)
  * @param preset optional. Render with the given orientation/fields/view from the start (MCP preview needs to specify these)
  */
+/**
+ * The marker a viewer template carries where the data goes (see buildViewerHtml). It is valid JavaScript
+ * (`null`), so an unfilled template still loads and says that no data was found; a filler replaces the
+ * whole marker, `/*ANTU_SPEC*\/null`, with the JSON of the diagram.
+ */
+export const SPEC_MARKER = '/*ANTU_SPEC*/null'
+
+/** The engine's version, from package.json (written once there; spec/versioning.md) */
+export function engineVersion() {
+  return JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version
+}
+
+/**
+ * A viewer template: the same page as buildHtml gives, with the data left out for someone else to fill in
+ * (an agent that has no Node: it swaps SPEC_MARKER for the JSON). One page, two ways to make it.
+ */
+export function buildViewerHtml({ js, css } = {}) {
+  return buildHtml(undefined, { js, css })
+}
+
 export function buildHtml(spec, { js, css, preset } = {}) {
   const title = escapeHtml(spec?.title || 'antu')
   return `<!DOCTYPE html>
@@ -105,6 +125,7 @@ export function buildHtml(spec, { js, css, preset } = {}) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title} · antu</title>
+<meta name="generator" content="antu ${engineVersion()}">
 <style>
 html, body { margin: 0; height: 100%; font-family: system-ui, "Microsoft YaHei", sans-serif; }
 #root { height: 100%; }
@@ -112,7 +133,7 @@ ${css}</style>
 </head>
 <body>
 <div id="root"></div>
-<script>window.__ANTU_SPEC__ = ${escapeForScript(JSON.stringify(spec))};</script>
+<script>window.__ANTU_SPEC__ = ${spec === undefined ? SPEC_MARKER : escapeForScript(JSON.stringify(spec))};</script>
 ${preset ? `<script>window.__ANTU_PRESET__ = ${escapeForScript(JSON.stringify(preset))};</script>` : ''}
 <script>${escapeEngineCode(js)}</script>
 </body>

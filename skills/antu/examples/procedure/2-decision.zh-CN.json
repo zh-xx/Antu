@@ -1,0 +1,17 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "判定点：菱形 + 条件 + 回边",
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "提交成果" },
+    { "id": "n-2", "kind": "decision", "label": "验收是否合格" },
+    { "id": "n-3", "kind": "step", "label": "乙方整改", "outcome": "negative" },
+    { "id": "n-4", "kind": "end", "label": "验收通过" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-4", "condition": "合格", "main": true },
+    { "from": "n-2", "to": "n-3", "condition": "不合格" },
+    { "from": "n-3", "to": "n-2" }
+  ]
+}

@@ -47,10 +47,11 @@ npm run verify       # 含浏览器渲染和 MCP 全流程
 - 每个图种的 JSON 格式有自己的 `specVersion`（整数，在该图种的 `schema.js`）。**只有破坏性改动才加一**：
   改名、删字段、改含义、把规则变严。加一个可选字段不算，规则变松也不算。
 - PR 说明里写清这一次动没动“契约”（字段、报错的规则、MCP 工具的参数）。破坏契约的，同时改 `specVersion` 和 CHANGELOG 的 *Breaking*。
-- 发版本是一个单独的小 PR（`package.json`、`package-lock.json`、CHANGELOG 新的一节），合并后在 Actions 页运行「发布」工作流（`.github/workflows/release.yml`），它按 `package.json` 的版本号建 tag `vX.Y.Z` 和 release，说明取自 CHANGELOG 同版本号的一节；不要手工打 tag。
+- 发版本是一个单独的小 PR（`package.json`、`package-lock.json`、CHANGELOG 新的一节，以及用 `npm run build:skill` 重新生成的 `skills/antu/`），合并后在 Actions 页运行「发布」工作流（`.github/workflows/release.yml`），它按 `package.json` 的版本号建 tag `vX.Y.Z` 和 release，说明取自 CHANGELOG 同版本号的一节；不要手工打 tag。
 
 ## 目录
 
 - `spec/`：给人看的设计文档（英文为主，另有 `.zh-CN.md`）；`spec/agent/`：给 agent 看的说明，只有英文。
+- `skills/antu/`：给 agent 的技能包，**生成的，不要手改**（`npm run build:skill`，手写的只有 `tools/skill/` 下两个文件）；它是上一次发布的状态，只在发布 PR 里重新生成。
 - `examples/`：`agent/<大类>/` 是给 agent 的最小示例，`<大类>/` 是真实案例，详见 `examples/README.md`。
 - `src/renderers/<大类>/schema.js`：这个大类对外的知识（校验、字段表、几何报告），MCP 只按 `type` 分发。

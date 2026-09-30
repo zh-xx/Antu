@@ -1,0 +1,28 @@
+{
+  "type": "fact",
+  "specVersion": 1,
+  "title": "单主体：一个主体，按性质分两侧",
+  "actors": [{ "id": "a-1", "name": "郭某", "role": "原告" }],
+  "groups": [
+    { "id": "g-1", "label": "正常（按约定履行）" },
+    { "id": "g-2", "label": "异常（偏离约定）" }
+  ],
+  "views": [
+    { "label": "按履约情况", "splitBy": "group" },
+    { "label": "只看时间先后", "splitBy": "actor", "side1": { "actors": [] }, "side2": { "actors": [] } }
+  ],
+  "slots": [
+    {
+      "events": [
+        { "id": "ev-1", "date": "2019-04-27", "label": "办理年卡并录入指纹",
+          "groupId": "g-1", "actorIds": ["a-1"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-2", "date": "2019-10-17", "label": "收到短信：不刷脸无法入园",
+          "groupId": "g-2", "actorIds": ["a-1"] }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "Decision point: diamond + conditions + back edge",
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "Deliverables submitted" },
+    { "id": "n-2", "kind": "decision", "label": "Acceptance up to standard?" },
+    { "id": "n-3", "kind": "step", "label": "Party B rectifies", "outcome": "negative" },
+    { "id": "n-4", "kind": "end", "label": "Acceptance passed" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-4", "condition": "Pass", "main": true },
+    { "from": "n-2", "to": "n-3", "condition": "Fail" },
+    { "from": "n-3", "to": "n-2" }
+  ]
+}

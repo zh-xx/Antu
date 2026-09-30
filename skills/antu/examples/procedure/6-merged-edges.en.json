@@ -1,0 +1,19 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "Several edges to one target: different conditions, merged on render",
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "Service period starts" },
+    { "id": "n-2", "kind": "step", "label": "Day-to-day performance" },
+    { "id": "n-3", "kind": "step", "label": "Party A may terminate unilaterally", "outcome": "negative" },
+    { "id": "n-4", "kind": "end", "label": "Contract terminated" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "condition": "Party B below standard 3 months running" },
+    { "from": "n-2", "to": "n-3", "condition": "Party B penalised over employment contracts" },
+    { "from": "n-2", "to": "n-3", "condition": "Party A penalised for Party B's fault" },
+    { "from": "n-2", "to": "n-4", "main": true },
+    { "from": "n-3", "to": "n-4" }
+  ]
+}

@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "build:engine": "vite build --config vite.engine.config.js",
+    "build:skill": "node tools/build-skill.mjs",
     "diagram": "node tools/make-html.mjs",
     "mcp": "node tools/mcp/server.mjs",
     "mcp:test": "node tools/mcp/client-test.mjs",

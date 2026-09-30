@@ -1,0 +1,83 @@
+{
+  "specVersion": 1,
+  "type": "justification",
+  "title": "The smallest that works: a conclusion, one norm, one element, two facts",
+  "nodes": [
+    {
+      "id": "c-1",
+      "kind": "conclusion",
+      "label": "B must pay A the rent in arrears",
+      "holds": "yes"
+    },
+    {
+      "id": "n-1",
+      "kind": "norm",
+      "label": "Civil Code Art. 509(1): the parties must perform their obligations in full as agreed",
+      "sourceIds": [
+        "s-1"
+      ]
+    },
+    {
+      "id": "e-1",
+      "kind": "element",
+      "label": "B did not pay the rent as agreed",
+      "holds": "yes"
+    },
+    {
+      "id": "f-1",
+      "kind": "fact",
+      "label": "The lease says B pays 3,000 a month by the 5th",
+      "sourceIds": [
+        "s-2"
+      ]
+    },
+    {
+      "id": "f-2",
+      "kind": "fact",
+      "label": "B has paid no rent since March 2024",
+      "sourceIds": [
+        "s-2"
+      ]
+    }
+  ],
+  "links": [
+    {
+      "from": "n-1",
+      "to": "e-1",
+      "stance": "basis"
+    },
+    {
+      "from": "f-1",
+      "to": "e-1"
+    },
+    {
+      "from": "f-2",
+      "to": "e-1"
+    },
+    {
+      "from": "e-1",
+      "to": "c-1"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "statute",
+      "name": "Civil Code, Art. 509",
+      "loc": {
+        "lawName": "Civil Code of the People's Republic of China",
+        "article": 509,
+        "version": "2020"
+      }
+    },
+    {
+      "id": "s-2",
+      "type": "evidence",
+      "name": "The lease and the payment record",
+      "loc": {
+        "file": "lease.pdf",
+        "page": 1
+      }
+    }
+  ]
+}

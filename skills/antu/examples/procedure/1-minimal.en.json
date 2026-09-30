@@ -1,0 +1,15 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "Minimal example: three steps in a straight line",
+  "actors": [{ "id": "a-1", "name": "Party A" }],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "Contract takes effect" },
+    { "id": "n-2", "kind": "step", "label": "Party A pays", "actorIds": ["a-1"] },
+    { "id": "n-3", "kind": "end", "label": "Performance complete", "outcome": "positive" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true }
+  ]
+}
