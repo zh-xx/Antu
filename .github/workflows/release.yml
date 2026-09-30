@@ -7,7 +7,10 @@ name: 发布
 # 以后往 npm 发布（issue #43）也挂在这一条上，不用另起流程。
 #
 # 它做什么：读那个提交里 package.json 的版本号，建 tag v<版本> 和一个 GitHub release，
-# release 的说明取自 CHANGELOG.md 里同版本号的那一节。
+# release 的说明取自 CHANGELOG.md 里同版本号的那一节；并把 skills/antu/（给 agent 的技能包）
+# 打成 antu-skill-<版本>.zip 挂在 release 上，供「导入本地技能包」的客户端（如 WorkBuddy）下载。
+# 发布前先确认 skills/antu/ 就是这个版本的构建结果（node tools/build-skill.mjs --check）：
+# 技能包是上一次发布的状态，在发布的 PR 里重新生成，忘了的话这里会停下来。
 # 它不做什么：不改任何文件，不发布到别处，不删任何东西。
 on:
   workflow_dispatch:
@@ -28,6 +31,14 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
 
       - name: 检查这个提交能不能发布
         id: check
@@ -69,12 +80,23 @@ jobs:
             echo "tag=${tag}"
           } >> "$GITHUB_OUTPUT"
 
+      # 技能包必须是这个版本的构建：说明、字段表、示例和 VERSION 与源码一致，viewer.html 是这个版本的模板
+      - name: 检查技能包
+        run: node tools/build-skill.mjs --check
+
+      - name: 打技能包
+        run: |
+          set -euo pipefail
+          cd skills
+          zip -qr "../antu-skill-${{ steps.check.outputs.version }}.zip" antu
+
       - name: 建 tag 和 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           gh release create "${{ steps.check.outputs.tag }}" \
+            "antu-skill-${{ steps.check.outputs.version }}.zip" \
             --target "${{ steps.check.outputs.sha }}" \
             --title "${{ steps.check.outputs.version }}" \
             --notes-file release-notes.md

@@ -88,6 +88,10 @@ export default function App() {
       ])
       return
     }
+    // The tab (and the file name a browser offers when the page is printed to PDF) names the diagram. It is set
+    // here, from the data, and not written into the file when the page is made: a page made by filling the
+    // viewer template with data (the skill's way, with nothing but a text replacement) then gets it too.
+    if (typeof inline.title === 'string' && inline.title) document.title = `${inline.title} · antu`
     const errs = validateSpec(inline)
     setErrors(errs)
     setSpec(errs.length ? null : inline)

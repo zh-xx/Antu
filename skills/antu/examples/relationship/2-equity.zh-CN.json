@@ -1,0 +1,59 @@
+{
+  "type": "relationship",
+  "specVersion": 1,
+  "title": "股权：谁持有谁、持多少",
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "person",
+      "label": "王明",
+      "role": "实际控制人"
+    },
+    {
+      "id": "e-2",
+      "kind": "company",
+      "label": "明达控股有限公司"
+    },
+    {
+      "id": "e-3",
+      "kind": "company",
+      "label": "明达科技有限公司"
+    },
+    {
+      "id": "e-4",
+      "kind": "person",
+      "label": "刘芳",
+      "role": "小股东"
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-1",
+      "to": "e-2",
+      "kind": "equity",
+      "share": 80
+    },
+    {
+      "id": "r-2",
+      "from": "e-2",
+      "to": "e-3",
+      "kind": "equity",
+      "share": 65
+    },
+    {
+      "id": "r-3",
+      "from": "e-4",
+      "to": "e-3",
+      "kind": "equity",
+      "share": 35
+    },
+    {
+      "id": "r-4",
+      "from": "e-1",
+      "to": "e-3",
+      "kind": "control",
+      "label": "担任执行董事"
+    }
+  ]
+}

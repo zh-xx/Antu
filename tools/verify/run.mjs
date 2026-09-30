@@ -28,7 +28,7 @@
 //    8. screenshot   produce one image for a human to glance at (not machine-judged, but viewable)
 // ============================================================
 
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -1758,6 +1758,45 @@ async function checkRenderRelationship(sampleFile) {
  * the orientation loses nothing. The counts come from the same layout function, so the page is compared
  * against it (a copy of a fact is a node on the page, so the page has more nodes than the data).
  */
+/**
+ * The skill's viewer page (skills/antu/), filled in with the skill's own Python script, for each kind: it shows
+ * the diagram, names the tab after the diagram (issue #47: the title used to come only from the Node way of
+ * making the page), and says which engine it is. Skipped without python3 (the test/skill.test.mjs checks the
+ * script itself).
+ */
+async function checkSkillPage() {
+  section('skill: the viewer page filled in by the Python script')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  if (spawnSync('python3', ['--version']).status !== 0) {
+    console.log('  (python3 not available, skipped)')
+    return
+  }
+  const browser = await launchBrowser({ width: 1400, height: 900 })
+  try {
+    const version = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version
+    for (const type of ['fact', 'procedure', 'relationship', 'justification']) {
+      const file = join(REPO, 'examples/agent', type, `1-minimal.zh-CN.json`)
+      const spec = JSON.parse(readFileSync(file, 'utf8'))
+      // a title the page has to escape to show: <, & and a quote
+      spec.title = `${spec.title} <&> "q"`
+      const src = join(OUT, `skill-${type}.json`)
+      const out = join(OUT, `skill-${type}.html`)
+      writeFileSync(src, JSON.stringify(spec))
+      const made = spawnSync('python3', [join(REPO, 'skills/antu/scripts/make_html.py'), src, '-o', out])
+      eq(`${type}: the script makes the page`, made.status, 0)
+      await browser.open(`file://${out}?lang=zh`)
+      truthy(`${type}: the diagram is drawn`, await browser.eval(`document.querySelectorAll(${JSON.stringify(ITEM_SELECTOR)}).length > 0`))
+      eq(`${type}: the tab is named after the diagram`, await browser.eval('document.title'), `${spec.title} · antu`)
+      eq(`${type}: the page says which engine made it`, await browser.eval(`document.querySelector('meta[name=generator]')?.content`), `antu ${version}`)
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderJustification(sampleFile) {
   section('render: justification tree')
   if (!findChrome()) {
@@ -1995,6 +2034,7 @@ if (!shotOnly && !skipBrowser) {
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)
+  await checkSkillPage()
   checkMcp()
   // This stretch launched a browser twice (once for the render, once for the MCP preview), and
   // both must be closed cleanly. Identity, not "equal to 0": this machine may already have

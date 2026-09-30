@@ -1,0 +1,51 @@
+{
+  "type": "relationship",
+  "specVersion": 1,
+  "title": "A guarantee names the claim it secures",
+  "entities": [
+    {
+      "id": "e-1",
+      "kind": "company",
+      "label": "Bank A",
+      "role": "Creditor"
+    },
+    {
+      "id": "e-2",
+      "kind": "company",
+      "label": "Company B",
+      "role": "Borrower"
+    },
+    {
+      "id": "e-3",
+      "kind": "person",
+      "label": "C",
+      "role": "Guarantor"
+    }
+  ],
+  "relations": [
+    {
+      "id": "r-1",
+      "from": "e-1",
+      "to": "e-2",
+      "kind": "contract",
+      "label": "Loan agreement",
+      "amount": "CNY 5,000,000"
+    },
+    {
+      "id": "r-2",
+      "from": "e-1",
+      "to": "e-2",
+      "kind": "debt",
+      "label": "Principal and interest overdue",
+      "amount": "CNY 5,200,000"
+    },
+    {
+      "id": "r-3",
+      "from": "e-3",
+      "to": "e-1",
+      "kind": "guarantee",
+      "label": "Joint and several guarantee",
+      "secures": "r-2"
+    }
+  ]
+}

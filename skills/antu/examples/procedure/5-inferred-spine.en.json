@@ -1,0 +1,21 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "No main flags: let the engine infer the spine",
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "Case filed" },
+    { "id": "n-2", "kind": "step", "label": "Complaint served" },
+    { "id": "n-3", "kind": "decision", "label": "Defendant responds?" },
+    { "id": "n-4", "kind": "step", "label": "Trial in absentia" },
+    { "id": "n-5", "kind": "step", "label": "Hearing held" },
+    { "id": "n-6", "kind": "end", "label": "Judgment rendered" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2" },
+    { "from": "n-2", "to": "n-3" },
+    { "from": "n-3", "to": "n-5", "condition": "Responds" },
+    { "from": "n-3", "to": "n-4", "condition": "No response" },
+    { "from": "n-4", "to": "n-6" },
+    { "from": "n-5", "to": "n-6" }
+  ]
+}

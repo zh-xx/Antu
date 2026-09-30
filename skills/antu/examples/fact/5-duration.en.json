@@ -1,0 +1,28 @@
+{
+  "type": "fact",
+  "specVersion": 1,
+  "title": "Time: spans, approximations, and why they are recorded this way",
+  "actors": [{ "id": "a-1", "name": "Yang" }],
+  "slots": [
+    {
+      "events": [
+        { "id": "ev-1", "date": "2017-05-02T09:24:16", "dateEnd": "2017-05-02T09:26:24",
+          "label": "The two keep talking inside the elevator",
+          "summary": "Talk only, under 5 min", "actorIds": ["a-1"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-2", "date": "2017-05-02T09:33", "approx": true,
+          "dateNote": "Not captured on surveillance; inferred from the parties' accounts",
+          "label": "Argument at the property management office door", "actorIds": ["a-1"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-3", "date": "2017-05-02", "label": "Duan dies",
+          "detail": "The judgment gives no exact time; it is recorded only to the day", "actorIds": ["a-1"] }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "type": "fact",
+  "specVersion": 1,
+  "title": "Groups: groupId decides which side an event falls on",
+  "actors": [
+    { "id": "a-1", "name": "Party A" },
+    { "id": "a-2", "name": "Party B" }
+  ],
+  "groups": [
+    { "id": "g-1", "label": "Party A's acts" },
+    { "id": "g-2", "label": "Party B's acts" },
+    { "id": "g-3", "label": "Joint acts or objective course" }
+  ],
+  "slots": [
+    {
+      "events": [
+        { "id": "ev-1", "date": "2023-05-01", "label": "The parties sign the construction contract",
+          "groupId": "g-3", "actorIds": ["a-1", "a-2"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-2", "date": "2023-08-20", "label": "The contractor submits the settlement statement",
+          "groupId": "g-2", "actorIds": ["a-2"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-3", "date": "2023-09-15", "label": "The owner fails to review within the agreed period",
+          "groupId": "g-1", "actorIds": ["a-1"] }
+      ]
+    }
+  ]
+}

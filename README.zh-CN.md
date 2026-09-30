@@ -91,7 +91,17 @@ npm run diagram -- examples/fact/elevator-smoking-case.zh-CN.json
 
 agent 可以读取规范、查看示例、校验、计算几何、生成成品，并截图核对效果。校验仅能确认 JSON 合法，不能确认成图效果合格，因此截图核对是必要步骤。agent 的参考资料为 4.5k token（字段表 2.9k 字符 + 机制说明 4.0k 字符）。
 
-未接入 MCP 时，按以下顺序阅读。
+### 技能包（不装 MCP）
+
+没有 MCP 时，给 agent 一个**技能包** [`skills/antu/`](skills/antu/)：`SKILL.md`（怎么选图、怎么如实地写 JSON、怎么出页面）、四类图的说明和字段表、示例，以及一个查看页模板和把数据填进去的 Python 脚本。不需要 Node，不需要联网。
+
+- **Claude Code**：把 `skills/antu/` 整个目录拷到 `~/.claude/skills/antu/`（或项目里的 `.claude/skills/antu/`）。
+- **Codex**：拷到 `~/.codex/skills/antu/`（或项目里的 `.codex/skills/antu/`），重启 Codex。
+- **WorkBuddy 等能「导入本地技能包」的客户端**：到 [Releases](https://github.com/zh-xx/Antu/releases) 下载 `antu-skill-<版本>.zip` 导入。**这一条我们还没在 WorkBuddy 上试过。**
+
+**这三种装法来自各客户端的公开资料，我们还没有在真实客户端里逐一跑通**；跑通之后这里会更新。技能包是**上一次发布**的状态（规则见 [spec/versioning.md](spec/versioning.md)），它做的页面里写着版本号：`<meta name="generator" content="antu X.Y.Z">`。
+
+未接入 MCP、也不用技能包时，按以下顺序阅读。
 
 - **事实图（时间图）**：[spec/fact/schema-draft.md](spec/fact/schema-draft.md)（字段定义）、[spec/fact/timeline-rules.md](spec/fact/timeline-rules.md)（事件排布规则），并参考 [examples/fact/elevator-smoking-case.zh-CN.json](examples/fact/elevator-smoking-case.zh-CN.json)。
 - **证成图（说理树）**：[spec/agent/justification/guide.md](spec/agent/justification/guide.md)（一页机制说明）、[spec/justification/schema-draft.zh-CN.md](spec/justification/schema-draft.zh-CN.md)（字段定义、规则、排布和画法，草案），并参考 [examples/agent/justification/2-against-and-rejected.zh-CN.json](examples/agent/justification/2-against-and-rejected.zh-CN.json)，或一份真实案例，如 [examples/justification/elevator-smoking-liability.zh-CN.json](examples/justification/elevator-smoking-liability.zh-CN.json)。

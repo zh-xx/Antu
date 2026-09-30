@@ -1,0 +1,30 @@
+{
+  "type": "fact",
+  "specVersion": 1,
+  "title": "Sources: every fact is traced to its source",
+  "actors": [
+    { "id": "a-1", "name": "Yang" },
+    { "id": "a-2", "name": "Duan" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "evidence", "name": "Elevator surveillance video",
+      "loc": { "file": "监控视频.mov", "timestamp": "09:24:03" },
+      "quote": "Duan Xiaoli smokes inside the elevator…… the two begin to talk…… the two walk out of the elevator" },
+    { "id": "s-2", "type": "judgment", "name": "First-instance judgment",
+      "loc": { "file": "2017豫01民终14848号.pdf", "page": 5 } }
+  ],
+  "slots": [
+    {
+      "events": [
+        { "id": "ev-1", "date": "2017-05-02T09:24:03", "label": "Duan smokes inside the elevator",
+          "actorIds": ["a-2"], "sourceIds": ["s-1"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-2", "date": "2017-05-02T09:24:16", "label": "Yang dissuades Duan from smoking",
+          "actorIds": ["a-1", "a-2"], "sourceIds": ["s-1", "s-2"] }
+      ]
+    }
+  ]
+}
