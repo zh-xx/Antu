@@ -85,4 +85,5 @@ a zip for clients that import a local package (WorkBuddy).
   `<meta name="generator" content="antu X.Y.Z">`, so anyone can tell which engine drew a forwarded page.
 - The viewer (2 MB, 0.6 MB in git) and the command line (1.5 MB, 0.5 MB in git) are committed once per release.
   Neither is compared byte for byte: the viewer must carry the marker and the version, the command line must run
-  and say `antu X.Y.Z`.
+  and say `antu X.Y.Z`. The command line promises Node 18 or newer and nothing installed beside it; CI holds it to
+  that (`tools/verify/skill-cli.mjs`, run on Node 18, 20, 22 and 24 with no `npm ci`).
