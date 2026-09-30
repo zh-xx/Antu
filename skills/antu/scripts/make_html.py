@@ -4,7 +4,8 @@
     python3 make_html.py spec.json -o diagram.html
 
 The page is assets/viewer.html (the engine, with the place for the data left empty) with the data put in.
-The same page `node tools/make-html.mjs` would make, byte for byte apart from the data.
+The same page `node tools/make-html.mjs` would make. The one difference is the static <title> in the file: the
+page sets the tab's title itself from the data when it opens (src/App.jsx), so both ways give the same tab.
 """
 import argparse
 import json

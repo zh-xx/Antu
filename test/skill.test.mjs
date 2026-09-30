@@ -23,7 +23,8 @@ test('the viewer template is the page buildHtml makes, with the marker where the
   const template = buildViewerHtml(fakeEngine)
   assert.equal(template.split(SPEC_MARKER).length, 2, 'exactly one marker')
   // filling the marker with the data, the way the filler does, gives the page buildHtml makes for that data
-  // (apart from the <title>, which buildHtml takes from the data)
+  // (apart from the static <title>, which buildHtml takes from the data; the page sets the tab's title itself when
+  // it opens, and tools/verify checks that for the page the Python filler makes)
   const filled = template.replace(SPEC_MARKER, escapeForScript(JSON.stringify(spec)))
   const direct = buildHtml(spec, fakeEngine)
   const body = (html) => html.slice(html.indexOf('</style>'))
