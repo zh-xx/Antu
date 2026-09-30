@@ -189,6 +189,7 @@ test('render: the page is the viewer with the data in it, the same as the Python
   const r = run('render', file, '-o', out)
   assert.equal(r.status, 0, r.stderr)
   assert.equal(r.stdout.trim().split('\n')[0], out)
+  assert.match(r.stdout, /^Text on one screen \(1600×900\)/m, 'render also says how big the text is (#43)')
   const spec = JSON.parse(readFileSync(file, 'utf8'))
   assert.equal(readFileSync(out, 'utf8'), fillViewer(readFileSync('skills/antu/assets/viewer.html', 'utf8'), spec))
   // and the Python way makes a page whose data is the same JSON

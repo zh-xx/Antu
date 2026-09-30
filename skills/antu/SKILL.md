@@ -114,7 +114,8 @@ ignore it.
 `Text on one screen (1600×900): … px` is the size the body text is drawn at when the page opens fitted to a
 1600×900 screen (it matches the page to within a few percent, a little on the small side). It adds a note when
 the text is **under 11 px** (small; the reader can zoom in) and when it is **under 9 px** (too small to read
-without zooming in). `render` does not print it: run `layout` before you make the page.
+without zooming in). `render` prints the same lines after it writes the page, but run `layout` first: it is
+cheaper to split the JSON than to make the page twice.
 
 When it says too small, split the diagram the way the note says: a justification tree **by issue** (or leave it
 whole when the note says that with every issue folded the text reads well: the reader can fold issues with the

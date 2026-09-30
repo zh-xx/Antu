@@ -21,7 +21,8 @@ The guard (#43): an agent that cannot look at the page is told whether the reade
 - These notes replace the ones each kind had: a justification compared its fit zoom with 0.4 and a procedure and a
   relationship diagram with 0.45, which said nothing about the elevator case (5.6 px); **a fact diagram had no such
   note at all** (the Yu Huan loan timeline opens at 7.0 px).
-- `SKILL.md` says to run `layout` before making the page and what to do with each level.
+- `render` in the skill's command line prints the same lines after it writes the page. `SKILL.md` says to run
+  `layout` before making the page and what to do with each level.
 
 ### Breaking
 - None. The words of `antu_layout` changed; they are not part of the contract (spec/versioning.md).
