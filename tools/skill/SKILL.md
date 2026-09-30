@@ -18,6 +18,11 @@ install and no network, prints, and can be forwarded. Nothing is uploaded anywhe
 
 This skill is antu **{{version}}**. The pages it makes say so: `<meta name="generator" content="antu {{version}}">`.
 
+**`<skill-dir>`** below is the folder that holds this `SKILL.md` (it has `scripts/`, `references/`, `examples/` and
+`assets/` beside it). Every command is written with it, so it runs from **any** directory: put the real path in.
+Keep your own files (the JSON and the page) where the user works, or in the folder they name, never inside the
+skill folder.
+
 ## 1. Choose the kind of diagram
 
 | The user wants to show | Use | Read |
@@ -36,6 +41,10 @@ chart of numbers, an org chart of a firm), say that antu does not draw it.
    is required, and what it means is there.
 2. Open one example of that kind in `examples/<kind>/` and follow its shape. `1-minimal` is the smallest;
    the others each add one idea.
+   **Fact diagram with two or more parties**: `1-minimal` is not enough. It has no `groups`, so every card stands
+   on the middle axis and the page does not show who did what. To put each party on its own side, give the
+   diagram `groups` (one per party or side, each event carrying its `groupId`: see `3-groups`) or `views` that
+   split by party (see `4-views`); an act of both goes on the axis.
 3. Write the file in the **user's language** (the examples come in `.zh-CN.json` and `.en.json`).
 4. Put `"specVersion": 1` in the envelope, next to `"type"`.
 
@@ -66,9 +75,9 @@ Here is what each means in this folder:
 
 | The guide says | Here |
 | --- | --- |
-| `antu_validate` | `node scripts/antu.mjs validate spec.json` (section 3) |
-| `antu_layout` | `node scripts/antu.mjs layout spec.json` |
-| `antu_render` | `node scripts/antu.mjs render spec.json -o diagram.html`, or the Python script (section 4) |
+| `antu_validate` | `node <skill-dir>/scripts/antu.mjs validate spec.json` (section 3) |
+| `antu_layout` | `node <skill-dir>/scripts/antu.mjs layout spec.json` |
+| `antu_render` | `node <skill-dir>/scripts/antu.mjs render spec.json -o diagram.html`, or the Python script (section 4) |
 | `antu_schema` | `references/fields-<kind>.md` |
 | `antu_examples` | `examples/<kind>/` |
 | `antu_preview` ("look at the picture before you deliver") | **There is no equivalent. You cannot look at the page.** Do not say you checked how it looks. Use `layout` for the size and the suggested orientation, and tell the user you could not view the result |
@@ -81,11 +90,11 @@ ignore it.
 - **If the tools `antu_validate` and `antu_layout` are available** (the antu MCP server is installed): call
   `antu_validate` until it passes, then `antu_layout` to see how big the picture is and which orientation fits.
 - **Else, if `node` runs** (Node 18 or newer): the file `scripts/antu.mjs` is the same checker, with nothing to
-  install. Run it from the skill folder:
+  install. Run it from wherever you are:
 
   ```
-  node scripts/antu.mjs validate spec.json
-  node scripts/antu.mjs layout spec.json
+  node <skill-dir>/scripts/antu.mjs validate spec.json
+  node <skill-dir>/scripts/antu.mjs layout spec.json
   ```
 
   `validate` prints each problem with its field path (exit code 1 when there are any) or "Validation passed";
@@ -109,16 +118,16 @@ above if you can, and otherwise the field tables and examples in this skill.
 **With Node** (the same file): it checks the data first and refuses a diagram that has problems.
 
 ```
-node scripts/antu.mjs render spec.json -o diagram.html
+node <skill-dir>/scripts/antu.mjs render spec.json -o diagram.html
 ```
 
 **With Python 3** (standard library only; it does not check the data beyond "parses, known `type`"):
 
 ```
-python3 scripts/make_html.py spec.json -o diagram.html
+python3 <skill-dir>/scripts/make_html.py spec.json -o diagram.html
 ```
 
-**Without either**: copy `assets/viewer.html` to the new file and replace the **one** piece of text
+**Without either**: copy `<skill-dir>/assets/viewer.html` to the new file and replace the **one** piece of text
 `/*ANTU_SPEC*/null` with the JSON of the diagram, written on one line, with every `<` written as `\u003c`.
 Change nothing else in the file.
 
