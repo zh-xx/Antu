@@ -47,7 +47,7 @@ npm run verify       # 含浏览器渲染和 MCP 全流程
 - 每个图种的 JSON 格式有自己的 `specVersion`（整数，在该图种的 `schema.js`）。**只有破坏性改动才加一**：
   改名、删字段、改含义、把规则变严。加一个可选字段不算，规则变松也不算。
 - PR 说明里写清这一次动没动“契约”（字段、报错的规则、MCP 工具的参数）。破坏契约的，同时改 `specVersion` 和 CHANGELOG 的 *Breaking*。
-- 发版本是一个单独的小 PR（`package.json`、`package-lock.json`、CHANGELOG 新的一节），合并后在合并提交上打 tag `vX.Y.Z`。
+- 发版本是一个单独的小 PR（`package.json`、`package-lock.json`、CHANGELOG 新的一节），合并后在 Actions 页运行「发布」工作流（`.github/workflows/release.yml`），它按 `package.json` 的版本号建 tag `vX.Y.Z` 和 release，说明取自 CHANGELOG 同版本号的一节；不要手工打 tag。
 
 ## 目录
 

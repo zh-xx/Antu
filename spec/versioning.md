@@ -59,4 +59,7 @@ the engine was updated. (A new *hint* is not a break: a hint never stops a diagr
    the changelog on how to migrate).
 3. A small pull request of its own for the release: `version` in `package.json` (and `package-lock.json`),
    and the new section of `CHANGELOG.md`.
-4. After it merges, tag the merge commit `vX.Y.Z`. Nothing is released from a branch.
+4. After it merges, run the **发布 (Release)** workflow (Actions tab → Run workflow; the default is the latest commit of
+   `main`). It reads `version` from that commit's `package.json`, refuses if the commit is not on `main`, if the tag
+   already exists, or if `CHANGELOG.md` has no section for the version, and then creates the tag `vX.Y.Z` and a
+   GitHub release whose notes are that section. Nothing is released from a branch, and nothing is tagged by hand.

@@ -1,0 +1,81 @@
+name: 发布
+
+# 什么时候跑：只有手动触发（Actions 页 → 发布 → Run workflow）。
+# 存在的理由：
+# 版本规则（spec/versioning.md）说"合并后在合并提交上打 tag vX.Y.Z"。这一步做成工作流，
+# 有两个好处：任何有仓库写权限的人在网页或手机上点一下就行，不用本机推 tag；
+# 以后往 npm 发布（issue #43）也挂在这一条上，不用另起流程。
+#
+# 它做什么：读那个提交里 package.json 的版本号，建 tag v<版本> 和一个 GitHub release，
+# release 的说明取自 CHANGELOG.md 里同版本号的那一节。
+# 它不做什么：不改任何文件，不发布到别处，不删任何东西。
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 要发布的提交（默认 main 的最新提交；必须已经在 main 上）
+        required: false
+        default: main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: 检查这个提交能不能发布
+        id: check
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+
+          # 只发布已经合并进 main 的提交，不从分支发
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::$sha 不在 main 上，不发布（版本规则：不从分支发布）"
+            exit 1
+          fi
+
+          # 版本号格式：主.次.补丁
+          if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::package.json 的版本号 '$version' 不是 主.次.补丁"
+            exit 1
+          fi
+
+          # tag 已经有了就停：一个版本号只能对应一个提交
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "::error::tag ${tag} 已经存在"
+            exit 1
+          fi
+
+          # CHANGELOG 里必须有这个版本的一节，并且不是空的
+          awk -v v="## ${version}" '$0==v {f=1; next} /^## /{f=0} f' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::CHANGELOG.md 里没有 '## ${version}' 这一节，或者这一节是空的"
+            exit 1
+          fi
+
+          {
+            echo "sha=${sha}"
+            echo "version=${version}"
+            echo "tag=${tag}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 建 tag 和 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${{ steps.check.outputs.tag }}" \
+            --target "${{ steps.check.outputs.sha }}" \
+            --title "${{ steps.check.outputs.version }}" \
+            --notes-file release-notes.md
+          echo "已发布 ${{ steps.check.outputs.tag }}（提交 ${{ steps.check.outputs.sha }}）" >> "$GITHUB_STEP_SUMMARY"
