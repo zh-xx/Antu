@@ -1,4 +1,4 @@
-# antu 案图
+# Antu 案图
 
 [![Verify](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
 
@@ -12,9 +12,9 @@ itself is never translated: case content travels with the JSON.
 
 ---
 
-# What antu is
+# What Antu is
 
-antu renders four kinds of legal content as diagrams. Its specification is defined specifically for these four kinds, and does not reuse the syntax of general-purpose charting tools.
+Antu renders four kinds of legal content as diagrams. Its specification is defined specifically for these four kinds, and does not reuse the syntax of general-purpose charting tools.
 
 ## The four diagram types
 
@@ -25,21 +25,21 @@ antu renders four kinds of legal content as diagrams. Its specification is defin
 | Procedure | Procedural path and possible branches | Flowchart sub-type available |
 | Justification | Conclusion derived from norms and facts | Reasoning tree available (schema draft) |
 
-## Why use antu
+## Why use Antu
 
 **1. The syntax of general-purpose visualization tools does not fit legal work.** That syntax is built on nodes, edges, temporal sequences, and state machines. The structure of legal work is parties, legal relationships, procedural paths, and argumentation. General-purpose tools can produce a diagram, but their syntax reserves no place for legal elements such as procedural standing or the provenance of evidence.
 
-**2. Diagram quality should not depend on which large language model is used.** The common approach has the model generate the graphic directly, so quality varies with model capability. antu does not take that path. The model only extracts key information from case materials and outputs a JSON document; rendering is performed by a fixed engine. The result is therefore identical regardless of which model is used.
+**2. Diagram quality should not depend on which large language model is used.** The common approach has the model generate the graphic directly, so quality varies with model capability. Antu does not take that path. The model only extracts key information from case materials and outputs a JSON document; rendering is performed by a fixed engine. The result is therefore identical regardless of which model is used.
 
-**3. The same input should produce the same diagram.** A diagram delivered to a judge or to opposing counsel cannot be reproduced if each generation differs. antu's rendering process does not pass through a model, so the same JSON document renders identically at any time and in any environment.
+**3. The same input should produce the same diagram.** A diagram delivered to a judge or to opposing counsel cannot be reproduced if each generation differs. Antu's rendering process does not pass through a model, so the same JSON document renders identically at any time and in any environment.
 
-**4. Provenance is fixed at generation time.** The common approach is to ask, after the diagram exists, what a conclusion rests on, and then to verify through further dialogue. antu requires, at the moment of extraction, that each fact record which document it comes from, at which page, and under which provision of law. When the diagram is produced, the provenance is already on it.
+**4. Provenance is fixed at generation time.** The common approach is to ask, after the diagram exists, what a conclusion rests on, and then to verify through further dialogue. Antu requires, at the moment of extraction, that each fact record which document it comes from, at which page, and under which provision of law. When the diagram is produced, the provenance is already on it.
 
 Legal work requires that delivered materials be reproducible and traceable. The four points above address these two requirements.
 
 ---
 
-# How antu works
+# How Antu works
 
 ## Division of labour
 
@@ -120,10 +120,10 @@ Known problems and requests are tracked as [GitHub issues](https://github.com/zh
 
 Copyright (C) 2026 Ji Cheng.
 
-antu is free software, licensed under the **GNU Affero General Public License, version 3 or any later version** ([`LICENSE`](LICENSE), SPDX `AGPL-3.0-or-later`). In short: you may use, study, change and share it, including for commercial purposes. If you distribute a changed version, or let others use it over a network (for example as a hosted service), you must release your changes under the same licence, keep the copyright and licence notices, and make the source available. There is no warranty. This summary is not the licence; the licence text is.
+Antu is free software, licensed under the **GNU Affero General Public License, version 3 or any later version** ([`LICENSE`](LICENSE), SPDX `AGPL-3.0-or-later`). In short: you may use, study, change and share it, including for commercial purposes. If you distribute a changed version, or let others use it over a network (for example as a hosted service), you must release your changes under the same licence, keep the copyright and licence notices, and make the source available. There is no warranty. This summary is not the licence; the licence text is.
 
-- **Additional permission (AGPL section 7).** A page made with antu contains antu's code together with the diagram data you gave it. The diagram data, and the content of the diagram you drew from your material, are not part of antu and are not covered by this licence: you may keep them private, publish them, or sell them on any terms you like. The licence covers antu's code in the page, and the notices in the page must stay with it. The same text is in every page and at the top of the command line.
+- **Additional permission (AGPL section 7).** A page made with Antu contains Antu's code together with the diagram data you gave it. The diagram data, and the content of the diagram you drew from your material, are not part of Antu and are not covered by this licence: you may keep them private, publish them, or sell them on any terms you like. The licence covers Antu's code in the page, and the notices in the page must stay with it. The same text is in every page and at the top of the command line.
 - Everything in the repository (the code, the examples, the specifications and the guides) is under the same licence, except what is named below.
-- Code of other projects inside the pages and the command line keeps its own licence. Its notices are in [`skills/antu/THIRD-PARTY-NOTICES.md`](skills/antu/THIRD-PARTY-NOTICES.md), and also inside every page and at the top of the command line, together with the licence of antu and the place of the source of that version.
-- The judgment texts in `examples/raw/` are public court documents kept as source material for the examples. They are not antu's own work and are not licensed under the AGPL.
+- Code of other projects inside the pages and the command line keeps its own licence. Its notices are in [`skills/antu/THIRD-PARTY-NOTICES.md`](skills/antu/THIRD-PARTY-NOTICES.md), and also inside every page and at the top of the command line, together with the licence of Antu and the place of the source of that version.
+- The judgment texts in `examples/raw/` are public court documents kept as source material for the examples. They are not Antu's own work and are not licensed under the AGPL.
 - Versions up to 0.5.0 were published without a licence file. The licence applies from 0.5.1.

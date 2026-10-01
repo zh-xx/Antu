@@ -2,7 +2,7 @@
 
 > Status: **draft v0.3; all seven types are refined and final**.
 > Position: the global provenance mechanism (section 4 of the main document). **The diagram carries its own copy of the sources** (every diagram carries the sources it references), and expressive elements reference the sources inside the diagram through `sourceIds`.
-> Core value: **every expression must carry its provenance**. Every point on the diagram can point to the original material behind "what makes you say that". This is antu's core advantage, and every kind of diagram must be able to do it.
+> Core value: **every expression must carry its provenance**. Every point on the diagram can point to the original material behind "what makes you say that". This is Antu's core advantage, and every kind of diagram must be able to do it.
 > Principles: reference rather than copy (the table inside the diagram is stored once and many-to-many goes through ids); controlled enums plus optional dedicated fields; **a stable foundation first (structured location), then functional extension**.
 
 ## 0. Decisions taken (settled by the founder, 2025-09)

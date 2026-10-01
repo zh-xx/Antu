@@ -84,7 +84,7 @@ test('the header says whose work it is, under which licence, and where the sourc
 })
 
 test('the additional permission (the data in a page is not covered) is in the header, so in every page and the command line', () => {
-  assert.ok(ADDITIONAL_PERMISSION.join(' ').includes('are not part of antu and are not covered by this licence'))
+  assert.ok(ADDITIONAL_PERMISSION.join(' ').includes('are not part of Antu and are not covered by this licence'))
   for (const line of ADDITIONAL_PERMISSION) assert.ok(licenseHeader('1.2.3').includes(line), line)
   assert.ok(buildViewerHtml({ js: '', css: '' }).includes(ADDITIONAL_PERMISSION[0]))
   assert.ok(readFileSync('skills/antu/scripts/antu.mjs', 'utf8').slice(0, 4000).includes('Additional permission under section 7'))

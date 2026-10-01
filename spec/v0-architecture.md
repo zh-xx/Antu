@@ -1,4 +1,4 @@
-# antu · Architecture consensus v0 (record of the discussions)
+# Antu · Architecture consensus v0 (record of the discussions)
 
 > This document is the architecture consensus locked in after successive rounds of discussion with the project founder around 2025-09. It is the basis for finalising the specification and for writing code.
 > Status: **consensus draft, not yet final**. Items marked "to be decided" must be confirmed before work starts.
@@ -7,7 +7,7 @@
 
 ## 1. Project positioning
 
-antu = a **rendering core for legal visualisation**. It does exactly three things:
+Antu = a **rendering core for legal visualisation**. It does exactly three things:
 
 1. define the **JSON specification** (schema) for several kinds of legal diagram;
 2. provide a **preset renderer** for each diagram type (a registry, extensible);
@@ -23,7 +23,7 @@ antu = a **rendering core for legal visualisation**. It does exactly three thing
 
 - The specification answers **What (what to draw)**; the engine answers **How (how to draw it)**.
 - Analogy: a close relative of Mermaid (a standard syntax plus a rendering engine).
-- The difference: antu's "syntax" is **written for an LLM to generate**, not written by a person:
+- The difference: Antu's "syntax" is **written for an LLM to generate**, not written by a person:
   - field names are plain, enums are closed and the structure is flat, so an LLM can fill it in correctly against the schema;
   - validation is therefore **a required step at the engine's entrance** (the validation gate), and an error must be able to say "which field is non-compliant" so the agent can correct it itself.
 
@@ -95,7 +95,7 @@ Two key distinctions:
 
 ## 4. Source: the global provenance mechanism (not a fifth kind of diagram)
 
-**Core insight**: antu's deep product advantage is not that it "draws four kinds of diagram" but that **any expression can point to its origin**. Every expression must carry its provenance.
+**Core insight**: Antu's deep product advantage is not that it "draws four kinds of diagram" but that **any expression can point to its origin**. Every expression must carry its provenance.
 
 - What supports an expression is not only "evidence" in the procedural sense but **sources** in a broad sense: evidence, statutes, precedents and judgments, documents, contract clauses, registration records and so on are all values of the source `type` enum;
 - the four diagram types are the **content layer** (what is expressed); source is the **resource layer** (what supports the expression), and it **exists uniformly beneath every diagram type**:

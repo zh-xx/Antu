@@ -19,7 +19,7 @@ export const en = {
   // ---------- common ----------
   'common.none': '(none)',
   'common.close': 'Close',
-  'common.untitled': 'antu',
+  'common.untitled': 'Antu',
 
   // ---------- application-level fallback (App.jsx) ----------
   'fallback.invalidTitle': ({ n }) => `This data cannot be rendered (${n} problem${n === 1 ? '' : 's'})`,

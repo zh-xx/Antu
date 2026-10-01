@@ -12,12 +12,12 @@ metadata:
   version: "{{version}}"
 ---
 
-# antu: legal diagrams from JSON
+# Antu: legal diagrams from JSON
 
 You write the JSON; the engine draws it. The result is **one HTML file** that opens in any browser with no
 install and no network, prints, and can be forwarded. Nothing is uploaded anywhere.
 
-This skill is antu **{{version}}**. The pages it makes say so: `<meta name="generator" content="antu {{version}}">`.
+This skill is Antu **{{version}}**. The pages it makes say so: `<meta name="generator" content="antu {{version}}">`.
 
 **`<skill-dir>`** below is the folder that holds this `SKILL.md` (it has `scripts/`, `references/`, `examples/` and
 `assets/` beside it). Every command is written with it, so it runs from **any** directory: put the real path in.
@@ -34,7 +34,7 @@ skill folder.
 | why a court decided as it did: conclusion, issues, norms, elements, facts | `justification` | `references/guide-justification.md` |
 
 If the request fits two, make two diagrams rather than one overloaded one, and say so. If it fits none (a
-chart of numbers, an org chart of a firm), say that antu does not draw it.
+chart of numbers, an org chart of a firm), say that Antu does not draw it.
 
 ## 2. Write the JSON
 
@@ -83,12 +83,12 @@ Here is what each means in this folder:
 | `antu_examples` | `examples/<kind>/` |
 | `antu_preview` ("look at the picture before you deliver") | **There is no equivalent. You cannot look at the page.** Do not say you checked how it looks. Use `layout` for the size and the suggested orientation, and tell the user you could not view the result |
 
-A path in a guide that begins `spec/` or `src/` is for the people who maintain antu and is not in this folder:
+A path in a guide that begins `spec/` or `src/` is for the people who maintain Antu and is not in this folder:
 ignore it.
 
 ## 3. Check the data
 
-- **If the tools `antu_validate` and `antu_layout` are available** (the antu MCP server is installed): call
+- **If the tools `antu_validate` and `antu_layout` are available** (the Antu MCP server is installed): call
   `antu_validate` until it passes, then `antu_layout` to see how big the picture is and which orientation fits.
 - **Else, if `node` runs** (Node 18 or newer): the file `scripts/antu.mjs` is the same checker, with nothing to
   install. Run it from wherever you are:
@@ -178,7 +178,7 @@ What this means for what you write:
 
 ## Licence
 
-antu is free software under the GNU AGPL, version 3 or any later version: `LICENSE` is in this folder, and
+Antu is free software under the GNU AGPL, version 3 or any later version: `LICENSE` is in this folder, and
 `THIRD-PARTY-NOTICES.md` holds the notices of the code of others that is inside the viewer and the command line.
 Every page this skill makes carries the licence and the place of the source (the block `antu-license` in the page).
 If the user asks: it may be used, changed and shared, including commercially; a changed version that is shared or

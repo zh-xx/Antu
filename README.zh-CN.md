@@ -1,4 +1,4 @@
-# 案图 antu
+# 案图 Antu
 
 [![验证](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
 

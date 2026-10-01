@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Make an antu diagram page from a JSON file, with nothing but the standard library.
+"""Make an Antu diagram page from a JSON file, with nothing but the standard library.
 
     python3 make_html.py spec.json -o diagram.html
 

@@ -4,7 +4,7 @@
   "license": "AGPL-3.0-or-later",
   "author": "Ji Cheng",
   "private": true,
-  "description": "antu — a rendering core for legal work visualization. JSON specification plus an extensible rendering engine",
+  "description": "Antu — a rendering core for legal work visualization. JSON specification plus an extensible rendering engine",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,4 +1,4 @@
-# antu's MCP server
+# Antu's MCP server
 
 > Status: **working** (2026-09). This is the entry point for **agents**.
 
