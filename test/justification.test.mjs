@@ -161,7 +161,7 @@ test('the written order is kept among nodes that share a parent', () => {
 })
 
 test('no nodes overlap, and every issue box holds its own nodes', () => {
-  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const spec = JSON.parse(readFileSync('examples/justification/fang-yuan-defense-excess.zh-CN.json', 'utf8'))
   for (const o of ['horizontal', 'vertical']) {
     const g = buildJustificationGraph(spec, {}, undefined, o)
     const rects = g.nodes.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h, g: n.data.groupId }))
@@ -182,7 +182,7 @@ test('no nodes overlap, and every issue box holds its own nodes', () => {
 })
 
 test('every link starts and ends on the boundary of its two nodes', () => {
-  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const spec = JSON.parse(readFileSync('examples/justification/fang-yuan-defense-excess.zh-CN.json', 'utf8'))
   const g = buildJustificationGraph(spec, {}, undefined, 'horizontal')
   const rect = (id) => {
     const n = g.nodes.find((x) => x.id === id)
@@ -202,7 +202,7 @@ test('every link starts and ends on the boundary of its two nodes', () => {
 })
 
 test('the same JSON always gives the same picture', () => {
-  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const spec = JSON.parse(readFileSync('examples/justification/fang-yuan-defense-excess.zh-CN.json', 'utf8'))
   const a = buildJustificationGraph(spec, {}, undefined, 'horizontal')
   const b = buildJustificationGraph(spec, {}, undefined, 'horizontal')
   assert.deepEqual(a.nodes.map((n) => n.position), b.nodes.map((n) => n.position))
@@ -287,7 +287,7 @@ test('every required field in the field table is required by the validator', () 
 
 test('the real example: valid, no hints, 40 nodes in 5 issues', () => {
   for (const lang of ['zh-CN', 'en']) {
-    const spec = JSON.parse(readFileSync(`examples/justification/yuhuan-defense-excess.${lang}.json`, 'utf8'))
+    const spec = JSON.parse(readFileSync(`examples/justification/fang-yuan-defense-excess.${lang}.json`, 'utf8'))
     assert.deepEqual(validateJustification(spec), [], lang)
     assert.deepEqual(hintsOfJustification(spec), [], lang)
     const g = buildJustificationGraph(spec)
@@ -372,7 +372,7 @@ test('looking at a node lights its chain: what it rests on, and what it leads to
 })
 
 test('looking at a copy lights every copy of the fact, each with the way up from it', () => {
-  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const spec = JSON.parse(readFileSync('examples/justification/fang-yuan-defense-excess.zh-CN.json', 'utf8'))
   const g = buildJustificationGraph(spec)
   const copies = g.nodes.filter((n) => n.data.node.id === 'f-2')
   assert.equal(copies.length, 2)
@@ -407,9 +407,9 @@ test('the small examples for an agent: valid, no hints, each in both languages, 
   assert.equal(shared.stats.copies, 1)
 })
 
-test('the elevator case: valid, no hints, the rejected branches drawn, nothing overlaps', () => {
+test('the corridor-charging case: valid, no hints, the rejected branches drawn, nothing overlaps', () => {
   for (const lang of ['zh-CN', 'en']) {
-    const spec = JSON.parse(readFileSync(`examples/justification/elevator-smoking-liability.${lang}.json`, 'utf8'))
+    const spec = JSON.parse(readFileSync(`examples/justification/neighbour-corridor-liability.${lang}.json`, 'utf8'))
     assert.deepEqual(validateJustification(spec), [], lang)
     assert.deepEqual(hintsOfJustification(spec), [], lang)
     for (const o of ['horizontal', 'vertical']) {
@@ -450,7 +450,7 @@ test('combine (and / or): valid values, hints when it has nothing to combine or 
 })
 
 test('folding an issue keeps what it sums up to and says how many nodes it leaves out (#39)', () => {
-  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const spec = JSON.parse(readFileSync('examples/justification/fang-yuan-defense-excess.zh-CN.json', 'utf8'))
   const open = buildJustificationGraph(spec, {}, undefined, 'horizontal')
   const one = buildJustificationGraph(spec, { collapsed: ['g-1'] }, undefined, 'horizontal')
   assert.equal(open.nodes.length, 49)
@@ -473,7 +473,7 @@ test('folding an issue keeps what it sums up to and says how many nodes it leave
 })
 
 test('a fact that another issue still uses stays there when its own issue is folded', () => {
-  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const spec = JSON.parse(readFileSync('examples/justification/fang-yuan-defense-excess.zh-CN.json', 'utf8'))
   const g = buildJustificationGraph(spec, { collapsed: ['g-1'] }, undefined, 'horizontal')
   // f-2 is written in issue 1 and drawn again in issue 5, which is open
   assert.ok(g.nodes.some((n) => n.data.node.id === 'f-2' && n.data.copyOf === 'f-2'), 'the copy in issue 5 stays')
@@ -484,7 +484,7 @@ test('a fact that another issue still uses stays there when its own issue is fol
 })
 
 test('folding every issue leaves the end conclusion and each issue\'s summary; unknown ids are ignored', () => {
-  const spec = JSON.parse(readFileSync('examples/justification/yuhuan-defense-excess.zh-CN.json', 'utf8'))
+  const spec = JSON.parse(readFileSync('examples/justification/fang-yuan-defense-excess.zh-CN.json', 'utf8'))
   const ids = spec.groups.map((g) => g.id)
   const g = buildJustificationGraph(spec, { collapsed: ids }, undefined, 'horizontal')
   // issue 3 has no conclusion of its own: its element goes straight to the end conclusion, and is what it sums up to
@@ -513,9 +513,9 @@ test('a single issue has nothing to fold into, and a folded issue can be opened 
 
 test('the real cases have no crossing between their links', async () => {
   const { routedCrossings } = await import('../src/renderers/justification/tree/crossings.js')
-  // before: elevator 11 / 11, Yu Huan 6 / 5 (horizontal / vertical). Facts are drawn beside each use, a norm with
+  // before: corridor 11 / 11, Fang Yuan 6 / 5 (horizontal / vertical). Facts are drawn beside each use, a norm with
   // three or more elements beside each of them, and each issue is laid out several ways with the best kept.
-  const bound = { 'elevator-smoking-liability': 0, 'yuhuan-defense-excess': 0 }
+  const bound = { 'neighbour-corridor-liability': 0, 'fang-yuan-defense-excess': 0 }
   for (const [name, most] of Object.entries(bound)) {
     const spec = JSON.parse(readFileSync(`examples/justification/${name}.zh-CN.json`, 'utf8'))
     for (const o of ['horizontal', 'vertical']) {

@@ -173,7 +173,7 @@ Settled by the founder (2025-09):
 | Evidence category | **dropped**: no enumerating the eight categories of the Civil Procedure Law |
 
 > **Revision 2026-09 (verified against real cases)**: `evidenceNo` and `party` changed from **required to optional**.
-> Reason: when extracting from a judgment they are often unavailable. A judgment usually says "according to the video" or "together with the medical certificate" and **does not state the evidence number or the party who adduced it** (see `examples/fact/elevator-smoking-case.zh-CN.json`, where for all four evidence items these two fields could only be filled in as "not stated in the judgment"). Filling them in requires extra material (the evidence index).
+> Reason: when extracting from a judgment they are often unavailable. A judgment usually says "according to the video" or "together with the medical certificate" and **does not state the evidence number or the party who adduced it** (see `examples/fact/neighbour-corridor-charging.zh-CN.json`, where for all four evidence items these two fields could only be filled in as "not stated in the judgment"). Filling them in requires extra material (the evidence index).
 
 ```jsonc
 { "id": "s-5", "type": "evidence",

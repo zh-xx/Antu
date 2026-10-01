@@ -169,7 +169,7 @@ test('validate and render refuse a diagram with a problem, and name it; render w
 
 test('layout: the same report as the MCP side, for the small examples and a real case of each kind', () => {
   const files = examples().filter((f) => f.startsWith('examples/agent/') && f.endsWith('.zh-CN.json'))
-  for (const f of ['examples/fact/elevator-smoking-case.zh-CN.json', 'examples/procedure/05-premises-lease.zh-CN.json', 'examples/relationship/yuhuan-parties.zh-CN.json']) {
+  for (const f of ['examples/fact/neighbour-corridor-charging.zh-CN.json', 'examples/procedure/05-premises-lease.zh-CN.json', 'examples/relationship/fang-yuan-parties.zh-CN.json']) {
     if (existsSync(f)) files.push(f)
   }
   for (const file of files) {

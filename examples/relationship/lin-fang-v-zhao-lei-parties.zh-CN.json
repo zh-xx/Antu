@@ -1,24 +1,24 @@
 {
   "type": "relationship",
   "specVersion": 1,
-  "title": "Zhang Juan v. Peng Yu, private lending · Parties and relations",
-  "asOf": "2020-12-13",
+  "title": "林芳诉赵磊民间借贷纠纷（虚构） · 当事人关系",
+  "asOf": "2030-04-14",
   "groups": [
     {
       "id": "g-1",
-      "label": "Plaintiff"
+      "label": "原告"
     },
     {
       "id": "g-2",
-      "label": "Defendant"
+      "label": "被告"
     }
   ],
   "entities": [
     {
       "id": "e-1",
       "kind": "person",
-      "label": "Zhang Juan",
-      "role": "Lender",
+      "label": "林芳",
+      "role": "出借人",
       "groupId": "g-1",
       "sourceIds": [
         "s-5"
@@ -27,8 +27,8 @@
     {
       "id": "e-2",
       "kind": "person",
-      "label": "Peng Yu",
-      "role": "Borrower",
+      "label": "赵磊",
+      "role": "借款人",
       "groupId": "g-2",
       "sourceIds": [
         "s-5"
@@ -37,8 +37,8 @@
     {
       "id": "e-3",
       "kind": "other",
-      "label": "A third party",
-      "role": "Passed the money on",
+      "label": "案外人",
+      "role": "代为转付",
       "sourceIds": [
         "s-4"
       ]
@@ -50,9 +50,9 @@
       "from": "e-1",
       "to": "e-2",
       "kind": "debt",
-      "label": "First loan",
-      "amount": "CNY 40,000",
-      "detail": "Transferred 3 Nov 2020 against an IOU, due 3 Dec; not repaid",
+      "label": "第一笔借款",
+      "amount": "4 万元",
+      "detail": "2030-03-04 转账交付，赵磊出具借条，约定 4 月 4 日前归还，到期未还",
       "sourceIds": [
         "s-1",
         "s-3"
@@ -63,9 +63,9 @@
       "from": "e-1",
       "to": "e-2",
       "kind": "debt",
-      "label": "Second loan",
-      "amount": "CNY 40,000",
-      "detail": "Paid 13 Nov 2020 through a third party, due 13 Dec; not repaid",
+      "label": "第二笔借款",
+      "amount": "4 万元",
+      "detail": "2030-03-14 经案外人转付，约定 4 月 14 日前归还，到期未还",
       "sourceIds": [
         "s-2",
         "s-4"
@@ -76,7 +76,7 @@
       "from": "e-1",
       "to": "e-3",
       "kind": "other",
-      "label": "Paid through for the second loan",
+      "label": "委托转付第二笔",
       "sourceIds": [
         "s-4"
       ]
@@ -86,7 +86,7 @@
       "from": "e-3",
       "to": "e-2",
       "kind": "other",
-      "label": "Passed on CNY 40,000",
+      "label": "转付 4 万元",
       "sourceIds": [
         "s-4"
       ]
@@ -96,44 +96,44 @@
     {
       "id": "s-1",
       "type": "contract",
-      "name": "IOU (first CNY 40,000)",
+      "name": "借条（第一笔 4 万元）",
       "loc": {
-        "file": "IOU",
+        "file": "借条",
         "clause": 1
       }
     },
     {
       "id": "s-2",
       "type": "contract",
-      "name": "IOU (second CNY 40,000)",
+      "name": "借条（第二笔 4 万元）",
       "loc": {
-        "file": "IOU",
+        "file": "借条",
         "clause": 1
       }
     },
     {
       "id": "s-3",
       "type": "evidence",
-      "name": "China Construction Bank statement",
+      "name": "某银行客户交易明细",
       "loc": {
-        "file": "Bank statement"
+        "file": "银行交易明细"
       }
     },
     {
       "id": "s-4",
       "type": "evidence",
-      "name": "WeChat and Alipay transfer records",
+      "name": "微信、支付宝转账记录",
       "loc": {
-        "file": "Transfer records"
+        "file": "转账记录"
       }
     },
     {
       "id": "s-5",
       "type": "case",
-      "name": "First-instance judgment",
+      "name": "本案一审判决",
       "loc": {
-        "caseNo": "（2023）湘1202民初2736号",
-        "court": "Hecheng District People's Court, Huaihua, Hunan"
+        "caseNo": "（2031）示民初1号",
+        "court": "示例省示例市示例区人民法院"
       }
     }
   ]

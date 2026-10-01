@@ -57,7 +57,7 @@ Draw one fact specification as a **fixed grid**: rows are time, columns are lane
   Provenance is what this diagram stands on; even the lightest action must show roughly what is there, it must not be hidden behind "open it".
 - **Duration**: for a lasting event with `dateEnd`, the time is written as "start - end" (on the same day only the ending time is written, without repeating the date),
   and opening the card adds a "duration X" line. **This is expressed in text only, length is never drawn on the axis**: slots are equally spaced and real time is not
-  (in the elevator case 4 seconds and 264 seconds take up the same distance on the diagram), drawing length by real duration would deceive.
+  (in the corridor case 4 seconds and 264 seconds take up the same distance on the diagram), drawing length by real duration would deceive.
 - **Cell layer**: draws the underlying rectangles as dashed lines, so that at a glance you can see "the whole diagram is pieced together from rectangles". There is a switch in the control dock, **off by default**.
   One empty column is drawn on each side, to show the margin of the coordinate system.
 - **Colour**: cards are neutral throughout (white background, dark grey border), **no colour by side, and no coloured bar on the left**.

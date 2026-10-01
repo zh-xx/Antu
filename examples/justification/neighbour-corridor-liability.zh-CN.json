@@ -1,33 +1,33 @@
 {
   "specVersion": 1,
   "type": "justification",
-  "title": "The elevator smoking case · the appeal court's reasoning",
-  "speaker": "Zhengzhou Intermediate People's Court, Henan (appeal)",
+  "title": "楼道充电劝阻案（虚构） · 二审改判的说理",
+  "speaker": "示例市中级人民法院（二审，虚构）",
   "groups": [
     {
       "id": "g-1",
-      "label": "Issue 1: is Yang Fan liable in ordinary tort?"
+      "label": "争点一：孙浩是否应承担一般侵权责任"
     },
     {
       "id": "g-2",
-      "label": "Issue 2: does the first instance's fairness liability apply?"
+      "label": "争点二：一审的公平责任能否适用"
     },
     {
       "id": "g-3",
-      "label": "Issue 3: Yang Fan did not appeal; may the appeal court change the judgment?"
+      "label": "争点三：孙浩没有上诉，二审能否改判"
     }
   ],
   "nodes": [
     {
       "id": "c-1",
       "kind": "conclusion",
-      "label": "The first-instance judgment is set aside and Tian Jiuju's claim dismissed: Yang Fan bears no tort liability",
+      "label": "撤销一审判决，驳回钱敏的诉讼请求：孙浩不承担侵权责任",
       "holds": "yes"
     },
     {
       "id": "n-5",
       "kind": "norm",
-      "label": "Civil Procedure Law Art. 170(1)(2): the ground on which an appeal court changes a judgment",
+      "label": "示意条款丁第 1 款第 2 项：二审改判的依据",
       "sourceIds": [
         "s-6"
       ]
@@ -35,7 +35,7 @@
     {
       "id": "c-2",
       "kind": "conclusion",
-      "label": "Yang Fan is liable in ordinary tort (fault liability)",
+      "label": "孙浩应承担一般侵权责任（过错责任）",
       "holds": "no",
       "combine": "all",
       "groupId": "g-1"
@@ -43,7 +43,7 @@
     {
       "id": "n-1",
       "kind": "norm",
-      "label": "Tort Liability Law Art. 6(1): a person who infringes another's civil rights through fault bears tort liability",
+      "label": "示意条款甲：行为人因过错侵害他人民事权益，应当承担侵权责任",
       "groupId": "g-1",
       "sourceIds": [
         "s-3"
@@ -52,28 +52,28 @@
     {
       "id": "e-1",
       "kind": "element",
-      "label": "The dissuasion was improper and went beyond what was necessary",
+      "label": "劝阻行为不正当，超出了必要限度",
       "holds": "no",
       "groupId": "g-1"
     },
     {
       "id": "e-2",
       "kind": "element",
-      "label": "There is a legal causal link between the dissuasion and Duan Xiaoli's death",
+      "label": "劝阻行为与钱敏的心脏不适之间有法律上的因果关系",
       "holds": "no",
       "groupId": "g-1"
     },
     {
       "id": "e-3",
       "kind": "element",
-      "label": "Yang Fan acted intentionally or negligently",
+      "label": "孙浩有故意或过失",
       "holds": "no",
       "groupId": "g-1"
     },
     {
       "id": "j-1",
       "kind": "judgement",
-      "label": "Yang Fan's dissuasion was rational and calm and stayed within what was necessary: it was proper",
+      "label": "孙浩的劝阻理性平和，未超出必要限度，属于正当劝阻",
       "holds": "yes",
       "groupId": "g-1",
       "sourceIds": [
@@ -83,7 +83,7 @@
     {
       "id": "j-2",
       "kind": "judgement",
-      "label": "The dissuasion and the death are only one after the other in time; there is no legal causal link",
+      "label": "劝阻与发病只有时间上的先后，没有法律上的因果关系",
       "holds": "yes",
       "groupId": "g-1",
       "sourceIds": [
@@ -93,7 +93,7 @@
     {
       "id": "j-3",
       "kind": "judgement",
-      "label": "Yang Fan dissuaded a smoker as a citizen's duty to society, and had no intent to harm Duan Xiaoli",
+      "label": "孙浩劝阻充电是维护公共安全的正当行为，没有加害钱敏的故意",
       "holds": "yes",
       "groupId": "g-1",
       "sourceIds": [
@@ -103,7 +103,7 @@
     {
       "id": "i-1",
       "kind": "inference",
-      "label": "The dissuasion of smoking cannot in itself cause Duan Xiaoli's death",
+      "label": "孙浩劝阻充电这一行为本身不会造成钱敏发病",
       "holds": "yes",
       "groupId": "g-1",
       "sourceIds": [
@@ -113,7 +113,7 @@
     {
       "id": "i-2",
       "kind": "inference",
-      "label": "Yang Fan could not foresee Duan Xiaoli's death, and was not careless or negligent",
+      "label": "孙浩对钱敏发病无法预见，也不存在疏忽或懈怠",
       "holds": "yes",
       "groupId": "g-1",
       "sourceIds": [
@@ -123,8 +123,8 @@
     {
       "id": "f-1",
       "kind": "fact",
-      "label": "Lift camera (clock 09:24): Duan Xiaoli was smoking in the lift; after Yang Fan came in the two began to talk",
-      "date": "2017-05-02",
+      "label": "楼道监控（时间显示 20 时 14 分）：钱敏在楼道内给电池充电，孙浩进入楼道后，双方开始交谈",
+      "date": "2030-06-02",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -133,8 +133,8 @@
     {
       "id": "f-2",
       "kind": "fact",
-      "label": "The three videos have pictures and no sound; the two only talked, with no pulling and no physical clash",
-      "date": "2017-05-02",
+      "label": "三段监控只有影像、没有声音；二人只有言语交流，无拉扯，无肢体接触",
+      "date": "2030-06-02",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -143,8 +143,8 @@
     {
       "id": "f-3",
       "kind": "fact",
-      "label": "Throughout, Yang Fan was relatively calm and restrained; Duan Xiaoli was agitated, and more so as time went on",
-      "date": "2017-05-02",
+      "label": "孙浩在整个过程中语气平缓；钱敏语气急促，并随时间推移不断升高",
+      "date": "2030-06-02",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -153,7 +153,7 @@
     {
       "id": "f-4",
       "kind": "fact",
-      "label": "There is no evidence that Yang Fan shouted at Duan Xiaoli or did anything else improper",
+      "label": "没有证据证明孙浩对钱敏有过呵斥或其他不当行为",
       "groupId": "g-1",
       "sourceIds": [
         "s-2"
@@ -162,8 +162,8 @@
     {
       "id": "f-5",
       "kind": "fact",
-      "label": "Yang Fan and Duan Xiaoli were in contact for less than five minutes",
-      "date": "2017-05-02",
+      "label": "孙浩与钱敏的接触时间不足 5 分钟",
+      "date": "2030-06-02",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -172,8 +172,8 @@
     {
       "id": "f-6",
       "kind": "fact",
-      "label": "120 was called at 09:31 and the paramedics reached the patient at 09:37",
-      "date": "2017-05-02T09:31",
+      "label": "20 时 21 分呼叫急救，急救人员 20 时 27 分到达患者身边",
+      "date": "2030-06-02T20:21",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -182,7 +182,7 @@
     {
       "id": "f-7",
       "kind": "fact",
-      "label": "Yang Fan had not known Duan Xiaoli, and did not know of his medical history or his heart bypass operation",
+      "label": "孙浩此前不认识钱敏，也不知道钱敏的心脏病史",
       "groupId": "g-1",
       "sourceIds": [
         "s-2"
@@ -191,7 +191,7 @@
     {
       "id": "f-8",
       "kind": "fact",
-      "label": "Once he knew, Yang Fan promptly used his professional skill to help Duan Xiaoli",
+      "label": "孙浩得知情况后，及时协助呼叫急救并陪同等候",
       "groupId": "g-1",
       "sourceIds": [
         "s-2"
@@ -200,14 +200,14 @@
     {
       "id": "c-3",
       "kind": "conclusion",
-      "label": "Yang Fan should pay Tian Jiuju 15,000 yuan on the fairness principle (what the first instance did)",
+      "label": "应按公平原则，由孙浩补偿钱敏 8000 元（一审的做法）",
       "holds": "no",
       "groupId": "g-2"
     },
     {
       "id": "n-2",
       "kind": "norm",
-      "label": "Tort Liability Law Art. 24: where neither victim nor actor was at fault, the loss may be shared as the facts require",
+      "label": "示意条款乙：受害人和行为人对损害的发生都没有过错的，可以根据实际情况，由双方分担损失",
       "groupId": "g-2",
       "sourceIds": [
         "s-4"
@@ -216,14 +216,14 @@
     {
       "id": "e-4",
       "kind": "element",
-      "label": "There is a legal causal link between the act and the harm, and neither side was at fault",
+      "label": "行为与损害结果之间有法律上的因果关系，且双方都没有过错",
       "holds": "no",
       "groupId": "g-2"
     },
     {
       "id": "j-4",
       "kind": "judgement",
-      "label": "There is no legal causal link between the dissuasion and the death, so the precondition of Art. 24 is not met",
+      "label": "劝阻与发病之间没有法律上的因果关系，适用示意条款乙的前提不成立",
       "holds": "yes",
       "groupId": "g-2",
       "sourceIds": [
@@ -233,7 +233,7 @@
     {
       "id": "j-5",
       "kind": "judgement",
-      "label": "In applying Art. 24 and the fairness principle the first instance applied the law wrongly",
+      "label": "一审依示意条款乙适用公平原则判令孙浩补偿，属于适用法律错误",
       "holds": "yes",
       "groupId": "g-2",
       "sourceIds": [
@@ -243,7 +243,7 @@
     {
       "id": "f-9",
       "kind": "fact",
-      "label": "The first instance, because Duan Xiaoli died suddenly after the quarrel with Yang Fan, ordered Yang Fan to pay Tian Jiuju 15,000 yuan",
+      "label": "一审判决以钱敏在与孙浩发生言语争执后突发心脏不适为由，判令孙浩补偿钱敏 8000 元",
       "groupId": "g-2",
       "sourceIds": [
         "s-2"
@@ -252,14 +252,14 @@
     {
       "id": "c-4",
       "kind": "conclusion",
-      "label": "The appeal court should change the first-instance judgment",
+      "label": "二审应当对一审判决改判",
       "holds": "yes",
       "groupId": "g-3"
     },
     {
       "id": "n-3",
       "kind": "norm",
-      "label": "Civil Procedure Interpretation Art. 323: an appeal is tried on the grounds of appeal, unless the judgment breaks a legal prohibition or harms the State, the public interest or another's rights",
+      "label": "示意条款丙：二审围绕上诉请求审理；但一审判决违反法律禁止性规定，或损害国家利益、社会公共利益、他人合法权益的除外",
       "groupId": "g-3",
       "sourceIds": [
         "s-5"
@@ -268,7 +268,7 @@
     {
       "id": "n-4",
       "kind": "norm",
-      "label": "Zhengzhou's rules: smoking is banned in lifts and other public places, and citizens may stop it",
+      "label": "示例市有关规定：楼道等公共场所禁止给电动车电池充电，居民有权制止",
       "groupId": "g-3",
       "sourceIds": [
         "s-7"
@@ -277,7 +277,7 @@
     {
       "id": "n-6",
       "kind": "norm",
-      "label": "The basic principles and purpose of civil law: protect the environment, uphold the public interest and public order and good morals, promote core socialist values",
+      "label": "民事规则的基本原则和立法宗旨（示意）：维护社会公共利益和公序良俗，弘扬良好社会风尚",
       "groupId": "g-3",
       "sourceIds": [
         "s-8"
@@ -286,14 +286,14 @@
     {
       "id": "e-5",
       "kind": "element",
-      "label": "The first-instance judgment harms the public interest (the exception to trying an appeal only on its grounds)",
+      "label": "一审判决损害社会公共利益（二审可不受上诉请求限制的例外）",
       "holds": "yes",
       "groupId": "g-3"
     },
     {
       "id": "j-6",
       "kind": "judgement",
-      "label": "Yang Fan's dissuasion was lawful and proper: a conscious act to uphold public order and the public interest",
+      "label": "孙浩劝阻充电合法正当，是自觉维护楼道消防安全和公共利益的行为",
       "holds": "yes",
       "groupId": "g-3",
       "sourceIds": [
@@ -303,7 +303,7 @@
     {
       "id": "j-7",
       "kind": "judgement",
-      "label": "Making a citizen who dissuaded properly share the loss would dampen citizens' will to defend the public interest, harm it, and run against the purpose of civil law",
+      "label": "让正当劝阻的居民分担损失，会挫伤居民维护公共安全的积极性，损害社会公共利益，与立法宗旨相悖",
       "holds": "yes",
       "groupId": "g-3",
       "sourceIds": [
@@ -313,7 +313,7 @@
     {
       "id": "f-10",
       "kind": "fact",
-      "label": "Yang Fan did not appeal after the first-instance judgment",
+      "label": "一审判决作出后，孙浩没有上诉",
       "groupId": "g-3",
       "sourceIds": [
         "s-2"
@@ -485,7 +485,7 @@
       "from": "f-10",
       "to": "c-4",
       "stance": "against",
-      "label": "outside the grounds of appeal"
+      "label": "本不在审理范围"
     },
     {
       "from": "c-4",
@@ -496,75 +496,75 @@
     {
       "id": "s-1",
       "type": "case",
-      "name": "(2017) Yu 01 Min Zhong No. 14848 · facts found on appeal",
+      "name": "（2031）示民终1号 · 本院查明",
       "loc": {
-        "caseNo": "（2017）豫01民终14848号",
-        "court": "Zhengzhou Intermediate People's Court, Henan"
+        "caseNo": "（2031）示民终1号",
+        "court": "示例省示例市中级人民法院"
       }
     },
     {
       "id": "s-2",
       "type": "case",
-      "name": "(2017) Yu 01 Min Zhong No. 14848 · the court's reasons",
+      "name": "（2031）示民终1号 · 本院认为",
       "loc": {
-        "caseNo": "（2017）豫01民终14848号",
-        "court": "Zhengzhou Intermediate People's Court, Henan"
+        "caseNo": "（2031）示民终1号",
+        "court": "示例省示例市中级人民法院"
       }
     },
     {
       "id": "s-3",
       "type": "statute",
-      "name": "Tort Liability Law, Art. 6",
+      "name": "示意条款甲",
       "loc": {
-        "lawName": "Tort Liability Law of the People's Republic of China",
-        "article": 6,
-        "version": "2009"
+        "lawName": "示意法（虚构）",
+        "article": 1,
+        "version": "示意版"
       }
     },
     {
       "id": "s-4",
       "type": "statute",
-      "name": "Tort Liability Law, Art. 24",
+      "name": "示意条款乙",
       "loc": {
-        "lawName": "Tort Liability Law of the People's Republic of China",
-        "article": 24,
-        "version": "2009"
+        "lawName": "示意法（虚构）",
+        "article": 2,
+        "version": "示意版"
       }
     },
     {
       "id": "s-5",
       "type": "statute",
-      "name": "Civil Procedure Interpretation, Art. 323",
+      "name": "示意条款丙",
       "loc": {
-        "lawName": "Supreme People's Court Interpretation on the Application of the Civil Procedure Law",
-        "article": 323,
-        "version": "2015"
+        "lawName": "示意法（虚构）",
+        "article": 3,
+        "version": "示意版"
       }
     },
     {
       "id": "s-6",
       "type": "statute",
-      "name": "Civil Procedure Law, Art. 170",
+      "name": "示意条款丁",
       "loc": {
-        "lawName": "Civil Procedure Law of the People's Republic of China",
-        "article": 170,
-        "version": "2017修正"
+        "lawName": "示意法（虚构）",
+        "article": 4,
+        "version": "示意版"
       }
     },
     {
       "id": "s-7",
       "type": "other",
-      "name": "Zhengzhou's rules (no smoking in lifts and other public places)",
+      "name": "示例市有关规定（禁止在楼道等公共场所给电动车电池充电）",
       "loc": {
-        "note": "The judgment says only \"according to Zhengzhou's rules\" and gives no title or article"
+        "note": "判决书只写\"根据示例市有关规定\"，没有写出规定的名称和条号"
       }
     },
     {
       "id": "s-8",
       "type": "other",
-      "name": "The basic principles and purpose of civil law",
+      "name": "民事规则的基本原则和立法宗旨（示意）",
       "loc": {
-        "note": "The judgment cites no provision"
+        "note": "判决书没有写出具体条文"
       }
     }
   ]

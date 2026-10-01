@@ -434,7 +434,7 @@ function checkData() {
   // examples, so an agent thought it was fetching an example and got back a whole judgment
   // (3500 characters).
   truthy('examples/README.md cannot be fetched (it is not an example)', readExample('examples/README.md') === null)
-  truthy('a path escaping examples/ cannot be fetched', readExample('examples/agent/../fact-电梯劝烟案.json') === null)
+  truthy('a path escaping examples/ cannot be fetched', readExample('examples/agent/../fact-楼道充电案.json') === null)
   truthy('a small example can be fetched', readExample('examples/agent/fact/1-minimal.en.json') !== null)
   truthy('examples are laid out in per-type directories', listExamples({ type: 'fact' }).length > 0)
   truthy(
@@ -592,7 +592,7 @@ function checkData() {
   // name sorted earlier changed what the render assertions looked at, and the card counts of
   // two runs were not comparable at all (measured: 7 cards vs 12). Once fixed, assertions like
   // "card count" and "label card title" actually mean something.
-  const sample = 'examples/fact/elevator-smoking-case.zh-CN.json'
+  const sample = 'examples/fact/neighbour-corridor-charging.zh-CN.json'
   truthy('the render sample exists', existsSync(join(REPO, sample)))
   // Same rule for the flowchart: one fixed file. 01 is chosen because it carries every thing
   // the renderer has to draw at once: stages, decisions, back edges, both outcome colours.
@@ -602,7 +602,7 @@ function checkData() {
   const relationshipSample = 'examples/relationship/sample-group-guarantee.zh-CN.json'
   truthy('the relationship render sample exists', existsSync(join(REPO, relationshipSample)))
 
-  const justificationSample = 'examples/justification/yuhuan-defense-excess.zh-CN.json'
+  const justificationSample = 'examples/justification/fang-yuan-defense-excess.zh-CN.json'
   truthy('the justification render sample exists', existsSync(join(REPO, justificationSample)))
   return { files, sample, procedureSample, relationshipSample, justificationSample, combos, views }
 }
@@ -1846,10 +1846,10 @@ async function checkTextSize() {
     return
   }
   const cases = [
-    ['examples/justification/yuhuan-defense-excess.zh-CN.json', '.antu-jn-label'],
-    ['examples/fact/yuhuan-loan-and-conflict.zh-CN.json', '.antu-card-label'],
+    ['examples/justification/fang-yuan-defense-excess.zh-CN.json', '.antu-jn-label'],
+    ['examples/fact/fang-yuan-loan-and-conflict.zh-CN.json', '.antu-card-label'],
     ['examples/procedure/05-premises-lease.zh-CN.json', '.antu-pn-label'],
-    ['examples/relationship/kuaibo-parties.zh-CN.json', '.antu-rn-label'],
+    ['examples/relationship/marketplace-parties.zh-CN.json', '.antu-rn-label'],
   ]
   const browser = await launchBrowser({ width: 1600, height: 900 })
   try {
@@ -1936,14 +1936,14 @@ async function checkRenderJustification(sampleFile) {
     await settle(500)
     const zoomedIn = await zoomOf()
     const nodeWith = (text) => `[...document.querySelectorAll('.react-flow__node-jnode')].find((n) => n.textContent.includes(${JSON.stringify(text)}))`
-    await browser.eval(`${nodeWith('杜某2辱骂')}.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); 1`)
+    await browser.eval(`${nodeWith('姜某辱骂')}.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); 1`)
     await settle(1200)
     eq('exactly one node is lit', await count('.antu-jn.is-lit'), 1)
     truthy('what is not in its chain fades', await browser.eval(`document.querySelectorAll('.antu-jn.is-dim').length > 0`))
     truthy('the links of the chain stay and the rest fade', await browser.eval(`[...document.querySelectorAll('.antu-jlink')].some((g) => +g.getAttribute('opacity') < 1) && [...document.querySelectorAll('.antu-jlink')].some((g) => +g.getAttribute('opacity') === 1)`))
     truthy('the overlay says what it rests on and leads to', await browser.eval(`document.querySelectorAll('.antu-jn .antu-jn-rows').length > 0`))
     eq('looking at a node keeps the zoom', await zoomOf(), zoomedIn)
-    await browser.eval(`${nodeWith('杜某2辱骂')}.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })); 1`)
+    await browser.eval(`${nodeWith('姜某辱骂')}.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })); 1`)
     await browser.eval(`document.querySelector('.react-flow__controls-fitview').click(); 1`, { userGesture: true })
     await settle(600)
     eq('nothing stays lit', await count('.antu-jn.is-lit'), 0)

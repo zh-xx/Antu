@@ -497,7 +497,7 @@ test('the real cases stand with (almost) no crossing when the picture runs down 
         if (segs(c.points).some((s) => segs(d.points).some((t) => cross(s, t)))) n += 1
       }),
     )
-    // the Kuaibo case had six; one line into a crowded side of the group sample is left
-    assert.ok(n <= (f.startsWith('kuaibo') ? 0 : 1), `${f}: ${n} crossings`)
+    // the marketplace case had six; one line into a crowded side of the group sample is left
+    assert.ok(n <= (f.startsWith('marketplace') ? 0 : 1), `${f}: ${n} crossings`)
   }
 })

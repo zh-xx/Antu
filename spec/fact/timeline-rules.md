@@ -69,7 +69,7 @@ Key points:
 - Therefore, if two parties sit on opposite sides (one on each side), **their distance from the axis is the same** and the diagram is symmetric.
 
 ```
-One party on each side (elevator smoking case)   Three parties on one side
+One party on each side (corridor-charging case)   Three parties on one side
         side 1   axis    side 2                    side 1        axis
 cell 1  [A]             [B]                    cell 1 [A]
 cell 2                                         cell 2       [B]
@@ -97,9 +97,9 @@ Event structure (replacing the former flat `events` array):
 "slots": [
   {
     "events": [
-      { "id": "ev-2", "date": "2017-05-02T09:24:07", "label": "Yang Fan enters the elevator",
+      { "id": "ev-2", "date": "2030-06-02T20:14:07", "label": "Sun Hao enters the corridor",
         "groupId": "g-1", "actorIds": ["a-1"] },
-      { "id": "ev-1", "date": "2017-05-02T09:24:03", "label": "Duan Xiaoli smokes inside the elevator",
+      { "id": "ev-1", "date": "2030-06-02T20:14:03", "label": "Qian Min charges a battery in the corridor",
         "groupId": "g-2", "actorIds": ["a-2"] }
     ]
   }
@@ -111,34 +111,34 @@ Event structure (replacing the former flat `events` array):
 - **`actorIds` means "whom this event involves", not "who did this".** Optional. An event such as receiving a text message involves the recipient and should be written; one that involves no party at all, such as a gate being shut down or an ambulance arriving, is either left out or put in the 3rd group.
 - **The order of judgement does not depend on `date`.** Sorting and slotting rest entirely on the position in the `slots` array, and `date` is shown on the card only.
 
-## 6. Complete example: the elevator smoking case (extract)
+## 6. Complete example: the corridor-charging case (extract)
 
 ```
-                    side 1 (Yang Fan)   axis                side 2 (Duan Xiaoli)
-09:24               [Yang Fan enters the elevator] [the two exchange words] [Duan Xiaoli smokes]
+                    side 1 (Sun Hao)   axis                side 2 (Qian Min)
+20:14               [Sun Hao enters the corridor] [the two exchange words] [Qian Min charges]
                                           ↑ three lanes side by side in the same slot
 09:28                                   [walks to the entrance of the building]
 09:31                                   [calls an ambulance]
-(day precision)                                             [Duan Xiaoli dies]
+(day precision)                                             [Qian Min taken ill]
 ```
 
 > The times on the left come from the cards themselves; no time scale is drawn on the axis.
 
 ```jsonc
 "actors": [
-  { "id": "a-1", "name": "Yang Fan",   "role": "defendant · dissuader" },
-  { "id": "a-2", "name": "Duan Xiaoli", "role": "victim · the one dissuaded" }
+  { "id": "a-1", "name": "Sun Hao",   "role": "defendant · dissuader" },
+  { "id": "a-2", "name": "Qian Min", "role": "plaintiff · the one dissuaded" }
 ],
 "groups": [
-  { "id": "g-1", "label": "Yang Fan's conduct" },        // 1st group → side 1
-  { "id": "g-2", "label": "Duan Xiaoli's conduct" },     // 2nd group → side 2
+  { "id": "g-1", "label": "Sun Hao's conduct" },        // 1st group → side 1
+  { "id": "g-2", "label": "Qian Min's conduct" },     // 2nd group → side 2
   { "id": "g-3", "label": "joint or objective course" }  // 3rd group → the axis
 ],
 "slots": [
-  { "events": [ /* 09:24: three things at once, one on each of the three lanes */ ] },
+  { "events": [ /* 20:14: three things at once, one on each of the three lanes */ ] },
   { "events": [ /* 09:28 */ ] },
   { "events": [ /* 09:31 */ ] },
-  { "events": [ /* Duan Xiaoli dies, date goes only to the day */ ] }
+  { "events": [ /* Qian Min taken ill, date goes only to the day */ ] }
 ]
 ```
 
@@ -146,7 +146,7 @@ Event structure (replacing the former flat `events` array):
 
 | Item | Note |
 |---|---|
-| Drawing `dateEnd` | The text version is done (the card writes "start - end", the overlay gives the duration). No vertical bar across slots: **not done**, slots are equally spaced and real time is not (in the elevator case 4 seconds and 264 seconds take up the same distance on the diagram), drawing length by real duration would deceive |
+| Drawing `dateEnd` | The text version is done (the card writes "start - end", the overlay gives the duration). No vertical bar across slots: **not done**, slots are equally spaced and real time is not (in the corridor case 4 seconds and 264 seconds take up the same distance on the diagram), drawing length by real duration would deceive |
 | Vertical/horizontal switching | **Done.** Direction is a rendering parameter and the logic does not change with direction; the default is taken from the slot count (5 or more slots vertical, 4 or fewer horizontal) |
 | Dedicated verification for more than three parties | **Verified**: the example with 4 parties and 5 columns has been run through several views |
 | Drag editing | The structure has left the road open for it (order via the array, same slot via nesting); the feature is not done |

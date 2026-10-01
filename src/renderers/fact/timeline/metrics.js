@@ -33,7 +33,7 @@ export const CELL_GAP = 28
 
 /** Header area: when vertical, height is reserved at the top; when horizontal, width on the left.
  *  More is reserved horizontally than vertically, because the heading text has to fit within one
- *  column (the elevator case's "joint or objective course" needs about 126px). */
+ *  column (the corridor-charging case's "joint or objective course" needs about 126px). */
 export const HEADER_H = 96
 export const HEADER_W = 150
 

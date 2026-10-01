@@ -50,7 +50,7 @@ export const FACT_FIELDS = {
   sources: [
     { name: 'id', req: 'yes', ty: 'string', note: 'events reference it via sourceIds' },
     { name: 'type', req: 'yes', ty: 'string', note: 'contract / evidence / judgment / transcript, etc.' },
-    { name: 'name', req: 'yes', ty: 'string', note: 'material name, e.g. "elevator lobby surveillance video"' },
+    { name: 'name', req: 'yes', ty: 'string', note: 'material name, e.g. "corridor surveillance video"' },
     { name: 'loc', req: 'no', ty: 'object', note: 'location, e.g. { file, page } or { file, timestamp }' },
     { name: 'quote', req: 'no', ty: 'string', note: 'verbatim excerpt, shown when the card is opened' },
   ],

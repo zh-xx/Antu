@@ -15,7 +15,7 @@ import { buildGrid } from '../src/renderers/fact/timeline/grid.js'
 import { makeMetrics, CELL_W, CELL_GAP, HEADER_H, HEADER_W, ARROW_EXTENT } from '../src/renderers/fact/timeline/metrics.js'
 import { SUMMARY_MAX, SUMMARY_MAX_EM, textEm } from '../src/renderers/fact/cardGeometry.js'
 
-const spec = JSON.parse(readFileSync('examples/fact/elevator-smoking-case.zh-CN.json', 'utf8'))
+const spec = JSON.parse(readFileSync('examples/fact/neighbour-corridor-charging.zh-CN.json', 'utf8'))
 const fields = { sources: false, actors: false, summary: true }
 const grid = buildGrid(spec)
 

@@ -14,7 +14,7 @@ import { join } from 'node:path'
 import { buildFactGraph } from '../src/renderers/fact/timeline/layout.js'
 import { viewsOf } from '../src/renderers/fact/timeline/grid.js'
 
-const spec = JSON.parse(readFileSync('examples/fact/elevator-smoking-case.zh-CN.json', 'utf8'))
+const spec = JSON.parse(readFileSync('examples/fact/neighbour-corridor-charging.zh-CN.json', 'utf8'))
 const fields = { sources: false, actors: false, summary: true }
 const graph = buildFactGraph(spec, fields, undefined, 'vertical')
 

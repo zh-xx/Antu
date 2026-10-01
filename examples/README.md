@@ -5,8 +5,8 @@
 ```
 examples/
 ├── agent/<大类>/     给 agent 的：最小、每份只讲一件事
-├── <大类>/           真实案例与示意数据：完整、能打开看
-└── raw/              原始材料（裁判文书原文），不属于任何一批示例
+├── <大类>/           完整的案例与示意数据：能打开看（案例都是虚构的）
+└── raw/              虚构的判决书全文（与案例配套），不属于任何一批示例
 ```
 
 现在有事实图、程序图、关系图、证成图四类：`fact/`、`procedure/`、`relationship/`、`justification/`。
@@ -41,11 +41,11 @@ agent 照抄结构不会撞到"摆不下"。MCP 的 `antu_examples` 默认给的
 
 | 文件（同名前缀） | 说明 |
 |---|---|
-| `elevator-smoking-case.*` | 真实案例（郑州电梯劝烟案），双主体 |
-| `face-recognition-first-case.*` | 真实案例（郭兵案），单主体 |
-| `kuaibo-platform-liability.*` | 真实案例（快播案），平台经营与监管查处 |
-| `yuhuan-loan-and-conflict.*` | 真实案例（于欢案），借贷与催收冲突 |
-| `zhang-juan-v-peng-yu-private-lending.*` | 真实案例（张娟诉彭宇），民间借贷 |
+| `neighbour-corridor-charging.*` | 虚构案例（楼道充电劝阻案），双主体 |
+| `gym-membership-face-scan.*` | 虚构案例（健身房刷脸入场），单主体 |
+| `marketplace-platform-liability.*` | 虚构案例（网络商城），平台经营与监管查处 |
+| `fang-yuan-loan-and-conflict.*` | 虚构案例（方远案），借贷与催收冲突 |
+| `lin-fang-v-zhao-lei-private-lending.*` | 虚构案例（林芳诉赵磊），民间借贷 |
 | `sample-*.json` | 示意数据：三个时间点、无分组、同侧双主体、两侧各两个主体、四方四个时间点、建设工程付款与结算 |
 
 八批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 7 对、`procedure/` 7 对、`agent/procedure/` 7 对、`relationship/` 5 对、`agent/relationship/` 5 对、`justification/` 2 对、`agent/justification/` 6 对。
@@ -89,14 +89,14 @@ MCP 的 `antu_examples` 传 `type="procedure"` 默认给的就是这一批；
 
 ## 给人和调试用的：`relationship/`
 
-案件当事方一览：谁和谁有关系，某一天的横截面（`asOf`）。三份真实案例的当事方取自
-`fact/` 里同名案件的裁判文书，两份示意数据从零写成。**成对存放**，口径与上面两类相同。
+案件当事方一览：谁和谁有关系，某一天的横截面（`asOf`）。三份案例的当事方取自
+`fact/` 里对应的虚构案件，两份示意数据从零写成。**成对存放**，口径与上面两类相同。
 
 | 文件（同名前缀） | 主体 / 关系 | 说明 |
 |---|---|---|
-| `yuhuan-parties.*` | 7 / 9 | 真实案例（于欢案）：借贷、房产抵押担保、夫妻与母子、指使催债，两个阵营 |
-| `kuaibo-parties.*` | 9 / 10 | 真实案例（快播案）：控制、持股、雇佣、合作与三家机关的查处，光通公司居中 |
-| `zhang-juan-v-peng-yu-parties.*` | 3 / 4 | 真实案例（张娟诉彭宇）：两笔借款，案外人居中，最小的一份 |
+| `fang-yuan-parties.*` | 7 / 9 | 虚构案例（方远案）：借贷、房产抵押担保、夫妻与母子、指使催债，两个阵营 |
+| `marketplace-parties.*` | 9 / 10 | 虚构案例（网络商城）：控制、持股、雇佣、合作与三家机关的查处，仓联公司居中 |
+| `lin-fang-v-zhao-lei-parties.*` | 3 / 4 | 虚构案例（林芳诉赵磊）：两笔借款，案外人居中，最小的一份 |
 | `sample-loan-guarantee.*` | 5 / 4 | 示意数据：一笔借款加担保 |
 | `sample-group-guarantee.*` | 8 / 9 | 示意数据：集团股权结构与为它担保的两方 |
 
@@ -118,13 +118,13 @@ MCP 的 `antu_examples` 传 `type="relationship"` 默认给的就是这一批。
 
 ## 给人和调试用的：`justification/`
 
-一方对"为什么这样裁判"的说理：规范加事实，一层一层推出结论，按争点分框。两份都取自裁判文书的说理部分，
+一方对"为什么这样裁判"的说理：规范加事实，一层一层推出结论，按争点分框。两份都是按裁判说理的写法虚构的，
 **成对存放**，口径与上面几类相同。
 
 | 文件（同名前缀） | 节点 / 连线 | 说明 |
 |---|---|---|
-| `yuhuan-defense-excess.*` | 40 / 48 | 真实案例（于欢案二审）：五个争点，被否定的特殊防卫，量刑里"从轻"与"限制从轻"并存，5 条事实在两个争点里各画一份 |
-| `elevator-smoking-liability.*` | 34 / 38 | 真实案例（电梯劝烟案二审）：三个争点，被否定的一般侵权和公平责任，二审为什么可以对没上诉的部分改判 |
+| `fang-yuan-defense-excess.*` | 40 / 48 | 虚构案例（方远案二审）：五个争点，被否定的特殊防卫，量刑里"从轻"与"限制从轻"并存，5 条事实在两个争点里各画一份 |
+| `neighbour-corridor-liability.*` | 34 / 38 | 虚构案例（楼道充电劝阻案二审）：三个争点，被否定的一般侵权和公平责任，二审为什么可以对没上诉的部分改判 |
 
 MCP 的 `antu_examples` 传 `type="justification", group="real"` 列出这一批。
 
@@ -145,11 +145,13 @@ MCP 的 `antu_examples` 传 `type="justification"` 默认给的就是这一批�
 
 ## `raw/` —— 原始材料
 
-真实案例的裁判文书原文（下载所得，未经加工）。**不按大类分**：
+与上面各案例配套的**虚构**判决书全文：人物、单位、日期、金额、条款都是编造的，
+由案例数据整理而成，不对应任何真实案件，也不是法律意见。**不按大类分**：
 一份判决书可能同时是几种图的底稿。
 
 **写 JSON 时的事实以它为准**，不要凭印象补。原始材料本身不打包进成品 HTML，
 只是在 `sources` 里标明"依据在哪一份、哪一页"，材料由用户自己去找。
+真实使用时，原始材料是用户自己的案卷，不在本仓库里。
 
 MCP 的 `antu_examples` 传 `group="raw"` 列出，但**它不是示例，别拿它当模板**。
 
@@ -157,7 +159,7 @@ MCP 的 `antu_examples` 传 `group="raw"` 列出，但**它不是示例，别拿
 
 ```
 examples/agent/<新大类>/   放几份最小示例
-examples/<新大类>/         放真实案例（暂时没有也可以）
+examples/<新大类>/         放完整案例（虚构的；暂时没有也可以）
 ```
 
 MCP 那边不用改代码：`antu_examples` 传 `type` 就会去新目录取。

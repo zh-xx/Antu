@@ -1,0 +1,122 @@
+{
+  "specVersion": 1,
+  "type": "fact",
+  "title": "Lin Fang v. Zhao Lei, private lending (fictional) · Loans and default",
+
+  "actors": [
+    { "id": "a-1", "name": "Lin Fang", "role": "Plaintiff (lender)" },
+    { "id": "a-2", "name": "Zhao Lei", "role": "Defendant (borrower)" }
+  ],
+
+  "groups": [
+    { "id": "g-1", "label": "Loan disbursement" },
+    { "id": "g-2", "label": "Due but unpaid" }
+  ],
+
+  "views": [
+    {
+      "label": "Lender vs borrower",
+      "splitBy": "actor",
+      "side1": { "label": "Lin Fang (lender)", "actors": ["a-1"] },
+      "side2": { "label": "Zhao Lei (borrower)", "actors": ["a-2"] }
+    },
+    { "label": "Split by group", "splitBy": "group" }
+  ],
+
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "Promissory note (first loan, 40,000 yuan)",
+      "loc": { "file": "Promissory note", "clause": 1 },
+      "quote": "On 4 March 2030 the borrower Zhao Lei borrowed RMB 40,000 from the lender Lin Fang (in words: forty thousand yuan; in figures: 40,000), for a term of one month, to be repaid by 4 April 2030."
+    },
+    {
+      "id": "s-2",
+      "type": "contract",
+      "name": "Promissory note (second loan, 40,000 yuan)",
+      "loc": { "file": "Promissory note", "clause": 1 },
+      "quote": "On 14 March 2030 the borrower Zhao Lei borrowed RMB 40,000 from the lender Lin Fang (in words: forty thousand yuan; in figures: 40,000), for a term of one month, to be repaid by 14 April 2030."
+    },
+    {
+      "id": "s-3",
+      "type": "evidence",
+      "name": "Bank customer transaction statement",
+      "loc": { "file": "Bank transaction statement" },
+      "quote": "On 4 March 2030 the plaintiff transferred RMB 40,000 to the defendant by bank transfer."
+    },
+    {
+      "id": "s-4",
+      "type": "evidence",
+      "name": "WeChat and Alipay transfer records",
+      "loc": { "file": "Transfer records" },
+      "quote": "The plaintiff paid Xu Ying, a person not party to the case, RMB 34,000 by bank transfer and RMB 6,000 by WeChat transfer; Xu Ying then paid the defendant RMB 33,800 by Alipay transfer, RMB 2,000 by WeChat transfer and RMB 4,200 in cash."
+    },
+    {
+      "id": "s-5",
+      "type": "case",
+      "name": "First-instance judgment in this case",
+      "loc": { "caseNo": "(2031) Shi Min Chu No. 1", "court": "Example District People's Court, Example City, Example Province" },
+      "quote": "After the two loans fell due the defendant repaid neither on time; this court supports the plaintiff's claim that the defendant repay the principal of the two loans, RMB 80,000."
+    }
+  ],
+
+  "slots": [
+    {
+      "events": [
+        {
+          "id": "ev-1",
+          "date": "2030-03-04",
+          "label": "Lin Fang transfers 40,000 yuan; Zhao Lei gives a note",
+          "summary": "Repayment due by 4 Aprember",
+          "actorIds": ["a-1", "a-2"],
+          "groupId": "g-1",
+          "detail": "Lin Fang delivered RMB 40,000 by bank transfer; Zhao Lei issued a promissory note stating the amount, the term and the repayment date.",
+          "sourceIds": ["s-1", "s-3"]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-2",
+          "date": "2030-03-14",
+          "label": "Zhao Lei borrows another 40,000 yuan via a non-party",
+          "summary": "Repayment due by 14 Aprember",
+          "actorIds": ["a-1", "a-2"],
+          "groupId": "g-1",
+          "detail": "Because Zhao Lei said his bank card could not be used for the time being, Lin Fang, as instructed, transferred the money to Xu Ying (Lin Fang's daughter), a person not party to the case; Xu Ying then passed it to Zhao Lei by Alipay, WeChat and cash, and Zhao Lei issued a second promissory note.",
+          "sourceIds": ["s-2", "s-4"]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-3",
+          "date": "2030-04-04",
+          "label": "First 40,000 yuan falls due, unpaid",
+          "summary": "No principal repaid at maturity",
+          "actorIds": ["a-2"],
+          "groupId": "g-2",
+          "detail": "When the loan fell due Zhao Lei did not repay as agreed; neither loan's principal has been repaid.",
+          "sourceIds": ["s-1", "s-5"]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-4",
+          "date": "2030-04-14",
+          "label": "Second 40,000 yuan falls due, unpaid",
+          "summary": "Unpaid principal totals 80,000 yuan",
+          "actorIds": ["a-2"],
+          "groupId": "g-2",
+          "detail": "The second loan was likewise not repaid at maturity; the court ordered Zhao Lei to pay overdue interest on each principal from its own maturity date at the LPR.",
+          "sourceIds": ["s-2", "s-5"]
+        }
+      ]
+    }
+  ]
+}

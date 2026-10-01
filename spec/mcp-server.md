@@ -130,7 +130,7 @@ As for "common mistakes and how to fix them", **no static list is needed**: call
 ## 3. An agent's full workflow
 
 ```
-1. antu_examples      → see how a real case is written
+1. antu_examples      → see how a worked case is written
 2. antu_schema        → the field table
 3. antu_guide         → the mechanism notes
 4. write JSON         ← the agent's own work
@@ -224,7 +224,7 @@ can actually drive it. It also demonstrates two things in passing: **validation 
 geometry really do not need a browser**, and **the preview really does produce a real
 image within seconds**.
 
-Measured (elevator smoking case):
+Measured (corridor-charging case):
 
 ```
 validation passes

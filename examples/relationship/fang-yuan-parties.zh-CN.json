@@ -1,24 +1,24 @@
 {
   "type": "relationship",
   "specVersion": 1,
-  "title": "The Yu Huan case · Parties and relations",
-  "asOf": "2016-04-14",
+  "title": "方远案（虚构） · 当事人关系",
+  "asOf": "2032-04-14",
   "groups": [
     {
       "id": "g-1",
-      "label": "Yu Huan's side"
+      "label": "方远一方"
     },
     {
       "id": "g-2",
-      "label": "Lenders and debt collectors"
+      "label": "出借与讨债一方"
     }
   ],
   "entities": [
     {
       "id": "e-1",
       "kind": "person",
-      "label": "Yu Huan",
-      "role": "Defendant",
+      "label": "方远",
+      "role": "被告人",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -27,8 +27,8 @@
     {
       "id": "e-2",
       "kind": "person",
-      "label": "Su",
-      "role": "Yu Huan's mother, borrower",
+      "label": "梁某",
+      "role": "方远之母，借款人",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -37,8 +37,8 @@
     {
       "id": "e-3",
       "kind": "person",
-      "label": "Yu 1",
-      "role": "Su's husband, co-borrower",
+      "label": "方某",
+      "role": "梁某之夫，共同借款人",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -47,9 +47,9 @@
     {
       "id": "e-4",
       "kind": "company",
-      "label": "Yuanda Company",
-      "role": "Run by Su",
-      "detail": "Shandong Yuanda Industry and Trade Co., in the Guan County industrial park, Shandong",
+      "label": "远华公司",
+      "role": "梁某经营",
+      "detail": "示例远华工贸有限公司，位于示例省示例县工业园区",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -58,8 +58,8 @@
     {
       "id": "e-5",
       "kind": "other",
-      "label": "Wu and Zhao 1",
-      "role": "Lenders",
+      "label": "钟某、郑某",
+      "role": "出借人",
       "groupId": "g-2",
       "sourceIds": [
         "s-1"
@@ -68,8 +68,8 @@
     {
       "id": "e-6",
       "kind": "person",
-      "label": "Du 2",
-      "role": "Debt collector, died",
+      "label": "姜某",
+      "role": "讨债人员，死亡",
       "groupId": "g-2",
       "sourceIds": [
         "s-1",
@@ -79,8 +79,8 @@
     {
       "id": "e-7",
       "kind": "other",
-      "label": "Guo 1, Yan, Cheng and others",
-      "role": "Debt collectors, injured",
+      "label": "孟某、严某、程某等",
+      "role": "讨债人员，受伤",
       "groupId": "g-2",
       "sourceIds": [
         "s-1"
@@ -93,9 +93,9 @@
       "from": "e-5",
       "to": "e-2",
       "kind": "debt",
-      "label": "First loan",
-      "amount": "CNY 1,000,000",
-      "detail": "28 Jul 2014: Su and her husband Yu 1 borrowed from Wu and Zhao 1, orally agreed interest 10% a month; by 20 Oct 2015 Su had repaid CNY 1,540,000",
+      "label": "第一笔借款",
+      "amount": "80 万元",
+      "detail": "2030-07-28，梁某及其丈夫方某向钟某、郑某借款，口头约定月息 6%；至 2031-10-20 共还款 120 万元",
       "sourceIds": [
         "s-1",
         "s-2"
@@ -106,9 +106,9 @@
       "from": "e-5",
       "to": "e-2",
       "kind": "debt",
-      "label": "Second loan",
-      "amount": "CNY 350,000",
-      "detail": "1 Nov 2015: a further CNY 350,000, of which 100,000 at 10% a month and 250,000 secured on a flat; Su then repaid CNY 298,000, and the two sides disagreed which loan it was for",
+      "label": "第二笔借款",
+      "amount": "28 万元",
+      "detail": "2031-11-01 再借 28 万元：8 万元口头约定月息 6%，20 万元以住房抵押；此后梁某还款 24 万元，双方对其用途各执一词",
       "sourceIds": [
         "s-1",
         "s-3"
@@ -119,9 +119,9 @@
       "from": "e-3",
       "to": "e-5",
       "kind": "guarantee",
-      "label": "Flat as security (CNY 250,000)",
+      "label": "住房抵押（20 万元）",
       "secures": "r-2",
-      "detail": "The flat in Yu 1's name, by a contract of sale: if repayment was late, the flat would pass to Zhao 1",
+      "detail": "以方某名下住房作抵押，签订房屋买卖合同，约定逾期还款则将住房过户给郑某",
       "sourceIds": [
         "s-3"
       ]
@@ -131,7 +131,7 @@
       "from": "e-2",
       "to": "e-3",
       "kind": "kinship",
-      "label": "Spouses",
+      "label": "夫妻",
       "sourceIds": [
         "s-1"
       ]
@@ -141,7 +141,7 @@
       "from": "e-2",
       "to": "e-1",
       "kind": "kinship",
-      "label": "Mother and son",
+      "label": "母子",
       "sourceIds": [
         "s-1"
       ]
@@ -151,7 +151,7 @@
       "from": "e-2",
       "to": "e-4",
       "kind": "control",
-      "label": "Runs",
+      "label": "经营",
       "sourceIds": [
         "s-1"
       ]
@@ -161,7 +161,7 @@
       "from": "e-4",
       "to": "e-1",
       "kind": "employment",
-      "label": "Employee",
+      "label": "员工",
       "sourceIds": [
         "s-1"
       ]
@@ -171,8 +171,8 @@
       "from": "e-5",
       "to": "e-6",
       "kind": "agency",
-      "label": "Sent to collect",
-      "detail": "Wu and Zhao 1 had Du 2 and others press for the debt by insulting Su and disrupting the Yuanda Company's business",
+      "label": "指使催债",
+      "detail": "钟某、郑某指使姜某等人实施侮辱梁某、干扰远华公司生产经营等逼债行为",
       "sourceIds": [
         "s-1"
       ]
@@ -182,7 +182,7 @@
       "from": "e-5",
       "to": "e-7",
       "kind": "agency",
-      "label": "Sent to collect",
+      "label": "指使催债",
       "sourceIds": [
         "s-1"
       ]
@@ -192,34 +192,34 @@
     {
       "id": "s-1",
       "type": "case",
-      "name": "Guiding Case No. 93: Yu Huan, intentional injury",
+      "name": "虚构案例甲：方远故意伤害案",
       "loc": {
-        "caseNo": "（2017）鲁刑终151号",
-        "court": "Shandong High People's Court"
+        "caseNo": "（2032）示刑终1号",
+        "court": "示例省高级人民法院"
       }
     },
     {
       "id": "s-2",
       "type": "document",
-      "name": "Loan contract (CNY 1,000,000)",
+      "name": "借款合同（80 万元）",
       "loc": {
-        "file": "Loan contract"
+        "file": "借款合同"
       }
     },
     {
       "id": "s-3",
       "type": "document",
-      "name": "Contract of sale of the flat (security for CNY 250,000)",
+      "name": "房屋买卖合同（20 万元抵押）",
       "loc": {
-        "file": "Contract of sale"
+        "file": "房屋买卖合同"
       }
     },
     {
       "id": "s-5",
       "type": "evidence",
-      "name": "Post-mortem report",
+      "name": "尸体检验鉴定意见",
       "loc": {
-        "file": "Post-mortem report"
+        "file": "尸体检验鉴定意见"
       }
     }
   ]

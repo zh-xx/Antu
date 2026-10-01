@@ -234,7 +234,7 @@ The sponsor has not answered these. **Until one is answered, the default below i
 3. **Undirected relations.** `contract` and `kinship` default to no arrowhead. Is that right, or should a contract always show who is the offeror? **Default now:** no arrowhead for those two.
 4. **Dedicated fields.** Only `share`, `amount`, `secures` in v1? Others that come to mind: `guaranteeMode` (surety / mortgage / pledge), `since` (when the relation began). The time question (§0.3) says no, but a bare `since` date shown in the popover would be cheap. **Default now:** only those three.
 5. **Groups.** Should an entity be allowed in several groups (a person on both the family side and the company side)? Boxes cannot overlap in a drawing, so I said no. **Default now:** at most one group per entity.
-6. **First corpus.** I propose rewriting the parties of existing fact examples (于欢案, 张娟诉彭宇, 快播案) as relationship diagrams, plus one equity structure and one guarantee case written from scratch, the way procedure was tested on seven contracts. Are there real cases you would rather I use? **Default now:** the three fact cases plus one equity structure and one guarantee case.
+6. **First corpus.** I propose rewriting the parties of existing fact examples (the Fang Yuan case, Lin Fang v. Zhao Lei, the fictional marketplace case) as relationship diagrams, plus one equity structure and one guarantee case written from scratch, the way procedure was tested on seven contracts. Are there real cases you would rather I use? **Default now:** the three fact cases plus one equity structure and one guarantee case.
 
 ---
 

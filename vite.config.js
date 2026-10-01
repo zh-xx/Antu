@@ -10,8 +10,8 @@ import { resolve } from 'node:path'
  * 这份清单**只服务于开发和演示**，住在配置文件里，永远不会被打进成品。
  */
 const DEV_EXAMPLES = [
-  'examples/fact/face-recognition-first-case.zh-CN.json',
-  'examples/fact/elevator-smoking-case.zh-CN.json',
+  'examples/fact/gym-membership-face-scan.zh-CN.json',
+  'examples/fact/neighbour-corridor-charging.zh-CN.json',
   'examples/fact/sample-two-actors-one-side.zh-CN.json',
   'examples/fact/sample-two-parties-each-side.zh-CN.json',
   'examples/fact/sample-construction-payment.zh-CN.json',

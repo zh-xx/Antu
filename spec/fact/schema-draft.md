@@ -274,10 +274,10 @@ So "short enough to sit on the card" and "worth calling detail" are mutually exc
 What it should carry is what a lawyer scanning the diagram most wants to see first: amounts, durations, key acts, third-party involvement.
 
 ```
-label   Guo Bing buys the two-person annual pass and registers his fingerprint
+label   Han Lei takes a one-year membership and registers a fingerprint
 summary card fee RMB 1,360, paid by WeChat
 
-label   The two talk continuously inside the elevator (dissuasion)
+label   The two talk continuously in the corridor (dissuasion)
 summary in contact under five minutes; no altercation
 
 label   Receives the "no face scan, no entry" SMS
@@ -287,14 +287,14 @@ summary fingerprint recognition cancelled
 Note that `summary` and `detail` are **both optional**, and writing only one of them is allowed:
 if an event has no key information beyond `label`, `summary` stays empty, and that is normal.
 
-A real counter-example (the elevator smoking case, showing why `detail` needs a rule of its own):
+A counter-example (the corridor-charging case, showing why `detail` needs a rule of its own):
 
 ```
 label  Paramedics arrive
 detail Paramedics reach patient                                        <- pure restatement, zero new information
 
-label  The two reach the building entrance; Duan Xiaoli is agitated
-detail Duan Xiaoli was relatively agitated, Yang Fan relatively calm   <- the only new information is "Yang Fan relatively calm"
+label  The two reach the building entrance; Qian Min is agitated
+detail Qian Min was relatively agitated, Sun Hao relatively calm   <- the only new information is "Sun Hao relatively calm"
 ```
 
 Compare the two well-written entries in the same case; they carry information that **only `detail` can convey**, such as "pulled back by the property manager" and "in contact for under five minutes".
@@ -355,7 +355,7 @@ Compare the two well-written entries in the same case; they carry information th
 - **whether an event is an interaction is implied by the number in `actorIds`**: no `type: "interaction"` field is needed;
 - **suggested granularity:** list only the **main parties that need their own lane** (4 or fewer is suggested); secondary participants (property staff, paramedics and so on) go into `label`/`detail` and not into the list, so that lanes do not multiply;
 - **the same party must be named consistently** (the agent's responsibility);
-- **directed acts (who did what to whom) are not expressed for now**: `actorIds` is an unordered set, and direction such as "Yang Fan dissuaded Duan Xiaoli" is written in `label`/`detail`. If arrows are needed later, an optional `from`/`to` can be added; it is not designed in advance;
+- **directed acts (who did what to whom) are not expressed for now**: `actorIds` is an unordered set, and direction such as "Sun Hao dissuaded Qian Min" is written in `label`/`detail`. If arrows are needed later, an optional `from`/`to` can be added; it is not designed in advance;
 - **no identity system beyond referencing the actor table's ids**: a fact diagram is a timeline narrative, and `actors` is only a layout basis and a display label.
 
 | Field | Required | Type | Notes |
@@ -378,9 +378,9 @@ Compare the two well-written entries in the same case; they carry information th
 ### date / dateEnd format: ISO 8601 with truncated precision (settled 2026-09)
 
 ```jsonc
-"date": "2017-05-02T09:24:03"   // to the second
-"date": "2017-05-02T09:24"      // to the minute
-"date": "2017-05-02"            // to the day
+"date": "2030-06-02T20:14:03"   // to the second
+"date": "2030-06-02T20:14"      // to the minute
+"date": "2030-06-02"            // to the day
 "date": "2017-05"               // to the month (a document states only year and month)
 "date": "2017"                  // to the year
 ```
@@ -390,8 +390,8 @@ Compare the two well-written entries in the same case; they carry information th
 - the agent converts a Chinese date ("二〇一七年五月二日") into ISO; the validation layer checks the format;
 - when precision is lacking, truncate to the precision known and **never pad with zeros to fake it** (if only year and month are known, stop at the month);
 - **the authoritative order is the array order** (the agent judges the sequence from the case and lays it out); `date` is for display and grouping, and **the engine never reorders on its own**;
-  - why (driven by a real case): with mixed precision string order does not hold (`"2017-05-02"` sorts before `"2017-05-02T09:24:03"`); and an event with insufficient precision cannot be placed mechanically. In the elevator smoking case "Duan Xiaoli dies" has day precision only, but it in fact happened after the 09:37 rescue, so a machine reading "day precision = 00:00 that day" would put it first. Only the case makes the right order visible;
-- driven by a real case: the core facts of the elevator smoking case fall between 09:24 and 09:37, and "in contact for under 5 minutes" is a key fact that day precision cannot express. See `examples/fact/elevator-smoking-case.en.json`.
+  - why (driven by a worked case): with mixed precision string order does not hold (`"2030-06-02"` sorts before `"2030-06-02T20:14:03"`); and an event with insufficient precision cannot be placed mechanically. In the corridor-charging case "Qian Min dies" has day precision only, but it in fact happened after the 20:27 rescue, so a machine reading "day precision = 00:00 that day" would put it first. Only the case makes the right order visible;
+- driven by a worked case: the core facts of the corridor-charging case fall between 20:14 and 20:27, and "in contact for under 5 minutes" is a key fact that day precision cannot express. See `examples/fact/neighbour-corridor-charging.en.json`.
 
 ### On sources (option B: carried inside the diagram)
 
@@ -404,7 +404,7 @@ Compare the two well-written entries in the same case; they carry information th
 |---|---|---|---|
 | `id` | yes | string | events reference it via sourceIds |
 | `type` | yes | string | contract / evidence / judgment / transcript, etc. |
-| `name` | yes | string | material name, e.g. "elevator lobby surveillance video" |
+| `name` | yes | string | material name, e.g. "corridor surveillance video" |
 | `loc` | no | object | location, e.g. { file, page } or { file, timestamp } |
 | `quote` | no | string | verbatim excerpt, shown when the card is opened |
 
@@ -427,7 +427,7 @@ The four common shapes are just different values of those two, and **there is no
 Other conventions:
 
 - **a multi-party event** (`actorIds` of 2 or more) always lands on the axis;
-- **a span event** (one with `dateEnd`) is **expressed in text only** (the card shows start and end, the overlay gives the duration). **No span bar is drawn**: slots are evenly spaced while real time is not (in the elevator case 4 seconds and 264 seconds take the same distance on the diagram), so drawing length by real duration would mislead;
+- **a span event** (one with `dateEnd`) is **expressed in text only** (the card shows start and end, the overlay gives the duration). **No span bar is drawn**: slots are evenly spaced while real time is not (in the corridor case 4 seconds and 264 seconds take the same distance on the diagram), so drawing length by real duration would mislead;
 - **the same data can be drawn in several ways** (sub-types), switched in the interface; see `spec/fact/rendering.md` §9;
 - the placement rules themselves are in `spec/fact/timeline-rules.md`, and the elements on screen in `spec/fact/rendering.md`.
 
@@ -445,7 +445,7 @@ Other conventions:
 
 | Problem | Conclusion | Basis |
 |---|---|---|
-| `date` precision insufficient (to the day only) | switched to ISO 8601 with truncated precision (second / minute / day / month / year) | the core facts of the elevator smoking case fall between 09:24 and 09:37 |
+| `date` precision insufficient (to the day only) | switched to ISO 8601 with truncated precision (second / minute / day / month / year) | the core facts of the corridor-charging case fall between 20:14 and 20:27 |
 | mixed-precision sorting fails | the authoritative order is array position; `date` does not decide the order | both string order and insufficient precision get it wrong |
 | `evidenceNo` / `party` required | changed to **optional** | a judgment does not state the evidence number or the party adducing it |
-| no place for approximate / calibrated time | added the optional `approx` (machine-readable) and `dateNote` (human-readable) | in the elevator smoking case the surveillance clock ran some ten minutes fast and the court used "about 9:33" |
+| no place for approximate / calibrated time | added the optional `approx` (machine-readable) and `dateNote` (human-readable) | in the corridor-charging case the surveillance clock ran some ten minutes fast and the court used "about 9:33" |
