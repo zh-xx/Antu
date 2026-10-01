@@ -17,6 +17,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { SPEC_MARKER, escapeForScript } from './fill.mjs'
+import { licenseNotice } from './notices.mjs'
 
 /** The repository root. This file is under tools/lib/, so two levels up. */
 export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -113,6 +114,9 @@ export function buildHtml(spec, { js, css, preset } = {}) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title} · antu</title>
 <meta name="generator" content="antu ${engineVersion()}">
+<script type="text/plain" id="antu-license">
+${escapeEngineCode(licenseNotice(engineVersion()))}
+</script>
 <style>
 html, body { margin: 0; height: 100%; font-family: system-ui, "Microsoft YaHei", sans-serif; }
 #root { height: 100%; }
