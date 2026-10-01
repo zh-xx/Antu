@@ -11,7 +11,7 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { BUNDLED_ROOTS, COPYRIGHT, LICENSE_SPDX, REPO_URL, bundledPackages, licenseHeader, licenseNotice, thirdPartyNotices } from '../tools/lib/notices.mjs'
+import { ADDITIONAL_PERMISSION, BUNDLED_ROOTS, COPYRIGHT, LICENSE_SPDX, REPO_URL, bundledPackages, licenseHeader, licenseNotice, thirdPartyNotices } from '../tools/lib/notices.mjs'
 import { buildViewerHtml } from '../tools/lib/make-html.mjs'
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
@@ -81,6 +81,16 @@ test('the header says whose work it is, under which licence, and where the sourc
   assert.match(header, /GNU Affero General Public\s+License/)
   assert.ok(header.includes(`${REPO_URL}/tree/v1.2.3`), 'the Corresponding Source of that version')
   assert.ok(header.includes(`${REPO_URL}/blob/v1.2.3/LICENSE`))
+})
+
+test('the additional permission (the data in a page is not covered) is in the header, so in every page and the command line', () => {
+  assert.ok(ADDITIONAL_PERMISSION.join(' ').includes('are not part of antu and are not covered by this licence'))
+  for (const line of ADDITIONAL_PERMISSION) assert.ok(licenseHeader('1.2.3').includes(line), line)
+  assert.ok(buildViewerHtml({ js: '', css: '' }).includes(ADDITIONAL_PERMISSION[0]))
+  assert.ok(readFileSync('skills/antu/scripts/antu.mjs', 'utf8').slice(0, 4000).includes('Additional permission under section 7'))
+  const readme = readFileSync('README.md', 'utf8')
+  assert.ok(readme.includes('Additional permission (AGPL section 7)'))
+  assert.ok(readFileSync('README.zh-CN.md', 'utf8').includes('附加许可（AGPL 第 7 条）'))
 })
 
 test('a page carries the licence block, and the block cannot close the script it sits in', () => {

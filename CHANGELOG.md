@@ -14,6 +14,9 @@ antu has a licence: the GNU Affero General Public License, version 3 or any late
   GPL-3.0-or-later option). They are in `skills/antu/THIRD-PARTY-NOTICES.md` (so in the skill zip), inside every page,
   and at the top of the command line. They are generated from what `src/` imports (`tools/lib/notices.mjs`), so a
   dependency update cannot leave one out, and a test fails when `src/` imports a package that has no notice.
+- **An additional permission (AGPL section 7)**: the data in a page, and the diagram drawn from it, are not covered by the
+  licence; they stay with whoever made the page. It is in the READMEs and in the block every page and the command line
+  carries.
 - **The licence and the place of the source travel with the code**: every page carries a block
   `<script type="text/plain" id="antu-license">` with the licence of antu, the Corresponding Source of that version
   (this repository at its tag) and the notices; the command line starts with the same text; the skill folder holds

@@ -25,6 +25,18 @@ export const LICENSE_SPDX = 'AGPL-3.0-or-later'
 export const REPO_URL = 'https://github.com/zh-xx/Antu'
 
 /**
+ * An additional permission under section 7 of the AGPL: it takes nothing from the licence, it says what is not
+ * covered. A page holds antu's code and, next to it, the data of the person who made it; that data stays theirs.
+ */
+export const ADDITIONAL_PERMISSION = [
+  'Additional permission under section 7 of the GNU Affero General Public License, version 3: A page made with antu',
+  'contains antu\'s code together with the diagram data you gave it. The diagram data, and the content of the diagram',
+  'you drew from your material, are not part of antu and are not covered by this licence: you may keep them private,',
+  'publish them, or sell them on any terms you like. This licence covers antu\'s code in the page, and the notices in',
+  'the page must stay with it.',
+]
+
+/**
  * The packages that code in src/ (the engine, and what the command line takes from it) imports, and so what ends
  * up inside viewer.html and antu.mjs. Their own dependencies are followed. Not here: the MCP server's packages
  * (installed from npm by whoever runs the server) and the build tools (in no output).
@@ -111,6 +123,8 @@ export function licenseHeader(version) {
     'License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any',
     'later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the',
     'implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the licence below.',
+    '',
+    ...ADDITIONAL_PERMISSION,
     '',
     `Corresponding Source of this version: ${REPO_URL}/tree/v${version}`,
     `The licence: ${REPO_URL}/blob/v${version}/LICENSE`,

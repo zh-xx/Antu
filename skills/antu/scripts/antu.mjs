@@ -7,6 +7,12 @@
 // later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
 // implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the licence below.
 //
+// Additional permission under section 7 of the GNU Affero General Public License, version 3: A page made with antu
+// contains antu's code together with the diagram data you gave it. The diagram data, and the content of the diagram
+// you drew from your material, are not part of antu and are not covered by this licence: you may keep them private,
+// publish them, or sell them on any terms you like. This licence covers antu's code in the page, and the notices in
+// the page must stay with it.
+//
 // Corresponding Source of this version: https://github.com/zh-xx/Antu/tree/v0.6.0
 // The licence: https://github.com/zh-xx/Antu/blob/v0.6.0/LICENSE
 // Third-party notices: https://github.com/zh-xx/Antu/blob/v0.6.0/skills/antu/THIRD-PARTY-NOTICES.md

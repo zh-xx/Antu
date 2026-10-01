@@ -182,7 +182,9 @@ antu is free software under the GNU AGPL, version 3 or any later version: `LICEN
 `THIRD-PARTY-NOTICES.md` holds the notices of the code of others that is inside the viewer and the command line.
 Every page this skill makes carries the licence and the place of the source (the block `antu-license` in the page).
 If the user asks: it may be used, changed and shared, including commercially; a changed version that is shared or
-offered over a network must be released under the same licence with the notices kept. Do not describe the licence
+offered over a network must be released under the same licence with the notices kept. The data in a page
+(the user's diagram and the material it comes from) is not covered by the licence: it stays the user's (an additional
+permission, stated in the page). Do not describe the licence
 beyond that: say that the text in `LICENSE` is what counts.
 
 ## Updating this skill
