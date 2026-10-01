@@ -12,10 +12,12 @@ on:
   pull_request:
 
 # A new push to a pull request cancels the run still going for the older commit of that pull request: nobody wants
-# its result, and it only makes the new run wait. Runs on main are never cancelled: the release workflow needs every
-# check of a main commit to finish and pass, and a cancelled check would count as not green.
+# its result, and it only makes the new run wait. Runs on main are never cancelled: every commit on main keeps a
+# complete record (the release workflow needs every check of a main commit to finish and pass, and a cancelled
+# check would count as not green). So a push gets a group of its own, the commit; a plain group per branch would
+# let a newer push replace an older run that is still waiting, even with cancel-in-progress off.
 concurrency:
-  group: verify-${{ github.event.pull_request.number || github.ref }}
+  group: verify-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
