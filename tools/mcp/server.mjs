@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ============================================================
-//  tools/mcp/server.mjs —— the MCP server for antu
+//  tools/mcp/server.mjs —— the MCP server for Antu
 //
 //  The entry point for agents. Three design principles:
 //
@@ -46,7 +46,7 @@ const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.ur
 const server = new McpServer({ name: 'antu', version: pkg.version })
 
 /** The JSON in the spec is an arbitrarily nested structure; the schema is not redefined here: validation is the engine's job */
-const specArg = z.looseObject({}).describe('the antu JSON (envelope + content layer; see the spec resources)')
+const specArg = z.looseObject({}).describe('the Antu JSON (envelope + content layer; see the spec resources)')
 
 
 
@@ -172,7 +172,7 @@ server.registerTool(
   {
     title: 'Validate JSON',
     description:
-      'Check whether an antu JSON is valid. Returns each problem (with its field path and event id, e.g. slots[0].events[1] (ev-2)). ' +
+      'Check whether an Antu JSON is valid. Returns each problem (with its field path and event id, e.g. slots[0].events[1] (ev-2)). ' +
       'When it passes it may still add notes: for a fact diagram, each view that does not fit (it is not an error, but that view will not be offered). ' +
       '**Run this right after writing the JSON; do not render first.** It is pure computation, needs no browser, and is fast.',
     inputSchema: { spec: specArg },

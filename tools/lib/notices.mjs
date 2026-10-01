@@ -1,7 +1,7 @@
 // ============================================================
-//  tools/lib/notices.mjs — the licence notices that travel with what antu ships
+//  tools/lib/notices.mjs — the licence notices that travel with what Antu ships
 //
-//  antu is licensed under the GNU AGPL, version 3 or any later version (LICENSE). The pages it makes, the command
+//  Antu is licensed under the GNU AGPL, version 3 or any later version (LICENSE). The pages it makes, the command
 //  line and the skill zip contain code of other projects, each under its own licence; those licences ask that
 //  their notices stay with the copies. The AGPL asks that anyone who has a copy can get the Corresponding Source.
 //  This file is the one place that knows what to say:
@@ -26,13 +26,13 @@ export const REPO_URL = 'https://github.com/zh-xx/Antu'
 
 /**
  * An additional permission under section 7 of the AGPL: it takes nothing from the licence, it says what is not
- * covered. A page holds antu's code and, next to it, the data of the person who made it; that data stays theirs.
+ * covered. A page holds Antu's code and, next to it, the data of the person who made it; that data stays theirs.
  */
 export const ADDITIONAL_PERMISSION = [
-  'Additional permission under section 7 of the GNU Affero General Public License, version 3: A page made with antu',
-  'contains antu\'s code together with the diagram data you gave it. The diagram data, and the content of the diagram',
-  'you drew from your material, are not part of antu and are not covered by this licence: you may keep them private,',
-  'publish them, or sell them on any terms you like. This licence covers antu\'s code in the page, and the notices in',
+  'Additional permission under section 7 of the GNU Affero General Public License, version 3: A page made with Antu',
+  'contains Antu\'s code together with the diagram data you gave it. The diagram data, and the content of the diagram',
+  'you drew from your material, are not part of Antu and are not covered by this licence: you may keep them private,',
+  'publish them, or sell them on any terms you like. This licence covers Antu\'s code in the page, and the notices in',
   'the page must stay with it.',
 ]
 
@@ -89,7 +89,7 @@ export function thirdPartyNotices() {
   const lines = [
     '# Third-party notices',
     '',
-    'antu itself is licensed under the GNU Affero General Public License, version 3 or any later version (see LICENSE).',
+    'Antu itself is licensed under the GNU Affero General Public License, version 3 or any later version (see LICENSE).',
     'Its pages (assets/viewer.html and every page made from it) and its command line (scripts/antu.mjs) contain the',
     'code of the packages below. Each is used under its own licence, and its notice is kept here as the package ships it.',
     '',
@@ -99,7 +99,7 @@ export function thirdPartyNotices() {
     '',
     '## elkjs',
     '',
-    'elkjs (the layout engine) is offered under `EPL-2.0 OR GPL-3.0-or-later`. antu uses it under the **GNU General Public',
+    'elkjs (the layout engine) is offered under `EPL-2.0 OR GPL-3.0-or-later`. Antu uses it under the **GNU General Public',
     'License, version 3 or any later version**, which can be combined with the GNU AGPL (section 13 of each licence).',
     'The licence file that comes with the package is the Eclipse Public License 2.0 and is reproduced below as shipped.',
     'The GNU GPL version 3 is at https://www.gnu.org/licenses/gpl-3.0.txt. Source of elkjs: https://github.com/kieler/elkjs',
@@ -116,10 +116,10 @@ export function thirdPartyNotices() {
 /** What a page, the command line and the zip say about whose work this is and where its source is */
 export function licenseHeader(version) {
   return [
-    `antu ${version}`,
+    `Antu ${version}`,
     COPYRIGHT,
     '',
-    'antu is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public',
+    'Antu is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public',
     'License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any',
     'later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the',
     'implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the licence below.',
@@ -141,5 +141,5 @@ export function agplLicense() {
 
 /** The whole notice: header, the licence, the third-party notices (inside a page, and at the top of the command line) */
 export function licenseNotice(version) {
-  return [licenseHeader(version), '', '=== The licence of antu ===', '', agplLicense(), '', '=== Third-party notices ===', '', thirdPartyNotices()].join('\n')
+  return [licenseHeader(version), '', '=== The licence of Antu ===', '', agplLicense(), '', '=== Third-party notices ===', '', thirdPartyNotices()].join('\n')
 }

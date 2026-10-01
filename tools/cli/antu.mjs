@@ -24,7 +24,7 @@ import { fillViewer } from '../lib/fill.mjs'
 // eslint-disable-next-line no-undef
 const VERSION = typeof __ANTU_VERSION__ === 'undefined' ? 'dev' : __ANTU_VERSION__
 
-const USAGE = `antu ${VERSION}: check and draw an antu diagram (JSON)
+const USAGE = `Antu ${VERSION}: check and draw an Antu diagram (JSON)
 
   node antu.mjs validate <spec.json>                       is the JSON valid? (each problem, with its field path)
   node antu.mjs layout   <spec.json> [--orientation vertical|horizontal]

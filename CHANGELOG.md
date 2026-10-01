@@ -3,9 +3,9 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
-## 0.6.0
+## 0.5.1
 
-antu has a licence: the GNU Affero General Public License, version 3 or any later version (#70).
+Antu has a licence: the GNU Affero General Public License, version 3 or any later version (#70).
 
 ### Added
 - `LICENSE` (AGPL-3.0-or-later) and the licence section of the READMEs. `package.json` says `AGPL-3.0-or-later`.
@@ -18,7 +18,7 @@ antu has a licence: the GNU Affero General Public License, version 3 or any late
   licence; they stay with whoever made the page. It is in the READMEs and in the block every page and the command line
   carries.
 - **The licence and the place of the source travel with the code**: every page carries a block
-  `<script type="text/plain" id="antu-license">` with the licence of antu, the Corresponding Source of that version
+  `<script type="text/plain" id="antu-license">` with the licence of Antu, the Corresponding Source of that version
   (this repository at its tag) and the notices; the command line starts with the same text; the skill folder holds
   `LICENSE`. A page is about 70 KB larger for it, the command line about 75 KB. `SKILL.md` says which licence applies.
 
@@ -26,7 +26,9 @@ antu has a licence: the GNU Affero General Public License, version 3 or any late
 - Nothing in the format or the tools: no field, rule, tool parameter or command-line option changed.
 
 ### Notes
-- Versions up to 0.5.0 were published without a licence file. The licence applies from 0.6.0.
+- Versions up to 0.5.0 were published without a licence file. The licence applies from 0.5.1.
+- This content was first published as 0.6.0 and withdrawn a few hours later, before anyone had downloaded it: it adds nothing
+  to the contract (spec/versioning.md), so it is a patch release. There is no 0.6.0.
 
 ### Breaking
 - None.

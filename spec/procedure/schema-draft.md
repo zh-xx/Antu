@@ -468,7 +468,7 @@ nodes[2] (n-3): kind is "decision" and its outgoing edge edges[1] has no conditi
 ```
 
 **No automatic repair.** The old prototype had a `postProcessLegalFlow` layer that de-duplicated
-edges, reconnected isolated nodes and filled in labels for decision points. antu's position is
+edges, reconnected isolated nodes and filled in labels for decision points. Antu's position is
 "validation reports, the agent fixes it": automatic repair swallows the agent's mistake, and it makes
 it again next time. What must be distinguished:
 

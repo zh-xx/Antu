@@ -102,7 +102,7 @@ export function buildViewerHtml({ js, css } = {}) {
 }
 
 export function buildHtml(spec, { js, css, preset } = {}) {
-  const title = escapeHtml(spec?.title || 'antu')
+  const title = escapeHtml(spec?.title || 'Antu')
   return `<!DOCTYPE html>
 <!-- lang is the document language, not the data language. The UI can be switched at
      runtime (see src/core/i18n.js), so index.html rewrites this attribute on boot to
@@ -112,7 +112,7 @@ export function buildHtml(spec, { js, css, preset } = {}) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${title} · antu</title>
+<title>${title} · Antu</title>
 <meta name="generator" content="antu ${engineVersion()}">
 <script type="text/plain" id="antu-license">
 ${escapeEngineCode(licenseNotice(engineVersion()))}

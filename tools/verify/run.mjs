@@ -1796,7 +1796,7 @@ async function checkSkillPage() {
         eq(`${type} (${how}): the page is made`, make(src, out).status, 0)
         await browser.open(`file://${out}?lang=zh`)
         truthy(`${type} (${how}): the diagram is drawn`, await browser.eval(`document.querySelectorAll(${JSON.stringify(ITEM_SELECTOR)}).length > 0`))
-        eq(`${type} (${how}): the tab is named after the diagram`, await browser.eval('document.title'), `${spec.title} · antu`)
+        eq(`${type} (${how}): the tab is named after the diagram`, await browser.eval('document.title'), `${spec.title} · Antu`)
         eq(`${type} (${how}): the page says which engine made it`, await browser.eval(`document.querySelector('meta[name=generator]')?.content`), `antu ${version}`)
       }
     }

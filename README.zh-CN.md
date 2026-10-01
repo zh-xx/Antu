@@ -1,4 +1,4 @@
-# 案图 antu
+# 案图 Antu
 
 [![验证](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
 
@@ -124,4 +124,4 @@ Copyright (C) 2026 Ji Cheng。
 - 仓库里的一切（代码、示例、规范和指南），除下面点名的以外，都在同一许可证之下。
 - 页面和命令行里包含的其他项目的代码，保留各自的许可证。它们的声明在 [`skills/antu/THIRD-PARTY-NOTICES.md`](skills/antu/THIRD-PARTY-NOTICES.md)，也放在每一份生成的页面里和命令行的开头，连同案图的许可证和该版本源码的位置。
 - `examples/raw/` 里的裁判文书是公开的法院文书，留作示例的原始材料。它们不是案图自己的作品，不适用 AGPL。
-- 0.5.0 及以前的版本发布时没有许可证文件。许可证从 0.6.0 起适用。
+- 0.5.0 及以前的版本发布时没有许可证文件。许可证从 0.5.1 起适用。

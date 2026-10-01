@@ -1,6 +1,6 @@
 # Third-party notices
 
-antu itself is licensed under the GNU Affero General Public License, version 3 or any later version (see LICENSE).
+Antu itself is licensed under the GNU Affero General Public License, version 3 or any later version (see LICENSE).
 Its pages (assets/viewer.html and every page made from it) and its command line (scripts/antu.mjs) contain the
 code of the packages below. Each is used under its own licence, and its notice is kept here as the package ships it.
 
@@ -28,7 +28,7 @@ code of the packages below. Each is used under its own licence, and its notice i
 
 ## elkjs
 
-elkjs (the layout engine) is offered under `EPL-2.0 OR GPL-3.0-or-later`. antu uses it under the **GNU General Public
+elkjs (the layout engine) is offered under `EPL-2.0 OR GPL-3.0-or-later`. Antu uses it under the **GNU General Public
 License, version 3 or any later version**, which can be combined with the GNU AGPL (section 13 of each licence).
 The licence file that comes with the package is the Eclipse Public License 2.0 and is reproduced below as shipped.
 The GNU GPL version 3 is at https://www.gnu.org/licenses/gpl-3.0.txt. Source of elkjs: https://github.com/kieler/elkjs
