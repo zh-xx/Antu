@@ -126,4 +126,4 @@ antu is free software, licensed under the **GNU Affero General Public License, v
 - Everything in the repository (the code, the examples, the specifications and the guides) is under the same licence, except what is named below.
 - Code of other projects inside the pages and the command line keeps its own licence. Its notices are in [`skills/antu/THIRD-PARTY-NOTICES.md`](skills/antu/THIRD-PARTY-NOTICES.md), and also inside every page and at the top of the command line, together with the licence of antu and the place of the source of that version.
 - The judgment texts in `examples/raw/` are public court documents kept as source material for the examples. They are not antu's own work and are not licensed under the AGPL.
-- Versions up to 0.5.0 were published without a licence file. The licence applies from 0.6.0.
+- Versions up to 0.5.0 were published without a licence file. The licence applies from 0.5.1.

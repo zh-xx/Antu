@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// antu 0.6.0
+// antu 0.5.1
 // Copyright (C) 2026 Ji Cheng
 //
 // antu is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public
@@ -13,9 +13,9 @@
 // publish them, or sell them on any terms you like. This licence covers antu's code in the page, and the notices in
 // the page must stay with it.
 //
-// Corresponding Source of this version: https://github.com/zh-xx/Antu/tree/v0.6.0
-// The licence: https://github.com/zh-xx/Antu/blob/v0.6.0/LICENSE
-// Third-party notices: https://github.com/zh-xx/Antu/blob/v0.6.0/skills/antu/THIRD-PARTY-NOTICES.md
+// Corresponding Source of this version: https://github.com/zh-xx/Antu/tree/v0.5.1
+// The licence: https://github.com/zh-xx/Antu/blob/v0.5.1/LICENSE
+// Third-party notices: https://github.com/zh-xx/Antu/blob/v0.5.1/skills/antu/THIRD-PARTY-NOTICES.md
 //
 // === The licence of antu ===
 //
@@ -1455,7 +1455,7 @@ import{readFileSync as e,writeFileSync as t}from"node:fs";import{dirname as n,jo
 `)},summarize:e=>{let t=Array.isArray(e.nodes)?e.nodes.length:0,n=Array.isArray(e.links)?e.links.length:0,r=Array.isArray(e.groups)?e.groups.length:0;return{nodes:t,links:n,groups:r,line:`${t} nodes / ${n} links / ${r} issues`}},validate:e=>En(e),notes:e=>Dn(e),layouts:{tree:Rn}};g(`fact`,Ge),g(`procedure`,Oee),g(`relationship`,Ree),g(`justification`,Wee);function Gee(e){let t=[];if(!e||typeof e!=`object`||Array.isArray(e))return[ge(`err.specNotObject`)];if(e.type?typeof e.type!=`string`&&t.push(ge(`err.envelopeTypeString`)):t.push(ge(`err.envelopeTypeRequired`)),e.title!==void 0&&typeof e.title!=`string`&&t.push(ge(`err.envelopeTitleString`)),typeof e.type==`string`){let n=S(e,_(e.type)?.specVersion);n&&t.push(ge(n.key,n.params))}return t}function Kee(e){let t=Gee(e);if(t.length)return t;let n=v(e.type);return n?n(e):[]}var qee={width:1600,height:900};function Un(e){try{return Kee(e)}catch(e){return[`the validation layer itself threw: ${e.message}`]}}function Wn(e){try{return _(e?.type)?.notes?.(e)??[]}catch(e){return[`the notes layer itself threw: ${e.message}`]}}function Jee(e,{orientation:t,fields:n}={}){let r=e?.type,i=b(r)[0]??null,a=y(r,i),o=_(r);return!a||!o?.report?{ok:!1,reason:`no geometry computation for type="${r}" kind="${i}" yet`}:{ok:!0,type:r,...o.report(e,a,{orientation:t,fields:n,canvas:qee})}}function Yee(e){return e.ok?_(e.type).formatReport(e):e.reason}function Gn(e){let t=Un(e);if(t.length===0){let t=Wn(e),n=`Validation passed.`;return{ok:!0,text:t.length?`${n}\n\n${t.length} note(s), not errors:\n${t.map(e=>`  - ${e}`).join(`
 `)}`:n}}let n=t.map((e,t)=>`${t+1}. ${e}`);return{ok:!1,text:`Validation failed, ${t.length} problem(s):\n\n${n.join(`
 `)}`}}function Kn(e,{orientation:t,fields:n}={}){let r=Un(e);if(r.length>0)return{ok:!1,text:`Validation has not passed yet; fix these before looking at the geometry:\n\n${r.map((e,t)=>`${t+1}. ${e}`).join(`
-`)}`};let i=Jee(e,{orientation:t,fields:n});return i.ok?{ok:!0,text:Yee(i)}:{ok:!1,text:i.reason}}var qn=`/*ANTU_SPEC*/null`;function Xee(e){return String(e).replace(/</g,`\\u003c`)}function Zee(e,t){if(e.split(`/*ANTU_SPEC*/null`).length!==2)throw Error(`the viewer template does not hold exactly one ${qn}`);return e.replace(qn,()=>Xee(JSON.stringify(t)))}var Jn=`0.6.0`,Yn=`antu ${Jn}: check and draw an antu diagram (JSON)
+`)}`};let i=Jee(e,{orientation:t,fields:n});return i.ok?{ok:!0,text:Yee(i)}:{ok:!1,text:i.reason}}var qn=`/*ANTU_SPEC*/null`;function Xee(e){return String(e).replace(/</g,`\\u003c`)}function Zee(e,t){if(e.split(`/*ANTU_SPEC*/null`).length!==2)throw Error(`the viewer template does not hold exactly one ${qn}`);return e.replace(qn,()=>Xee(JSON.stringify(t)))}var Jn=`0.5.1`,Yn=`antu ${Jn}: check and draw an antu diagram (JSON)
 
   node antu.mjs validate <spec.json>                       is the JSON valid? (each problem, with its field path)
   node antu.mjs layout   <spec.json> [--orientation vertical|horizontal]

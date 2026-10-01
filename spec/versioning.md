@@ -13,7 +13,9 @@ Now in the 0.x stage: **0.2.0** is the first release with a changelog, and the f
 types.
 
 - **`0.x.y` → patch (`y`)**: fixes only. No new field, no new diagram type, no new tool. A layout that
-  crossed lines and no longer does, a style fix, a corrected example.
+  crossed lines and no longer does, a style fix, a corrected example. So are the licence and the notices that
+  go with the code (`LICENSE`, the third-party notices, the block in a page): they are not part of the
+  contract below, and a change to them does not touch it.
 - **`0.x.0` → minor (`x`)**: anything added, and anything broken. While the major number is 0, a minor
   release may break the contract, but a break is always written in the changelog under *Breaking*, with
   how to migrate.
@@ -54,7 +56,9 @@ the engine was updated. (A new *hint* is not a break: a hint never stops a diagr
 
 ## How a release is made
 
-1. Changes land on `main` through pull requests; each says whether it touches the contract.
+1. Changes land on `main` through pull requests; each says whether it touches the contract. The release
+   pull request says **which number it takes and why**, and the maintainer confirms the number before the
+   release is run (the first release with a licence was numbered 0.6.0 without that, and renumbered 0.5.1).
 2. Anything that breaks the contract also raises the type's `specVersion` (in `schema.js`, with a line in
    the changelog on how to migrate).
 3. A small pull request of its own for the release: `version` in `package.json` (and `package-lock.json`),
