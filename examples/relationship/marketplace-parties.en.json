@@ -1,25 +1,25 @@
 {
   "type": "relationship",
   "specVersion": 1,
-  "title": "快播案 · 单位、人员与监管机关",
-  "asOf": "2013-12-31",
+  "title": "A fictional online marketplace · The company, its people and the regulators",
+  "asOf": "2031-03-31",
   "groups": [
     {
       "id": "g-1",
-      "label": "被告单位与被告人"
+      "label": "Defendant company and defendants"
     },
     {
       "id": "g-2",
-      "label": "监管与查处机关"
+      "label": "Regulators"
     }
   ],
   "entities": [
     {
       "id": "e-1",
       "kind": "company",
-      "label": "快播公司",
-      "role": "被告单位",
-      "detail": "深圳市快播科技有限公司，2007-12-26 成立，注册资本 1000 万元；持有网络文化经营许可证，未取得互联网视听节目服务许可",
+      "label": "Yunji Mall",
+      "role": "Defendant company",
+      "detail": "Example Yunji Mall Co., founded 26 Dec 2028, registered capital CNY 10,000,000; holds a value-added telecom licence, never a permit for selling food online",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -28,8 +28,8 @@
     {
       "id": "e-2",
       "kind": "person",
-      "label": "王欣",
-      "role": "法定代表人",
+      "label": "Chen Yuan",
+      "role": "Legal representative",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -38,8 +38,8 @@
     {
       "id": "e-3",
       "kind": "person",
-      "label": "吴铭",
-      "role": "事业部总经理",
+      "label": "Zhou Ming",
+      "role": "Head of the mall division",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -48,8 +48,8 @@
     {
       "id": "e-4",
       "kind": "person",
-      "label": "张克东",
-      "role": "股东、技术平台部总监",
+      "label": "Liu Qiang",
+      "role": "Shareholder, head of technology",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -58,8 +58,8 @@
     {
       "id": "e-5",
       "kind": "person",
-      "label": "牛文举",
-      "role": "运营部总监",
+      "label": "Ma Li",
+      "role": "Head of operations",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -68,9 +68,9 @@
     {
       "id": "e-6",
       "kind": "company",
-      "label": "光通公司",
-      "role": "合作方",
-      "detail": "北京网联光通技术有限公司",
+      "label": "Canglian",
+      "role": "Partner",
+      "detail": "Example Canglian Technology Co.",
       "sourceIds": [
         "s-1",
         "s-4"
@@ -79,8 +79,8 @@
     {
       "id": "e-7",
       "kind": "government",
-      "label": "深圳网监",
-      "detail": "深圳市公安局公安信息网络安全监察分局",
+      "label": "Market regulator",
+      "detail": "Example City Market Supervision Bureau",
       "groupId": "g-2",
       "sourceIds": [
         "s-2"
@@ -89,8 +89,8 @@
     {
       "id": "e-8",
       "kind": "government",
-      "label": "南山广电局",
-      "detail": "深圳市南山区广播电视局",
+      "label": "District market regulator",
+      "detail": "Example District Market Supervision Bureau",
       "groupId": "g-2",
       "sourceIds": [
         "s-3"
@@ -99,8 +99,8 @@
     {
       "id": "e-9",
       "kind": "government",
-      "label": "海淀区文委",
-      "detail": "北京市海淀区文化委员会",
+      "label": "District enforcement",
+      "detail": "Example District Comprehensive Enforcement Department",
       "groupId": "g-2",
       "sourceIds": [
         "s-5"
@@ -113,8 +113,8 @@
       "from": "e-2",
       "to": "e-1",
       "kind": "control",
-      "label": "法定代表人、执行董事、经理",
-      "detail": "王欣同时为快播公司股东，负责公司经营和管理工作（持股比例判决书未载明）",
+      "label": "Legal representative, executive director, manager",
+      "detail": "Chen Yuan was also a shareholder and ran the company (the judgment does not give his share)",
       "sourceIds": [
         "s-1"
       ]
@@ -124,8 +124,8 @@
       "from": "e-4",
       "to": "e-1",
       "kind": "equity",
-      "label": "股东",
-      "detail": "持股比例判决书未载明",
+      "label": "Shareholder",
+      "detail": "The judgment does not give the share",
       "sourceIds": [
         "s-1"
       ]
@@ -135,7 +135,7 @@
       "from": "e-1",
       "to": "e-3",
       "kind": "employment",
-      "label": "事业部总经理（2013）",
+      "label": "Division head (2031)",
       "sourceIds": [
         "s-1"
       ]
@@ -145,7 +145,7 @@
       "from": "e-1",
       "to": "e-4",
       "kind": "employment",
-      "label": "副总经理兼技术平台部总监（2012）",
+      "label": "Deputy head and head of technology (2030)",
       "sourceIds": [
         "s-1"
       ]
@@ -155,7 +155,7 @@
       "from": "e-1",
       "to": "e-5",
       "kind": "employment",
-      "label": "副总经理兼运营部总监（2012）",
+      "label": "Deputy head and head of operations (2030)",
       "sourceIds": [
         "s-1"
       ]
@@ -165,8 +165,8 @@
       "from": "e-2",
       "to": "e-4",
       "kind": "other",
-      "label": "授意调整缓存存储",
-      "detail": "2013 年底，在王欣授意下，张克东领导的技术部门将缓存服务器的完整文件存储改为碎片化存储",
+      "label": "Directed the change to cache storage",
+      "detail": "March 2031: at Chen Yuan's instigation, Liu Qiang's technical department changed the cache servers from whole pages to fragments",
       "sourceIds": [
         "s-1"
       ]
@@ -176,7 +176,7 @@
       "from": "e-1",
       "to": "e-6",
       "kind": "contract",
-      "label": "战略合作（4 台缓存服务器）",
+      "label": "Strategic cooperation (4 cache servers)",
       "sourceIds": [
         "s-4"
       ]
@@ -186,7 +186,7 @@
       "from": "e-7",
       "to": "e-1",
       "kind": "other",
-      "label": "行政警告（2012-08）",
+      "label": "Administrative warning (Mar 2030)",
       "sourceIds": [
         "s-2"
       ]
@@ -196,7 +196,7 @@
       "from": "e-8",
       "to": "e-1",
       "kind": "other",
-      "label": "行政处罚（2013-10-11）",
+      "label": "Administrative penalty (11 Jan 2031)",
       "sourceIds": [
         "s-3"
       ]
@@ -206,7 +206,7 @@
       "from": "e-9",
       "to": "e-6",
       "kind": "other",
-      "label": "查获 4 台服务器（2013-11-18）",
+      "label": "Seized the 4 servers (18 Feb 2031)",
       "sourceIds": [
         "s-5"
       ]
@@ -216,43 +216,43 @@
     {
       "id": "s-1",
       "type": "case",
-      "name": "本案一审判决",
+      "name": "First-instance judgment (fictional)",
       "loc": {
-        "caseNo": "（2015）海刑初字第512号",
-        "court": "北京市海淀区人民法院"
+        "caseNo": "(2031) Shi Xing Chu No. 3",
+        "court": "Example District People's Court, Example City, Example Province"
       }
     },
     {
       "id": "s-2",
       "type": "document",
-      "name": "深圳网监行政警告处罚",
+      "name": "Market regulator: administrative warning (fictional)",
       "loc": {
-        "file": "判决书载明的行政处罚记录"
+        "file": "Penalty record cited in the judgment"
       }
     },
     {
       "id": "s-3",
       "type": "document",
-      "name": "南山广电局行政处罚决定书",
+      "name": "District market regulator: penalty decision (fictional)",
       "loc": {
-        "file": "判决书载明的行政处罚记录"
+        "file": "Penalty record cited in the judgment"
       }
     },
     {
       "id": "s-4",
       "type": "contract",
-      "name": "快播公司与光通公司合作协议",
+      "name": "Yunji Mall–Canglian cooperation agreement (fictional)",
       "loc": {
-        "file": "合作协议",
+        "file": "Cooperation agreement",
         "clause": 1
       }
     },
     {
       "id": "s-5",
       "type": "evidence",
-      "name": "涉案4台服务器鉴定意见",
+      "name": "Expert opinion on the 4 servers (fictional)",
       "loc": {
-        "file": "鉴定意见"
+        "file": "Expert opinion"
       }
     }
   ]

@@ -1,33 +1,33 @@
 {
   "specVersion": 1,
   "type": "justification",
-  "title": "电梯劝烟案 · 二审改判的说理",
-  "speaker": "河南省郑州市中级人民法院（二审）",
+  "title": "Charging in a corridor (fictional) · Why the appeal court changed the judgment",
+  "speaker": "Example City Intermediate People's Court (appeal, fictional)",
   "groups": [
     {
       "id": "g-1",
-      "label": "争点一：杨帆是否应承担一般侵权责任"
+      "label": "Issue 1: is Sun Hao liable in ordinary tort?"
     },
     {
       "id": "g-2",
-      "label": "争点二：一审的公平责任能否适用"
+      "label": "Issue 2: can the first instance's fairness liability apply?"
     },
     {
       "id": "g-3",
-      "label": "争点三：杨帆没有上诉，二审能否改判"
+      "label": "Issue 3: Sun Hao did not appeal, so can the appeal court change the judgment?"
     }
   ],
   "nodes": [
     {
       "id": "c-1",
       "kind": "conclusion",
-      "label": "撤销一审判决，驳回田九菊的诉讼请求：杨帆不承担侵权责任",
+      "label": "Set aside the first-instance judgment and dismiss Qian Min's claim: Sun Hao bears no tort liability",
       "holds": "yes"
     },
     {
       "id": "n-5",
       "kind": "norm",
-      "label": "民事诉讼法第 170 条第 1 款第 2 项：二审改判的依据",
+      "label": "Model Provision D, para. 1, item 2: basis for changing a judgment on appeal",
       "sourceIds": [
         "s-6"
       ]
@@ -35,7 +35,7 @@
     {
       "id": "c-2",
       "kind": "conclusion",
-      "label": "杨帆应承担一般侵权责任（过错责任）",
+      "label": "Sun Hao bears ordinary tort liability (fault liability)",
       "holds": "no",
       "combine": "all",
       "groupId": "g-1"
@@ -43,7 +43,7 @@
     {
       "id": "n-1",
       "kind": "norm",
-      "label": "侵权责任法第 6 条第 1 款：行为人因过错侵害他人民事权益，应当承担侵权责任",
+      "label": "Model Provision A: one who through fault infringes another's civil rights bears tort liability",
       "groupId": "g-1",
       "sourceIds": [
         "s-3"
@@ -52,28 +52,28 @@
     {
       "id": "e-1",
       "kind": "element",
-      "label": "劝阻行为不正当，超出了必要限度",
+      "label": "The objection was improper and went beyond what was necessary",
       "holds": "no",
       "groupId": "g-1"
     },
     {
       "id": "e-2",
       "kind": "element",
-      "label": "劝阻行为与段小立的死亡之间有法律上的因果关系",
+      "label": "The objection is legally the cause of Qian Min's heart trouble",
       "holds": "no",
       "groupId": "g-1"
     },
     {
       "id": "e-3",
       "kind": "element",
-      "label": "杨帆有故意或过失",
+      "label": "Sun Hao acted intentionally or negligently",
       "holds": "no",
       "groupId": "g-1"
     },
     {
       "id": "j-1",
       "kind": "judgement",
-      "label": "杨帆的劝阻理性平和，未超出必要限度，属于正当劝阻",
+      "label": "Sun Hao's objection was reasoned and calm, did not exceed what was necessary, and was a proper dissuasion",
       "holds": "yes",
       "groupId": "g-1",
       "sourceIds": [
@@ -83,7 +83,7 @@
     {
       "id": "j-2",
       "kind": "judgement",
-      "label": "劝阻与死亡只有时间上的先后，没有法律上的因果关系",
+      "label": "The objection only came before the attack in time; it is not its legal cause",
       "holds": "yes",
       "groupId": "g-1",
       "sourceIds": [
@@ -93,7 +93,7 @@
     {
       "id": "j-3",
       "kind": "judgement",
-      "label": "杨帆劝阻吸烟是履行公民应尽的社会责任，没有加害段小立的故意",
+      "label": "Objecting to the charging protects public safety and Sun Hao had no intent to harm Qian Min",
       "holds": "yes",
       "groupId": "g-1",
       "sourceIds": [
@@ -103,7 +103,7 @@
     {
       "id": "i-1",
       "kind": "inference",
-      "label": "杨帆劝阻吸烟这一行为本身不会造成段小立死亡",
+      "label": "Objecting to charging could not in itself cause Qian Min's attack",
       "holds": "yes",
       "groupId": "g-1",
       "sourceIds": [
@@ -113,7 +113,7 @@
     {
       "id": "i-2",
       "kind": "inference",
-      "label": "杨帆对段小立的死亡无法预见，也不存在疏忽或懈怠",
+      "label": "Sun Hao could not foresee Qian Min's attack and was neither careless nor slack",
       "holds": "yes",
       "groupId": "g-1",
       "sourceIds": [
@@ -123,8 +123,8 @@
     {
       "id": "f-1",
       "kind": "fact",
-      "label": "电梯间监控（时间显示 9 时 24 分）：段小立在电梯内吸烟，杨帆进入电梯后，双方开始语言交流",
-      "date": "2017-05-02",
+      "label": "Corridor video (clock reads 20:14): Qian Min charges a battery in the corridor; after Sun Hao enters, the two begin to talk",
+      "date": "2030-06-02",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -133,8 +133,8 @@
     {
       "id": "f-2",
       "kind": "fact",
-      "label": "三段监控只有影像、没有声音；二人只有语言交流，无拉扯行为，无肢体冲突",
-      "date": "2017-05-02",
+      "label": "The three videos have pictures but no sound; the two only talked, no pulling, no physical contact",
+      "date": "2030-06-02",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -143,8 +143,8 @@
     {
       "id": "f-3",
       "kind": "fact",
-      "label": "杨帆在整个过程中情绪相对冷静、克制；段小立情绪较为激动，并随时间推移不断升级",
-      "date": "2017-05-02",
+      "label": "Sun Hao stayed even throughout; Qian Min spoke quickly and her voice kept rising",
+      "date": "2030-06-02",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -153,7 +153,7 @@
     {
       "id": "f-4",
       "kind": "fact",
-      "label": "没有证据证明杨帆对段小立进行过呵斥或有其他不当行为",
+      "label": "There is no evidence that Sun Hao shouted at Qian Min or did anything improper",
       "groupId": "g-1",
       "sourceIds": [
         "s-2"
@@ -162,8 +162,8 @@
     {
       "id": "f-5",
       "kind": "fact",
-      "label": "杨帆与段小立的接触时长不足 5 分钟",
-      "date": "2017-05-02",
+      "label": "Sun Hao and Qian Min were in contact for under 5 minutes",
+      "date": "2030-06-02",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -172,8 +172,8 @@
     {
       "id": "f-6",
       "kind": "fact",
-      "label": "9 时 31 分呼叫 120，急救人员 9 时 37 分到达患者身边",
-      "date": "2017-05-02T09:31",
+      "label": "Ambulance called at 20:21; crew reaches the patient at 20:27",
+      "date": "2030-06-02T20:21",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -182,7 +182,7 @@
     {
       "id": "f-7",
       "kind": "fact",
-      "label": "杨帆此前不认识段小立，也不知道段小立的病史和心脏搭桥手术",
+      "label": "Sun Hao had not known Qian Min before and did not know her heart history",
       "groupId": "g-1",
       "sourceIds": [
         "s-2"
@@ -191,7 +191,7 @@
     {
       "id": "f-8",
       "kind": "fact",
-      "label": "杨帆得知情况后，及时发挥专业技能对段小立积极施救",
+      "label": "Once he knew, Sun Hao promptly helped call the ambulance and waited with her",
       "groupId": "g-1",
       "sourceIds": [
         "s-2"
@@ -200,14 +200,14 @@
     {
       "id": "c-3",
       "kind": "conclusion",
-      "label": "应按公平原则，由杨帆补偿田九菊 15000 元（一审的做法）",
+      "label": "By fairness Sun Hao should compensate Qian Min 8,000 yuan (what the first instance did)",
       "holds": "no",
       "groupId": "g-2"
     },
     {
       "id": "n-2",
       "kind": "norm",
-      "label": "侵权责任法第 24 条：受害人和行为人对损害的发生都没有过错的，可以根据实际情况，由双方分担损失",
+      "label": "Model Provision B: where neither victim nor actor was at fault, the loss may be shared as the facts require",
       "groupId": "g-2",
       "sourceIds": [
         "s-4"
@@ -216,14 +216,14 @@
     {
       "id": "e-4",
       "kind": "element",
-      "label": "行为与损害结果之间有法律上的因果关系，且双方都没有过错",
+      "label": "The act is legally the cause of the harm, and neither side was at fault",
       "holds": "no",
       "groupId": "g-2"
     },
     {
       "id": "j-4",
       "kind": "judgement",
-      "label": "劝阻与死亡之间没有法律上的因果关系，适用第 24 条的前提不成立",
+      "label": "There is no legal causation between the objection and the attack, so the premise of Model Provision B fails",
       "holds": "yes",
       "groupId": "g-2",
       "sourceIds": [
@@ -233,7 +233,7 @@
     {
       "id": "j-5",
       "kind": "judgement",
-      "label": "一审依第 24 条适用公平原则判令杨帆补偿，属于适用法律错误",
+      "label": "Applying fairness under Model Provision B to make Sun Hao compensate was an error of law",
       "holds": "yes",
       "groupId": "g-2",
       "sourceIds": [
@@ -243,7 +243,7 @@
     {
       "id": "f-9",
       "kind": "fact",
-      "label": "一审判决以段小立在与杨帆发生言语争执后猝死为由，判令杨帆补偿田九菊 15000 元",
+      "label": "The first instance ordered Sun Hao to pay Qian Min 8,000 yuan because she had a sudden heart problem after the quarrel",
       "groupId": "g-2",
       "sourceIds": [
         "s-2"
@@ -252,14 +252,14 @@
     {
       "id": "c-4",
       "kind": "conclusion",
-      "label": "二审应当对一审判决改判",
+      "label": "The appeal court should change the first-instance judgment",
       "holds": "yes",
       "groupId": "g-3"
     },
     {
       "id": "n-3",
       "kind": "norm",
-      "label": "民诉法解释第 323 条：二审围绕上诉请求审理；但一审判决违反法律禁止性规定，或损害国家利益、社会公共利益、他人合法权益的除外",
+      "label": "Model Provision C: the appeal is heard on the grounds of appeal, unless the judgment breaks a mandatory rule or harms the state, the public interest or others' lawful rights",
       "groupId": "g-3",
       "sourceIds": [
         "s-5"
@@ -268,7 +268,7 @@
     {
       "id": "n-4",
       "kind": "norm",
-      "label": "郑州市有关规定：电梯间等公共场所禁止吸烟，公民有权制止",
+      "label": "Example City rules: charging e-bike batteries is banned in corridors and other public places and residents may stop it",
       "groupId": "g-3",
       "sourceIds": [
         "s-7"
@@ -277,7 +277,7 @@
     {
       "id": "n-6",
       "kind": "norm",
-      "label": "民法的基本原则和立法宗旨：保护生态环境、维护社会公共利益和公序良俗，弘扬社会主义核心价值观",
+      "label": "Basic principles and purpose of the civil rules (model): protect the public interest and public order and good morals, promote good social conduct",
       "groupId": "g-3",
       "sourceIds": [
         "s-8"
@@ -286,14 +286,14 @@
     {
       "id": "e-5",
       "kind": "element",
-      "label": "一审判决损害社会公共利益（二审可不受上诉请求限制的例外）",
+      "label": "The first instance harms the public interest (the exception to the limit of the grounds of appeal)",
       "holds": "yes",
       "groupId": "g-3"
     },
     {
       "id": "j-6",
       "kind": "judgement",
-      "label": "杨帆劝阻吸烟合法正当，是自觉维护社会公共秩序和公共利益的行为",
+      "label": "Sun Hao's objection to the charging was lawful and proper, and protected fire safety in the building and the public interest",
       "holds": "yes",
       "groupId": "g-3",
       "sourceIds": [
@@ -303,7 +303,7 @@
     {
       "id": "j-7",
       "kind": "judgement",
-      "label": "让正当劝阻的公民分担损失，会挫伤公民维护公共利益的积极性，损害社会公共利益，与民法立法宗旨相悖",
+      "label": "Making residents who object properly share the loss would deter them from protecting public safety, harm the public interest, and run against the purpose of the rules",
       "holds": "yes",
       "groupId": "g-3",
       "sourceIds": [
@@ -313,7 +313,7 @@
     {
       "id": "f-10",
       "kind": "fact",
-      "label": "一审判决作出后，杨帆没有上诉",
+      "label": "Sun Hao did not appeal after the first-instance judgment",
       "groupId": "g-3",
       "sourceIds": [
         "s-2"
@@ -485,7 +485,7 @@
       "from": "f-10",
       "to": "c-4",
       "stance": "against",
-      "label": "本不在审理范围"
+      "label": "Not within the scope of the appeal"
     },
     {
       "from": "c-4",
@@ -496,75 +496,75 @@
     {
       "id": "s-1",
       "type": "case",
-      "name": "（2017）豫01民终14848号 · 本院查明",
+      "name": "(2031) Shi Min Zhong No. 1 · facts found by this court",
       "loc": {
-        "caseNo": "（2017）豫01民终14848号",
-        "court": "河南省郑州市中级人民法院"
+        "caseNo": "(2031) Shi Min Zhong No. 1",
+        "court": "Example City Intermediate People's Court, Example Province"
       }
     },
     {
       "id": "s-2",
       "type": "case",
-      "name": "（2017）豫01民终14848号 · 本院认为",
+      "name": "(2031) Shi Min Zhong No. 1 · this court's opinion",
       "loc": {
-        "caseNo": "（2017）豫01民终14848号",
-        "court": "河南省郑州市中级人民法院"
+        "caseNo": "(2031) Shi Min Zhong No. 1",
+        "court": "Example City Intermediate People's Court, Example Province"
       }
     },
     {
       "id": "s-3",
       "type": "statute",
-      "name": "侵权责任法第 6 条",
+      "name": "Model Provision A",
       "loc": {
-        "lawName": "中华人民共和国侵权责任法",
-        "article": 6,
-        "version": "2009"
+        "lawName": "Model Act (fictional)",
+        "article": 1,
+        "version": "model edition"
       }
     },
     {
       "id": "s-4",
       "type": "statute",
-      "name": "侵权责任法第 24 条",
+      "name": "Model Provision B",
       "loc": {
-        "lawName": "中华人民共和国侵权责任法",
-        "article": 24,
-        "version": "2009"
+        "lawName": "Model Act (fictional)",
+        "article": 2,
+        "version": "model edition"
       }
     },
     {
       "id": "s-5",
       "type": "statute",
-      "name": "民诉法解释第 323 条",
+      "name": "Model Provision C",
       "loc": {
-        "lawName": "最高人民法院关于适用《中华人民共和国民事诉讼法》的解释",
-        "article": 323,
-        "version": "2015"
+        "lawName": "Model Act (fictional)",
+        "article": 3,
+        "version": "model edition"
       }
     },
     {
       "id": "s-6",
       "type": "statute",
-      "name": "民事诉讼法第 170 条",
+      "name": "Model Provision D",
       "loc": {
-        "lawName": "中华人民共和国民事诉讼法",
-        "article": 170,
-        "version": "2017修正"
+        "lawName": "Model Act (fictional)",
+        "article": 4,
+        "version": "model edition"
       }
     },
     {
       "id": "s-7",
       "type": "other",
-      "name": "郑州市有关规定（禁止在电梯间等公共场所吸烟）",
+      "name": "Example City rules (charging e-bike batteries banned in corridors and other public places)",
       "loc": {
-        "note": "判决书只写\"根据郑州市有关规定\"，没有写出规定的名称和条号"
+        "note": "The judgment says only \"under the Example City rules\" and does not give their name or article"
       }
     },
     {
       "id": "s-8",
       "type": "other",
-      "name": "民法的基本原则和立法宗旨",
+      "name": "Basic principles and purpose of the civil rules (model)",
       "loc": {
-        "note": "判决书没有写出具体条文"
+        "note": "The judgment gives no specific article"
       }
     }
   ]

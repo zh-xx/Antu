@@ -13,7 +13,7 @@ import assert from 'node:assert/strict'
 import { EXPORT_PAD, exportFrame, fileNameOf } from '../src/shell/exportPng.js'
 
 test('the file name comes from the title, with a .png suffix', () => {
-  assert.equal(fileNameOf('电梯劝烟案'), '电梯劝烟案.png')
+  assert.equal(fileNameOf('楼道充电案'), '楼道充电案.png')
 })
 
 test('characters not allowed in a file name are replaced', () => {

@@ -46,7 +46,7 @@ function formatEnd(start, end, lang) {
  * With a dateEnd (a lasting event) it is written "start - end", which sets it apart from an
  * instantaneous event at a glance. Note this expresses a span in text only, never as length on
  * the axis: slots are equally spaced and real time is not, so drawing length by real duration
- * would deceive (in the elevator case 4 seconds and 264 seconds take the same distance).
+ * would deceive (in the corridor-charging case 4 seconds and 264 seconds take the same distance).
  */
 function formatTimeText(event, lang) {
   // An event with no date (the material gives none): say so, do not show a blank or a made-up one

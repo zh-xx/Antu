@@ -74,8 +74,8 @@ One JSON document produces one self-contained HTML file of about 1.9 MB (most of
 
 ```bash
 npm install
-npm run diagram -- examples/fact/elevator-smoking-case.en.json
-# → examples/fact/elevator-smoking-case.en.html
+npm run diagram -- examples/fact/neighbour-corridor-charging.en.json
+# → examples/fact/neighbour-corridor-charging.en.html
 ```
 
 ## Agent integration
@@ -105,10 +105,10 @@ Without MCP, give the agent the **skill** [`skills/antu/`](skills/antu/): a `SKI
 
 Without MCP and without the skill, read the documents in this order.
 
-- **Fact (timeline)**: [spec/fact/schema-draft.md](spec/fact/schema-draft.md) (field definitions), then [spec/fact/timeline-rules.md](spec/fact/timeline-rules.md) (event placement rules), and consult [examples/fact/elevator-smoking-case.en.json](examples/fact/elevator-smoking-case.en.json).
-- **Justification (reasoning tree)**: [spec/agent/justification/guide.md](spec/agent/justification/guide.md) (a one-page note on the mechanism), then [spec/justification/schema-draft.md](spec/justification/schema-draft.md) (field definitions, rules, layout and look; a draft), and consult [examples/agent/justification/2-against-and-rejected.en.json](examples/agent/justification/2-against-and-rejected.en.json) or a real case such as [examples/justification/elevator-smoking-liability.en.json](examples/justification/elevator-smoking-liability.en.json).
+- **Fact (timeline)**: [spec/fact/schema-draft.md](spec/fact/schema-draft.md) (field definitions), then [spec/fact/timeline-rules.md](spec/fact/timeline-rules.md) (event placement rules), and consult [examples/fact/neighbour-corridor-charging.en.json](examples/fact/neighbour-corridor-charging.en.json).
+- **Justification (reasoning tree)**: [spec/agent/justification/guide.md](spec/agent/justification/guide.md) (a one-page note on the mechanism), then [spec/justification/schema-draft.md](spec/justification/schema-draft.md) (field definitions, rules, layout and look; a draft), and consult [examples/agent/justification/2-against-and-rejected.en.json](examples/agent/justification/2-against-and-rejected.en.json) or a worked case such as [examples/justification/neighbour-corridor-liability.en.json](examples/justification/neighbour-corridor-liability.en.json).
 - **Procedure (flowchart)**: [spec/agent/procedure/guide.md](spec/agent/procedure/guide.md) (a one-page note on the mechanism), then [spec/procedure/schema-draft.md](spec/procedure/schema-draft.md) (field definitions and layout rules), and consult [examples/agent/procedure/7-rules.en.json](examples/agent/procedure/7-rules.en.json) or a real contract such as [examples/procedure/05-premises-lease.en.json](examples/procedure/05-premises-lease.en.json).
-- **Relationship (graph)**: [spec/agent/relationship/guide.md](spec/agent/relationship/guide.md) (a one-page note on the mechanism), then [spec/relationship/schema-draft.md](spec/relationship/schema-draft.md) (field definitions and layout rules, provisional), and consult [examples/agent/relationship/3-guarantee.en.json](examples/agent/relationship/3-guarantee.en.json) or a real case such as [examples/relationship/yuhuan-parties.en.json](examples/relationship/yuhuan-parties.en.json).
+- **Relationship (graph)**: [spec/agent/relationship/guide.md](spec/agent/relationship/guide.md) (a one-page note on the mechanism), then [spec/relationship/schema-draft.md](spec/relationship/schema-draft.md) (field definitions and layout rules, provisional), and consult [examples/agent/relationship/3-guarantee.en.json](examples/agent/relationship/3-guarantee.en.json) or a worked case such as [examples/relationship/fang-yuan-parties.en.json](examples/relationship/fang-yuan-parties.en.json).
 
 ## Design documents
 
@@ -125,5 +125,5 @@ Antu is free software, licensed under the **GNU Affero General Public License, v
 - **Additional permission (AGPL section 7).** A page made with Antu contains Antu's code together with the diagram data you gave it. The diagram data, and the content of the diagram you drew from your material, are not part of Antu and are not covered by this licence: you may keep them private, publish them, or sell them on any terms you like. The licence covers Antu's code in the page, and the notices in the page must stay with it. The same text is in every page and at the top of the command line.
 - Everything in the repository (the code, the examples, the specifications and the guides) is under the same licence, except what is named below.
 - Code of other projects inside the pages and the command line keeps its own licence. Its notices are in [`skills/antu/THIRD-PARTY-NOTICES.md`](skills/antu/THIRD-PARTY-NOTICES.md), and also inside every page and at the top of the command line, together with the licence of Antu and the place of the source of that version.
-- The judgment texts in `examples/raw/` are public court documents kept as source material for the examples. They are not Antu's own work and are not licensed under the AGPL.
+- The cases in `examples/` and the judgment texts in `examples/raw/` are fictional: the people, companies, dates, amounts and provisions are made up for Antu and match no real case. They are under the same licence.
 - Versions up to 0.5.0 were published without a licence file. The licence applies from 0.5.1.

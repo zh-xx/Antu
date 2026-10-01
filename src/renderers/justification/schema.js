@@ -60,7 +60,7 @@ export const JUSTIFICATION_FIELDS = {
   sources: [
     { name: 'id', req: 'yes', ty: 'string', note: 'nodes reference it via sourceIds' },
     { name: 'type', req: 'yes', ty: 'string', note: 'statute / case / evidence and four more, the same seven as fact' },
-    { name: 'name', req: 'yes', ty: 'string', note: 'material name, e.g. "Guiding Case No. 93 · reasons"' },
+    { name: 'name', req: 'yes', ty: 'string', note: 'material name, e.g. "Fictional Case A · reasons"' },
     { name: 'loc', req: 'no', ty: 'object', note: 'location, e.g. { caseNo, court } or { lawName, article, version }' },
   ],
 }

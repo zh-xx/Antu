@@ -63,9 +63,9 @@ test('every kind reports it, with its own body font, in the geometry report and 
 
 test('the real cases that are too small say so, the fact diagram too (it used to say nothing)', () => {
   const tooSmall = [
-    'examples/justification/yuhuan-defense-excess.zh-CN.json',
-    'examples/justification/elevator-smoking-liability.zh-CN.json',
-    'examples/fact/yuhuan-loan-and-conflict.zh-CN.json',
+    'examples/justification/fang-yuan-defense-excess.zh-CN.json',
+    'examples/justification/neighbour-corridor-liability.zh-CN.json',
+    'examples/fact/fang-yuan-loan-and-conflict.zh-CN.json',
     'examples/procedure/05-premises-lease.zh-CN.json',
   ]
   for (const file of tooSmall) assert.match(layoutMessage(spec(file)).text, /too small to read without zooming in/, file)
@@ -76,7 +76,7 @@ test('the real cases that are too small say so, the fact diagram too (it used to
 })
 
 test('the fact diagram reports the orientation it opens with (five slots or more: vertical)', () => {
-  const r = layoutReport(spec('examples/fact/yuhuan-loan-and-conflict.zh-CN.json'))
+  const r = layoutReport(spec('examples/fact/fang-yuan-loan-and-conflict.zh-CN.json'))
   assert.equal(r.text.open.name, r.suggestedOrientation)
   assert.equal(r.text.open.fit, r.byOrientation[r.suggestedOrientation].fit)
 })

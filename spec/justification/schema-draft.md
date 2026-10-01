@@ -1,6 +1,6 @@
 # justification · Schema draft v0
 
-> Status: **draft v0**. Validation (§5), layout (§6.1), the look and the interface (§6.2) are implemented; **there is no corpus (beyond one Yu Huan diagram) and no small examples for an agent yet**. Items marked **⚠ proposal** stand until the sponsor changes them; §7 lists the questions still open and how the schema goes on until they are answered.
+> Status: **draft v0**. Validation (§5), layout (§6.1), the look and the interface (§6.2) are implemented; **there is no corpus (beyond one Fang Yuan diagram) and no small examples for an agent yet**. Items marked **⚠ proposal** stand until the sponsor changes them; §7 lists the questions still open and how the schema goes on until they are answered.
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (a new top-level type only when the elements do not fit an existing one). Written after `spec/relationship/schema-draft.md`.
 > Scope: justification = **one side's reasoning for "why the decision goes this way"**: norms plus facts, and how they lead, layer by layer, to a conclusion. What happened over time → `fact`; who stands in what relation to whom → `relationship`; the path of a procedure → `procedure`.
 
@@ -34,8 +34,8 @@ Proposed by me (**⚠ proposal**, see §7):
 {
   "specVersion": 1,
   "type": "justification",
-  "title": "The Yu Huan case · the reasoning on excessive defence",
-  "speaker": "Shandong Higher People's Court (appeal)"   // optional: whose reasoning this is
+  "title": "The Fang Yuan case · the reasoning on excessive defence",
+  "speaker": "Example Higher People's Court (appeal, fictional)"   // optional: whose reasoning this is
 }
 ```
 
@@ -45,13 +45,13 @@ Proposed by me (**⚠ proposal**, see §7):
 
 ## 2. Content layer draft
 
-An extract of the reasoning of the Yu Huan appeal judgment; the whole is `examples/justification/yuhuan-defense-excess.en.json`.
+An extract of the reasoning of the Fang Yuan appeal judgment; the whole is `examples/justification/fang-yuan-defense-excess.en.json`.
 
 ```jsonc
 {
   "type": "justification",
-  "title": "The Yu Huan case · the reasoning on excessive defence",
-  "speaker": "Shandong Higher People's Court (appeal)",
+  "title": "The Fang Yuan case · the reasoning on excessive defence",
+  "speaker": "Example Higher People's Court (appeal, fictional)",
 
   "groups": [
     { "id": "g-1", "label": "Issue 1: was the stabbing defensive?" },
@@ -59,18 +59,18 @@ An extract of the reasoning of the Yu Huan appeal judgment; the whole is `exampl
   ],
 
   "nodes": [
-    { "id": "c-1", "kind": "conclusion", "label": "Excessive defence; guilty of intentional injury; five years' imprisonment", "holds": "yes" },
+    { "id": "c-1", "kind": "conclusion", "label": "Excessive defence; guilty of intentional injury; four years' imprisonment", "holds": "yes" },
 
-    { "id": "n-1", "kind": "norm", "label": "Criminal Law Art. 20(1): lawful defence needs five conditions together", "sourceIds": ["s-3"], "groupId": "g-1" },
+    { "id": "n-1", "kind": "norm", "label": "Model Provision A(1): lawful defence needs five conditions together", "sourceIds": ["s-3"], "groupId": "g-1" },
     { "id": "e-2", "kind": "element", "label": "Time: the attack is under way", "holds": "yes", "groupId": "g-1" },
     { "id": "f-6", "kind": "fact", "label": "The police officer warned both sides not to fight, then left the room to look for the caller",
-      "date": "2016-04-14T22:22", "sourceIds": ["s-1"], "groupId": "g-1" },
-    { "id": "f-7", "kind": "fact", "label": "Yu and Su tried to leave with the police; Du 2 and others blocked them and forced Yu to sit",
-      "date": "2016-04-14", "sourceIds": ["s-1"], "groupId": "g-1" },
+      "date": "2032-04-14T22:22", "sourceIds": ["s-1"], "groupId": "g-1" },
+    { "id": "f-7", "kind": "fact", "label": "Fang and Liang tried to leave with the police; Jiang and others blocked them and forced Fang to sit",
+      "date": "2032-04-14", "sourceIds": ["s-1"], "groupId": "g-1" },
 
     { "id": "i-2", "kind": "inference", "label": "When the police came in there was no fierce standoff, and after the warning the other side did not fight",
       "holds": "yes", "sourceIds": ["s-2"], "groupId": "g-3" },
-    { "id": "j-2", "kind": "judgement", "label": "The attack Yu faced was neither urgent nor serious", "holds": "yes", "groupId": "g-3" }
+    { "id": "j-2", "kind": "judgement", "label": "The attack Fang faced was neither urgent nor serious", "holds": "yes", "groupId": "g-3" }
   ],
 
   "links": [
@@ -83,12 +83,12 @@ An extract of the reasoning of the Yu Huan appeal judgment; the whole is `exampl
   ],
 
   "sources": [
-    { "id": "s-1", "type": "case", "name": "Guiding Case No. 93 · facts of the case",
-      "loc": { "caseNo": "（2017）鲁刑终151号", "court": "Shandong Higher People's Court" } },
-    { "id": "s-2", "type": "case", "name": "Guiding Case No. 93 · reasons for the judgment",
-      "loc": { "caseNo": "（2017）鲁刑终151号", "court": "Shandong Higher People's Court" } },
-    { "id": "s-3", "type": "statute", "name": "Criminal Law, Art. 20",
-      "loc": { "lawName": "Criminal Law of the People's Republic of China", "article": 20, "version": "2015修正" } }
+    { "id": "s-1", "type": "case", "name": "Fictional Case A · facts of the case",
+      "loc": { "caseNo": "(2032) Shi Xing Zhong No. 1", "court": "Example Higher People's Court" } },
+    { "id": "s-2", "type": "case", "name": "Fictional Case A · reasons for the judgment",
+      "loc": { "caseNo": "(2032) Shi Xing Zhong No. 1", "court": "Example Higher People's Court" } },
+    { "id": "s-3", "type": "statute", "name": "Model Provision A",
+      "loc": { "lawName": "Model Act (fictional)", "article": 1, "version": "model edition" } }
   ]
 }
 ```
@@ -117,7 +117,7 @@ An extract of the reasoning of the Yu Huan appeal judgment; the whole is `exampl
 | `detail` | ❌ | string | Full text that does not fit in the node (the text of a statute, the judgment's own words); in the popover |
 | `holds` | ❌ | `yes` / `no` | Whether the statement holds in this reasoning; **only for** `conclusion`, `element`, `inference`, `judgement` |
 | `combine` | ❌ | `all` / `any` | How what it rests on combines: `all` = every one is needed ("and"), `any` = one is enough ("or"); **only on** `conclusion`, `element`, `inference`, `judgement`; omitted = not stated, see §4.6 |
-| `date` | ❌ | ISO date or date-time | **`fact` only**: when it happened (`2016-04-14` or `2016-04-14T22:22`) |
+| `date` | ❌ | ISO date or date-time | **`fact` only**: when it happened (`2032-04-14` or `2032-04-14T22:22`) |
 | `groupId` | ❌ | string | Refers to an id in `groups` |
 | `sourceIds` | ❌ | string[] | Refers to ids in this diagram's `sources` |
 
@@ -244,7 +244,7 @@ Structural errors block drawing; hints do not. The same split as relationship an
 
 - **A tree from the conclusion down.** A link runs from the supporting side to the supported one, so ELK is given every link the other way round, and the conclusion is on top (on the left when horizontal).
 - **A fact (or a norm) is one node in the data and is drawn once in every issue that uses it.** Facts and norms are leaves and can support things in several issues (the abuse supports both "was it defensive" and "the victims' fault"). It is written once, and drawn once in each issue box that uses it; a copy's tag says "same as". Each issue box then holds all it needs, and no line runs across the picture to a fact in another box. A leaf used in one issue only stands in that issue, whatever its own `groupId` says.
-- **Inside one issue, a fact used by several nodes is drawn beside each of them** (and a norm that is the basis of three or more elements likewise). With one copy the lines to the nodes it supports run across the layers between them and cross whatever stands there; with a copy at each use the facts form a tree and cross nothing. The dock has "Merge repeats" to draw each once instead (fewer nodes, longer lines, more crossings); it is the reader's choice, remembered per diagram, and the data does not change. Measured on the two real cases: crossings between links went from 11 and 6 (elevator, Yu Huan, horizontal) to 0 and 0, at the cost of 5 and 4 more nodes drawn than in the merged picture (the Yu Huan diagram: 49 drawn, 45 merged).
+- **Inside one issue, a fact used by several nodes is drawn beside each of them** (and a norm that is the basis of three or more elements likewise). With one copy the lines to the nodes it supports run across the layers between them and cross whatever stands there; with a copy at each use the facts form a tree and cross nothing. The dock has "Merge repeats" to draw each once instead (fewer nodes, longer lines, more crossings); it is the reader's choice, remembered per diagram, and the data does not change. Measured on the two real cases: crossings between links went from 11 and 6 (corridor, Fang Yuan, horizontal) to 0 and 0, at the cost of 5 and 4 more nodes drawn than in the merged picture (the Fang Yuan diagram: 49 drawn, 45 merged).
 - **Each issue is laid out several ways and the one with fewest crossings is kept**: ELK is run with several seeds and two ways of layering, with the norm above its elements or among the facts; the best of each kind is then routed for real and the one with fewest real crossings wins. The seeds are fixed, so the same data gives the same picture (seed 0 of ELK is time-based, so it is never used).
 - **A norm stands one layer above its elements**, beside the issue's conclusion, with its lines running down to the elements. It is close to them, and its lines do not have to go round to the facts' layer.
 - **One box per issue, each laid out on its own.** ELK's layered algorithm lays out each issue from the links inside it, so a box is as big as its content (ELK cannot lay out a box around nodes in different layers; the relationship diagram's camps are the same). Nodes in no issue (the end conclusion) form a group of their own above all the issues, centred.
@@ -267,7 +267,7 @@ Known shortcomings: the lines from each issue's conclusion to the end conclusion
 - **Pointing at a node lights its whole chain**: everything it rests on (down to the facts and norms) and everything it leads to (up to the end conclusion) stay, the rest fades. Every copy of a fact lights together, each with its own way up. That is the natural question about a node in a reasoning: "what is this based on, and where does it lead?"
 - Hover peeks, click pins: the popover holds the full text (`detail`), what it rests on, what it leads to, and the sources.
 - **The dock**: a labels switch (only when a link has a `label`), horizontal / vertical (horizontal first, and the default), curved / straight, language, export image. There is no "filter by kind of node": a reader of a reasoning follows a chain, they do not filter by kind.
-- **Folding an issue** is the reader's choice, not something in the data. The title of each issue box is a button (with a small arrow): a click folds the issue up to what it sums up to (its conclusion; for an issue with none, the element that goes straight to the end conclusion). The box becomes a small dashed one, its title ends with "N folded", and the other nodes of the issue, and the links that touched them, are not drawn. Another click opens it. The dock has "Fold issues": fold all, or open all. Folding lays the diagram out again and refits the view (the geometry changes), and is remembered per diagram in the browser. A fact that another issue still uses keeps its copy there. A folded node's popover still tells everything it rests on. With every issue folded the Yu Huan diagram is six nodes and fits a screen.
+- **Folding an issue** is the reader's choice, not something in the data. The title of each issue box is a button (with a small arrow): a click folds the issue up to what it sums up to (its conclusion; for an issue with none, the element that goes straight to the end conclusion). The box becomes a small dashed one, its title ends with "N folded", and the other nodes of the issue, and the links that touched them, are not drawn. Another click opens it. The dock has "Fold issues": fold all, or open all. Folding lays the diagram out again and refits the view (the geometry changes), and is remembered per diagram in the browser. A fact that another issue still uses keeps its copy there. A folded node's popover still tells everything it rests on. With every issue folded the Fang Yuan diagram is six nodes and fits a screen.
 - Lighting, fading and the labels switch are paint only; they do not change the geometry, and the view is never thrown back to the overview (issue #21).
 
 ---
@@ -280,7 +280,7 @@ Known shortcomings: the lines from each issue's conclusion to the end conclusion
 4. **Defeasibility.** Legal norms have exceptions and defences, and a conclusion may fall when it is rebutted (the "rebuttal" and "qualifier" of Toulmin's model). **For now:** `against` and rejected `holds: "no"` nodes express the commonest kind, nothing more.
 5. **Are six node kinds too many?** Candidates to merge: `element` into `judgement`, or `inference` into `judgement`. **For now:** six, because decision 1 needs fact, inference and judgement apart.
 6. **Does `holds` need "undecided"?** On some issues the court reaches no conclusion. **For now:** omitting it means "not stated".
-7. **First corpus.** I propose the Yu Huan case first (it has clear norm elements and fact-finding); Kuaibo and the elevator smoking case can follow. **For now:** one Yu Huan diagram.
+7. **First corpus.** I propose the Fang Yuan case first (it has clear norm elements and fact-finding); the marketplace and the corridor-charging case can follow. **For now:** one Fang Yuan diagram.
 
 ---
 

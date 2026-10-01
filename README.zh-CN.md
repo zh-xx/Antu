@@ -72,8 +72,8 @@ agent ──> 提取关键信息 ──> 一份 JSON ──> 引擎 ──> 图
 
 ```bash
 npm install
-npm run diagram -- examples/fact/elevator-smoking-case.zh-CN.json
-# → examples/fact/elevator-smoking-case.zh-CN.html
+npm run diagram -- examples/fact/neighbour-corridor-charging.zh-CN.json
+# → examples/fact/neighbour-corridor-charging.zh-CN.html
 ```
 
 ## 接入 agent
@@ -103,10 +103,10 @@ agent 可以读取规范、查看示例、校验、计算几何、生成成品�
 
 未接入 MCP、也不用技能包时，按以下顺序阅读。
 
-- **事实图（时间图）**：[spec/fact/schema-draft.md](spec/fact/schema-draft.md)（字段定义）、[spec/fact/timeline-rules.md](spec/fact/timeline-rules.md)（事件排布规则），并参考 [examples/fact/elevator-smoking-case.zh-CN.json](examples/fact/elevator-smoking-case.zh-CN.json)。
-- **证成图（说理树）**：[spec/agent/justification/guide.md](spec/agent/justification/guide.md)（一页机制说明）、[spec/justification/schema-draft.zh-CN.md](spec/justification/schema-draft.zh-CN.md)（字段定义、规则、排布和画法，草案），并参考 [examples/agent/justification/2-against-and-rejected.zh-CN.json](examples/agent/justification/2-against-and-rejected.zh-CN.json)，或一份真实案例，如 [examples/justification/elevator-smoking-liability.zh-CN.json](examples/justification/elevator-smoking-liability.zh-CN.json)。
+- **事实图（时间图）**：[spec/fact/schema-draft.md](spec/fact/schema-draft.md)（字段定义）、[spec/fact/timeline-rules.md](spec/fact/timeline-rules.md)（事件排布规则），并参考 [examples/fact/neighbour-corridor-charging.zh-CN.json](examples/fact/neighbour-corridor-charging.zh-CN.json)。
+- **证成图（说理树）**：[spec/agent/justification/guide.md](spec/agent/justification/guide.md)（一页机制说明）、[spec/justification/schema-draft.zh-CN.md](spec/justification/schema-draft.zh-CN.md)（字段定义、规则、排布和画法，草案），并参考 [examples/agent/justification/2-against-and-rejected.zh-CN.json](examples/agent/justification/2-against-and-rejected.zh-CN.json)，或一份（虚构的）完整案例，如 [examples/justification/neighbour-corridor-liability.zh-CN.json](examples/justification/neighbour-corridor-liability.zh-CN.json)。
 - **程序图（流程图）**：[spec/agent/procedure/guide.md](spec/agent/procedure/guide.md)（一页机制说明）、[spec/procedure/schema-draft.zh-CN.md](spec/procedure/schema-draft.zh-CN.md)（字段定义与排布规则），并参考 [examples/agent/procedure/7-rules.zh-CN.json](examples/agent/procedure/7-rules.zh-CN.json)，或一份真实合同，如 [examples/procedure/05-premises-lease.zh-CN.json](examples/procedure/05-premises-lease.zh-CN.json)。
-- **关系图**：[spec/agent/relationship/guide.md](spec/agent/relationship/guide.md)（一页机制说明）、[spec/relationship/schema-draft.zh-CN.md](spec/relationship/schema-draft.zh-CN.md)（字段定义与排布规则，暂定），并参考 [examples/agent/relationship/3-guarantee.zh-CN.json](examples/agent/relationship/3-guarantee.zh-CN.json)，或一份真实案例，如 [examples/relationship/yuhuan-parties.zh-CN.json](examples/relationship/yuhuan-parties.zh-CN.json)。
+- **关系图**：[spec/agent/relationship/guide.md](spec/agent/relationship/guide.md)（一页机制说明）、[spec/relationship/schema-draft.zh-CN.md](spec/relationship/schema-draft.zh-CN.md)（字段定义与排布规则，暂定），并参考 [examples/agent/relationship/3-guarantee.zh-CN.json](examples/agent/relationship/3-guarantee.zh-CN.json)，或一份（虚构的）完整案例，如 [examples/relationship/fang-yuan-parties.zh-CN.json](examples/relationship/fang-yuan-parties.zh-CN.json)。
 
 ## 设计文档
 
@@ -123,5 +123,5 @@ Copyright (C) 2026 Ji Cheng。
 - **附加许可（AGPL 第 7 条）。** 用案图生成的页面里，既有案图的代码，也有你提供的图的数据。图的数据，以及你用自己的材料画出的图的内容，不属于案图，不受这个许可证约束：你可以保密、公开或出售，条件由你定。许可证约束的是页面里案图的代码，页面里的声明必须保留。同样的文字（英文）放在每一份生成的页面里和命令行的开头。
 - 仓库里的一切（代码、示例、规范和指南），除下面点名的以外，都在同一许可证之下。
 - 页面和命令行里包含的其他项目的代码，保留各自的许可证。它们的声明在 [`skills/antu/THIRD-PARTY-NOTICES.md`](skills/antu/THIRD-PARTY-NOTICES.md)，也放在每一份生成的页面里和命令行的开头，连同案图的许可证和该版本源码的位置。
-- `examples/raw/` 里的裁判文书是公开的法院文书，留作示例的原始材料。它们不是案图自己的作品，不适用 AGPL。
+- `examples/` 里的案例和 `examples/raw/` 里的判决书都是虚构的：人物、公司、日期、金额和条款均为编造，不对应任何真实案件，适用同一许可证。
 - 0.5.0 及以前的版本发布时没有许可证文件。许可证从 0.5.1 起适用。

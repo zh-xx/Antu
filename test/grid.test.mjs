@@ -19,7 +19,7 @@ import '../src/renderers/index.js'
 import { validateSpec } from '../src/core/validate.js'
 import { notesOf } from '../tools/mcp/engine.mjs'
 
-const base = () => JSON.parse(readFileSync('examples/fact/elevator-smoking-case.zh-CN.json', 'utf8'))
+const base = () => JSON.parse(readFileSync('examples/fact/neighbour-corridor-charging.zh-CN.json', 'utf8'))
 const errorsOf = (spec) => buildGrid(spec).errors
 const some = (errs, re) => errs.some((e) => re.test(e))
 
@@ -104,7 +104,7 @@ test('validation is layout: a grid is still returned on error so the caller can 
 })
 
 test('a view that does not fit is not an error but is named (#25)', () => {
-  // The elevator case has a view whose events collide in one lane. By design such a view is left out of
+  // The corridor-charging case has a view whose events collide in one lane. By design such a view is left out of
   // the view dropdown rather than rejected, so validation passes. But "passed" used to be all an
   // author heard, and a view that could never be drawn went unseen.
   const spec = base()

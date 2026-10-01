@@ -1,25 +1,25 @@
 {
   "type": "relationship",
   "specVersion": 1,
-  "title": "The Kuaibo case · The company, its people and the regulators",
-  "asOf": "2013-12-31",
+  "title": "虚构网络商城案 · 单位、人员与监管机关",
+  "asOf": "2031-03-31",
   "groups": [
     {
       "id": "g-1",
-      "label": "Defendant company and defendants"
+      "label": "被告单位与被告人"
     },
     {
       "id": "g-2",
-      "label": "Regulators"
+      "label": "监管与查处机关"
     }
   ],
   "entities": [
     {
       "id": "e-1",
       "kind": "company",
-      "label": "Kuaibo",
-      "role": "Defendant company",
-      "detail": "Shenzhen Kuaibo Technology Co., founded 26 Dec 2007, registered capital CNY 10,000,000; licensed for online culture, never for online audiovisual programmes",
+      "label": "云集商城公司",
+      "role": "被告单位",
+      "detail": "示例云集商城有限公司，2028-12-26 成立，注册资本 1000 万元；持有增值电信业务经营许可，未取得食品网络销售许可",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -28,8 +28,8 @@
     {
       "id": "e-2",
       "kind": "person",
-      "label": "Wang Xin",
-      "role": "Legal representative",
+      "label": "陈远",
+      "role": "法定代表人",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -38,8 +38,8 @@
     {
       "id": "e-3",
       "kind": "person",
-      "label": "Wu Ming",
-      "role": "Head of the Kuaibo division",
+      "label": "周明",
+      "role": "事业部总经理",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -48,8 +48,8 @@
     {
       "id": "e-4",
       "kind": "person",
-      "label": "Zhang Kedong",
-      "role": "Shareholder, head of technology",
+      "label": "刘强",
+      "role": "股东、技术平台部总监",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -58,8 +58,8 @@
     {
       "id": "e-5",
       "kind": "person",
-      "label": "Niu Wenju",
-      "role": "Head of operations",
+      "label": "马丽",
+      "role": "运营部总监",
       "groupId": "g-1",
       "sourceIds": [
         "s-1"
@@ -68,9 +68,9 @@
     {
       "id": "e-6",
       "kind": "company",
-      "label": "Guangtong",
-      "role": "Partner",
-      "detail": "Beijing Wanglian Guangtong Technology Co.",
+      "label": "仓联公司",
+      "role": "合作方",
+      "detail": "示例仓联技术有限公司",
       "sourceIds": [
         "s-1",
         "s-4"
@@ -79,8 +79,8 @@
     {
       "id": "e-7",
       "kind": "government",
-      "label": "Shenzhen cyber police",
-      "detail": "Public Information Network Security Supervision Branch, Shenzhen Public Security Bureau",
+      "label": "市场监管局",
+      "detail": "示例市市场监督管理局",
       "groupId": "g-2",
       "sourceIds": [
         "s-2"
@@ -89,8 +89,8 @@
     {
       "id": "e-8",
       "kind": "government",
-      "label": "Nanshan broadcasting bureau",
-      "detail": "Radio and Television Bureau of Nanshan District, Shenzhen",
+      "label": "区市场监管局",
+      "detail": "示例区市场监督管理局",
       "groupId": "g-2",
       "sourceIds": [
         "s-3"
@@ -99,8 +99,8 @@
     {
       "id": "e-9",
       "kind": "government",
-      "label": "Haidian culture commission",
-      "detail": "Culture Commission of Haidian District, Beijing",
+      "label": "区监管部门",
+      "detail": "示例区综合执法部门",
       "groupId": "g-2",
       "sourceIds": [
         "s-5"
@@ -113,8 +113,8 @@
       "from": "e-2",
       "to": "e-1",
       "kind": "control",
-      "label": "Legal representative, executive director, manager",
-      "detail": "Wang Xin was also a shareholder and ran the company (the judgment does not give his share)",
+      "label": "法定代表人、执行董事、经理",
+      "detail": "陈远同时为云集商城公司股东，负责公司经营和管理工作（持股比例判决书未载明）",
       "sourceIds": [
         "s-1"
       ]
@@ -124,8 +124,8 @@
       "from": "e-4",
       "to": "e-1",
       "kind": "equity",
-      "label": "Shareholder",
-      "detail": "The judgment does not give the share",
+      "label": "股东",
+      "detail": "持股比例判决书未载明",
       "sourceIds": [
         "s-1"
       ]
@@ -135,7 +135,7 @@
       "from": "e-1",
       "to": "e-3",
       "kind": "employment",
-      "label": "Division head (2013)",
+      "label": "事业部总经理（2031）",
       "sourceIds": [
         "s-1"
       ]
@@ -145,7 +145,7 @@
       "from": "e-1",
       "to": "e-4",
       "kind": "employment",
-      "label": "Deputy head and head of technology (2012)",
+      "label": "副总经理兼技术平台部总监（2030）",
       "sourceIds": [
         "s-1"
       ]
@@ -155,7 +155,7 @@
       "from": "e-1",
       "to": "e-5",
       "kind": "employment",
-      "label": "Deputy head and head of operations (2012)",
+      "label": "副总经理兼运营部总监（2030）",
       "sourceIds": [
         "s-1"
       ]
@@ -165,8 +165,8 @@
       "from": "e-2",
       "to": "e-4",
       "kind": "other",
-      "label": "Directed the change to cache storage",
-      "detail": "Late 2013: at Wang Xin's instigation, Zhang Kedong's technical department changed the cache servers from whole files to fragments",
+      "label": "授意调整缓存存储",
+      "detail": "2031 年 3 月，在陈远授意下，刘强领导的技术部门将缓存服务器的完整页面存储改为碎片化存储",
       "sourceIds": [
         "s-1"
       ]
@@ -176,7 +176,7 @@
       "from": "e-1",
       "to": "e-6",
       "kind": "contract",
-      "label": "Strategic cooperation (4 cache servers)",
+      "label": "战略合作（4 台缓存服务器）",
       "sourceIds": [
         "s-4"
       ]
@@ -186,7 +186,7 @@
       "from": "e-7",
       "to": "e-1",
       "kind": "other",
-      "label": "Administrative warning (Aug 2012)",
+      "label": "行政警告（2030-03）",
       "sourceIds": [
         "s-2"
       ]
@@ -196,7 +196,7 @@
       "from": "e-8",
       "to": "e-1",
       "kind": "other",
-      "label": "Administrative penalty (11 Oct 2013)",
+      "label": "行政处罚（2031-01-11）",
       "sourceIds": [
         "s-3"
       ]
@@ -206,7 +206,7 @@
       "from": "e-9",
       "to": "e-6",
       "kind": "other",
-      "label": "Seized the 4 servers (18 Nov 2013)",
+      "label": "查获 4 台服务器（2031-02-18）",
       "sourceIds": [
         "s-5"
       ]
@@ -216,43 +216,43 @@
     {
       "id": "s-1",
       "type": "case",
-      "name": "First-instance judgment",
+      "name": "本案一审判决（虚构）",
       "loc": {
-        "caseNo": "（2015）海刑初字第512号",
-        "court": "Haidian District People's Court, Beijing"
+        "caseNo": "（2031）示刑初3号",
+        "court": "示例省示例市示例区人民法院"
       }
     },
     {
       "id": "s-2",
       "type": "document",
-      "name": "Shenzhen cyber police: administrative warning",
+      "name": "市场监管行政警告处罚（虚构）",
       "loc": {
-        "file": "Penalty record cited in the judgment"
+        "file": "判决书载明的行政处罚记录"
       }
     },
     {
       "id": "s-3",
       "type": "document",
-      "name": "Nanshan broadcasting bureau: penalty decision",
+      "name": "区市场监管局行政处罚决定书（虚构）",
       "loc": {
-        "file": "Penalty record cited in the judgment"
+        "file": "判决书载明的行政处罚记录"
       }
     },
     {
       "id": "s-4",
       "type": "contract",
-      "name": "Kuaibo–Guangtong cooperation agreement",
+      "name": "云集商城公司与仓联公司合作协议（虚构）",
       "loc": {
-        "file": "Cooperation agreement",
+        "file": "合作协议",
         "clause": 1
       }
     },
     {
       "id": "s-5",
       "type": "evidence",
-      "name": "Expert opinion on the 4 servers",
+      "name": "涉案 4 台服务器鉴定意见（虚构）",
       "loc": {
-        "file": "Expert opinion"
+        "file": "鉴定意见"
       }
     }
   ]
