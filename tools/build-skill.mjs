@@ -19,12 +19,13 @@
 // ============================================================
 
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { build as viteBuild } from 'vite'
 
 import { REPO, SPEC_MARKER, buildViewerHtml, engineVersion, ensureEngine, readEngine } from './lib/make-html.mjs'
 import { describeSchema, listKnowledgeTypes, readAgentGuide } from './mcp/engine.mjs'
+import { licenseNotice, thirdPartyNotices } from './lib/notices.mjs'
 
 export const SKILL_DIR = join(REPO, 'skills/antu')
 const VIEWER = 'assets/viewer.html'
@@ -55,6 +56,10 @@ export function skillFiles() {
     }
   }
   files.set('VERSION', `${version}\n`)
+  // the licence of antu, and the notices of the code of others that is inside the viewer and the command line:
+  // they travel with the skill (so with the zip)
+  files.set('LICENSE', readFileSync(join(REPO, 'LICENSE'), 'utf8'))
+  files.set('THIRD-PARTY-NOTICES.md', thirdPartyNotices())
   return files
 }
 
@@ -65,10 +70,19 @@ function viewerHtml() {
   return buildViewerHtml({ js, css })
 }
 
-/** The command line as one file: every dependency inside, so it runs with nothing installed beside it */
+/**
+ * The command line as one file: every dependency inside, so it runs with nothing installed beside it.
+ * The licence notice is put in front of the code here and not through the bundler's banner option: the minifier
+ * drops comments, banner or not, and a notice that is built in but not in the file is no notice.
+ */
 async function buildCli() {
   await viteBuild({ configFile: join(REPO, 'vite.cli.config.js') })
-  copyFileSync(join(REPO, 'dist-cli/antu.mjs'), join(SKILL_DIR, CLI))
+  const [shebang, ...code] = readFileSync(join(REPO, 'dist-cli/antu.mjs'), 'utf8').split('\n')
+  const notice = licenseNotice(engineVersion())
+    .split('\n')
+    .map((line) => `// ${line}`.trimEnd())
+    .join('\n')
+  writeFileSync(join(SKILL_DIR, CLI), `${shebang}\n${notice}\n${code.join('\n')}`)
 }
 
 async function write() {
@@ -111,6 +125,7 @@ export function checkSkill() {
     const html = readFileSync(viewer, 'utf8')
     if (html.split(SPEC_MARKER).length !== 2) problems.push(`${VIEWER} does not hold exactly one ${SPEC_MARKER}`)
     if (!html.includes(`<meta name="generator" content="antu ${version}">`)) problems.push(`${VIEWER} is not a build of antu ${version}`)
+    if (!html.includes('<script type="text/plain" id="antu-license">')) problems.push(`${VIEWER} carries no licence notice`)
   }
 
   // The command line is 1.5 MB of bundled code: like the viewer it is not compared byte for byte. It is run, and
@@ -121,6 +136,7 @@ export function checkSkill() {
     try {
       const said = execFileSync(process.execPath, [cli, '--version'], { encoding: 'utf8' }).trim()
       if (said !== `antu ${version}`) problems.push(`${CLI} says "${said}", not "antu ${version}"`)
+      if (!readFileSync(cli, 'utf8').slice(0, 2000).includes('GNU Affero General Public')) problems.push(`${CLI} carries no licence notice`)
     } catch (e) {
       problems.push(`${CLI} does not run: ${String(e.message).split('\n')[0]}`)
     }

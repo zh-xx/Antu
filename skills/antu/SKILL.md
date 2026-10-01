@@ -7,8 +7,9 @@ description: >-
   主体关系图、股权结构、担保关系), and a justification tree (how a court reasoned from facts and norms to a
   conclusion; 证成图、说理树、裁判说理). Use when the user asks to draw, chart, map or visualise a case, a
   contract flow, the parties, or a judgment's reasoning.
+license: AGPL-3.0-or-later
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
 ---
 
 # antu: legal diagrams from JSON
@@ -16,7 +17,7 @@ metadata:
 You write the JSON; the engine draws it. The result is **one HTML file** that opens in any browser with no
 install and no network, prints, and can be forwarded. Nothing is uploaded anywhere.
 
-This skill is antu **0.5.0**. The pages it makes say so: `<meta name="generator" content="antu 0.5.0">`.
+This skill is antu **0.6.0**. The pages it makes say so: `<meta name="generator" content="antu 0.6.0">`.
 
 **`<skill-dir>`** below is the folder that holds this `SKILL.md` (it has `scripts/`, `references/`, `examples/` and
 `assets/` beside it). Every command is written with it, so it runs from **any** directory: put the real path in.
@@ -174,6 +175,17 @@ What this means for what you write:
   them on the cards.
 - A `detail` (the full text that did not fit) and the `sources` are in the overlay that opens when the reader
   points at or clicks an item, in every kind.
+
+## Licence
+
+antu is free software under the GNU AGPL, version 3 or any later version: `LICENSE` is in this folder, and
+`THIRD-PARTY-NOTICES.md` holds the notices of the code of others that is inside the viewer and the command line.
+Every page this skill makes carries the licence and the place of the source (the block `antu-license` in the page).
+If the user asks: it may be used, changed and shared, including commercially; a changed version that is shared or
+offered over a network must be released under the same licence with the notices kept. The data in a page
+(the user's diagram and the material it comes from) is not covered by the licence: it stays the user's (an additional
+permission, stated in the page). Do not describe the licence
+beyond that: say that the text in `LICENSE` is what counts.
 
 ## Updating this skill
 

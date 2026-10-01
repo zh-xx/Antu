@@ -1,0 +1,11 @@
+name: antu CodeQL configuration
+
+# The viewer page and the command line in the skill folder are build outputs: the code of antu (from src/ and
+# tools/, scanned in its own place) bundled together with the code of other projects (React, html-to-image,
+# elkjs, ...). CodeQL reads the bundle too, and reports what it finds in the other projects' code as if it were
+# ours (the first case: html-to-image sets `innerHTML` from a textarea's value when it clones a page; antu has no
+# textarea in its pages). Scanning the bundle adds noise and no coverage. Vulnerabilities in the packages
+# themselves are what Dependabot watches.
+paths-ignore:
+  - skills/antu/assets/viewer.html
+  - skills/antu/scripts/antu.mjs
