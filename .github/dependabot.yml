@@ -1,0 +1,29 @@
+# Dependabot: once a week it looks for newer versions of what the project depends on and opens pull requests for them.
+# Nothing is merged by itself; a pull request from Dependabot goes through the same checks and the same "merge" as any
+# other. Security alerts and security updates are a repository setting (Settings -> Code security), not this file.
+version: 2
+updates:
+  # The packages in package.json / package-lock.json. Minor and patch updates of everything come as one pull request,
+  # so a week does not bring a dozen; a major update is its own pull request, since it may break something.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: deps
+
+  # The actions the workflows use (actions/checkout and the like). GitHub is already moving the old ones off Node 20,
+  # so this keeps the workflows from falling behind.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: ci
