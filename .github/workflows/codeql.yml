@@ -11,8 +11,10 @@ on:
   schedule:
     - cron: '23 4 * * 1' # every Monday, 04:23 UTC: new rules arrive without any new commit
 
+# Same rule as verify.yml: a new push to a pull request cancels the older run; a push to main has a group of its own
+# (the commit), so no run on main is cancelled or replaced.
 concurrency:
-  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  group: codeql-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
