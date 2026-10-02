@@ -3,26 +3,26 @@
   "specVersion": 1,
   "title": "来源：每个事实都标明出处",
   "actors": [
-    { "id": "a-1", "name": "杨某" },
-    { "id": "a-2", "name": "段某" }
+    { "id": "a-1", "name": "孙某" },
+    { "id": "a-2", "name": "钱某" }
   ],
   "sources": [
-    { "id": "s-1", "type": "evidence", "name": "电梯间监控视频",
-      "loc": { "file": "监控视频.mov", "timestamp": "09:24:03" },
-      "quote": "段小立在电梯内吸烟……双方开始有语言交流……双方走出电梯" },
+    { "id": "s-1", "type": "evidence", "name": "楼道监控视频",
+      "loc": { "file": "监控视频.mov", "timestamp": "20:14:03" },
+      "quote": "钱敏在楼道内充电……双方开始有语言交流……双方走出楼道" },
     { "id": "s-2", "type": "judgment", "name": "一审判决书",
-      "loc": { "file": "2017豫01民终14848号.pdf", "page": 5 } }
+      "loc": { "file": "示民终1号.pdf", "page": 5 } }
   ],
   "slots": [
     {
       "events": [
-        { "id": "ev-1", "date": "2017-05-02T09:24:03", "label": "段某在电梯内吸烟",
+        { "id": "ev-1", "date": "2030-06-02T20:14:03", "label": "钱某在楼道内充电",
           "actorIds": ["a-2"], "sourceIds": ["s-1"] }
       ]
     },
     {
       "events": [
-        { "id": "ev-2", "date": "2017-05-02T09:24:16", "label": "杨某劝阻段某",
+        { "id": "ev-2", "date": "2030-06-02T20:14:16", "label": "孙某劝阻钱某",
           "actorIds": ["a-1", "a-2"], "sourceIds": ["s-1", "s-2"] }
       ]
     }

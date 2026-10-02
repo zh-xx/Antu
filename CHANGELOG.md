@@ -3,6 +3,41 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.6.0
+
+The skill can look at what it drew without the MCP server (#82), and the examples are fictional (#74).
+
+### Added
+- **`preview` in the skill's command line**: `node scripts/antu.mjs preview spec.json [-o shot.png]
+  [--orientation vertical|horizontal] [--width 1600] [--height 900]`. It validates (and refuses a diagram with
+  problems, like `render`), takes a screenshot of the page in a headless Chromium-based browser (Chrome, Edge,
+  Chromium; `ANTU_CHROME` points at one), and says what to look for. The agent reads the PNG with its own tool. On Node
+  22 and newer it waits until the diagram has drawn; below 22 it uses the browser's own screenshot (a strip at the
+  foot may stay blank, and it says so). Exit code 3 when no picture can be taken.
+- **`SKILL.md` section 4b, "Look at it"**: how to look, what to look for (crowded cards, text too small, a line through
+  a card, an empty diagram, cut headings), and when the agent must say it did not see the page (no browser, no way to
+  read images, no Node). It replaces "there is no equivalent, you cannot look at the page".
+- Windows: the browser is found where Windows keeps Edge (shipped with the system) and Chrome.
+
+### Changed
+- **Every example is fictional** (#74): the cases drawn from real judgments are replaced by invented ones of the same
+  shape (names, companies, courts, case numbers and dates made up and marked so; statutes written as "model
+  provisions"). In the skill: the agent examples `fact/5-duration` and `fact/6-sources`. `examples/raw/` holds invented
+  judgment texts instead of real ones.
+- **A quote is verbatim** (#68): the `quote` field note and the fact guide say a quote is copied, not shortened or
+  reworded, and a condensed version goes in `detail`. A test holds every quote of the fact examples to its text.
+- `antu_preview` and `preview` say what to look for in the same words.
+- CI tests the skill as each pull request would build it, `preview` with a real browser on Linux, macOS and Windows
+  and Node 18 to 24; before, the command line of main was first tested at release.
+- Nothing in the format: no field, rule or tool parameter changed.
+
+### Notes
+- This 0.6.0 is a new release. A different 0.6.0 (what became 0.5.1) was published on 2026-10-01 and withdrawn the same
+  day; its tag was deleted.
+
+### Breaking
+- None.
+
 ## 0.5.1
 
 Antu has a licence: the GNU Affero General Public License, version 3 or any later version (#70).
@@ -28,7 +63,8 @@ Antu has a licence: the GNU Affero General Public License, version 3 or any late
 ### Notes
 - Versions up to 0.5.0 were published without a licence file. The licence applies from 0.5.1.
 - This content was first published as 0.6.0 and withdrawn a few hours later, before anyone had downloaded it: it adds nothing
-  to the contract (spec/versioning.md), so it is a patch release. There is no 0.6.0.
+  to the contract (spec/versioning.md), so it is a patch release. That 0.6.0 stays withdrawn; the number was later
+  used for the release after this one (see 0.6.0).
 
 ### Breaking
 - None.

@@ -94,7 +94,7 @@ the engine was updated. (A new *hint* is not a break: a hint never stops a diagr
 The skill is what an agent is given to draw with Antu when it has no MCP server: a `SKILL.md` (how to choose a
 diagram, how to write the JSON honestly, how to make the page), the guide and field table of each kind,
 examples, a viewer page (the engine with a place for the data), a Python script that fills it, and a command
-line (`scripts/antu.mjs`: validate, layout, render; one bundled file, Node 18+). It is the
+line (`scripts/antu.mjs`: validate, layout, render, preview; one bundled file, Node 18+). It is the
 folder the skill installers of Claude Code, Codex and others read, and it is also attached to each release as
 a zip for clients that import a local package (WorkBuddy).
 

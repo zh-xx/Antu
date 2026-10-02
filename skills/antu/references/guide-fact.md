@@ -100,6 +100,9 @@ diagram looks good. Always run `antu_preview` and look before delivering.
   date that was estimated or worked out, not for one that is missing. The place in the array still
   puts the event in order ("and afterwards they never replied" goes after the event it follows).
   `dateEnd` needs a `date`.
+- **`quote` is verbatim.** It is shown on the card as the material's own words, so it must be an exact passage of
+  the source: copy it, do not shorten or reword it. Join several passages with `……`. A condensed version of what
+  the source says belongs in `detail`, not in `quote`. If you do not have the text, leave `quote` out.
 - **Keep the summary short.** `summary` fits one line of the card (about 22 full-width
   characters); a longer one is **rejected**, not truncated, because it would overflow
   the card. Put the long text in `detail`.

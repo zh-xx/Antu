@@ -34,7 +34,7 @@ Fields of a justification spec. "yes" means required.
 [sources]
   id         yes string     nodes reference it via sourceIds
   type       yes string     statute / case / evidence and four more, the same seven as fact
-  name       yes string     material name, e.g. "Guiding Case No. 93 · reasons"
+  name       yes string     material name, e.g. "Fictional Case A · reasons"
   loc        no object     location, e.g. { caseNo, court } or { lawName, article, version }
 
 Cross-field rules (dangling references, a cycle, a fact or norm with something supporting it, no end

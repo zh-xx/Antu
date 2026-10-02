@@ -2,25 +2,25 @@
   "type": "fact",
   "specVersion": 1,
   "title": "时间：起止、近似、以及为什么这么记",
-  "actors": [{ "id": "a-1", "name": "杨某" }],
+  "actors": [{ "id": "a-1", "name": "孙某" }],
   "slots": [
     {
       "events": [
-        { "id": "ev-1", "date": "2017-05-02T09:24:16", "dateEnd": "2017-05-02T09:26:24",
-          "label": "双方在电梯内持续言语交流",
-          "summary": "接触不足五分钟，无肢体冲突", "actorIds": ["a-1"] }
+        { "id": "ev-1", "date": "2030-06-02T20:14:16", "dateEnd": "2030-06-02T20:16:24",
+          "label": "双方在楼道内持续言语交流",
+          "summary": "接触不足五分钟，无肢体接触", "actorIds": ["a-1"] }
       ]
     },
     {
       "events": [
-        { "id": "ev-2", "date": "2017-05-02T09:33", "approx": true,
+        { "id": "ev-2", "date": "2030-06-02T20:23", "approx": true,
           "dateNote": "监控未拍到，按双方陈述推算",
-          "label": "物业办公室门口争执", "actorIds": ["a-1"] }
+          "label": "物业值班室门口争执", "actorIds": ["a-1"] }
       ]
     },
     {
       "events": [
-        { "id": "ev-3", "date": "2017-05-02", "label": "段某死亡",
+        { "id": "ev-3", "date": "2030-06-02", "label": "钱某突发心脏不适",
           "detail": "判决书未载明具体时刻，只到日级", "actorIds": ["a-1"] }
       ]
     }

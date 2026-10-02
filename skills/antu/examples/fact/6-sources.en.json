@@ -3,26 +3,26 @@
   "specVersion": 1,
   "title": "Sources: every fact is traced to its source",
   "actors": [
-    { "id": "a-1", "name": "Yang" },
-    { "id": "a-2", "name": "Duan" }
+    { "id": "a-1", "name": "Sun" },
+    { "id": "a-2", "name": "Qian" }
   ],
   "sources": [
-    { "id": "s-1", "type": "evidence", "name": "Elevator surveillance video",
-      "loc": { "file": "监控视频.mov", "timestamp": "09:24:03" },
-      "quote": "Duan Xiaoli smokes inside the elevator…… the two begin to talk…… the two walk out of the elevator" },
+    { "id": "s-1", "type": "evidence", "name": "Corridor surveillance video",
+      "loc": { "file": "监控视频.mov", "timestamp": "20:14:03" },
+      "quote": "Qian Min charges a battery in the corridor…… the two begin to talk…… the two walk out of the corridor" },
     { "id": "s-2", "type": "judgment", "name": "First-instance judgment",
-      "loc": { "file": "2017豫01民终14848号.pdf", "page": 5 } }
+      "loc": { "file": "shi-min-zhong-1.pdf", "page": 5 } }
   ],
   "slots": [
     {
       "events": [
-        { "id": "ev-1", "date": "2017-05-02T09:24:03", "label": "Duan smokes inside the elevator",
+        { "id": "ev-1", "date": "2030-06-02T20:14:03", "label": "Qian charges a battery in the corridor",
           "actorIds": ["a-2"], "sourceIds": ["s-1"] }
       ]
     },
     {
       "events": [
-        { "id": "ev-2", "date": "2017-05-02T09:24:16", "label": "Yang dissuades Duan from smoking",
+        { "id": "ev-2", "date": "2030-06-02T20:14:16", "label": "Sun objects to Qian's charging",
           "actorIds": ["a-1", "a-2"], "sourceIds": ["s-1", "s-2"] }
       ]
     }
