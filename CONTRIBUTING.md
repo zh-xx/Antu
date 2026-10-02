@@ -5,8 +5,10 @@
 Known problems and wanted changes are managed in [GitHub issues](https://github.com/zh-xx/Antu/issues).
 An issue says four things: **what happens / what it costs / where / what to do about it**; reproduction steps and
 measured numbers help.
-After a pull request is merged, close the issue by hand and leave a comment with the pull request number. Do not rely
-on `Closes #N` in the description: in this repository it has not closed the issue on merge (#71).
+Write `Closes #N` in the pull request description (one line per issue): when the pull request is merged the issue is
+closed with it (#77 closed #69 and #71 this way). Earlier pull requests did not always close their issues and the
+reason was not found, so after a merge look at the issue, and if it is still open close it by hand with a comment
+naming the pull request.
 
 ## Before you commit
 
