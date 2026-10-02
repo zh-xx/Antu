@@ -26,6 +26,22 @@ become the specification); every type has real cases and agent examples; the ope
 format (the evidence layer of the justification diagram, #38; the way a norm stands in a diagram) are
 decided. This is the maintainer's call, not a date.
 
+## The status of a design document
+
+The design documents under `spec/<type>/` open with a status line. Its words mean:
+
+| Word | Meaning |
+| --- | --- |
+| **draft** | designed, not implemented yet, or a question that would change the format is still open |
+| **implemented** | the code follows it and it has been released; questions still open are listed in the document and do not change the format that exists |
+| **confirmed** | implemented, and the maintainer has said the format is settled. Only the maintainer writes this word (1.0.0 needs it, see above) |
+
+The status line also says **"status line checked against X.Y.Z"**: the release number at which someone last read
+that line against the code (what is implemented, what is open). It does **not** say the whole document was checked;
+a full check of prose against code is not realistic. A test (`test/spec-status.test.mjs`) fails when a registered type
+has no design document, no such line in either language, a version newer than `package.json`, or is missing from the
+leak check of `tools/verify/run.mjs`.
+
 ## What is the contract
 
 | Part of the contract (breaking it needs a new version) | Not part of it (may change in any release) |
@@ -63,6 +79,8 @@ the engine was updated. (A new *hint* is not a break: a hint never stops a diagr
    the changelog on how to migrate).
 3. A small pull request of its own for the release: `version` in `package.json` (and `package-lock.json`),
    the new section of `CHANGELOG.md`, and the agent skill rebuilt with `npm run build:skill` (see below).
+   The same pull request reads the status line of each design document against the code and writes the new
+   release number in "checked against" (see "The status of a design document").
 4. After it merges, run the **Release** workflow (Actions tab → Run workflow; the default is the latest commit of
    `main`). It reads `version` from that commit's `package.json`, refuses if the commit is not on `main`, if the tag
    already exists, or if `CHANGELOG.md` has no section for the version, and then creates the tag `vX.Y.Z` and a

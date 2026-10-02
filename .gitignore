@@ -1,4 +1,4 @@
-# 依赖与构建产物
+# Dependencies and build output
 node_modules/
 dist/
 dist-engine/
@@ -8,22 +8,22 @@ dist-html/
 build/
 .vite/
 
-# 生成出来的图：与源 JSON 同名同目录，属产物，不进仓库
-# （示例数据本身要提交，由 examples/**/*.json 管）
+# Generated diagrams: same name and folder as the source JSON, they are output and stay out of the repository
+# (the example data itself is committed, as examples/**/*.json)
 examples/**/*.html
 
-# 日志与缓存
+# Logs and caches
 *.log
 .cache/
 .tmp/
 
-# 编辑器/系统文件
+# Editor and system files
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# 环境与密钥（绝不提交）
+# Environment and secrets (never commit)
 .env
 .env.local
 *.pem

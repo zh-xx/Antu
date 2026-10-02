@@ -8,14 +8,18 @@ spec/agent/<type>/guide.md     mechanism notes for that type (short, sufficient,
 spec/*.md                      designer documents (why it was decided this way; long)
 ```
 
-There are two types so far, fact and procedure:
+There are four types so far: fact, procedure, relationship and justification:
 
 ```
 spec/agent/
 ├── README.md
 ├── fact/
 │   └── guide.md
-└── procedure/
+├── procedure/
+│   └── guide.md
+├── relationship/
+│   └── guide.md
+└── justification/
     └── guide.md
 ```
 

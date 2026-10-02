@@ -383,7 +383,8 @@ function checkData() {
   // procedure was translated.
   const humanDocs = ['spec/fact/schema-draft', 'spec/fact/timeline-rules', 'spec/fact/rendering',
     'spec/source-schema-draft', 'spec/v0-architecture', 'spec/mcp-server',
-    'spec/react-flow-features', 'spec/procedure/schema-draft']
+    'spec/react-flow-features', 'spec/procedure/schema-draft', 'spec/relationship/schema-draft',
+    'spec/justification/schema-draft']
   const leaked2 = humanDocs.filter((n) => serverSrc.includes(n))
   truthy('no human-facing design document leaks into MCP', leaked2.length === 0)
   if (leaked2.length) console.log('     leaked in: ' + leaked2.join(', '))

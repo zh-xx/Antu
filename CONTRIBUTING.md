@@ -1,60 +1,82 @@
-# 贡献者须知
+# Notes for contributors
 
-## 问题与需求
+## Issues
 
-已知问题和需求都在 [GitHub issues](https://github.com/zh-xx/Antu/issues) 里管理。
-一条 issue 写清四样：**现象 / 代价 / 在哪 / 建议做法**，能附上复现步骤和实测数字更好。
-修完在 PR 说明里写 `Closes #N`，合并后自动关闭。
+Known problems and wanted changes are managed in [GitHub issues](https://github.com/zh-xx/Antu/issues).
+An issue says four things: **what happens / what it costs / where / what to do about it**; reproduction steps and
+measured numbers help.
+After a pull request is merged, close the issue by hand and leave a comment with the pull request number. Do not rely
+on `Closes #N` in the description: in this repository it has not closed the issue on merge (#71).
 
-## 提交之前
+## Before you commit
 
 ```bash
-npm run lint         # 静态检查
-npm test             # 单元测试
-npm run verify:fast  # 不需要浏览器的检查
-npm run verify       # 含浏览器渲染和 MCP 全流程
+npm run lint         # static checks
+npm test             # unit tests
+npm run verify:fast  # checks that need no browser
+npm run verify       # with browser rendering and the whole MCP run
 ```
 
-`verify` 需要一个 Chromium 内核的浏览器，找不到时用环境变量 `ANTU_CHROME` 指过去
-（细节见 `spec/mcp-server.md`「浏览器从哪找」）。
+`verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
+(details in `spec/mcp-server.md`, "where the browser comes from").
 
-先开分支，做完开 PR 让 CI 跑，不要直接提交 `main`。
+Make a branch, open a pull request and let CI run; do not commit to `main` directly.
 
-## 做事规矩
+## House rules
 
-这几条都是这个项目踩过两三次的坑。
+Each of these has cost the project two or three times.
 
-1. **加样式前先查类名有没有人用。** `.antu-card`、`.antu-source` 都撞过车，清理时把另一边的样式一起删了。
-   加 CSS 前先 `grep` 类名；清理时按"这个类还有谁用"判断，不要按名字整族删。
-2. **死代码检查要做两个方向。** 只查"样式定义了但组件没用"，会漏掉"组件在用但样式没定义"。
-3. **改完要看图，内容对了不等于样子对了。** 适应视图按钮失效、样式被删导致浮层挤到角落、箭头朝向不对，
-   这几次校验和 DOM 数量断言全是过的，只有截图看得出来。验证器要**断言位置**（谁在哪个角、谁居中）。
-4. **靠 `import` 触发的登记，要留一条能失败的断言。** 知识注册是副作用，忘了 `import '…/renderers/index.js'`，
-   `validateSpec` 查不到就返回"通过"，坏数据照样放行。
-5. **改代码别用会静默失败的字符串替换。** 没匹配上时不报错、直接跳过，于是"以为改了、其实没改"。
-   用会报错的编辑方式，或者替换后断言匹配数量。
-6. **生成工具不许"缺了才构建"。** 引擎产物按源码修改时间判断是否过期，`--rebuild` 强制重建；
-   否则改完源码生成出来的还是旧引擎，不报错、看不出来。
-7. **同一件事不要手抄两份。** 给 agent 的字段表从代码里的字段定义生成，并有一条断言守着"标必填的字段抽掉后校验器必须报错"；
-   规则一旦写两处，迟早各说各话。
-8. **新加的断言，反着改一遍验证它真的会失败。** 一个永远通过的检查器比没有更糟。
+1. **Before adding a style, check whether anyone uses the class name.** `.antu-card` and `.antu-source` have both
+   collided, and a clean-up deleted the other side's styles with them. `grep` the class name before adding CSS; when
+   cleaning up, ask "who else uses this class", and do not delete a whole family by name.
+2. **Dead-code checks go both ways.** Checking only "a style is defined but no component uses it" misses "a component
+   uses a class that has no style".
+3. **Look at the picture after a change: right content is not the same as right look.** The fit-view button stopped
+   working, a deleted style pushed an overlay into a corner, an arrow pointed the wrong way, and every validation
+   and DOM-count assertion passed; only a screenshot showed it. The verifier must **assert positions** (what is in
+   which corner, what is centred).
+4. **A registration that happens through `import` needs an assertion that can fail.** Registering knowledge is a side
+   effect; forget `import '…/renderers/index.js'` and `validateSpec` finds nothing and returns "passed", so bad data
+   gets through.
+5. **Do not edit code with string replacements that fail silently.** When nothing matches they skip without an error,
+   so you think you changed it and did not. Use an editing method that errors, or assert the number of matches after
+   the replacement.
+6. **A build tool must not "build only if missing".** The engine output is judged stale by the modification time of
+   the sources, and `--rebuild` forces a rebuild; otherwise after a source change the tool produces the old engine
+   without an error and nobody sees it.
+7. **Do not copy the same thing by hand in two places.** The field table for agents is generated from the field
+   definitions in the code, and an assertion guards that "removing a field marked required must make the validator
+   report an error"; written in two places, rules sooner or later disagree.
+8. **Flip a new assertion to check that it really fails.** A checker that always passes is worse than none.
 
-## 版本与发布
+## Versions and releases
 
-规则在 [spec/versioning.md](spec/versioning.md)，改动记录在 [CHANGELOG.md](CHANGELOG.md)。要点：
+The rules are in [spec/versioning.md](spec/versioning.md), the record of changes in [CHANGELOG.md](CHANGELOG.md). In short:
 
-- 发布版本号只在 `package.json` 写一处（MCP 服务器从那里读），遵循语义化版本；现在是 0.x 阶段。
-- 每个图种的 JSON 格式有自己的 `specVersion`（整数，在该图种的 `schema.js`）。**只有破坏性改动才加一**：
-  改名、删字段、改含义、把规则变严。加一个可选字段不算，规则变松也不算。
-- PR 说明里写清这一次动没动“契约”（字段、报错的规则、MCP 工具的参数）。破坏契约的，同时改 `specVersion` 和 CHANGELOG 的 *Breaking*。
-- 发版本是一个单独的小 PR（`package.json`、`package-lock.json`、CHANGELOG 新的一节，以及用 `npm run build:skill` 重新生成的 `skills/antu/`），合并后在 Actions 页运行 Release 工作流（`.github/workflows/release.yml`），它按 `package.json` 的版本号建 tag `vX.Y.Z` 和 release，说明取自 CHANGELOG 同版本号的一节；不要手工打 tag。
+- The release number is written in one place, `package.json` (the MCP server reads it from there), and follows
+  semantic versioning; the project is in the 0.x stage.
+- The JSON format of each diagram type has its own `specVersion` (a whole number, in that type's `schema.js`).
+  **It goes up only for a breaking change**: a rename, a removed field, a changed meaning, a stricter rule. An
+  optional field added does not count, and neither does a rule made looser.
+- A pull request says whether it touches the "contract" (fields, the rules that report errors, the parameters of the
+  MCP tools). One that breaks the contract also changes `specVersion` and the *Breaking* part of the CHANGELOG.
+- A release is a small pull request of its own (`package.json`, `package-lock.json`, a new CHANGELOG section, and
+  `skills/antu/` rebuilt with `npm run build:skill`). It says which number it takes and why, and the maintainer
+  confirms the number. After it merges, run the Release workflow on the Actions page
+  (`.github/workflows/release.yml`); it creates the tag `vX.Y.Z` and the release from the version in `package.json`,
+  with the notes taken from the CHANGELOG section of that version. Do not tag by hand.
 
-## 目录
+## Directories
 
-- `spec/`：给人看的设计文档（英文为主，另有 `.zh-CN.md`）；`spec/agent/`：给 agent 看的说明，只有英文。
-- `skills/antu/`：给 agent 的技能包，**生成的，不要手改**（`npm run build:skill`，手写的只有 `tools/skill/` 下两个文件）；它是上一次发布的状态，只在发布 PR 里重新生成。
-- `examples/`：`agent/<大类>/` 是给 agent 的最小示例，`<大类>/` 是真实案例，详见 `examples/README.md`。
-- `src/renderers/<大类>/schema.js`：这个大类对外的知识（校验、字段表、几何报告），MCP 只按 `type` 分发。
+- `spec/`: design documents for people (mostly English, with `.zh-CN.md` counterparts); `spec/agent/`: notes for
+  agents, English only.
+- `skills/antu/`: the skill for agents, **generated, do not edit by hand** (`npm run build:skill`; the only hand-written
+  parts are the two files under `tools/skill/`); it is the state of the last release and is rebuilt only in a release
+  pull request.
+- `examples/`: `agent/<type>/` holds the smallest examples for agents, `<type>/` the full cases (all fictional); see
+  `examples/README.md`.
+- `src/renderers/<type>/schema.js`: the knowledge this type exposes (validation, field table, geometry report); the MCP
+  server dispatches by `type` only.
 
 ## Licence of contributions
 

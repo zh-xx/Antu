@@ -1,6 +1,6 @@
 # fact · Schema draft v0
 
-> Status: **draft v0.2; the field set has been trimmed per the sponsor's decisions**. Field names and constraints may still change.
+> Status: **implemented** (status line checked against 0.5.1). The field set has been trimmed per the sponsor's decisions. Field names and constraints may still change in a 0.x release, with a changelog entry (`spec/versioning.md`).
 
 > **This document is for designers.** An agent writing JSON uses a different one:
 > fields come from the MCP tool `antu_schema`, mechanism from `spec/agent/fact/guide.md`.
