@@ -21,9 +21,9 @@ Fields of a fact spec. "yes" means required.
 [sources]
   id           yes string          events reference it via sourceIds
   type         yes string          contract / evidence / judgment / transcript, etc.
-  name         yes string          material name, e.g. "elevator lobby surveillance video"
+  name         yes string          material name, e.g. "corridor surveillance video"
   loc          no  object          location, e.g. { file, page } or { file, timestamp }
-  quote        no  string          verbatim excerpt, shown when the card is opened
+  quote        no  string          verbatim excerpt (several passages joined with ……), shown when the card is opened; a shortened or reworded version goes in detail
 
 [slots]
   events       yes array           events at this time point; must not be empty

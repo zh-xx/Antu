@@ -93,7 +93,7 @@ agent 可以读取规范、查看示例、校验、计算几何、生成成品�
 
 ### 技能包（不装 MCP）
 
-没有 MCP 时，给 agent 一个**技能包** [`skills/antu/`](skills/antu/)：`SKILL.md`（怎么选图、怎么如实地写 JSON、怎么出页面）、四类图的说明和字段表、示例，以及一个查看页模板和把数据填进去的 Python 脚本。不需要联网；有 Node 18 以上时多一个单文件命令行 `scripts/antu.mjs`（`validate` 校验、`layout` 排版报告、`render` 出页面），让 agent 交稿前先自查，没有 Node 就用 Python 脚本。
+没有 MCP 时，给 agent 一个**技能包** [`skills/antu/`](skills/antu/)：`SKILL.md`（怎么选图、怎么如实地写 JSON、怎么出页面）、四类图的说明和字段表、示例，以及一个查看页模板和把数据填进去的 Python 脚本。不需要联网；有 Node 18 以上时多一个单文件命令行 `scripts/antu.mjs`（`validate` 校验、`layout` 排版报告、`render` 出页面、`preview` 截图看图），让 agent 交稿前先自查，电脑上有 Chrome、Edge 或 Chromium 时还能看一眼成图；没有 Node 就用 Python 脚本。
 
 - **Claude Code**：把 `skills/antu/` 整个目录拷到 `~/.claude/skills/antu/`（或项目里的 `.claude/skills/antu/`）。
 - **Codex**：拷到 `~/.codex/skills/antu/`（或项目里的 `.codex/skills/antu/`），重启 Codex。

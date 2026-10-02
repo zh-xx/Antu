@@ -95,6 +95,6 @@ antu_render     the self-contained HTML
 
 - **Referenced ids must exist**: `from` / `to`, `groupId`, `sourceIds`.
 - **A fact or a norm is a leaf**: nothing supports it (an evidence layer is not part of v0).
-- **`holds` is not for facts and norms; `date` is only for facts** (`2016-04-14` or `2016-04-14T22:22`).
+- **`holds` is not for facts and norms; `date` is only for facts** (`2032-04-14` or `2032-04-14T22:22`).
 - **At least one conclusion has no outgoing link**: the conclusion the whole reasoning leads to.
 - **Do not invent a date**: leave `date` out when the source does not give one.

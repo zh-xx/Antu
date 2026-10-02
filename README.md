@@ -95,7 +95,7 @@ An agent can read the specification, view examples, validate, compute geometry, 
 
 ### The skill (no MCP)
 
-Without MCP, give the agent the **skill** [`skills/antu/`](skills/antu/): a `SKILL.md` (how to choose a diagram, how to write the JSON honestly, how to make the page), the guide and field table of each kind, examples, and a viewer page with a Python script that puts the data in. It needs no network; with Node 18 or newer there is also a one-file command line, `scripts/antu.mjs` (`validate`, `layout`, `render`), so the agent can check its diagram before it draws it, and without Node the Python script does the page.
+Without MCP, give the agent the **skill** [`skills/antu/`](skills/antu/): a `SKILL.md` (how to choose a diagram, how to write the JSON honestly, how to make the page), the guide and field table of each kind, examples, and a viewer page with a Python script that puts the data in. It needs no network; with Node 18 or newer there is also a one-file command line, `scripts/antu.mjs` (`validate`, `layout`, `render`, `preview`), so the agent can check its diagram before it draws it and, with Chrome, Edge or Chromium on the machine, look at a screenshot of the result; without Node the Python script does the page.
 
 - **Claude Code**: copy the whole `skills/antu/` folder to `~/.claude/skills/antu/` (or `.claude/skills/antu/` in a project).
 - **Codex**: copy it to `~/.codex/skills/antu/` (or `.codex/skills/antu/` in a project) and restart Codex.
