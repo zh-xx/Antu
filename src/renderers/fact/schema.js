@@ -52,7 +52,7 @@ export const FACT_FIELDS = {
     { name: 'type', req: 'yes', ty: 'string', note: 'contract / evidence / judgment / transcript, etc.' },
     { name: 'name', req: 'yes', ty: 'string', note: 'material name, e.g. "corridor surveillance video"' },
     { name: 'loc', req: 'no', ty: 'object', note: 'location, e.g. { file, page } or { file, timestamp }' },
-    { name: 'quote', req: 'no', ty: 'string', note: 'verbatim excerpt, shown when the card is opened' },
+    { name: 'quote', req: 'no', ty: 'string', note: 'verbatim excerpt (several passages joined with ……), shown when the card is opened; a shortened or reworded version goes in detail' },
   ],
   slots: [
     { name: 'events', req: 'yes', ty: 'array', note: 'events at this time point; must not be empty' },

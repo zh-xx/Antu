@@ -406,7 +406,7 @@ Compare the two well-written entries in the same case; they carry information th
 | `type` | yes | string | contract / evidence / judgment / transcript, etc. |
 | `name` | yes | string | material name, e.g. "corridor surveillance video" |
 | `loc` | no | object | location, e.g. { file, page } or { file, timestamp } |
-| `quote` | no | string | verbatim excerpt, shown when the card is opened |
+| `quote` | no | string | verbatim excerpt (several passages joined with ……), shown when the card is opened; a shortened or reworded version goes in `detail` |
 
 ## 4. Presentation (the renderer's job)
 
