@@ -56,6 +56,43 @@ try {
     check(`${type}: render writes the page`, ren.status === 0 && html.includes('window.__ANTU_SPEC__ = {') && !html.includes('/*ANTU_SPEC*/null'), ren.stderr.trim())
   }
 
+  // preview (#82): a screenshot of the page, so an agent can look at it. A command line from an earlier release has none (the
+  // committed skill is the last release until the next one), so it is checked only where the command line has it.
+  if (run('--help').stdout.includes('preview')) {
+    const runWith = (env, ...args) =>
+      spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', cwd: work, env: { ...process.env, ...env } })
+    // the size a PNG says it is, from its header
+    const pngSize = (file) => {
+      const b = existsSync(file) ? readFileSync(file) : Buffer.alloc(0)
+      return b.length > 24 && b.toString('latin1', 1, 4) === 'PNG' ? `${b.readUInt32BE(16)}×${b.readUInt32BE(20)}` : null
+    }
+    const noBrowser = runWith({ ANTU_CHROME: join(work, 'no-such-browser') }, 'preview', join(work, 'antu/examples/fact/1-minimal.zh-CN.json'), '-o', join(work, 'x.png'))
+    check('preview: an ANTU_CHROME that points at nothing is said so, exit code 3', noBrowser.status === 3 && /ANTU_CHROME/.test(noBrowser.stderr), `${noBrowser.status} ${noBrowser.stderr.trim()}`)
+
+    // Node below 22 has no WebSocket and takes the browser's own screenshot; 22 and newer drive the browser, and
+    // take the other way too when told to, so both ways are tried wherever the machine allows
+    const ways = typeof WebSocket === 'function' ? [['protocol', {}], ['browser screenshot', { ANTU_PREVIEW_VIA: 'flag' }]] : [['browser screenshot', {}]]
+    let missing = false
+    for (const [way, env] of ways) {
+      for (const type of ['fact', 'justification']) {
+        const out = join(work, `${type}-${env.ANTU_PREVIEW_VIA || 'cdp'}.png`)
+        const r = runWith(env, 'preview', join(work, `antu/examples/${type}/1-minimal.zh-CN.json`), '-o', out)
+        if (r.status === 3 && /no Chromium-based browser found/.test(r.stderr)) {
+          missing = true
+          continue
+        }
+        const size = pngSize(out)
+        check(`${type}: preview takes a 1600×900 picture (${way})`, r.status === 0 && size === '1600×900' && /Open the PNG/.test(r.stdout), `${r.status} ${size} ${r.stderr.trim()}`)
+      }
+    }
+    if (missing) {
+      if (process.env.ANTU_REQUIRE_BROWSER) check('a Chromium-based browser is found', false, 'preview found none')
+      else console.log('  (no Chromium-based browser here, preview took no picture)')
+    }
+  } else {
+    console.log('  (this command line has no preview yet)')
+  }
+
   // the Python script: the other way the skill has of making the page
   const python = ['python3', 'python'].find((name) => {
     const r = spawnSync(name, ['--version'], { encoding: 'utf8' })
@@ -83,6 +120,10 @@ try {
   check('a problem is named, exit code 1', vb.status === 1 && /nowhere/.test(vb.stderr), `${vb.status} ${vb.stderr.trim()}`)
   const rb = run('render', 'bad.json', '-o', join(work, 'bad.html'))
   check('render refuses it and writes nothing', rb.status === 1 && !existsSync(join(work, 'bad.html')), `${rb.status}`)
+  const pb = run('preview', 'bad.json', '-o', join(work, 'bad.png'))
+  if (run('--help').stdout.includes('preview')) {
+    check('preview refuses it too and writes nothing', pb.status === 1 && !existsSync(join(work, 'bad.png')), `${pb.status}`)
+  }
   check('a missing file is exit code 2', run('validate', 'no-such.json').status === 2)
   check('an unknown command is exit code 2', run('frob', 'x.json').status === 2)
 } finally {

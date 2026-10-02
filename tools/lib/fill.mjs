@@ -24,8 +24,17 @@ export function escapeForScript(text) {
   return String(text).replace(/</g, '\\u003c')
 }
 
-/** The viewer page with the diagram's data in it. Throws when the template has not exactly one marker. */
-export function fillViewer(template, spec) {
+/**
+ * The viewer page with the diagram's data in it. Throws when the template has not exactly one marker.
+ *
+ * `preset` (optional) sets how this one page opens: orientation, which fields show, which view; the same object
+ * `renderHtml(spec, { preset })` writes for the MCP preview, read by the renderers as `window.__ANTU_PRESET__`. The
+ * marker sits in `window.__ANTU_SPEC__ = <marker>;` before the engine's script, so the preset is written right
+ * after the data in the same statement list and is there when the renderers load.
+ */
+export function fillViewer(template, spec, { preset } = {}) {
   if (template.split(SPEC_MARKER).length !== 2) throw new Error(`the viewer template does not hold exactly one ${SPEC_MARKER}`)
-  return template.replace(SPEC_MARKER, () => escapeForScript(JSON.stringify(spec)))
+  const data = escapeForScript(JSON.stringify(spec))
+  const extra = preset ? `;window.__ANTU_PRESET__ = ${escapeForScript(JSON.stringify(preset))}` : ''
+  return template.replace(SPEC_MARKER, () => data + extra)
 }

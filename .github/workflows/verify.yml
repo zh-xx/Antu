@@ -61,7 +61,37 @@ jobs:
   # it on each system a user may have (Linux, macOS, Windows) and on each Node version we promise: it copies
   # skills/antu/ to a temporary folder with no node_modules and runs every command there. It deliberately does
   # not run npm ci: with the dependencies installed, "nothing to install" could no longer be tested.
+  #
+  # It tests two copies. The committed skills/antu/ is the last release (it is rebuilt only in a release pull request,
+  # spec/versioning.md), so on its own it would test the command line of main only at release time, after the merge.
+  # The build-skill job below builds the skill from this commit, and each matrix job tests that copy too, including
+  # `preview` (a screenshot in a real browser: the runners have Chrome, Windows also Edge), so a change to the command
+  # line is tested on every system and Node version in its own pull request.
+  build-skill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the skill from this commit (not the committed one)
+        run: node tools/build-skill.mjs --out "$RUNNER_TEMP/antu"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: skill-from-this-commit
+          path: ${{ runner.temp }}/antu
+          if-no-files-found: error
+          retention-days: 3
+
   skill-cli:
+    needs: build-skill
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -83,3 +113,14 @@ jobs:
         run: node tools/verify/skill-cli.mjs
         env:
           ANTU_REQUIRE_PYTHON: '1'
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: skill-from-this-commit
+          path: ${{ runner.temp }}/skill-from-this-commit
+
+      - name: The skill built from this commit, with preview (${{ matrix.os }}, Node ${{ matrix.node }})
+        run: node tools/verify/skill-cli.mjs --skill "${{ runner.temp }}/skill-from-this-commit"
+        env:
+          ANTU_REQUIRE_PYTHON: '1'
+          ANTU_REQUIRE_BROWSER: '1'

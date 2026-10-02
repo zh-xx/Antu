@@ -94,3 +94,12 @@ export function layoutMessage(spec, { orientation, fields } = {}) {
   const report = layoutReport(spec, { orientation, fields })
   return report.ok ? { ok: true, text: formatLayoutReport(report) } : { ok: false, text: report.reason }
 }
+
+/**
+ * What to look for in a screenshot of the diagram: what validation cannot see. One text for `antu_preview` (MCP)
+ * and `preview` (the command line in the skill), so the two cannot come to say different things.
+ */
+export const PREVIEW_CHECK =
+  'Passing validation does not mean it looks good. Look at the picture for what validation cannot see: are the cards ' +
+  'or nodes crowded together, is the text too small to read, does a line run through a card, is the whole diagram ' +
+  'mostly empty, are headings cut off. If it does not look right, change the JSON and look again.'
