@@ -5,13 +5,14 @@
 //  The view is not here: it is the most used, so it stays on the first level of the left
 //  column, one click away.
 //
-//  Six controls, each in its own shape by Apple's rule:
+//  Seven controls, each in its own shape by Apple's rule:
 //    view            option names are long and there are up to five, no room → one button showing
 //                    the current value, opening a list with tick marks
 //    card fields     three independent switches, few → put them all out, click to toggle (on = highlighted)
 //    orientation     two mutually exclusive → a segmented control, both out, the selected one raised
 //    grid lines      one switch → click to toggle
-//    export image    the only **action**, not a state → set off by a divider, one click downloads
+//    export image    an **action**, not a state → set off by a divider, one click downloads
+//                    (copy as table is the other action, beside it)
 //  In one sentence: few independent options go out in the open, long option names go into a menu.
 //  Actions and states must be distinguishable at a glance: states use background darkness
 //  (transparent / 12% grey), the action is the only solid block in the dock, with a download symbol.
@@ -22,6 +23,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch, DockSegmented } from '../../shell/DockParts.jsx'
+import CopyTableButton from './CopyTableButton.jsx'
 
 /** Optional card fields (title and time are always shown and not listed here). Message keys are stored and resolved per language on use. */
 const OPTIONAL_FIELDS = ['sources', 'actors', 'summary']
@@ -33,6 +35,8 @@ const ORIENTATIONS = [
 ]
 
 export default function ControlDock({
+  /** The diagram, for "Copy as table" */
+  spec,
   /** The usable views (ones that do not fit were filtered upstream and never arrive here) */
   viewOptions = [],
   /** How many views the data has in total, used to decide whether to show this menu */
@@ -131,6 +135,7 @@ export default function ControlDock({
         {/* Set off by a divider: everything before is a "how to look at it" switch, this is the only action */}
         <span className="antu-dock-sep" />
 
+        <CopyTableButton spec={spec} />
         <DockExportButton exporting={exporting} onExport={onExport} />
       </div>
     </div>

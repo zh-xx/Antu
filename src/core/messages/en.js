@@ -128,6 +128,44 @@ export const en = {
 
   'graphKind.timeline': 'Timeline',
   'graphKind.flow': 'Flowchart',
+  'graphKind.chronicle': 'Chronicle',
+  'graphKind.scale': 'Time scale',
+
+  // ---------- fact time scale ----------
+  'scale.segment': ({ n, unit, count }) => `Segment ${n} · ${unit} · ${count} event${count === 1 ? '' : 's'}`,
+  'scale.unit.year': 'by year',
+  'scale.unit.month': 'by month',
+  'scale.unit.day': 'by day',
+  'scale.unit.hour': 'by hour',
+  'scale.unit.minute': 'by minute',
+  'scale.other': 'Other',
+  'scale.events': 'Events',
+  'scale.undated': 'date unknown · placed by order',
+  'scale.run': ({ n }) => `${n} events`,
+  'scale.runListed': ({ n }) => `${n} events too close to show one by one:`,
+
+  // ---------- fact chronicle: the time passed between two time points ----------
+  'chronicle.gapSeconds': ({ n }) => `+${n} s`,
+  'chronicle.gapMinutes': ({ n }) => `+${n} min`,
+  'chronicle.gapHours': ({ n }) => `+${n} h`,
+  'chronicle.gapHoursMinutes': ({ h, m }) => `+${h} h ${m} min`,
+  'chronicle.gapDays': ({ n }) => `${n} day${n === 1 ? '' : 's'} later`,
+  'chronicle.gapMonths': ({ n }) => `${n} month${n === 1 ? '' : 's'} later`,
+  'chronicle.gapYears': ({ n }) => `${n} year${n === 1 ? '' : 's'} later`,
+  'chronicle.gapYearsMonths': ({ y, m }) => `${y} yr ${m} mo later`,
+  'chronicle.dateUnknown': 'Date unknown',
+
+  // ---------- copy as table (fact kinds) ----------
+  'dock.copyTable': 'Copy as table',
+  'dock.copyTableTitle': 'Copy every event as a table, to paste into a document or a spreadsheet',
+  'dock.copied': 'Copied',
+  'dock.copyFailed': 'Copy failed',
+  'table.time': 'Time',
+  'table.event': 'Event',
+  'table.summary': 'Summary',
+  'table.group': 'Group',
+  'table.actors': 'Parties',
+  'table.sources': 'Sources',
 
   // ---------- graph types (the envelope-level type) ----------
   'graphType.fact': 'Fact',

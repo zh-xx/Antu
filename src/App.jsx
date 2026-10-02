@@ -31,6 +31,15 @@ import DiagramHeader from './shell/DiagramHeader.jsx'
 import { readPrefs, writePrefs } from './shell/prefs.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
 
+/**
+ * Kinds from the page's preset (window.__ANTU_PRESET__, written by tools/lib/fill.mjs):
+ *   kind         a screenshot names the kind outright (preview --kind)
+ *   defaultKind  a delivered page opens in this kind until the reader picks another (render --kind)
+ */
+const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
+const PRESET_KIND = PRESET?.kind ?? null
+const DEFAULT_KIND = PRESET?.defaultKind ?? null
+
 /** The fallback explanation when no renderer is available */
 function FallbackInfo({ errors, spec, hasRenderer, t, labelOf, formatNumber }) {
   if (errors.length > 0) {
@@ -108,7 +117,14 @@ export default function App() {
   // first (the default kind).
   const kinds = useMemo(() => (spec ? listKinds(spec.type) : []), [spec])
   const [kindPrefs, setKindPrefs] = useState(() => readPrefs().kinds || {})
-  const kind = kinds.find((k) => k.kind === kindPrefs[specKey])?.kind ?? kinds[0]?.kind ?? null
+  // A screenshot preset (antu_preview, the skill's preview --kind) names the kind outright and
+  // never touches the reader's own preference
+  const kind =
+    kinds.find((k) => k.kind === PRESET_KIND)?.kind ??
+    kinds.find((k) => k.kind === kindPrefs[specKey])?.kind ??
+    kinds.find((k) => k.kind === DEFAULT_KIND)?.kind ??
+    kinds[0]?.kind ??
+    null
   const selectKind = (next) => {
     const map = { ...kindPrefs, [specKey]: next }
     setKindPrefs(map)

@@ -93,6 +93,33 @@ try {
     console.log('  (this command line has no preview yet)')
   }
 
+  // --kind (#85): the same JSON drawn another way. A command line from an earlier release has none.
+  if (run('--help').stdout.includes('--kind')) {
+    const spec = join(work, 'antu/examples/fact/1-minimal.zh-CN.json')
+    const lay = run('layout', spec, '--kind', 'chronicle')
+    check('fact: layout --kind chronicle reports the chronicle', lay.status === 0 && /^Kind: chronicle/m.test(lay.stdout), lay.stderr.trim() || lay.stdout.trim())
+    const wrong = run('layout', spec, '--kind', 'swimlane')
+    check('an unknown kind is named, exit code 2', wrong.status === 2 && /timeline, chronicle/.test(wrong.stderr), `${wrong.status} ${wrong.stderr.trim()}`)
+    // The time scale, where this command line has it
+    if (run('--help').stdout.includes('scale')) {
+      const sc = run('layout', spec, '--kind', 'scale')
+      check('fact: layout --kind scale reports the time scale', sc.status === 0 && /^Kind: scale/m.test(sc.stdout), sc.stderr.trim() || sc.stdout.trim())
+    }
+    const out = join(work, 'fact-chronicle.html')
+    const ren = run('render', spec, '-o', out, '--kind', 'chronicle')
+    const html = existsSync(out) ? readFileSync(out, 'utf8') : ''
+    check('fact: render --kind chronicle opens the page in the chronicle', ren.status === 0 && html.includes('"defaultKind":"chronicle"'), ren.stderr.trim())
+    const png = join(work, 'fact-chronicle.png')
+    const pre = run('preview', spec, '-o', png, '--kind', 'chronicle')
+    if (pre.status === 3 && /no Chromium-based browser found/.test(pre.stderr)) {
+      if (process.env.ANTU_REQUIRE_BROWSER) check('a Chromium-based browser is found (--kind)', false, 'preview found none')
+    } else {
+      check('fact: preview --kind chronicle takes a picture with every event drawn', pre.status === 0 && existsSync(png) && (/, 3 item\(s\) drawn/.test(pre.stdout) || /browser's own screenshot/.test(pre.stdout)), `${pre.status} ${pre.stderr.trim()}`)
+    }
+  } else {
+    console.log('  (this command line has no --kind yet)')
+  }
+
   // the Python script: the other way the skill has of making the page
   const python = ['python3', 'python'].find((name) => {
     const r = spawnSync(name, ['--version'], { encoding: 'utf8' })

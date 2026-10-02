@@ -28,6 +28,16 @@ export function fitZoom(size, viewport) {
   return Math.min(zx, zy, 1)
 }
 
+/**
+ * The zoom for a diagram that opens fitted to its **width** and is read top to bottom (the fact
+ * chronicle): a long column fitted whole would shrink its text below reading size, so only the
+ * width has to fit and the reader scrolls down. Capped at 1, like fitZoom.
+ */
+export function fitWidthZoom(size, viewport) {
+  if (!size || !viewport || !size.width) return 1
+  return Math.min(viewport.width / (size.width * (1 + FIT_PADDING)), 1)
+}
+
 // ------------------------------------------------------------
 //  How big the text is on one screen (#43, the guard)
 //

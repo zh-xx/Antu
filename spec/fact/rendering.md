@@ -218,6 +218,41 @@ Two conventions:
 
 On switching, the whole diagram is laid out again in the new way and the viewport re-fits to the new content; not one word of the data changes.
 
+### 9.1 The chronicle (second kind, issue #85)
+
+> Status of this section: **implemented, a first attempt** (the maintainer called the mock-ups a rough first try; it is not confirmed).
+
+One column, every event once, in slot order: the time on the left, one spine with a dot per event in the middle, the card
+on the right. Code: `src/renderers/fact/chronicle/`.
+
+| Decision | Reason |
+|---|---|
+| Order is the slot order; inside a slot, by date when every event has one | The slots array is the chronology (timeline-rules.md); a slot's events are written in any order |
+| No views, sides, lanes or orientation | One column has nothing that can fail to fit, so the hard constraint holds without exceptions |
+| The card shows the whole title and summary; its height comes from its text | A chronicle is read, not scanned; nothing is clamped. The page measures the text with the real font, Node estimates it (with a safety margin) for the reports |
+| No coloured bar on the card's edge; the group colour is on the dot and the tag | The maintainer's call on the mock-ups |
+| Between two time points a pill says how much time passed, at the precision of the dates | "+24 min", "12 days later", "1 yr 3 mo later"; a day-only date never yields hours |
+| A gap of 30 days or more is amber, and the spine is dashed there | Where the story jumps shows from a distance |
+| The date is written once per day | A column of the same date repeated is noise; the row where the day starts carries it |
+| It opens fitted to its width at most 1:1, scrolled to the top | A long column fitted whole would be too small to read |
+| "Copy as table" in the dock (in the timeline's too) | A lawyer pastes the chronology into a brief or a spreadsheet: HTML and tab-separated text at once |
+
+### 9.2 The time scale (third kind, issue #85)
+
+> Status of this section: **implemented, a first attempt** (not confirmed).
+
+Distance along the axis is real time, so the density of events is itself the information. Code: `src/renderers/fact/scale/`.
+
+| Decision | Reason |
+|---|---|
+| One lane per group (side 1, side 2, the axis group), "other" for events with none | The group colours of the timeline carry over |
+| A time of day is a dot, a `dateEnd` a bar; a date to the day, month or year is a band over the whole period | A dot would claim a precision the date does not have. Where a period is narrower than the scale can show (a day on a scale of months), a dot claims no more than the date |
+| A period's or an undated event's point comes from its exact neighbours in data order | So "that day" written after the evening's events stays after them; undated events get a hollow dot and a dashed card |
+| The axis breaks where the scale changes, at most twice: a gap of 2 days or more and 20 times the typical gap beside it (counting only smaller gaps) | Months of run-up and one evening fit one picture; an evening is never cut |
+| Each segment is as wide as its number of events needs; inside it the position is exact | Evenly spread events never crowd |
+| Cards stack up to three levels; a run that still does not fit is gathered into one card, nearest neighbours first, and written out in full under the diagram | No two cards ever overlap (tested on every example and a dense case), and an exported picture hides nothing |
+| Titles in at most two lines, measured with the real font | Text never leaves its card; the full text is in the overlay |
+
 ## 10. Exporting an image
 
 **In one sentence**: export the current diagram as one PNG, to paste into a complaint, a written argument or a note on evidence.

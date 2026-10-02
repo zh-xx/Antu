@@ -64,9 +64,10 @@ function isBrowserFile(p) {
  * The diagram's own items, whichever type is on the page: a fact event card, a procedure flow
  * node or a relationship entity. Waiting on the fact card alone made every procedure page sit out
  * the full 15-second timeout before a screenshot, and report "0 cards"; the relationship graph
- * did the same until its entity was added here (16 seconds for a preview).
+ * did the same until its entity was added here (16 seconds for a preview). The fact chronicle's card is
+ * its own class (.antu-chr-card).
  */
-export const ITEM_SELECTOR = '.antu-card, .antu-pn, .antu-rn, .antu-jn'
+export const ITEM_SELECTOR = '.antu-card, .antu-chr-card, .antu-sc-card, .antu-pn, .antu-rn, .antu-jn'
 
 /**
  * Find the browser on this machine. Order: ANTU_CHROME environment variable > known paths > PATH.
