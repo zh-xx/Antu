@@ -81,7 +81,7 @@ Here is what each means in this folder:
 | `antu_render` | `node <skill-dir>/scripts/antu.mjs render spec.json -o diagram.html`, or the Python script (section 4) |
 | `antu_schema` | `references/fields-<kind>.md` |
 | `antu_examples` | `examples/<kind>/` |
-| `antu_preview` ("look at the picture before you deliver") | **There is no equivalent. You cannot look at the page.** Do not say you checked how it looks. Use `layout` for the size and the suggested orientation, and tell the user you could not view the result |
+| `antu_preview` ("look at the picture before you deliver") | `node <skill-dir>/scripts/antu.mjs preview spec.json -o shot.png`, then open the PNG with your own tool and look at it (section 4b). If it cannot take the picture, or you cannot read images, you have **not** seen the page: do not say you checked how it looks, and tell the user |
 
 A path in a guide that begins `spec/` or `src/` is for the people who maintain Antu and is not in this folder:
 ignore it.
@@ -111,7 +111,7 @@ ignore it.
   check each by hand. For the fact diagram, the guide's section "one event per cell" says how to see and fix
   the last one.
 
-**Whether the reader can read it.** You cannot look at the page, so `layout` tells you: its line
+**Whether the reader can read it.** Before you make the page, `layout` tells you: its line
 `Text on one screen (1600×900): … px` is the size the body text is drawn at when the page opens fitted to a
 1600×900 screen (it matches the page to within a few percent, a little on the small side). It adds a note when
 the text is **under 11 px** (small; the reader can zoom in) and when it is **under 9 px** (too small to read
@@ -148,6 +148,31 @@ Change nothing else in the file.
 
 Keep the JSON next to the HTML (same name, `.json`): the JSON is the source and can be edited and made
 again; the HTML is the product.
+
+## 4b. Look at it
+
+Passing validation does not mean it looks good. **With Node** and a Chromium-based browser on the machine (Chrome,
+Edge or Chromium; Windows has Edge), take a screenshot of the diagram and look at it before you deliver:
+
+```
+node <skill-dir>/scripts/antu.mjs preview spec.json -o shot.png
+```
+
+It checks the data first, makes the page in a temporary place, opens it in the browser without a window, and writes
+the PNG. Open the PNG with the tool you have for reading images, and look for what validation cannot see: cards
+or nodes crowded together, text too small to read, a line running through a card, a diagram that is mostly empty,
+headings cut off. If something is wrong, change the JSON and run `preview` again. `--orientation vertical|horizontal`
+shows the other orientation; `--width` and `--height` change the screen size (1600×900 by default). Keep the PNG
+out of the user's folder unless they want it.
+
+**When it cannot look**, say so; never claim you checked how it looks:
+- `preview` ends with "no Chromium-based browser found" or "no picture could be taken" (exit code 3): there is no
+  picture. If the user has a browser somewhere else, `ANTU_CHROME` can point at it.
+- You have no way to read an image file: the picture exists but you have not seen it.
+- No Node: there is no `preview`.
+
+In each case rely on `layout` for size and orientation, and tell the user that you could not view the result and
+that they should open the page and look.
 
 ## 5. Tell the user
 

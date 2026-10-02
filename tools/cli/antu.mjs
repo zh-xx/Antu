@@ -8,17 +8,28 @@
 //    node antu.mjs validate spec.json
 //    node antu.mjs layout spec.json [--orientation vertical|horizontal]
 //    node antu.mjs render spec.json [-o diagram.html]     validates first, and refuses a diagram with problems
+//    node antu.mjs preview spec.json [-o shot.png]        validates, makes the page, takes a screenshot of it in a
+//                                                         headless Chromium-based browser (Chrome, Edge, Chromium)
 //    node antu.mjs --version
 //
-//  Exit code: 0 done, 1 the diagram has problems (or no geometry yet), 2 the command itself was wrong.
+//  Exit code: 0 done, 1 the diagram has problems (or no geometry yet), 2 the command itself was wrong,
+//  3 no picture could be taken (no browser found, or it failed).
+//
+//  `preview` lets an agent without the MCP server look at what it drew (#82): the agent reads the PNG with its own
+//  tool. On Node 22 and newer it drives the browser through its debugging protocol (tools/lib/chrome.mjs, the code
+//  the MCP preview uses), and waits until the diagram has drawn; below 22 Node has no built-in WebSocket, so it asks
+//  the browser for a screenshot itself (`--screenshot`), with a time budget for the page to draw.
 // ============================================================
 
-import { readFileSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { layoutMessage, notesOf, validate, validationMessage } from '../lib/report.mjs'
+import { PREVIEW_CHECK, layoutMessage, notesOf, validate, validationMessage } from '../lib/report.mjs'
 import { fillViewer } from '../lib/fill.mjs'
+import { findChrome, screenshotPage } from '../lib/chrome.mjs'
 
 // set by the bundler (vite.cli.config.js); a run from the source has none
 // eslint-disable-next-line no-undef
@@ -30,6 +41,9 @@ const USAGE = `Antu ${VERSION}: check and draw an Antu diagram (JSON)
   node antu.mjs layout   <spec.json> [--orientation vertical|horizontal]
                                                            how big is the picture, which orientation fits
   node antu.mjs render   <spec.json> [-o <out.html>]       validate, then write the page
+  node antu.mjs preview  <spec.json> [-o <out.png>] [--orientation vertical|horizontal] [--width 1600] [--height 900]
+                                                           validate, make the page, and take a screenshot of it to look at
+                                                           (needs Chrome, Edge or Chromium; ANTU_CHROME points at one)
   node antu.mjs --version
 `
 
@@ -53,13 +67,121 @@ function readSpec(file) {
   }
 }
 
-function main(argv) {
+/** The viewer page beside this file in the skill folder (assets/viewer.html) */
+function readViewer() {
+  const viewerPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'viewer.html')
+  try {
+    return readFileSync(viewerPath, 'utf8')
+  } catch {
+    return fail(`cannot find the viewer page at ${viewerPath}: this file is meant to run from its place in the skill folder (scripts/antu.mjs)`, 2)
+  }
+}
+
+/** The lines of the layout report about text size (#43): an agent that only renders still hears whether it can be read */
+function sizeLines(spec) {
+  return layoutMessage(spec).text.split('\n').filter((l) => /^(Text on one screen|Note: the text|With every issue folded)/.test(l))
+}
+
+const isFile = (p) => {
+  try {
+    return statSync(p).isFile()
+  } catch {
+    return false
+  }
+}
+
+/** Ask the browser itself for a screenshot (no debugging protocol): the way for Node below 22, and forced by ANTU_PREVIEW_VIA=flag */
+function screenshotByFlag(chrome, page, out, { width, height }) {
+  const profile = mkdtempSync(join(tmpdir(), 'antu-preview-profile-'))
+  try {
+    const r = spawnSync(
+      chrome,
+      [
+        '--headless',
+        '--disable-gpu',
+        '--no-sandbox',
+        '--no-first-run',
+        '--disable-extensions',
+        '--disable-dev-shm-usage',
+        '--hide-scrollbars',
+        `--user-data-dir=${profile}`,
+        `--window-size=${width},${height}`,
+        // the page draws after it loads (the layout runs in script): give it virtual time to finish before the shot
+        '--virtual-time-budget=15000',
+        `--screenshot=${out}`,
+        pathToFileURL(page).href,
+      ],
+      { encoding: 'utf8', timeout: 90000 },
+    )
+    if (!isFile(out) || statSync(out).size === 0) {
+      const why = (r.error?.message || r.stderr || '').trim().split('\n').slice(-3).join(' / ')
+      throw new Error(`the browser wrote no screenshot${why ? ` (${why})` : ''}`)
+    }
+    return { items: null }
+  } finally {
+    rmSync(profile, { recursive: true, force: true })
+  }
+}
+
+async function preview(spec, file, option) {
+  const orientation = option('--orientation')
+  if (orientation && !['vertical', 'horizontal'].includes(orientation)) return fail('--orientation is vertical or horizontal', 2)
+  const size = (name, fallback) => {
+    const raw = option(name)
+    if (raw === undefined) return fallback
+    const n = Number(raw)
+    return Number.isInteger(n) && n >= 200 && n <= 8000 ? n : fail(`${name} is a whole number of pixels between 200 and 8000`, 2)
+  }
+  const width = size('--width', 1600)
+  const height = size('--height', 900)
+
+  const errors = validate(spec)
+  if (errors.length) return fail(validationMessage(spec).text)
+
+  // An ANTU_CHROME that points at nothing is said so, not quietly replaced by another browser
+  const explicit = process.env.ANTU_CHROME
+  if (explicit && !isFile(explicit)) return fail(`ANTU_CHROME is set to ${explicit}, which is not a file: point it at Chrome, Edge or Chromium`, 3)
+  const chrome = findChrome()
+  if (!chrome) {
+    return fail('no Chromium-based browser found (Chrome, Edge or Chromium), so no picture: install one, or set ANTU_CHROME to it. Say that you did not see the page.', 3)
+  }
+
+  const out = resolve(option('-o', '--out') ?? file.replace(/\.json$/i, '') + '.png')
+  const dir = mkdtempSync(join(tmpdir(), 'antu-preview-'))
+  try {
+    const page = join(dir, 'preview.html')
+    writeFileSync(page, fillViewer(readViewer(), spec, { preset: orientation ? { orientation } : undefined }))
+    let items = null
+    if (typeof WebSocket === 'function' && process.env.ANTU_PREVIEW_VIA !== 'flag') {
+      const shot = await screenshotPage(page, { width, height })
+      writeFileSync(out, Buffer.from(shot.data, 'base64'))
+      items = shot.cards
+    } else {
+      items = screenshotByFlag(chrome, page, out, { width, height }).items
+    }
+    say(out)
+    say(`\n${width}×${height}${items === null ? '' : `, ${items} item(s) drawn`}. Open the PNG with your own tool and look at it.`)
+    // the browser's own screenshot is of the window, which is taller than the page inside it: a strip at the foot stays blank
+    if (items === null) say('(Taken with the browser\'s own screenshot, for Node below 22: a strip at the bottom may be blank; that is not the diagram.)')
+    if (items === 0) say('No diagram item was drawn: the page may show a list of problems instead. Look at the picture.')
+    say(PREVIEW_CHECK)
+    const lines = sizeLines(spec)
+    if (lines.length) say(`\n${lines.join('\n')}`)
+  } catch (e) {
+    return fail(`no picture could be taken: ${e.message}. Say that you did not see the page.`, 3)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+async function main(argv) {
   const [command, ...rest] = argv
   if (!command || command === '--help' || command === '-h') return say(USAGE)
   if (command === '--version' || command === '-v') return say(`antu ${VERSION}`)
-  if (!['validate', 'layout', 'render'].includes(command)) return fail(`unknown command "${command}"\n\n${USAGE}`, 2)
+  if (!['validate', 'layout', 'render', 'preview'].includes(command)) return fail(`unknown command "${command}"\n\n${USAGE}`, 2)
 
-  const file = rest.find((a, i) => !a.startsWith('-') && !['-o', '--out', '--orientation'].includes(rest[i - 1]))
+  const valued = ['-o', '--out', '--orientation', '--width', '--height']
+  const file = rest.find((a, i) => !a.startsWith('-') && !valued.includes(rest[i - 1]))
   if (!file) return fail(`${command}: which JSON file?\n\n${USAGE}`, 2)
   const option = (...names) => {
     const i = rest.findIndex((a) => names.includes(a))
@@ -83,24 +205,19 @@ function main(argv) {
     return
   }
 
+  if (command === 'preview') return preview(spec, file, option)
+
   // render
   const errors = validate(spec)
   if (errors.length) return fail(validationMessage(spec).text)
-  const viewerPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'viewer.html')
-  let viewer
-  try {
-    viewer = readFileSync(viewerPath, 'utf8')
-  } catch {
-    return fail(`cannot find the viewer page at ${viewerPath}: this file is meant to run from its place in the skill folder (scripts/antu.mjs)`, 2)
-  }
+  const viewer = readViewer()
   const out = resolve(option('-o', '--out') ?? file.replace(/\.json$/i, '') + '.html')
   writeFileSync(out, fillViewer(viewer, spec))
   say(out)
-  // How big the text is on one screen (#43): an agent that only renders still hears whether the reader can read it
-  const size = layoutMessage(spec).text.split('\n').filter((l) => /^(Text on one screen|Note: the text|With every issue folded)/.test(l))
+  const size = sizeLines(spec)
   if (size.length) say(`\n${size.join('\n')}`)
   const notes = notesOf(spec)
   if (notes.length) say(`\n${notes.length} note(s), not errors:\n${notes.map((n) => `  - ${n}`).join('\n')}`)
 }
 
-main(process.argv.slice(2))
+await main(process.argv.slice(2))

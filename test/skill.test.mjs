@@ -208,3 +208,18 @@ test('the command line needs nothing beside it: no import of a package, only bui
   assert.ok(imported.length > 0)
   for (const name of imported) assert.ok(name.startsWith('node:'), `${name} is imported: the file would need it installed`)
 })
+
+test('fillViewer: a preset is written right after the data, in the same script, and only when given', () => {
+  const template = '<script>window.__ANTU_SPEC__ = /*ANTU_SPEC*/null;</script><script>engine()</script>'
+  const spec = { type: 'fact', title: 'a </script> b' }
+  const plain = fillViewer(template, spec)
+  assert.equal(plain.includes('__ANTU_PRESET__'), false, 'no preset, no preset line')
+  const page = fillViewer(template, spec, { preset: { orientation: 'horizontal' } })
+  const code = /<script>(window\.__ANTU_SPEC__ = .*?)<\/script>/s.exec(page)[1]
+  assert.equal(code.includes('</script'), false, 'nothing in the data or the preset can close the script')
+  const window = {}
+  new Function('window', code)(window)
+  assert.deepEqual(window.__ANTU_SPEC__, spec)
+  assert.deepEqual(window.__ANTU_PRESET__, { orientation: 'horizontal' })
+  assert.ok(page.indexOf('__ANTU_PRESET__') < page.indexOf('engine()'), 'the preset is there before the engine runs')
+})

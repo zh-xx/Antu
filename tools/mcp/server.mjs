@@ -37,7 +37,7 @@ import {
   listAgentGuides,
   readAgentGuide,
 } from './engine.mjs'
-import { validate, validationMessage, layoutMessage } from '../lib/report.mjs'
+import { PREVIEW_CHECK, validate, validationMessage, layoutMessage } from '../lib/report.mjs'
 import { screenshot, findChrome } from './preview.mjs'
 
 // The version is written once, in package.json (spec/versioning.md)
@@ -244,9 +244,7 @@ server.registerTool(
   {
     title: 'Screenshot it and look',
     description:
-      'Render this diagram as a PNG and return it. **Passing validation does not mean it looks good.** ' +
-      'Use it to check what validation cannot see: are the cards crowded together, is the text too small, is the whole diagram too empty, ' +
-      'are the column headings cut off. If it does not look right, change the JSON and try again. ' +
+      `Render this diagram as a PNG and return it. ${PREVIEW_CHECK} ` +
       'Needs Chrome on this machine (without it, use only antu_validate and antu_layout).',
     inputSchema: {
       spec: specArg,

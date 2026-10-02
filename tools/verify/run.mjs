@@ -1807,6 +1807,30 @@ async function checkSkillPage() {
 }
 
 /**
+ * The skill as this commit would build it (the committed skills/antu/ is the last release), held to its own checks
+ * (tools/verify/skill-cli.mjs) with a browser required: so `preview` (#82) takes real pictures here, both ways it
+ * has (the browser's debugging protocol, and the browser's own screenshot that Node below 22 uses).
+ */
+async function checkSkillPreview() {
+  section('skill: the command line of this commit, with preview')
+  const chrome = findChrome()
+  if (!chrome) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const dir = join(OUT, 'skill-from-this-commit')
+  const built = spawnSync(process.execPath, [join(REPO, 'tools/build-skill.mjs'), '--out', dir], { encoding: 'utf8' })
+  eq('the skill builds into a folder of its own', built.status, 0)
+  if (built.status !== 0) return console.log(`     ${built.stderr.trim().split('\n').slice(-3).join('\n     ')}`)
+  const r = spawnSync(process.execPath, [join(REPO, 'tools/verify/skill-cli.mjs'), '--skill', dir], {
+    encoding: 'utf8',
+    env: { ...process.env, ANTU_CHROME: chrome, ANTU_REQUIRE_BROWSER: '1' },
+  })
+  truthy('its command line passes its own checks, preview included', r.status === 0 && /passes/.test(r.stdout))
+  if (r.status !== 0) console.log(`     ${(r.stderr || r.stdout).trim().split('\n').join('\n     ')}`)
+}
+
+/**
  * An event with no date (#50): the material gives none, so the event has none. The card says the date is unknown, in
  * the language of the interface, and is marked so a reader can tell it apart from a date that is just short.
  */
@@ -2119,6 +2143,7 @@ if (!shotOnly && !skipBrowser) {
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)
   await checkSkillPage()
+  await checkSkillPreview()
   await checkUndatedEvent()
   await checkTextSize()
   checkMcp()

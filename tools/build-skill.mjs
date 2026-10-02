@@ -15,12 +15,14 @@
 //  never gets guides that are newer than the viewer beside them.
 //
 //    node tools/build-skill.mjs            write skills/antu/
+//    node tools/build-skill.mjs --out DIR  write the same into DIR instead (CI tests main's command line this way,
+//                                          without touching the committed folder, which is the last release)
 //    node tools/build-skill.mjs --check    say whether skills/antu/ is what a build would write (exit 1 if not)
 // ============================================================
 
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { build as viteBuild } from 'vite'
 
 import { REPO, SPEC_MARKER, buildViewerHtml, engineVersion, ensureEngine, readEngine } from './lib/make-html.mjs'
@@ -75,25 +77,26 @@ function viewerHtml() {
  * The licence notice is put in front of the code here and not through the bundler's banner option: the minifier
  * drops comments, banner or not, and a notice that is built in but not in the file is no notice.
  */
-async function buildCli() {
+async function buildCli(dir) {
   await viteBuild({ configFile: join(REPO, 'vite.cli.config.js') })
   const [shebang, ...code] = readFileSync(join(REPO, 'dist-cli/antu.mjs'), 'utf8').split('\n')
   const notice = licenseNotice(engineVersion())
     .split('\n')
     .map((line) => `// ${line}`.trimEnd())
     .join('\n')
-  writeFileSync(join(SKILL_DIR, CLI), `${shebang}\n${notice}\n${code.join('\n')}`)
+  writeFileSync(join(dir, CLI), `${shebang}\n${notice}\n${code.join('\n')}`)
 }
 
-async function write() {
-  rmSync(SKILL_DIR, { recursive: true, force: true })
+/** Write the skill into `dir` (skills/antu/ by default), replacing what is there */
+export async function writeSkill(dir = SKILL_DIR) {
+  rmSync(dir, { recursive: true, force: true })
   for (const [path, text] of skillFiles()) {
-    mkdirSync(dirname(join(SKILL_DIR, path)), { recursive: true })
-    writeFileSync(join(SKILL_DIR, path), text)
+    mkdirSync(dirname(join(dir, path)), { recursive: true })
+    writeFileSync(join(dir, path), text)
   }
-  mkdirSync(join(SKILL_DIR, 'assets'), { recursive: true })
-  writeFileSync(join(SKILL_DIR, VIEWER), viewerHtml())
-  await buildCli()
+  mkdirSync(join(dir, 'assets'), { recursive: true })
+  writeFileSync(join(dir, VIEWER), viewerHtml())
+  await buildCli(dir)
 }
 
 /** Differences between the skill folder and a build: [] when there are none */
@@ -153,7 +156,13 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
     }
     console.log(`skills/antu is a build of ${engineVersion()}`)
   } else {
-    await write()
-    console.log(`wrote ${SKILL_DIR}`)
+    const i = process.argv.indexOf('--out')
+    const dir = i > 0 ? resolve(process.argv[i + 1] ?? '') : SKILL_DIR
+    if (i > 0 && !process.argv[i + 1]) {
+      console.error('--out needs a directory')
+      process.exit(2)
+    }
+    await writeSkill(dir)
+    console.log(`wrote ${dir}`)
   }
 }
