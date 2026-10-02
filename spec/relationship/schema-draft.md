@@ -1,6 +1,6 @@
 # relationship · Schema draft v0
 
-> Status: **provisional v0** (the sponsor accepted it as good enough for now, 2026-09; not final). Implemented and released: validation, layout, the renderer, the dock, the examples for agents; the type is in the skill. Items marked **⚠ proposal** are proposals that stand until the sponsor changes them; §7 lists the open questions and what the schema does for each in the meantime. Sub-types are not decided here (the first one, `graph`, is in §6.1).
+> Status: **implemented** (status line checked against 0.5.1; the sponsor accepted the draft as good enough for now, 2026-09; not final). Implemented and released: validation, layout, the renderer, the dock, the examples for agents; the type is in the skill. Items marked **⚠ proposal** are proposals that stand until the sponsor changes them; §7 lists the open questions and what the schema does for each in the meantime. Sub-types are not decided here (the first one, `graph`, is in §6.1).
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (different domain semantics → controlled enum, no new top-level type). The shape follows `spec/procedure/schema-draft.md`.
 > Scope: relationship = **who stands in what relation to whom, at one point in time**. What happened over time → `fact`; the path of a procedure → `procedure`; norms + facts → a conclusion → `justification`.
 
