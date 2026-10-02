@@ -13,6 +13,10 @@ A fact JSON describes: **when, who, did what, resting on which material**.
 The engine draws it as a timeline: time runs downwards, parties and sides are laid
 out left and right.
 
+The reader can also switch to a **chronicle** (one column in slot order, the time passed
+written between events, so `date` and `dateEnd` matter more there). The same JSON draws in
+both; `kind: "chronicle"` on antu_layout / antu_preview / antu_render shows it.
+
 ## Where an event is drawn is decided by three things
 
 ```

@@ -52,6 +52,9 @@ import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.
 import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
+import * as CHR from '../../src/renderers/fact/chronicle/layout.js'
+import { buildChronicleGraph } from '../../src/renderers/fact/chronicle/layout.js'
+import { factTable } from '../../src/renderers/fact/table.js'
 import { buildProcedureGraph } from '../../src/renderers/procedure/flow/layout.js'
 import { sizeOf } from '../../src/renderers/procedure/flow/metrics.js'
 import { buildRelationshipGraph } from '../../src/renderers/relationship/graph/layout.js'
@@ -1387,6 +1390,140 @@ async function checkRender(sampleFile) {
  * from the same layout function, so the page is compared against it, not against a number
  * copied by hand.
  */
+/**
+ * The fact chronicle (issue #85), drawn by the browser for every fact example in both languages:
+ * every event once, no text outside its card (the card heights are estimated in Node, so only the
+ * page can show they hold), no card taller than its text needs by a whole line, the time column
+ * clear of the spine, the gap pills between the cards and as many as the layout says; then, on one
+ * example, export and "Copy as table".
+ */
+async function checkRenderChronicle(sampleFile) {
+  section('render: fact chronicle')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const files = readdirSync(join(REPO, 'examples/fact')).filter((f) => f.endsWith('.json'))
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms))
+  // Every number the page is measured against comes from the layout module
+  const measure = () =>
+    browser.eval(`(() => {
+      const cards = [...document.querySelectorAll('.antu-chr-card')]
+      const z = cards.length ? cards[0].getBoundingClientRect().width / ${CHR.CARD_W} : 1
+      const spill = []
+      let slackMax = 0
+      for (const card of cards) {
+        const r = card.getBoundingClientRect()
+        const kids = [...card.children].filter((c) => !c.classList.contains('antu-preview'))
+        let bottom = r.top
+        for (const k of kids) {
+          const kr = k.getBoundingClientRect()
+          bottom = Math.max(bottom, kr.bottom)
+          if (kr.bottom > r.bottom - ${CHR.PAD_Y / 2} * z || kr.right > r.right + 0.5 || k.scrollWidth > k.clientWidth + 1) {
+            spill.push(card.getAttribute('aria-label').slice(0, 40))
+          }
+        }
+        // How much empty room is left under the text (cards at the minimum height excepted)
+        const minH = ${CHR.PAD_Y + CHR.WHEN_LH * 3}
+        if (Math.round(r.height / z) > minH) slackMax = Math.max(slackMax, (r.bottom - bottom) / z - ${CHR.PAD_Y})
+      }
+      const dot = document.querySelector('.antu-chr-dot')?.getBoundingClientRect()
+      const whenClear = !dot || [...document.querySelectorAll('.antu-chr-when')].every((w) => w.getBoundingClientRect().right <= dot.left)
+      const rects = cards.map((c) => c.getBoundingClientRect())
+      const pills = [...document.querySelectorAll('.antu-chr-gap')]
+      const pillHits = pills.filter((p) => {
+        const a = p.getBoundingClientRect()
+        return rects.some((b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top)
+      }).length
+      return {
+        cards: cards.length,
+        spill,
+        slackMax: Math.round(slackMax),
+        whenClear,
+        pills: pills.length,
+        longPills: document.querySelectorAll('.antu-chr-gap.is-long').length,
+        breaks: document.querySelectorAll('.antu-chr-line.is-break').length,
+        pillHits,
+        zoom: +(parseFloat(document.querySelector('.react-flow__viewport').style.transform.split('scale(')[1])).toFixed(3),
+      }
+    })()`)
+  try {
+    for (const f of files) {
+      const spec = JSON.parse(readFileSync(join(REPO, 'examples/fact', f), 'utf8'))
+      const lang = f.includes('.zh-CN.') ? 'zh' : 'en'
+      const html = join(OUT, 'render-chronicle.html')
+      renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'chronicle' } })
+      await browser.open(`file://${html}?lang=${lang}`)
+      const events = spec.slots.reduce((n, s) => n + (s.events?.length || 0), 0)
+      for (const [label, fields] of [['summary', { summary: true }], ['every field', { summary: true, actors: true, sources: true }]]) {
+        if (label === 'every field') {
+          // Switch parties and sources on through the dock, as a reader would
+          await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].slice(0, 2).forEach((b) => b.click())`, { userGesture: true })
+          await settle()
+        }
+        const g = buildChronicleGraph(spec, fields)
+        const m = await measure()
+        const gaps = g.items.filter((i) => i.gap)
+        eq(`${f} (${label}): one card per event`, m.cards, events)
+        eq(`${f} (${label}): no text outside its card`, m.spill, [])
+        truthy(`${f} (${label}): no card has a blank line under its text`, m.slackMax < CHR.TITLE_LH, `largest gap under the text ${m.slackMax}px`)
+        truthy(`${f} (${label}): the time column is clear of the spine`, m.whenClear)
+        eq(`${f} (${label}): gap pills as the layout says (all / long / dashed)`, [m.pills, m.longPills, m.breaks], [gaps.length, gaps.filter((i) => i.gap.long).length, gaps.filter((i) => i.gap.long).length])
+        eq(`${f} (${label}): no pill sits on a card`, m.pillHits, 0)
+        if (label === 'summary') eq(`${f}: opens at full size (fitted to its width)`, m.zoom, 1)
+      }
+    }
+
+    // Export and copy as table, on the sample
+    const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
+    const html = join(OUT, 'render-chronicle.html')
+    renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'chronicle' } })
+    await browser.open(`file://${html}?lang=zh`)
+    const external = browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://'))
+    eq('chronicle: external request count', external.length, 0)
+    const kindName = await browser.eval(`document.querySelector('.antu-header')?.textContent || ''`)
+    truthy('chronicle: the label card names the kind', kindName.includes(translate('zh', 'graphKind.chronicle')))
+
+    const { clickByClass, grab } = await downloadHelpers(browser)
+    if (!(await clickByClass('.antu-dock-action'))) bad('chronicle export: the button is not in the bottom dock')
+    else {
+      const shot = await grab('chronicle export')
+      if (shot) {
+        // The page measures its text with the real font, so its height is the page's, not Node's estimate
+        const height = await browser.eval(`Math.max(...[...document.querySelectorAll('.react-flow__node-entry')].map((n) => new DOMMatrix(getComputedStyle(n).transform).m42 + n.offsetHeight))`)
+        const frame = exportFrame(CHR.CONTENT_W, Math.round(height))
+        eq('chronicle export: size = (content + padding) × 2', [shot.width, shot.height], [frame.width * 2, frame.height * 2])
+        writeFileSync(join(OUT, 'export-chronicle.png'), shot.buf)
+      }
+    }
+
+    // Copy as table: catch what goes to the clipboard, then read both forms back
+    const copied = await browser.eval(
+      `(async () => {
+        let items = null
+        navigator.clipboard.write = async (list) => { items = list }
+        document.querySelector('.antu-copy-table').click()
+        for (let i = 0; i < 40 && !items; i++) await new Promise((r) => setTimeout(r, 50))
+        if (!items) return null
+        const read = async (type) => (await items[0].getType(type)).text()
+        return { html: await read('text/html'), text: await read('text/plain'), label: document.querySelector('.antu-copy-table').textContent }
+      })()`,
+      { awaitPromise: true, userGesture: true },
+    )
+    truthy('copy as table: the clipboard gets something', copied)
+    if (copied) {
+      const table = factTable(spec, 'zh')
+      eq('copy as table: one row per event, plus the header (text form)', copied.text.split('\n').length, table.rows.length + 1)
+      eq('copy as table: one table row per event, plus the header (HTML form)', (copied.html.match(/<tr>/g) || []).length, table.rows.length + 1)
+      truthy('copy as table: the first event is in it', copied.text.includes(table.rows[0][1]))
+      eq('copy as table: the button says it worked', copied.label, translate('zh', 'dock.copied'))
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderProcedure(sampleFile) {
   section('render: procedure flowchart')
   if (!findChrome()) {
@@ -2139,6 +2276,7 @@ await checkLingeringChrome()
 if (!shotOnly && !skipBrowser) {
   const profilesBefore = profilesInTmp().length
   if (data.sample) await checkRender(data.sample)
+  if (data.sample) await checkRenderChronicle(data.sample)
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)

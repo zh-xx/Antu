@@ -50,17 +50,28 @@ export function notesOf(spec) {
  * (renderers/<type>/schema.js); this only dispatches. It used to count fact's slots for
  * every type, and a procedure came back as "0 events / 0 time slots".
  */
-export function layoutReport(spec, { orientation, fields } = {}) {
+export function layoutReport(spec, { orientation, fields, kind: asked } = {}) {
   const type = spec?.type
-  // Ask the registry which rendering kinds this type has and default to the first.
+  // Ask the registry which rendering kinds this type has: the one asked for, else the first (the default).
   // (This used to read spec?.kindHint, a field the schema does not have.)
-  const kind = layoutKindsOf(type)[0] ?? null
+  const kinds = layoutKindsOf(type)
+  if (asked && !kinds.includes(asked)) {
+    return { ok: false, reason: `"${asked}" is not a kind of ${type}: ${kinds.join(', ') || 'it has none'}` }
+  }
+  const kind = asked ?? kinds[0] ?? null
   const layout = layoutFromRegistry(type, kind)
   const k = knowledgeOf(type)
   if (!layout || !k?.report) {
     return { ok: false, reason: `no geometry computation for type="${type}" kind="${kind}" yet` }
   }
-  return { ok: true, type, ...k.report(spec, layout, { orientation, fields, canvas: CANVAS }) }
+  return { ok: true, type, kind, ...k.report(spec, layout, { orientation, fields, kind, canvas: CANVAS }) }
+}
+
+/** Why `kind` cannot be drawn for this spec ('' when it can, or when none was asked for) */
+export function kindProblem(spec, kind) {
+  if (!kind) return ''
+  const kinds = layoutKindsOf(spec?.type)
+  return kinds.includes(kind) ? '' : `"${kind}" is not a kind of ${spec?.type}: ${kinds.join(', ') || 'it has none'}`
 }
 
 /** Turn the geometry report into a short human-readable text (the part the tool returns to an agent) */
@@ -86,12 +97,12 @@ export function validationMessage(spec) {
 }
 
 /** The text of `antu_layout`: the geometry report, or why there is none yet */
-export function layoutMessage(spec, { orientation, fields } = {}) {
+export function layoutMessage(spec, { orientation, fields, kind } = {}) {
   const errors = validate(spec)
   if (errors.length > 0) {
     return { ok: false, text: `Validation has not passed yet; fix these before looking at the geometry:\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}` }
   }
-  const report = layoutReport(spec, { orientation, fields })
+  const report = layoutReport(spec, { orientation, fields, kind })
   return report.ok ? { ok: true, text: formatLayoutReport(report) } : { ok: false, text: report.reason }
 }
 

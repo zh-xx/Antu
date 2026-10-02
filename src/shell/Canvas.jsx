@@ -16,7 +16,7 @@ import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react
 import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState, useEdgesState } from '@xyflow/react'
 
 import { useLang } from './LangContext.jsx'
-import { FIT_PADDING, fitZoom } from '../core/canvas.js'
+import { FIT_PADDING, fitWidthZoom, fitZoom } from '../core/canvas.js'
 import { exportPng as runExportPng } from './exportPng.js'
 
 /** Zoom-in ceiling. It used to be 1:1, on the grounds that "zooming further only
@@ -32,6 +32,7 @@ export default function Canvas({
   ref,
   graph,
   fitKey,
+  fitWidth = false,
   nodeTypes,
   showGrid = false,
   style,
@@ -80,6 +81,17 @@ export default function Canvas({
   const fit = (duration = 300) => {
     const { width, height } = graph.size
     if (!rfRef.current) return
+    // A diagram read top to bottom (fitWidth) opens at the zoom that fits its width (never above
+    // 1:1), scrolled to the top; one shorter than the screen is centred instead.
+    const el = canvasRef.current
+    if (fitWidth && width && height && el?.clientWidth && el?.clientHeight) {
+      const viewport = { width: el.clientWidth, height: el.clientHeight }
+      const zoom = fitWidthZoom(graph.size, viewport)
+      const top = (viewport.height * FIT_PADDING) / 4
+      const y = height * zoom + top * 2 <= viewport.height ? (viewport.height - height * zoom) / 2 : top
+      rfRef.current.setViewport({ x: (viewport.width - width * zoom) / 2, y, zoom }, { duration })
+      return
+    }
     if (width && height) rfRef.current.fitBounds({ x: 0, y: 0, width, height }, { padding: FIT_PADDING, duration })
     else rfRef.current.fitView({ padding: FIT_PADDING, duration })
   }
@@ -175,7 +187,9 @@ export default function Canvas({
         onNodeMouseLeave={onNodeMouseLeave}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
-        fitView
+        // A width-fitted diagram is placed by fit() alone: React Flow's own initial fit runs once the nodes are
+        // measured, which can come after fit() and would shrink a long column back to the whole
+        fitView={!fitWidth}
         fitViewOptions={{ padding: FIT_PADDING }}
         minZoom={minZoom}
         maxZoom={MAX_ZOOM}

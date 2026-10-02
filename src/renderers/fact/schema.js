@@ -16,7 +16,8 @@
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { buildGrid, viewsOf } from './timeline/grid.js'
 import { buildFactGraph } from './timeline/layout.js'
-import { fitZoom, textSizeLines } from '../../core/canvas.js'
+import { buildChronicleGraph, TITLE_FONT as CHRONICLE_TITLE_FONT } from './chronicle/layout.js'
+import { fitWidthZoom, fitZoom, textSizeLines } from '../../core/canvas.js'
 import { LABEL_FONT } from './cardGeometry.js'
 import { tEn } from '../../core/i18n.js'
 
@@ -104,6 +105,43 @@ export function describeFactSchema() {
   return lines.join('\n')
 }
 
+/**
+ * The chronicle's geometry report: one column, so there are no views to fit and no orientation
+ * to choose. It opens fitted to its width and the reader scrolls, so the text size is the width-fit
+ * size; how much scrolling that takes is reported as "screens".
+ */
+function chronicleReport(spec, layout, { fields, canvas }) {
+  const g = layout(spec, fields)
+  const fit = Number(fitWidthZoom(g.size, canvas).toFixed(3))
+  const whole = Number(fitZoom(g.size, canvas).toFixed(3))
+  const screens = Math.max(1, Math.round(((g.size.height * fit) / canvas.height) * 10) / 10)
+  const gaps = g.items.filter((i) => i.gap)
+  return {
+    text: { font: CHRONICLE_TITLE_FONT, canvas, open: { name: 'fitted to width', fit }, other: { name: 'whole column', fit: whole } },
+    counts: {
+      slots: Array.isArray(spec.slots) ? spec.slots.length : 0,
+      events: g.items.length,
+      actors: spec.actors?.length ?? 0,
+      sources: spec.sources?.length ?? 0,
+    },
+    size: g.size,
+    screens,
+    gaps: { short: gaps.filter((i) => !i.gap.long).length, long: gaps.filter((i) => i.gap.long).length },
+    undated: g.items.filter((i) => !i.event.date).length,
+  }
+}
+
+function formatChronicleReport(r) {
+  const lines = []
+  lines.push(`Kind: chronicle (every event in one column, in slot order; views and orientation do not apply)`)
+  lines.push(`Data: ${r.counts.events} events / ${r.counts.slots} time slots / ${r.counts.actors} parties / ${r.counts.sources} sources`)
+  lines.push(`Content ${r.size.width}×${r.size.height}; it opens fitted to its width, about ${r.screens} screen(s) tall`)
+  lines.push(`Gaps written between time points: ${r.gaps.short} short, ${r.gaps.long} of 30 days or more (marked)`)
+  if (r.undated) lines.push(`${r.undated} event(s) without a date: shown in slot order with a hollow dot, and no gap on either side`)
+  lines.push(...textSizeLines(r.text, 'splitting the case into periods, one diagram each'))
+  return lines.join('\n')
+}
+
 export const factKnowledge = {
   specVersion: FACT_SPEC_VERSION,
   /**
@@ -172,7 +210,8 @@ export const factKnowledge = {
    * many events and columns and whether it fits; per orientation, the content size and the
    * fit zoom. It lives with the type because every quantity in it is a fact concept.
    */
-  report: (spec, layout, { orientation, fields = { summary: true }, canvas }) => {
+  report: (spec, layout, { orientation, fields = { summary: true }, kind, canvas }) => {
+    if (kind === 'chronicle') return chronicleReport(spec, layout, { fields, canvas })
     const views = viewsOf(spec)
     const rows = views.map((view, i) => {
       const graph = layout(spec, fields, view, orientation ?? 'vertical')
@@ -218,6 +257,7 @@ export const factKnowledge = {
 
   /** The geometry report as the short text the tool returns to an agent */
   formatReport: (r) => {
+    if (r.kind === 'chronicle') return formatChronicleReport(r)
     const lines = []
     lines.push(`Data: ${r.counts.events} events / ${r.counts.slots} time slots / ${r.counts.actors} parties / ${r.counts.sources} sources`)
     const v = r.byOrientation.vertical
@@ -260,8 +300,9 @@ export const factKnowledge = {
     }
   },
 
-  /** Which ways of drawing a fact diagram exist. For now only the timeline. */
+  /** Which ways of drawing a fact diagram exist. The first is the default. */
   layouts: {
     timeline: buildFactGraph,
+    chronicle: buildChronicleGraph,
   },
 }

@@ -6,8 +6,9 @@
 //  by tools/build-skill.mjs), so it needs no `npm install`, no repository and no network.
 //
 //    node antu.mjs validate spec.json
-//    node antu.mjs layout spec.json [--orientation vertical|horizontal]
-//    node antu.mjs render spec.json [-o diagram.html]     validates first, and refuses a diagram with problems
+//    node antu.mjs layout spec.json [--orientation vertical|horizontal] [--kind K]
+//    node antu.mjs render spec.json [-o diagram.html] [--kind K]
+//                                                         validates first, and refuses a diagram with problems
 //    node antu.mjs preview spec.json [-o shot.png]        validates, makes the page, takes a screenshot of it in a
 //                                                         headless Chromium-based browser (Chrome, Edge, Chromium)
 //    node antu.mjs --version
@@ -27,7 +28,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-import { PREVIEW_CHECK, layoutMessage, notesOf, validate, validationMessage } from '../lib/report.mjs'
+import { PREVIEW_CHECK, kindProblem, layoutMessage, notesOf, validate, validationMessage } from '../lib/report.mjs'
 import { fillViewer } from '../lib/fill.mjs'
 import { findChrome, screenshotPage } from '../lib/chrome.mjs'
 
@@ -38,13 +39,17 @@ const VERSION = typeof __ANTU_VERSION__ === 'undefined' ? 'dev' : __ANTU_VERSION
 const USAGE = `Antu ${VERSION}: check and draw an Antu diagram (JSON)
 
   node antu.mjs validate <spec.json>                       is the JSON valid? (each problem, with its field path)
-  node antu.mjs layout   <spec.json> [--orientation vertical|horizontal]
+  node antu.mjs layout   <spec.json> [--orientation vertical|horizontal] [--kind K]
                                                            how big is the picture, which orientation fits
-  node antu.mjs render   <spec.json> [-o <out.html>]       validate, then write the page
-  node antu.mjs preview  <spec.json> [-o <out.png>] [--orientation vertical|horizontal] [--width 1600] [--height 900]
+  node antu.mjs render   <spec.json> [-o <out.html>] [--kind K]
+                                                           validate, then write the page (it opens in kind K;
+                                                           the reader can still switch)
+  node antu.mjs preview  <spec.json> [-o <out.png>] [--orientation vertical|horizontal] [--kind K] [--width 1600] [--height 900]
                                                            validate, make the page, and take a screenshot of it to look at
                                                            (needs Chrome, Edge or Chromium; ANTU_CHROME points at one)
   node antu.mjs --version
+
+  --kind K: which way of drawing the same JSON. fact: timeline (the default) or chronicle.
 `
 
 const say = (text) => process.stdout.write(`${text}\n`)
@@ -78,8 +83,8 @@ function readViewer() {
 }
 
 /** The lines of the layout report about text size (#43): an agent that only renders still hears whether it can be read */
-function sizeLines(spec) {
-  return layoutMessage(spec).text.split('\n').filter((l) => /^(Text on one screen|Note: the text|With every issue folded)/.test(l))
+function sizeLines(spec, kind) {
+  return layoutMessage(spec, { kind }).text.split('\n').filter((l) => /^(Text on one screen|Note: the text|With every issue folded)/.test(l))
 }
 
 const isFile = (p) => {
@@ -123,7 +128,7 @@ function screenshotByFlag(chrome, page, out, { width, height }) {
   }
 }
 
-async function preview(spec, file, option) {
+async function preview(spec, file, option, kind) {
   const orientation = option('--orientation')
   if (orientation && !['vertical', 'horizontal'].includes(orientation)) return fail('--orientation is vertical or horizontal', 2)
   const size = (name, fallback) => {
@@ -150,7 +155,8 @@ async function preview(spec, file, option) {
   const dir = mkdtempSync(join(tmpdir(), 'antu-preview-'))
   try {
     const page = join(dir, 'preview.html')
-    writeFileSync(page, fillViewer(readViewer(), spec, { preset: orientation ? { orientation } : undefined }))
+    const preset = orientation || kind ? { ...(orientation && { orientation }), ...(kind && { kind }) } : undefined
+    writeFileSync(page, fillViewer(readViewer(), spec, { preset }))
     let items = null
     if (typeof WebSocket === 'function' && process.env.ANTU_PREVIEW_VIA !== 'flag') {
       const shot = await screenshotPage(page, { width, height })
@@ -165,7 +171,7 @@ async function preview(spec, file, option) {
     if (items === null) say('(Taken with the browser\'s own screenshot, for Node below 22: a strip at the bottom may be blank; that is not the diagram.)')
     if (items === 0) say('No diagram item was drawn: the page may show a list of problems instead. Look at the picture.')
     say(PREVIEW_CHECK)
-    const lines = sizeLines(spec)
+    const lines = sizeLines(spec, kind)
     if (lines.length) say(`\n${lines.join('\n')}`)
   } catch (e) {
     return fail(`no picture could be taken: ${e.message}. Say that you did not see the page.`, 3)
@@ -180,7 +186,7 @@ async function main(argv) {
   if (command === '--version' || command === '-v') return say(`antu ${VERSION}`)
   if (!['validate', 'layout', 'render', 'preview'].includes(command)) return fail(`unknown command "${command}"\n\n${USAGE}`, 2)
 
-  const valued = ['-o', '--out', '--orientation', '--width', '--height']
+  const valued = ['-o', '--out', '--orientation', '--kind', '--width', '--height']
   const file = rest.find((a, i) => !a.startsWith('-') && !valued.includes(rest[i - 1]))
   if (!file) return fail(`${command}: which JSON file?\n\n${USAGE}`, 2)
   const option = (...names) => {
@@ -188,6 +194,12 @@ async function main(argv) {
     return i >= 0 ? rest[i + 1] : undefined
   }
   const spec = readSpec(file)
+  const kind = option('--kind')
+  if (kind !== undefined && command !== 'validate') {
+    // Only a valid diagram has a type to ask about; an invalid one is refused below with its problems
+    const bad = validate(spec).length ? '' : kindProblem(spec, kind)
+    if (bad) return fail(`--kind: ${bad}`, 2)
+  }
 
   if (command === 'validate') {
     const m = validationMessage(spec)
@@ -199,22 +211,22 @@ async function main(argv) {
   if (command === 'layout') {
     const orientation = option('--orientation')
     if (orientation && !['vertical', 'horizontal'].includes(orientation)) return fail('--orientation is vertical or horizontal', 2)
-    const m = layoutMessage(spec, { orientation })
+    const m = layoutMessage(spec, { orientation, kind })
     if (m.ok) say(m.text)
     else fail(m.text)
     return
   }
 
-  if (command === 'preview') return preview(spec, file, option)
+  if (command === 'preview') return preview(spec, file, option, kind)
 
   // render
   const errors = validate(spec)
   if (errors.length) return fail(validationMessage(spec).text)
   const viewer = readViewer()
   const out = resolve(option('-o', '--out') ?? file.replace(/\.json$/i, '') + '.html')
-  writeFileSync(out, fillViewer(viewer, spec))
+  writeFileSync(out, fillViewer(viewer, spec, { preset: kind ? { defaultKind: kind } : undefined }))
   say(out)
-  const size = sizeLines(spec)
+  const size = sizeLines(spec, kind)
   if (size.length) say(`\n${size.join('\n')}`)
   const notes = notesOf(spec)
   if (notes.length) say(`\n${notes.length} note(s), not errors:\n${notes.map((n) => `  - ${n}`).join('\n')}`)

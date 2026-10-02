@@ -1,0 +1,115 @@
+// ============================================================
+//  src/renderers/fact/chronicle/ChronicleRenderer.jsx — the chronicle (issue #85)
+//
+//  Every event in one column, in order, on one spine; the time passed between time points is
+//  written between them. Same JSON as the timeline; the reader switches kind in the label card.
+//
+//  Like the timeline it never touches React Flow: it hands the shell a graph (chronicle/layout.js),
+//  its node types and its dock. It opens fitted to its width (Canvas fitWidth), because a long
+//  chronicle fitted whole would be too small to read.
+// ============================================================
+
+import { useMemo, useState } from 'react'
+
+import Canvas from '../../../shell/Canvas.jsx'
+import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { useExport } from '../../../shell/useExport.js'
+import { PreviewContext } from '../../../shell/previewContext.js'
+import EntryNode from './EntryNode.jsx'
+import SpineNode from './SpineNode.jsx'
+import LegendNode from './LegendNode.jsx'
+import ChronicleDock from './ChronicleDock.jsx'
+import { buildChronicleGraph, PAD_X, PAD_Y, SUMMARY_FONT, SUMMARY_LH, TAG_FONT, TAG_LH, TITLE_FONT, TITLE_LH, WHEN_LH } from './layout.js'
+
+const nodeTypes = { entry: EntryNode, spine: SpineNode, legend: LegendNode }
+
+/**
+ * Measure text with the font the page really draws in, so each card is exactly as tall as its
+ * text: an estimate has to err long to be safe, and that leaves a blank line in some cards.
+ * Canvas measureText shapes text the way layout does; null where there is no canvas.
+ */
+function makeMeasure() {
+  if (typeof document === 'undefined') return null
+  const ctx = document.createElement('canvas').getContext?.('2d')
+  if (!ctx) return null
+  const family = getComputedStyle(document.querySelector('.antu-app') || document.body).fontFamily
+  const fonts = { title: `600 ${TITLE_FONT}px ${family}`, summary: `${SUMMARY_FONT}px ${family}` }
+  const cache = new Map()
+  return (text, kind) => {
+    const key = kind + '\u0000' + text
+    let w = cache.get(key)
+    if (w === undefined) {
+      ctx.font = fonts[kind]
+      w = ctx.measureText(text).width
+      cache.set(key, w)
+    }
+    return w
+  }
+}
+
+/** The same defaults and the same stored switches as the timeline: one set of card fields per reader */
+const FIELD_DEFAULTS = { sources: false, actors: false, summary: true }
+
+/** External preset for screenshots (antu_preview, the skill's preview); see the timeline renderer */
+const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
+
+export default function FactChronicle({ spec }) {
+  const [fields, setFields] = useState(() => ({
+    ...FIELD_DEFAULTS,
+    ...readPrefs().fields,
+    ...(PRESET?.fields || {}),
+  }))
+  const toggleField = (key, value) => {
+    setFields((f) => ({ ...f, [key]: value }))
+    writePrefs({ fields: { ...readPrefs().fields, [key]: value } })
+  }
+
+  const measure = useMemo(() => makeMeasure(), [])
+  const graph = useMemo(() => buildChronicleGraph(spec, fields, { measure }), [spec, fields, measure])
+
+  const [hoveredId, setHoveredId] = useState(null)
+  const [pinnedId, setPinnedId] = useState(null)
+  const { canvasRef, exporting, onExport } = useExport(spec?.title)
+  const preview = useMemo(
+    () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),
+    [hoveredId, pinnedId],
+  )
+
+  return (
+    <div className="antu-fact antu-chr">
+      <PreviewContext.Provider value={preview}>
+        <Canvas
+          ref={canvasRef}
+          graph={graph}
+          fitWidth
+          nodeTypes={nodeTypes}
+          // Every number the styles need comes from layout.js, so the height the layout computed
+          // and the height the text takes cannot drift apart
+          style={{
+            '--antu-chr-pad-x': `${PAD_X}px`,
+            '--antu-chr-pad-y': `${PAD_Y}px`,
+            '--antu-chr-title-font': `${TITLE_FONT}px`,
+            '--antu-chr-title-lh': `${TITLE_LH}px`,
+            '--antu-chr-summary-font': `${SUMMARY_FONT}px`,
+            '--antu-chr-summary-lh': `${SUMMARY_LH}px`,
+            '--antu-chr-tag-font': `${TAG_FONT}px`,
+            '--antu-chr-tag-lh': `${TAG_LH}px`,
+            '--antu-chr-when-lh': `${WHEN_LH}px`,
+          }}
+          onNodeMouseEnter={(_, n) => {
+            if (n.type === 'entry') setHoveredId(n.id)
+          }}
+          onNodeMouseLeave={(_, n) => {
+            setHoveredId((cur) => (cur === n.id ? null : cur))
+          }}
+          onNodeClick={(_, n) => {
+            if (n.type === 'entry') setPinnedId(n.id)
+          }}
+          onPaneClick={() => setPinnedId(null)}
+        >
+          <ChronicleDock spec={spec} fields={fields} onToggleField={toggleField} exporting={exporting} onExport={onExport} />
+        </Canvas>
+      </PreviewContext.Provider>
+    </div>
+  )
+}

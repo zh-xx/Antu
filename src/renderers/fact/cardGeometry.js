@@ -103,3 +103,63 @@ export function cardHeightOf(fields = {}, labelLines = TITLE_LINES, actorLines =
   if (fields.actors && actorLines > 0) h += ROW_H * actorLines + ROW_GAP
   return h
 }
+
+/**
+ * How many lines a piece of text takes when wrapped into a box `maxEm` wide.
+ *
+ * Greedy, like the browser: a CJK character can break anywhere, a Latin word cannot, so an English
+ * line ends early when the next word does not fit. Counting total width ÷ line width instead
+ * under-counts English text (every line loses its tail to the next word) and the last line spills
+ * out of its card. A word longer than a whole line is broken (the styles say overflow-wrap:anywhere).
+ *
+ * `scale` widens the estimate per script, for text drawn wider than the em table assumes: bold
+ * Latin in the widest common font (DejaVu Sans, on Linux) measured 14% over it, and a card must
+ * never be shorter than its text on any machine. { latin, cjk }, 1 by default.
+ */
+export function wrapLineCount(text, maxEm, scale = {}) {
+  const latin = scale.latin ?? 1
+  const cjk = scale.cjk ?? 1
+  const em = (tok) => {
+    let n = 0
+    for (const ch of tok) n += charEm(ch) * (charEm(ch) === CJK_EM ? cjk : latin)
+    return n
+  }
+  return wrapLinesBy(text, maxEm, em)
+}
+
+/**
+ * The same greedy wrap, with the width of each piece given by `widthOf` (any unit, the same as
+ * `max`). The page passes the real font's widths (canvas measureText), so its cards fit their
+ * text exactly; Node has no fonts and uses wrapLineCount's estimate.
+ */
+export function wrapLinesBy(text, max, widthOf) {
+  const maxEm = max
+  const em = widthOf
+  const s = String(text ?? '')
+  if (!s) return 0
+  // Tokens: a run of Latin non-space characters (a word), a single space, or a single other character
+  const tokens = s.match(/[^\sᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹯＀-｠￠-￦]+|\s|./gu) || []
+  let lines = 1
+  let used = 0
+  for (const tok of tokens) {
+    const w = em(tok)
+    if (/^\s$/.test(tok)) {
+      // A space at the start of a line is dropped by the browser
+      if (used > 0) used += w
+      continue
+    }
+    if (used + w <= maxEm) {
+      used += w
+    } else if (w <= maxEm) {
+      lines += used > 0 ? 1 : 0
+      used = w
+    } else {
+      // A word longer than a line: it breaks, filling lines one after another
+      if (used > 0) lines += 1
+      const spans = Math.ceil(w / maxEm)
+      lines += spans - 1
+      used = w - (spans - 1) * maxEm
+    }
+  }
+  return lines
+}
