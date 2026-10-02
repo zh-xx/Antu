@@ -129,6 +129,20 @@ export const en = {
   'graphKind.timeline': 'Timeline',
   'graphKind.flow': 'Flowchart',
   'graphKind.chronicle': 'Chronicle',
+  'graphKind.scale': 'Time scale',
+
+  // ---------- fact time scale ----------
+  'scale.segment': ({ n, unit, count }) => `Segment ${n} · ${unit} · ${count} event${count === 1 ? '' : 's'}`,
+  'scale.unit.year': 'by year',
+  'scale.unit.month': 'by month',
+  'scale.unit.day': 'by day',
+  'scale.unit.hour': 'by hour',
+  'scale.unit.minute': 'by minute',
+  'scale.other': 'Other',
+  'scale.events': 'Events',
+  'scale.undated': 'date unknown · placed by order',
+  'scale.run': ({ n }) => `${n} events`,
+  'scale.runListed': ({ n }) => `${n} events too close to show one by one:`,
 
   // ---------- fact chronicle: the time passed between two time points ----------
   'chronicle.gapSeconds': ({ n }) => `+${n} s`,

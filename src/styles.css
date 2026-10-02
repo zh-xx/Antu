@@ -1295,3 +1295,92 @@
 
 .antu-chr-legend { display: flex; gap: 16px; height: 20px; align-items: center; white-space: nowrap; }
 .antu-chr-legend .antu-chr-group { font-size: 12px; }
+
+/* ---------- fact time scale (fact/scale) ----------
+   Sizes come from scale/layout.js through CSS variables (ScaleRenderer.jsx), as for the chronicle. */
+.react-flow__node-scaleCard:hover,
+.react-flow__node-scaleRun:hover { z-index: 10 !important; }
+.react-flow__node-scaleCard.selected,
+.react-flow__node-scaleRun.selected { z-index: 20 !important; }
+.antu-sc-layer { position: relative; }
+.antu-sc-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-sc-lane {
+  position: absolute;
+  left: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+.antu-sc-lane span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+.antu-sc-lane i { flex: none; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: currentColor; }
+.antu-sc-lane.g0 { color: var(--antu-side1); }
+.antu-sc-lane.g1 { color: var(--antu-side2); }
+.antu-sc-lane.g2 { color: var(--antu-text-3); }
+.antu-sc-lane.g2 i { background: var(--antu-axis); }
+.antu-sc-seg {
+  position: absolute;
+  text-align: center;
+  font-size: 11px;
+  color: var(--antu-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.antu-sc-break {
+  position: absolute;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+  white-space: normal;
+  line-height: 14px;
+}
+.antu-sc-card {
+  position: relative;
+  box-sizing: border-box;
+  height: 100%;
+  padding: var(--antu-sc-pad-y, 8px) var(--antu-sc-pad-x, 10px);
+  background: #fff;
+  border: 1px solid #d5dce5;
+  border-radius: var(--antu-radius);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  color: var(--antu-text);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.antu-sc-card:hover { box-shadow: 0 4px 14px rgba(15, 23, 42, .10); }
+.antu-sc-card:focus-visible { outline: 2px solid var(--antu-side1); outline-offset: 2px; }
+.react-flow__node.selected .antu-sc-card { border-color: #6d86a8; box-shadow: 0 0 0 3px rgba(47, 111, 237, .16); }
+.antu-sc-card.is-undated { border-style: dashed; }
+.antu-sc-run { border-style: dashed; background: #f8fafc; }
+.antu-sc-title {
+  flex: none;
+  font-size: var(--antu-sc-title-font, 12.5px);
+  line-height: var(--antu-sc-title-lh, 17px);
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.antu-sc-time {
+  flex: none;
+  font-size: var(--antu-sc-time-font, 11px);
+  line-height: var(--antu-sc-time-lh, 15px);
+  color: var(--antu-text-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.antu-sc .antu-preview { width: 300px; }
+.antu-sc-run-row { display: flex; gap: 8px; font-size: 12px; line-height: 18px; color: var(--antu-text-2); }
+.antu-sc-run-time { flex: none; color: var(--antu-text-3); font-variant-numeric: tabular-nums; }
+.antu-sc-list { font-size: 12px; line-height: var(--antu-sc-list-lh, 18px); color: var(--antu-text-2); }
+.antu-sc-list-head { font-weight: 600; color: var(--antu-text); }
+.antu-sc-list-row { display: flex; gap: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 18px; }

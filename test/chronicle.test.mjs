@@ -37,7 +37,7 @@ const ALL_FIELDS = { summary: true, actors: true, sources: true }
 
 test('the chronicle is a registered fact kind, after the timeline', () => {
   registerKnowledge('fact', factKnowledge)
-  assert.deepEqual(layoutKindsOf('fact'), ['timeline', 'chronicle'])
+  assert.deepEqual(layoutKindsOf('fact').slice(0, 2), ['timeline', 'chronicle'])
 })
 
 for (const f of files) {

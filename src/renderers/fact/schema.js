@@ -17,6 +17,7 @@ import { specVersionFieldRow } from '../../core/specVersion.js'
 import { buildGrid, viewsOf } from './timeline/grid.js'
 import { buildFactGraph } from './timeline/layout.js'
 import { buildChronicleGraph, TITLE_FONT as CHRONICLE_TITLE_FONT } from './chronicle/layout.js'
+import { buildScaleGraph, TITLE_FONT as SCALE_TITLE_FONT } from './scale/layout.js'
 import { fitWidthZoom, fitZoom, textSizeLines } from '../../core/canvas.js'
 import { LABEL_FONT } from './cardGeometry.js'
 import { tEn } from '../../core/i18n.js'
@@ -142,6 +143,41 @@ function formatChronicleReport(r) {
   return lines.join('\n')
 }
 
+/**
+ * The time scale's geometry report: its segments (where the axis breaks, by what unit, how many
+ * events), the gathered runs, and the text size as it opens (fitted whole).
+ */
+function scaleReport(spec, layout, { canvas }) {
+  const g = layout(spec, {})
+  const fit = Number(fitZoom(g.size, canvas).toFixed(3))
+  return {
+    text: { font: SCALE_TITLE_FONT, canvas, open: { name: 'fitted whole', fit }, other: { name: 'fitted whole', fit } },
+    counts: { events: g.eventCount, actors: spec.actors?.length ?? 0, sources: spec.sources?.length ?? 0 },
+    size: g.size,
+    segments: g.segments.map((s) => ({ unit: s.unit, count: s.count })),
+    gathered: g.gathered.map((r) => r.ids.length),
+    undated: g.undated,
+  }
+}
+
+function formatScaleReport(r) {
+  const lines = []
+  lines.push('Kind: scale (distance on the axis is real time; views and orientation do not apply)')
+  lines.push(`Data: ${r.counts.events} events / ${r.counts.actors} parties / ${r.counts.sources} sources`)
+  lines.push(`Content ${r.size.width}×${r.size.height}`)
+  lines.push(
+    r.segments.length > 1
+      ? `The axis breaks into ${r.segments.length} segments: ${r.segments.map((s, i) => `${i + 1}. by ${s.unit}, ${s.count} event(s)`).join('; ')}`
+      : `One segment, by ${r.segments[0]?.unit ?? 'day'}`,
+  )
+  if (r.gathered.length) {
+    lines.push(`${r.gathered.length} run(s) of events too close to show one by one are gathered (${r.gathered.join(', ')} events); they are listed in full under the diagram`)
+  }
+  if (r.undated) lines.push(`${r.undated} event(s) without a date: placed between their neighbours in data order, with a hollow dot`)
+  lines.push(...textSizeLines(r.text, 'splitting the case into periods, one diagram each'))
+  return lines.join('\n')
+}
+
 export const factKnowledge = {
   specVersion: FACT_SPEC_VERSION,
   /**
@@ -212,6 +248,7 @@ export const factKnowledge = {
    */
   report: (spec, layout, { orientation, fields = { summary: true }, kind, canvas }) => {
     if (kind === 'chronicle') return chronicleReport(spec, layout, { fields, canvas })
+    if (kind === 'scale') return scaleReport(spec, layout, { canvas })
     const views = viewsOf(spec)
     const rows = views.map((view, i) => {
       const graph = layout(spec, fields, view, orientation ?? 'vertical')
@@ -258,6 +295,7 @@ export const factKnowledge = {
   /** The geometry report as the short text the tool returns to an agent */
   formatReport: (r) => {
     if (r.kind === 'chronicle') return formatChronicleReport(r)
+    if (r.kind === 'scale') return formatScaleReport(r)
     const lines = []
     lines.push(`Data: ${r.counts.events} events / ${r.counts.slots} time slots / ${r.counts.actors} parties / ${r.counts.sources} sources`)
     const v = r.byOrientation.vertical
@@ -304,5 +342,6 @@ export const factKnowledge = {
   layouts: {
     timeline: buildFactGraph,
     chronicle: buildChronicleGraph,
+    scale: buildScaleGraph,
   },
 }

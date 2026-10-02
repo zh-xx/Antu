@@ -14,8 +14,10 @@ The engine draws it as a timeline: time runs downwards, parties and sides are la
 out left and right.
 
 The reader can also switch to a **chronicle** (one column in slot order, the time passed
-written between events, so `date` and `dateEnd` matter more there). The same JSON draws in
-both; `kind: "chronicle"` on antu_layout / antu_preview / antu_render shows it.
+written between events) or a **time scale** (distance is real time, the axis breaks where the
+scale changes). `date`, `dateEnd` and their precision matter more there: a day-only date is
+drawn as the whole day. The same JSON draws in all three; `kind: "chronicle"` or
+`kind: "scale"` on antu_layout / antu_preview / antu_render shows it.
 
 ## Where an event is drawn is decided by three things
 

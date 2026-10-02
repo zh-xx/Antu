@@ -122,6 +122,20 @@ export const zh = {
   'graphKind.timeline': '时间图',
   'graphKind.flow': '流程图',
   'graphKind.chronicle': '大事记',
+  'graphKind.scale': '比例时间轴',
+
+  // ---------- 事实图比例时间轴 ----------
+  'scale.segment': ({ n, unit, count }) => `第 ${n} 段 · ${unit} · ${count} 件`,
+  'scale.unit.year': '按年',
+  'scale.unit.month': '按月',
+  'scale.unit.day': '按日',
+  'scale.unit.hour': '按小时',
+  'scale.unit.minute': '按分钟',
+  'scale.other': '其他',
+  'scale.events': '事件',
+  'scale.undated': '日期不详 · 按顺序放置',
+  'scale.run': ({ n }) => `${n} 件事`,
+  'scale.runListed': ({ n }) => `${n} 件事挨得太近，逐条列出：`,
 
   // ---------- 事实图大事记：两个时间点之间隔了多久 ----------
   'chronicle.gapSeconds': ({ n }) => `+${n} 秒`,

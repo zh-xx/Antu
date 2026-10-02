@@ -139,6 +139,23 @@ export function gapBetween(from, to, approx = false) {
   return daysText(days, out)
 }
 
+/**
+ * The same wording for a span already in milliseconds (the time scale's breaks): the largest
+ * unit that fits, from seconds to years.
+ */
+export function gapOfMs(ms) {
+  const out = (key, vars, long) => ({ key, vars, long, approx: false })
+  if (!(ms > 0)) return null
+  if (ms < DAY) {
+    const sec = Math.round(ms / 1000)
+    if (sec < 60) return out('chronicle.gapSeconds', { n: sec }, false)
+    if (sec < 3600) return out('chronicle.gapMinutes', { n: Math.round(sec / 60) }, false)
+    const h = Math.round(sec / 3600)
+    return out('chronicle.gapHours', { n: h }, false)
+  }
+  return daysText(Math.round(ms / DAY), out)
+}
+
 function daysText(days, out) {
   if (days < LONG_GAP_DAYS) return out('chronicle.gapDays', { n: days }, false)
   return monthsText(Math.max(1, Math.round(days / 30.44)), out)

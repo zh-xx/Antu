@@ -237,6 +237,22 @@ on the right. Code: `src/renderers/fact/chronicle/`.
 | It opens fitted to its width at most 1:1, scrolled to the top | A long column fitted whole would be too small to read |
 | "Copy as table" in the dock (in the timeline's too) | A lawyer pastes the chronology into a brief or a spreadsheet: HTML and tab-separated text at once |
 
+### 9.2 The time scale (third kind, issue #85)
+
+> Status of this section: **implemented, a first attempt** (not confirmed).
+
+Distance along the axis is real time, so the density of events is itself the information. Code: `src/renderers/fact/scale/`.
+
+| Decision | Reason |
+|---|---|
+| One lane per group (side 1, side 2, the axis group), "other" for events with none | The group colours of the timeline carry over |
+| A time of day is a dot, a `dateEnd` a bar; a date to the day, month or year is a band over the whole period | A dot would claim a precision the date does not have. Where a period is narrower than the scale can show (a day on a scale of months), a dot claims no more than the date |
+| A period's or an undated event's point comes from its exact neighbours in data order | So "that day" written after the evening's events stays after them; undated events get a hollow dot and a dashed card |
+| The axis breaks where the scale changes, at most twice: a gap of 2 days or more and 20 times the typical gap beside it (counting only smaller gaps) | Months of run-up and one evening fit one picture; an evening is never cut |
+| Each segment is as wide as its number of events needs; inside it the position is exact | Evenly spread events never crowd |
+| Cards stack up to three levels; a run that still does not fit is gathered into one card, nearest neighbours first, and written out in full under the diagram | No two cards ever overlap (tested on every example and a dense case), and an exported picture hides nothing |
+| Titles in at most two lines, measured with the real font | Text never leaves its card; the full text is in the overlay |
+
 ## 10. Exporting an image
 
 **In one sentence**: export the current diagram as one PNG, to paste into a complaint, a written argument or a note on evidence.
