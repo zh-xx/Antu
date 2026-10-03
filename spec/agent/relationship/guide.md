@@ -18,8 +18,10 @@ relations; the reader clicks another), the parties tied to it around it, the oth
 suits a case with many parties, where the graph is too busy. The **guarantee chain** shows one block per
 claim (a `debt`) with its guarantors beside it and what stands behind each; for a loan or guarantee
 dispute. **Write `secures` on every guarantee**: without it the chain ties a guarantee to a claim only when
-its creditor has exactly one, and puts it apart otherwise. The same JSON draws in all three;
-`kind: "focus"` or `kind: "chain"` on antu_layout / antu_preview / antu_render shows it.
+its creditor has exactly one, and puts it apart otherwise. The **matrix** puts the parties down and across and names the relations in each cell: for "is there any
+relation between A and B". The **equity tree** draws the `equity` relations in levels with the `share` on each
+line, so **write `share` on every equity relation**. The same JSON draws in all five;
+`kind: "focus"`, `"chain"`, `"matrix"` or `"equity"` on antu_layout / antu_preview / antu_render shows it.
 
 ## Three things, three places
 

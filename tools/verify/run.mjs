@@ -58,6 +58,8 @@ import { factTable } from '../../src/renderers/fact/table.js'
 import { buildScaleGraph } from '../../src/renderers/fact/scale/layout.js'
 import { buildFocusGraph } from '../../src/renderers/relationship/focus/layout.js'
 import { buildChainGraph } from '../../src/renderers/relationship/chain/layout.js'
+import { buildMatrixGraph } from '../../src/renderers/relationship/matrix/layout.js'
+import { buildEquityGraph } from '../../src/renderers/relationship/equity/layout.js'
 import { buildProcedureGraph } from '../../src/renderers/procedure/flow/layout.js'
 import { sizeOf } from '../../src/renderers/procedure/flow/metrics.js'
 import { buildRelationshipGraph } from '../../src/renderers/relationship/graph/layout.js'
@@ -1835,6 +1837,142 @@ async function checkRenderChain() {
   }
 }
 
+
+async function checkRenderMatrix() {
+  section('render: relationship matrix')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const dir = join(REPO, 'examples/relationship')
+  const cases = readdirSync(dir)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => [f, JSON.parse(readFileSync(join(dir, f), 'utf8')), f.includes('.zh-CN.') ? 'zh' : 'en'])
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    for (const [name, spec, lang] of cases) {
+      const html = join(OUT, 'render-matrix.html')
+      renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'matrix' } })
+      await browser.open(`file://${html}?lang=${lang}`)
+      const g = buildMatrixGraph(spec, { t: (k, v) => translate(lang, k, v) })
+      const layer = g.nodes[0].data
+      const m = await browser.eval(`(() => {
+        const chips = [...document.querySelectorAll('.antu-mx-chip')]
+        const spill = chips.filter((c) => c.scrollHeight > c.clientHeight + 1 || c.scrollWidth > c.clientWidth + 1).map((c) => c.textContent)
+        const heads = [...document.querySelectorAll('.antu-mx-head, .antu-mx-rowhead')]
+        const headSpill = heads.filter((h) => h.scrollHeight > h.clientHeight + 1).map((h) => h.textContent)
+        return { chips: chips.length, spill, heads: heads.length, headSpill }
+      })()`)
+      eq(`${name}: one chip per relation in a cell`, m.chips, layer.chipsTotal)
+      eq(`${name}: every party has a column head and a row head`, m.heads, layer.heads.length + layer.rowHeads.length)
+      eq(`${name}: no chip text past its chip`, m.spill, [])
+      eq(`${name}: no head text past its head`, m.headSpill, [])
+    }
+
+    // One case in full: no external request, the labels switch, the export
+    const full = cases.find(([n]) => n === 'sample-group-guarantee.zh-CN.json') ?? cases[0]
+    const html = join(OUT, 'render-matrix.html')
+    renderToFile(full[1], { outPath: html, quiet: true, preset: { kind: 'matrix' } })
+    await browser.open(`file://${html}?lang=${full[2]}`)
+    const g = buildMatrixGraph(full[1], { t: (k, v) => translate(full[2], k, v) })
+    eq('matrix: external request count', browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://')).length, 0)
+    truthy('matrix: the label card names the kind', (await browser.eval(`document.querySelector('.antu-header')?.textContent || ''`)).includes(translate(full[2], 'graphKind.matrix')))
+    truthy('matrix: the dock has Copy as table', (await browser.eval(`document.querySelector('.antu-copy-table') !== null`)))
+    const { clickByClass, grab } = await downloadHelpers(browser)
+    if (!(await clickByClass('.antu-dock-action'))) bad('matrix export: the button is not in the bottom dock')
+    else {
+      const shot = await grab('matrix export')
+      if (shot) {
+        const frame = exportFrame(g.size.width, g.size.height)
+        eq('matrix export: size = (content + padding) × 2', [shot.width, shot.height], [frame.width * 2, frame.height * 2])
+        writeFileSync(join(OUT, 'export-matrix.png'), shot.buf)
+      }
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
+async function checkRenderEquity() {
+  section('render: relationship equity tree')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const dir = join(REPO, 'examples/relationship')
+  const entity = (id, label, kind = 'company') => ({ id, kind, label })
+  const everything = {
+    specVersion: 1,
+    type: 'relationship',
+    title: 'equity: every place',
+    entities: [entity('e-1', '陈总', 'person'), entity('e-2', '李明', 'person'), entity('e-3', '华峰投资有限公司'), entity('e-4', '星河集团有限公司'), entity('e-5', '星河商贸有限公司'), entity('e-6', '星河物流有限公司'), entity('e-7', '融安担保公司')],
+    relations: [
+      { id: 'r-1', from: 'e-1', to: 'e-3', kind: 'equity', share: 70 },
+      { id: 'r-2', from: 'e-2', to: 'e-4', kind: 'equity', share: 55 },
+      { id: 'r-3', from: 'e-3', to: 'e-4', kind: 'equity', share: 10 },
+      { id: 'r-4', from: 'e-4', to: 'e-5', kind: 'equity', share: 100 },
+      { id: 'r-5', from: 'e-4', to: 'e-6', kind: 'equity' },
+      { id: 'r-6', from: 'e-6', to: 'e-3', kind: 'equity', share: 5 },
+      { id: 'r-7', from: 'e-7', to: 'e-3', kind: 'guarantee', label: '连带责任保证' },
+    ],
+  }
+  const cases = [
+    ...readdirSync(dir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => [f, JSON.parse(readFileSync(join(dir, f), 'utf8')), f.includes('.zh-CN.') ? 'zh' : 'en']),
+    ['every place', everything, 'zh'],
+  ]
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    for (const [name, spec, lang] of cases) {
+      const html = join(OUT, 'render-equity.html')
+      renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'equity' } })
+      await browser.open(`file://${html}?lang=${lang}`)
+      const g = buildEquityGraph(spec, { t: (k, v) => translate(lang, k, v) })
+      const layer = g.nodes.find((n) => n.type === 'equityLayer').data
+      const m = await browser.eval(`(() => {
+        const parties = [...document.querySelectorAll('.antu-rn')].map((n) => n.getBoundingClientRect())
+        let hits = 0
+        for (let i = 0; i < parties.length; i++) for (let j = i + 1; j < parties.length; j++) {
+          const a = parties[i], b = parties[j]
+          if (a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5) hits += 1
+        }
+        const stand = [...document.querySelectorAll('.react-flow__node-rnode')].map((n) => { const m = /translate\\(([-\\d.]+)px, ?([-\\d.]+)px\\)/.exec(n.style.transform); return [n.getAttribute('data-id'), Math.round(+m[1]), Math.round(+m[2])] }).sort()
+        return { parties: parties.length, hits, stand, pills: document.querySelectorAll('.antu-eq-pill').length, texts: document.querySelectorAll('.antu-eq-text').length }
+      })()`)
+      const want = g.nodes.filter((n) => n.type === 'rnode').map((n) => [n.id, Math.round(n.position.x), Math.round(n.position.y)]).sort()
+      eq(`${name}: one box per party in the tree`, m.parties, want.length)
+      eq(`${name}: no two boxes overlap`, m.hits, 0)
+      truthy(`${name}: every party stands where the layout module put it`, m.stand.length === want.length && m.stand.every(([id, x, y], i) => id === want[i][0] && Math.abs(x - want[i][1]) <= 1 && Math.abs(y - want[i][2]) <= 1), JSON.stringify(m.stand))
+      eq(`${name}: one pill per equity line`, m.pills, layer.pills.length)
+      eq(`${name}: every text of the sections is drawn`, m.texts, layer.texts.length)
+    }
+
+    const html = join(OUT, 'render-equity.html')
+    renderToFile(everything, { outPath: html, quiet: true, preset: { kind: 'equity' } })
+    await browser.open(`file://${html}?lang=zh`)
+    const g = buildEquityGraph(everything, { t: (k, v) => translate('zh', k, v) })
+    eq('equity: the case has its levels, a cross-holding, a line with no share, indirect holdings', [g.levels, g.crossHoldings, g.noShare, g.indirect > 0], [4, 1, 1, true])
+    eq('equity: external request count', browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://')).length, 0)
+    truthy('equity: the label card names the kind', (await browser.eval(`document.querySelector('.antu-header')?.textContent || ''`)).includes(translate('zh', 'graphKind.equity')))
+    const pillTexts = await browser.eval(`[...document.querySelectorAll('.antu-eq-pill')].map((p) => p.textContent)`)
+    truthy('equity: a line with no share says so on the page', pillTexts.some((x) => x.includes(translate('zh', 'rel.equity.noShare'))))
+    truthy('equity: the cross-holding is flagged on the page', pillTexts.some((x) => x.includes(translate('zh', 'rel.equity.cross'))))
+    const { clickByClass, grab } = await downloadHelpers(browser)
+    if (!(await clickByClass('.antu-dock-action'))) bad('equity export: the button is not in the bottom dock')
+    else {
+      const shot = await grab('equity export')
+      if (shot) {
+        const frame = exportFrame(g.size.width, g.size.height)
+        eq('equity export: size = (content + padding) × 2', [shot.width, shot.height], [frame.width * 2, frame.height * 2])
+        writeFileSync(join(OUT, 'export-equity.png'), shot.buf)
+      }
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderProcedure(sampleFile) {
   section('render: procedure flowchart')
   if (!findChrome()) {
@@ -2591,6 +2729,8 @@ if (!shotOnly && !skipBrowser) {
   if (data.sample) await checkRenderScale(data.sample)
   await checkRenderFocus()
   await checkRenderChain()
+  await checkRenderMatrix()
+  await checkRenderEquity()
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)

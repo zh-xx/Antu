@@ -29,8 +29,12 @@ function copyBySelection(html) {
 }
 
 export async function copyFactTable(spec, lang) {
-  const table = factTable(spec, lang)
-  const html = tableHtml(table, spec?.title)
+  return copyTable(factTable(spec, lang), spec?.title)
+}
+
+/** Any { headers, rows } table: HTML and tab-separated text at once (the relation matrix uses it too) */
+export async function copyTable(table, title) {
+  const html = tableHtml(table, title)
   const text = tableTsv(table)
   try {
     await navigator.clipboard.write([
@@ -44,7 +48,8 @@ export async function copyFactTable(spec, lang) {
   }
 }
 
-export default function CopyTableButton({ spec }) {
+/** `getTable(lang)` gives the table to copy; without it the button copies the fact table of `spec` */
+export default function CopyTableButton({ spec, getTable }) {
   const { t, lang } = useLang()
   const [state, setState] = useState('idle')
   useEffect(() => {
@@ -54,7 +59,8 @@ export default function CopyTableButton({ spec }) {
   }, [state])
   const onClick = async () => {
     try {
-      await copyFactTable(spec, lang)
+      if (getTable) await copyTable(getTable(lang), spec?.title)
+      else await copyFactTable(spec, lang)
       setState('copied')
     } catch (e) {
       console.error('[antu] copy as table failed:', e)

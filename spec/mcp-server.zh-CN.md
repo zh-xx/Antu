@@ -67,7 +67,7 @@ agent 和人一样，**看不见自己画出来的东西**。校验全过、几�
 | `antu_preview` | 截成 PNG 返回 | 一张图 | **要** |
 
 `antu_layout`、`antu_render`、`antu_preview` 都可以带一个可选的 `kind`：画法（事实图是 `timeline`，
-默认，`chronicle` 大事记，或 `scale` 比例时间轴；关系图是 `graph`，默认，`focus` 聚焦图，或 `chain` 担保链图）。不认识的画法会被拒绝，并列出有哪些画法。`antu_render` 带画法时，
+默认，`chronicle` 大事记，或 `scale` 比例时间轴；关系图是 `graph`，默认，`focus` 聚焦图、`chain` 担保链图、`matrix` 关系矩阵，或 `equity` 股权图）。不认识的画法会被拒绝，并列出有哪些画法。`antu_render` 带画法时，
 页面打开就是那种画法，读者仍可切换。
 
 合计 **5.4k token** 就能开工，替掉原先"读 schema 文档 8k + 排布规则 3k + 示例 5k"。

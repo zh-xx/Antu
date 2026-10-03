@@ -14,6 +14,8 @@ import { validateRelationship, hintsOfRelationship, ENTITY_KINDS, RELATION_KINDS
 import { buildRelationshipGraph } from './graph/layout.js'
 import { buildFocusGraph } from './focus/layout.js'
 import { buildChainGraph } from './chain/layout.js'
+import { buildMatrixGraph } from './matrix/layout.js'
+import { buildEquityGraph } from './equity/layout.js'
 import { fitZoom, textSizeLines } from '../../core/canvas.js'
 import { ENTITY_FONT } from './graph/metrics.js'
 
@@ -170,6 +172,79 @@ function formatChainReport(r) {
   return lines.join('\n')
 }
 
+/** The matrix's geometry report: no orientation to choose; how full the table is is what is worth saying */
+function matrixReport(spec, layout, { canvas }) {
+  const g = layout(spec, {})
+  const fit = Number(fitZoom({ width: g.size.width, height: 1 }, { width: canvas.width, height: canvas.height * 1e6 }).toFixed(3))
+  return {
+    text: { font: ENTITY_FONT, canvas, open: { name: 'fitted to width', fit }, other: { name: 'fitted to width', fit } },
+    counts: { entities: g.stats.entities, relations: g.stats.relations, groups: g.stats.groups, kinds: g.stats.kinds, sources: spec.sources?.length ?? 0 },
+    size: g.size,
+    filled: g.filled,
+    stacked: g.stacked,
+    possible: g.possible,
+    fit,
+    hints: g.hints,
+  }
+}
+
+function formatMatrixReport(r) {
+  const c = r.counts
+  const lines = [
+    'Kind: matrix (parties x parties, row to column; orientation does not apply)',
+    `Data: ${c.entities} entities / ${c.relations} relations / ${c.groups} groups / ${c.sources} sources`,
+    `Content ${r.size.width}×${r.size.height}; it opens fitted to its width (zoom ${r.fit})`,
+    `${r.filled} of ${r.possible} possible pairs have a relation; ${r.stacked} cell(s) hold more than one`,
+  ]
+  if (r.fit < 0.6) lines.push('The table is wide for one screen: the reader will zoom in. Splitting the diagram by group keeps each table smaller.')
+  lines.push(...textSizeLines(r.text, 'splitting the diagram by group'))
+  if (r.hints.length) lines.push('', `${r.hints.length} hint(s):`, ...r.hints.map((x) => `  - ${x}`))
+  return lines.join('\n')
+}
+
+/** The equity tree's geometry report: how deep it is, who stands on top, what the data leaves unsaid */
+function equityReport(spec, layout, { canvas }) {
+  const g = layout(spec, {})
+  const fit = Number(fitZoom({ width: g.size.width, height: 1 }, { width: canvas.width, height: canvas.height * 1e6 }).toFixed(3))
+  return {
+    text: { font: ENTITY_FONT, canvas, open: { name: 'fitted to width', fit }, other: { name: 'fitted to width', fit } },
+    counts: { entities: g.stats.entities, relations: g.stats.relations, groups: g.stats.groups, kinds: g.stats.kinds, sources: spec.sources?.length ?? 0 },
+    size: g.size,
+    levels: g.levels,
+    holders: g.holders,
+    treeParties: g.treeParties,
+    equityLines: g.equityLines,
+    noShare: g.noShare,
+    crossHoldings: g.crossHoldings,
+    indirect: g.indirect,
+    apart: g.apart,
+    other: g.other,
+    fit,
+    hints: g.hints,
+  }
+}
+
+function formatEquityReport(r) {
+  const c = r.counts
+  const lines = [
+    'Kind: equity (holders above what they hold; orientation does not apply)',
+    `Data: ${c.entities} entities / ${c.relations} relations / ${c.groups} groups / ${c.sources} sources`,
+    `Content ${r.size.width}×${r.size.height}; it opens fitted to its width (zoom ${r.fit})`,
+  ]
+  if (!r.equityLines) lines.push('No equity relations in this data: the view says so and lists the rest under it; the graph suits this case better.')
+  else {
+    lines.push(`${r.equityLines} equity line(s) among ${r.treeParties} part${r.treeParties === 1 ? 'y' : 'ies'}, ${r.levels} level(s), ${r.holders} ultimate holder(s)`)
+    if (r.noShare) lines.push(`${r.noShare} line(s) with no share written (drawn as "not stated"); indirect holdings through them cannot be worked out. Write share on them.`)
+    if (r.crossHoldings) lines.push(`${r.crossHoldings} cross-holding line(s) (drawn dashed, upward, left out of the levels and the products)`)
+    if (r.indirect) lines.push(`${r.indirect} holding(s) through others listed under the tree`)
+  }
+  if (r.apart) lines.push(`${r.apart} part${r.apart === 1 ? 'y has' : 'ies have'} no equity relation (listed under the tree)`)
+  if (r.other) lines.push(`${r.other} relation(s) that are not shareholdings listed under the tree`)
+  lines.push(...textSizeLines(r.text, 'splitting the diagram by group'))
+  if (r.hints.length) lines.push('', `${r.hints.length} hint(s):`, ...r.hints.map((x) => `  - ${x}`))
+  return lines.join('\n')
+}
+
 export const relationshipKnowledge = {
   specVersion: RELATIONSHIP_SPEC_VERSION,
   /** The display name of the type: a message key, resolved per language by the consumer (core/labels.js) */
@@ -192,6 +267,8 @@ export const relationshipKnowledge = {
   report: (spec, layout, { canvas, kind }) => {
     if (kind === 'focus') return focusReport(spec, layout, { canvas })
     if (kind === 'chain') return chainReport(spec, layout, { canvas })
+    if (kind === 'matrix') return matrixReport(spec, layout, { canvas })
+    if (kind === 'equity') return equityReport(spec, layout, { canvas })
     const byOrientation = {}
     let g
     for (const o of ['vertical', 'horizontal']) {
@@ -223,6 +300,8 @@ export const relationshipKnowledge = {
   formatReport: (r) => {
     if (r.kind === 'focus') return formatFocusReport(r)
     if (r.kind === 'chain') return formatChainReport(r)
+    if (r.kind === 'matrix') return formatMatrixReport(r)
+    if (r.kind === 'equity') return formatEquityReport(r)
     const c = r.counts
     const v = r.byOrientation.vertical
     const h = r.byOrientation.horizontal
@@ -268,5 +347,7 @@ export const relationshipKnowledge = {
     graph: buildRelationshipGraph,
     focus: buildFocusGraph,
     chain: buildChainGraph,
+    matrix: buildMatrixGraph,
+    equity: buildEquityGraph,
   },
 }

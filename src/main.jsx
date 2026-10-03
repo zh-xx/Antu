@@ -16,6 +16,8 @@ import './renderers/procedure/flow/register.js'
 import './renderers/relationship/graph/register.js'
 import './renderers/relationship/focus/register.js'
 import './renderers/relationship/chain/register.js'
+import './renderers/relationship/matrix/register.js'
+import './renderers/relationship/equity/register.js'
 import './renderers/justification/tree/register.js'
 
 // The language is resolved once at the outermost layer and passed down (see shell/LangContext.jsx).

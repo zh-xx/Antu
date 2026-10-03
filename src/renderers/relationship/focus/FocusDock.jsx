@@ -11,7 +11,7 @@ import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch } from '../../../shell/DockParts.jsx'
 import { RELATION_KINDS } from '../graph/rules.js'
 
-export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, showLabels = true, onToggleLabels, isDefaultCentre = true, onResetCentre, exporting = false, onExport }) {
+export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, showLabels = true, onToggleLabels, isDefaultCentre = true, onResetCentre, exporting = false, onExport, extra = null }) {
   const { t } = useLang()
   const used = RELATION_KINDS.filter((k) => kinds[k] > 0)
   return (
@@ -33,6 +33,7 @@ export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, 
         <button className={`antu-dock-chip${showLabels ? ' is-on' : ''}`} onClick={() => onToggleLabels(!showLabels)}>
           {t('rel.labels')}
         </button>
+        {extra}
         {!isDefaultCentre && (
           <button className="antu-dock-chip antu-rf-reset" onClick={onResetCentre} title={t('rel.focus.resetTitle')}>
             {t('rel.focus.reset')}
