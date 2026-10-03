@@ -56,6 +56,7 @@ import * as CHR from '../../src/renderers/fact/chronicle/layout.js'
 import { buildChronicleGraph } from '../../src/renderers/fact/chronicle/layout.js'
 import { factTable } from '../../src/renderers/fact/table.js'
 import { buildScaleGraph } from '../../src/renderers/fact/scale/layout.js'
+import { buildFocusGraph } from '../../src/renderers/relationship/focus/layout.js'
 import { buildProcedureGraph } from '../../src/renderers/procedure/flow/layout.js'
 import { sizeOf } from '../../src/renderers/procedure/flow/metrics.js'
 import { buildRelationshipGraph } from '../../src/renderers/relationship/graph/layout.js'
@@ -1610,6 +1611,116 @@ async function checkRenderScale(sampleFile) {
   }
 }
 
+/**
+ * The relationship focus view (issue #87), drawn by the browser for every relationship example in
+ * both languages: every party once, no two boxes overlapping, no text outside its box; then, on one
+ * example, clicking a party makes it the centre (and the dock offers the way back), a switched-off
+ * kind of relation is not drawn and nothing moves, export, zero external requests.
+ */
+async function checkRenderFocus() {
+  section('render: relationship focus view')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const dir = join(REPO, 'examples/relationship')
+  const files = readdirSync(dir).filter((f) => f.endsWith('.json'))
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms))
+  try {
+    for (const f of files) {
+      const spec = JSON.parse(readFileSync(join(dir, f), 'utf8'))
+      const lang = f.includes('.zh-CN.') ? 'zh' : 'en'
+      const html = join(OUT, 'render-focus.html')
+      renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'focus' } })
+      await browser.open(`file://${html}?lang=${lang}`)
+      const m = await browser.eval(`(() => {
+        const nodes = [...document.querySelectorAll('.antu-rn')]
+        const rects = nodes.map((n) => n.getBoundingClientRect())
+        let hits = 0
+        for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+          const a = rects[i], b = rects[j]
+          if (a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5) hits += 1
+        }
+        const spill = []
+        nodes.forEach((n, i) => {
+          const r = rects[i]
+          const body = n.querySelector('.antu-rn-body')
+          if (!body) return
+          const kids = [...body.children]
+          for (const k of kids) {
+            const kr = k.getBoundingClientRect()
+            if (kr.left < r.left - 0.5 || kr.right > r.right + 0.5 || kr.top < r.top - 0.5 || kr.bottom > r.bottom + 0.5) spill.push(n.getAttribute('aria-label'))
+          }
+        })
+        return { parties: nodes.length, centres: document.querySelectorAll('.antu-rn.is-centre').length, hits, spill }
+      })()`)
+      eq(`${f}: every party once`, m.parties, spec.entities.length)
+      eq(`${f}: one centre`, m.centres, 1)
+      eq(`${f}: no two boxes overlap`, m.hits, 0)
+      eq(`${f}: no text outside its box`, m.spill, [])
+    }
+
+    // Click, kinds, export and requests, on the guarantee example
+    const spec = JSON.parse(readFileSync(join(dir, 'sample-group-guarantee.zh-CN.json'), 'utf8'))
+    const html = join(OUT, 'render-focus.html')
+    renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'focus' } })
+    await browser.open(`file://${html}?lang=zh`)
+    const external = browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://'))
+    eq('focus: external request count', external.length, 0)
+    truthy('focus: the label card names the kind', (await browser.eval(`document.querySelector('.antu-header')?.textContent || ''`)).includes(translate('zh', 'graphKind.focus')))
+    const centreName = () => browser.eval(`document.querySelector('.antu-rn.is-centre .antu-rn-label')?.textContent`)
+    // The page is in Chinese, and a relation's default label (and so the room a ring leaves) depends on the language
+    const zhT = (k, v) => translate('zh', k, v)
+    const first = buildFocusGraph(spec, { t: zhT })
+    // Where every party stands on the page, to see that the page draws the layout module's picture
+    const placed = () =>
+      browser.eval(`[...document.querySelectorAll('.react-flow__node-rnode')].map((n) => { const m = /translate\\(([-\\d.]+)px, ?([-\\d.]+)px\\)/.exec(n.style.transform); return [n.getAttribute('data-id'), Math.round(+m[1]), Math.round(+m[2])] }).sort()`)
+    const layoutPlaced = (g) => g.nodes.map((n) => [n.id, Math.round(n.position.x), Math.round(n.position.y)]).sort()
+    // Within a pixel: the page's transform and the layout round a half pixel differently
+    const sameWithinPixel = (got, want) => got.length === want.length && got.every(([id, x, y], i) => id === want[i][0] && Math.abs(x - want[i][1]) <= 1 && Math.abs(y - want[i][2]) <= 1)
+    truthy('focus: every party stands where the layout module put it', sameWithinPixel(await placed(), layoutPlaced(first)), JSON.stringify(await placed()))
+    eq('focus: opens centred on the busiest party', await centreName(), spec.entities.find((e) => e.id === first.defaultCentre).label)
+    eq('focus: no "default centre" button while the default is in the middle', await browser.eval(`!!document.querySelector('.antu-rf-reset')`), false)
+    // Clicking another party makes it the centre
+    const other = spec.entities.find((e) => e.id !== first.defaultCentre && e.id === 'e-1')
+    // Found by its fixed id (React Flow's data-id), so that no value from the data file is built into the code run in the page
+    await browser.eval(`document.querySelector('.react-flow__node[data-id="e-1"] .antu-rn').click()`, { userGesture: true })
+    await settle(900)
+    eq('focus: clicking a party makes it the centre', await centreName(), other.label)
+    eq('focus: the way back to the default appears', await browser.eval(`!!document.querySelector('.antu-rf-reset')`), true)
+    // The layout around the new centre is the layout module's
+    const again = buildFocusGraph(spec, { centre: other.id, t: zhT })
+    truthy('focus: and every party stands where the layout around it put it', sameWithinPixel(await placed(), layoutPlaced(again)), JSON.stringify(await placed()))
+    eq('focus: the rings are those of the new centre', await browser.eval(`document.querySelectorAll('.antu-rn').length`), again.nodes.length)
+    await browser.eval(`document.querySelector('.antu-rf-reset').click()`, { userGesture: true })
+    await settle(900)
+    eq('focus: the default centre comes back', await centreName(), spec.entities.find((e) => e.id === first.defaultCentre).label)
+    // A kind switched off: its lines go, nothing moves
+    const pos = () => browser.eval(`[...document.querySelectorAll('.react-flow__node-rnode')].map((n) => n.style.transform).sort().join('|')`)
+    const before = await pos()
+    const lines = await browser.eval(`document.querySelectorAll('.antu-rlink').length`)
+    await browser.eval(`document.querySelector('.antu-dock-bar .antu-rkind.k-equity').click()`, { userGesture: true })
+    await settle()
+    const equity = spec.relations.filter((r) => r.kind === 'equity').length
+    eq('focus: switching a kind off removes its lines', await browser.eval(`document.querySelectorAll('.antu-rlink').length`), lines - equity)
+    eq('focus: and nothing moves', await pos(), before)
+
+    const { clickByClass, grab } = await downloadHelpers(browser)
+    if (!(await clickByClass('.antu-dock-action'))) bad('focus export: the button is not in the bottom dock')
+    else {
+      const shot = await grab('focus export')
+      if (shot) {
+        const frame = exportFrame(first.size.width, first.size.height)
+        eq('focus export: size = (content + padding) × 2', [shot.width, shot.height], [frame.width * 2, frame.height * 2])
+        writeFileSync(join(OUT, 'export-focus.png'), shot.buf)
+      }
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderProcedure(sampleFile) {
   section('render: procedure flowchart')
   if (!findChrome()) {
@@ -2364,6 +2475,7 @@ if (!shotOnly && !skipBrowser) {
   if (data.sample) await checkRender(data.sample)
   if (data.sample) await checkRenderChronicle(data.sample)
   if (data.sample) await checkRenderScale(data.sample)
+  await checkRenderFocus()
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)

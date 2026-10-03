@@ -49,7 +49,8 @@ const USAGE = `Antu ${VERSION}: check and draw an Antu diagram (JSON)
                                                            (needs Chrome, Edge or Chromium; ANTU_CHROME points at one)
   node antu.mjs --version
 
-  --kind K: which way of drawing the same JSON. fact: timeline (the default), chronicle or scale.
+  --kind K: which way of drawing the same JSON. fact: timeline (the default), chronicle or scale;
+            relationship: graph (the default) or focus.
 `
 
 const say = (text) => process.stdout.write(`${text}\n`)
