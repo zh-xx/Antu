@@ -1670,7 +1670,16 @@ async function checkRenderFocus() {
     eq('focus: external request count', external.length, 0)
     truthy('focus: the label card names the kind', (await browser.eval(`document.querySelector('.antu-header')?.textContent || ''`)).includes(translate('zh', 'graphKind.focus')))
     const centreName = () => browser.eval(`document.querySelector('.antu-rn.is-centre .antu-rn-label')?.textContent`)
-    const first = buildFocusGraph(spec, {})
+    // The page is in Chinese, and a relation's default label (and so the room a ring leaves) depends on the language
+    const zhT = (k, v) => translate('zh', k, v)
+    const first = buildFocusGraph(spec, { t: zhT })
+    // Where every party stands on the page, to see that the page draws the layout module's picture
+    const placed = () =>
+      browser.eval(`[...document.querySelectorAll('.react-flow__node-rnode')].map((n) => { const m = /translate\\(([-\\d.]+)px, ?([-\\d.]+)px\\)/.exec(n.style.transform); return [n.getAttribute('data-id'), Math.round(+m[1]), Math.round(+m[2])] }).sort()`)
+    const layoutPlaced = (g) => g.nodes.map((n) => [n.id, Math.round(n.position.x), Math.round(n.position.y)]).sort()
+    // Within a pixel: the page's transform and the layout round a half pixel differently
+    const sameWithinPixel = (got, want) => got.length === want.length && got.every(([id, x, y], i) => id === want[i][0] && Math.abs(x - want[i][1]) <= 1 && Math.abs(y - want[i][2]) <= 1)
+    truthy('focus: every party stands where the layout module put it', sameWithinPixel(await placed(), layoutPlaced(first)), JSON.stringify(await placed()))
     eq('focus: opens centred on the busiest party', await centreName(), spec.entities.find((e) => e.id === first.defaultCentre).label)
     eq('focus: no "default centre" button while the default is in the middle', await browser.eval(`!!document.querySelector('.antu-rf-reset')`), false)
     // Clicking another party makes it the centre
@@ -1681,7 +1690,8 @@ async function checkRenderFocus() {
     eq('focus: clicking a party makes it the centre', await centreName(), other.label)
     eq('focus: the way back to the default appears', await browser.eval(`!!document.querySelector('.antu-rf-reset')`), true)
     // The layout around the new centre is the layout module's
-    const again = buildFocusGraph(spec, { centre: other.id })
+    const again = buildFocusGraph(spec, { centre: other.id, t: zhT })
+    truthy('focus: and every party stands where the layout around it put it', sameWithinPixel(await placed(), layoutPlaced(again)), JSON.stringify(await placed()))
     eq('focus: the rings are those of the new centre', await browser.eval(`document.querySelectorAll('.antu-rn').length`), again.nodes.length)
     await browser.eval(`document.querySelector('.antu-rf-reset').click()`, { userGesture: true })
     await settle(900)
