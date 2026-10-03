@@ -170,7 +170,7 @@ out of the user's folder unless they want it.
 reader sees where events crowd together); a relationship diagram is `graph` (the default), `focus` (one party in
 the middle, the parties tied to it around it: for a case with many parties) `chain` (one block per claim with its guarantors and
 what stands behind them: for a loan or guarantee dispute), `matrix` (parties down and across, each cell the relations from its row to its column:
-for "is there any relation between A and B") `equity` (holders above what they hold, the share on each line, and what is held through others), `authority` (control, employment and agency as an organisation chart), `related` (one party and everyone tied to it, as a table to paste into a brief), `path` (the shortest chains of relations between two parties) or `summary` (each camp as one block: for many parties). `layout`, `render` and `preview` all
+for "is there any relation between A and B") `equity` (holders above what they hold, the share on each line, and what is held through others), `authority` (control, employment and agency as an organisation chart), `related` (one party and everyone tied to it, as a table to paste into a brief), `path` (the shortest chains of relations between two parties) or `summary` (each camp as one block: for many parties); a procedure diagram is `flow` (the default) or `route` (the main line as one line, with rework drawn as loops and early endings hanging below it). `layout`, `render` and `preview` all
 take it; `render --kind chronicle` makes the page open in the chronicle, and the reader can still switch.
 
 **When it cannot look**, say so; never claim you checked how it looks:
@@ -186,7 +186,7 @@ that they should open the page and look.
 
 Give the path of the HTML file. Say what it shows and what you had to leave out or could not tell from their
 material, in a few lines. In the page the reader can hover and click the items for detail, switch the way of
-drawing in the label card at the top left (a fact diagram: Timeline, Chronicle or Time scale; a relationship diagram: Graph, Focus view, Guarantee chain, Relation matrix, Equity tree, Control and employment, Related parties, Relation path or Camp summary), and use the bar at the bottom:
+drawing in the label card at the top left (a fact diagram: Timeline, Chronicle or Time scale; a relationship diagram: Graph, Focus view, Guarantee chain, Relation matrix, Equity tree, Control and employment, Related parties, Relation path or Camp summary; a procedure: Flowchart or Route map), and use the bar at the bottom:
 switch orientation (vertical / horizontal), switch the language, export an image. A fact diagram's bar also has
 **Copy as table**, which puts every event on the clipboard as a table for a document or a spreadsheet. The page's own labels
 follow the browser's language (a Chinese browser shows Chinese); if the user sees them in the wrong language,

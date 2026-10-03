@@ -101,3 +101,9 @@ delivering.
   `to`, a rule's `stageIds` / `endId`.
 - **Keep labels short.** A node shows about three lines of `label`; put the rest in
   `detail` (its first line shows under the label, all of it on click).
+
+## Another way to look at it
+
+The reader can switch to the **route map**: the main line as one line, with rework loops and early endings
+hanging below it. It needs a clear main line, so **mark `main` along the whole line from start to end**
+(or on none, and the engine infers it). `kind: "route"` on antu_layout / antu_preview / antu_render shows it.

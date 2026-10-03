@@ -119,6 +119,13 @@ try {
           }
         }
       }
+      if (run('--help').stdout.includes('route')) {
+        const proc = join(work, 'antu/examples/procedure/1-minimal.zh-CN.json')
+        const rt = run('layout', proc, '--kind', 'route')
+        check('procedure: layout --kind route reports the route map', rt.status === 0 && /^Kind: route/m.test(rt.stdout), rt.stderr.trim() || rt.stdout.trim())
+        const wrongProc = run('layout', proc, '--kind', 'swimlane')
+        check('an unknown procedure kind is named, exit code 2', wrongProc.status === 2 && /flow, route/.test(wrongProc.stderr), `${wrongProc.status} ${wrongProc.stderr.trim()}`)
+      }
       const wrongRel = run('layout', rel, '--kind', 'scale')
       check('a fact kind on a relationship is named, exit code 2', wrongRel.status === 2 && /graph, focus, chain, matrix, equity, authority, related, path, summary/.test(wrongRel.stderr), `${wrongRel.status} ${wrongRel.stderr.trim()}`)
     }

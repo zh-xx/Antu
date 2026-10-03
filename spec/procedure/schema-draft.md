@@ -593,6 +593,19 @@ damages …), 05 has 4, 01 has 4. Several ends in one layer sit side by side in 
 `outcome`'s colour distinguishes a good result from a bad one.
 **No merging, no omission**; they really are different endings.
 
+### 6.1a The second sub-type, `route` (route map; issue #95)
+
+> Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added.
+
+The main line as one line, left to right, like a route map; where the process loops or ends early hangs below it. Code: `src/renderers/procedure/route/`. The flowchart reads "stage columns, nodes top to bottom"; this reads "one line to the end, and where it can go wrong".
+
+- **The line** is the main line, found as the flowchart finds it (edges marked `main`, else the first unconditional edge). Each node on it is a **station** at an even distance (more where branches hang): a step a circle, a decision a diamond, the start a dot, an end a square, a `document` a small page; the ring or square is coloured by `outcome`. The label is written above the line, with the party's name (`actorIds`) over it; `detail` is the tooltip. Stations are never closer than 128 px; a label wraps to at most four lines.
+- **Stages** are bands behind the stations of one stage (a run of stations of one stage is one band; a station with no stage has none).
+- **Hanging**: each other edge out of a station starts a branch below it, boxes one under another with the condition on top. The branch follows the first way on from each box until it reaches (a) an end (the end box, coloured), (b) a station (a dashed line back, an arc under the picture when it is not the station itself or its neighbour), (c) a node already drawn (a merge), or (d) its fourth box, then it says "... and N more". The other ways out of a hanging box are not followed and are counted.
+- **Arcs** under the hanging branches: an edge between two stations that is not along the line: a loop back (dashed red) or a jump ahead (grey). The condition is on the arc.
+- **Left out, and said so**: nodes that no branch reached (an end reached only through a rule is one), branches not followed, and the number of rules (the flowchart's table lists them). So every node is on the picture or listed under it.
+- A long main line makes a wide picture; it opens at a readable zoom (not below 0.8) from the left and the reader scrolls sideways.
+
 ### 6.2 The control capsule (rendering parameters inside the sub-type)
 
 | Control | Form | Notes |
