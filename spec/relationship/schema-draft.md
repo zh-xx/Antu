@@ -223,6 +223,19 @@ The remembering rules are procedure's (§6.2 there): orientation and the toggles
 
 A cross-section of a case has few parties, usually 4 to 15. Past about 25 entities the diagram is reported with a hint (as procedure does for layers), not an error.
 
+### 6.4 The second sub-type, `focus` (issue #87)
+
+> Status of this section: **implemented, a first attempt** (not confirmed). It is not a "camps view": the graph already draws the groups as camps side by side; a mock-up of one looked the same as the graph's own picture of the same example, so that idea was dropped.
+
+One party in the middle, the parties tied to it around it, those tied to them further out: it answers "who is this party tied to, and how" for one party at a time, for cases whose graph is too busy. Code: `src/renderers/relationship/focus/`.
+
+- **The centre** is the party with most relations (the first written on a tie), or the one the reader clicked (remembered per diagram; the dock's "Default centre" puts it back). Clicking the centre pins its overlay; hovering any party peeks at it.
+- **Rings** by the number of steps from the centre. Ring 1: the first group on the left, the second on the right, the rest split between the top and the bottom, each camp's parties together and its name over each box. Further rings stand where their parents stand. The ellipses are wider than tall, and a ring grows until no two boxes touch, so a bigger case gives a bigger picture, never a denser one.
+- **Relations touching the centre** are drawn in full and straight; the others are lighter and thinner. A relation that a straight line could not draw without running through a party (two parties on opposite sides) goes round the outside of the rings.
+- **Parties no relation reaches** from the centre are not dropped: each connected group of them is laid out the same way around its own busiest party, in rows under the picture, with a caption.
+- Entity boxes, label boxes, relation paint, the overlay, "what it secures" and the kind chips are the graph's, so the two kinds cannot disagree. No orientation, link style or group boxes: they do not apply.
+- A "relations: []" is not valid JSON (validation requires at least one), so the centre always has something; an entity nothing relates to is an island of one.
+
 ---
 
 ## 7. Open questions, and what the schema does meanwhile

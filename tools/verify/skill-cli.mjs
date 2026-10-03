@@ -100,6 +100,14 @@ try {
     check('fact: layout --kind chronicle reports the chronicle', lay.status === 0 && /^Kind: chronicle/m.test(lay.stdout), lay.stderr.trim() || lay.stdout.trim())
     const wrong = run('layout', spec, '--kind', 'swimlane')
     check('an unknown kind is named, exit code 2', wrong.status === 2 && /timeline, chronicle/.test(wrong.stderr), `${wrong.status} ${wrong.stderr.trim()}`)
+    // The relationship focus view, where this command line has it
+    if (run('--help').stdout.includes('focus')) {
+      const rel = join(work, 'antu/examples/relationship/1-minimal.zh-CN.json')
+      const f = run('layout', rel, '--kind', 'focus')
+      check('relationship: layout --kind focus reports the focus view', f.status === 0 && /^Kind: focus/m.test(f.stdout), f.stderr.trim() || f.stdout.trim())
+      const wrongRel = run('layout', rel, '--kind', 'scale')
+      check('a fact kind on a relationship is named, exit code 2', wrongRel.status === 2 && /graph, focus/.test(wrongRel.stderr), `${wrongRel.status} ${wrongRel.stderr.trim()}`)
+    }
     // The time scale, where this command line has it
     if (run('--help').stdout.includes('scale')) {
       const sc = run('layout', spec, '--kind', 'scale')

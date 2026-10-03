@@ -52,7 +52,7 @@ const specArg = z.looseObject({}).describe('the Antu JSON (envelope + content la
 const kindArg = z
   .string()
   .optional()
-  .describe('which way of drawing (fact: timeline, chronicle or scale); omit it for the default, the first')
+  .describe('which way of drawing (fact: timeline, chronicle or scale; relationship: graph or focus); omit it for the default, the first')
 
 
 
@@ -231,7 +231,7 @@ server.registerTool(
     inputSchema: {
       spec: specArg,
       outPath: z.string().optional().describe('output path. Omit it and the file goes to dist-html/<title>.html'),
-      kind: kindArg.describe('which way of drawing the page opens in (fact: timeline, chronicle or scale); the reader can still switch. Omit it for the default, the first'),
+      kind: kindArg.describe('which way of drawing the page opens in (fact: timeline, chronicle or scale; relationship: graph or focus); the reader can still switch. Omit it for the default, the first'),
     },
   },
   async ({ spec, outPath, kind }) => {
