@@ -1813,7 +1813,8 @@ async function checkRenderChain() {
     const stand = await browser.eval(`[...document.querySelectorAll('.react-flow__node-rnode')].map((n) => { const m = /translate\\(([-\\d.]+)px, ?([-\\d.]+)px\\)/.exec(n.style.transform); return [n.getAttribute('data-id'), Math.round(+m[1]), Math.round(+m[2])] }).sort()`)
     const want = g.nodes.filter((n) => n.type === 'rnode').map((n) => [n.id, Math.round(n.position.x), Math.round(n.position.y)]).sort()
     truthy('chain: every party stands where the layout module put it', stand.length === want.length && stand.every(([id, x, y], i) => id === want[i][0] && Math.abs(x - want[i][1]) <= 1 && Math.abs(y - want[i][2]) <= 1), JSON.stringify(stand))
-    eq('chain: the inferred guarantee says so on the page', await browser.eval(`[...document.querySelectorAll('.antu-ch-chip')].some((c) => c.textContent.includes(${JSON.stringify(translate('zh', 'rel.chain.inferred'))}))`), true)
+    const chipTexts = await browser.eval(`[...document.querySelectorAll('.antu-ch-chip')].map((c) => c.textContent)`)
+    eq('chain: the inferred guarantee says so on the page', chipTexts.some((c) => c.includes(translate('zh', 'rel.chain.inferred'))), true)
     // Labels off: the chips go, nothing moves
     await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-chip').click()`, { userGesture: true })
     await new Promise((r) => setTimeout(r, 400))
