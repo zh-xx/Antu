@@ -1675,7 +1675,8 @@ async function checkRenderFocus() {
     eq('focus: no "default centre" button while the default is in the middle', await browser.eval(`!!document.querySelector('.antu-rf-reset')`), false)
     // Clicking another party makes it the centre
     const other = spec.entities.find((e) => e.id !== first.defaultCentre && e.id === 'e-1')
-    await browser.eval(`[...document.querySelectorAll('.antu-rn')].find((n) => n.getAttribute('aria-label') === ${JSON.stringify(other.label)}).click()`, { userGesture: true })
+    // Found by its fixed id (React Flow's data-id), so that no value from the data file is built into the code run in the page
+    await browser.eval(`document.querySelector('.react-flow__node[data-id="e-1"] .antu-rn').click()`, { userGesture: true })
     await settle(900)
     eq('focus: clicking a party makes it the centre', await centreName(), other.label)
     eq('focus: the way back to the default appears', await browser.eval(`!!document.querySelector('.antu-rf-reset')`), true)
