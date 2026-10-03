@@ -27,6 +27,7 @@
 import { validateRelationship, hintsOfRelationship, isDirected } from '../graph/rules.js'
 import { labelOf } from '../graph/layout.js'
 import { sizeOf, labelBox, PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
+import { makePartyData } from '../partyData.js'
 import { tEn } from '../../../core/i18n.js'
 
 /** The rings are ellipses, wider than tall (a screen is) */
@@ -473,18 +474,7 @@ export function buildFocusGraph(spec, fields = {}) {
   }
 
   // ── out to React Flow nodes and connections ──
-  const sourceById = new Map((spec.sources ?? []).map((s) => [s.id, s]))
-  const nameOf = new Map(entities.map((e) => [e.id, e.label]))
-  const degree = new Map(entities.map((e) => [e.id, 0]))
-  for (const r of relations) {
-    degree.set(r.from, degree.get(r.from) + 1)
-    degree.set(r.to, degree.get(r.to) + 1)
-  }
-  const relationsOf = (id) =>
-    relations
-      .map((r, i) => ({ r, i }))
-      .filter(({ r }) => r.from === id || r.to === id)
-      .map(({ r, i }) => ({ id: r.id, kind: r.kind, directed: isDirected(r), out: r.from === id, other: nameOf.get(r.from === id ? r.to : r.from), text: labelTexts[i] }))
+  const party = makePartyData(spec, t)
   const groupLabelOf = (e) => groups.find((g) => g.id === e.groupId)?.label ?? ''
 
   const nodes = []
@@ -503,24 +493,14 @@ export function buildFocusGraph(spec, fields = {}) {
         id,
         type: 'rnode',
         position: { x: b.x + ox, y: b.y + oy },
-        data: {
-          entity: e,
-          w: b.w,
-          h: b.h,
-          textW: sizes.get(id).textW,
-          groupLabel: groupLabelOf(e),
-          sources: (e.sourceIds ?? []).map((sid) => sourceById.get(sid)).filter(Boolean),
-          sourceCount: (e.sourceIds ?? []).filter((sid) => sourceById.has(sid)).length,
-          relationCount: degree.get(id),
-          relations: relationsOf(id),
+        data: party.dataOf(e, {
           // The overlay pops towards the room: boxes in the top half open downwards
           layer: b.y + oy + b.h / 2 < centreY(i) ? 0 : 1,
-          vertical: true,
           centre: id === isl.centre,
           ring: b.ring,
           // The camp's name over the box, in the colour of its place (first group blue, second red, the rest grey)
           camp: groupLabelOf(e) ? { label: groupLabelOf(e), tone: gi === 0 ? 0 : gi === 1 ? 1 : 2 } : null,
-        },
+        }),
       })
     }
     for (const c of isl.conns) {

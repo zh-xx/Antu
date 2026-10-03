@@ -79,7 +79,7 @@ function assertSound(s, label, centre) {
 
 test('the focus view is the relationship diagram\'s second kind', () => {
   registerKnowledge('relationship', relationshipKnowledge)
-  assert.deepEqual(layoutKindsOf('relationship'), ['graph', 'focus'])
+  assert.deepEqual(layoutKindsOf('relationship').slice(0, 2), ['graph', 'focus'])
 })
 
 for (const f of files) {

@@ -57,6 +57,7 @@ import { buildChronicleGraph } from '../../src/renderers/fact/chronicle/layout.j
 import { factTable } from '../../src/renderers/fact/table.js'
 import { buildScaleGraph } from '../../src/renderers/fact/scale/layout.js'
 import { buildFocusGraph } from '../../src/renderers/relationship/focus/layout.js'
+import { buildChainGraph } from '../../src/renderers/relationship/chain/layout.js'
 import { buildProcedureGraph } from '../../src/renderers/procedure/flow/layout.js'
 import { sizeOf } from '../../src/renderers/procedure/flow/metrics.js'
 import { buildRelationshipGraph } from '../../src/renderers/relationship/graph/layout.js'
@@ -1721,6 +1722,119 @@ async function checkRenderFocus() {
   }
 }
 
+/**
+ * The relationship guarantee chain (issue #89), drawn by the browser for every relationship example in both
+ * languages and for a case that has every kind of place (a claim with two guarantors and a counter-guarantee,
+ * one with no security, an inferred guarantee, a guarantee tied to no claim, other relations): every claim
+ * block and party box where the layout put it, no two boxes overlapping, no text past its box (the line
+ * counts are estimated in Node, so only the page can show they hold), then export size and zero requests.
+ */
+async function checkRenderChain() {
+  section('render: relationship guarantee chain')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const dir = join(REPO, 'examples/relationship')
+  const entity = (id, kind, label, role) => ({ id, kind, label, ...(role && { role }) })
+  const everything = {
+    specVersion: 1,
+    type: 'relationship',
+    title: 'chain: every place',
+    entities: [
+      entity('e-1', 'company', '华峰投资有限公司 and a name long enough to wrap in its box', '出借人'),
+      entity('e-2', 'person', '陈总', '华峰实际控制人'),
+      entity('e-3', 'company', '星河集团有限公司', '借款人'),
+      entity('e-4', 'person', '李明', '星河集团董事长'),
+      entity('e-5', 'company', '星河商贸有限公司'),
+      entity('e-6', 'company', '星河物流有限公司'),
+      entity('e-7', 'organization', '融安担保公司', '保证人'),
+      entity('e-8', 'organization', '渤海银行', '贷款人'),
+      entity('e-9', 'person', '周某', '抵押人'),
+    ],
+    relations: [
+      { id: 'r-1', from: 'e-2', to: 'e-1', kind: 'equity', share: 70 },
+      { id: 'r-5', from: 'e-1', to: 'e-3', kind: 'debt', label: '借款', amount: '3000 万元，借期一年，按月付息，到期还本，逾期按日万分之五计收罚息' },
+      { id: 'r-6', from: 'e-7', to: 'e-1', kind: 'guarantee', label: '连带责任保证', secures: 'r-5' },
+      { id: 'r-7', from: 'e-4', to: 'e-1', kind: 'guarantee', label: '个人连带保证', secures: 'r-5' },
+      { id: 'r-8', from: 'e-3', to: 'e-7', kind: 'contract', label: '反担保合同' },
+      { id: 'r-10', from: 'e-1', to: 'e-5', kind: 'debt', label: '借款', amount: '500 万元' },
+      { id: 'r-11', from: 'e-8', to: 'e-6', kind: 'debt', label: '贷款', amount: '800 万元' },
+      { id: 'r-12', from: 'e-2', to: 'e-8', kind: 'guarantee', label: '个人保证' },
+      { id: 'r-13', from: 'e-9', to: 'e-1', kind: 'guarantee', label: '住房抵押担保' },
+    ],
+  }
+  const cases = [
+    ...readdirSync(dir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => [f, JSON.parse(readFileSync(join(dir, f), 'utf8')), f.includes('.zh-CN.') ? 'zh' : 'en']),
+    ['every place', everything, 'zh'],
+  ]
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    for (const [name, spec, lang] of cases) {
+      const html = join(OUT, 'render-chain.html')
+      renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'chain' } })
+      await browser.open(`file://${html}?lang=${lang}`)
+      const g = buildChainGraph(spec, { t: (k, v) => translate(lang, k, v) })
+      const m = await browser.eval(`(() => {
+        const claims = [...document.querySelectorAll('.antu-ch-claim')]
+        const parties = [...document.querySelectorAll('.antu-rn')]
+        const boxes = [...claims, ...parties].map((n) => n.getBoundingClientRect())
+        let hits = 0
+        for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i], b = boxes[j]
+          if (a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5) hits += 1
+        }
+        // The claim cards are as tall as the layout estimated: their text must fit
+        const spill = claims.filter((c) => c.scrollHeight > c.clientHeight + 1).map((c) => c.textContent.slice(0, 30))
+        const chips = [...document.querySelectorAll('.antu-ch-chip')].filter((c) => c.scrollWidth > c.clientWidth + 1).map((c) => c.textContent)
+        const empties = [...document.querySelectorAll('.antu-ch-svg text')].length
+        return { claims: claims.length, parties: parties.length, hits, spill, chips, texts: document.querySelectorAll('.antu-ch-text').length, empties }
+      })()`)
+      eq(`${name}: one block per claim`, m.claims, g.claims)
+      eq(`${name}: one box per card the layout placed`, m.parties, g.nodes.filter((n) => n.type === 'rnode').length)
+      eq(`${name}: no two boxes overlap`, m.hits, 0)
+      eq(`${name}: no claim text past its card`, m.spill, [])
+      eq(`${name}: no label cut short`, m.chips, [])
+      const layer = g.nodes.find((n) => n.type === 'chainLayer').data
+      eq(`${name}: every text of the sections is drawn`, m.texts, layer.texts.length)
+    }
+
+    // The full case: the places the layout says, the page and the export
+    const html = join(OUT, 'render-chain.html')
+    renderToFile(everything, { outPath: html, quiet: true, preset: { kind: 'chain' } })
+    await browser.open(`file://${html}?lang=zh`)
+    const g = buildChainGraph(everything, { t: (k, v) => translate('zh', k, v) })
+    eq('chain: the case has its claims, an inferred guarantee, a bucket and an unsecured claim', [g.claims, g.inferred, g.bucket, g.unsecured], [3, 1, 1, 1])
+    const external = browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://'))
+    eq('chain: external request count', external.length, 0)
+    truthy('chain: the label card names the kind', (await browser.eval(`document.querySelector('.antu-header')?.textContent || ''`)).includes(translate('zh', 'graphKind.chain')))
+    const stand = await browser.eval(`[...document.querySelectorAll('.react-flow__node-rnode')].map((n) => { const m = /translate\\(([-\\d.]+)px, ?([-\\d.]+)px\\)/.exec(n.style.transform); return [n.getAttribute('data-id'), Math.round(+m[1]), Math.round(+m[2])] }).sort()`)
+    const want = g.nodes.filter((n) => n.type === 'rnode').map((n) => [n.id, Math.round(n.position.x), Math.round(n.position.y)]).sort()
+    truthy('chain: every party stands where the layout module put it', stand.length === want.length && stand.every(([id, x, y], i) => id === want[i][0] && Math.abs(x - want[i][1]) <= 1 && Math.abs(y - want[i][2]) <= 1), JSON.stringify(stand))
+    const chipTexts = await browser.eval(`[...document.querySelectorAll('.antu-ch-chip')].map((c) => c.textContent)`)
+    eq('chain: the inferred guarantee says so on the page', chipTexts.some((c) => c.includes(translate('zh', 'rel.chain.inferred'))), true)
+    // Labels off: the chips go, nothing moves
+    await browser.eval(`document.querySelector('.antu-dock-bar .antu-dock-chip').click()`, { userGesture: true })
+    await new Promise((r) => setTimeout(r, 400))
+    eq('chain: switching labels off removes the labels on the links', await browser.eval(`document.querySelectorAll('.antu-ch-chip').length`), 0)
+
+    const { clickByClass, grab } = await downloadHelpers(browser)
+    if (!(await clickByClass('.antu-dock-action'))) bad('chain export: the button is not in the bottom dock')
+    else {
+      const shot = await grab('chain export')
+      if (shot) {
+        const frame = exportFrame(g.size.width, g.size.height)
+        eq('chain export: size = (content + padding) × 2', [shot.width, shot.height], [frame.width * 2, frame.height * 2])
+        writeFileSync(join(OUT, 'export-chain.png'), shot.buf)
+      }
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderProcedure(sampleFile) {
   section('render: procedure flowchart')
   if (!findChrome()) {
@@ -2476,6 +2590,7 @@ if (!shotOnly && !skipBrowser) {
   if (data.sample) await checkRenderChronicle(data.sample)
   if (data.sample) await checkRenderScale(data.sample)
   await checkRenderFocus()
+  await checkRenderChain()
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)

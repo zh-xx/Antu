@@ -15,8 +15,11 @@ boxes around parties.
 
 The reader can also switch to a **focus view**: one party in the middle (by default the one with most
 relations; the reader clicks another), the parties tied to it around it, the others further out. It
-suits a case with many parties, where the graph is too busy. The same JSON draws in both;
-`kind: "focus"` on antu_layout / antu_preview / antu_render shows it.
+suits a case with many parties, where the graph is too busy. The **guarantee chain** shows one block per
+claim (a `debt`) with its guarantors beside it and what stands behind each; for a loan or guarantee
+dispute. **Write `secures` on every guarantee**: without it the chain ties a guarantee to a claim only when
+its creditor has exactly one, and puts it apart otherwise. The same JSON draws in all three;
+`kind: "focus"` or `kind: "chain"` on antu_layout / antu_preview / antu_render shows it.
 
 ## Three things, three places
 
