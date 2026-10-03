@@ -15,6 +15,7 @@
 
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateProcedure, KINDS, OUTCOMES, DOMAINS } from './flow/rules.js'
+import { buildRouteGraph } from './route/layout.js'
 import { buildProcedureGraph } from './flow/layout.js'
 import { fitZoom, textSizeLines } from '../../core/canvas.js'
 import { NODE_FONT } from './flow/metrics.js'
@@ -132,6 +133,46 @@ export function describeProcedureSchema() {
   return lines.join('\n')
 }
 
+/**
+ * The route map's geometry report: no orientation to choose; it opens at a readable zoom from the left, so
+ * what matters is how wide it is, how much hangs off the line, and what is not on the picture.
+ */
+function routeReport(spec, layout, { canvas }) {
+  const g = layout(spec, {})
+  const open = Math.max(Number(fitZoom(g.size, canvas).toFixed(3)), 0.8)
+  return {
+    text: { font: NODE_FONT, canvas, open: { name: 'route', fit: Math.min(open, 1) }, other: { name: 'route', fit: Math.min(open, 1) } },
+    counts: { nodes: g.stats.nodes, edges: g.edgeCount, rules: g.rules, stages: Array.isArray(spec.stages) ? spec.stages.length : 0, actors: spec.actors?.length ?? 0, sources: spec.sources?.length ?? 0 },
+    size: g.size,
+    stations: g.stations,
+    hangs: g.hangs,
+    loops: g.loops,
+    jumps: g.jumps,
+    cut: g.cut,
+    off: g.off,
+    notFollowed: g.notFollowed,
+    edgesDrawn: g.edgesDrawn,
+    hints: g.hints,
+  }
+}
+
+function formatRouteReport(r) {
+  const c = r.counts
+  const lines = [
+    'Kind: route (the main line as one line, left to right; orientation does not apply)',
+    `Data: ${c.nodes} nodes / ${c.edges} edges / ${c.rules} rules / ${c.stages} stages / ${c.actors} parties / ${c.sources} sources`,
+    `Content ${r.size.width}×${r.size.height}; it opens at a readable zoom from the left, a long route scrolls sideways`,
+    `${r.stations} stations on the main line, ${r.hangs} branch(es) hanging below it, ${r.loops} loop(s) back and ${r.jumps} jump(s) ahead drawn as arcs; ${r.edgesDrawn} of ${c.edges} edges are on the picture`,
+  ]
+  if (r.cut) lines.push(`${r.cut} hanging branch(es) cut off after ${4} boxes ("... and N more")`)
+  if (r.notFollowed) lines.push(`${r.notFollowed} way(s) out of a hanging branch not followed (the flowchart shows them)`)
+  if (r.off) lines.push(`${r.off} node(s) not on the picture (listed under it)`)
+  if (c.rules) lines.push(`${c.rules} rule(s) not drawn here; the flowchart lists them`)
+  lines.push(...textSizeLines(r.text, 'splitting the flow by stage'))
+  if (r.hints.length) lines.push('', `${r.hints.length} hint(s):`, ...r.hints.map((x) => `  - ${x}`))
+  return lines.join('\n')
+}
+
 export const procedureKnowledge = {
   specVersion: PROCEDURE_SPEC_VERSION,
   /**
@@ -164,7 +205,8 @@ export const procedureKnowledge = {
    * fit zoom. A procedure has no views and nothing "does not fit": scale is reported, never
    * refused (§6.3), and the agent decides whether to split the diagram.
    */
-  report: (spec, layout, { canvas }) => {
+  report: (spec, layout, { canvas, kind }) => {
+    if (kind === 'route') return routeReport(spec, layout, { canvas })
     const byOrientation = {}
     let g
     for (const o of ['vertical', 'horizontal']) {
@@ -199,6 +241,7 @@ export const procedureKnowledge = {
 
   /** The geometry report as the short text the tool returns to an agent */
   formatReport: (r) => {
+    if (r.kind === 'route') return formatRouteReport(r)
     const c = r.counts
     const v = r.byOrientation.vertical
     const h = r.byOrientation.horizontal
@@ -231,8 +274,9 @@ export const procedureKnowledge = {
   /** Validation: there is only one copy of the rules, in flow/rules.js */
   validate: (spec) => validateProcedure(spec),
 
-  /** Which kinds a procedure diagram has. Currently the flowchart only. */
+  /** Which kinds a procedure diagram has. The first is the default. */
   layouts: {
     flow: buildProcedureGraph,
+    route: buildRouteGraph,
   },
 }

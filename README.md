@@ -22,7 +22,7 @@ Antu renders four kinds of legal content as diagrams. Its specification is defin
 |---|---|---|
 | Relationship | Parties, roles, legal relationships | Graph, focus, guarantee-chain, matrix, equity-tree, authority, related-party, path and camp-summary sub-types available (schema provisional) |
 | Fact | Timeline, participants, sequence of events | Timeline, chronicle and time-scale sub-types available |
-| Procedure | Procedural path and possible branches | Flowchart sub-type available |
+| Procedure | Procedural path and possible branches | Flowchart and route-map sub-types available |
 | Justification | Conclusion derived from norms and facts | Reasoning tree available (schema draft) |
 
 ## Why use Antu

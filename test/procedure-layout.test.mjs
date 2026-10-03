@@ -326,9 +326,9 @@ test('links bend as little as possible: straight first, then one bend', () => {
   assert.ok(straightOrOne / links >= 0.72, `only ${straightOrOne} of ${links} links are straight or bend once`)
 })
 
-test('knowledge registration: procedure is registered with the flow sub-type', () => {
+test('knowledge registration: procedure is registered with the flow and route sub-types', () => {
   registerKnowledge('procedure', procedureKnowledge)
-  assert.deepEqual(layoutKindsOf('procedure'), ['flow'])
+  assert.deepEqual(layoutKindsOf('procedure'), ['flow', 'route'])
   assert.equal(typeof layoutOf('procedure', 'flow'), 'function')
   assert.ok(KINDS.includes('decision'), 'the vocabulary contains the decision kind')
 })

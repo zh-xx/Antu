@@ -1501,3 +1501,17 @@
 .antu-ln-cell.is-head { display: flex; align-items: center; font-weight: 700; color: var(--antu-text-3); }
 .antu-ln-cell.is-first { font-weight: 650; }
 .antu-ln-cell-sub { font-weight: 400; font-size: 12px; color: var(--antu-text-3); }
+
+/* ===== procedure route map (issue #95) ===== */
+.antu-rt-layer { position: relative; }
+.antu-rt-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-rt-label { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; text-align: center; font-size: 12px; line-height: 15px; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-rt-label.is-decision { font-weight: 650; }
+.antu-rt-actor { font-size: 10.5px; line-height: 14px; color: var(--antu-text-4); }
+.antu-rt-band { position: absolute; text-align: center; font-size: 13px; font-weight: 700; line-height: 20px; color: var(--antu-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.antu-rt-box { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 3px 8px; font-size: 11.5px; line-height: 14px; text-align: center; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-rt-box.is-end { font-weight: 700; }
+.antu-rt-more { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 11.5px; color: var(--antu-text-3); }
+.antu-rt-cond { position: absolute; transform: translate(-50%, -50%); box-sizing: border-box; max-width: 190px; padding: 1px 9px; background: #fff; border: 1px solid #b45309; border-radius: 11px; font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; color: #b45309; overflow-wrap: anywhere; }
+.antu-rt-cond.is-loop { border-color: #b91c1c; color: #b91c1c; }
+.antu-rt-cond.is-hang { max-width: 120px; }
