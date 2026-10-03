@@ -13,7 +13,7 @@
 Taken by the sponsor (2026-09):
 
 1. **What the first version draws**: four families of relation: **equity and control**, **contracts and debts**, **guarantees and joint liability**, **status and kinship** (spouse, parent and child, employment, agency).
-2. **What the diagram is for**: the overview of *who is related to whom, and how* in a case, used beside the fact diagram and the procedure diagram. Every relation can carry its source (a contract, a registry record). It is not a due-diligence equity-penetration chart (that would centre on shareholding percentages and levels).
+2. **What the diagram is for**: the overview of *who is related to whom, and how* in a case, used beside the fact diagram and the procedure diagram. Every relation can carry its source (a contract, a registry record). It is not a due-diligence equity-penetration chart (that would centre on shareholding percentages and levels); the equity tree (§6.7) draws the shareholdings the data states, in levels, and claims nothing beyond that.
 3. **Time**: one diagram is **a cross-section at one point in time**. The envelope may carry an optional `asOf` date; the diagram itself has no time axis. To show how relations changed, draw two diagrams side by side.
 
 Proposed by me (**⚠ proposal**, see §7):
@@ -248,6 +248,30 @@ One block per claim, its guarantors beside it, what stands behind each guarantor
 - **Everything else** (equity, employment, a contract that is not a claim...) is listed under the blocks, so every relation is on the page once.
 - A case with no claims says so and lists every relation. A guarantee of a guarantee, joint debtors and sums of amounts cannot be said in the data, so the view does not claim to show them; amounts are shown as written, never added up.
 - Party boxes, the overlay and the labels switch are the graph's; no orientation, link style or kind chips (they do not apply).
+
+### 6.6 The fourth sub-type, `matrix` (issue #91)
+
+> Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added.
+
+Parties down and across, each cell naming the relations from its row's party to its column's party: "is there any relation between A and B, and which?". Code: `src/renderers/relationship/matrix/`.
+
+- The order follows the camps (`groups`, in written order), the parties of no camp last, each camp under a coloured band on the rows and on the columns.
+- A relation stands in the cell (row = `from`, column = `to`). A relation with no direction (a contract, a marriage, or `directed: false`) stands in both cells of its pair. Several relations between one pair stack in one cell. The diagonal is shaded.
+- Chips are coloured by relation kind as in the graph and carry the label the graph would show. With the labels switch off a chip becomes a dot.
+- It shows no chains and no levels: use the graph for those. "Copy as table" puts the matrix on the clipboard (HTML and tab-separated text).
+- Party overlay and orientation do not apply; it opens fitted to its width like the chronicle.
+
+### 6.7 The fifth sub-type, `equity` (issue #91)
+
+> Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added: the view reads `equity` relations and their `share`.
+
+Holders above what they hold, the `share` on each line as a pill. Code: `src/renderers/relationship/equity/`.
+
+- Only `equity` relations are drawn as lines. The level of a party is the longest path from an **ultimate holder** (held by no one). A line with no `share` says "not stated".
+- A **cross-holding** (rule 16) is drawn once: the line that closes the cycle is dashed, runs upward and says "cross-holding"; it is left out of the levels and of the products.
+- **Held through others**, under the tree: for each ultimate holder, every party it reaches by a path of two or more lines, as the sum over paths of the products of the shares ("55% × 80% = 44%"). Only when every share on every path is stated; otherwise the row says it cannot be worked out. At most 30 rows are listed, the rest is counted. Nothing else is added up and no completeness is claimed (it is not a due-diligence chart).
+- Parties with no equity relation are listed under the tree, and every relation that is not equity as a list, so every relation is on the page once. A case with no equity relation says so.
+- Party boxes, the overlay and the labels switch are the graph's; no orientation, link style or kind chips.
 
 ---
 

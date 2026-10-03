@@ -1454,3 +1454,37 @@
 .antu-ch-text.is-warn .antu-ch-text-sub { color: #92400e; }
 .antu-ch-text-sub { color: var(--antu-text-3); }
 .antu-ch-text.is-note { font-size: 11.5px; line-height: 16px; color: #6d28d9; }
+
+/* ===== relation matrix (issue #91) ===== */
+.antu-mx-layer { position: relative; }
+.antu-mx-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-mx-corner { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 4px 8px; font-size: 11.5px; line-height: 16px; color: var(--antu-text-4); text-align: center; }
+.antu-mx-band { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; line-height: 16px; overflow: hidden; }
+.antu-mx-band.is-side span { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+.antu-mx-band.is-side.is-cjk span { writing-mode: horizontal-tb; transform: none; display: block; width: 1.2em; white-space: normal; word-break: break-all; line-height: 15px; text-align: center; }
+.antu-mx-head, .antu-mx-rowhead { position: absolute; box-sizing: border-box; display: flex; align-items: center; padding: 4px 6px; font-size: 13px; line-height: 18px; font-weight: 650; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-mx-head { justify-content: center; text-align: center; align-items: flex-end; }
+.antu-mx-rowhead { justify-content: flex-end; text-align: right; }
+.antu-mx-chip { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 3px 8px; font-size: 11.5px; line-height: 15px; text-align: center; overflow-wrap: anywhere; }
+
+/* ===== equity tree (issue #91) ===== */
+.antu-eq-layer { position: relative; }
+.antu-eq-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-eq-pill {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  padding: 0 9px;
+  background: #fff;
+  border: 1px solid #1d4ed8;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d4ed8;
+  white-space: nowrap;
+}
+.antu-eq-pill.is-unknown { border: 1px dashed #94a3b8; color: var(--antu-text-3); font-weight: 500; }
+.antu-eq-pill.is-back { border-style: dashed; }
+.antu-eq-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-eq-text-sub { color: var(--antu-text-3); }
+.antu-eq-text.is-note { color: var(--antu-text-3); font-style: italic; }

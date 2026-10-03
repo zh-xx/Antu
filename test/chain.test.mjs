@@ -70,7 +70,7 @@ function assertSound(s, label) {
 
 test('the guarantee chain is the relationship diagram\'s third kind', () => {
   registerKnowledge('relationship', relationshipKnowledge)
-  assert.deepEqual(layoutKindsOf('relationship'), ['graph', 'focus', 'chain'])
+  assert.deepEqual(layoutKindsOf('relationship').slice(0, 3), ['graph', 'focus', 'chain'])
 })
 
 for (const f of files) {
