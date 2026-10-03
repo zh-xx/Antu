@@ -16,6 +16,10 @@ import { buildFocusGraph } from './focus/layout.js'
 import { buildChainGraph } from './chain/layout.js'
 import { buildMatrixGraph } from './matrix/layout.js'
 import { buildEquityGraph } from './equity/layout.js'
+import { buildAuthorityGraph } from './authority/layout.js'
+import { buildRelatedGraph } from './related/layout.js'
+import { buildPathGraph } from './path/layout.js'
+import { buildSummaryGraph } from './summary/layout.js'
 import { fitZoom, textSizeLines } from '../../core/canvas.js'
 import { ENTITY_FONT } from './graph/metrics.js'
 
@@ -245,6 +249,75 @@ function formatEquityReport(r) {
   return lines.join('\n')
 }
 
+/**
+ * The four levelled / table views of issue #93 report alike: no orientation to choose, a width they open
+ * fitted to, and what the data does or does not give them. `facts` are the kind's own lines.
+ */
+function viewReport(kind, facts) {
+  return function report(spec, layout, { canvas }) {
+    const g = layout(spec, {})
+    const wide = kind === 'path' || kind === 'summary'
+    const fit = Number(fitZoom(wide ? g.size : { width: g.size.width, height: 1 }, wide ? canvas : { width: canvas.width, height: canvas.height * 1e6 }).toFixed(3))
+    return {
+      text: { font: ENTITY_FONT, canvas, open: { name: wide ? 'whole picture' : 'fitted to width', fit }, other: { name: wide ? 'whole picture' : 'fitted to width', fit } },
+      counts: { entities: g.stats.entities, relations: g.stats.relations, groups: g.stats.groups, kinds: g.stats.kinds, sources: spec.sources?.length ?? 0 },
+      size: g.size,
+      fit,
+      facts: facts(g, spec),
+      hints: g.hints,
+    }
+  }
+}
+
+const authorityReport = viewReport('authority', (g) => {
+  const out = []
+  if (!g.authorityLines) out.push('No control, employment or agency relations in this data: the view says so and lists the rest; the graph suits this case better.')
+  else {
+    out.push(`${g.authorityLines} line(s) of authority among ${g.chartParties} part${g.chartParties === 1 ? 'y' : 'ies'}, ${g.levels} level(s), ${g.tops} at the top`)
+    if (g.cycles) out.push(`${g.cycles} cycle line(s) (drawn dashed, round the side, left out of the levels)`)
+  }
+  if (g.apart) out.push(`${g.apart} part${g.apart === 1 ? 'y has' : 'ies have'} no relation of authority (listed under the chart)`)
+  if (g.other) out.push(`${g.other} relation(s) of another kind listed under the chart`)
+  return out
+})
+
+const relatedReport = viewReport('related', (g) => [
+  `Centred on one party (the one with most relations by default; the reader can pick another)`,
+  `${g.related} part${g.related === 1 ? 'y' : 'ies'} related to it; ${g.none} with no relation to it; ${g.rest} relation(s) that do not involve it (listed under the table)`,
+])
+
+const pathReport = viewReport('path', (g) => {
+  const out = [`Opens on the two parties furthest apart (the reader picks others): ${g.chains ? `${g.chains} chain(s) drawn, shortest ${g.shortest} step(s)` : 'they are not tied by any chain'}`]
+  if (g.totalChains > g.chains || g.truncated) out.push(`${g.truncated ? 'At least ' : ''}${g.totalChains - g.chains} more chain(s) not drawn (only the 3 shortest are)`)
+  out.push(`${g.drawnParties} part${g.drawnParties === 1 ? 'y' : 'ies'} on the drawn chains; ${g.off} not on them (listed under the picture); ${g.offRels} relation(s) not on them (listed under the picture)`)
+  return out
+})
+
+const summaryReport = viewReport('summary', (g) => {
+  const out = [`${g.blocks} camp block(s), ${g.singles} party box(es) of no camp, ${g.lines} line(s) between them (${g.betweenRelations} relation(s)); ${g.insideRelations} relation(s) inside a camp`]
+  if (!g.blocks) out.push('No groups in this data: every party is its own box, which looks like the graph; give the parties groupId to get camps.')
+  return out
+})
+
+function formatViewReport(name, desc) {
+  return (r) => {
+    const c = r.counts
+    const lines = [
+      `Kind: ${name} (${desc}; orientation does not apply)`,
+      `Data: ${c.entities} entities / ${c.relations} relations / ${c.groups} groups / ${c.sources} sources`,
+      `Content ${r.size.width}×${r.size.height}; it opens ${r.text.open.name === 'whole picture' ? `fitted to the whole picture (zoom ${r.fit})` : `fitted to its width (zoom ${r.fit})`}`,
+      ...r.facts,
+    ]
+    lines.push(...textSizeLines(r.text, 'splitting the diagram by group'))
+    if (r.hints.length) lines.push('', `${r.hints.length} hint(s):`, ...r.hints.map((x) => `  - ${x}`))
+    return lines.join('\n')
+  }
+}
+const formatAuthority = formatViewReport('authority', 'control, employment and agency as an organisation chart')
+const formatRelated = formatViewReport('related', 'one party and everyone tied to it, as a table')
+const formatPath = formatViewReport('path', 'the shortest chains of relations between two parties')
+const formatSummary = formatViewReport('summary', 'each camp as one block')
+
 export const relationshipKnowledge = {
   specVersion: RELATIONSHIP_SPEC_VERSION,
   /** The display name of the type: a message key, resolved per language by the consumer (core/labels.js) */
@@ -269,6 +342,10 @@ export const relationshipKnowledge = {
     if (kind === 'chain') return chainReport(spec, layout, { canvas })
     if (kind === 'matrix') return matrixReport(spec, layout, { canvas })
     if (kind === 'equity') return equityReport(spec, layout, { canvas })
+    if (kind === 'authority') return authorityReport(spec, layout, { canvas })
+    if (kind === 'related') return relatedReport(spec, layout, { canvas })
+    if (kind === 'path') return pathReport(spec, layout, { canvas })
+    if (kind === 'summary') return summaryReport(spec, layout, { canvas })
     const byOrientation = {}
     let g
     for (const o of ['vertical', 'horizontal']) {
@@ -302,6 +379,10 @@ export const relationshipKnowledge = {
     if (r.kind === 'chain') return formatChainReport(r)
     if (r.kind === 'matrix') return formatMatrixReport(r)
     if (r.kind === 'equity') return formatEquityReport(r)
+    if (r.kind === 'authority') return formatAuthority(r)
+    if (r.kind === 'related') return formatRelated(r)
+    if (r.kind === 'path') return formatPath(r)
+    if (r.kind === 'summary') return formatSummary(r)
     const c = r.counts
     const v = r.byOrientation.vertical
     const h = r.byOrientation.horizontal
@@ -349,5 +430,9 @@ export const relationshipKnowledge = {
     chain: buildChainGraph,
     matrix: buildMatrixGraph,
     equity: buildEquityGraph,
+    authority: buildAuthorityGraph,
+    related: buildRelatedGraph,
+    path: buildPathGraph,
+    summary: buildSummaryGraph,
   },
 }

@@ -112,9 +112,15 @@ try {
         check('relationship: layout --kind matrix reports the matrix', mx.status === 0 && /^Kind: matrix/m.test(mx.stdout), mx.stderr.trim() || mx.stdout.trim())
         const eqt = run('layout', rel, '--kind', 'equity')
         check('relationship: layout --kind equity reports the equity tree', eqt.status === 0 && /^Kind: equity/m.test(eqt.stdout), eqt.stderr.trim() || eqt.stdout.trim())
+        if (run('--help').stdout.includes('authority')) {
+          for (const kind of ['authority', 'related', 'path', 'summary']) {
+            const r = run('layout', rel, '--kind', kind)
+            check(`relationship: layout --kind ${kind} reports it`, r.status === 0 && new RegExp(`^Kind: ${kind}`, 'm').test(r.stdout), r.stderr.trim() || r.stdout.trim())
+          }
+        }
       }
       const wrongRel = run('layout', rel, '--kind', 'scale')
-      check('a fact kind on a relationship is named, exit code 2', wrongRel.status === 2 && /graph, focus, chain, matrix, equity/.test(wrongRel.stderr), `${wrongRel.status} ${wrongRel.stderr.trim()}`)
+      check('a fact kind on a relationship is named, exit code 2', wrongRel.status === 2 && /graph, focus, chain, matrix, equity, authority, related, path, summary/.test(wrongRel.stderr), `${wrongRel.status} ${wrongRel.stderr.trim()}`)
     }
     // The time scale, where this command line has it
     if (run('--help').stdout.includes('scale')) {

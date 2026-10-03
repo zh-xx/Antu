@@ -273,6 +273,43 @@ Holders above what they hold, the `share` on each line as a pill. Code: `src/ren
 - Parties with no equity relation are listed under the tree, and every relation that is not equity as a list, so every relation is on the page once. A case with no equity relation says so.
 - Party boxes, the overlay and the labels switch are the graph's; no orientation, link style or kind chips.
 
+### 6.8 The sixth sub-type, `authority` (issue #93)
+
+> Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added.
+
+Only `control`, `employment` and `agency` relations, as an organisation chart: the controller, employer or principal above, the controlled, employed or agent below; each line carries the text the graph would put on it. Code: `src/renderers/relationship/authority/`.
+
+- Levels, waypoints for lines that skip a level, and a cycle drawn once dashed and flagged are the equity tree's (`relationship/layered.js`).
+- Parties with no relation of authority, and every relation of another kind, are listed under the chart, so every relation is on the page once. A case with none of the three kinds says so.
+
+### 6.9 The seventh sub-type, `related` (issue #93)
+
+> Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added.
+
+A table centred on one party (the one with most relations by default; the reader picks another in the dock, the same choice as the focus view's): one row per party that has a relation with it, with the kinds, every relation as written (→ the centre is the `from`, ← the centre is the `to`, ↔ no direction), and the sources. Code: `src/renderers/relationship/related/`.
+
+- A party with several relations to the centre has them in one row.
+- Under the table: the parties with no relation to the centre, and every relation that does not involve it. "Copy as table" puts the rows on the clipboard.
+
+### 6.10 The eighth sub-type, `path` (issue #93)
+
+> Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added.
+
+How two parties are tied: the shortest chains of relations from A to B, left to right. Code: `src/renderers/relationship/path/`.
+
+- Direction is ignored when looking for a chain (a holder and what it holds are tied); each line keeps its own arrowhead. A chain passes a party at most once. At most 3 chains are drawn, shortest first (ties in written order), the shortest drawn heavier; how many more there are is said under the picture. Chains more than 3 steps longer than the shortest are not looked for, and the search stops after 5000 chains (the count then says "at least").
+- It opens on the two parties furthest apart, so it is never empty; the two ends are chosen in the dock (remembered per diagram). If A and B are not tied, it says so.
+- Under the picture: each drawn chain as text, then the parties and relations on no drawn chain. Parties off the chains are not drawn (not faded): the picture shows only the answer.
+
+### 6.11 The ninth sub-type, `summary` (issue #93)
+
+> Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added.
+
+Each camp (`groups`) as one block listing its members (the first 8; the rest in a list under the picture), the parties of no camp as single boxes, and one line between two blocks whose label counts the relations between them by kind ("Claim 1 · Guarantee 2"). Code: `src/renderers/relationship/summary/`.
+
+- Levels left to right: a line runs from the side most of its relations run from. It has an arrowhead only when every relation between the two runs that way. A block's foot counts the relations inside it.
+- Every relation is written out under the picture, those between blocks first, then those inside a camp. With no `groups`, every party is its own box and the view looks like the graph (the report says so).
+
 ---
 
 ## 7. Open questions, and what the schema does meanwhile
