@@ -65,7 +65,23 @@ export default function FactChronicle({ spec }) {
   }
 
   const measure = useMemo(() => makeMeasure(), [])
-  const graph = useMemo(() => buildChronicleGraph(spec, fields, { measure }), [spec, fields, measure])
+  const layout = useMemo(() => buildChronicleGraph(spec, fields, { measure }), [spec, fields, measure])
+
+  // One group lit at a time (the legend's buttons): its cards and marks stay, the others are faded
+  const [activeGroup, setActiveGroup] = useState(null)
+  const toggleGroup = (i) => setActiveGroup((cur) => (cur === i ? null : i))
+  const graph = useMemo(() => {
+    if (activeGroup === null) {
+      return { ...layout, nodes: layout.nodes.map((n) => (n.type === 'legend' ? { ...n, data: { ...n.data, active: null, onToggle: toggleGroup } } : n)) }
+    }
+    const nodes = layout.nodes.map((n) => {
+      if (n.type === 'entry') return { ...n, data: { ...n.data, dim: n.data.groupIndex !== activeGroup || n.data.shape === 'none' } }
+      if (n.type === 'spine') return { ...n, data: { ...n.data, dots: n.data.dots.map((d) => ({ ...d, dim: d.groupIndex !== activeGroup || d.shape === 'none' })) } }
+      if (n.type === 'legend') return { ...n, data: { ...n.data, active: activeGroup, onToggle: toggleGroup } }
+      return n
+    })
+    return { ...layout, nodes }
+  }, [layout, activeGroup])
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
@@ -107,7 +123,7 @@ export default function FactChronicle({ spec }) {
           }}
           onPaneClick={() => setPinnedId(null)}
         >
-          <ChronicleDock spec={spec} fields={fields} onToggleField={toggleField} exporting={exporting} onExport={onExport} />
+          <ChronicleDock fields={fields} onToggleField={toggleField} exporting={exporting} onExport={onExport} />
         </Canvas>
       </PreviewContext.Provider>
     </div>

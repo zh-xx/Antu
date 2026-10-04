@@ -16,7 +16,7 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 
 import { buildAuthorityGraph, classifyAuthority } from '../src/renderers/relationship/authority/layout.js'
-import { buildRelatedGraph, relatedRows, relatedTable, centreOf } from '../src/renderers/relationship/related/layout.js'
+import { buildRelatedGraph, relatedRows, centreOf } from '../src/renderers/relationship/related/layout.js'
 import { buildPathGraph, findChains, defaultEnds, endsOf, MAX_CHAINS } from '../src/renderers/relationship/path/layout.js'
 import { buildSummaryGraph, summaryUnits, summaryLines } from '../src/renderers/relationship/summary/layout.js'
 import { layeredGraph } from '../src/renderers/relationship/layered.js'
@@ -147,9 +147,6 @@ test('related: several relations to the centre share a row; the arrow says which
   assert.deepEqual(none.map((e) => e.id), ['z'])
   assert.deepEqual(rest.map((r) => r.id), ['r4'])
   assert.equal(centreOf(s, 'nobody'), centreOf(s, undefined), 'an unknown centre means the default')
-  const table = relatedTable(s, 'c')
-  assert.equal(table.rows.length, 2)
-  assert.match(table.rows[0][2], /→ .*; ← /)
   // A centre with no relation: an empty state, and everything else apart
   const lonely = buildRelatedGraph(s, { centre: 'z' })
   assert.equal(lonely.related, 0)

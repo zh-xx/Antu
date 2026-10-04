@@ -76,7 +76,7 @@ export default function FactScale({ spec }) {
           }}
           onPaneClick={() => setPinnedId(null)}
         >
-          <ScaleDock spec={spec} exporting={exporting} onExport={onExport} />
+          <ScaleDock exporting={exporting} onExport={onExport} />
         </Canvas>
       </PreviewContext.Provider>
     </div>

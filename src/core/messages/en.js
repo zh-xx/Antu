@@ -128,6 +128,8 @@ export const en = {
 
   'graphKind.timeline': 'Timeline',
   'graphKind.flow': 'Flowchart',
+  'header.kindCount': ({ n }) => `${n} ways of drawing`,
+  'header.kindGroup': 'Way of drawing',
   'graphKind.chronicle': 'Chronicle',
   'graphKind.scale': 'Time scale',
 
@@ -154,18 +156,6 @@ export const en = {
   'chronicle.gapYears': ({ n }) => `${n} year${n === 1 ? '' : 's'} later`,
   'chronicle.gapYearsMonths': ({ y, m }) => `${y} yr ${m} mo later`,
   'chronicle.dateUnknown': 'Date unknown',
-
-  // ---------- copy as table (fact kinds) ----------
-  'dock.copyTable': 'Copy as table',
-  'dock.copyTableTitle': 'Copy every event as a table, to paste into a document or a spreadsheet',
-  'dock.copied': 'Copied',
-  'dock.copyFailed': 'Copy failed',
-  'table.time': 'Time',
-  'table.event': 'Event',
-  'table.summary': 'Summary',
-  'table.group': 'Group',
-  'table.actors': 'Parties',
-  'table.sources': 'Sources',
 
   // ---------- graph types (the envelope-level type) ----------
   'graphType.fact': 'Fact',

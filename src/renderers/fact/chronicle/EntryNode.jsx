@@ -6,7 +6,8 @@
 //
 //  The card is as tall as the layout computed from its text (chronicle/layout.js), and nothing
 //  in it is clamped: a chronicle is read, so the whole title and summary are shown. No coloured
-//  bar on the card's edge: the group colour is on the spine dot and on the group tag only.
+//  bar on the card's edge and no group name on the card: the group is the mark on the line (SpineNode)
+//  and the legend (LegendNode).
 // ============================================================
 
 import { memo, useContext } from 'react'
@@ -17,7 +18,7 @@ import { CARD_W, CARD_X, WHEN_W } from './layout.js'
 import EventPreview from '../EventPreview.jsx'
 
 const EntryNode = memo(function EntryNode({ data }) {
-  const { event, groupIndex, groupLabel, actorNames, sources, fields, cardH, sameDay } = data
+  const { event, groupIndex, actorNames, sources, fields, cardH, sameDay, dim = false } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
 
@@ -26,7 +27,7 @@ const EntryNode = memo(function EntryNode({ data }) {
   const open = isPinned || showPreview
 
   return (
-    <div className="antu-chr-entry" style={{ height: cardH }}>
+    <div className={`antu-chr-entry${dim ? ' is-dim' : ''}`} style={{ height: cardH }} data-group={groupIndex}>
       <div className={`antu-chr-when${event.date ? '' : ' is-unknown'}`} style={{ width: WHEN_W }} title={event.dateNote || ''}>
         {whenLines(event, lang, sameDay).map((l, i) => (
           <div key={i} className={l.strong ? 'is-date' : ''}>
@@ -53,14 +54,8 @@ const EntryNode = memo(function EntryNode({ data }) {
       >
         <div className="antu-chr-title">{event.label}</div>
         {fields.summary && event.summary && <div className="antu-chr-summary">{event.summary}</div>}
-        {(groupLabel || (fields.actors && actorNames.length > 0) || fields.sources) && (
+        {((fields.actors && actorNames.length > 0) || fields.sources) && (
           <div className="antu-chr-tags">
-            {groupLabel && (
-              <span className={`antu-chr-group g${groupIndex}`}>
-                <i />
-                {groupLabel}
-              </span>
-            )}
             {fields.actors &&
               actorNames.map((n) => (
                 <span key={n} className="antu-actor-tag">

@@ -2,7 +2,7 @@
 //  src/renderers/relationship/related/RelatedRenderer.jsx — the related-party list (issue #93)
 //
 //  One party and everyone tied to it, as a table. The centre is chosen in a box in the dock (the same
-//  choice as the focus view's, remembered per diagram), and "Copy as table" puts the rows on the clipboard.
+//  choice as the focus view's, remembered per diagram).
 //  The layout (related/layout.js) is pure; the page is the shared levelled view.
 // ============================================================
 
@@ -10,10 +10,8 @@ import { useState } from 'react'
 
 import { readPrefs, writePrefs } from '../../../shell/prefs.js'
 import { useLang } from '../../../shell/LangContext.jsx'
-import { translate } from '../../../core/i18n.js'
-import CopyTableButton from '../../fact/CopyTableButton.jsx'
 import LevelledView from '../LevelledView.jsx'
-import { buildRelatedGraph, relatedTable } from './layout.js'
+import { buildRelatedGraph } from './layout.js'
 
 /** External preset (antu_preview, the skill's preview): `centre` names the party */
 const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
@@ -46,7 +44,6 @@ export default function RelationshipRelated({ spec }) {
               </option>
             ))}
           </select>
-          <CopyTableButton spec={spec} getTable={(l) => relatedTable(spec, layout.centre, (key, vars) => translate(l, key, vars))} />
         </>
       )}
     />

@@ -8,8 +8,7 @@
 //  and the sources. A party with several relations to the centre has them in one row.
 //
 //  Under the table: the parties with no relation to the centre, and every relation that does not involve
-//  the centre, so every relation is on the page once. It is a table, so "Copy as table" puts it on the
-//  clipboard (and a lawyer can paste it into a brief). Any valid JSON draws. Pure JS, so Node computes the
+//  the centre, so every relation is on the page once. Any valid JSON draws. Pure JS, so Node computes the
 //  same geometry for antu_layout and the tests check every example.
 // ============================================================
 
@@ -164,19 +163,5 @@ export function buildRelatedGraph(spec, fields = {}) {
     rest: rest.length,
     size: { width, height },
     stats: { entities: entities.length, relations: relations.length, groups: spec.groups?.length ?? 0, kinds },
-  }
-}
-
-/** The table for the clipboard: the same rows as the picture, as text */
-export function relatedTable(spec, centre, t = tEn) {
-  if (validateRelationship(spec).length) return { headers: [], rows: [] }
-  const party = makePartyData(spec, t)
-  const textIndex = new Map(spec.relations.map((r, i) => [r.id, i]))
-  const sep = t('rel.equity.sep')
-  const c = centreOf(spec, centre)
-  const { rows } = relatedRows(spec, c)
-  return {
-    headers: [t('rel.related.colParty'), t('rel.related.colKind'), t('rel.related.colText'), t('rel.related.colSource')],
-    rows: rows.map((r) => [r.name, r.kinds.map((k) => t(`rel.kind.${k}`)).join(sep), r.rels.map((x) => `${x.arrow} ${party.labelTexts[textIndex.get(x.rel.id)]}`).join('; '), r.sources.join(sep)]),
   }
 }
