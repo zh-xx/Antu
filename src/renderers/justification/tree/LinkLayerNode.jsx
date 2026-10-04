@@ -13,9 +13,11 @@
 // ============================================================
 
 import { memo, useMemo } from 'react'
-import { stancePaint, STANCE_PAINT, DIM_OPACITY } from './palette.js'
+import { stancePaint, DIM_OPACITY } from './palette.js'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 const LinkLayerNode = memo(function LinkLayerNode({ data }) {
+  const { theme } = useTheme()
   const { connections, width, height, showLabels, curved, litLines = null } = data
   const stancesDrawn = useMemo(() => [...new Set(connections.map((c) => c.stance))], [connections])
   const opacityOf = (c) => (litLines === null || litLines.has(c.id) ? 1 : DIM_OPACITY)
@@ -36,13 +38,13 @@ const LinkLayerNode = memo(function LinkLayerNode({ data }) {
               markerUnits="userSpaceOnUse"
               orient="auto"
             >
-              <path d="M 0 1 L 9 5 L 0 9 Z" fill={(STANCE_PAINT[s] ?? STANCE_PAINT.for).stroke} />
+              <path d="M 0 1 L 9 5 L 0 9 Z" fill={stancePaint(s, theme).stroke} />
             </marker>
           ))}
         </defs>
 
         {connections.map((c) => {
-          const p = stancePaint(c.stance)
+          const p = stancePaint(c.stance, theme)
           return (
             <g key={c.id} className={`antu-jlink s-${c.stance}`} opacity={opacityOf(c)}>
               <path

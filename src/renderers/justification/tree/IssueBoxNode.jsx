@@ -13,13 +13,16 @@
 // ============================================================
 
 import { memo } from 'react'
-import { GROUP_PAINT } from './palette.js'
+import { groupPaint } from './palette.js'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { GROUP_PAD, GROUP_TITLE_FONT } from './metrics.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 
 const IssueBoxNode = memo(function IssueBoxNode({ data }) {
   const { boxes, width, height, onToggle, foldable = true } = data
   const { t } = useLang()
+  const { theme } = useTheme()
+  const GROUP_PAINT = groupPaint(theme)
   return (
     <div className="antu-rgroups">
       <svg className="antu-rgroups-svg" width={width} height={height} aria-hidden="true">

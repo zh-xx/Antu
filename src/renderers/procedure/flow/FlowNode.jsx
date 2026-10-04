@@ -20,6 +20,7 @@ import { PreviewContext } from '../../../shell/previewContext.js'
 import { SOURCE_TYPE_KEYS, labelOf } from '../../../core/labels.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import { nodePaint } from './palette.js'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 /** Inset of the outline from the node box, so a 1.5px stroke is not clipped at the edge */
 const INSET = 1
@@ -28,9 +29,9 @@ const INSET = 1
  * The outline of one shape, as SVG children. w / h are the node's design size.
  * Paint goes on as attributes (see palette.js for why not CSS).
  */
-function Outline({ kind, outcome, w, h }) {
-  const p = nodePaint(kind, outcome)
-  const paint = { fill: p.fill, stroke: p.stroke, strokeWidth: 1.2 }
+function Outline({ kind, outcome, w, h, theme }) {
+  const p = nodePaint(kind, outcome, theme)
+  const paint = { fill: p.fill, stroke: p.stroke, strokeWidth: p.width ?? 1.1, ...(p.dash ? { strokeDasharray: p.dash } : {}) }
   const ring = { fill: 'none', stroke: p.stroke, strokeWidth: 1 }
   const x = INSET
   const y = INSET
@@ -91,6 +92,7 @@ const FlowNode = memo(function FlowNode({ id, data }) {
   const { node, w, h, textW, ruleCount = 0, lit = false, isSpine, stageLabel, actorNames, sources, showDetail, vertical, layer } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
+  const { theme } = useTheme()
 
   const isPinned = pinnedId === id
   const showPreview = !pinnedId && hoveredId === id
@@ -123,7 +125,7 @@ const FlowNode = memo(function FlowNode({ id, data }) {
       }}
     >
       <svg className="antu-pn-svg" width={w} height={h} aria-hidden="true">
-        <Outline kind={kind} outcome={outcome} w={w} h={h} />
+        <Outline kind={kind} outcome={outcome} w={w} h={h} theme={theme} />
       </svg>
 
       {/* The text column is exactly as wide as metrics.js measured it, so the lines break where the box was sized for */}

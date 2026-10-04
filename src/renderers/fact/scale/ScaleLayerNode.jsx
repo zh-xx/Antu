@@ -10,16 +10,18 @@
 import { memo } from 'react'
 import { useLang } from '../../../shell/LangContext.jsx'
 import { LABEL_W, BREAK_W } from './layout.js'
-
-/** Group colours: side 1 blue, side 2 red, the axis grey (as on the timeline) */
-export const GROUP_COLOURS = ['#2f6fed', '#e5484d', '#94a3b8']
-const LINE = '#cbd5e1'
-const INK = '#64748b'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 export const runMark = (n) => (n <= 20 ? String.fromCodePoint(0x2460 + n - 1) : `(${n})`)
 
 const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
   const { t } = useLang()
+  const { theme } = useTheme()
+  const c0 = theme.color
+  // Group colours: side 1, side 2, and the axis colour for what belongs to neither (as on the timeline)
+  const GROUP_COLOURS = [c0.side1, c0.side2, c0.axis]
+  const LINE = c0.line
+  const INK = c0.ink3
   const { width, lanesH, axisY, lanes, segments, ticks, marks, leaders, brackets } = data
   const height = axisY + 44
   const colour = (i) => GROUP_COLOURS[i] ?? GROUP_COLOURS[2]
@@ -30,7 +32,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
         {/* lanes: a light band each, alternating, and the line the marks sit on */}
         {lanes.map((l, i) => (
           <g key={l.key}>
-            {i % 2 === 1 && <rect x={0} y={l.top} width={width} height={l.lineY - l.top + 14} fill="#f6f8fb" />}
+            {i % 2 === 1 && <rect x={0} y={l.top} width={width} height={l.lineY - l.top + 14} fill={c0.chip} fillOpacity={0.6} />}
             <line x1={LABEL_W} x2={width} y1={l.lineY} y2={l.lineY} stroke={LINE} strokeWidth={2} />
           </g>
         ))}
@@ -42,9 +44,9 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
             const b = s.breakBefore
             return (
               <g key={`b${s.index}`}>
-                <rect x={b.x + 6} y={0} width={b.w - 12} height={axisY} fill="#eef1f5" />
-                <line x1={b.x + 6} x2={b.x + 6} y1={0} y2={axisY} stroke="#d5dce5" strokeDasharray="3 4" />
-                <line x1={b.x + b.w - 6} x2={b.x + b.w - 6} y1={0} y2={axisY} stroke="#d5dce5" strokeDasharray="3 4" />
+                <rect x={b.x + 6} y={0} width={b.w - 12} height={axisY} fill={c0.chip} />
+                <line x1={b.x + 6} x2={b.x + 6} y1={0} y2={axisY} stroke={c0.line} strokeDasharray="3 4" />
+                <line x1={b.x + b.w - 6} x2={b.x + b.w - 6} y1={0} y2={axisY} stroke={c0.line} strokeDasharray="3 4" />
                 <text x={b.x + BREAK_W / 2} y={axisY + 5} textAnchor="middle" fontSize={14} fontWeight={700} fill={INK}>
                   {'//'}
                 </text>
@@ -54,7 +56,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
 
         {/* leader lines, under the marks */}
         {leaders.map((l, i) => (
-          <line key={`l${i}`} x1={l.x} x2={l.x} y1={l.y0} y2={l.y1} stroke="#94a3b8" strokeWidth={1} strokeDasharray={l.run ? '3 3' : undefined} />
+          <line key={`l${i}`} x1={l.x} x2={l.x} y1={l.y0} y2={l.y1} stroke={c0.ink4} strokeWidth={1} strokeDasharray={l.run ? '3 3' : undefined} />
         ))}
 
         {/* marks */}
@@ -69,9 +71,9 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
             return <rect key={m.id} x={m.x0} y={m.y - 4} width={Math.max(6, m.x1 - m.x0)} height={8} rx={4} fill={c} />
           }
           if (m.undated) {
-            return <circle key={m.id} cx={m.x} cy={m.y} r={5} fill="#fff" stroke={GROUP_COLOURS[2]} strokeWidth={1.5} strokeDasharray="2 2" />
+            return <circle key={m.id} cx={m.x} cy={m.y} r={5} fill={c0.bg} stroke={GROUP_COLOURS[2]} strokeWidth={1.5} strokeDasharray="2 2" />
           }
-          return <circle key={m.id} cx={m.x} cy={m.y} r={5.5} fill={c} stroke="#fff" strokeWidth={2} />
+          return <circle key={m.id} cx={m.x} cy={m.y} r={5.5} fill={c} stroke={c0.bg} strokeWidth={2} />
         })}
 
         {/* brackets under gathered runs */}
@@ -85,10 +87,10 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
         ))}
 
         {/* the time axis */}
-        <line x1={LABEL_W} x2={width} y1={axisY} y2={axisY} stroke="#b2c0d0" strokeWidth={1.5} />
+        <line x1={LABEL_W} x2={width} y1={axisY} y2={axisY} stroke={c0.axis} strokeWidth={1.5} />
         {ticks.map((k, i) => (
           <g key={`t${i}`}>
-            <line x1={k.x} x2={k.x} y1={axisY} y2={axisY + 5} stroke="#b2c0d0" />
+            <line x1={k.x} x2={k.x} y1={axisY} y2={axisY + 5} stroke={c0.axis} />
             <text x={k.x} y={axisY + 17} textAnchor="middle" fontSize={10.5} fill={INK}>
               {k.label}
             </text>

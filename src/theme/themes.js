@@ -39,9 +39,29 @@ const BW_RELATION = {
 }
 const withInk = (table, ink) => Object.fromEntries(Object.entries(table).map(([k, v]) => [k, { ...v, stroke: ink }]))
 
+
+/**
+ * The lines of the procedure flow and the justification tree. Like the relation lines, the drawing of a role
+ * is the same in every theme (weight, dash); a theme only chooses the colour, so each reads in black and white.
+ */
+const OUTCOME_LINE = { neutral: { width: LINE.normal }, positive: { width: LINE.strong }, negative: { width: LINE.normal, dash: DASH.dashed } }
+const FLOW_LINK_LINE = { main: { width: LINE.strong }, plain: { width: LINE.normal }, back: { width: LINE.normal, dash: DASH.dashed } }
+const NODE_LINE = {
+  conclusion: { width: LINE.heavy },
+  norm: { width: LINE.normal },
+  element: { width: LINE.normal },
+  fact: { width: LINE.hair },
+  inference: { width: LINE.normal, dash: DASH.dotted },
+  judgement: { width: LINE.strong },
+}
+const STANCE_LINE = { for: { width: LINE.normal }, against: { width: LINE.strong, dash: DASH.dashed }, basis: { width: LINE.normal, dash: DASH.dotted } }
+/** Put the drawing of each role under its colours: byRole is { role: colours }, line is { role: drawing } */
+const draw = (line, byRole) => Object.fromEntries(Object.entries(line).map(([k, l]) => [k, { ...l, ...byRole[k] }]))
+
 export const THEMES = {
   document: {
     id: 'document',
+    shadowRgb: '17, 17, 17',
     chrome: { radius: 2, capsule: 2, chip: 2, bg: '#ffffff', bgPop: '#ffffff', border: '1px solid #111111', shadow: 'none', blur: 'none' },
     labelKey: 'theme.document',
     // The style of Chinese legal and official documents: headings in a hei face, text in fangsong
@@ -61,10 +81,26 @@ export const THEMES = {
     relation: withInk(BW_RELATION, '#111111'),
     camp: [{ fill: '#ffffff', stroke: '#111111', text: '#111111' }, { fill: '#ececec', stroke: '#111111', text: '#111111' }, { fill: '#f7f7f7', stroke: '#8a8a8a', text: '#4d4d4d' }],
     group: { fill: '#f5f5f5', stroke: '#8a8a8a', title: '#111111' },
+    flow: {
+      outcome: draw(OUTCOME_LINE, { neutral: { stroke: '#111111', fill: '#ffffff' }, positive: { stroke: '#111111', fill: '#ffffff' }, negative: { stroke: '#111111', fill: '#ececec' } }),
+      start: { stroke: '#111111', fill: '#e2e2e2' },
+      note: { stroke: 'none', fill: '#f5f5f5', fold: '#767676' },
+      stage: { fill: '#f5f5f5', stroke: '#8a8a8a', title: '#111111' },
+      stageLit: { fill: '#e2e2e2', stroke: '#111111', title: '#111111' },
+      link: draw(FLOW_LINK_LINE, { main: { stroke: '#111111' }, plain: { stroke: '#2b2b2b' }, back: { stroke: '#4d4d4d' } }),
+    },
+    justify: {
+      node: draw(NODE_LINE, {
+        conclusion: { stroke: '#111111', fill: '#ffffff' }, norm: { stroke: '#111111', fill: '#ececec' }, element: { stroke: '#111111', fill: '#ffffff' },
+        fact: { stroke: '#111111', fill: '#ffffff' }, inference: { stroke: '#111111', fill: '#ffffff' }, judgement: { stroke: '#111111', fill: '#ececec' },
+      }),
+      stance: draw(STANCE_LINE, { for: { stroke: '#2b2b2b' }, against: { stroke: '#111111' }, basis: { stroke: '#4d4d4d' } }),
+    },
     pill: { colored: false, border: '#111111' },
   },
   modern: {
     id: 'modern',
+    shadowRgb: '15, 23, 42',
     chrome: { radius: 14, capsule: 999, chip: 999, bg: 'rgba(255, 255, 255, 0.78)', bgPop: 'rgba(255, 255, 255, 0.94)', border: '1px solid rgba(15, 23, 42, 0.07)', shadow: '0 4px 18px rgba(15, 23, 42, 0.10), 0 1px 2px rgba(15, 23, 42, 0.06)', blur: 'blur(16px) saturate(1.8)' },
     labelKey: 'theme.modern',
     font: {
@@ -83,10 +119,26 @@ export const THEMES = {
     relation: withInk(BW_RELATION, '#475569'),
     camp: [{ fill: '#f1f5f9', stroke: '#94a3b8', text: '#334155' }, { fill: '#ffffff', stroke: '#94a3b8', text: '#334155' }, { fill: '#f8fafc', stroke: '#e2e8f0', text: '#64748b' }],
     group: { fill: '#f8fafc', stroke: '#e2e8f0', title: '#475569' },
+    flow: {
+      outcome: draw(OUTCOME_LINE, { neutral: { stroke: '#64748b', fill: '#f8fafc' }, positive: { stroke: '#334155', fill: '#f1f5f9' }, negative: { stroke: '#64748b', fill: '#f1f5f9' } }),
+      start: { stroke: '#334155', fill: '#e2e8f0' },
+      note: { stroke: 'none', fill: '#f1f5f9', fold: '#94a3b8' },
+      stage: { fill: '#f8fafc', stroke: '#e2e8f0', title: '#475569' },
+      stageLit: { fill: '#f1f5f9', stroke: '#64748b', title: '#334155' },
+      link: draw(FLOW_LINK_LINE, { main: { stroke: '#0f172a' }, plain: { stroke: '#475569' }, back: { stroke: '#64748b' } }),
+    },
+    justify: {
+      node: draw(NODE_LINE, {
+        conclusion: { stroke: '#0f172a', fill: '#f1f5f9' }, norm: { stroke: '#475569', fill: '#e2e8f0' }, element: { stroke: '#64748b', fill: '#f8fafc' },
+        fact: { stroke: '#94a3b8', fill: '#ffffff' }, inference: { stroke: '#64748b', fill: '#f8fafc' }, judgement: { stroke: '#334155', fill: '#e2e8f0' },
+      }),
+      stance: draw(STANCE_LINE, { for: { stroke: '#475569' }, against: { stroke: '#334155' }, basis: { stroke: '#94a3b8' } }),
+    },
     pill: { colored: false, border: '#cbd5e1' },
   },
   legal: {
     id: 'legal',
+    shadowRgb: '19, 35, 63',
     chrome: { radius: 6, capsule: 6, chip: 4, bg: '#ffffff', bgPop: '#ffffff', border: '1px solid #c7d2e4', shadow: '0 2px 10px rgba(19, 35, 63, 0.10)', blur: 'none' },
     labelKey: 'theme.legal',
     font: {
@@ -115,6 +167,21 @@ export const THEMES = {
     },
     camp: [{ fill: '#eaf0fb', stroke: '#9fb6e0', text: '#1f3f7f' }, { fill: '#fbecec', stroke: '#e3b4b4', text: '#9a1b1b' }, { fill: '#f4f7fc', stroke: '#c7d2e4', text: '#5b6f8f' }],
     group: { fill: '#f4f7fc', stroke: '#c7d2e4', title: '#2d4366' },
+    flow: {
+      outcome: draw(OUTCOME_LINE, { neutral: { stroke: '#2f5aa8', fill: '#eef3fb' }, positive: { stroke: '#1f3f7f', fill: '#e3ecfa' }, negative: { stroke: '#9a1b1b', fill: '#fbecec' } }),
+      start: { stroke: '#13233f', fill: '#dbe5f5' },
+      note: { stroke: 'none', fill: '#f4f7fc', fold: '#8aa0c4' },
+      stage: { fill: '#f4f7fc', stroke: '#c7d2e4', title: '#2d4366' },
+      stageLit: { fill: '#eaf0fb', stroke: '#1f3f7f', title: '#1f3f7f' },
+      link: draw(FLOW_LINK_LINE, { main: { stroke: '#13233f' }, plain: { stroke: '#2d4366' }, back: { stroke: '#5b6f8f' } }),
+    },
+    justify: {
+      node: draw(NODE_LINE, {
+        conclusion: { stroke: '#1f3f7f', fill: '#e3ecfa' }, norm: { stroke: '#4b3a8c', fill: '#efecf8' }, element: { stroke: '#2f5aa8', fill: '#eef3fb' },
+        fact: { stroke: '#8aa0c4', fill: '#f8fafd' }, inference: { stroke: '#1d6b6b', fill: '#e8f4f4' }, judgement: { stroke: '#13233f', fill: '#dbe5f5' },
+      }),
+      stance: draw(STANCE_LINE, { for: { stroke: '#2d4366' }, against: { stroke: '#9a1b1b' }, basis: { stroke: '#4b3a8c' } }),
+    },
     pill: { colored: true, border: '#c7d2e4' },
   },
 }

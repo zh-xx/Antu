@@ -11,13 +11,15 @@
 // ============================================================
 
 import { memo } from 'react'
-import { STAGE_PAINT, STAGE_LIT_PAINT } from './palette.js'
+import { stagePaint } from './palette.js'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { STAGE_TITLE_FONT, STAGE_PAD } from './metrics.js'
 
 const StageBoxNode = memo(function StageBoxNode({ data }) {
+  const { theme } = useTheme()
   const { boxes, width, height, lit = [] } = data
   // A stage the rule being looked at applies in (a row of the rule table under the mouse)
-  const paintOf = (b) => (lit.includes(b.stageId) ? STAGE_LIT_PAINT : STAGE_PAINT)
+  const paintOf = (b) => stagePaint(theme, lit.includes(b.stageId))
 
   return (
     <div className="antu-pstages">
@@ -30,7 +32,7 @@ const StageBoxNode = memo(function StageBoxNode({ data }) {
             y={b.y + 0.5}
             width={Math.max(0, b.w - 1)}
             height={Math.max(0, b.h - 1)}
-            rx={10}
+            rx={theme.radius.group}
             fill={paintOf(b).fill}
             stroke={paintOf(b).stroke}
             strokeWidth={lit.includes(b.stageId) ? 1.5 : 1}
