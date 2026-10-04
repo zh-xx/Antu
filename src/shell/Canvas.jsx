@@ -33,6 +33,7 @@ export default function Canvas({
   graph,
   fitKey,
   fitWidth = false,
+  fitSelf = false,
   nodeTypes,
   showGrid = false,
   style,
@@ -187,9 +188,11 @@ export default function Canvas({
         onNodeMouseLeave={onNodeMouseLeave}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
+        // A diagram whose content is mostly decoration layers (fitSelf: the relation path, the camp summary) is
+        // fitted to graph.size by fit() alone, not to the boxes React Flow can measure.
         // A width-fitted diagram is placed by fit() alone: React Flow's own initial fit runs once the nodes are
         // measured, which can come after fit() and would shrink a long column back to the whole
-        fitView={!fitWidth}
+        fitView={!fitWidth && !fitSelf}
         fitViewOptions={{ padding: FIT_PADDING }}
         minZoom={minZoom}
         maxZoom={MAX_ZOOM}

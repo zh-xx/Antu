@@ -1080,6 +1080,8 @@
 .react-flow__node-rnode:hover { z-index: 10 !important; }
 .react-flow__node.selected .antu-rn-shape { stroke-width: 2; }
 .antu-rn:focus-visible .antu-rn-shape { stroke: #2f6fed; stroke-width: 2; }
+.antu-rn.is-end .antu-rn-label { color: #fff; }
+.antu-rn.is-end .antu-rn-role { color: #cbd5e1; }
 .antu-rn-body { position: relative; flex: none; text-align: center; pointer-events: none; }
 /* 字号行高必须与 relationship/graph/metrics.js 一致（名字 14/20，角色 12/16） */
 .antu-rn-label {
@@ -1490,21 +1492,41 @@
 .antu-mx-chip { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 3px 8px; font-size: 11.5px; line-height: 15px; text-align: center; overflow-wrap: anywhere; }
 
 /* ===== equity tree (issue #91) ===== */
-.antu-eq-layer { position: relative; }
-.antu-eq-svg { position: absolute; left: 0; top: 0; overflow: visible; }
-.antu-eq-pill {
+.antu-ln-layer { position: relative; }
+.antu-ln-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-ln-pill {
   position: absolute;
   transform: translate(-50%, -50%);
   box-sizing: border-box;
-  padding: 0 9px;
+  min-height: 22px;
+  max-width: 220px;
+  padding: 1px 9px;
   background: #fff;
   border: 1px solid #1d4ed8;
-  border-radius: 11px;
+  border-radius: 12px;
   font-size: 12px;
   font-weight: 700;
+  line-height: 18px;
+  text-align: center;
   color: #1d4ed8;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
+.antu-ln-pill.is-ink { border-color: #94a3b8; color: #334155; font-weight: 600; }
+.antu-ln-pill.is-unknown { border: 1px dashed #94a3b8; color: var(--antu-text-3); font-weight: 500; }
+.antu-ln-pill.is-back { border-style: dashed; }
+.antu-ln-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-ln-text-sub { color: var(--antu-text-3); }
+.antu-ln-text.is-row { font-size: 12px; font-weight: 700; color: var(--antu-text-3); }
+.antu-ln-text.is-note { color: var(--antu-text-3); font-style: italic; }
+.antu-ln-block { position: absolute; box-sizing: border-box; padding: 14px 18px; font-size: 13px; line-height: 22px; color: var(--antu-text); overflow: hidden; overflow-wrap: anywhere; }
+.antu-ln-block-title { font-size: 14px; font-weight: 700; line-height: 22px; margin-bottom: 6px; }
+.antu-ln-block-foot { margin-top: 8px; font-size: 12px; line-height: 18px; color: var(--antu-text-3); }
+
+/* related-party list (issue #93): the table's cells, over the line layer's grid */
+.antu-ln-cell { position: absolute; box-sizing: border-box; padding: 8px 10px; font-size: 13px; line-height: 19px; color: var(--antu-text); overflow: hidden; overflow-wrap: anywhere; }
+.antu-ln-cell.is-head { display: flex; align-items: center; font-weight: 700; color: var(--antu-text-3); }
+.antu-ln-cell.is-first { font-weight: 650; }
+.antu-ln-cell-sub { font-weight: 400; font-size: 12px; color: var(--antu-text-3); }
 .antu-eq-pill.is-unknown { border: 1px dashed #94a3b8; color: var(--antu-text-3); font-weight: 500; }
 .antu-eq-pill.is-back { border-style: dashed; }
 .antu-eq-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }

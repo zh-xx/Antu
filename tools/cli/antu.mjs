@@ -50,7 +50,7 @@ const USAGE = `Antu ${VERSION}: check and draw an Antu diagram (JSON)
   node antu.mjs --version
 
   --kind K: which way of drawing the same JSON. fact: timeline (the default), chronicle or scale;
-            relationship: graph (the default), focus, chain, matrix or equity.
+            relationship: graph (the default), focus, chain, matrix, equity, authority, related, path or summary.
 `
 
 const say = (text) => process.stdout.write(`${text}\n`)

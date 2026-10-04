@@ -67,7 +67,7 @@ function isBrowserFile(p) {
  * did the same until its entity was added here (16 seconds for a preview). The fact chronicle's card is
  * its own class (.antu-chr-card).
  */
-export const ITEM_SELECTOR = '.antu-card, .antu-chr-card, .antu-sc-card, .antu-pn, .antu-rn, .antu-jn, .antu-mx-chip, .antu-eq-layer'
+export const ITEM_SELECTOR = '.antu-card, .antu-chr-card, .antu-sc-card, .antu-pn, .antu-rn, .antu-jn, .antu-mx-chip, .antu-ln-layer'
 
 /**
  * Find the browser on this machine. Order: ANTU_CHROME environment variable > known paths > PATH.
