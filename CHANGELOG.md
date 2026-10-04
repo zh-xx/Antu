@@ -3,6 +3,36 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.7.0
+
+The same JSON can now be drawn in more than one way, and the page has a picker for it: three ways for a fact diagram, two for a procedure, nine for a relationship diagram (#85, #87, #89, #91, #93, #95).
+
+### Added
+- **A picker in the label card**: `‹ current way 3 / 9 ▾ ›`. The arrows and the left and right keys step to the neighbour in one click; the name opens a panel with a sketch of every way. It is the same for every type, and the choice is remembered per diagram. With one way there is no picker.
+- **Fact: two more ways to draw the same fact JSON.**
+  - The **chronicle** (`chronicle`): one column, the time on the left, the gap between two time points written on the spine ("+24 min", "12 days later"). A group is a mark on the spine (circle, square, diamond) with a legend that lights one group up; nothing about the group is written in the cards.
+  - The **time scale** (`scale`): distance on the axis is real time, so where events crowd together shows; one lane per group, the axis breaks where the scale changes, and cards that cannot be kept apart are gathered into one and written out under the diagram.
+- **Procedure: the route map** (`route`): the main line as one thick line with its stations, stage bands behind them, the branches hanging below, loops and jumps as arcs; what is not on the picture is listed under it.
+- **Relationship: eight more ways to draw the same relationship JSON**:
+  - the **focus view** (`focus`): one party in the middle and the parties around it;
+  - the **guarantee chain** (`chain`): one claim, its guarantors, what stands behind them. A guarantee that names no claim is tied to one only when that is plain (the creditor has exactly one claim), and then it says "inferred";
+  - the **relation matrix** (`matrix`): parties across and down, the relations in the cells;
+  - the **equity tree** (`equity`): holders above what they hold, the share on each line, and what a holder holds through others when every share on the way is stated;
+  - the **authority chart** (`authority`): control, employment and agency as an organisation chart;
+  - the **related-party list** (`related`): a table centred on one party, a line for each relation, with its category, content and direction;
+  - the **relation path** (`path`): the shortest chains between two parties, one chain to a row;
+  - the **camp summary** (`summary`): each camp as a block, one line between two blocks with the number of relations.
+  Every relation is on the page once, in the picture or in a list under it; a case a way cannot draw says so.
+- **`kind` on the command line and the MCP tools**: `--kind timeline|chronicle|scale`, `--kind flow|route` and `--kind graph|focus|chain|matrix|equity|authority|related|path|summary` for `layout`, `render` and `preview`; an optional `kind` on `antu_layout`, `antu_render` and `antu_preview`. `render` with a kind opens the page in that way; the reader can still switch. `layout` reports each way in its own terms. A kind that does not belong to the diagram's type is refused with the list of its kinds.
+
+### Changed
+- The fact guide, the relationship guide and the procedure guide for agents say that the ways exist, that nothing in the JSON chooses them, and when to ask for which.
+- The text of the interface in Chinese is more formal (a few words in the errors, the guarantee chain and the related-party list), and counters are consistent ("个" for things, "条" for rules).
+- Nothing in the format: no field, rule or tool parameter was removed or changed; the optional `kind` is new.
+
+### Breaking
+- None.
+
 ## 0.6.0
 
 The skill can look at what it drew without the MCP server (#82), and the examples are fictional (#74).
