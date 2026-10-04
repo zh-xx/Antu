@@ -12,14 +12,6 @@ import { memo } from 'react'
 import { relationPaint } from './graph/palette.js'
 import { useTheme } from '../../theme/ThemeContext.jsx'
 
-const INK = '#64748b'
-/** A link or pill with `ink` is drawn in the theme's one ink, whatever its relation kind (the relation path) */
-const BLOCK_TONES = [
-  { fill: '#eff6ff', stroke: '#bfdbfe', text: '#1d4ed8' },
-  { fill: '#fff7ed', stroke: '#fed7aa', text: '#c2410c' },
-  { fill: '#f8fafc', stroke: '#cbd5e1', text: '#475569' },
-]
-
 const LineLayerNode = memo(function LineLayerNode({ data }) {
   const { theme } = useTheme()
   const { width, height, links, pills, blocks = [], empties, frames, texts, table = null, showLabels = true } = data
@@ -36,36 +28,36 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
         </defs>
         {table && (
           <g>
-            <rect x={table.x} y={table.y} width={table.w} height={table.headH} fill="#f1f5f9" />
+            <rect x={table.x} y={table.y} width={table.w} height={table.headH} fill={theme.color.chip} />
             {table.rows.filter((r) => r.sep !== false).map((r) => (
-              <line key={`rl${r.id}`} x1={table.x} x2={table.x + table.w} y1={r.y + r.h} y2={r.y + r.h} stroke="#e2e8f0" />
+              <line key={`rl${r.id}`} x1={table.x} x2={table.x + table.w} y1={r.y + r.h} y2={r.y + r.h} stroke={theme.color.line} />
             ))}
             {table.xs.map((x, i) => (
-              <line key={`cl${i}`} x1={x} x2={x} y1={table.y} y2={table.bottom} stroke="#e2e8f0" />
+              <line key={`cl${i}`} x1={x} x2={x} y1={table.y} y2={table.bottom} stroke={theme.color.line} />
             ))}
-            <line x1={table.x} x2={table.x + table.w} y1={table.y} y2={table.y} stroke="#94a3b8" />
-            <line x1={table.x} x2={table.x + table.w} y1={table.y + table.headH} y2={table.y + table.headH} stroke="#94a3b8" />
+            <line x1={table.x} x2={table.x + table.w} y1={table.y} y2={table.y} stroke={theme.color.ink4} />
+            <line x1={table.x} x2={table.x + table.w} y1={table.y + table.headH} y2={table.y + table.headH} stroke={theme.color.ink4} />
           </g>
         )}
         {frames.map((f, i) => (
           <g key={`f${i}`}>
-            <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={12} fill="#ffffff" stroke="#e5e7eb" />
-            <text x={f.titleAt[0]} y={f.titleAt[1]} fontSize={14} fontWeight={700} fill={INK}>
+            <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={theme.radius.group} fill={theme.color.bg} stroke={theme.color.line} />
+            <text x={f.titleAt[0]} y={f.titleAt[1]} fontSize={14} fontWeight={700} fill={theme.color.ink3}>
               {f.title}
             </text>
           </g>
         ))}
         {blocks.map((b, i) => {
-          const tone = BLOCK_TONES[b.tone] ?? BLOCK_TONES[2]
-          return <rect key={`b${i}`} x={b.x} y={b.y} width={b.w} height={b.h} rx={14} fill={tone.fill} stroke={tone.stroke} strokeWidth={2} />
+          const tone = theme.camp[b.tone] ?? theme.camp[2]
+          return <rect key={`b${i}`} x={b.x} y={b.y} width={b.w} height={b.h} rx={theme.radius.group} fill={tone.fill} stroke={tone.stroke} strokeWidth={1.5} />
         })}
         {empties.map((e, i) => (
           <g key={`e${i}`}>
-            <rect x={e.x} y={e.y} width={e.w} height={e.h} rx={10} fill="#f8fafc" stroke="#cbd5e1" strokeDasharray="4 4" />
-            <text x={e.x + e.w / 2} y={e.y + e.h / 2 - 2} textAnchor="middle" fontSize={16} fontWeight={650} fill={INK}>
+            <rect x={e.x} y={e.y} width={e.w} height={e.h} rx={theme.radius.group} fill={theme.color.chip} stroke={theme.color.ink4} strokeDasharray="4 4" />
+            <text x={e.x + e.w / 2} y={e.y + e.h / 2 - 2} textAnchor="middle" fontSize={16} fontWeight={650} fill={theme.color.ink3}>
               {e.text}
             </text>
-            <text x={e.x + e.w / 2} y={e.y + e.h / 2 + 22} textAnchor="middle" fontSize={12.5} fill="#94a3b8">
+            <text x={e.x + e.w / 2} y={e.y + e.h / 2 + 22} textAnchor="middle" fontSize={12.5} fill={theme.color.ink4}>
               {e.sub}
             </text>
           </g>
@@ -108,7 +100,7 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
           )),
         )}
       {blocks.map((b, i) => {
-        const tone = BLOCK_TONES[b.tone] ?? BLOCK_TONES[2]
+        const tone = theme.camp[b.tone] ?? theme.camp[2]
         return (
           <div key={`bt${i}`} className="antu-ln-block" data-block={b.id} style={{ left: b.x, top: b.y, width: b.w, height: b.h }}>
             <div className="antu-ln-block-title" style={{ color: tone.text }}>

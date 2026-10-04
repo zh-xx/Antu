@@ -10,11 +10,6 @@ import { memo } from 'react'
 import { relationPaint } from '../graph/palette.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 
-const BAND_TONES = [
-  { fill: '#eff6ff', stroke: '#bfdbfe', text: '#1d4ed8' },
-  { fill: '#fff7ed', stroke: '#fed7aa', text: '#c2410c' },
-]
-
 const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
   const { theme } = useTheme()
   const { width, height, corner, bands, heads, rowHeads, cells, diagonal, showLabels = true } = data
@@ -27,7 +22,7 @@ const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
     <div className="antu-mx-layer" style={{ width, height }}>
       <svg width={width} height={height} className="antu-mx-svg" aria-hidden="true">
         {bands.map((b, i) => {
-          const tone = BAND_TONES[b.tone] ?? BAND_TONES[0]
+          const tone = theme.camp[b.tone] ?? theme.camp[0]
           return (
             <g key={`b${i}`}>
               <rect x={b.top.x} y={b.top.y} width={b.top.w} height={b.top.h} rx={6} fill={tone.fill} stroke={tone.stroke} />
@@ -36,19 +31,19 @@ const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
           )
         })}
         {diagonal.map((d, i) => (
-          <rect key={`d${i}`} x={d.x} y={d.y} width={d.w} height={d.h} fill="#f1f5f9" />
+          <rect key={`d${i}`} x={d.x} y={d.y} width={d.w} height={d.h} fill={theme.color.chip} />
         ))}
         {/* The grid: a hairline between rows and between columns */}
         {rowHeads.map((r, i) => (
-          <line key={`rl${i}`} x1={rowHeads[0].x} x2={right} y1={r.y} y2={r.y} stroke="#e2e8f0" />
+          <line key={`rl${i}`} x1={rowHeads[0].x} x2={right} y1={r.y} y2={r.y} stroke={theme.color.line} />
         ))}
-        <line x1={rowHeads[0].x} x2={right} y1={bottom} y2={bottom} stroke="#e2e8f0" />
+        <line x1={rowHeads[0].x} x2={right} y1={bottom} y2={bottom} stroke={theme.color.line} />
         {heads.map((c, i) => (
-          <line key={`cl${i}`} x1={c.x} x2={c.x} y1={topY} y2={bottom} stroke="#e2e8f0" />
+          <line key={`cl${i}`} x1={c.x} x2={c.x} y1={topY} y2={bottom} stroke={theme.color.line} />
         ))}
-        <line x1={right} x2={right} y1={topY} y2={bottom} stroke="#e2e8f0" />
-        <line x1={left} x2={right} y1={topY + heads[0].h} y2={topY + heads[0].h} stroke="#94a3b8" />
-        <line x1={left} x2={left} y1={topY} y2={bottom} stroke="#94a3b8" />
+        <line x1={right} x2={right} y1={topY} y2={bottom} stroke={theme.color.line} />
+        <line x1={left} x2={right} y1={topY + heads[0].h} y2={topY + heads[0].h} stroke={theme.color.ink4} />
+        <line x1={left} x2={left} y1={topY} y2={bottom} stroke={theme.color.ink4} />
         {showLabels &&
           cells.flatMap((c) =>
             c.chips.map((ch, i) => {
@@ -72,10 +67,10 @@ const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
       </div>
       {bands.map((b, i) => (
         <div key={`bt${i}`}>
-          <div className="antu-mx-band" style={{ left: b.top.x, top: b.top.y, width: b.top.w, height: b.top.h, color: (BAND_TONES[b.tone] ?? BAND_TONES[0]).text }}>
+          <div className="antu-mx-band" style={{ left: b.top.x, top: b.top.y, width: b.top.w, height: b.top.h, color: (theme.camp[b.tone] ?? theme.camp[0]).text }}>
             {b.label}
           </div>
-          <div className={`antu-mx-band is-side${/[\u2e80-\u9fff]/.test(b.label) ? ' is-cjk' : ''}`} style={{ left: b.left.x, top: b.left.y, width: b.left.w, height: b.left.h, color: (BAND_TONES[b.tone] ?? BAND_TONES[0]).text }}>
+          <div className={`antu-mx-band is-side${/[\u2e80-\u9fff]/.test(b.label) ? ' is-cjk' : ''}`} style={{ left: b.left.x, top: b.left.y, width: b.left.w, height: b.left.h, color: (theme.camp[b.tone] ?? theme.camp[0]).text }}>
             <span>{b.label}</span>
           </div>
         </div>

@@ -1079,13 +1079,13 @@
 .antu-rn-svg { position: absolute; left: 0; top: 0; overflow: visible; }
 .antu-rn-shape { transition: stroke .15s, filter .15s; }
 .antu-rn:hover .antu-rn-shape { filter: drop-shadow(0 3px 8px rgba(15, 23, 42, .12)); }
-.antu-rn.is-lit .antu-rn-shape { filter: drop-shadow(0 0 6px rgba(47, 111, 237, .55)); }
+.antu-rn.is-lit .antu-rn-shape { filter: drop-shadow(0 0 6px var(--antu-text-3)); }
 .react-flow__node-rnode:hover { z-index: 10 !important; }
 .react-flow__node.selected .antu-rn-shape { stroke-width: 2; }
-.antu-rn:focus-visible .antu-rn-shape { stroke: #2f6fed; stroke-width: 2; }
+.antu-rn:focus-visible .antu-rn-shape { stroke: var(--antu-side1); stroke-width: 2; }
 .antu-rn.is-end .antu-rn-label {
   font-family: var(--antu-font-head, inherit); color: #fff; }
-.antu-rn.is-end .antu-rn-role { color: #cbd5e1; }
+.antu-rn.is-end .antu-rn-role { color: var(--antu-text-4); }
 .antu-rn-body { position: relative; flex: none; text-align: center; pointer-events: none; }
 /* 字号行高必须与 relationship/graph/metrics.js 一致（名字 14/20，角色 12/16） */
 .antu-rn-label {
@@ -1170,7 +1170,7 @@
 .antu-jn-svg { position: absolute; left: 0; top: 0; overflow: visible; }
 .antu-jn-shape { transition: stroke .15s, filter .15s; }
 .antu-jn:hover .antu-jn-shape { filter: drop-shadow(0 3px 8px rgba(15, 23, 42, .12)); }
-.antu-jn.is-lit .antu-jn-shape { filter: drop-shadow(0 0 6px rgba(47, 111, 237, .55)); }
+.antu-jn.is-lit .antu-jn-shape { filter: drop-shadow(0 0 6px var(--antu-text-3)); }
 .react-flow__node-jnode:hover { z-index: 10 !important; }
 .react-flow__node.selected .antu-jn-shape { stroke-width: 2; }
 .antu-jn:focus-visible .antu-jn-shape { stroke: #2f6fed; stroke-width: 2; }
@@ -1515,8 +1515,8 @@
   color: #1d4ed8;
   overflow-wrap: anywhere;
 }
-.antu-ln-pill.is-ink { border-color: #94a3b8; color: #334155; font-weight: 600; }
-.antu-ln-pill.is-unknown { border: 1px dashed #94a3b8; color: var(--antu-text-3); font-weight: 500; }
+.antu-ln-pill.is-ink { border-color: var(--antu-text-4); color: var(--antu-text-2); font-weight: 600; }
+.antu-ln-pill.is-unknown { border: 1px dashed var(--antu-text-4); color: var(--antu-text-3); font-weight: 500; }
 .antu-ln-pill.is-back { border-style: dashed; }
 .antu-ln-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
 .antu-ln-text-sub { color: var(--antu-text-3); }
@@ -1545,7 +1545,7 @@
 .antu-rt-cond { position: absolute; transform: translate(-50%, -50%); box-sizing: border-box; max-width: 190px; padding: 1px 9px; background: #fff; border: 1px solid #b45309; border-radius: 11px; font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; color: #b45309; overflow-wrap: anywhere; }
 .antu-rt-cond.is-loop { border-color: #b91c1c; color: #b91c1c; }
 .antu-rt-cond.is-hang { max-width: 120px; }
-.antu-eq-pill.is-unknown { border: 1px dashed #94a3b8; color: var(--antu-text-3); font-weight: 500; }
+.antu-eq-pill.is-unknown { border: 1px dashed var(--antu-text-4); color: var(--antu-text-3); font-weight: 500; }
 .antu-eq-pill.is-back { border-style: dashed; }
 .antu-eq-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
 .antu-eq-text-sub { color: var(--antu-text-3); }
