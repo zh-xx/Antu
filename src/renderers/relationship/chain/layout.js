@@ -9,8 +9,8 @@
 //    left     one block per claim (a `debt`, or a `contract` a guarantee names): its label, amount, parties
 //    middle   the guarantors of that claim, one card each, with the guarantee's own label under it
 //    right    what stands behind each guarantor: a contract between the guarantor and the debtor, or a
-//             guarantee from the debtor to the guarantor (a counter-guarantee); an empty dashed box says
-//             there is none, because that is information too
+//             guarantee from the debtor to the guarantor (a counter-guarantee); nothing is drawn where there
+//             is none (the claim's card says how many there are)
 //    below    guarantees tied to no claim (with the reason), then every other relation as a list
 //
 //  `secures` is optional in the data, so a guarantee without it is tied when that is plain: its creditor
@@ -22,6 +22,10 @@
 //  bucket, or the list of the rest. Any valid JSON draws (no claims, no guarantees, a claim nobody
 //  guarantees: each has an explicit empty state). Pure JS, so Node computes the same geometry for
 //  antu_layout and the tests check every example.
+//
+//  Plain on purpose (one ink, one weight for the claim, one for the rest): every box of a column is as wide
+//  as the column, a guarantor stands across from the first thing behind it, the claim card is centred on its
+//  guarantors, so every line is horizontal except the trunk from the claim.
 // ============================================================
 
 import { validateRelationship, hintsOfRelationship, isDirected } from '../graph/rules.js'
@@ -32,9 +36,9 @@ import { tEn } from '../../../core/i18n.js'
 
 // ---------- geometry ----------
 export const CLAIM_W = 400
-const COL_GAP = 70
+const COL_GAP = 90
 /** Between a guarantor column and its counter-guarantee column: room for the link and its label */
-const COUNTER_GAP = 130
+const COUNTER_GAP = 110
 export const MIN_COL_W = 200
 /** A label under a card wraps inside the column and takes the lines it needs */
 const CHIP_LH = 16
@@ -43,13 +47,9 @@ const CHIP_GAP = 6
 const ROW_GAP = 18
 const BLOCK_GAP = 36
 const STACK_GAP = 12
-/** The empty boxes */
-export const EMPTY_GUARANTOR_H = 76
-export const EMPTY_COUNTER_H = 56
 const HEAD_H = 36
 /** Sections under the blocks */
 const SECTION_GAP = 28
-const SECTION_PAD = 20
 const SECTION_HEAD_H = 34
 const MIN_CONTENT_W = 900
 /** Text metrics: the claim card's title and lines, the sections' text */
@@ -155,17 +155,20 @@ export function buildChainGraph(spec, fields = {}) {
   const sizeOf = (id) => party.sizes.get(id)
   const parts = classify(spec)
 
-  // Column widths: as wide as the widest party box in them
+  // Column widths: as wide as the widest party box in them; every box of a column is that wide, so the
+  // edges line up
   const widest = (ids) => Math.max(MIN_COL_W, ...ids.map((id) => sizeOf(id).w))
   const guarantorIds = [...parts.slots.values()].flat().map((s) => s.guarantee.from)
   const counterEnds = []
   for (const c of parts.claims) for (const slot of parts.slots.get(c.id)) for (const r of slot.counters) counterEnds.push(r.from === slot.guarantee.from ? r.to : r.from)
   const guarantorW = widest(guarantorIds)
-  const counterW = widest(counterEnds)
+  const counterW = counterEnds.length ? widest(counterEnds) : 0
   const gX = PAD + CLAIM_W + COL_GAP
   const cX = gX + guarantorW + COUNTER_GAP
-  const contentW = Math.max(cX + counterW - PAD, MIN_CONTENT_W)
+  const contentW = Math.max(counterEnds.length ? cX + counterW - PAD : gX + guarantorW - PAD, MIN_CONTENT_W)
   const width = contentW + PAD * 2
+  /** A party box as wide as its column: same data, the text column follows */
+  const boxData = (entity, w, extra = {}) => ({ ...party.dataOf(entity, { layer: 1, hintKey: 'rel.previewHint', plain: true, ...extra }), w, textW: w - 28 })
 
   const nodes = []
   const layer = { width, height: 0, headings: [], links: [], chips: [], empties: [], frames: [], texts: [] }
@@ -173,7 +176,9 @@ export function buildChainGraph(spec, fields = {}) {
 
   // ── the blocks ──
   if (parts.claims.length) {
-    layer.headings.push({ x: PAD, y, text: t('rel.chain.colClaims') }, { x: gX, y, text: t('rel.chain.colGuarantors') }, { x: cX, y, text: t('rel.chain.colCounter') })
+    layer.headings.push({ x: PAD, y, text: t('rel.chain.colClaims') })
+    if (guarantorIds.length) layer.headings.push({ x: gX, y, text: t('rel.chain.colGuarantors') })
+    if (counterEnds.length) layer.headings.push({ x: cX, y, text: t('rel.chain.colCounter') })
     y += HEAD_H
   }
   parts.claims.forEach((claim, ci) => {
@@ -187,70 +192,87 @@ export function buildChainGraph(spec, fields = {}) {
     const title = claimTitle(claim, textOf(claim))
     const innerW = CLAIM_W - 36
     const counterTotal = slots.reduce((n, s) => n + s.counters.length, 0)
-    const tail = slots.length ? t('rel.chain.count', { g: slots.length, c: counterTotal }) : ''
+    const tail = slots.length ? t('rel.chain.count', { g: slots.length, c: counterTotal }) : t('rel.chain.none')
     const titleLines = lines(title, innerW, TITLE_FONT)
     const sideLines = sides.map(([k, name]) => lines(`${k}  ${name}`, innerW, LINE_FONT))
-    const cardH = 18 + titleLines * TITLE_LH + 8 + sideLines.reduce((n, l) => n + l * LINE_LH, 0) + (tail ? 10 + LINE_LH : 0) + 18
+    const cardH = 18 + titleLines * TITLE_LH + 8 + sideLines.reduce((n, l) => n + l * LINE_LH, 0) + 10 + LINE_LH + 18
 
-    // The rows of guarantors, each as tall as the guarantor with its label or the stack of counters beside it
-    let rowY = y
-    const rowBoxes = []
-    if (!slots.length) {
-      layer.empties.push({ x: gX, y: rowY, w: guarantorW, h: EMPTY_GUARANTOR_H, text: t('rel.chain.none') })
-      rowY += EMPTY_GUARANTOR_H
-    }
+    // The rows are laid out from 0 and moved down together once the claim card's place is known: the card
+    // is centred on its guarantors, so a lone guarantor stands straight across from it
+    const rowNodes = []
+    const rowLinks = []
+    const rowChips = []
+    const rowTexts = []
+    const centres = []
+    let ry = 0
     slots.forEach((slot, si) => {
       const g = slot.guarantee
       const gEntity = entityById.get(g.from)
       const gSize = sizeOf(g.from)
       const key = `c${ci}g${si}`
-      nodes.push({ id: `${g.from}@${key}`, type: 'rnode', position: { x: gX, y: rowY }, data: party.dataOf(gEntity, { layer: 1, hintKey: 'rel.previewHint' }) })
+      // Counters stacked beside it, each with its label under it; the guarantor stands across from the first
+      const stack = slot.counters.map((r) => {
+        const endId = r.from === g.from ? r.to : r.from
+        const sz = sizeOf(endId)
+        return { r, endId, sz, chipH: chipH(textOf(r), counterW) }
+      })
+      let cy = ry
+      const counterCentres = []
+      stack.forEach((c, k) => {
+        rowNodes.push({ id: `${c.endId}@${key}k${k}`, type: 'rnode', position: { x: cX, y: cy }, data: boxData(entityById.get(c.endId), counterW) })
+        counterCentres.push(cy + c.sz.h / 2)
+        rowChips.push({ x: cX, y: cy + c.sz.h + CHIP_GAP, text: textOf(c.r), kind: c.r.kind, maxW: counterW })
+        cy += c.sz.h + CHIP_GAP + c.chipH + STACK_GAP
+      })
+      const counterH = stack.length ? cy - STACK_GAP - ry : 0
+      const gy = stack.length ? counterCentres[0] - gSize.h / 2 : ry
+      rowNodes.push({ id: `${g.from}@${key}`, type: 'rnode', position: { x: gX, y: gy }, data: boxData(gEntity, guarantorW) })
+      const gCentre = gy + gSize.h / 2
+      centres.push(gCentre)
       const gText = textOf(g) + (slot.inferred ? ` · ${t('rel.chain.inferred')}` : '')
       const gChipH = chipH(gText, guarantorW)
-      layer.chips.push({ x: gX + gSize.w / 2, y: rowY + gSize.h + CHIP_GAP, text: gText, kind: 'guarantee', maxW: guarantorW })
+      rowChips.push({ x: gX, y: gy + gSize.h + CHIP_GAP, text: gText, kind: 'guarantee', maxW: guarantorW })
       // Why an inferred guarantee stands here, under its label
       let noteH = 0
       if (slot.inferred) {
         const note = t('rel.chain.inferredNote', { creditor: entityById.get(g.to).label })
         noteH = 4 + lines(note, guarantorW, NOTE_FONT) * NOTE_LH
-        layer.texts.push({ x: gX, y: rowY + gSize.h + CHIP_GAP + gChipH + 4, w: guarantorW, main: note, tone: 'note' })
+        rowTexts.push({ x: gX, y: gy + gSize.h + CHIP_GAP + gChipH + 4, w: guarantorW, main: note, tone: 'note' })
       }
-      // The link from the claim to this guarantor (dotted when inferred)
-      layer.links.push({ from: [PAD + CLAIM_W, y + cardH / 2], to: [gX, rowY + gSize.h / 2], kind: 'guarantee', dotted: slot.inferred, arrow: 'end' })
-      // Counters beside it
-      let cy = rowY
-      if (!slot.counters.length) {
-        layer.empties.push({ x: cX, y: rowY, w: counterW, h: EMPTY_COUNTER_H, text: t('rel.chain.noCounter') })
-        cy = rowY + EMPTY_COUNTER_H
-      }
-      slot.counters.forEach((r, k) => {
-        const endId = r.from === g.from ? r.to : r.from
-        const end = entityById.get(endId)
-        const sz = sizeOf(endId)
-        nodes.push({ id: `${endId}@${key}k${k}`, type: 'rnode', position: { x: cX, y: cy }, data: party.dataOf(end, { layer: 1, hintKey: 'rel.previewHint' }) })
-        // The relation runs left to right here; its own direction is kept by putting the arrowhead at the right end
-        layer.links.push({ from: [gX + gSize.w, rowY + gSize.h / 2], to: [cX, cy + sz.h / 2], kind: r.kind, arrow: isDirected(r) ? (r.to === g.from ? 'start' : 'end') : null })
-        const cChipH = chipH(textOf(r), counterW)
-        layer.chips.push({ x: cX + sz.w / 2, y: cy + sz.h + CHIP_GAP, text: textOf(r), kind: r.kind, maxW: counterW })
-        cy += sz.h + CHIP_GAP + cChipH + STACK_GAP
+      // The link from the claim to this guarantor (dotted when inferred); its start is set once the card is placed
+      rowLinks.push({ claim: true, to: [gX, gCentre], kind: 'guarantee', dotted: slot.inferred, arrow: 'end' })
+      // From the guarantor to each counter: the relation runs left to right here, its own direction kept by the arrowhead
+      stack.forEach((c, k) => {
+        rowLinks.push({ from: [gX + guarantorW, gCentre], to: [cX, counterCentres[k]], kind: c.r.kind, arrow: isDirected(c.r) ? (c.r.to === g.from ? 'start' : 'end') : null })
       })
-      const counterH = slot.counters.length ? cy - STACK_GAP - rowY : cy - rowY
-      const guarantorH = gSize.h + CHIP_GAP + gChipH + noteH
-      rowBoxes.push(Math.max(guarantorH, counterH))
-      rowY += Math.max(guarantorH, counterH) + ROW_GAP
+      const guarantorH = gy - ry + gSize.h + CHIP_GAP + gChipH + noteH
+      ry += Math.max(guarantorH, counterH) + ROW_GAP
     })
-    const rowsH = slots.length ? rowY - ROW_GAP - y : rowY - y
+    const rowsH = slots.length ? ry - ROW_GAP : 0
+
+    const meanCentre = centres.length ? centres.reduce((n, c) => n + c, 0) / centres.length : cardH / 2
+    const cardTop = meanCentre - cardH / 2
+    const shift = Math.max(0, -cardTop)
+    const top = y + shift
+    for (const n of rowNodes) nodes.push({ ...n, position: { x: n.position.x, y: n.position.y + top } })
+    for (const l of rowLinks) {
+      const to = [l.to[0], l.to[1] + top]
+      const from = l.claim ? [PAD + CLAIM_W, y + shift + cardTop + cardH / 2] : [l.from[0], l.from[1] + top]
+      layer.links.push({ from, to, kind: l.kind, dotted: l.dotted, arrow: l.arrow, trunk: l.claim ? gX - COL_GAP / 2 : undefined })
+    }
+    for (const c of rowChips) layer.chips.push({ ...c, y: c.y + top })
+    for (const x of rowTexts) layer.texts.push({ ...x, y: x.y + top })
     nodes.push({
       id: `claim:${claim.id}`,
       type: 'chainClaim',
-      position: { x: PAD, y },
+      position: { x: PAD, y: y + shift + cardTop },
       width: CLAIM_W,
       height: cardH,
       draggable: false,
       connectable: false,
       data: { title, sides: sides.map(([label, name]) => ({ label, name })), tail, w: CLAIM_W, h: cardH },
     })
-    y += Math.max(cardH, rowsH) + BLOCK_GAP
+    y += Math.max(shift + cardTop + cardH, shift + rowsH) + BLOCK_GAP
   })
 
   // ── no claims at all: say so, and still list everything below ──
@@ -264,8 +286,8 @@ export function buildChainGraph(spec, fields = {}) {
     const top = y
     let by = y + SECTION_HEAD_H
     const boxW = widest(parts.bucket.map((b) => b.guarantee.from))
-    const textX = PAD + SECTION_PAD + boxW + 20
-    const textW = PAD + contentW - SECTION_PAD - textX
+    const textX = PAD + boxW + 24
+    const textW = PAD + contentW - textX
     for (const [bi, b] of parts.bucket.entries()) {
       const g = b.guarantee
       const gSize = sizeOf(g.from)
@@ -274,19 +296,19 @@ export function buildChainGraph(spec, fields = {}) {
       const reason = t(`rel.chain.reason.${b.reason}`, { creditor, claims: b.candidates.map((c) => claimTitle(c, textOf(c))).join(' / ') })
       const textH = lines(main, textW, LINE_FONT) * LINE_LH + lines(reason, textW, LINE_FONT) * LINE_LH + 4
       const rowH = Math.max(gSize.h, textH)
-      nodes.push({ id: `${g.from}@b${bi}`, type: 'rnode', position: { x: PAD + SECTION_PAD, y: by }, data: party.dataOf(entityById.get(g.from), { layer: 1, hintKey: 'rel.previewHint' }) })
-      layer.texts.push({ x: textX, y: by, w: textW, main, sub: reason, tone: 'warn' })
+      nodes.push({ id: `${g.from}@b${bi}`, type: 'rnode', position: { x: PAD, y: by + (rowH - gSize.h) / 2 }, data: boxData(entityById.get(g.from), boxW) })
+      layer.texts.push({ x: textX, y: by + (rowH - textH) / 2, w: textW, main, sub: reason })
       by += rowH + ROW_GAP
     }
-    layer.frames.push({ x: PAD, y: top, w: contentW, h: by - ROW_GAP + SECTION_PAD - top, tone: 'warn', title: t('rel.chain.bucket', { n: parts.bucket.length }), titleAt: [PAD + SECTION_PAD, top + 22] })
-    y = by - ROW_GAP + SECTION_PAD + SECTION_GAP
+    layer.frames.push({ x: PAD, y: top, w: contentW, h: by - ROW_GAP - top, title: t('rel.chain.bucket', { n: parts.bucket.length }), titleAt: [PAD, top + 22] })
+    y = by - ROW_GAP + SECTION_GAP
   }
 
   // ── every other relation, as a list ──
   if (parts.other.length) {
     const top = y
     const cols = parts.other.length > 8 ? 2 : 1
-    const colW = (contentW - SECTION_PAD * 2 - 24 * (cols - 1)) / cols
+    const colW = (contentW - 24 * (cols - 1)) / cols
     const items = parts.other.map((r) => {
       const text = `${textOf(r)}：${entityById.get(r.from).label} → ${entityById.get(r.to).label}`
       return { text, h: lines(text, colW, LINE_FONT) * LINE_LH }
@@ -297,13 +319,13 @@ export function buildChainGraph(spec, fields = {}) {
     colItems.forEach((list, c) => {
       let ly = top + SECTION_HEAD_H
       for (const it of list) {
-        layer.texts.push({ x: PAD + SECTION_PAD + c * (colW + 24), y: ly, w: colW, main: it.text })
+        layer.texts.push({ x: PAD + c * (colW + 24), y: ly, w: colW, main: it.text })
         ly += it.h + 6
       }
       colBottom = Math.max(colBottom, ly)
     })
-    layer.frames.push({ x: PAD, y: top, w: contentW, h: colBottom - top + SECTION_PAD - 6, tone: 'plain', title: t('rel.chain.other', { n: parts.other.length }), titleAt: [PAD + SECTION_PAD, top + 22] })
-    y = colBottom + SECTION_PAD - 6 + SECTION_GAP
+    layer.frames.push({ x: PAD, y: top, w: contentW, h: colBottom - 6 - top, title: t('rel.chain.other', { n: parts.other.length }), titleAt: [PAD, top + 22] })
+    y = colBottom - 6 + SECTION_GAP
   }
 
   const height = Math.ceil(y - SECTION_GAP + PAD)
