@@ -38,7 +38,7 @@ function Outline({ kind, w, h, theme, end = false }) {
       return (
         <>
           <rect className="antu-rn-shape" {...paint} strokeDasharray={dash} x={x} y={y} width={W} height={H} rx={rx} />
-          <rect className="antu-rn-ring" fill="none" stroke={end ? theme.color.bg : p.stroke} strokeWidth={1} x={x + 4} y={y + 4} width={W - 8} height={H - 8} rx={Math.max(0, rx - 2)} />
+          <rect className="antu-rn-ring" fill="none" stroke={end ? theme.color.bg : p.stroke} strokeWidth={0.75} x={x + 4} y={y + 4} width={W - 8} height={H - 8} rx={Math.max(0, rx - 2)} />
         </>
       )
     default:

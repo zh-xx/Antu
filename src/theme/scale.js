@@ -8,7 +8,7 @@
 //    node     heights snap up to the grid (40 / 48 / 64 are the common ones), widths to 40 from 120
 //             (120 / 160 / 200)
 //    type     five sizes, line height 1.4
-//    line     four weights, four styles
+//    line     four weights (0.75 / 1.1 / 1.75 / 2.5; made finer after the first look), four styles
 // ============================================================
 
 export const GRID = 8
@@ -40,7 +40,7 @@ export const TYPE = {
 export const lineHeight = (size) => Math.round((size * 1.4) / 2) * 2
 
 /** Line weights: hairline, normal, emphasis, heavy */
-export const LINE = { hair: 1, normal: 1.5, strong: 2.5, heavy: 3.5 }
+export const LINE = { hair: 0.75, normal: 1.1, strong: 1.75, heavy: 2.5 }
 
 /** Line styles as dash arrays; `solid` is none, `double` is drawn by the line layer as a wide line with a paper-coloured core */
 export const DASH = { solid: undefined, dashed: '6 4', dotted: '2 3', longDash: '10 4', dashDot: '10 3 2 3' }
