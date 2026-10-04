@@ -149,18 +149,6 @@ export const zh = {
   'chronicle.gapYears': ({ n }) => `隔 ${n} 年`,
   'chronicle.gapYearsMonths': ({ y, m }) => `隔 ${y} 年 ${m} 个月`,
   'chronicle.dateUnknown': '日期不详',
-
-  // ---------- 复制为表格（事实图各画法） ----------
-  'dock.copyTable': '复制为表格',
-  'dock.copyTableTitle': '把全部事件复制成表格，可粘贴进文档或电子表格',
-  'dock.copied': '已复制',
-  'dock.copyFailed': '复制失败',
-  'table.time': '时间',
-  'table.event': '事件',
-  'table.summary': '摘要',
-  'table.group': '分组',
-  'table.actors': '当事人',
-  'table.sources': '来源',
   'graphKind.graph': '关系图',
   'graphKind.tree': '说理树',
 

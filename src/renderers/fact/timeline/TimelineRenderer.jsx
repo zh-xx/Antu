@@ -178,7 +178,6 @@ export default function FactTimeline({ spec }) {
           onPaneClick={() => setPinnedId(null)}
         >
           <ControlDock
-            spec={spec}
             viewOptions={usable}
             viewCount={viewInfos.length}
             view={view}

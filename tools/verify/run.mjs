@@ -54,7 +54,6 @@ import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 import * as CHR from '../../src/renderers/fact/chronicle/layout.js'
 import { buildChronicleGraph } from '../../src/renderers/fact/chronicle/layout.js'
-import { factTable } from '../../src/renderers/fact/table.js'
 import { buildScaleGraph } from '../../src/renderers/fact/scale/layout.js'
 import { buildProcedureGraph } from '../../src/renderers/procedure/flow/layout.js'
 import { sizeOf } from '../../src/renderers/procedure/flow/metrics.js'
@@ -1396,7 +1395,7 @@ async function checkRender(sampleFile) {
  * every event once, no text outside its card (the card heights are estimated in Node, so only the
  * page can show they hold), no card taller than its text needs by a whole line, the time column
  * clear of the spine, the gap pills between the cards and as many as the layout says; then, on one
- * example, export and "Copy as table".
+ * example, export.
  */
 async function checkRenderChronicle(sampleFile) {
   section('render: fact chronicle')
@@ -1476,7 +1475,7 @@ async function checkRenderChronicle(sampleFile) {
       }
     }
 
-    // Export and copy as table, on the sample
+    // Export, on the sample
     const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
     const html = join(OUT, 'render-chronicle.html')
     renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'chronicle' } })
@@ -1497,28 +1496,6 @@ async function checkRenderChronicle(sampleFile) {
         eq('chronicle export: size = (content + padding) × 2', [shot.width, shot.height], [frame.width * 2, frame.height * 2])
         writeFileSync(join(OUT, 'export-chronicle.png'), shot.buf)
       }
-    }
-
-    // Copy as table: catch what goes to the clipboard, then read both forms back
-    const copied = await browser.eval(
-      `(async () => {
-        let items = null
-        navigator.clipboard.write = async (list) => { items = list }
-        document.querySelector('.antu-copy-table').click()
-        for (let i = 0; i < 40 && !items; i++) await new Promise((r) => setTimeout(r, 50))
-        if (!items) return null
-        const read = async (type) => (await items[0].getType(type)).text()
-        return { html: await read('text/html'), text: await read('text/plain'), label: document.querySelector('.antu-copy-table').textContent }
-      })()`,
-      { awaitPromise: true, userGesture: true },
-    )
-    truthy('copy as table: the clipboard gets something', copied)
-    if (copied) {
-      const table = factTable(spec, 'zh')
-      eq('copy as table: one row per event, plus the header (text form)', copied.text.split('\n').length, table.rows.length + 1)
-      eq('copy as table: one table row per event, plus the header (HTML form)', (copied.html.match(/<tr>/g) || []).length, table.rows.length + 1)
-      truthy('copy as table: the first event is in it', copied.text.includes(table.rows[0][1]))
-      eq('copy as table: the button says it worked', copied.label, translate('zh', 'dock.copied'))
     }
   } finally {
     await browser.close()
@@ -1591,7 +1568,6 @@ async function checkRenderScale(sampleFile) {
     const external = browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://'))
     eq('scale: external request count', external.length, 0)
     truthy('scale: the label card names the kind', (await browser.eval(`document.querySelector('.antu-header')?.textContent || ''`)).includes(translate('zh', 'graphKind.scale')))
-    truthy('scale: copy as table is in the dock', await browser.eval(`!!document.querySelector('.antu-dock-bar .antu-copy-table')`))
     const { clickByClass, grab } = await downloadHelpers(browser)
     if (!(await clickByClass('.antu-dock-action'))) bad('scale export: the button is not in the bottom dock')
     else {
@@ -1638,6 +1614,22 @@ async function checkKindSwitching(sampleFile) {
     await settle()
     truthy('switch: a click draws the chronicle', (await browser.eval(`document.querySelectorAll('.antu-chr-card').length`)) > 0)
     eq('switch: the clicked kind is the one raised', (await opts()).map((o) => o[1]), [false, true, false])
+    // The chronicle's legend: one entry per group, each with its mark; a click lights one group up, a second click undoes it
+    const groupIds = (spec.groups ?? []).slice(0, 3).map((g) => g.id)
+    if (groupIds.length > 1) {
+      eq('switch: the legend has one button per group', await browser.eval(`document.querySelectorAll('.antu-chr-legend-item').length`), groupIds.length)
+      eq('switch: the marks in the legend are circle, square, diamond in turn', await browser.eval(`[...document.querySelectorAll('.antu-chr-legend-item .antu-chr-mark')].map((m) => m.className.replace('antu-chr-mark s-', ''))`), ['circle', 'square', 'diamond'].slice(0, groupIds.length))
+      eq('switch: no card carries a group tag', await browser.eval(`document.querySelectorAll('.antu-chr-card .antu-chr-group').length`), 0)
+      const inGroup = (spec.slots ?? []).flatMap((sl) => sl.events).filter((e) => e.groupId === groupIds[0]).length
+      const total = (spec.slots ?? []).flatMap((sl) => sl.events).length
+      await browser.eval(`document.querySelector('.antu-chr-legend-item').click()`)
+      await settle(300)
+      eq('switch: a click on a group fades the cards of the others', await browser.eval(`document.querySelectorAll('.antu-chr-entry.is-dim').length`), total - inGroup)
+      eq('switch: and their marks on the line', await browser.eval(`document.querySelectorAll('.antu-chr-dot.is-dim').length`), total - inGroup)
+      await browser.eval(`document.querySelector('.antu-chr-legend-item').click()`)
+      await settle(300)
+      eq('switch: a second click lights everything again', await browser.eval(`document.querySelectorAll('.antu-chr-entry.is-dim').length`), 0)
+    }
     await browser.eval(`document.querySelectorAll('.antu-header-segopt')[2].click()`)
     await settle()
     truthy('switch: a click draws the time scale', (await browser.eval(`document.querySelectorAll('.antu-sc-card').length`)) > 0)

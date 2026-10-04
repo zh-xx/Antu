@@ -22,6 +22,8 @@ import {
   chronicleItems,
   gapBetween,
   groupIndexOf,
+  groupShapeOf,
+  GROUP_SHAPES,
 } from '../src/renderers/fact/chronicle/layout.js'
 import { wrapLineCount, textEm } from '../src/renderers/fact/cardGeometry.js'
 import { validateSpec as validate } from '../src/core/validate.js'
@@ -173,27 +175,33 @@ test('wrapping: a Latin word does not break, CJK breaks anywhere', () => {
   assert.equal(wrapLineCount('aaaaa aaaa', 10, { latin: 2 }), 2)
 })
 
-test('the group name is a tag on a card only where the group changes from the card before', () => {
+test('the group is a mark on the line and in the legend, not a tag on the card', () => {
   const spec = {
-    groups: [{ id: 'x', label: 'Side X' }, { id: 'y', label: 'Side Y' }],
+    groups: [{ id: 'x', label: 'Side X' }, { id: 'y', label: 'Side Y' }, { id: 'z', label: 'Side Z' }],
     slots: [
       {
         events: [
           { id: 'a', groupId: 'x', date: '2030-01-01' },
-          { id: 'b', groupId: 'x', date: '2030-01-02' },
-          { id: 'c', groupId: 'y', date: '2030-01-03' },
-          { id: 'd', groupId: 'x', date: '2030-01-04' },
-          { id: 'e', date: '2030-01-05' },
+          { id: 'b', groupId: 'y', date: '2030-01-02' },
+          { id: 'c', groupId: 'z', date: '2030-01-03' },
+          { id: 'd', date: '2030-01-04' },
+          { id: 'e', groupId: 'x' },
         ],
       },
     ],
   }
   const g = buildChronicleGraph(spec, {})
-  const labels = g.nodes.filter((n) => n.type === 'entry').map((n) => n.data.groupLabel)
-  assert.deepEqual(labels, ['Side X', '', 'Side Y', 'Side X', ''], 'written at the first card and at each change, not repeated')
-  // The dot still carries the group on every card, and a card with no tag takes no tag row
   const cards = g.nodes.filter((n) => n.type === 'entry')
-  assert.deepEqual(cards.map((n) => n.data.groupIndex), [0, 0, 1, 0, 2])
-  assert.equal(cards[1].data.lines.tags, 0)
-  assert.ok(cards[1].height < cards[0].height, 'a card without the tag is shorter')
+  // No card carries a group name, and a card with nothing else to say takes no tag row
+  assert.ok(cards.every((n) => n.data.groupLabel === undefined && n.data.lines.tags === 0))
+  // The mark on the line: circle, square, diamond by the group's place; none without a group; hollow without a date
+  const spine = g.nodes.find((n) => n.type === 'spine')
+  assert.deepEqual(spine.data.dots.map((d) => d.shape), ['circle', 'square', 'diamond', 'none', 'circle'])
+  assert.deepEqual(spine.data.dots.map((d) => d.hollow), [false, false, false, false, true])
+  assert.deepEqual(cards.map((n) => n.data.shape), ['circle', 'square', 'diamond', 'none', 'circle'])
+  // The legend names each group with the same shape
+  const legend = g.nodes.find((n) => n.type === 'legend')
+  assert.deepEqual(legend.data.groups.map((x) => [x.label, x.shape]), [['Side X', 'circle'], ['Side Y', 'square'], ['Side Z', 'diamond']])
+  assert.deepEqual(GROUP_SHAPES, ['circle', 'square', 'diamond'])
+  assert.equal(groupShapeOf(spec, { groupId: 'nobody' }), 'none')
 })

@@ -4,7 +4,7 @@
 //  A decoration layer (1×1 to React Flow, drawn at full size inside; see timeline/nodes.js).
 //  The spine runs from the first dot to the last. Where a long gap lies (30 days or more) it is
 //  dashed and the pill is amber, so a jump in the story shows from a distance; a short gap is a
-//  grey pill on a solid spine. A hollow dot is an event without a date.
+//  grey pill on a solid spine. A hollow mark is an event without a date; the shape (circle, square, diamond) and the colour say the group.
 // ============================================================
 
 import { memo } from 'react'
@@ -38,7 +38,7 @@ const SpineNode = memo(function SpineNode({ data }) {
       {dots.map((d, i) => (
         <span
           key={`d${i}`}
-          className={`antu-chr-dot g${d.groupIndex}${d.hollow ? ' is-hollow' : ''}`}
+          className={`antu-chr-dot g${d.groupIndex} s-${d.shape}${d.hollow ? ' is-hollow' : ''}${d.dim ? ' is-dim' : ''}`}
           style={{ left: x - dotSize / 2, top: d.y - dotSize / 2, width: dotSize, height: dotSize }}
         />
       ))}
