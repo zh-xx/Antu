@@ -37,6 +37,7 @@ import {
   listAgentGuides,
   readAgentGuide,
 } from './engine.mjs'
+import { THEME_IDS } from '../../src/theme/themes.js'
 import { PREVIEW_CHECK, kindProblem, validate, validationMessage, layoutMessage } from '../lib/report.mjs'
 import { screenshot, findChrome } from './preview.mjs'
 
@@ -49,6 +50,11 @@ const server = new McpServer({ name: 'antu', version: pkg.version })
 const specArg = z.looseObject({}).describe('the Antu JSON (envelope + content layer; see the spec resources)')
 
 /** A way of drawing the type: the same JSON, drawn another way (the reader switches kind in the label card) */
+const themeArg = z
+  .enum(THEME_IDS)
+  .optional()
+  .describe('the look of the page: document (black and white, for print; the default), modern (rounded, light) or legal (navy). Omit it and the reader chooses in the page; give it and the page is fixed to it')
+
 const kindArg = z
   .string()
   .optional()
@@ -231,17 +237,18 @@ server.registerTool(
     inputSchema: {
       spec: specArg,
       outPath: z.string().optional().describe('output path. Omit it and the file goes to dist-html/<title>.html'),
+      theme: themeArg,
       kind: kindArg.describe('which way of drawing the page opens in (fact: timeline, chronicle or scale; relationship: graph, focus, chain, matrix, equity, authority, related, path or summary; procedure: flow or route); the reader can still switch. Omit it for the default, the first'),
     },
   },
-  async ({ spec, outPath, kind }) => {
+  async ({ spec, outPath, kind, theme }) => {
     const errors = validate(spec)
     if (errors.length > 0) {
       return FAIL(`Validation failed; fix these first:\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`)
     }
     const bad = kindProblem(spec, kind)
     if (bad) return FAIL(bad)
-    const { path, bytes } = renderHtml(spec, { outPath, preset: kind ? { defaultKind: kind } : undefined })
+    const { path, bytes } = renderHtml(spec, { outPath, preset: kind || theme ? { ...(kind && { defaultKind: kind }), ...(theme && { theme }) } : undefined })
     return OK(`Written: ${path}\nSize: ${Math.round(bytes / 1024)} KB\nDouble-click to open it; no server needed, and it works offline.`)
   },
 )
@@ -264,11 +271,12 @@ server.registerTool(
       sources: z.boolean().optional().describe('whether to show the source markers, false by default'),
       view: z.number().int().optional().describe('which view to render, 0 by default (the first)'),
       kind: kindArg,
+      theme: themeArg,
       width: z.number().int().optional().describe('screenshot width, 1600 by default'),
       height: z.number().int().optional().describe('screenshot height, 900 by default'),
     },
   },
-  async ({ spec, orientation, summary = true, actors = false, sources = false, view = 0, width = 1600, height = 900, kind }) => {
+  async ({ spec, orientation, summary = true, actors = false, sources = false, view = 0, width = 1600, height = 900, kind, theme }) => {
     const errors = validate(spec)
     if (errors.length > 0) {
       return FAIL(`Validation failed; fix these before previewing:\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`)
@@ -285,7 +293,7 @@ server.registerTool(
     const dir = mkdtempSync(join(tmpdir(), 'antu-shot-'))
     const html = join(dir, 'preview.html')
     try {
-      renderHtml(spec, { outPath: html, preset: { orientation, fields: { summary, actors, sources }, viewIndex: view, kind } })
+      renderHtml(spec, { outPath: html, preset: { orientation, fields: { summary, actors, sources }, viewIndex: view, kind, theme } })
       const shot = await screenshot(html, { width, height })
       const kb = Math.round(shot.data.length * 0.75 / 1024)
       return {

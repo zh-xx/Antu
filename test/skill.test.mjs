@@ -182,6 +182,13 @@ test('layout: the same report as the MCP side, for the small examples and a real
     assert.equal(r.status, 0, `${file}: ${r.stderr}`)
     assert.equal(r.stdout.trim(), layoutMessage(JSON.parse(readFileSync(file, 'utf8'))).text.trim(), file)
   }
+  // --theme names the look of the page (the page is fixed to it); an unknown name is refused
+  const themed = join(built, 'themed.html')
+  const rel = 'examples/agent/relationship/1-minimal.zh-CN.json'
+  const t = spawnSync(process.execPath, [cli, 'render', rel, '--theme', 'legal', '-o', themed], { encoding: 'utf8' })
+  assert.equal(t.status, 0, t.stderr)
+  assert.match(readFileSync(themed, 'utf8'), /"theme":"legal"/)
+  assert.equal(spawnSync(process.execPath, [cli, 'render', rel, '--theme', 'neon', '-o', themed], { encoding: 'utf8' }).status, 2)
   const v = run('layout', 'examples/agent/fact/1-minimal.zh-CN.json', '--orientation', 'vertical')
   assert.equal(v.status, 0)
   assert.equal(run('layout', 'examples/agent/fact/1-minimal.zh-CN.json', '--orientation', 'sideways').status, 2)
