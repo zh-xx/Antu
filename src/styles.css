@@ -742,9 +742,6 @@
   line-height: 1.7;
   white-space: nowrap;
 }
-.antu-header-kind.is-btn { cursor: pointer; }
-.antu-header-kind.is-btn:hover { background: #e6ebf2; color: var(--antu-text-2); }
-.antu-header-kind.is-open { background: #e2e8f0; color: var(--antu-text); }
 .antu-header-caret {
   width: 4px;
   height: 4px;
@@ -761,39 +758,79 @@
   color: var(--antu-text-4);
 }
 
-/* 渲染类型的下拉面板 */
-.antu-header-menu {
+/* 画法选择：‹ 当前画法 3 / 9 ▾ ›；名字点开是带示意图的面板 */
+.antu-header-pick { display: flex; align-items: stretch; gap: 3px; margin-top: 8px; padding: 2px; background: #f0f3f7; border-radius: 10px; }
+.antu-header-step {
+  flex: none;
+  width: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--antu-text-3);
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.antu-header-step:hover { background: #fff; color: var(--antu-text); }
+.antu-header-current {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--antu-text);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.6;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .12);
+}
+.antu-header-current-name { overflow: hidden; text-overflow: ellipsis; }
+.antu-header-count { flex: none; color: var(--antu-text-4); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.antu-header-panel {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  min-width: 132px;
-  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 118px);
+  gap: 8px;
+  max-height: min(70vh, 460px);
+  overflow-y: auto;
+  padding: 10px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
   backdrop-filter: blur(20px) saturate(1.8);
   border: 1px solid rgba(15, 23, 42, 0.06);
   box-shadow: 0 14px 38px rgba(15, 23, 42, 0.16);
 }
-.antu-header-opt {
+@media (max-width: 520px) { .antu-header-panel { grid-template-columns: repeat(2, 118px); } }
+.antu-header-cell {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  border: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
-  background: transparent;
+  background: #fff;
   color: var(--antu-text-2);
   font-family: inherit;
-  font-size: 12.5px;
-  text-align: left;
-  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
   cursor: pointer;
 }
-.antu-header-opt:hover { background: #f1f4f8; }
-.antu-header-opt.is-on { color: var(--antu-text); font-weight: 600; }
-.antu-header-tick { width: 12px; flex: none; color: var(--antu-side1); }
+.antu-header-cell:hover { border-color: #94a3b8; }
+.antu-header-cell.is-on { border: 2px solid #334155; padding: 5px; color: var(--antu-text); font-weight: 650; }
+.antu-kindicon { display: block; width: 100%; height: auto; }
 
 /* ---------- 渲染器不可用时的兜底 ---------- */
 .antu-fallback {
@@ -1439,12 +1476,40 @@
 .antu-ch-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
 .antu-ch-text-sub { color: var(--antu-text-3); }
 .antu-ch-text.is-note { font-size: 11.5px; line-height: 16px; color: var(--antu-text-3); }
-/* rendering kinds shown all at once (2 to 4 kinds): a segmented row under the type */
-.antu-header-seg { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 8px; padding: 2px; background: #f0f3f7; border-radius: 9px; }
-.antu-header-segopt { flex: 1 1 auto; padding: 3px 9px; border: 0; border-radius: 7px; background: transparent; color: var(--antu-text-3); font-family: inherit; font-size: 11.5px; line-height: 1.6; white-space: nowrap; cursor: pointer; }
-.antu-header-segopt:hover { color: var(--antu-text-2); }
-.antu-header-segopt.is-on { background: #fff; color: var(--antu-text); font-weight: 650; box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
-.antu-header-count { min-width: 14px; padding: 0 4px; border-radius: 7px; background: #dbe2ec; color: var(--antu-text-2); font-size: 10px; line-height: 14px; text-align: center; }
+
+/* ===== relation matrix (issue #91) ===== */
+.antu-mx-layer { position: relative; }
+.antu-mx-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-mx-corner { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 4px 8px; font-size: 11.5px; line-height: 16px; color: var(--antu-text-4); text-align: center; }
+.antu-mx-band { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; line-height: 16px; overflow: hidden; }
+.antu-mx-band.is-side span { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+.antu-mx-band.is-side.is-cjk span { writing-mode: horizontal-tb; transform: none; display: block; width: 1.2em; white-space: normal; word-break: break-all; line-height: 15px; text-align: center; }
+.antu-mx-head, .antu-mx-rowhead { position: absolute; box-sizing: border-box; display: flex; align-items: center; padding: 4px 6px; font-size: 13px; line-height: 18px; font-weight: 650; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-mx-head { justify-content: center; text-align: center; align-items: flex-end; }
+.antu-mx-rowhead { justify-content: flex-end; text-align: right; }
+.antu-mx-chip { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 3px 8px; font-size: 11.5px; line-height: 15px; text-align: center; overflow-wrap: anywhere; }
+
+/* ===== equity tree (issue #91) ===== */
+.antu-eq-layer { position: relative; }
+.antu-eq-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-eq-pill {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  padding: 0 9px;
+  background: #fff;
+  border: 1px solid #1d4ed8;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d4ed8;
+  white-space: nowrap;
+}
+.antu-eq-pill.is-unknown { border: 1px dashed #94a3b8; color: var(--antu-text-3); font-weight: 500; }
+.antu-eq-pill.is-back { border-style: dashed; }
+.antu-eq-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-eq-text-sub { color: var(--antu-text-3); }
+.antu-eq-text.is-note { color: var(--antu-text-3); font-style: italic; }
 
 /* group marks on the line and in the legend: the shape says the group (also in black and white), the colour adds to it */
 .antu-chr-dot.s-square { border-radius: 3px; }
