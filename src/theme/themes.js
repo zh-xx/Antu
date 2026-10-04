@@ -42,6 +42,7 @@ const withInk = (table, ink) => Object.fromEntries(Object.entries(table).map(([k
 export const THEMES = {
   document: {
     id: 'document',
+    chrome: { radius: 2, capsule: 2, chip: 2, bg: '#ffffff', bgPop: '#ffffff', border: '1px solid #111111', shadow: 'none', blur: 'none' },
     labelKey: 'theme.document',
     // The style of Chinese legal and official documents: headings in a hei face, text in fangsong
     font: {
@@ -63,6 +64,7 @@ export const THEMES = {
   },
   modern: {
     id: 'modern',
+    chrome: { radius: 14, capsule: 999, chip: 999, bg: 'rgba(255, 255, 255, 0.78)', bgPop: 'rgba(255, 255, 255, 0.94)', border: '1px solid rgba(15, 23, 42, 0.07)', shadow: '0 4px 18px rgba(15, 23, 42, 0.10), 0 1px 2px rgba(15, 23, 42, 0.06)', blur: 'blur(16px) saturate(1.8)' },
     labelKey: 'theme.modern',
     font: {
       body: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
@@ -83,6 +85,7 @@ export const THEMES = {
   },
   legal: {
     id: 'legal',
+    chrome: { radius: 6, capsule: 6, chip: 4, bg: '#ffffff', bgPop: '#ffffff', border: '1px solid #c7d2e4', shadow: '0 2px 10px rgba(19, 35, 63, 0.10)', blur: 'none' },
     labelKey: 'theme.legal',
     font: {
       body: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',

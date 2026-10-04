@@ -41,12 +41,12 @@
   align-items: center;
   gap: 2px;
   padding: 5px 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  -webkit-backdrop-filter: blur(16px) saturate(1.8);
-  backdrop-filter: blur(16px) saturate(1.8);
-  border: 1px solid rgba(15, 23, 42, 0.07);
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.10), 0 1px 2px rgba(15, 23, 42, 0.06);
+  border-radius: var(--antu-capsule-radius, 999px);
+  background: var(--antu-chrome-bg, rgba(255, 255, 255, 0.72));
+  -webkit-backdrop-filter: var(--antu-chrome-blur, blur(16px) saturate(1.8));
+  backdrop-filter: var(--antu-chrome-blur, blur(16px) saturate(1.8));
+  border: var(--antu-chrome-border, 1px solid rgba(15, 23, 42, 0.07));
+  box-shadow: var(--antu-chrome-shadow, 0 4px 18px rgba(15, 23, 42, 0.10));
 }
 .antu-dock-chip {
   /* inline-flex + 居中：里面的箭头才不会跟着基线往下掉 */
@@ -54,7 +54,7 @@
   align-items: center;
   padding: 5px 12px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--antu-chip-radius, 999px);
   background: transparent;
   color: var(--antu-text-2);
   font-family: inherit;
@@ -90,7 +90,7 @@
   gap: 6px;
   padding: 5px 14px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--antu-chip-radius, 999px);
   background: var(--antu-text);
   color: #fff;
   font-family: inherit;
@@ -156,12 +156,12 @@
   min-width: 168px;
   max-width: 320px;
   padding: 6px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.88);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  backdrop-filter: blur(20px) saturate(1.8);
-  border: 1px solid rgba(15, 23, 42, 0.07);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.14);
+  border-radius: var(--antu-chrome-radius, 18px);
+  background: var(--antu-chrome-bg-pop, rgba(255, 255, 255, 0.88));
+  -webkit-backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
+  backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
+  border: var(--antu-chrome-border, 1px solid rgba(15, 23, 42, 0.07));
+  box-shadow: var(--antu-chrome-shadow, 0 10px 30px rgba(15, 23, 42, 0.14));
 }
 .antu-dock-opt {
   display: flex;
@@ -188,13 +188,13 @@
   display: flex;
   gap: 1px;
   padding: 2px;
-  border-radius: 999px;
+  border-radius: var(--antu-chip-radius, 999px);
   background: rgba(15, 23, 42, 0.06);
 }
 .antu-dock-seg-item {
   padding: 3px 11px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--antu-chip-radius, 999px);
   background: transparent;
   color: var(--antu-text-2);
   font-family: inherit;
@@ -253,8 +253,8 @@
 /* 控件与小地图统一改成素净样式 */
 .react-flow__controls {
   box-shadow: none;
-  border: 1px solid #e8ebef;
-  border-radius: var(--antu-radius);
+  border: var(--antu-chrome-border, 1px solid #e8ebef);
+  border-radius: min(var(--antu-radius), var(--antu-chrome-radius, 8px));
   overflow: hidden;
 }
 .react-flow__controls-button {
@@ -269,8 +269,8 @@
 
 .react-flow__minimap {
   background: #fff;
-  border: 1px solid #e8ebef;
-  border-radius: var(--antu-radius);
+  border: var(--antu-chrome-border, 1px solid #e8ebef);
+  border-radius: min(var(--antu-radius), var(--antu-chrome-radius, 8px));
   overflow: hidden;
   transition: opacity .16s ease-out;
 }
@@ -419,7 +419,7 @@
   padding: 1px 7px;
   background: #f1f4f8;
   color: #64748b;
-  border-radius: 999px;
+  border-radius: var(--antu-chip-radius, 999px);
   font-size: 10px;
 }
 
@@ -658,7 +658,7 @@
   margin-left: 6px;
   padding: 1px 6px;
   background: var(--antu-chip);
-  border-radius: 999px;
+  border-radius: var(--antu-chip-radius, 999px);
   font-size: 10px;
   font-weight: 400;
   color: #64748b;
@@ -694,12 +694,12 @@
 .antu-header-card {
   max-width: min(440px, 46vw);
   padding: 10px 13px 11px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.78);
-  -webkit-backdrop-filter: blur(16px) saturate(1.8);
-  backdrop-filter: blur(16px) saturate(1.8);
-  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.09), 0 1px 2px rgba(15, 23, 42, 0.05);
+  border: var(--antu-chrome-border, 1px solid rgba(15, 23, 42, 0.06));
+  border-radius: var(--antu-chrome-radius, 14px);
+  background: var(--antu-chrome-bg, rgba(255, 255, 255, 0.78));
+  -webkit-backdrop-filter: var(--antu-chrome-blur, blur(16px) saturate(1.8));
+  backdrop-filter: var(--antu-chrome-blur, blur(16px) saturate(1.8));
+  box-shadow: var(--antu-chrome-shadow, 0 4px 18px rgba(15, 23, 42, 0.09));
 }
 
 .antu-header-title {
@@ -737,7 +737,7 @@
   margin-left: auto;
   padding: 2px 8px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--antu-chip-radius, 999px);
   background: #f0f3f7;
   color: var(--antu-text-3);
   font-family: inherit;
@@ -762,7 +762,7 @@
 }
 
 /* 画法选择：‹ 当前画法 3 / 9 ▾ ›；名字点开是带示意图的面板 */
-.antu-header-pick { display: flex; align-items: stretch; gap: 3px; margin-top: 8px; padding: 2px; background: #f0f3f7; border-radius: 10px; }
+.antu-header-pick { display: flex; align-items: stretch; gap: 3px; margin-top: 8px; padding: 2px; background: var(--antu-chip, #f0f3f7); border-radius: min(10px, var(--antu-chrome-radius, 10px)); }
 .antu-header-step {
   flex: none;
   width: 26px;
@@ -808,12 +808,12 @@
   max-height: min(70vh, 460px);
   overflow-y: auto;
   padding: 10px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.96);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  backdrop-filter: blur(20px) saturate(1.8);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.16);
+  border-radius: var(--antu-chrome-radius, 16px);
+  background: var(--antu-chrome-bg-pop, rgba(255, 255, 255, 0.96));
+  -webkit-backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
+  backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
+  border: var(--antu-chrome-border, 1px solid rgba(15, 23, 42, 0.06));
+  box-shadow: var(--antu-chrome-shadow, 0 14px 38px rgba(15, 23, 42, 0.16));
 }
 @media (max-width: 520px) { .antu-header-panel { grid-template-columns: repeat(2, 118px); } }
 .antu-header-cell {
@@ -1320,7 +1320,7 @@
   position: absolute;
   transform: translateY(-50%);
   padding: 1px 9px;
-  border-radius: 999px;
+  border-radius: var(--antu-chip-radius, 999px);
   background: #f1f4f8;
   color: var(--antu-text-3);
   font-size: 11.5px;
@@ -1558,7 +1558,7 @@
 .antu-chr-mark { display: inline-block; width: 8px; height: 8px; background: currentColor; border-radius: 50%; }
 .antu-chr-mark.s-square { border-radius: 2px; }
 .antu-chr-mark.s-diamond { border-radius: 1px; transform: rotate(45deg) scale(0.85); }
-.antu-chr-legend-item { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border: 1px solid transparent; border-radius: 999px; background: transparent; font-family: inherit; font-size: 12px; line-height: 18px; white-space: nowrap; cursor: pointer; }
+.antu-chr-legend-item { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border: 1px solid transparent; border-radius: var(--antu-chip-radius, 999px); background: transparent; font-family: inherit; font-size: 12px; line-height: 18px; white-space: nowrap; cursor: pointer; }
 .antu-chr-legend-item:hover { background: #f1f4f8; }
 .antu-chr-legend-item.is-on { border-color: currentColor; background: #fff; font-weight: 650; }
 .antu-chr-legend-item.is-off { opacity: 0.45; }
