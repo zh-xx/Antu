@@ -160,7 +160,7 @@ test('no claims: the view says so and lists every relation; no guarantors: "no s
   const bare = spec([entity('a'), entity('b')], [rel('r1', 'a', 'b', 'debt', { amount: '1 万元' })])
   const gb = assertSound(bare, 'unsecured')
   assert.equal(gb.unsecured, 1)
-  assert.ok(gb.nodes.find((n) => n.type === 'chainLayer').data.empties.some((e) => e.text === translate('en', 'rel.chain.none')))
+  assert.equal(gb.nodes.find((n) => n.type === 'chainClaim').data.tail, translate('en', 'rel.chain.none'), 'the claim card says it has no security')
 })
 
 test('the claim title carries the amount as written', () => {
@@ -211,7 +211,7 @@ test('the geometry report speaks of claims, inference and the bucket', () => {
 })
 
 test('every chain message exists in both languages', () => {
-  const keys = ['graphKind.chain', 'rel.chain.colClaims', 'rel.chain.colGuarantors', 'rel.chain.colCounter', 'rel.chain.creditor', 'rel.chain.debtor', 'rel.chain.partyA', 'rel.chain.partyB', 'rel.chain.none', 'rel.chain.noCounter', 'rel.chain.inferred', 'rel.chain.noClaims', 'rel.chain.noClaimsHint']
+  const keys = ['graphKind.chain', 'rel.chain.colClaims', 'rel.chain.colGuarantors', 'rel.chain.colCounter', 'rel.chain.creditor', 'rel.chain.debtor', 'rel.chain.partyA', 'rel.chain.partyB', 'rel.chain.none', 'rel.chain.inferred', 'rel.chain.noClaims', 'rel.chain.noClaimsHint']
   const vars = { g: 2, c: 1, n: 3, creditor: 'X', claims: 'Y' }
   for (const lang of ['en', 'zh']) {
     for (const key of [...keys, 'rel.chain.count', 'rel.chain.inferredNote', 'rel.chain.bucket', 'rel.chain.other', 'rel.chain.reason.none', 'rel.chain.reason.many', 'rel.chain.reason.self']) {
