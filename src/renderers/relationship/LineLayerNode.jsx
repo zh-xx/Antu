@@ -36,7 +36,7 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
         {table && (
           <g>
             <rect x={table.x} y={table.y} width={table.w} height={table.headH} fill="#f1f5f9" />
-            {table.rows.map((r) => (
+            {table.rows.filter((r) => r.sep !== false).map((r) => (
               <line key={`rl${r.id}`} x1={table.x} x2={table.x + table.w} y1={r.y + r.h} y2={r.y + r.h} stroke="#e2e8f0" />
             ))}
             {table.xs.map((x, i) => (
@@ -97,7 +97,7 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
       {table &&
         table.rows.flatMap((r) =>
           r.cells.map((c, i) => (
-            <div key={`${r.id}:${i}`} className={`antu-ln-cell${c.bold ? ' is-first' : ''}`} data-row={r.id} style={{ left: c.x, top: r.y, width: c.w, height: r.h }}>
+            <div key={`${r.id}:${i}`} className={`antu-ln-cell${c.bold ? ' is-first' : ''}`} data-row={r.id} style={{ left: c.x, top: c.y ?? r.y, width: c.w, height: c.h ?? r.h }}>
               {c.lines.map((l, j) => (
                 <div key={j} className={i === 0 && j > 0 ? 'antu-ln-cell-sub' : undefined}>
                   {l}

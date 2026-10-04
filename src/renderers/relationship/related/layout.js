@@ -3,9 +3,10 @@
 //
 //  The seventh way of drawing a relationship diagram, from the same JSON as the graph. A table centred on
 //  one party (the one with most relations by default, as in the focus view; the reader can pick another):
-//  one row for each party that has a relation with it, giving the kinds, every relation as written (with
-//  an arrow for which way it runs: → the centre is the `from`, ← the centre is the `to`, ↔ no direction),
-//  and the sources. A party with several relations to the centre has them in one row.
+//  one block for each party that has a relation with it, a line in it for each relation: its category, its
+//  content as written, which way it runs ("party → centre", "centre → party" or "no direction", in words),
+//  and the sources (that column is left out when no relation names one). The party's own cell, and its
+//  sources, are as tall as all its relations together.
 //
 //  Under the table: the parties with no relation to the centre, and every relation that does not involve
 //  the centre, so every relation is on the page once. Any valid JSON draws. Pure JS, so Node computes the
@@ -21,7 +22,7 @@ import { defaultCentre } from '../focus/layout.js'
 import { tEn } from '../../../core/i18n.js'
 
 // ---------- geometry ----------
-export const COLS = [190, 150, 400, 200]
+export const COLS = [190, 130, 330, 140, 200]
 const TOP_H = 52
 const HEAD_H = 34
 const FONT = 13
@@ -90,34 +91,50 @@ export function buildRelatedGraph(spec, fields = {}) {
   const centre = centreOf(spec, fields.centre)
   const { rows, none, rest } = relatedRows(spec, centre)
 
-  const tableW = COLS.reduce((a, b) => a + b, 0)
+  // The source column is left out when no relation in the table names a source
+  const hasSources = rows.some((r) => r.sources.length)
+  const cols = hasSources ? COLS : COLS.slice(0, 4)
+  const tableW = cols.reduce((a, b) => a + b, 0)
   const width = tableW + PAD * 2
   const layer = { width, height: 0, links: [], pills: [], empties: [], frames: [], texts: [], table: null }
-  layer.texts.push({ x: PAD, y: PAD, w: tableW, main: t('rel.related.title', { name: nameOf(centre) }), sub: t('rel.related.legend') })
+  const relCount = rows.reduce((n, r) => n + r.rels.length, 0)
+  layer.texts.push({ x: PAD, y: PAD, w: tableW, main: t('rel.related.title', { name: nameOf(centre) }), sub: t('rel.related.count', { n: rows.length, m: relCount }) })
   const top = PAD + TOP_H
   const sep = t('rel.equity.sep')
 
-  // Cells: the text of each, and how tall a row must be for the longest
-  const cellsOf = (row) => {
-    const rels = row.rels.map((x) => `${x.arrow} ${textOf(x.rel)}`)
-    return [
-      { lines: [row.name, ...(row.role ? [row.role] : [])], bold: true },
-      { lines: [row.kinds.map((k) => t(`rel.kind.${k}`)).join(sep)] },
-      { lines: rels },
-      { lines: [row.sources.length ? row.sources.join(sep) : '—'] },
-    ]
-  }
-  const header = [t('rel.related.colParty'), t('rel.related.colKind'), t('rel.related.colText'), t('rel.related.colSource')]
-  const xs = COLS.reduce((acc, w) => [...acc, acc.at(-1) + w], [PAD])
+  // One line of the table for each relation, so its category, content and direction stand level; the party
+  // (and its sources) is one cell as tall as all its relations together
+  const header = [t('rel.related.colParty'), t('rel.related.colKind'), t('rel.related.colText'), t('rel.related.colDirection'), ...(hasSources ? [t('rel.related.colSource')] : [])]
+  const xs = cols.reduce((acc, w) => [...acc, acc.at(-1) + w], [PAD])
+  const directionOf = (arrow) => t(arrow === '↔' ? 'rel.related.dirNone' : arrow === '→' ? 'rel.related.dirOut' : 'rel.related.dirIn')
   let y = top + HEAD_H
-  const tableRows = rows.map((row) => {
-    const cells = cellsOf(row).map((c, i) => ({ ...c, h: c.lines.reduce((n, l) => n + lineCount(l, COLS[i]) * LH, 0) }))
-    const h = Math.max(...cells.map((c) => c.h)) + CELL_PAD_Y * 2
-    const out = { id: row.id, y, h, cells: cells.map((c, i) => ({ x: xs[i], w: COLS[i], lines: c.lines, bold: c.bold ?? false })) }
-    y += h
-    return out
-  })
-  layer.table = { x: PAD, y: top, w: tableW, headH: HEAD_H, xs, header: header.map((text, i) => ({ x: xs[i], w: COLS[i], text })), rows: tableRows, bottom: y }
+  const tableRows = []
+  for (const row of rows) {
+    const subs = row.rels.map((x) => {
+      const texts = [t(`rel.kind.${x.rel.kind}`), textOf(x.rel), directionOf(x.arrow)]
+      const h = Math.max(...texts.map((tx, k) => lineCount(tx, COLS[k + 1]))) * LH + CELL_PAD_Y * 2
+      return { texts, h }
+    })
+    const partyLines = [row.name, ...(row.role ? [row.role] : [])]
+    const sourceLines = [row.sources.length ? row.sources.join(sep) : '—']
+    const need = (lines, w) => lines.reduce((n, l) => n + lineCount(l, w) * LH, 0) + CELL_PAD_Y * 2
+    const total = Math.max(subs.reduce((n, sb) => n + sb.h, 0), need(partyLines, COLS[0]), hasSources ? need(sourceLines, COLS[4]) : 0)
+    // Any height the party's own cells need beyond its relations goes to the last relation's line
+    const extra = total - subs.reduce((n, sb) => n + sb.h, 0)
+    let sy = y
+    subs.forEach((sb, k) => {
+      const h = sb.h + (k === subs.length - 1 ? extra : 0)
+      const cells = sb.texts.map((tx, c) => ({ x: xs[c + 1], w: COLS[c + 1], lines: [tx], bold: false }))
+      if (k === 0) {
+        cells.unshift({ x: xs[0], w: COLS[0], lines: partyLines, bold: true, y, h: total })
+        if (hasSources) cells.push({ x: xs[4], w: COLS[4], lines: sourceLines, bold: false, y, h: total })
+      }
+      tableRows.push({ id: k === 0 ? row.id : `${row.id}#${k}`, party: row.id, y: sy, h, sep: k === subs.length - 1, cells })
+      sy += h
+    })
+    y += total
+  }
+  layer.table = { x: PAD, y: top, w: tableW, headH: HEAD_H, xs, header: header.map((text, i) => ({ x: xs[i], w: cols[i], text })), rows: tableRows, bottom: y }
 
   const sections = sectionWriter(layer, tableW, y + SECTION_GAP)
   if (!rows.length) sections.empty(t('rel.related.none', { name: nameOf(centre) }), t('rel.related.noneHint'))

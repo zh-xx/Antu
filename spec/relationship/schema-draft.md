@@ -286,7 +286,7 @@ Only `control`, `employment` and `agency` relations, as an organisation chart: t
 
 > Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added.
 
-A table centred on one party (the one with most relations by default; the reader picks another in the dock, the same choice as the focus view's): one row per party that has a relation with it, with the kinds, every relation as written (→ the centre is the `from`, ← the centre is the `to`, ↔ no direction), and the sources. Code: `src/renderers/relationship/related/`.
+A table centred on one party (the one with most relations by default; the reader picks another in the dock, the same choice as the focus view's): a block for each party that has a relation with it, with a line in it for each relation: its category, its content as written, and which way it runs in words ("Party → centre", "Centre → party", "No direction"); and the sources, a column that is left out when no relation names one. Code: `src/renderers/relationship/related/`.
 
 - A party with several relations to the centre has them in one row.
 - Under the table: the parties with no relation to the centre, and every relation that does not involve it.
