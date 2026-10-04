@@ -49,6 +49,7 @@ import { readExample, listExamples, listAgentGuides, describeSchema, layoutRepor
 } from '../mcp/engine.mjs'
 import { listKnowledgeTypes, layoutOf, layoutKindsOf } from '../../src/core/registry.js'
 import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.js'
+import { DEFAULT_THEME, themeOf } from '../../src/theme/themes.js'
 import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
@@ -993,10 +994,11 @@ async function checkExport(browser, spec) {
     `sample point (${sx},${sy}), image ${shot.width}×${shot.height}`,
   )
   const rgb = await sample(sx, sy)
-  // Not merely "dark": it has to be the colour of the axis line (a little slack for sampling a
-  // semi-transparent line)
-  const near = Math.abs(rgb[0] - 178) < 40 && Math.abs(rgb[1] - 192) < 40 && Math.abs(rgb[2] - 208) < 40
-  truthy('the exported image has an arrow at the end of the timeline', near, `sampled rgb(${rgb}) at (${sx},${sy}), axis colour about rgb(178,192,208)`)
+  // Not merely "dark": it has to be the colour of the axis line, which is the theme's (the default theme
+  // when nothing is chosen), with a little slack for sampling a semi-transparent line
+  const axis = [1, 3, 5].map((i) => parseInt(themeOf(DEFAULT_THEME).color.axis.slice(i, i + 2), 16))
+  const near = rgb.every((v, i) => Math.abs(v - axis[i]) < 40)
+  truthy('the exported image has an arrow at the end of the timeline', near, `sampled rgb(${rgb}) at (${sx},${sy}), axis colour about rgb(${axis})`)
 }
 
 // ---------------------------------------------------------------
