@@ -22,6 +22,8 @@ import {
   chronicleItems,
   gapBetween,
   groupIndexOf,
+  groupShapeOf,
+  GROUP_SHAPES,
 } from '../src/renderers/fact/chronicle/layout.js'
 import { wrapLineCount, textEm } from '../src/renderers/fact/cardGeometry.js'
 import { validateSpec as validate } from '../src/core/validate.js'
@@ -171,4 +173,35 @@ test('wrapping: a Latin word does not break, CJK breaks anywhere', () => {
   assert.equal(wrapLineCount('一二三四五六七八九十', 10, { cjk: 1.1 }), 2)
   assert.equal(wrapLineCount('aaaaa aaaa', 10), 1)
   assert.equal(wrapLineCount('aaaaa aaaa', 10, { latin: 2 }), 2)
+})
+
+test('the group is a mark on the line and in the legend, not a tag on the card', () => {
+  const spec = {
+    groups: [{ id: 'x', label: 'Side X' }, { id: 'y', label: 'Side Y' }, { id: 'z', label: 'Side Z' }],
+    slots: [
+      {
+        events: [
+          { id: 'a', groupId: 'x', date: '2030-01-01' },
+          { id: 'b', groupId: 'y', date: '2030-01-02' },
+          { id: 'c', groupId: 'z', date: '2030-01-03' },
+          { id: 'd', date: '2030-01-04' },
+          { id: 'e', groupId: 'x' },
+        ],
+      },
+    ],
+  }
+  const g = buildChronicleGraph(spec, {})
+  const cards = g.nodes.filter((n) => n.type === 'entry')
+  // No card carries a group name, and a card with nothing else to say takes no tag row
+  assert.ok(cards.every((n) => n.data.groupLabel === undefined && n.data.lines.tags === 0))
+  // The mark on the line: circle, square, diamond by the group's place; none without a group; hollow without a date
+  const spine = g.nodes.find((n) => n.type === 'spine')
+  assert.deepEqual(spine.data.dots.map((d) => d.shape), ['circle', 'square', 'diamond', 'none', 'circle'])
+  assert.deepEqual(spine.data.dots.map((d) => d.hollow), [false, false, false, false, true])
+  assert.deepEqual(cards.map((n) => n.data.shape), ['circle', 'square', 'diamond', 'none', 'circle'])
+  // The legend names each group with the same shape
+  const legend = g.nodes.find((n) => n.type === 'legend')
+  assert.deepEqual(legend.data.groups.map((x) => [x.label, x.shape]), [['Side X', 'circle'], ['Side Y', 'square'], ['Side Z', 'diamond']])
+  assert.deepEqual(GROUP_SHAPES, ['circle', 'square', 'diamond'])
+  assert.equal(groupShapeOf(spec, { groupId: 'nobody' }), 'none')
 })

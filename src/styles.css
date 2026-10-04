@@ -1255,12 +1255,6 @@
   color: var(--antu-text-3);
 }
 .antu-chr-tags .antu-actor-tag { line-height: 16px; }
-.antu-chr-group { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: var(--antu-chr-tag-font, 11.5px); }
-.antu-chr-group i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.antu-chr-group.g0 { color: var(--antu-side1); }
-.antu-chr-group.g1 { color: var(--antu-side2); }
-.antu-chr-group.g2 { color: var(--antu-text-3); }
-.antu-chr-group.g2 i { background: var(--antu-axis); }
 .antu-chr .antu-preview.right { width: 340px; transform: none; top: 0; }
 
 .antu-chr-spine { position: absolute; left: 0; top: 0; width: 0; height: 0; }
@@ -1294,7 +1288,6 @@
 .antu-chr-gap.is-long { background: #fef3c7; color: #b45309; font-weight: 600; }
 
 .antu-chr-legend { display: flex; gap: 16px; height: 20px; align-items: center; white-space: nowrap; }
-.antu-chr-legend .antu-chr-group { font-size: 12px; }
 
 /* ---------- fact time scale (fact/scale) ----------
    Sizes come from scale/layout.js through CSS variables (ScaleRenderer.jsx), as for the chronicle. */
@@ -1454,3 +1447,25 @@
 .antu-ch-text.is-warn .antu-ch-text-sub { color: #92400e; }
 .antu-ch-text-sub { color: var(--antu-text-3); }
 .antu-ch-text.is-note { font-size: 11.5px; line-height: 16px; color: #6d28d9; }
+/* rendering kinds shown all at once (2 to 4 kinds): a segmented row under the type */
+.antu-header-seg { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 8px; padding: 2px; background: #f0f3f7; border-radius: 9px; }
+.antu-header-segopt { flex: 1 1 auto; padding: 3px 9px; border: 0; border-radius: 7px; background: transparent; color: var(--antu-text-3); font-family: inherit; font-size: 11.5px; line-height: 1.6; white-space: nowrap; cursor: pointer; }
+.antu-header-segopt:hover { color: var(--antu-text-2); }
+.antu-header-segopt.is-on { background: #fff; color: var(--antu-text); font-weight: 650; box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
+.antu-header-count { min-width: 14px; padding: 0 4px; border-radius: 7px; background: #dbe2ec; color: var(--antu-text-2); font-size: 10px; line-height: 14px; text-align: center; }
+
+/* group marks on the line and in the legend: the shape says the group (also in black and white), the colour adds to it */
+.antu-chr-dot.s-square { border-radius: 3px; }
+.antu-chr-dot.s-diamond { border-radius: 2px; transform: rotate(45deg) scale(0.82); }
+.antu-chr-dot.is-dim, .antu-chr-entry.is-dim { opacity: 0.22; }
+.antu-chr-mark { display: inline-block; width: 8px; height: 8px; background: currentColor; border-radius: 50%; }
+.antu-chr-mark.s-square { border-radius: 2px; }
+.antu-chr-mark.s-diamond { border-radius: 1px; transform: rotate(45deg) scale(0.85); }
+.antu-chr-legend-item { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border: 1px solid transparent; border-radius: 999px; background: transparent; font-family: inherit; font-size: 12px; line-height: 18px; white-space: nowrap; cursor: pointer; }
+.antu-chr-legend-item:hover { background: #f1f4f8; }
+.antu-chr-legend-item.is-on { border-color: currentColor; background: #fff; font-weight: 650; }
+.antu-chr-legend-item.is-off { opacity: 0.45; }
+.antu-chr-legend-item.g0 { color: var(--antu-side1); }
+.antu-chr-legend-item.g1 { color: var(--antu-side2); }
+.antu-chr-legend-item.g2 { color: var(--antu-text-3); }
+.antu-chr-legend-item.g2 .antu-chr-mark { background: var(--antu-axis); }
