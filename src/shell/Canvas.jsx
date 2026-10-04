@@ -34,6 +34,7 @@ export default function Canvas({
   fitKey,
   fitWidth = false,
   fitSelf = false,
+  fitMinZoom = 0,
   nodeTypes,
   showGrid = false,
   style,
@@ -92,6 +93,19 @@ export default function Canvas({
       const y = height * zoom + top * 2 <= viewport.height ? (viewport.height - height * zoom) / 2 : top
       rfRef.current.setViewport({ x: (viewport.width - width * zoom) / 2, y, zoom }, { duration })
       return
+    }
+    // A wide picture read left to right (fitMinZoom: the procedure route map) does not shrink below a readable
+    // zoom: it opens at that zoom from the left, centred up and down, and the reader scrolls sideways
+    if (fitMinZoom && width && height && el?.clientWidth && el?.clientHeight) {
+      const viewport = { width: el.clientWidth, height: el.clientHeight }
+      const whole = fitZoom(graph.size, viewport)
+      if (whole < fitMinZoom) {
+        const zoom = fitMinZoom
+        const x = (viewport.width * FIT_PADDING) / 4
+        const y = height * zoom + 16 <= viewport.height ? (viewport.height - height * zoom) / 2 : (viewport.height * FIT_PADDING) / 4
+        rfRef.current.setViewport({ x, y, zoom }, { duration })
+        return
+      }
     }
     if (width && height) rfRef.current.fitBounds({ x: 0, y: 0, width, height }, { padding: FIT_PADDING, duration })
     else rfRef.current.fitView({ padding: FIT_PADDING, duration })

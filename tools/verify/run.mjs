@@ -58,6 +58,7 @@ import { buildScaleGraph } from '../../src/renderers/fact/scale/layout.js'
 import { buildFocusGraph } from '../../src/renderers/relationship/focus/layout.js'
 import { buildChainGraph } from '../../src/renderers/relationship/chain/layout.js'
 import { buildMatrixGraph } from '../../src/renderers/relationship/matrix/layout.js'
+import { buildRouteGraph } from '../../src/renderers/procedure/route/layout.js'
 import { buildEquityGraph } from '../../src/renderers/relationship/equity/layout.js'
 import { buildAuthorityGraph } from '../../src/renderers/relationship/authority/layout.js'
 import { buildRelatedGraph } from '../../src/renderers/relationship/related/layout.js'
@@ -1957,6 +1958,63 @@ async function checkRenderEquity() {
  * The four views of issue #93 share one page (relationship/LevelledView.jsx) and one line layer, so one check
  * covers them: every relationship example in both languages, then one case in full with the export.
  */
+
+async function checkRenderRoute() {
+  section('render: procedure route map')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const dir = join(REPO, 'examples/procedure')
+  const cases = readdirSync(dir)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => [f, JSON.parse(readFileSync(join(dir, f), 'utf8')), f.includes('.zh-CN.') ? 'zh' : 'en'])
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    for (const [name, spec, lang] of cases) {
+      const html = join(OUT, 'render-route.html')
+      renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'route' } })
+      await browser.open(`file://${html}?lang=${lang}`)
+      const g = buildRouteGraph(spec, { t: (k, v) => translate(lang, k, v) })
+      const layer = g.nodes[0].data
+      const m = await browser.eval(`(() => {
+        const rects = (sel) => [...document.querySelectorAll(sel)].map((n) => n.getBoundingClientRect())
+        const clash = (list) => { let n = 0; for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) { const a = list[i], b = list[j]; if (a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5) n += 1 } return n }
+        const spill = [...document.querySelectorAll('.antu-rt-label, .antu-rt-box')].filter((c) => c.scrollHeight > c.clientHeight + 1).map((c) => c.textContent.slice(0, 30))
+        return { labels: document.querySelectorAll('.antu-rt-label').length, boxes: document.querySelectorAll('.antu-rt-box').length, labelClash: clash(rects('.antu-rt-label')), boxClash: clash(rects('.antu-rt-box')), spill, bands: document.querySelectorAll('.antu-rt-band').length }
+      })()`)
+      eq(`${name}: one label per station`, m.labels, layer.stations.length)
+      eq(`${name}: one box per hanging node`, m.boxes, layer.hangs.reduce((n, h) => n + h.boxes.length, 0))
+      eq(`${name}: one title per stage band`, m.bands, layer.bands.length)
+      eq(`${name}: no two labels overlap`, m.labelClash, 0)
+      eq(`${name}: no two hanging boxes overlap`, m.boxClash, 0)
+      eq(`${name}: no text past its label or box`, m.spill, [])
+    }
+    const full = cases.find(([n]) => n === '01-software-development-contract.zh-CN.json') ?? cases[0]
+    const html = join(OUT, 'render-route.html')
+    renderToFile(full[1], { outPath: html, quiet: true, preset: { kind: 'route' } })
+    await browser.open(`file://${html}?lang=${full[2]}`)
+    const g = buildRouteGraph(full[1], { t: (k, v) => translate(full[2], k, v) })
+    eq('route: external request count', browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://')).length, 0)
+    truthy('route: the label card names the kind', (await browser.eval(`document.querySelector('.antu-header')?.textContent || ''`)).includes(translate(full[2], 'graphKind.route')))
+    await browser.eval(`document.querySelector('.antu-dock-chip')?.click()`)
+    await new Promise((r) => setTimeout(r, 300))
+    eq('route: switching conditions off removes the chips', await browser.eval(`document.querySelectorAll('.antu-rt-cond').length`), 0)
+    const { clickByClass, grab } = await downloadHelpers(browser)
+    if (!(await clickByClass('.antu-dock-action'))) bad('route export: the button is not in the bottom dock')
+    else {
+      const shot = await grab('route export')
+      if (shot) {
+        const frame = exportFrame(g.size.width, g.size.height)
+        eq('route export: size = (content + padding) × 2', [shot.width, shot.height], [frame.width * 2, frame.height * 2])
+        writeFileSync(join(OUT, 'export-route.png'), shot.buf)
+      }
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderLevelledViews() {
   section('render: relationship authority chart, related-party list, relation path, camp summary')
   if (!findChrome()) {
@@ -2856,6 +2914,7 @@ if (!shotOnly && !skipBrowser) {
   await checkRenderMatrix()
   await checkRenderEquity()
   await checkRenderLevelledViews()
+  await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
