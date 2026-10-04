@@ -11,39 +11,58 @@
 //
 //  Rows:
 //    the diagram title (the JSON `title`)
-//    the type, and the rendering kind: with two to four kinds they are all shown below as
-//    a segmented row (the current one raised); with more, the current one is a button that
-//    opens a menu, with the number of kinds on it
+//    the type, and how many ways it can be drawn
+//    the picker: "‹  current way  3 / 9 ▾  ›". The arrows (and the left and right keys) step to the
+//    neighbour in one click; the name opens a panel with a sketch of every way, to pick any in two.
+//    With one kind there is no picker.
 //    size and time span
 // ============================================================
 
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from './LangContext.jsx'
-
-/** Up to this many kinds are all shown side by side; more go in a menu */
-export const FLAT_KINDS_MAX = 4
+import KindIcon from './KindIcon.jsx'
 
 export default function DiagramHeader({ title, typeLabel, info = [], kinds = [], kind, onSelectKind }) {
   const { t } = useLang()
 
-  // With only one rendering kind, do not make it a button: opening a menu with
-  // a single option wastes a step
+  // With only one rendering kind there is nothing to pick
   const multi = kinds.length > 1
-  // A few kinds are shown all at once, so the reader sees there are others without opening anything
-  const flat = multi && kinds.length <= FLAT_KINDS_MAX
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
+  const index = Math.max(0, kinds.findIndex((k) => k.kind === kind))
+  const step = (d) => onSelectKind(kinds[(index + d + kinds.length) % kinds.length].kind)
 
-  // Close on an outside click. Use the capture phase so the canvas's pointerdown
-  // does not swallow it.
+  // Close on an outside click (capture phase, so the canvas's pointerdown does not swallow it) or on Escape
   useEffect(() => {
     if (!open) return undefined
     const onDown = (e) => {
       if (!rootRef.current?.contains(e.target)) setOpen(false)
     }
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
     document.addEventListener('pointerdown', onDown, true)
-    return () => document.removeEventListener('pointerdown', onDown, true)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [open])
+
+  // Left and right step through the kinds, unless the reader is typing or a control wants the key
+  useEffect(() => {
+    if (!multi) return undefined
+    const onKey = (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+      const el = e.target
+      if (el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.closest('.react-flow__node'))) return
+      e.preventDefault()
+      step(e.key === 'ArrowRight' ? 1 : -1)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  })
 
   // The registry hands back wording keys; resolve them in the current language
   // (see listKinds in core/registry.js)
@@ -57,29 +76,24 @@ export default function DiagramHeader({ title, typeLabel, info = [], kinds = [],
 
         <div className="antu-header-row">
           <span className="antu-header-type">{typeLabel}</span>
-          {flat ? null : multi ? (
-            <button
-              className={`antu-header-kind is-btn${open ? ' is-open' : ''}`}
-              onClick={() => setOpen((v) => !v)}
-            >
-              {kindLabel}
-              <span className="antu-header-count" title={t('header.kindCount', { n: kinds.length })}>
-                {kinds.length}
+          {!multi && kindLabel && <span className="antu-header-kind">{kindLabel}</span>}
+        </div>
+
+        {multi && (
+          <div className="antu-header-pick" role="group" aria-label={t('header.kindGroup')}>
+            <button className="antu-header-step" onClick={() => step(-1)} title={t('header.kindPrev')} aria-label={t('header.kindPrev')}>
+              ‹
+            </button>
+            <button className={`antu-header-current${open ? ' is-open' : ''}`} onClick={() => setOpen((v) => !v)} aria-expanded={open} title={t('header.kindOpen', { n: kinds.length })}>
+              <span className="antu-header-current-name">{kindLabel}</span>
+              <span className="antu-header-count">
+                {index + 1} / {kinds.length}
               </span>
               <span className="antu-header-caret" />
             </button>
-          ) : (
-            kindLabel && <span className="antu-header-kind">{kindLabel}</span>
-          )}
-        </div>
-
-        {flat && (
-          <div className="antu-header-seg" role="group" aria-label={t('header.kindGroup')}>
-            {kinds.map((k) => (
-              <button key={k.kind} className={`antu-header-segopt${k.kind === kind ? ' is-on' : ''}`} aria-pressed={k.kind === kind} onClick={() => onSelectKind(k.kind)}>
-                {t(k.labelKey)}
-              </button>
-            ))}
+            <button className="antu-header-step" onClick={() => step(1)} title={t('header.kindNext')} aria-label={t('header.kindNext')}>
+              ›
+            </button>
           </div>
         )}
 
@@ -87,18 +101,20 @@ export default function DiagramHeader({ title, typeLabel, info = [], kinds = [],
       </div>
 
       {open && (
-        <div className="antu-header-menu">
+        <div className="antu-header-panel" role="listbox" aria-label={t('header.kindGroup')}>
           {kinds.map((k) => (
             <button
               key={k.kind}
-              className={`antu-header-opt${k.kind === kind ? ' is-on' : ''}`}
+              role="option"
+              aria-selected={k.kind === kind}
+              className={`antu-header-cell${k.kind === kind ? ' is-on' : ''}`}
               onClick={() => {
                 setOpen(false)
                 onSelectKind(k.kind)
               }}
             >
-              <span className="antu-header-tick">{k.kind === kind ? '✓' : ''}</span>
-              {t(k.labelKey)}
+              <KindIcon kind={k.kind} />
+              <span>{t(k.labelKey)}</span>
             </button>
           ))}
         </div>

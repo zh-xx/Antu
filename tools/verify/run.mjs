@@ -1966,15 +1966,19 @@ async function checkKindSwitching(sampleFile) {
   const settle = (ms = 500) => new Promise((r) => setTimeout(r, ms))
   try {
     await browser.open(`file://${html}?lang=en`)
-    const opts = () => browser.eval(`[...document.querySelectorAll('.antu-header-segopt')].map((b) => [b.textContent, b.classList.contains('is-on')])`)
-    const first = await opts()
-    eq('switch: the three kinds of a fact diagram are all on show', first.map((o) => o[0]), [translate('en', 'graphKind.timeline'), translate('en', 'graphKind.chronicle'), translate('en', 'graphKind.scale')])
-    eq('switch: it opens in the timeline', first.map((o) => o[1]), [true, false, false])
-    eq('switch: no menu button while all are on show', await browser.eval(`document.querySelectorAll('.antu-header-kind.is-btn').length`), 0)
-    await browser.eval(`document.querySelectorAll('.antu-header-segopt')[1].click()`)
+    const names = ['graphKind.timeline', 'graphKind.chronicle', 'graphKind.scale'].map((k) => translate('en', k))
+    const current = () => browser.eval(`document.querySelector('.antu-header-current-name')?.textContent`)
+    const countText = () => browser.eval(`document.querySelector('.antu-header-count')?.textContent`)
+    eq('switch: it opens in the timeline', [await current(), await countText()], [names[0], '1 / 3'])
+    eq('switch: the panel is closed until asked for', await browser.eval(`document.querySelectorAll('.antu-header-panel').length`), 0)
+    await browser.eval(`document.querySelector('.antu-header-current').click()`)
+    await settle(300)
+    eq('switch: the panel shows every kind, each with its sketch', await browser.eval(`[...document.querySelectorAll('.antu-header-cell')].map((c) => [c.textContent, c.querySelector('svg') !== null, c.classList.contains('is-on')])`), names.map((n, i) => [n, true, i === 0]))
+    await browser.eval(`document.querySelectorAll('.antu-header-cell')[1].click()`)
     await settle()
+    eq('switch: picking in the panel closes it', await browser.eval(`document.querySelectorAll('.antu-header-panel').length`), 0)
     truthy('switch: a click draws the chronicle', (await browser.eval(`document.querySelectorAll('.antu-chr-card').length`)) > 0)
-    eq('switch: the clicked kind is the one raised', (await opts()).map((o) => o[1]), [false, true, false])
+    eq('switch: the picker names the chosen kind', [await current(), await countText()], [names[1], '2 / 3'])
     // The chronicle's legend: one entry per group, each with its mark; a click lights one group up, a second click undoes it
     const groupIds = (spec.groups ?? []).slice(0, 3).map((g) => g.id)
     if (groupIds.length > 1) {
@@ -1991,12 +1995,19 @@ async function checkKindSwitching(sampleFile) {
       await settle(300)
       eq('switch: a second click lights everything again', await browser.eval(`document.querySelectorAll('.antu-chr-entry.is-dim').length`), 0)
     }
-    await browser.eval(`document.querySelectorAll('.antu-header-segopt')[2].click()`)
+    // The arrow steps to the neighbour in one click, and wraps round at the end
+    await browser.eval(`document.querySelectorAll('.antu-header-step')[1].click()`)
     await settle()
-    truthy('switch: a click draws the time scale', (await browser.eval(`document.querySelectorAll('.antu-sc-card').length`)) > 0)
+    truthy('switch: the next arrow draws the time scale', (await browser.eval(`document.querySelectorAll('.antu-sc-card').length`)) > 0)
+    await browser.eval(`document.querySelectorAll('.antu-header-step')[1].click()`)
+    await settle()
+    eq('switch: the next arrow after the last wraps to the first', await current(), names[0])
+    await browser.eval(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }))`)
+    await settle()
+    eq('switch: the left key steps back (and wraps)', await current(), names[2])
     // Remembered for this diagram: opened again, the page is in the time scale
     await browser.open(`file://${html}?lang=en`, { waitFor: `document.querySelectorAll('.antu-sc-card').length` })
-    eq('switch: the choice is remembered when the page is opened again', (await opts()).map((o) => o[1]), [false, false, true])
+    eq('switch: the choice is remembered when the page is opened again', await current(), names[2])
   } finally {
     await browser.close()
   }
