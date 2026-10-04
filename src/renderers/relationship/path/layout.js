@@ -20,7 +20,6 @@
 // ============================================================
 
 import { validateRelationship, hintsOfRelationship, isDirected } from '../graph/rules.js'
-import { layeredGraph, bezierAt, pathOf } from '../layered.js'
 import { sectionWriter, SECTION_GAP } from '../sections.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
@@ -31,10 +30,71 @@ export const MAX_CHAINS = 3
 const SLACK = 3
 /** The search stops after this many chains found (a very tangled case); the count then says "at least" */
 const SEARCH_CAP = 5000
-const NODE_GAP = 36
-/** Between two levels: room for the lines and their labels, which are written along the line */
-const LEVEL_GAP = 190
 const MIN_CONTENT_W = 760
+const MIN_BOX_W = 150
+/** Between two columns at the least; wider when a label has to sit on the line */
+const MIN_GAP = 110
+const PILL_MARGIN = 14
+const ROW_TITLE_H = 24
+const ROW_GAP = 40
+const CARD_CLEAR = 108
+
+/** How wide a label's pill is (CJK wider than Latin; the page's pill has 9px of padding each side and wraps at 220) */
+export const pillW = (text) => Math.min(220, 20 + [...text].reduce((n, ch) => n + (/[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 12.5 : 7.4), 0))
+
+/**
+ * Which column each party of each chain stands in: the two ends in the first and the last, the parties between
+ * in the columns in between, and a party that two chains pass in the same column in both, so the rows read as
+ * one picture. The longest chain sets the columns; a party another chain adds takes a free column in its place
+ * between its neighbours; when that cannot be done in order, that row is spaced on its own.
+ * @returns number[][]  per chain, the column of each of its parties
+ */
+export function columnsOf(chains) {
+  if (!chains.length) return []
+  const mid = Math.max(...chains.map((c) => c.nodes.length - 2))
+  const last = mid + 1
+  const colOf = new Map()
+  const result = []
+  const order = chains.map((c, i) => i).sort((a, b) => chains[b].nodes.length - chains[a].nodes.length || a - b)
+  for (const ci of order) {
+    const nodes = chains[ci].nodes
+    const k = nodes.length - 2
+    const interior = nodes.slice(1, -1)
+    // The columns the parties already have, then the gaps between them filled evenly
+    let cols = interior.map((id) => colOf.get(id) ?? null)
+    const known = cols.filter((v) => v !== null)
+    let ok = known.every((v, i) => i === 0 || v > known[i - 1]) && known.every((v) => v >= 1 && v <= last - 1)
+    if (ok) {
+      let i = 0
+      while (i < k && ok) {
+        if (cols[i] !== null) {
+          i += 1
+          continue
+        }
+        let j = i
+        while (j < k && cols[j] === null) j += 1
+        const lo = i === 0 ? 0 : cols[i - 1]
+        const hi = j === k ? last : cols[j]
+        const room = hi - lo - 1
+        const count = j - i
+        if (room < count) {
+          ok = false
+          break
+        }
+        for (let n = 0; n < count; n += 1) cols[i + n] = lo + 1 + Math.floor((n * room) / count)
+        i = j
+      }
+    }
+    if (!ok) cols = interior.map((_, i) => 1 + Math.floor((i * (last - 1)) / Math.max(1, k)))
+    // Strictly increasing whatever happened above
+    for (let i = 0; i < k; i += 1) cols[i] = Math.min(Math.max(cols[i], i === 0 ? 1 : cols[i - 1] + 1), last - (k - i))
+    interior.forEach((id, i) => {
+      if (!colOf.has(id)) colOf.set(id, cols[i])
+    })
+    result[ci] = [0, ...cols, last]
+  }
+  return result
+}
 
 /** Distances from one party over every relation, direction ignored: Map id -> steps */
 function distancesFrom(spec, from) {
@@ -145,71 +205,69 @@ export function buildPathGraph(spec, fields = {}) {
   const ends = endsOf(spec, fields)
   const found = findChains(spec, ends.from, ends.to)
 
-  // The parties and relations of the drawn chains; each relation oriented along the first chain that has it
-  const nodeIds = []
-  const addNode = (id) => {
-    if (!nodeIds.includes(id)) nodeIds.push(id)
-  }
-  addNode(ends.from)
-  addNode(ends.to)
-  const oriented = new Map() // relation id -> { from, to } in the way the picture reads (towards B)
-  const shortestLen = found.chains[0]?.rels.length ?? 0
-  const heavy = new Set() // relations of a shortest chain
-  found.chains.forEach((c) => {
+  // One row per chain, written as a sentence: the two ends (dark) with the parties between, every line level.
+  // Rows share columns by party, so a party that two chains pass stands over the other (see columnsOf).
+  const chains = found.chains
+  const shortestLen = chains[0]?.rels.length ?? 0
+  const cols = columnsOf(chains)
+  const nCols = chains.length ? Math.max(...cols.flat()) + 1 : 0
+  const boxW = Math.max(MIN_BOX_W, ...[...new Set(chains.flatMap((c) => c.nodes))].map((id) => party.sizes.get(id).w))
+  // The gap between two neighbouring columns is as wide as the widest label that has to sit on a line across it
+  const gap = Array.from({ length: Math.max(0, nCols - 1) }, () => MIN_GAP)
+  chains.forEach((c, ci) =>
     c.rels.forEach((r, i) => {
-      addNode(c.nodes[i])
-      addNode(c.nodes[i + 1])
-      if (!oriented.has(r.id)) oriented.set(r.id, { from: c.nodes[i], to: c.nodes[i + 1] })
-      if (c.rels.length === shortestLen) heavy.add(r.id)
-    })
-  })
-  const ids = entities.map((e) => e.id).filter((id) => nodeIds.includes(id))
-  const edges = [...oriented].map(([key, o]) => ({ key, from: o.from, to: o.to }))
-
-  const g = layeredGraph(ids, edges, (id) => party.sizes.get(id), { horizontal: true, gapAcross: NODE_GAP, gapAlong: LEVEL_GAP })
-  const contentW = Math.max(g.size.width, MIN_CONTENT_W - PAD * 2)
+      const span = cols[ci][i + 1] - cols[ci][i]
+      const need = (pillW(textOf(r)) + 2 * PILL_MARGIN - (span - 1) * boxW) / span
+      for (let k = cols[ci][i]; k < cols[ci][i + 1]; k += 1) gap[k] = Math.max(gap[k], need)
+    }),
+  )
+  const colX = [PAD]
+  for (let k = 0; k < gap.length; k += 1) colX.push(colX[k] + boxW + gap[k])
+  const contentRight = nCols ? colX[nCols - 1] + boxW : PAD
+  const contentW = Math.max(contentRight - PAD, MIN_CONTENT_W - PAD * 2)
   const nodes = []
   const layer = { width: contentW + PAD * 2, height: 0, links: [], pills: [], empties: [], frames: [], texts: [] }
-  for (const [id, b] of g.boxes) {
-    nodes.push({ id, type: 'rnode', position: { x: b.x + PAD, y: b.y + PAD }, data: party.dataOf(entityById.get(id), { layer: 0, hintKey: 'rel.previewHint', vertical: false }) })
-  }
-  const relById = new Map(relations.map((r) => [r.id, r]))
-  for (const e of edges) {
-    const rel = relById.get(e.key)
-    const link = g.links.get(e.key)
-    const o = oriented.get(e.key)
-    // The line is drawn towards B; its arrowhead goes where the relation itself runs
-    const arrow = !isDirected(rel) ? 'none' : rel.from === o.from ? 'end' : 'start'
-    const at = bezierAt(link.segs.at(-1), 0.5)
-    layer.links.push({ d: pathOf(link.segs, PAD, PAD), kind: rel.kind, back: link.back, via: link.via, arrow, width: heavy.has(rel.id) ? 3.2 : 1.8, opacity: heavy.has(rel.id) ? 1 : 0.85 })
-    layer.pills.push({ x: at[0] + PAD, y: at[1] + PAD, text: textOf(rel), kind: rel.kind, back: link.back, relId: rel.id })
+  const drawn = new Set()
+  const drawnRels = new Set()
+  // The label card at the top left covers the first 140 px or so: the first row starts below it
+  let y = PAD + CARD_CLEAR
+  chains.forEach((c, ci) => {
+    layer.texts.push({ x: PAD, y, w: contentW, main: `${ci + 1}. ${t('rel.path.steps', { n: c.rels.length })}`, tone: 'row' })
+    y += ROW_TITLE_H
+    const h = Math.max(...c.nodes.map((id) => party.sizes.get(id).h))
+    const cy = y + h / 2
+    c.nodes.forEach((id, i) => {
+      drawn.add(id)
+      const end = i === 0 || i === c.nodes.length - 1
+      nodes.push({
+        id: `${id}@r${ci}`,
+        type: 'rnode',
+        position: { x: colX[cols[ci][i]], y },
+        data: { ...party.dataOf(entityById.get(id), { layer: 0, hintKey: 'rel.previewHint', vertical: false, plain: true, end }), w: boxW, h, textW: boxW - 28 },
+      })
+    })
+    c.rels.forEach((r, i) => {
+      drawnRels.add(r.id)
+      const x1 = colX[cols[ci][i]] + boxW
+      const x2 = colX[cols[ci][i + 1]]
+      // The line reads towards B; its arrowhead goes where the relation itself runs
+      const arrow = !isDirected(r) ? 'none' : r.from === c.nodes[i] ? 'end' : 'start'
+      layer.links.push({ d: `M ${x1} ${cy} L ${x2} ${cy}`, kind: r.kind, ink: true, back: false, via: [], arrow, width: c.rels.length === shortestLen ? 2.6 : 1.6 })
+      layer.pills.push({ x: (x1 + x2) / 2, y: cy, text: textOf(r), kind: r.kind, ink: true, back: false, relId: r.id })
+    })
+    y += h + ROW_GAP
+  })
+  y = chains.length ? y - ROW_GAP + SECTION_GAP : y
+  const more = found.total - chains.length
+  if (chains.length && (more > 0 || found.truncated)) {
+    layer.texts.push({ x: PAD, y: y - SECTION_GAP + 14, w: contentW, main: t('rel.path.more', { n: more, atLeast: found.truncated ? 1 : 0 }), tone: 'note' })
+    y += 24
   }
 
-  const top = (g.size.height || 0) + PAD
-  const sections = sectionWriter(layer, contentW, top + SECTION_GAP)
-  // The chains, written out
+  const sections = sectionWriter(layer, contentW, y)
   const sep = t('rel.equity.sep')
-  const chainText = (c) =>
-    c.rels
-      .map((r, i) => {
-        const a = c.nodes[i]
-        const label = textOf(r)
-        const hop = !isDirected(r) ? `—${label}—` : r.from === a ? `—${label}→` : `←${label}—`
-        return `${i === 0 ? nameOf(a) : ''} ${hop} ${nameOf(c.nodes[i + 1])}`
-      })
-      .join('')
-      .replace(/\s+/g, ' ')
-      .trim()
-  if (!found.chains.length) {
-    sections.empty(t('rel.path.noChain', { a: nameOf(ends.from), b: nameOf(ends.to) }), t('rel.path.noChainHint'))
-  } else {
-    const items = found.chains.map((c, i) => ({ main: `${i + 1}. ${t('rel.path.steps', { n: c.rels.length })}: ${chainText(c)}` }))
-    const more = found.total - found.chains.length
-    if (more > 0 || found.truncated) items.push({ main: t('rel.path.more', { n: more, atLeast: found.truncated ? 1 : 0 }), tone: 'note' })
-    sections.section(t('rel.path.chains', { n: found.chains.length }), items)
-  }
-  const drawnRels = new Set([...oriented.keys()])
-  const off = entities.filter((e) => !nodeIds.includes(e.id))
+  if (!chains.length) sections.empty(t('rel.path.noChain', { a: nameOf(ends.from), b: nameOf(ends.to) }), t('rel.path.noChainHint'))
+  const off = entities.filter((e) => !drawn.has(e.id))
   const offRels = relations.filter((r) => !drawnRels.has(r.id))
   if (off.length) sections.section(t('rel.path.off', { n: off.length }), [{ main: off.map((e) => e.label).join(sep) }])
   if (offRels.length) {
@@ -246,11 +304,11 @@ export function buildPathGraph(spec, fields = {}) {
     from: ends.from,
     to: ends.to,
     defaultEnds: defaultEnds(spec),
-    chains: found.chains.length,
+    chains: chains.length,
     totalChains: found.total,
     truncated: found.truncated,
     shortest: found.shortest,
-    drawnParties: nodeIds.length,
+    drawnParties: drawn.size,
     off: off.length,
     offRels: offRels.length,
     size: { width: Math.ceil(layer.width), height },
