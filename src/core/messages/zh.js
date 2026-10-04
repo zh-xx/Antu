@@ -73,19 +73,19 @@ export const zh = {
   'rule.colScope': '适用阶段',
   'rule.groupEnd': ({ end }) => `可导致「${end}」`,
   'rule.groupRest': '其他条款',
-  'rule.count': ({ n }) => `${n} 项`,
+  'rule.count': ({ n }) => `${n} 条`,
   'rule.anyOf': '下列任一：',
   'rule.tScopeAll': '全程',
   'rule.tScopeRange': ({ from, to }) => `${from} 至 ${to}`,
-  'flow.ruleBadge': ({ n }) => `${n} 项条款`,
+  'flow.ruleBadge': ({ n }) => `条款 ${n} 条`,
   'rule.if': '若',
   'rule.or': '，或',
   'flow.previewHint': '点击节点查看全文',
 
   // ---------- card and source overlay (EventNode.jsx) ----------
-  'card.sources': ({ n }) => `来源 ${n} 项`,
+  'card.sources': ({ n }) => `来源 ${n} 个`,
   'card.sourcesUnlisted': '未列来源',
-  'card.sourcesList': ({ n, names }) => `来源 ${n} 项：${names}`,
+  'card.sourcesList': ({ n, names }) => `来源 ${n} 个：${names}`,
   'card.duration': ({ duration }) => `持续 ${duration}`,
   'card.approxPrefix': '约 ',
   'card.dateUnknown': '日期不详',
@@ -127,7 +127,7 @@ export const zh = {
   'graphKind.scale': '比例时间轴',
 
   // ---------- 事实图比例时间轴 ----------
-  'scale.segment': ({ n, unit, count }) => `第 ${n} 段 · ${unit} · ${count} 项`,
+  'scale.segment': ({ n, unit, count }) => `第 ${n} 段 · ${unit} · ${count} 个事件`,
   'scale.unit.year': '按年',
   'scale.unit.month': '按月',
   'scale.unit.day': '按日',
@@ -136,8 +136,8 @@ export const zh = {
   'scale.other': '其他',
   'scale.events': '事件',
   'scale.undated': '日期不详 · 按顺序放置',
-  'scale.run': ({ n }) => `${n} 项事件`,
-  'scale.runListed': ({ n }) => `时间相近的 ${n} 项事件，列示如下：`,
+  'scale.run': ({ n }) => `${n} 个事件`,
+  'scale.runListed': ({ n }) => `时间相近的 ${n} 个事件，列示如下：`,
 
   // ---------- 事实图大事记：两个时间点之间隔了多久 ----------
   'chronicle.gapSeconds': ({ n }) => `+${n} 秒`,
