@@ -127,7 +127,7 @@ export const zh = {
   'graphKind.scale': '比例时间轴',
 
   // ---------- 事实图比例时间轴 ----------
-  'scale.segment': ({ n, unit, count }) => `第 ${n} 段 · ${unit} · ${count} 件`,
+  'scale.segment': ({ n, unit, count }) => `第 ${n} 段 · ${unit} · ${count} 项`,
   'scale.unit.year': '按年',
   'scale.unit.month': '按月',
   'scale.unit.day': '按日',
@@ -136,8 +136,8 @@ export const zh = {
   'scale.other': '其他',
   'scale.events': '事件',
   'scale.undated': '日期不详 · 按顺序放置',
-  'scale.run': ({ n }) => `${n} 件事`,
-  'scale.runListed': ({ n }) => `${n} 件事挨得太近，逐条列出：`,
+  'scale.run': ({ n }) => `${n} 项事件`,
+  'scale.runListed': ({ n }) => `时间相近的 ${n} 项事件，列示如下：`,
 
   // ---------- 事实图大事记：两个时间点之间隔了多久 ----------
   'chronicle.gapSeconds': ({ n }) => `+${n} 秒`,
