@@ -319,7 +319,6 @@ export const en = {
   'rel.chain.partyB': 'Other party',
   'rel.chain.count': ({ g, c }) => `${g} guarantor${g === 1 ? '' : 's'} · ${c} counter-guarantee${c === 1 ? '' : 's'}`,
   'rel.chain.none': 'No security',
-  'rel.chain.noCounter': 'No counter-guarantee',
   'rel.chain.inferred': 'inferred',
   'rel.chain.inferredNote': ({ creditor }) => `Not stated which claim it secures; ${creditor} has only this one, so it is tied here.`,
   'rel.chain.noClaims': 'No claims in this data',

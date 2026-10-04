@@ -161,7 +161,6 @@ export const zh = {
   'rel.chain.partyB': '另一方',
   'rel.chain.count': ({ g, c }) => `${g} 个担保人 · ${c} 个反担保`,
   'rel.chain.none': '无担保',
-  'rel.chain.noCounter': '没有反担保',
   'rel.chain.inferred': '推断',
   'rel.chain.inferredNote': ({ creditor }) => `数据没写它担保哪笔；${creditor}只有这一笔债权，所以挂在这里。`,
   'rel.chain.noClaims': '数据里没有债权',
