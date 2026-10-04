@@ -73,7 +73,8 @@ for (const f of files) {
     assert.equal(rows.length + none.length + 1, s.entities.length, 'the centre, a row or apart: every party once')
     assert.equal(rows.reduce((n, r) => n + r.rels.length, 0) + rest.length, s.relations.length, 'every relation in a row or in the rest')
     const table = g.nodes[0].data.table
-    assert.equal(table.rows.length, rows.length)
+    assert.equal(new Set(table.rows.map((r) => r.party)).size, rows.length, 'one block for each party')
+    assert.equal(table.rows.length, rows.reduce((n, r) => n + r.rels.length, 0), 'a line for each relation')
     for (const r of table.rows) assert.ok(r.y + r.h <= table.bottom, 'a row inside the table')
   })
   test(`${f}: relation path, chains tie the two ends`, () => {

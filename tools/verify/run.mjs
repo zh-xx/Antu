@@ -2002,7 +2002,7 @@ async function checkRenderLevelledViews() {
         eq(`${tag}: one pill per line`, m.pills, layer.pills.length)
         eq(`${tag}: every text of the sections is drawn`, m.texts, layer.texts.length)
         eq(`${tag}: one block per camp`, m.blocks, layer.blocks?.length ?? 0)
-        eq(`${tag}: the table is drawn cell by cell`, m.cells, layer.table ? layer.table.header.length + layer.table.rows.length * layer.table.header.length : 0)
+        eq(`${tag}: the table is drawn cell by cell`, m.cells, layer.table ? layer.table.header.length + layer.table.rows.reduce((n, r) => n + r.cells.length, 0) : 0)
         eq(`${tag}: no block or cell text past its box`, m.spill, [])
       }
 
