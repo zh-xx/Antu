@@ -1610,6 +1610,45 @@ async function checkRenderScale(sampleFile) {
   }
 }
 
+
+/**
+ * The reader's own switching of the way of drawing (the label card at the top left), which the checks of each
+ * kind skip because they open the page already in their kind: all the kinds of a few are shown at once, the
+ * click draws the page again in that kind, and the choice is remembered for the diagram.
+ */
+async function checkKindSwitching(sampleFile) {
+  section('render: switching the way of drawing')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const spec = JSON.parse(readFileSync(sampleFile, 'utf8'))
+  const html = join(OUT, 'render-switch.html')
+  renderToFile(spec, { outPath: html, quiet: true })
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  const settle = (ms = 500) => new Promise((r) => setTimeout(r, ms))
+  try {
+    await browser.open(`file://${html}?lang=en`)
+    const opts = () => browser.eval(`[...document.querySelectorAll('.antu-header-segopt')].map((b) => [b.textContent, b.classList.contains('is-on')])`)
+    const first = await opts()
+    eq('switch: the three kinds of a fact diagram are all on show', first.map((o) => o[0]), [translate('en', 'graphKind.timeline'), translate('en', 'graphKind.chronicle'), translate('en', 'graphKind.scale')])
+    eq('switch: it opens in the timeline', first.map((o) => o[1]), [true, false, false])
+    eq('switch: no menu button while all are on show', await browser.eval(`document.querySelectorAll('.antu-header-kind.is-btn').length`), 0)
+    await browser.eval(`document.querySelectorAll('.antu-header-segopt')[1].click()`)
+    await settle()
+    truthy('switch: a click draws the chronicle', (await browser.eval(`document.querySelectorAll('.antu-chr-card').length`)) > 0)
+    eq('switch: the clicked kind is the one raised', (await opts()).map((o) => o[1]), [false, true, false])
+    await browser.eval(`document.querySelectorAll('.antu-header-segopt')[2].click()`)
+    await settle()
+    truthy('switch: a click draws the time scale', (await browser.eval(`document.querySelectorAll('.antu-sc-card').length`)) > 0)
+    // Remembered for this diagram: opened again, the page is in the time scale
+    await browser.open(`file://${html}?lang=en`, { waitFor: `document.querySelectorAll('.antu-sc-card').length` })
+    eq('switch: the choice is remembered when the page is opened again', (await opts()).map((o) => o[1]), [false, false, true])
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderProcedure(sampleFile) {
   section('render: procedure flowchart')
   if (!findChrome()) {
@@ -2364,6 +2403,7 @@ if (!shotOnly && !skipBrowser) {
   if (data.sample) await checkRender(data.sample)
   if (data.sample) await checkRenderChronicle(data.sample)
   if (data.sample) await checkRenderScale(data.sample)
+  if (data.sample) await checkKindSwitching(data.sample)
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)

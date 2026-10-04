@@ -121,6 +121,8 @@ export const zh = {
 
   'graphKind.timeline': '时间图',
   'graphKind.flow': '流程图',
+  'header.kindCount': ({ n }) => `共 ${n} 种画法`,
+  'header.kindGroup': '画法',
   'graphKind.chronicle': '大事记',
   'graphKind.scale': '比例时间轴',
 

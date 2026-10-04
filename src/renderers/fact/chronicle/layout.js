@@ -4,7 +4,8 @@
 //  The second way of drawing a fact diagram, from the same JSON as the timeline (issue #85):
 //    left   the time column (date on one line, time of day on the next)
 //    middle one spine with a dot per event, coloured by group
-//    right  the card: full title, summary and tags, never clamped — the card grows to fit
+//    right  the card: full title, summary and tags, never clamped — the card grows to fit. The group name is
+//           a tag only on a card whose group differs from the card before; the dot and the legend carry it on the others
 //  Between two time points a pill says how much time passed. A gap of 30 days or more is a
 //  "long" gap: the pill turns amber and the spine is dashed there, so a reader sees at once
 //  where the story jumps.
@@ -231,10 +232,10 @@ export function groupIndexOf(spec, event) {
  * How many lines the tag row takes: the group tag, then (if switched on) each party and the
  * source count. Tags wrap as whole tags, like the browser's flex-wrap.
  */
-export function tagLinesOf(event, spec, fields, actorById) {
+export function tagLinesOf(event, spec, fields, actorById, showGroup = true) {
   const widths = []
   const group = (spec?.groups || []).find((g) => g?.id === event.groupId)
-  if (group?.label) widths.push(GROUP_DOT_W + textWidth(group.label, TAG_FONT))
+  if (showGroup && group?.label) widths.push(GROUP_DOT_W + textWidth(group.label, TAG_FONT))
   if (fields.actors) {
     for (const id of Array.isArray(event.actorIds) ? event.actorIds : []) {
       widths.push(textWidth(actorById.get(id)?.name || id, ACTOR_FONT) + ACTOR_TAG_PAD)
@@ -310,7 +311,9 @@ export function buildChronicleGraph(spec, fields = {}, { measure } = {}) {
       y = prevBottom + space
     }
     const { title: titleLines, summary: summaryLines } = textLinesOf(event, fields, typeof measure === 'function' ? measure : null)
-    const tagLines = tagLinesOf(event, spec, fields, actorById)
+    // The group is written on a card only where it changes: the dot on the line and the legend say it on the others
+    const showGroup = index === 0 || event.groupId !== items[index - 1].event.groupId
+    const tagLines = tagLinesOf(event, spec, fields, actorById, showGroup)
     const h = cardHeightOf({ titleLines, summaryLines, tagLines })
     const groupIndex = groupIndexOf(spec, event)
     const actorNames = (Array.isArray(event.actorIds) ? event.actorIds : []).map((id) => actorById.get(id)?.name || id)
@@ -328,7 +331,7 @@ export function buildChronicleGraph(spec, fields = {}, { measure } = {}) {
         event,
         index,
         groupIndex,
-        groupLabel: group?.label ?? '',
+        groupLabel: showGroup ? group?.label ?? '' : '',
         actorNames,
         sources,
         fields,

@@ -128,6 +128,8 @@ export const en = {
 
   'graphKind.timeline': 'Timeline',
   'graphKind.flow': 'Flowchart',
+  'header.kindCount': ({ n }) => `${n} ways of drawing`,
+  'header.kindGroup': 'Way of drawing',
   'graphKind.chronicle': 'Chronicle',
   'graphKind.scale': 'Time scale',
 
