@@ -214,7 +214,7 @@ In the interface it sits on **the same row as the label card at the top left**, 
 Two conventions:
 
 - **With only one way of drawing it is plain text, not made into a button.** Opening a menu with a single option wastes a step;
-- **With more than one it automatically becomes a clickable dropdown**, and what was chosen is remembered per diagram (`kinds` in `localStorage`).
+- **With more than one it is a picker in the label card:** `‹ current way  3 / 9 ▾ ›`. The arrows (and the left and right keys) step to the neighbour in one click, wrapping round at the ends; the name opens a panel with a sketch and the name of every way, to pick any of them in two clicks. The panel is the same for every type, so switching works one way everywhere (an earlier version showed up to four ways as a row and put more in a plain menu). What was chosen is remembered per diagram (`kinds` in `localStorage`).
 
 On switching, the whole diagram is laid out again in the new way and the viewport re-fits to the new content; not one word of the data changes.
 
