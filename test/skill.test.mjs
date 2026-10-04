@@ -172,8 +172,13 @@ test('layout: the same report as the MCP side, for the small examples and a real
   for (const f of ['examples/fact/neighbour-corridor-charging.zh-CN.json', 'examples/procedure/05-premises-lease.zh-CN.json', 'examples/relationship/fang-yuan-parties.zh-CN.json']) {
     if (existsSync(f)) files.push(f)
   }
+  // The committed skill is the last release (rebuilt only in a release pull request), so a change to a layout
+  // between two releases would always differ from it. This compares the report of a build of the current source.
+  const built = mkdtempSync(join(tmpdir(), 'antu-built-skill-'))
+  execFileSync('node', ['tools/build-skill.mjs', '--out', built], { stdio: 'ignore' })
+  const cli = join(built, 'scripts', 'antu.mjs')
   for (const file of files) {
-    const r = run('layout', file)
+    const r = spawnSync(process.execPath, [cli, 'layout', file], { encoding: 'utf8' })
     assert.equal(r.status, 0, `${file}: ${r.stderr}`)
     assert.equal(r.stdout.trim(), layoutMessage(JSON.parse(readFileSync(file, 'utf8'))).text.trim(), file)
   }
