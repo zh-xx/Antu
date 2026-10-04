@@ -105,8 +105,10 @@ try {
       const rel = join(work, 'antu/examples/relationship/1-minimal.zh-CN.json')
       const f = run('layout', rel, '--kind', 'focus')
       check('relationship: layout --kind focus reports the focus view', f.status === 0 && /^Kind: focus/m.test(f.stdout), f.stderr.trim() || f.stdout.trim())
+      const ch = run('layout', rel, '--kind', 'chain')
+      check('relationship: layout --kind chain reports the guarantee chain', ch.status === 0 && /^Kind: chain/m.test(ch.stdout), ch.stderr.trim() || ch.stdout.trim())
       const wrongRel = run('layout', rel, '--kind', 'scale')
-      check('a fact kind on a relationship is named, exit code 2', wrongRel.status === 2 && /graph, focus/.test(wrongRel.stderr), `${wrongRel.status} ${wrongRel.stderr.trim()}`)
+      check('a fact kind on a relationship is named, exit code 2', wrongRel.status === 2 && /graph, focus, chain/.test(wrongRel.stderr), `${wrongRel.status} ${wrongRel.stderr.trim()}`)
     }
     // The time scale, where this command line has it
     if (run('--help').stdout.includes('scale')) {

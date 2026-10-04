@@ -236,6 +236,19 @@ One party in the middle, the parties tied to it around it, those tied to them fu
 - Entity boxes, label boxes, relation paint, the overlay, "what it secures" and the kind chips are the graph's, so the two kinds cannot disagree. No orientation, link style or group boxes: they do not apply.
 - A "relations: []" is not valid JSON (validation requires at least one), so the centre always has something; an entity nothing relates to is an island of one.
 
+### 6.5 The third sub-type, `chain` (issue #89)
+
+> Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added: the view reads `debt` and `guarantee` relations and `secures`, and the one inference it makes (below) is made when drawing.
+
+One block per claim, its guarantors beside it, what stands behind each guarantor beyond: "this loan, how many layers of security, who stands last". Code: `src/renderers/relationship/chain/`.
+
+- **Claims** are the `debt` relations, and a `contract` that a guarantee names with `secures` (a contract alone is not a claim). Each block shows the label with the amount as written, the two parties and the counts.
+- **Guarantors** are the `guarantee` relations that name the claim. One that names none is tied **only when that is plain**: its creditor (the guarantee's `to`) is the creditor of exactly one claim and the guarantor is not that claim's debtor. It is then drawn with a dotted link and "inferred" on its label. Otherwise it goes in a bucket "Guarantees not tied to a claim" with the reason (no claim of that creditor / several, naming them / the guarantor owes the claim), and a line saying that writing `secures` ties it.
+- **Behind a guarantor**: a `contract` between the guarantor and the claim's debtor, or a guarantee from the debtor to the guarantor that names no claim (a counter-guarantee). Where there is none nothing is drawn behind the guarantor; the claim's card says how many guarantors and counter-guarantees it has, and "No security" for a claim nobody guarantees: absence is information, said in words.
+- **Everything else** (equity, employment, a contract that is not a claim...) is listed under the blocks, so every relation is on the page once.
+- A case with no claims says so and lists every relation. A guarantee of a guarantee, joint debtors and sums of amounts cannot be said in the data, so the view does not claim to show them; amounts are shown as written, never added up.
+- Party boxes, the overlay and the labels switch are the graph's; no orientation, link style or kind chips (they do not apply).
+
 ---
 
 ## 7. Open questions, and what the schema does meanwhile

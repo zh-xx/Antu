@@ -70,7 +70,7 @@ than an empty table (an empty table reads as "this type exists, it is just empty
 | `antu_preview` | Returns a PNG screenshot | one image | **yes** |
 
 `antu_layout`, `antu_render` and `antu_preview` take an optional `kind`: the way of drawing (a fact
-diagram is `timeline`, the default, `chronicle` or `scale`; a relationship diagram is `graph`, the default, or `focus`). An unknown kind is refused with the list of
+diagram is `timeline`, the default, `chronicle` or `scale`; a relationship diagram is `graph`, the default, `focus` or `chain`). An unknown kind is refused with the list of
 kinds. `antu_render` with a kind makes the page open in it; the reader can still switch.
 
 **The design is meant to avoid rework when a new type is added.** `antu_schema` used to

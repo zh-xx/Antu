@@ -20,7 +20,9 @@ import { entityPaint } from './palette.js'
 /** Inset of the outline from the box, so a 1.5px stroke is not clipped at the edge */
 const INSET = 1
 
-function Outline({ kind, w, h }) {
+function Outline({ kind, w, h, plain = false }) {
+  // plain: one neutral outline for every kind (the guarantee chain draws in one ink; the role line says what the party is)
+  if (plain) return <rect className="antu-rn-shape" fill="#ffffff" stroke="#475569" strokeWidth={1.3} x={INSET} y={INSET} width={w - INSET * 2} height={h - INSET * 2} rx={4} />
   const p = entityPaint(kind)
   const paint = { fill: p.fill, stroke: p.stroke, strokeWidth: kind === 'company' ? 2 : 1.3 }
   const x = INSET
@@ -48,7 +50,7 @@ function Outline({ kind, w, h }) {
 }
 
 const EntityNode = memo(function EntityNode({ id, data }) {
-  const { entity, w, h, textW, lit = false, dim = false, groupLabel, sources, relations, vertical, layer, centre = false, camp = null, hintKey = 'rel.previewHint' } = data
+  const { entity, w, h, textW, lit = false, dim = false, groupLabel, sources, relations, vertical, layer, centre = false, plain = false, camp = null, hintKey = 'rel.previewHint' } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
 
@@ -85,7 +87,7 @@ const EntityNode = memo(function EntityNode({ id, data }) {
         </span>
       )}
       <svg className="antu-rn-svg" width={w} height={h} aria-hidden="true">
-        <Outline kind={entity.kind} w={w} h={h} />
+        <Outline kind={entity.kind} w={w} h={h} plain={plain} />
       </svg>
 
       {/* The text column is exactly as wide as metrics.js measured it, so the lines break where the box was sized for */}

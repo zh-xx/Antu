@@ -1406,6 +1406,39 @@
 .antu-rn.is-centre .antu-rn-shape { stroke-width: 3; }
 .antu-rf .antu-rn { cursor: pointer; }
 .antu-rf-note { font-size: 12px; font-weight: 600; color: var(--antu-text-3); white-space: nowrap; line-height: 24px; }
+
+/* ---------- relationship guarantee chain (relationship/chain) ----------
+   Heights come from chain/layout.js (it estimates the lines), the text wraps inside the boxes it gave. */
+.antu-ch-layer { position: relative; }
+.antu-ch-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-ch-head { position: absolute; font-size: 13px; font-weight: 700; line-height: 20px; color: var(--antu-text-3); white-space: nowrap; }
+.antu-ch-claim {
+  box-sizing: border-box;
+  padding: 18px;
+  background: #fff;
+  border: 2px solid #334155;
+  border-radius: 6px;
+  color: var(--antu-text);
+  font-size: 12.5px;
+  line-height: 19px;
+  overflow-wrap: anywhere;
+}
+.antu-ch-claim-title { margin-bottom: 8px; font-size: 16px; line-height: 22px; font-weight: 700; color: var(--antu-text); }
+.antu-ch-claim-side span { color: var(--antu-text-3); }
+.antu-ch-claim-tail { margin-top: 10px; color: var(--antu-text-3); }
+/* the label under a box: plain text, as left as the box */
+.antu-ch-chip {
+  position: absolute;
+  box-sizing: border-box;
+  width: max-content;
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--antu-text-3);
+  overflow-wrap: anywhere;
+}
+.antu-ch-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-ch-text-sub { color: var(--antu-text-3); }
+.antu-ch-text.is-note { font-size: 11.5px; line-height: 16px; color: var(--antu-text-3); }
 /* rendering kinds shown all at once (2 to 4 kinds): a segmented row under the type */
 .antu-header-seg { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 8px; padding: 2px; background: #f0f3f7; border-radius: 9px; }
 .antu-header-segopt { flex: 1 1 auto; padding: 3px 9px; border: 0; border-radius: 7px; background: transparent; color: var(--antu-text-3); font-family: inherit; font-size: 11.5px; line-height: 1.6; white-space: nowrap; cursor: pointer; }
