@@ -150,6 +150,11 @@ export const zh = {
   'chronicle.gapYearsMonths': ({ y, m }) => `间隔 ${y} 年 ${m} 个月`,
   'chronicle.dateUnknown': '日期不详',
   'graphKind.graph': '关系图',
+  'graphKind.focus': '聚焦图',
+  'rel.focus.hint': '点击，把这一方放到中间',
+  'rel.focus.apart': '与中心没有关系相连',
+  'rel.focus.reset': '默认中心',
+  'rel.focus.resetTitle': '把关系最多的那一方放回中间',
   'graphKind.tree': '说理树',
 
   // ---------- 证成图：界面文案（jus.*） ----------

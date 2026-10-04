@@ -35,7 +35,8 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
 
   // Looking at an entity: its relations stay, and so do the claims its guarantees secure; the rest fade
   const shown = useMemo(() => (litEntity === null ? null : lookedAt(connections, litEntity).lines), [connections, litEntity])
-  const opacityOf = (c) => (shown === null || shown.has(c.relationId) ? 1 : DIM_OPACITY)
+  // A faint relation (the focus view's, between parties other than the centre) is drawn lighter and thinner
+  const opacityOf = (c) => (shown === null || shown.has(c.relationId) ? 1 : DIM_OPACITY) * (c.faint ? 0.6 : 1)
 
   return (
     <div className="antu-rlinks">
@@ -64,7 +65,7 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
           const marker = c.directed ? `url(#antu-rarrow-${c.kind})` : undefined
           return (
             <g key={c.id} className={`antu-rlink k-${c.kind}`} opacity={opacityOf(c)}>
-              <path d={d} fill="none" stroke={p.stroke} strokeWidth={p.width} strokeDasharray={p.dash} markerEnd={marker} />
+              <path d={d} fill="none" stroke={p.stroke} strokeWidth={c.faint ? Math.max(1, p.width * 0.75) : p.width} strokeDasharray={p.dash} markerEnd={marker} />
               {/* A double line: a pale one down the middle of a wide one */}
               {p.double && <path d={d} fill="none" stroke="#ffffff" strokeWidth={p.width - 2.4} />}
             </g>

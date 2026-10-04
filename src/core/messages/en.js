@@ -308,6 +308,11 @@ export const en = {
     `nodes (${id}): "${label}" is rejected although any one it rests on would do, and "${other}" holds; check the \`holds\` values`,
   'jhint.tooLarge': ({ n, limit }) => `${n} nodes: past about ${limit} the tree gets hard to read on one screen; consider one diagram per issue`,
   'graphKind.graph': 'Relationship graph',
+  'graphKind.focus': 'Focus view',
+  'rel.focus.hint': 'Click to put this party in the middle',
+  'rel.focus.apart': 'Not connected to the centre',
+  'rel.focus.reset': 'Default centre',
+  'rel.focus.resetTitle': 'Put the party with the most relations back in the middle',
   'graphKind.tree': 'Reasoning tree',
 
   // ---------- justification: interface text (jus.*) ----------

@@ -1378,6 +1378,34 @@
 .antu-sc-list-head { font-weight: 600; color: var(--antu-text); }
 .antu-sc-list-row { display: flex; gap: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 18px; }
 
+/* ---------- relationship focus view (relationship/focus) ---------- */
+/* The camp's name over a box, in the colour of its place: first group blue, second red, the rest grey */
+.antu-rn-camp {
+  position: absolute;
+  left: 2px;
+  bottom: calc(100% + 3px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  line-height: 14px;
+  white-space: nowrap;
+  color: var(--antu-text-3);
+  pointer-events: none;
+  /* a line may run behind it: the canvas colour keeps the words readable */
+  background: var(--antu-canvas);
+  padding: 0 3px;
+  margin-left: -3px;
+  border-radius: 3px;
+}
+.antu-rn-camp i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.antu-rn-camp.t0 { color: var(--antu-side1); }
+.antu-rn-camp.t1 { color: var(--antu-side2); }
+.antu-rn-camp.t2 i { background: var(--antu-axis); }
+/* The party in the middle: a stronger outline */
+.antu-rn.is-centre .antu-rn-shape { stroke-width: 3; }
+.antu-rf .antu-rn { cursor: pointer; }
+.antu-rf-note { font-size: 12px; font-weight: 600; color: var(--antu-text-3); white-space: nowrap; line-height: 24px; }
 /* rendering kinds shown all at once (2 to 4 kinds): a segmented row under the type */
 .antu-header-seg { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 8px; padding: 2px; background: #f0f3f7; border-radius: 9px; }
 .antu-header-segopt { flex: 1 1 auto; padding: 3px 9px; border: 0; border-radius: 7px; background: transparent; color: var(--antu-text-3); font-family: inherit; font-size: 11.5px; line-height: 1.6; white-space: nowrap; cursor: pointer; }

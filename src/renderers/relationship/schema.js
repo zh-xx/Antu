@@ -12,6 +12,7 @@
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateRelationship, hintsOfRelationship, ENTITY_KINDS, RELATION_KINDS } from './graph/rules.js'
 import { buildRelationshipGraph } from './graph/layout.js'
+import { buildFocusGraph } from './focus/layout.js'
 import { fitZoom, textSizeLines } from '../../core/canvas.js'
 import { ENTITY_FONT } from './graph/metrics.js'
 
@@ -90,6 +91,42 @@ export function describeRelationshipSchema() {
   return lines.join('\n')
 }
 
+/**
+ * The focus view's geometry report: no orientation to choose, so one size, fitted whole; what is
+ * worth saying is who stands in the middle, how many rings there are, and whether some parties are
+ * not reached from the centre (they are laid out apart, under the picture).
+ */
+function focusReport(spec, layout, { canvas }) {
+  const g = layout(spec, {})
+  const fit = Number(fitZoom(g.size, canvas).toFixed(3))
+  const label = (spec.entities ?? []).find((e) => e.id === g.centre)?.label ?? g.centre
+  return {
+    text: { font: ENTITY_FONT, canvas, open: { name: 'fitted whole', fit }, other: { name: 'fitted whole', fit } },
+    counts: { entities: g.stats.entities, relations: g.stats.relations, groups: g.stats.groups, kinds: g.stats.kinds, sources: spec.sources?.length ?? 0 },
+    size: g.size,
+    centre: { id: g.centre, label },
+    rings: g.rings,
+    islands: g.islands.length - 1,
+    apart: g.islands.slice(1).reduce((n, i) => n + i.ids.length, 0),
+    hints: g.hints,
+  }
+}
+
+function formatFocusReport(r) {
+  const c = r.counts
+  const lines = [
+    'Kind: focus (one party in the middle; orientation does not apply)',
+    `Data: ${c.entities} entities / ${c.relations} relations / ${c.groups} groups / ${c.sources} sources`,
+    `Opens centred on "${r.centre.label}" (the party with most relations; the reader can pick another)`,
+    `Rings around it: ${r.rings.slice(1).map((n, i) => `${n} at ${i + 1} step${i ? 's' : ''}`).join(', ') || 'none (it has no relations)'}`,
+    `Content ${r.size.width}×${r.size.height}`,
+  ]
+  if (r.apart) lines.push(`${r.apart} part${r.apart === 1 ? 'y is' : 'ies are'} not reached from the centre, laid out apart under the picture (${r.islands} separate group${r.islands === 1 ? '' : 's'})`)
+  lines.push(...textSizeLines(r.text, 'splitting the diagram by group'))
+  if (r.hints.length) lines.push('', `${r.hints.length} hint(s):`, ...r.hints.map((x) => `  - ${x}`))
+  return lines.join('\n')
+}
+
 export const relationshipKnowledge = {
   specVersion: RELATIONSHIP_SPEC_VERSION,
   /** The display name of the type: a message key, resolved per language by the consumer (core/labels.js) */
@@ -109,7 +146,8 @@ export const relationshipKnowledge = {
    * The geometry report for MCP's antu_layout. A relationship has no views and nothing "does not
    * fit": scale is reported, never refused, and the agent decides whether to split the diagram.
    */
-  report: (spec, layout, { canvas }) => {
+  report: (spec, layout, { canvas, kind }) => {
+    if (kind === 'focus') return focusReport(spec, layout, { canvas })
     const byOrientation = {}
     let g
     for (const o of ['vertical', 'horizontal']) {
@@ -139,6 +177,7 @@ export const relationshipKnowledge = {
 
   /** The geometry report as the short text the tool returns to an agent */
   formatReport: (r) => {
+    if (r.kind === 'focus') return formatFocusReport(r)
     const c = r.counts
     const v = r.byOrientation.vertical
     const h = r.byOrientation.horizontal
@@ -179,8 +218,9 @@ export const relationshipKnowledge = {
    */
   notes: (spec) => hintsOfRelationship(spec),
 
-  /** Which kinds a relationship diagram has. Currently the graph only. */
+  /** Which ways of drawing a relationship diagram exist. The first is the default. */
   layouts: {
     graph: buildRelationshipGraph,
+    focus: buildFocusGraph,
   },
 }

@@ -48,7 +48,7 @@ function Outline({ kind, w, h }) {
 }
 
 const EntityNode = memo(function EntityNode({ id, data }) {
-  const { entity, w, h, textW, lit = false, dim = false, groupLabel, sources, relations, vertical, layer } = data
+  const { entity, w, h, textW, lit = false, dim = false, groupLabel, sources, relations, vertical, layer, centre = false, camp = null, hintKey = 'rel.previewHint' } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
 
@@ -61,7 +61,7 @@ const EntityNode = memo(function EntityNode({ id, data }) {
 
   return (
     <div
-      className={`antu-rn k-${entity.kind}${lit ? ' is-lit' : ''}${dim ? ' is-dim' : ''}`}
+      className={`antu-rn k-${entity.kind}${lit ? ' is-lit' : ''}${dim ? ' is-dim' : ''}${centre ? ' is-centre' : ''}`}
       style={{ width: w, height: h }}
       role="button"
       tabIndex={0}
@@ -77,6 +77,13 @@ const EntityNode = memo(function EntityNode({ id, data }) {
         }
       }}
     >
+      {/* The focus view names a party's camp over its box, in the colour of its place */}
+      {camp && (
+        <span className={`antu-rn-camp t${camp.tone}`}>
+          <i />
+          {camp.label}
+        </span>
+      )}
       <svg className="antu-rn-svg" width={w} height={h} aria-hidden="true">
         <Outline kind={entity.kind} w={w} h={h} />
       </svg>
@@ -148,7 +155,7 @@ const EntityNode = memo(function EntityNode({ id, data }) {
             </div>
           )}
 
-          {showPreview && <div className="antu-preview-hint">{t('rel.previewHint')}</div>}
+          {showPreview && <div className="antu-preview-hint">{t(hintKey)}</div>}
         </div>
       )}
     </div>
