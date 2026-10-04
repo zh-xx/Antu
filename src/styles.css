@@ -25,7 +25,9 @@
 
 * { box-sizing: border-box; }
 
+/* The theme sets --antu-font (and --antu-font-head for titles) on this element (theme/ThemeContext.jsx) */
 .antu-app {
+  font-family: var(--antu-font, inherit);
   height: 100vh;
   display: flex;              /* 画布占满，其余都是画布上的浮层 */
   background: #fff;
@@ -701,6 +703,7 @@
 }
 
 .antu-header-title {
+  font-family: var(--antu-font-head, inherit);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1080,7 +1083,8 @@
 .react-flow__node-rnode:hover { z-index: 10 !important; }
 .react-flow__node.selected .antu-rn-shape { stroke-width: 2; }
 .antu-rn:focus-visible .antu-rn-shape { stroke: #2f6fed; stroke-width: 2; }
-.antu-rn.is-end .antu-rn-label { color: #fff; }
+.antu-rn.is-end .antu-rn-label {
+  font-family: var(--antu-font-head, inherit); color: #fff; }
 .antu-rn.is-end .antu-rn-role { color: #cbd5e1; }
 .antu-rn-body { position: relative; flex: none; text-align: center; pointer-events: none; }
 /* 字号行高必须与 relationship/graph/metrics.js 一致（名字 14/20，角色 12/16） */
@@ -1562,3 +1566,9 @@
 .antu-chr-legend-item.g1 { color: var(--antu-side2); }
 .antu-chr-legend-item.g2 { color: var(--antu-text-3); }
 .antu-chr-legend-item.g2 .antu-chr-mark { background: var(--antu-axis); }
+
+/* the theme switch in the label card: three choices in a row */
+.antu-header-theme { display: flex; gap: 2px; margin-top: 8px; }
+.antu-header-themeopt { flex: 1 1 0; padding: 2px 6px; border: 1px solid var(--antu-line); border-radius: 6px; background: transparent; color: var(--antu-text-3); font-family: inherit; font-size: 11px; line-height: 1.6; white-space: nowrap; cursor: pointer; }
+.antu-header-themeopt:hover { color: var(--antu-text-2); border-color: var(--antu-text-4); }
+.antu-header-themeopt.is-on { color: var(--antu-text); border-color: var(--antu-text); font-weight: 600; }

@@ -8,6 +8,7 @@
 
 import { memo } from 'react'
 import { relationPaint } from '../graph/palette.js'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 const BAND_TONES = [
   { fill: '#eff6ff', stroke: '#bfdbfe', text: '#1d4ed8' },
@@ -15,6 +16,7 @@ const BAND_TONES = [
 ]
 
 const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
+  const { theme } = useTheme()
   const { width, height, corner, bands, heads, rowHeads, cells, diagonal, showLabels = true } = data
   const last = diagonal.length - 1
   const right = diagonal[last].x + diagonal[last].w
@@ -50,14 +52,14 @@ const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
         {showLabels &&
           cells.flatMap((c) =>
             c.chips.map((ch, i) => {
-              const p = relationPaint(ch.kind)
+              const p = relationPaint(ch.kind, theme)
               return <rect key={`${c.row}|${c.col}|${i}`} x={ch.x} y={ch.y} width={ch.w} height={ch.h} rx={8} fill={p.stroke} fillOpacity={0.12} stroke={p.stroke} strokeWidth={1} strokeDasharray={p.dash} />
             }),
           )}
         {!showLabels &&
           cells.flatMap((c) =>
             c.chips.map((ch, i) => {
-              const p = relationPaint(ch.kind)
+              const p = relationPaint(ch.kind, theme)
               const cx = ch.x + ch.w / 2
               const cy = ch.y + ch.h / 2
               return <circle key={`${c.row}|${c.col}|${i}`} cx={cx} cy={cy} r={6} fill={p.stroke} fillOpacity={0.85} />
@@ -91,7 +93,7 @@ const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
       {showLabels &&
         cells.flatMap((c) =>
           c.chips.map((ch, i) => (
-            <span key={`t${c.row}|${c.col}|${i}`} className={`antu-mx-chip k-${ch.kind}`} data-rel={ch.id} style={{ left: ch.x, top: ch.y, width: ch.w, height: ch.h, color: relationPaint(ch.kind).stroke }}>
+            <span key={`t${c.row}|${c.col}|${i}`} className={`antu-mx-chip k-${ch.kind}`} data-rel={ch.id} style={{ left: ch.x, top: ch.y, width: ch.w, height: ch.h, color: relationPaint(ch.kind, theme).stroke }}>
               <span>{ch.text}</span>
             </span>
           )),

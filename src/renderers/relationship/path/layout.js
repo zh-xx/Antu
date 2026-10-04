@@ -243,7 +243,7 @@ export function buildPathGraph(spec, fields = {}) {
         id: `${id}@r${ci}`,
         type: 'rnode',
         position: { x: colX[cols[ci][i]], y },
-        data: { ...party.dataOf(entityById.get(id), { layer: 0, hintKey: 'rel.previewHint', vertical: false, plain: true, end }), w: boxW, h, textW: boxW - 28 },
+        data: { ...party.dataOf(entityById.get(id), { layer: 0, hintKey: 'rel.previewHint', vertical: false, end }), w: boxW, h, textW: boxW - 28 },
       })
     })
     c.rels.forEach((r, i) => {

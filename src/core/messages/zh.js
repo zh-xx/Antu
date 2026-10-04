@@ -121,6 +121,10 @@ export const zh = {
 
   'graphKind.timeline': '时间图',
   'graphKind.flow': '流程图',
+  'header.theme': '主题',
+  'theme.document': '文书黑白',
+  'theme.modern': '现代简洁',
+  'theme.legal': '法律蓝',
   'header.kindOpen': ({ n }) => `查看全部 ${n} 种画法`,
   'header.kindPrev': '上一种画法',
   'header.kindNext': '下一种画法',
