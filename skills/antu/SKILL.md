@@ -9,7 +9,7 @@ description: >-
   contract flow, the parties, or a judgment's reasoning.
 license: AGPL-3.0-or-later
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 ---
 
 # Antu: legal diagrams from JSON
@@ -17,7 +17,7 @@ metadata:
 You write the JSON; the engine draws it. The result is **one HTML file** that opens in any browser with no
 install and no network, prints, and can be forwarded. Nothing is uploaded anywhere.
 
-This skill is Antu **0.6.0**. The pages it makes say so: `<meta name="generator" content="antu 0.6.0">`.
+This skill is Antu **0.7.0**. The pages it makes say so: `<meta name="generator" content="antu 0.7.0">`.
 
 **`<skill-dir>`** below is the folder that holds this `SKILL.md` (it has `scripts/`, `references/`, `examples/` and
 `assets/` beside it). Every command is written with it, so it runs from **any** directory: put the real path in.
@@ -165,6 +165,14 @@ headings cut off. If something is wrong, change the JSON and run `preview` again
 shows the other orientation; `--width` and `--height` change the screen size (1600×900 by default). Keep the PNG
 out of the user's folder unless they want it.
 
+`--kind` picks another way of drawing the same JSON: a fact diagram is `timeline` (the default), `chronicle`
+(one column in order, with the time passed between events written in) or `scale` (distance is real time, so the
+reader sees where events crowd together); a relationship diagram is `graph` (the default), `focus` (one party in
+the middle, the parties tied to it around it: for a case with many parties) `chain` (one block per claim with its guarantors and
+what stands behind them: for a loan or guarantee dispute), `matrix` (parties down and across, each cell the relations from its row to its column:
+for "is there any relation between A and B") `equity` (holders above what they hold, the share on each line, and what is held through others), `authority` (control, employment and agency as an organisation chart), `related` (one party and everyone tied to it, as a table to paste into a brief), `path` (the shortest chains of relations between two parties) or `summary` (each camp as one block: for many parties); a procedure diagram is `flow` (the default) or `route` (the main line as one line, with rework drawn as loops and early endings hanging below it). `layout`, `render` and `preview` all
+take it; `render --kind chronicle` makes the page open in the chronicle, and the reader can still switch.
+
 **When it cannot look**, say so; never claim you checked how it looks:
 - `preview` ends with "no Chromium-based browser found" or "no picture could be taken" (exit code 3): there is no
   picture. If the user has a browser somewhere else, `ANTU_CHROME` can point at it.
@@ -177,8 +185,9 @@ that they should open the page and look.
 ## 5. Tell the user
 
 Give the path of the HTML file. Say what it shows and what you had to leave out or could not tell from their
-material, in a few lines. In the page the reader can hover and click the items for detail, and use the bar at the
-bottom: switch orientation (vertical / horizontal), switch the language, export an image. The page's own labels
+material, in a few lines. In the page the reader can hover and click the items for detail, switch the way of
+drawing in the label card at the top left (a fact diagram: Timeline, Chronicle or Time scale; a relationship diagram: Graph, Focus view, Guarantee chain, Relation matrix, Equity tree, Control and employment, Related parties, Relation path or Camp summary; a procedure: Flowchart or Route map), and use the bar at the bottom:
+switch orientation (vertical / horizontal), switch the language, export an image. The page's own labels
 follow the browser's language (a Chinese browser shows Chinese); if the user sees them in the wrong language,
 the EN / 中文 switch in that bar changes them.
 
@@ -187,9 +196,9 @@ turns them on**, so do not count on them for what the diagram has to say; tell t
 
 | Kind | Switches in the bar (on by default unless it says off) |
 | --- | --- |
-| fact | Summary (on), **Parties** (off), **Sources** (off), Grid (off); the views menu at the top left when the data has more than one view |
+| fact | Summary (on), **Parties** (off), **Sources** (off), Grid (off); the views menu at the top left when the data has more than one view. The chronicle has the same three card switches and no grid or views; the time scale has none |
 | procedure | Conditions, Detail, Main line, Stages (only if the data has stages), Rules (only if it has rules); all on |
-| relationship | one switch per kind of relation (when the data uses more than one kind), Labels, Groups (only if the data has groups); all on |
+| relationship | one switch per kind of relation (when the data uses more than one kind), Labels, Groups (only if the data has groups); all on. The focus view has the kind switches and Labels, and a "Default centre" button once another party was picked |
 | justification | Labels (only if a link has one; on), Fold issues (only if there are several issues; none folded), Merge repeats (off) |
 
 What this means for what you write:
