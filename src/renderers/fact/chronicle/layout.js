@@ -4,7 +4,9 @@
 //  The second way of drawing a fact diagram, from the same JSON as the timeline (issue #85):
 //    left   the time column (date on one line, time of day on the next)
 //    middle one spine with a dot per event, coloured by group
-//    right  the card: full title, summary and tags, never clamped — the card grows to fit
+//    right  the card: full title, summary and tags, never clamped — the card grows to fit. The group name is
+//           not written on the card at all: it is the mark on the line (circle, square or diamond, with the
+//           colour) and the legend, which the reader can click to light one group up
 //  Between two time points a pill says how much time passed. A gap of 30 days or more is a
 //  "long" gap: the pill turns amber and the spine is dashed there, so a reader sees at once
 //  where the story jumps.
@@ -42,8 +44,6 @@ const BLOCK_GAP = 4
 const TAGS_GAP = 6
 /** Horizontal gap between two tags on the tag row */
 const TAG_SPACING = 10
-/** The coloured dot in front of the group tag, with its margin */
-const GROUP_DOT_W = 12
 /** A source count is short in any language ("3 sources", "来源 3"); this is a generous width for it */
 const SOURCE_TAG_W = 90
 
@@ -220,6 +220,14 @@ export function chronicleItems(spec) {
   return items
 }
 
+/** The mark of a group on the line: circle, square, diamond (a group's place in `groups`); `none` without a group */
+export const GROUP_SHAPES = ['circle', 'square', 'diamond']
+export function groupShapeOf(spec, event) {
+  const groups = Array.isArray(spec?.groups) ? spec.groups : []
+  const i = groups.findIndex((g) => g?.id === event?.groupId)
+  return i < 0 ? 'none' : GROUP_SHAPES[Math.min(i, 2)]
+}
+
 /** Colour index of an event: its group's place in `groups` (0, 1, 2), or 2 (neutral grey) without one */
 export function groupIndexOf(spec, event) {
   const groups = Array.isArray(spec?.groups) ? spec.groups : []
@@ -228,13 +236,11 @@ export function groupIndexOf(spec, event) {
 }
 
 /**
- * How many lines the tag row takes: the group tag, then (if switched on) each party and the
- * source count. Tags wrap as whole tags, like the browser's flex-wrap.
+ * How many lines the tag row takes: (if switched on) each party and the source count. The group is not a tag:
+ * it is the mark on the line, and the legend says what the marks mean. Tags wrap as whole tags, like the browser's flex-wrap.
  */
 export function tagLinesOf(event, spec, fields, actorById) {
   const widths = []
-  const group = (spec?.groups || []).find((g) => g?.id === event.groupId)
-  if (group?.label) widths.push(GROUP_DOT_W + textWidth(group.label, TAG_FONT))
   if (fields.actors) {
     for (const id of Array.isArray(event.actorIds) ? event.actorIds : []) {
       widths.push(textWidth(actorById.get(id)?.name || id, ACTOR_FONT) + ACTOR_TAG_PAD)
@@ -289,7 +295,7 @@ export function buildChronicleGraph(spec, fields = {}, { measure } = {}) {
   const sourceById = new Map((spec?.sources || []).filter(Boolean).map((s) => [s.id, s]))
   // The legend: the first three groups (validation allows no more), each with its own colour index
   const groups = (Array.isArray(spec?.groups) ? spec.groups.slice(0, 3) : [])
-    .map((g, i) => ({ label: g?.label, groupIndex: i }))
+    .map((g, i) => ({ label: g?.label, groupIndex: i, shape: GROUP_SHAPES[i] }))
     .filter((g) => g.label)
   const items = chronicleItems(spec)
 
@@ -315,7 +321,6 @@ export function buildChronicleGraph(spec, fields = {}, { measure } = {}) {
     const groupIndex = groupIndexOf(spec, event)
     const actorNames = (Array.isArray(event.actorIds) ? event.actorIds : []).map((id) => actorById.get(id)?.name || id)
     const sources = (Array.isArray(event.sourceIds) ? event.sourceIds : []).map((id) => sourceById.get(id)).filter(Boolean)
-    const group = (spec?.groups || []).find((g) => g?.id === event.groupId)
     cards.push({
       id: event.id,
       type: 'entry',
@@ -328,7 +333,7 @@ export function buildChronicleGraph(spec, fields = {}, { measure } = {}) {
         event,
         index,
         groupIndex,
-        groupLabel: group?.label ?? '',
+        shape: groupShapeOf(spec, event),
         actorNames,
         sources,
         fields,
@@ -337,7 +342,7 @@ export function buildChronicleGraph(spec, fields = {}, { measure } = {}) {
         cardH: h,
       },
     })
-    dots.push({ y: y + DOT_Y, groupIndex, hollow: !event.date })
+    dots.push({ y: y + DOT_Y, groupIndex, shape: groupShapeOf(spec, event), hollow: !event.date })
     prevBottom = y + h
   })
 

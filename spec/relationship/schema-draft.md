@@ -258,7 +258,7 @@ Parties down and across, each cell naming the relations from its row's party to 
 - The order follows the camps (`groups`, in written order), the parties of no camp last, each camp under a coloured band on the rows and on the columns.
 - A relation stands in the cell (row = `from`, column = `to`). A relation with no direction (a contract, a marriage, or `directed: false`) stands in both cells of its pair. Several relations between one pair stack in one cell. The diagonal is shaded.
 - Chips are coloured by relation kind as in the graph and carry the label the graph would show. With the labels switch off a chip becomes a dot.
-- It shows no chains and no levels: use the graph for those. "Copy as table" puts the matrix on the clipboard (HTML and tab-separated text).
+- It shows no chains and no levels: use the graph for those.
 - Party overlay and orientation do not apply; it opens fitted to its width like the chronicle.
 
 ### 6.7 The fifth sub-type, `equity` (issue #91)
@@ -289,7 +289,7 @@ Only `control`, `employment` and `agency` relations, as an organisation chart: t
 A table centred on one party (the one with most relations by default; the reader picks another in the dock, the same choice as the focus view's): one row per party that has a relation with it, with the kinds, every relation as written (→ the centre is the `from`, ← the centre is the `to`, ↔ no direction), and the sources. Code: `src/renderers/relationship/related/`.
 
 - A party with several relations to the centre has them in one row.
-- Under the table: the parties with no relation to the centre, and every relation that does not involve it. "Copy as table" puts the rows on the clipboard.
+- Under the table: the parties with no relation to the centre, and every relation that does not involve it.
 
 ### 6.10 The eighth sub-type, `path` (issue #93)
 
