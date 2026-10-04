@@ -235,7 +235,6 @@ on the right. Code: `src/renderers/fact/chronicle/`.
 | A gap of 30 days or more is amber, and the spine is dashed there | Where the story jumps shows from a distance |
 | The date is written once per day | A column of the same date repeated is noise; the row where the day starts carries it |
 | It opens fitted to its width at most 1:1, scrolled to the top | A long column fitted whole would be too small to read |
-| "Copy as table" in the dock (in the timeline's too) | A lawyer pastes the chronology into a brief or a spreadsheet: HTML and tab-separated text at once |
 
 ### 9.2 The time scale (third kind, issue #85)
 

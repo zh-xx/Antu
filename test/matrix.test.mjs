@@ -13,7 +13,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 
-import { buildMatrixGraph, matrixCells, matrixOrder, matrixTable } from '../src/renderers/relationship/matrix/layout.js'
+import { buildMatrixGraph, matrixCells, matrixOrder } from '../src/renderers/relationship/matrix/layout.js'
 import { isDirected } from '../src/renderers/relationship/graph/rules.js'
 import { relationshipKnowledge } from '../src/renderers/relationship/schema.js'
 import { registerKnowledge, layoutKindsOf } from '../src/core/registry.js'
@@ -77,15 +77,6 @@ test('a relation with no direction stands in both cells of its pair; a directed 
   const stacked = g.nodes[0].data.cells.find((c) => c.row === 'a' && c.col === 'b')
   assert.equal(stacked.chips.length, 2)
   assert.ok(stacked.h >= stacked.chips.reduce((n, ch) => n + ch.h, 0), 'the row is as tall as its fullest cell')
-})
-
-test('the table for the clipboard has every party down and across', () => {
-  const s = load('sample-group-guarantee.en.json')
-  const t = matrixTable(s)
-  assert.equal(t.headers.length, s.entities.length + 1)
-  assert.equal(t.rows.length, s.entities.length)
-  assert.ok(t.rows.every((r) => r.length === s.entities.length + 1))
-  assert.ok(t.rows.flat().some((c) => c.includes('Holds 70%')))
 })
 
 test('the report says how full the table is, by kind', () => {

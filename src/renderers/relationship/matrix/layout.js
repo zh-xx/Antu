@@ -195,16 +195,3 @@ export function buildMatrixGraph(spec, fields = {}) {
     stats: { entities: entities.length, relations: relations.length, groups: spec.groups?.length ?? 0, kinds },
   }
 }
-
-/** The matrix as a table for the clipboard: parties down and across, each cell the texts of its relations */
-export function matrixTable(spec, t = tEn) {
-  const errors = validateRelationship(spec)
-  if (errors.length) return { headers: [], rows: [] }
-  const party = makePartyData(spec, t)
-  const textIndex = new Map(spec.relations.map((r, i) => [r.id, i]))
-  const { order } = matrixOrder(spec, t('rel.matrix.ungrouped'))
-  const cells = matrixCells(spec, order)
-  const headers = ['', ...order.map((e) => e.label)]
-  const rows = order.map((e, r) => [e.label, ...order.map((_, c) => (cells.get(`${r}|${c}`) ?? []).map((rel) => party.labelTexts[textIndex.get(rel.id)]).join('; '))])
-  return { headers, rows }
-}

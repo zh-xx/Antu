@@ -4,7 +4,7 @@
 //  Parties × parties; each cell names the relations from its row's party to its column's party. Same
 //  JSON as the graph; the reader switches kind in the label card. The layout (matrix/layout.js) is
 //  pure; this holds the labels switch and hands the shell one decoration layer. It is a table, so it
-//  opens fitted to its width like the chronicle, and "Copy as table" puts it on the clipboard.
+//  opens fitted to its width like the chronicle.
 // ============================================================
 
 import { useMemo, useState } from 'react'
@@ -13,11 +13,9 @@ import Canvas from '../../../shell/Canvas.jsx'
 import { readPrefs, writePrefs } from '../../../shell/prefs.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
-import CopyTableButton from '../../fact/CopyTableButton.jsx'
 import FocusDock from '../focus/FocusDock.jsx'
 import MatrixLayerNode from './MatrixLayerNode.jsx'
-import { buildMatrixGraph, matrixTable } from './layout.js'
-import { translate } from '../../../core/i18n.js'
+import { buildMatrixGraph } from './layout.js'
 
 const nodeTypes = { matrixLayer: MatrixLayerNode }
 
@@ -55,7 +53,6 @@ export default function RelationshipMatrix({ spec }) {
           onToggleLabels={setLabels}
           exporting={exporting}
           onExport={onExport}
-          extra={<CopyTableButton spec={spec} getTable={(l) => matrixTable(spec, (key, vars) => translate(l, key, vars))} />}
         />
       </Canvas>
     </div>

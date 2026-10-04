@@ -187,8 +187,7 @@ that they should open the page and look.
 Give the path of the HTML file. Say what it shows and what you had to leave out or could not tell from their
 material, in a few lines. In the page the reader can hover and click the items for detail, switch the way of
 drawing in the label card at the top left (a fact diagram: Timeline, Chronicle or Time scale; a relationship diagram: Graph, Focus view, Guarantee chain, Relation matrix or Equity tree), and use the bar at the bottom:
-switch orientation (vertical / horizontal), switch the language, export an image. A fact diagram's bar also has
-**Copy as table**, which puts every event on the clipboard as a table for a document or a spreadsheet. The page's own labels
+switch orientation (vertical / horizontal), switch the language, export an image. The page's own labels
 follow the browser's language (a Chinese browser shows Chinese); if the user sees them in the wrong language,
 the EN / 中文 switch in that bar changes them.
 
