@@ -17,7 +17,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 
 import { buildAuthorityGraph, classifyAuthority } from '../src/renderers/relationship/authority/layout.js'
 import { buildRelatedGraph, relatedRows, centreOf } from '../src/renderers/relationship/related/layout.js'
-import { buildPathGraph, findChains, defaultEnds, endsOf, MAX_CHAINS } from '../src/renderers/relationship/path/layout.js'
+import { buildPathGraph, findChains, defaultEnds, endsOf, columnsOf, MAX_CHAINS } from '../src/renderers/relationship/path/layout.js'
 import { buildSummaryGraph, summaryUnits, summaryLines } from '../src/renderers/relationship/summary/layout.js'
 import { layeredGraph } from '../src/renderers/relationship/layered.js'
 import { relationshipKnowledge } from '../src/renderers/relationship/schema.js'
@@ -223,5 +223,35 @@ test('the four reports name what each view chose', () => {
     const r = layoutReport(s, { kind })
     assert.equal(r.ok, true, kind)
     assert.match(formatLayoutReport(r), pattern, kind)
+  }
+})
+
+test('path: one chain to a row, every line level, a shared party in the same column', () => {
+  const s = spec(
+    [entity('a'), entity('b'), entity('c'), entity('d'), entity('e')],
+    [rel('r1', 'a', 'b', 'contract'), rel('r2', 'b', 'e', 'contract'), rel('r3', 'b', 'c', 'contract'), rel('r4', 'c', 'e', 'contract'), rel('r5', 'a', 'd', 'contract'), rel('r6', 'd', 'e', 'contract')],
+  )
+  const g = buildPathGraph(s, { from: 'a', to: 'e' })
+  assert.equal(g.chains, 3)
+  const layer = g.nodes.find((n) => n.type === 'lineLayer').data
+  // Every line is horizontal: its path has one y
+  for (const l of layer.links) {
+    const ys = [...l.d.matchAll(/[ML] [\d.]+ ([\d.]+)/g)].map((m) => m[1])
+    assert.equal(new Set(ys).size, 1, `a level line: ${l.d}`)
+  }
+  // One row per chain; the two ends in every row, dark
+  const boxes = g.nodes.filter((n) => n.type === 'rnode')
+  assert.equal(boxes.filter((n) => n.data.end).length, 6)
+  assert.equal(new Set(boxes.map((n) => n.position.y)).size, 3, 'three rows')
+  // b is passed by two chains and stands in one column in both
+  const bx = boxes.filter((n) => n.id.startsWith('b@')).map((n) => n.position.x)
+  assert.equal(new Set(bx).size, 1)
+  // Rows do not overlap, whatever the labels
+  assertBoxes(g, 'rows')
+  // columnsOf: the ends first and last, the rest in order
+  const chains = findChains(s, 'a', 'e').chains
+  for (const row of columnsOf(chains)) {
+    assert.equal(row[0], 0)
+    for (let i = 1; i < row.length; i++) assert.ok(row[i] > row[i - 1], 'strictly to the right')
   }
 })

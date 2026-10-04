@@ -1080,6 +1080,8 @@
 .react-flow__node-rnode:hover { z-index: 10 !important; }
 .react-flow__node.selected .antu-rn-shape { stroke-width: 2; }
 .antu-rn:focus-visible .antu-rn-shape { stroke: #2f6fed; stroke-width: 2; }
+.antu-rn.is-end .antu-rn-label { color: #fff; }
+.antu-rn.is-end .antu-rn-role { color: #cbd5e1; }
 .antu-rn-body { position: relative; flex: none; text-align: center; pointer-events: none; }
 /* 字号行高必须与 relationship/graph/metrics.js 一致（名字 14/20，角色 12/16） */
 .antu-rn-label {
@@ -1509,10 +1511,12 @@
   color: #1d4ed8;
   overflow-wrap: anywhere;
 }
+.antu-ln-pill.is-ink { border-color: #94a3b8; color: #334155; font-weight: 600; }
 .antu-ln-pill.is-unknown { border: 1px dashed #94a3b8; color: var(--antu-text-3); font-weight: 500; }
 .antu-ln-pill.is-back { border-style: dashed; }
 .antu-ln-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
 .antu-ln-text-sub { color: var(--antu-text-3); }
+.antu-ln-text.is-row { font-size: 12px; font-weight: 700; color: var(--antu-text-3); }
 .antu-ln-text.is-note { color: var(--antu-text-3); font-style: italic; }
 .antu-ln-block { position: absolute; box-sizing: border-box; padding: 14px 18px; font-size: 13px; line-height: 22px; color: var(--antu-text); overflow: hidden; overflow-wrap: anywhere; }
 .antu-ln-block-title { font-size: 14px; font-weight: 700; line-height: 22px; margin-bottom: 6px; }

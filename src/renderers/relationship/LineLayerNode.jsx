@@ -12,6 +12,8 @@ import { memo } from 'react'
 import { relationPaint, RELATION_PAINT } from './graph/palette.js'
 
 const INK = '#64748b'
+/** A link or pill with `ink` is drawn in this one colour, whatever its relation kind (the relation path) */
+const INK_LINE = '#475569'
 const BLOCK_TONES = [
   { fill: '#eff6ff', stroke: '#bfdbfe', text: '#1d4ed8' },
   { fill: '#fff7ed', stroke: '#fed7aa', text: '#c2410c' },
@@ -20,14 +22,14 @@ const BLOCK_TONES = [
 
 const LineLayerNode = memo(function LineLayerNode({ data }) {
   const { width, height, links, pills, blocks = [], empties, frames, texts, table = null, showLabels = true } = data
-  const kinds = [...new Set(links.filter((l) => l.arrow !== 'none').map((l) => l.kind ?? 'equity'))]
+  const kinds = [...new Set(links.filter((l) => l.arrow !== 'none').map((l) => (l.ink ? 'ink' : l.kind ?? 'equity')))]
   return (
     <div className="antu-ln-layer" style={{ width, height }}>
       <svg width={width} height={height} className="antu-ln-svg" aria-hidden="true">
         <defs>
           {kinds.map((k) => (
             <marker key={k} id={`antu-ln-arrow-${k}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
-              <path d="M 0 1 L 9 5 L 0 9 Z" fill={(RELATION_PAINT[k] ?? RELATION_PAINT.other).stroke} />
+              <path d="M 0 1 L 9 5 L 0 9 Z" fill={k === 'ink' ? INK_LINE : (RELATION_PAINT[k] ?? RELATION_PAINT.other).stroke} />
             </marker>
           ))}
         </defs>
@@ -68,8 +70,8 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
           </g>
         ))}
         {links.map((l, i) => {
-          const kind = l.kind ?? 'equity'
-          const paint = relationPaint(kind)
+          const kind = l.ink ? 'ink' : l.kind ?? 'equity'
+          const paint = l.ink ? { stroke: INK_LINE, width: 1.6 } : relationPaint(kind)
           return (
             <g key={`l${i}`} opacity={l.opacity ?? 1}>
               <path
@@ -124,15 +126,15 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
         pills.map((p, i) => (
           <span
             key={`pt${i}`}
-            className={`antu-ln-pill${p.unknown ? ' is-unknown' : ''}${p.back ? ' is-back' : ''}`}
+            className={`antu-ln-pill${p.unknown ? ' is-unknown' : ''}${p.back ? ' is-back' : ''}${p.ink ? ' is-ink' : ''}`}
             data-rel={p.relId}
-            style={{ left: p.x, top: p.y, opacity: p.opacity ?? 1, ...(p.kind ? { borderColor: relationPaint(p.kind).stroke, color: relationPaint(p.kind).stroke } : {}) }}
+            style={{ left: p.x, top: p.y, opacity: p.opacity ?? 1, ...(p.kind && !p.ink ? { borderColor: relationPaint(p.kind).stroke, color: relationPaint(p.kind).stroke } : {}) }}
           >
             {p.text}
           </span>
         ))}
       {texts.map((x, i) => (
-        <div key={`t${i}`} className={`antu-ln-text${x.tone === 'note' ? ' is-note' : ''}`} style={{ left: x.x, top: x.y, width: x.w }}>
+        <div key={`t${i}`} className={`antu-ln-text${x.tone === 'note' ? ' is-note' : x.tone === 'row' ? ' is-row' : ''}`} style={{ left: x.x, top: x.y, width: x.w }}>
           <div>{x.main}</div>
           {x.sub && <div className="antu-ln-text-sub">{x.sub}</div>}
         </div>
