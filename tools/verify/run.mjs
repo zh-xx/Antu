@@ -52,6 +52,9 @@ import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.
 import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
+import * as CHR from '../../src/renderers/fact/chronicle/layout.js'
+import { buildChronicleGraph } from '../../src/renderers/fact/chronicle/layout.js'
+import { buildScaleGraph } from '../../src/renderers/fact/scale/layout.js'
 import { buildProcedureGraph } from '../../src/renderers/procedure/flow/layout.js'
 import { sizeOf } from '../../src/renderers/procedure/flow/metrics.js'
 import { buildRelationshipGraph } from '../../src/renderers/relationship/graph/layout.js'
@@ -1387,6 +1390,257 @@ async function checkRender(sampleFile) {
  * from the same layout function, so the page is compared against it, not against a number
  * copied by hand.
  */
+/**
+ * The fact chronicle (issue #85), drawn by the browser for every fact example in both languages:
+ * every event once, no text outside its card (the card heights are estimated in Node, so only the
+ * page can show they hold), no card taller than its text needs by a whole line, the time column
+ * clear of the spine, the gap pills between the cards and as many as the layout says; then, on one
+ * example, export.
+ */
+async function checkRenderChronicle(sampleFile) {
+  section('render: fact chronicle')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const files = readdirSync(join(REPO, 'examples/fact')).filter((f) => f.endsWith('.json'))
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms))
+  // Every number the page is measured against comes from the layout module
+  const measure = () =>
+    browser.eval(`(() => {
+      const cards = [...document.querySelectorAll('.antu-chr-card')]
+      const z = cards.length ? cards[0].getBoundingClientRect().width / ${CHR.CARD_W} : 1
+      const spill = []
+      let slackMax = 0
+      for (const card of cards) {
+        const r = card.getBoundingClientRect()
+        const kids = [...card.children].filter((c) => !c.classList.contains('antu-preview'))
+        let bottom = r.top
+        for (const k of kids) {
+          const kr = k.getBoundingClientRect()
+          bottom = Math.max(bottom, kr.bottom)
+          if (kr.bottom > r.bottom - ${CHR.PAD_Y / 2} * z || kr.right > r.right + 0.5 || k.scrollWidth > k.clientWidth + 1) {
+            spill.push(card.getAttribute('aria-label').slice(0, 40))
+          }
+        }
+        // How much empty room is left under the text (cards at the minimum height excepted)
+        const minH = ${CHR.PAD_Y + CHR.WHEN_LH * 3}
+        if (Math.round(r.height / z) > minH) slackMax = Math.max(slackMax, (r.bottom - bottom) / z - ${CHR.PAD_Y})
+      }
+      const dot = document.querySelector('.antu-chr-dot')?.getBoundingClientRect()
+      const whenClear = !dot || [...document.querySelectorAll('.antu-chr-when')].every((w) => w.getBoundingClientRect().right <= dot.left)
+      const rects = cards.map((c) => c.getBoundingClientRect())
+      const pills = [...document.querySelectorAll('.antu-chr-gap')]
+      const pillHits = pills.filter((p) => {
+        const a = p.getBoundingClientRect()
+        return rects.some((b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top)
+      }).length
+      return {
+        cards: cards.length,
+        spill,
+        slackMax: Math.round(slackMax),
+        whenClear,
+        pills: pills.length,
+        longPills: document.querySelectorAll('.antu-chr-gap.is-long').length,
+        breaks: document.querySelectorAll('.antu-chr-line.is-break').length,
+        pillHits,
+        zoom: +(parseFloat(document.querySelector('.react-flow__viewport').style.transform.split('scale(')[1])).toFixed(3),
+      }
+    })()`)
+  try {
+    for (const f of files) {
+      const spec = JSON.parse(readFileSync(join(REPO, 'examples/fact', f), 'utf8'))
+      const lang = f.includes('.zh-CN.') ? 'zh' : 'en'
+      const html = join(OUT, 'render-chronicle.html')
+      renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'chronicle' } })
+      await browser.open(`file://${html}?lang=${lang}`)
+      const events = spec.slots.reduce((n, s) => n + (s.events?.length || 0), 0)
+      for (const [label, fields] of [['summary', { summary: true }], ['every field', { summary: true, actors: true, sources: true }]]) {
+        if (label === 'every field') {
+          // Switch parties and sources on through the dock, as a reader would
+          await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].slice(0, 2).forEach((b) => b.click())`, { userGesture: true })
+          await settle()
+        }
+        const g = buildChronicleGraph(spec, fields)
+        const m = await measure()
+        const gaps = g.items.filter((i) => i.gap)
+        eq(`${f} (${label}): one card per event`, m.cards, events)
+        eq(`${f} (${label}): no text outside its card`, m.spill, [])
+        truthy(`${f} (${label}): no card has a blank line under its text`, m.slackMax < CHR.TITLE_LH, `largest gap under the text ${m.slackMax}px`)
+        truthy(`${f} (${label}): the time column is clear of the spine`, m.whenClear)
+        eq(`${f} (${label}): gap pills as the layout says (all / long / dashed)`, [m.pills, m.longPills, m.breaks], [gaps.length, gaps.filter((i) => i.gap.long).length, gaps.filter((i) => i.gap.long).length])
+        eq(`${f} (${label}): no pill sits on a card`, m.pillHits, 0)
+        if (label === 'summary') eq(`${f}: opens at full size (fitted to its width)`, m.zoom, 1)
+      }
+    }
+
+    // Export, on the sample
+    const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
+    const html = join(OUT, 'render-chronicle.html')
+    renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'chronicle' } })
+    await browser.open(`file://${html}?lang=zh`)
+    const external = browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://'))
+    eq('chronicle: external request count', external.length, 0)
+    const kindName = await browser.eval(`document.querySelector('.antu-header')?.textContent || ''`)
+    truthy('chronicle: the label card names the kind', kindName.includes(translate('zh', 'graphKind.chronicle')))
+
+    const { clickByClass, grab } = await downloadHelpers(browser)
+    if (!(await clickByClass('.antu-dock-action'))) bad('chronicle export: the button is not in the bottom dock')
+    else {
+      const shot = await grab('chronicle export')
+      if (shot) {
+        // The page measures its text with the real font, so its height is the page's, not Node's estimate
+        const height = await browser.eval(`Math.max(...[...document.querySelectorAll('.react-flow__node-entry')].map((n) => new DOMMatrix(getComputedStyle(n).transform).m42 + n.offsetHeight))`)
+        const frame = exportFrame(CHR.CONTENT_W, Math.round(height))
+        eq('chronicle export: size = (content + padding) × 2', [shot.width, shot.height], [frame.width * 2, frame.height * 2])
+        writeFileSync(join(OUT, 'export-chronicle.png'), shot.buf)
+      }
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
+/**
+ * The fact time scale (issue #85, kind A), drawn by the browser for every fact example in both
+ * languages and for a dense case made to crowd one lane: one card per card the layout places, no
+ * two cards intersecting, no text outside its card, every gathered event written out under the
+ * diagram; then, on one example, export and zero external requests.
+ */
+async function checkRenderScale(sampleFile) {
+  section('render: fact time scale')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const dense = (() => {
+    const events = []
+    for (let i = 0; i < 4; i++) events.push({ id: `early-${i}`, date: `2030-0${i + 1}-15`, label: `Early event ${i}` })
+    for (let i = 0; i < 25; i++) events.push({ id: `burst-${i}`, date: `2030-08-01T21:10:${String(i * 2).padStart(2, '0')}`, label: `Something happens in the burst, number ${i}` })
+    for (const hm of ['21:30', '22:00', '22:30', '23:00', '23:30']) events.push({ id: `quiet-${hm.replace(':', '')}`, date: `2030-08-01T${hm}`, label: `Quiet at ${hm}` })
+    return { specVersion: 1, type: 'fact', title: 'dense', slots: events.map((e) => ({ events: [e] })) }
+  })()
+  const cases = [
+    ...readdirSync(join(REPO, 'examples/fact'))
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => [f, JSON.parse(readFileSync(join(REPO, 'examples/fact', f), 'utf8')), f.includes('.zh-CN.') ? 'zh' : 'en']),
+    ['dense case', dense, 'en'],
+  ]
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    for (const [name, spec, lang] of cases) {
+      const html = join(OUT, 'render-scale.html')
+      renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'scale' } })
+      await browser.open(`file://${html}?lang=${lang}`)
+      const g = buildScaleGraph(spec, {})
+      const m = await browser.eval(`(() => {
+        const cards = [...document.querySelectorAll('.antu-sc-card')]
+        const rects = cards.map((c) => c.getBoundingClientRect())
+        let hits = 0
+        for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+          const a = rects[i], b = rects[j]
+          if (a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5) hits += 1
+        }
+        const spill = []
+        cards.forEach((c, i) => {
+          const r = rects[i]
+          for (const k of c.children) {
+            if (k.classList.contains('antu-preview')) continue
+            const kr = k.getBoundingClientRect()
+            if (kr.bottom > r.bottom + 0.5 || kr.right > r.right + 0.5 || kr.top < r.top - 0.5) spill.push((c.getAttribute('aria-label') || c.textContent).slice(0, 40))
+          }
+        })
+        return { cards: cards.length, runs: document.querySelectorAll('.antu-sc-run').length, hits, spill, listed: document.querySelectorAll('.antu-sc-list-row').length }
+      })()`)
+      eq(`${name}: one card per card the layout places`, m.cards, g.cards.length)
+      eq(`${name}: gathered runs`, m.runs, g.gathered.length)
+      eq(`${name}: no two cards intersect`, m.hits, 0)
+      eq(`${name}: no text outside its card`, m.spill, [])
+      eq(`${name}: every gathered event is written out under the diagram`, m.listed, g.gathered.reduce((n, r) => n + r.ids.length, 0))
+      if (name === 'dense case') truthy('dense case: the burst is gathered', g.gathered.length > 0)
+    }
+
+    const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
+    const html = join(OUT, 'render-scale.html')
+    renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'scale' } })
+    await browser.open(`file://${html}?lang=zh`)
+    const external = browser.requests.filter((u) => !u.startsWith('data:') && !u.startsWith('file://'))
+    eq('scale: external request count', external.length, 0)
+    truthy('scale: the label card names the kind', (await browser.eval(`document.querySelector('.antu-header')?.textContent || ''`)).includes(translate('zh', 'graphKind.scale')))
+    const { clickByClass, grab } = await downloadHelpers(browser)
+    if (!(await clickByClass('.antu-dock-action'))) bad('scale export: the button is not in the bottom dock')
+    else {
+      const shot = await grab('scale export')
+      if (shot) {
+        // The page measures its titles with the real font, so the height is the page's own
+        const size = await browser.eval(`(() => { const l = document.querySelector('.antu-sc-layer'); const list = document.querySelector('.antu-sc-list'); return { w: l.offsetWidth } })()`)
+        const g = buildScaleGraph(spec, {})
+        eq('scale export: width = (content + padding) × 2', shot.width, exportFrame(g.size.width, 1).width * 2)
+        truthy('scale export: a picture of the diagram', shot.height > 200 && size.w === g.size.width)
+        writeFileSync(join(OUT, 'export-scale.png'), shot.buf)
+      }
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
+
+/**
+ * The reader's own switching of the way of drawing (the label card at the top left), which the checks of each
+ * kind skip because they open the page already in their kind: all the kinds of a few are shown at once, the
+ * click draws the page again in that kind, and the choice is remembered for the diagram.
+ */
+async function checkKindSwitching(sampleFile) {
+  section('render: switching the way of drawing')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const spec = JSON.parse(readFileSync(sampleFile, 'utf8'))
+  const html = join(OUT, 'render-switch.html')
+  renderToFile(spec, { outPath: html, quiet: true })
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  const settle = (ms = 500) => new Promise((r) => setTimeout(r, ms))
+  try {
+    await browser.open(`file://${html}?lang=en`)
+    const opts = () => browser.eval(`[...document.querySelectorAll('.antu-header-segopt')].map((b) => [b.textContent, b.classList.contains('is-on')])`)
+    const first = await opts()
+    eq('switch: the three kinds of a fact diagram are all on show', first.map((o) => o[0]), [translate('en', 'graphKind.timeline'), translate('en', 'graphKind.chronicle'), translate('en', 'graphKind.scale')])
+    eq('switch: it opens in the timeline', first.map((o) => o[1]), [true, false, false])
+    eq('switch: no menu button while all are on show', await browser.eval(`document.querySelectorAll('.antu-header-kind.is-btn').length`), 0)
+    await browser.eval(`document.querySelectorAll('.antu-header-segopt')[1].click()`)
+    await settle()
+    truthy('switch: a click draws the chronicle', (await browser.eval(`document.querySelectorAll('.antu-chr-card').length`)) > 0)
+    eq('switch: the clicked kind is the one raised', (await opts()).map((o) => o[1]), [false, true, false])
+    // The chronicle's legend: one entry per group, each with its mark; a click lights one group up, a second click undoes it
+    const groupIds = (spec.groups ?? []).slice(0, 3).map((g) => g.id)
+    if (groupIds.length > 1) {
+      eq('switch: the legend has one button per group', await browser.eval(`document.querySelectorAll('.antu-chr-legend-item').length`), groupIds.length)
+      eq('switch: the marks in the legend are circle, square, diamond in turn', await browser.eval(`[...document.querySelectorAll('.antu-chr-legend-item .antu-chr-mark')].map((m) => m.className.replace('antu-chr-mark s-', ''))`), ['circle', 'square', 'diamond'].slice(0, groupIds.length))
+      eq('switch: no card carries a group tag', await browser.eval(`document.querySelectorAll('.antu-chr-card .antu-chr-group').length`), 0)
+      const inGroup = (spec.slots ?? []).flatMap((sl) => sl.events).filter((e) => e.groupId === groupIds[0]).length
+      const total = (spec.slots ?? []).flatMap((sl) => sl.events).length
+      await browser.eval(`document.querySelector('.antu-chr-legend-item').click()`)
+      await settle(300)
+      eq('switch: a click on a group fades the cards of the others', await browser.eval(`document.querySelectorAll('.antu-chr-entry.is-dim').length`), total - inGroup)
+      eq('switch: and their marks on the line', await browser.eval(`document.querySelectorAll('.antu-chr-dot.is-dim').length`), total - inGroup)
+      await browser.eval(`document.querySelector('.antu-chr-legend-item').click()`)
+      await settle(300)
+      eq('switch: a second click lights everything again', await browser.eval(`document.querySelectorAll('.antu-chr-entry.is-dim').length`), 0)
+    }
+    await browser.eval(`document.querySelectorAll('.antu-header-segopt')[2].click()`)
+    await settle()
+    truthy('switch: a click draws the time scale', (await browser.eval(`document.querySelectorAll('.antu-sc-card').length`)) > 0)
+    // Remembered for this diagram: opened again, the page is in the time scale
+    await browser.open(`file://${html}?lang=en`, { waitFor: `document.querySelectorAll('.antu-sc-card').length` })
+    eq('switch: the choice is remembered when the page is opened again', (await opts()).map((o) => o[1]), [false, false, true])
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderProcedure(sampleFile) {
   section('render: procedure flowchart')
   if (!findChrome()) {
@@ -2139,6 +2393,9 @@ await checkLingeringChrome()
 if (!shotOnly && !skipBrowser) {
   const profilesBefore = profilesInTmp().length
   if (data.sample) await checkRender(data.sample)
+  if (data.sample) await checkRenderChronicle(data.sample)
+  if (data.sample) await checkRenderScale(data.sample)
+  if (data.sample) await checkKindSwitching(data.sample)
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)

@@ -37,7 +37,7 @@ import {
   listAgentGuides,
   readAgentGuide,
 } from './engine.mjs'
-import { PREVIEW_CHECK, validate, validationMessage, layoutMessage } from '../lib/report.mjs'
+import { PREVIEW_CHECK, kindProblem, validate, validationMessage, layoutMessage } from '../lib/report.mjs'
 import { screenshot, findChrome } from './preview.mjs'
 
 // The version is written once, in package.json (spec/versioning.md)
@@ -47,6 +47,12 @@ const server = new McpServer({ name: 'antu', version: pkg.version })
 
 /** The JSON in the spec is an arbitrarily nested structure; the schema is not redefined here: validation is the engine's job */
 const specArg = z.looseObject({}).describe('the Antu JSON (envelope + content layer; see the spec resources)')
+
+/** A way of drawing the type: the same JSON, drawn another way (the reader switches kind in the label card) */
+const kindArg = z
+  .string()
+  .optional()
+  .describe('which way of drawing (fact: timeline, chronicle or scale); omit it for the default, the first')
 
 
 
@@ -202,10 +208,11 @@ server.registerTool(
       spec: specArg,
       orientation: z.enum(['vertical', 'horizontal']).optional().describe('omit it and the slot-count rule suggests one'),
       summary: z.boolean().optional().describe('fact only: whether the cards show the summary (affects card height, and through it the content size); true by default'),
+      kind: kindArg,
     },
   },
-  async ({ spec, orientation, summary = true }) => {
-    const m = layoutMessage(spec, { orientation, fields: { summary } })
+  async ({ spec, orientation, summary = true, kind }) => {
+    const m = layoutMessage(spec, { orientation, fields: { summary }, kind })
     return m.ok ? OK(m.text) : FAIL(m.text)
   },
 )
@@ -224,14 +231,17 @@ server.registerTool(
     inputSchema: {
       spec: specArg,
       outPath: z.string().optional().describe('output path. Omit it and the file goes to dist-html/<title>.html'),
+      kind: kindArg.describe('which way of drawing the page opens in (fact: timeline, chronicle or scale); the reader can still switch. Omit it for the default, the first'),
     },
   },
-  async ({ spec, outPath }) => {
+  async ({ spec, outPath, kind }) => {
     const errors = validate(spec)
     if (errors.length > 0) {
       return FAIL(`Validation failed; fix these first:\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`)
     }
-    const { path, bytes } = renderHtml(spec, { outPath })
+    const bad = kindProblem(spec, kind)
+    if (bad) return FAIL(bad)
+    const { path, bytes } = renderHtml(spec, { outPath, preset: kind ? { defaultKind: kind } : undefined })
     return OK(`Written: ${path}\nSize: ${Math.round(bytes / 1024)} KB\nDouble-click to open it; no server needed, and it works offline.`)
   },
 )
@@ -253,15 +263,18 @@ server.registerTool(
       actors: z.boolean().optional().describe('whether to show the party labels, false by default'),
       sources: z.boolean().optional().describe('whether to show the source markers, false by default'),
       view: z.number().int().optional().describe('which view to render, 0 by default (the first)'),
+      kind: kindArg,
       width: z.number().int().optional().describe('screenshot width, 1600 by default'),
       height: z.number().int().optional().describe('screenshot height, 900 by default'),
     },
   },
-  async ({ spec, orientation, summary = true, actors = false, sources = false, view = 0, width = 1600, height = 900 }) => {
+  async ({ spec, orientation, summary = true, actors = false, sources = false, view = 0, width = 1600, height = 900, kind }) => {
     const errors = validate(spec)
     if (errors.length > 0) {
       return FAIL(`Validation failed; fix these before previewing:\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`)
     }
+    const bad = kindProblem(spec, kind)
+    if (bad) return FAIL(bad)
     if (!findChrome()) {
       return FAIL('No Chrome/Chromium found on this machine, so no preview is possible. Use antu_layout to judge the geometry for now.')
     }
@@ -272,7 +285,7 @@ server.registerTool(
     const dir = mkdtempSync(join(tmpdir(), 'antu-shot-'))
     const html = join(dir, 'preview.html')
     try {
-      renderHtml(spec, { outPath: html, preset: { orientation, fields: { summary, actors, sources }, viewIndex: view } })
+      renderHtml(spec, { outPath: html, preset: { orientation, fields: { summary, actors, sources }, viewIndex: view, kind } })
       const shot = await screenshot(html, { width, height })
       const kb = Math.round(shot.data.length * 0.75 / 1024)
       return {

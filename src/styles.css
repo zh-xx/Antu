@@ -1193,3 +1193,210 @@
 .antu-jlinks { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
 .antu-jlinks-svg { position: absolute; left: 0; top: 0; overflow: visible; }
 .antu-jlink { transition: opacity .15s; }
+
+/* ---------- fact chronicle (fact/chronicle) ----------
+   Every size here comes from chronicle/layout.js through CSS variables (ChronicleRenderer.jsx):
+   the card height is computed from these line heights, so a second copy of a number would let
+   the text and the card disagree. */
+.react-flow__node-entry:hover { z-index: 10 !important; }
+.antu-chr-entry { position: relative; }
+.antu-chr-when {
+  position: absolute;
+  left: 0;
+  top: var(--antu-chr-pad-y, 10px);
+  text-align: right;
+  font-size: 12px;
+  line-height: var(--antu-chr-when-lh, 18px);
+  color: var(--antu-text-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.antu-chr-when .is-date { font-size: 13px; font-weight: 650; color: var(--antu-text); }
+.antu-chr-when.is-unknown { font-style: italic; color: var(--antu-text-4); }
+/* A neutral card: a grey border all round, no coloured edge (the colour is on the dot and the tag) */
+.antu-chr-card {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  padding: var(--antu-chr-pad-y, 10px) var(--antu-chr-pad-x, 14px);
+  background: #fff;
+  border: 1px solid #d5dce5;
+  border-radius: var(--antu-radius);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  color: var(--antu-text);
+  cursor: pointer;
+  transition: box-shadow .15s ease-out, border-color .15s ease-out;
+}
+.antu-chr-card:hover { box-shadow: 0 4px 14px rgba(15, 23, 42, .10); }
+.antu-chr-card:focus-visible { outline: 2px solid var(--antu-side1); outline-offset: 2px; }
+.react-flow__node.selected .antu-chr-card { border-color: #6d86a8; box-shadow: 0 0 0 3px rgba(47, 111, 237, .16); }
+.antu-chr-title {
+  font-size: var(--antu-chr-title-font, 14px);
+  line-height: var(--antu-chr-title-lh, 20px);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.antu-chr-summary {
+  margin-top: 4px;
+  font-size: var(--antu-chr-summary-font, 12.5px);
+  line-height: var(--antu-chr-summary-lh, 18px);
+  color: var(--antu-text-2);
+  overflow-wrap: anywhere;
+}
+.antu-chr-tags {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+  min-height: var(--antu-chr-tag-lh, 20px);
+  line-height: var(--antu-chr-tag-lh, 20px);
+  font-size: var(--antu-chr-tag-font, 11.5px);
+  color: var(--antu-text-3);
+}
+.antu-chr-tags .antu-actor-tag { line-height: 16px; }
+.antu-chr .antu-preview.right { width: 340px; transform: none; top: 0; }
+
+.antu-chr-spine { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.antu-chr-line { position: absolute; width: 3px; border-radius: 2px; background: #cbd5e1; }
+/* Where a long gap lies the spine is dashed: the story jumps here */
+.antu-chr-line.is-break { background: transparent; border-left: 3px dashed #cbd5e1; width: 0; border-radius: 0; }
+.antu-chr-dot {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1px #cbd5e1;
+}
+.antu-chr-dot.g0 { background: var(--antu-side1); }
+.antu-chr-dot.g1 { background: var(--antu-side2); }
+.antu-chr-dot.g2 { background: var(--antu-axis); }
+/* No date: a hollow dot, the same way a missing source is a hollow dot on the card */
+.antu-chr-dot.is-hollow { background: #fff; border: 2px solid var(--antu-axis); box-shadow: none; }
+.antu-chr-gap {
+  position: absolute;
+  transform: translateY(-50%);
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: #f1f4f8;
+  color: var(--antu-text-3);
+  font-size: 11.5px;
+  line-height: 18px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.antu-chr-gap.is-long { background: #fef3c7; color: #b45309; font-weight: 600; }
+
+.antu-chr-legend { display: flex; gap: 16px; height: 20px; align-items: center; white-space: nowrap; }
+
+/* ---------- fact time scale (fact/scale) ----------
+   Sizes come from scale/layout.js through CSS variables (ScaleRenderer.jsx), as for the chronicle. */
+.react-flow__node-scaleCard:hover,
+.react-flow__node-scaleRun:hover { z-index: 10 !important; }
+.react-flow__node-scaleCard.selected,
+.react-flow__node-scaleRun.selected { z-index: 20 !important; }
+.antu-sc-layer { position: relative; }
+.antu-sc-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.antu-sc-lane {
+  position: absolute;
+  left: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+.antu-sc-lane span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+.antu-sc-lane i { flex: none; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: currentColor; }
+.antu-sc-lane.g0 { color: var(--antu-side1); }
+.antu-sc-lane.g1 { color: var(--antu-side2); }
+.antu-sc-lane.g2 { color: var(--antu-text-3); }
+.antu-sc-lane.g2 i { background: var(--antu-axis); }
+.antu-sc-seg {
+  position: absolute;
+  text-align: center;
+  font-size: 11px;
+  color: var(--antu-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.antu-sc-break {
+  position: absolute;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+  white-space: normal;
+  line-height: 14px;
+}
+.antu-sc-card {
+  position: relative;
+  box-sizing: border-box;
+  height: 100%;
+  padding: var(--antu-sc-pad-y, 8px) var(--antu-sc-pad-x, 10px);
+  background: #fff;
+  border: 1px solid #d5dce5;
+  border-radius: var(--antu-radius);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  color: var(--antu-text);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.antu-sc-card:hover { box-shadow: 0 4px 14px rgba(15, 23, 42, .10); }
+.antu-sc-card:focus-visible { outline: 2px solid var(--antu-side1); outline-offset: 2px; }
+.react-flow__node.selected .antu-sc-card { border-color: #6d86a8; box-shadow: 0 0 0 3px rgba(47, 111, 237, .16); }
+.antu-sc-card.is-undated { border-style: dashed; }
+.antu-sc-run { border-style: dashed; background: #f8fafc; }
+.antu-sc-title {
+  flex: none;
+  font-size: var(--antu-sc-title-font, 12.5px);
+  line-height: var(--antu-sc-title-lh, 17px);
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.antu-sc-time {
+  flex: none;
+  font-size: var(--antu-sc-time-font, 11px);
+  line-height: var(--antu-sc-time-lh, 15px);
+  color: var(--antu-text-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.antu-sc .antu-preview { width: 300px; }
+.antu-sc-run-row { display: flex; gap: 8px; font-size: 12px; line-height: 18px; color: var(--antu-text-2); }
+.antu-sc-run-time { flex: none; color: var(--antu-text-3); font-variant-numeric: tabular-nums; }
+.antu-sc-list { font-size: 12px; line-height: var(--antu-sc-list-lh, 18px); color: var(--antu-text-2); }
+.antu-sc-list-head { font-weight: 600; color: var(--antu-text); }
+.antu-sc-list-row { display: flex; gap: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 18px; }
+
+/* rendering kinds shown all at once (2 to 4 kinds): a segmented row under the type */
+.antu-header-seg { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 8px; padding: 2px; background: #f0f3f7; border-radius: 9px; }
+.antu-header-segopt { flex: 1 1 auto; padding: 3px 9px; border: 0; border-radius: 7px; background: transparent; color: var(--antu-text-3); font-family: inherit; font-size: 11.5px; line-height: 1.6; white-space: nowrap; cursor: pointer; }
+.antu-header-segopt:hover { color: var(--antu-text-2); }
+.antu-header-segopt.is-on { background: #fff; color: var(--antu-text); font-weight: 650; box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
+.antu-header-count { min-width: 14px; padding: 0 4px; border-radius: 7px; background: #dbe2ec; color: var(--antu-text-2); font-size: 10px; line-height: 14px; text-align: center; }
+
+/* group marks on the line and in the legend: the shape says the group (also in black and white), the colour adds to it */
+.antu-chr-dot.s-square { border-radius: 3px; }
+.antu-chr-dot.s-diamond { border-radius: 2px; transform: rotate(45deg) scale(0.82); }
+.antu-chr-dot.is-dim, .antu-chr-entry.is-dim { opacity: 0.22; }
+.antu-chr-mark { display: inline-block; width: 8px; height: 8px; background: currentColor; border-radius: 50%; }
+.antu-chr-mark.s-square { border-radius: 2px; }
+.antu-chr-mark.s-diamond { border-radius: 1px; transform: rotate(45deg) scale(0.85); }
+.antu-chr-legend-item { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border: 1px solid transparent; border-radius: 999px; background: transparent; font-family: inherit; font-size: 12px; line-height: 18px; white-space: nowrap; cursor: pointer; }
+.antu-chr-legend-item:hover { background: #f1f4f8; }
+.antu-chr-legend-item.is-on { border-color: currentColor; background: #fff; font-weight: 650; }
+.antu-chr-legend-item.is-off { opacity: 0.45; }
+.antu-chr-legend-item.g0 { color: var(--antu-side1); }
+.antu-chr-legend-item.g1 { color: var(--antu-side2); }
+.antu-chr-legend-item.g2 { color: var(--antu-text-3); }
+.antu-chr-legend-item.g2 .antu-chr-mark { background: var(--antu-axis); }

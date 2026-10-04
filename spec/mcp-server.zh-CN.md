@@ -66,6 +66,10 @@ agent 和人一样，**看不见自己画出来的东西**。校验全过、几�
 | `antu_render` | 生成自包含 HTML | —— | 不要 |
 | `antu_preview` | 截成 PNG 返回 | 一张图 | **要** |
 
+`antu_layout`、`antu_render`、`antu_preview` 都可以带一个可选的 `kind`：画法（事实图是 `timeline`，
+默认，`chronicle` 大事记，或 `scale` 比例时间轴）。不认识的画法会被拒绝，并列出有哪些画法。`antu_render` 带画法时，
+页面打开就是那种画法，读者仍可切换。
+
 合计 **5.4k token** 就能开工，替掉原先"读 schema 文档 8k + 排布规则 3k + 示例 5k"。
 
 **三个工具互相指路**（按使用顺序成链），agent 不必猜下一步该调什么：

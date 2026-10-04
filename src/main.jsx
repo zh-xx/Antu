@@ -10,6 +10,8 @@ import './styles.css'
 // adding a kind = adding one line in the corresponding register.js.
 import './renderers/index.js'
 import './renderers/fact/timeline/register.js'
+import './renderers/fact/chronicle/register.js'
+import './renderers/fact/scale/register.js'
 import './renderers/procedure/flow/register.js'
 import './renderers/relationship/graph/register.js'
 import './renderers/justification/tree/register.js'
