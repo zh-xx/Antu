@@ -162,6 +162,21 @@ const SKETCH = {
       <path d="M8 14h18M8 22h14M8 30h16M54 14h18M54 22h12M54 30h16" strokeDasharray="1 3" />
     </>
   ),
+  // justification
+  tree: (
+    <>
+      <rect x="26" y="2" width="28" height="9" rx="2" fill={INK} stroke={INK} />
+      <path d="M40 11v5M16 16h48M16 16v5M40 16v5M64 16v5" />
+      <rect x="6" y="21" width="20" height="8" rx="2" fill={TINT} />
+      <rect x="30" y="21" width="20" height="8" rx="2" fill={TINT} />
+      <rect x="54" y="21" width="20" height="8" rx="2" fill={TINT} />
+      <path d="M16 29v5M40 29v5M64 29v5M10 34h12M34 34h12M58 34h12" />
+      <rect x="4" y="38" width="12" height="7" rx="2" />
+      <rect x="18" y="38" width="12" height="7" rx="2" />
+      <rect x="34" y="38" width="12" height="7" rx="2" />
+      <rect x="58" y="38" width="12" height="7" rx="2" />
+    </>
+  ),
 }
 
 export default function KindIcon({ kind }) {
