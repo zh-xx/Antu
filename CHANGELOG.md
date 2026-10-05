@@ -3,9 +3,9 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
-## Unreleased
+## 0.8.0
 
-The look of a diagram is now a theme (#97, #99, #100, #101).
+The look of a diagram is now a theme: three themes, the document theme black and white and the default (#97, #99, #100, #101, #102). The READMEs and several documents are brought up to date (#103, #104, #105).
 
 ### Added
 - **Three themes**: `document` (black and white, square, for print and filing; the default), `modern` (rounded, pale greys) and `legal` (navy, red only for the adverse). Every meaning is also carried without colour, so a black-and-white print reads the same. The reader switches in the label card and the choice is remembered. See [spec/theme.md](spec/theme.md).
@@ -18,6 +18,11 @@ The look of a diagram is now a theme (#97, #99, #100, #101).
 - The label card has a fixed width, so the arrows do not move when the way of drawing changes.
 - The minimap shows the extent of a picture that is drawn only by decoration layers (the route map, the relation path), where it used to be empty.
 - Fact diagrams, time scale: side 2 is drawn as a square and side 1 as a circle, so the sides differ without colour.
+- Pill radius comes from the theme: square in the document theme, rounded in the others.
+- The READMEs (English and Chinese) are restructured and show the sketch of every way of drawing, written out from the page's own sketches (`assets/kinds/`, `node tools/gen/kind-icons.mjs`); a test keeps them complete and current.
+- The architecture, fact rendering, procedure, justification and relationship documents no longer describe the former colours; a page of this release is about 2.3 MB.
+- A site on GitHub Pages is built from the cases in `examples/` (a page for every way of drawing, `tools/gen/pages.mjs`); it is built on every pull request and published from `main`.
+- A test (`test/theme-lock.test.mjs`) fails when a view or the stylesheet writes a colour of its own; the verifier fails when the document theme draws a colour.
 
 ### Breaking
 - None. No field, rule or tool parameter changed; `theme` is new and optional. A page that was fixed to the old colours now opens in the `document` theme unless the reader or the call chooses another.

@@ -1,6 +1,6 @@
 # procedure · Schema v1.1
 
-> Status: **v1.1, confirmed** (sponsor, 2026-09; status line checked against 0.7.0). v1: the five items in §7 were approved exactly as proposed. v1.1 adds the optional rule layer of §11 (contingent clauses written as `rules`, not as branches); every v1 JSON is still valid. The seven real contracts were rewritten with it (§11.4). This is what the implementation follows. Besides the flowchart there is a second way of drawing the same JSON, the route map (§6.1a, implemented as a first attempt).
+> Status: **v1.1, confirmed** (sponsor, 2026-09; status line checked against 0.8.0). v1: the five items in §7 were approved exactly as proposed. v1.1 adds the optional rule layer of §11 (contingent clauses written as `rules`, not as branches); every v1 JSON is still valid. The seven real contracts were rewritten with it (§11.4). This is what the implementation follows. Besides the flowchart there is a second way of drawing the same JSON, the route map (§6.1a, implemented as a first attempt).
 > Names, enum values and requiredness can still move if the renderer turns something up, but a change from here is a schema revision rather than a draft edit.
 > The file keeps the `schema-draft` name for consistency with the fact one (and because the tooling refers to it by that name); the status is what says v1.1.
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (different domain semantics → controlled enum, no new top-level type).
@@ -302,7 +302,7 @@ vote in §7.
 
 ### 4.3 Node shape (`kind`) and result (`outcome`)
 
-**`kind` fixes the shape, `outcome` fixes the colour; the two dimensions do not mix.**
+**`kind` fixes the shape, `outcome` fixes the paint (in every theme a positive outcome is a heavier line and a negative one a dashed line, and the theme adds its colour); the two dimensions do not mix.**
 
 | `kind` | Shape | Used for |
 |---|---|---|
@@ -499,7 +499,7 @@ Done     stages as columns (flow/columns.js): each stage is laid out on its own 
          then shortest, clear of nodes, stage names and labels, a straight run of 11px into every node);
          room reserved for every condition label; back-edge detection (drawn dashed), merging several edges
          into the same target, both orientations; the rules as a table under the diagram
-         (flow/ruleTable.js); the React renderer (six shapes by kind, three colours by outcome,
+         (flow/ruleTable.js); the React renderer (six shapes by kind, three paints by outcome,
          hover / pinned overlay with provenance), nodes sized to their text, stage boxes, the control capsule (§6.2),
          image export
 Not done **placing note nodes** (they take no part in the flow; ELK places them like any
@@ -567,7 +567,7 @@ in 03, 3 edges are merged into 2 links; 01 has 12 back edges recognised, 07 has 
   width; back edges arc round one side of the main line;
 - **Nodes**: `label` is shown, `detail` shows its first line (truncated when it overflows), the
   popover shows the full text and the source;
-- **Shape and colour**: per the mapping in §4.3;
+- **Shape and paint**: per the mapping in §4.3;
 - **Orientation**: vertical (top to bottom, default) / horizontal (left to right). As with fact this
   is a rendering parameter and does not enter the data.
 
@@ -590,7 +590,7 @@ N  ← Party B cannot meet 80% of the staffing need for 3 months running / was i
 **Three, there can be several ends, shown side by side.**
 07 has 9 termination nodes (refund double the deposit / forfeit the deposit / arbitral award /
 damages …), 05 has 4, 01 has 4. Several ends in one layer sit side by side in `edges` order, and
-`outcome`'s colour distinguishes a good result from a bad one.
+`outcome`'s paint distinguishes a good result from a bad one.
 **No merging, no omission**; they really are different endings.
 
 ### 6.1a The second sub-type, `route` (route map; issue #95)
@@ -601,8 +601,8 @@ The main line as one line, left to right, like a route map; where the process lo
 
 - **The line** is the main line, found as the flowchart finds it (edges marked `main`, else the first unconditional edge). Each node on it is a **station** at an even distance (more where branches hang): a step a circle, a decision a diamond, the start a dot, an end a square, a `document` a small page; the ring or square is coloured by `outcome`. The label is written above the line, with the party's name (`actorIds`) over it; `detail` is the tooltip. Stations are never closer than 128 px; a label wraps to at most four lines.
 - **Stages** are bands behind the stations of one stage (a run of stations of one stage is one band; a station with no stage has none).
-- **Hanging**: each other edge out of a station starts a branch below it, boxes one under another with the condition on top. The branch follows the first way on from each box until it reaches (a) an end (the end box, coloured), (b) a station (a dashed line back, an arc under the picture when it is not the station itself or its neighbour), (c) a node already drawn (a merge), or (d) its fourth box, then it says "... and N more". The other ways out of a hanging box are not followed and are counted.
-- **Arcs** under the hanging branches: an edge between two stations that is not along the line: a loop back (dashed red) or a jump ahead (grey). The condition is on the arc.
+- **Hanging**: each other edge out of a station starts a branch below it, boxes one under another with the condition on top. The branch follows the first way on from each box until it reaches (a) an end (the end box, drawn by its outcome), (b) a station (a dashed line back, an arc under the picture when it is not the station itself or its neighbour), (c) a node already drawn (a merge), or (d) its fourth box, then it says "... and N more". The other ways out of a hanging box are not followed and are counted.
+- **Arcs** under the hanging branches: an edge between two stations that is not along the line: a loop back (dashed) or a jump ahead (grey). The condition is on the arc.
 - **Left out, and said so**: nodes that no branch reached (an end reached only through a rule is one), branches not followed, and the number of rules (the flowchart's table lists them). So every node is on the picture or listed under it.
 - A long main line makes a wide picture; it opens at a readable zoom (not below 0.8) from the left and the reader scrolls sideways.
 
@@ -807,7 +807,7 @@ of §8, "it fits", tested expressiveness, not whether the encoding is right or d
 | `when` | ✅ | the trigger; an array means "any one of these" |
 | `then` | ✅ | the consequence, amounts included |
 | `stageIds` | ❌ | the stages it applies in; omitted = throughout. **One rule covers all its stages, never one copy per stage** |
-| `outcome` | ❌ | colour, as on nodes |
+| `outcome` | ❌ | paint, as on nodes |
 | `endId` | ❌ | only if it ends the contract: the `end` node it leads to |
 | `sourceIds` | ❌ | the clause it rests on |
 

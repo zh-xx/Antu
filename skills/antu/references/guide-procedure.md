@@ -49,7 +49,7 @@ kind     shape:   start     pill, where the flow begins
                   end       double-bordered pill, where the flow stops
                   document  box with a wavy bottom, a paper produced
                   note      folded sheet, an explanation outside the flow
-outcome  colour:  positive (green) / negative (red) / neutral (grey, default)
+outcome  paint:   positive (heavier line) / negative (dashed line) / neutral (plain, default); the theme adds colour
 ```
 
 `outcome` is what the result means ("contract performed" positive, "terminated" negative).
