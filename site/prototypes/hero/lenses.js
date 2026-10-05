@@ -48,10 +48,10 @@ function reading(pg = paper, beam = '#beam') {
   const pr = pg.getBoundingClientRect()
   pg.querySelectorAll('h2,.meta,h3,p,li,.court,.ttl,.no').forEach((e) => {
     const y = e.getBoundingClientRect().top - pr.top
-    e.animate([{ opacity: 0.12 }, { opacity: 1 }], { duration: 350, delay: 200 + (y / pr.height) * 1300, fill: 'both' })
+    e.animate([{ opacity: 0.12 }, { opacity: 1 }], { duration: 280, delay: 120 + (y / pr.height) * 850, fill: 'both' })
   })
-  $(beam).animate([{ top: '-70px', opacity: 1 }, { top: pr.height - 60 + 'px', opacity: 0 }], { duration: 1500, delay: 200, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'both' }).onfinish = () => ($(beam).style.opacity = 0)
-  return wait(1800)
+  $(beam).animate([{ top: '-70px', opacity: 1 }, { top: pr.height - 60 + 'px', opacity: 0 }], { duration: 1000, delay: 120, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'both' }).onfinish = () => ($(beam).style.opacity = 0)
+  return wait(1150)
 }
 
 // colours that follow the light / dark mode
@@ -62,49 +62,21 @@ const paperAway = () => (paper.classList.add('melt'), [
   paper.animate([{ backgroundColor: tok('paper'), boxShadow: tok('paper-shadow') }, { backgroundColor: 'rgba(0,0,0,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 100, fill: 'both', easing: ease }),
 ])
 
-// the camera on the judgment: the paper is moved and scaled so that the given lines fill the stage
-let cam = { z: 1, tx: 0, ty: 0 }
-function zoomTo(els, ms) {
-  const pr = paper.getBoundingClientRect(), rs = els.map((e) => e.getBoundingClientRect())
-  const x1 = Math.min(...rs.map((r) => r.left)), y1 = Math.min(...rs.map((r) => r.top)), x2 = Math.max(...rs.map((r) => r.right)), y2 = Math.max(...rs.map((r) => r.bottom))
-  const R = { x: (x1 - pr.left) / cam.z, y: (y1 - pr.top) / cam.z, w: (x2 - x1) / cam.z, h: (y2 - y1) / cam.z }
-  const W = stage.clientWidth, H = stage.clientHeight
-  const z = Math.min(W * 0.84 / R.w, H * 0.8 / R.h, 2.3)
-  const next = { z, tx: W / 2 - paper.offsetLeft - z * (R.x + R.w / 2), ty: H / 2 - paper.offsetTop - z * (R.y + R.h / 2) }
-  const T = (c) => `translate(${c.tx}px,${c.ty}px) scale(${c.z})`
-  paper.animate([{ transform: T(cam) }, { transform: T(next) }], { duration: ms, easing: 'cubic-bezier(.6,0,.25,1)', fill: 'forwards' })
-  cam = next
-  return wait(ms)
-}
 // the highlighter goes over each sentence, then the date and the event's name in it are marked
 async function sweep(lis, alive) {
   for (const li of lis) {
     if (!alive()) return
     li.classList.add('hl')
-    setTimeout(() => alive() && li.classList.add('pick'), 380)
-    await wait(240)
+    setTimeout(() => alive() && li.classList.add('pick'), 260)
+    await wait(110)
   }
-  await wait(520)
+  await wait(450)
 }
 
 async function toTimeline(alive) {
   const L = timeline(), lis = $$('#bul li')
-  cam = { z: 1, tx: 0, ty: 0 }
-  // move in on the account, page by page, and mark what the timeline takes from each sentence
-  const mid = paper.getBoundingClientRect().left + paper.getBoundingClientRect().width / 2
-  const leftLis = lis.filter((li) => li.getBoundingClientRect().left < mid), rightLis = lis.filter((li) => !leftLis.includes(li))
-  await zoomTo(leftLis, 1000)
-  if (!alive()) return
-  await sweep(leftLis, alive)
-  if (!alive()) return
-  await zoomTo(rightLis, 900)
-  if (!alive()) return
-  await sweep(rightLis, alive)
-  if (!alive()) return
-  // back to the whole spread, so every sentence is in sight when it leaves
-  paper.animate([{ transform: `translate(${cam.tx}px,${cam.ty}px) scale(${cam.z})` }, { transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.6,0,.25,1)', fill: 'forwards' })
-  cam = { z: 1, tx: 0, ty: 0 }
-  await wait(950)
+  // mark what the timeline takes from each sentence
+  await sweep(lis, alive)
   if (!alive()) return
   // each sentence becomes its own object; the two marked pieces of it fly to their places on the card
   const acts = D.events.map((e, i) => {
@@ -113,7 +85,7 @@ async function toTimeline(alive) {
       { left: A.x + 'px', top: A.y + 'px', width: A.w + 'px', height: A.h + 'px', backgroundColor: 'transparent' })
     const words = ['dt', 'lb'].map((k) => {
       const src = li.querySelector('.' + k), r = rel(src.getClientRects().length ? { getBoundingClientRect: () => src.getClientRects()[0] } : src)
-      const fs = parseFloat(getComputedStyle(src).fontSize) * cam.z
+      const fs = parseFloat(getComputedStyle(src).fontSize)
       const w = el('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
       return { w, r, fs, to: k === 'dt' ? '.t' : '.l' }
     })
@@ -121,7 +93,7 @@ async function toTimeline(alive) {
   })
   // the words land on the lines of the card where they are written
   acts.forEach((o, i) => {
-    const d = i * 70
+    const d = i * 45
     o.words.forEach((w) => {
       const t = o.a.querySelector(w.to), tfs = parseFloat(getComputedStyle(t).fontSize)
       const tx = o.B.x + t.offsetLeft + o.a.querySelector('.face').offsetLeft, ty = o.B.y + t.offsetTop
@@ -132,7 +104,7 @@ async function toTimeline(alive) {
         { transform: `translate(${(tx - w.r.x) * 0.5}px,${(ty - w.r.y) * 0.5 - 30}px) scale(${(1 + k) / 2})`, opacity: 1, offset: 0.5 },
         { transform: `translate(${tx - w.r.x}px,${ty - w.r.y}px) scale(${k})`, opacity: 1, offset: 0.92 },
         { transform: `translate(${tx - w.r.x}px,${ty - w.r.y}px) scale(${k})`, opacity: 0 },
-      ], { duration: 1150, delay: d, easing: ease, fill: 'both' })
+      ], { duration: 850, delay: d, easing: ease, fill: 'both' })
     })
   })
   paperAway()
@@ -142,15 +114,15 @@ async function toTimeline(alive) {
     show(h, 500, 600 + k * 80)
   })
   const ax = el('div', 'vaxis', null, { left: L.axisX + 'px', top: L.top - 8 + 'px', height: L.bottom - L.top + 12 + 'px' })
-  ax.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 1500, delay: 350, easing: ease, fill: 'both' })
+  ax.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 1000, delay: 200, easing: ease, fill: 'both' })
   acts.forEach((o, i) => {
-    const d = i * 70, B = o.B
+    const d = i * 45, B = o.B
     o.a.animate([
       { left: o.A.x + 'px', top: o.A.y + 'px', width: o.A.w + 'px', height: o.A.h + 'px', backgroundColor: 'rgba(240,200,180,0)', borderRadius: '2px', boxShadow: 'none', opacity: 1 },
       { backgroundColor: tok('panel'), opacity: 0.35, offset: 0.4 },
       { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px', height: B.h + 'px', backgroundColor: tok('panel'), borderRadius: '8px', boxShadow: SH_B(), opacity: 1 },
-    ], { duration: 1100, delay: d, easing: ease, fill: 'both' })
-    o.a.querySelector('.face').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: d + 1040, fill: 'both' })
+    ], { duration: 850, delay: d, easing: ease, fill: 'both' })
+    o.a.querySelector('.face').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: d + 780, fill: 'both' })
     // a card of one party is joined to the axis by a short line, with a dot where it meets the axis
     if (B.side) {
       const x1 = B.side < 0 ? B.x + B.w : L.axisX, x2 = B.side < 0 ? L.axisX : B.x
@@ -160,8 +132,10 @@ async function toTimeline(alive) {
       show(dot, 200, d + 1200)
     }
   })
-  await wait(12 * 70 + 1400)
+  await wait(12 * 45 + 1000)
   $$('.wordfly').forEach((w) => w.remove())
+  // keep the cards as they ended and drop their finished fades (a finished fade can leave a card's text unpainted)
+  $$('.actor .face').forEach((f) => { f.getAnimations().forEach((a) => a.cancel()); f.style.opacity = 1 })
 }
 
 // the relationship graph as Antu lays it out (D.rel), fitted to the stage
@@ -180,8 +154,8 @@ async function toGraph(alive) {
     const r = n.getBoundingClientRect()
     return r.width > 0 && r.bottom <= pr.bottom - 10 && r.top >= pr.top
   })
-  visible.forEach((n, i) => setTimeout(() => alive() && n.classList.add('lit'), (i * 37) % 900))
-  await wait(1300)
+  visible.forEach((n, i) => setTimeout(() => alive() && n.classList.add('lit'), (i * 23) % 550))
+  await wait(800)
   if (!alive()) return
   // the canvas: Antu's drawing, scaled; groups and parties wait for the names
   const layer = el('div', 'relcv', null, { left: f.ox + 'px', top: f.oy + 'px', width: R.size.width + 'px', height: R.size.height + 'px', transform: `scale(${f.k})` })
@@ -215,12 +189,12 @@ async function toGraph(alive) {
     const id = n.dataset.e, from = rel(n), e = R.ents.find((x) => x.id === id), c = P(e.x + e.w / 2, e.y + e.h / 2)
     const m = el('span', 'mv', n.textContent, { left: from.x + 'px', top: from.y + 'px', fontSize: from.h * 0.7 + 'px', color: '#fff', background: '#e8452c', padding: '0 2px', borderRadius: '2px', fontFamily: 'var(--fang)', lineHeight: 1.2 })
     n.classList.remove('lit')
-    const delay = 200 + (i % 24) * 45 + Math.random() * 200
+    const delay = 150 + (i % 24) * 30 + Math.random() * 150
     m.animate([
       { transform: 'translate(0,0) scale(1)', opacity: 1 },
       { transform: `translate(${(c.x - from.x) * 0.5 + (Math.random() - 0.5) * 120}px,${(c.y - from.y) * 0.5 + (Math.random() - 0.5) * 120}px) scale(1.15)`, opacity: 1, offset: 0.5 },
       { transform: `translate(${c.x - from.x - from.w / 2}px,${c.y - from.y - from.h / 2}px) scale(.5)`, opacity: 0 },
-    ], { duration: 1100, delay, easing: ease, fill: 'both' }).onfinish = () => {
+    ], { duration: 900, delay, easing: ease, fill: 'both' }).onfinish = () => {
       m.remove()
       if (!alive()) return
       const box = ents[id]
@@ -229,12 +203,12 @@ async function toGraph(alive) {
       else box.animate([{ boxShadow: '0 0 0 0 rgba(232,69,44,.8)' }, { boxShadow: '0 0 0 9px rgba(232,69,44,0)' }], { duration: 400 })
     }
   })
-  await wait(200 + 24 * 45 + 200 + 1100 + 200)
+  await wait(150 + 24 * 30 + 150 + 900 + 100)
   if (!alive()) return
   for (const e of R.ents) if (!got[e.id]) ents[e.id].animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, fill: 'both' })
   // the relations draw themselves, along Antu's own routes
   R.links.forEach((l, i) => {
-    const delay = 100 + i * 150
+    const delay = 80 + i * 100
     const mk = (w, color) => {
       const p = document.createElementNS(SVGNS, 'path')
       p.setAttribute('d', l.d)
@@ -261,15 +235,14 @@ async function toGraph(alive) {
     layer.appendChild(t)
     t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: delay + 550, fill: 'both' })
   })
-  await wait(100 + R.links.length * 150 + 900)
+  await wait(80 + R.links.length * 100 + 700)
 }
 
 function reset() {
-  $$('.jcv,.jcard.ghost,.flowcam,.flowcv,.relcv,.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
+  $$('.jcv,.flowcv,.relcv,.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
   paper.classList.remove('melt')
   $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit', 'hl', 'pick') })
   $$('#paper .rp').forEach((p) => p.classList.remove('hl', 'pick'))
-  cam = { z: 1, tx: 0, ty: 0 }
   paper.getAnimations().forEach((a) => a.cancel())
   const pg = $('#paper2')
   ;[pg, ...pg.querySelectorAll('*')].forEach((e) => e.getAnimations().forEach((a) => a.cancel()))
@@ -337,23 +310,16 @@ function jFit(L, box) {
 }
 
 async function toReasoning(alive) {
-  const R = D.reason, F1 = R.folded, F2 = R.open
-  const paras = $$('#paper .rp'), all = [$('#yrw'), ...paras]
-  cam = { z: 1, tx: 0, ty: 0 }
-  // move in on the court's view; the highlighter goes over each paragraph, then marks what the court holds in it
-  await zoomTo(all, 1100)
-  if (!alive()) return
+  const R = D.reason, F1 = R.folded
+  const paras = $$('#paper .rp')
+  // the highlighter goes over each paragraph of the court's view, then marks what the court holds in it
   for (const p of paras) {
     if (!alive()) return
     p.classList.add('hl')
-    if (p.classList.contains('has')) setTimeout(() => alive() && p.classList.add('pick'), 380)
-    await wait(330)
+    if (p.classList.contains('has')) setTimeout(() => alive() && p.classList.add('pick'), 260)
+    await wait(170)
   }
-  await wait(700)
-  if (!alive()) return
-  paper.animate([{ transform: `translate(${cam.tx}px,${cam.ty}px) scale(${cam.z})` }, { transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.6,0,.25,1)', fill: 'forwards' })
-  cam = { z: 1, tx: 0, ty: 0 }
-  await wait(950)
+  await wait(450)
   if (!alive()) return
   // Antu's tree, every issue folded: the marked words fly to their cards
   const f1 = jFit(F1), A = jLayer(F1, f1)
@@ -367,7 +333,7 @@ async function toReasoning(alive) {
     const w = el('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
     const cx = f1.ox + (n.x + n.w / 2) * f1.k, cy = f1.oy + (n.y + n.h / 2) * f1.k
     const k = Math.min((n.w - 24) * f1.k / w.offsetWidth, 13 * f1.k / fs, 1.4)
-    const tx = cx - r.x - (w.offsetWidth * k) / 2, ty = cy - r.y - (r.h * k) / 2, d = 200 + i * 110
+    const tx = cx - r.x - (w.offsetWidth * k) / 2, ty = cy - r.y - (r.h * k) / 2, d = 100 + i * 80
     w.animate([
       { transform: 'translate(0,0) scale(1)', opacity: 1 },
       { transform: `translate(${tx * 0.5}px,${ty * 0.5 - 40}px) scale(${(1 + k) / 2})`, opacity: 1, offset: 0.5 },
@@ -376,38 +342,10 @@ async function toReasoning(alive) {
     ], { duration: 1150, delay: d, easing: ease, fill: 'both' })
     A.cards[id].animate([{ opacity: 0, transform: 'scale(.7)' }, { opacity: 1, transform: 'scale(1.04)', offset: 0.7 }, { opacity: 1, transform: 'none' }], { duration: 420, delay: d + 980, easing: 'ease-out', fill: 'both' })
   })
-  await wait(200 + marked.length * 110 + 1300)
+  await wait(100 + marked.length * 80 + 950)
   if (!alive()) return
   $$('.wordfly').forEach((w) => w.remove())
-  await wait(jLinks(F1, A.svg) + 1400)
-  if (!alive()) return
-  // issue three opens, where it is argued: the cards both trees share move to their new places, the rest of
-  // the issue unfolds around them, and the camera comes round to the open issue
-  const box = F2.groups.find((g) => g.id === R.open_group)
-  const f2 = jFit(F2, { x: box.x - 8, y: box.y - 8, w: box.w + 16, h: box.h + 16 })
-  const B = jLayer(F2, f2)
-  B.layer.style.opacity = 0
-  const scr = (f, n) => ({ x: f.ox + n.x * f.k, y: f.oy + n.y * f.k, w: n.w * f.k, h: n.h * f.k })
-  const shared = F1.nodes.filter((n) => F2.nodes.some((m) => m.id === n.id))
-  const ghosts = shared.map((n) => {
-    const m = F2.nodes.find((x) => x.id === n.id), a = scr(f1, n), b = scr(f2, m)
-    const g = jCard(n)
-    Object.assign(g.style, { left: '0px', top: '0px', transformOrigin: '0 0', zIndex: 6 })
-    stage.appendChild(g)
-    g.classList.add('ghost')
-    g.animate([{ transform: `translate(${a.x}px,${a.y}px) scale(${f1.k})` }, { transform: `translate(${b.x}px,${b.y}px) scale(${f2.k * (m.w / n.w)})` }], { duration: 1300, easing: ease, fill: 'both' })
-    return g
-  })
-  A.layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
-  await wait(1300)
-  if (!alive()) return
-  B.layer.style.opacity = 1
-  ghosts.forEach((g) => g.remove())
-  const fresh = F2.nodes.filter((n) => !shared.some((s) => s.id === n.id)).sort((a, b) => a.x - b.x || a.y - b.y)
-  B.groups.forEach((g) => g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, fill: 'both' }))
-  Object.values(B.cards).forEach((c) => (c.style.opacity = 1))
-  fresh.forEach((n, i) => B.cards[n.id].animate([{ opacity: 0, transform: 'translateX(-14px) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 450, delay: 150 + i * 80, easing: 'ease-out', fill: 'both' }))
-  await wait(jLinks(F2, B.svg, 300, 60) + 300)
+  await wait(jLinks(F1, A.svg, 0, 70))
 }
 
 // ---------- ④ flowchart: a contract; the step named in each clause flies to Antu's own flowchart
@@ -416,7 +354,6 @@ function flowFit() {
   const k = Math.min((W - 24) / F.size.width, (H - 16) / F.size.height, 1.4)
   return { k, ox: (W - F.size.width * k) / 2, oy: (H - F.size.height * k) / 2 }
 }
-const ZF = 1.7
 // outline of one step, as Antu draws its kind: a pill for a start, a double pill for an end, a diamond for a decision
 function flowShape(n) {
   const W = n.w - 2, H = n.h - 2, dash = n.dash ? ` stroke-dasharray="${n.dash}"` : ''
@@ -431,8 +368,8 @@ async function toFlow(alive) {
   const F = D.flow, f = flowFit(), pg = $('#paper2')
   paper.style.opacity = 0
   // the contract comes in, and is read
-  pg.animate([{ opacity: 0, transform: 'translateY(30px)' }, { opacity: 1, transform: 'none' }], { duration: 700, easing: ease, fill: 'both' })
-  await wait(500)
+  pg.animate([{ opacity: 0, transform: 'translateY(30px)' }, { opacity: 1, transform: 'none' }], { duration: 500, easing: ease, fill: 'both' })
+  await wait(300)
   await reading(pg, '#beam2')
   if (!alive()) return
   // the highlighter goes over each sentence that names a step; then the step's name in it is marked
@@ -441,10 +378,10 @@ async function toFlow(alive) {
   for (const x of inDoc) {
     if (!alive()) return
     x.classList.add('hl')
-    setTimeout(() => alive() && x.classList.add('pick'), 320)
-    await wait(170)
+    setTimeout(() => alive() && x.classList.add('pick'), 240)
+    await wait(90)
   }
-  await wait(600)
+  await wait(400)
   if (!alive()) return
   // Antu's canvas
   const layer = el('div', 'flowcv', null, { left: f.ox + 'px', top: f.oy + 'px', width: F.size.width + 'px', height: F.size.height + 'px', transform: `scale(${f.k})` })
@@ -480,7 +417,7 @@ async function toFlow(alive) {
     const fs = parseFloat(getComputedStyle(src).fontSize)
     const w = el('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
     const c = P(n.x + n.w / 2, n.y + n.h / 2), k = Math.min(13 * f.k / fs, 1.2)
-    const tx = c.x - r.x - (r.w * k) / 2, ty = c.y - r.y - (r.h * k) / 2, d = i * 75
+    const tx = c.x - r.x - (r.w * k) / 2, ty = c.y - r.y - (r.h * k) / 2, d = i * 55
     w.animate([
       { transform: 'translate(0,0) scale(1)', opacity: 1 },
       { transform: `translate(${tx * 0.5}px,${ty * 0.5 - 40}px) scale(${(1 + k) / 2})`, opacity: 1, offset: 0.5 },
@@ -489,7 +426,7 @@ async function toFlow(alive) {
     ], { duration: 1150, delay: d, easing: ease, fill: 'both' })
     box[id].animate([{ opacity: 0, transform: 'scale(.7)' }, { opacity: 1, transform: 'scale(1.04)', offset: 0.7 }, { opacity: 1, transform: 'none' }], { duration: 420, delay: d + 980, easing: 'ease-out', fill: 'both' })
   })
-  await wait(F.order.length * 75 + 1400)
+  await wait(F.order.length * 55 + 1000)
   if (!alive()) return
   $$('.wordfly').forEach((w) => w.remove())
   // the links draw themselves along Antu's routes, with their conditions
@@ -503,7 +440,7 @@ async function toFlow(alive) {
     svg.appendChild(p)
     const len = p.getTotalLength()
     p.style.strokeDasharray = `${len} ${len}`
-    p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 500, delay: i * 80, easing: ease, fill: 'both' }).onfinish = () => {
+    p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 450, delay: i * 60, easing: ease, fill: 'both' }).onfinish = () => {
       p.style.strokeDasharray = l.dash || 'none'
       p.setAttribute('marker-end', 'url(#farr)')
     }
@@ -513,39 +450,17 @@ async function toFlow(alive) {
       t.textContent = l.label
       Object.assign(t.style, { left: l.lx + 'px', top: l.ly + 'px', width: l.lw + 'px', height: l.lh + 'px' })
       layer.appendChild(t)
-      t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: i * 80 + 350, fill: 'both' })
+      t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: i * 60 + 300, fill: 'both' })
     }
   })
-  await wait(F.links.length * 80 + 700)
+  await wait(F.links.length * 60 + 500)
   if (!alive()) return
-  // walk the main line: the camera moves in, follows the step that lights up, and pulls back out
-  const W = stage.clientWidth, H = stage.clientHeight
-  const at = (id) => {
-    const n = F.nodes.find((x) => x.id === id), z = ZF
-    const cx = f.ox + (n.x + n.w / 2) * f.k, cy = f.oy + (n.y + n.h / 2) * f.k
-    const tx = W / 2 - cx * z, ty = H / 2 - cy * z
-    return `translate(${tx}px,${ty}px) scale(${z})`
-  }
-  const fcv = stage.querySelector('.flowcv')
-  const wrap = document.createElement('div')
-  wrap.className = 'flowcam'
-  Object.assign(wrap.style, { position: 'absolute', inset: '0', transformOrigin: '0 0', zIndex: 4 })
-  stage.appendChild(wrap)
-  wrap.appendChild(fcv)
-  let now = 'none'
-  for (const [i, id] of F.mainPath.entries()) {
+  // the main line lights up, step by step, in place
+  for (const id of F.mainPath) {
     if (!alive()) return
-    const next = at(id)
-    wrap.animate([{ transform: now }, { transform: next }], { duration: i === 0 ? 1100 : 650, easing: ease, fill: 'forwards' })
-    now = next
-    await wait(i === 0 ? 1000 : 520)
     box[id].classList.add('lit')
-    await wait(i === 0 ? 300 : 180)
+    await wait(110)
   }
-  await wait(500)
-  if (!alive()) return
-  wrap.animate([{ transform: now }, { transform: 'none' }], { duration: 1200, easing: ease, fill: 'forwards' })
-  await wait(1200)
 }
 
 
@@ -576,7 +491,7 @@ const SCENES = {
   justification: async (alive) => { await reading(); if (alive()) await toReasoning(alive) },
 }
 // the thin line under the chosen kind fills while its scene plays
-const SCENE_MS = { fact: 15000, relationship: 7200, procedure: 16000, justification: 17000 }
+const SCENE_MS = { fact: 6500, relationship: 5500, procedure: 6500, justification: 6000 }
 async function play(kind) {
   const me = ++run, alive = () => me === run
   $$('.kind').forEach((k) => {

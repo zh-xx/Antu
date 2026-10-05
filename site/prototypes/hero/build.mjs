@@ -117,8 +117,8 @@ async function relGraph(spec) {
   }
 }
 
-// The 方远 reasoning tree as Antu lays it out (across, where five issues stack under the holding): first with
-// every issue folded, as it opens, then with issue three open. Each card keeps its kind and holds; lines take the
+// The 方远 reasoning tree as Antu lays it out (across, where five issues stack under the holding), every issue
+// folded, as it opens. Each card keeps its kind and holds; lines take the
 // width and dash of their stance from the document theme
 async function reasoning() {
   const j = JSON.parse(read(`${REPO}examples/justification/fang-yuan-defense-excess.zh-CN.json`))
@@ -127,7 +127,6 @@ async function reasoning() {
   const { THEMES } = await vite.ssrLoadModule('/src/theme/themes.js')
   const T = THEMES.document.justify
   const all = j.groups.map((g) => g.id)
-  const OPEN = 'g-3'
   const take = (collapsed) => {
     const g = buildJustificationGraph(j, { collapsed }, undefined, 'horizontal')
     if (g.errors.length) throw new Error(`the reasoning example does not validate: ${g.errors.map((e) => e.message ?? e).join('; ')}`)
@@ -145,10 +144,10 @@ async function reasoning() {
       }),
     }
   }
-  const folded = take(all), open = take(all.filter((x) => x !== OPEN))
+  const folded = take(all)
   const root = j.nodes.find((n) => n.kind === 'conclusion' && !n.groupId)
   const heads = j.links.filter((l) => l.to === root.id).map((l) => j.nodes.find((n) => n.id === l.from))
-  return { folded, open, open_group: OPEN, root: root.id, heads: heads.map((n) => ({ id: n.id, label: n.label })), rootLabel: root.label,
+  return { folded, root: root.id, heads: heads.map((n) => ({ id: n.id, label: n.label })), rootLabel: root.label,
     kinds: { conclusion: '结论', norm: '规范', element: '要件', fact: '事实', inference: '推断', judgement: '评价' }, holds: { yes: '✓ 成立', no: '✗ 否定' } }
 }
 
