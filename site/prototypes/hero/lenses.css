@@ -60,7 +60,7 @@
 .doc s{text-decoration:none;display:block;margin-bottom:24px;width:90px;height:3px;background:#d9d2c3;box-shadow:0 8px 0 #d9d2c3,0 16px 0 #d9d2c3,0 24px 0 #d9d2c3}
 .fn{position:absolute;z-index:6;height:40px;margin-top:-20px;display:flex;align-items:center;justify-content:center;text-align:center;font:600 12.5px/1.25 var(--sans);color:var(--txt);background:#15171b;border:1.4px solid rgba(255,255,255,.6);border-radius:6px;opacity:0;padding:0 8px}
 .fn.k-start,.fn.k-end{border-radius:99px}
-.fn.k-end{box-shadow:0 0 0 3px #0b0c0e,0 0 0 4.4px rgba(255,255,255,.6)}
+.fn.k-end.in{box-shadow:0 0 0 3px #0b0c0e,0 0 0 4.4px rgba(255,255,255,.6)}
 .fn.neg{border-style:dashed}
 .fn.k-decision{background:none;border:none}
 .fn.k-decision:before{content:"";position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;transform:rotate(45deg);border:1.4px solid rgba(255,255,255,.6);background:#15171b;z-index:-1;border-radius:4px}
@@ -71,3 +71,12 @@
 .edges .cond{font:600 11px var(--sans);fill:var(--red)}
 .lx .paper:after{height:22px}
 .fn.k-decision.lit{border:none;box-shadow:none}
+
+.lx .paper2{opacity:0;pointer-events:none}
+.lx .paper2 .meta{margin:0;padding:0;border:0;text-align:center}
+.lx .paper2 .meta:last-of-type{margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #d9d2c3}
+.lx .paper2 p.cl{-webkit-line-clamp:3;font-size:11.5px;line-height:1.55;margin:0 0 4px}
+.sn{border-radius:2px;transition:background .25s,box-shadow .25s}
+.sn.lit{background:#f0d9cf;box-shadow:inset 0 -2px 0 #e8452c}
+.fn.k-decision:before{opacity:0;transition:opacity .35s}
+.fn.k-decision.in:before{opacity:1}

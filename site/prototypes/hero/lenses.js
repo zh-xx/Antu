@@ -64,13 +64,13 @@ function graph() {
 }
 
 // ---------- the scenes
-function reading() {
-  const pr = paper.getBoundingClientRect()
-  $$('.paper h2,.paper .meta,.paper h3,.paper p,#bul li').forEach((e) => {
+function reading(pg = paper, beam = '#beam') {
+  const pr = pg.getBoundingClientRect()
+  pg.querySelectorAll('h2,.meta,h3,p,li').forEach((e) => {
     const y = e.getBoundingClientRect().top - pr.top
     e.animate([{ opacity: 0.12 }, { opacity: 1 }], { duration: 350, delay: 200 + (y / pr.height) * 1300, fill: 'both' })
   })
-  $('#beam').animate([{ top: '-70px', opacity: 1 }, { top: pr.height + 'px', opacity: 1 }], { duration: 1500, delay: 200, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'both' }).onfinish = () => ($('#beam').style.opacity = 0)
+  $(beam).animate([{ top: '-70px', opacity: 1 }, { top: pr.height + 'px', opacity: 1 }], { duration: 1500, delay: 200, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'both' }).onfinish = () => ($(beam).style.opacity = 0)
   return wait(1800)
 }
 
@@ -267,6 +267,10 @@ function reset() {
   $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit') })
   ;[paper, $('#cap'), $('#scene')].forEach((e) => e.getAnimations().forEach((a) => a.cancel()))
   $$('.lens span').forEach((s) => s.classList.remove('on'))
+  const pg = $('#paper2')
+  ;[pg, ...pg.querySelectorAll('*')].forEach((e) => e.getAnimations().forEach((a) => a.cancel()))
+  pg.classList.remove('melt')
+  pg.querySelectorAll('.sn').forEach((x) => x.classList.remove('lit'))
   $('#cap').style.opacity = 0
   lens(-1)
 }
@@ -355,7 +359,7 @@ async function toReasoning(alive) {
 async function toFlow(alive) {
   lens(-1)
   $('#cap').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
-  sceneTag('④ 流程', '另一份文书：合同，变成流程图')
+  sceneTag('④ 流程', '换一份文书：合同条款，变成流程图')
   $$('.rn,.chip,.trunk,.edges').forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(8px)' }], { duration: 600, fill: 'both' }))
   await wait(600)
   $$('.rn,.chip,.trunk,.edges').forEach((e) => e.remove())
@@ -365,22 +369,40 @@ async function toFlow(alive) {
   const cols = Math.max(...Object.values(F.grid).map((g) => g[0])) + 1
   const colW = W / cols, nodeW = Math.min(118, colW - 14)
   const pos = (id) => { const [c, r] = F.grid[id]; return { x: c * colW + colW / 2, y: r === 0 ? H * 0.3 : H * 0.72 } }
-  // the file
-  const doc = el('div', 'doc', `<b>${F.sourceName}</b><s></s><i>${F.sourceFile}</i>`, { left: W / 2 + 'px', top: H / 2 + 'px' })
-  doc.animate([{ opacity: 0, transform: 'translateY(30px) rotate(-4deg)' }, { opacity: 1, transform: 'none' }], { duration: 600, easing: 'ease-out', fill: 'both' })
-  await wait(1100)
+  // the contract comes in, and is read
+  const pg = $('#paper2')
+  pg.animate([{ opacity: 0, transform: 'translateY(40px) scale(.97)' }, { opacity: 1, transform: 'rotateX(2deg) scale(.99)' }], { duration: 700, easing: ease, fill: 'both' })
+  await wait(600)
+  await reading(pg, '#beam2')
   if (!alive()) return
-  // it flies to the start and becomes it; the nodes come up along the flow
-  const start = pos(F.order[0])
-  doc.animate([{ left: W / 2 + 'px', top: H / 2 + 'px', transform: 'scale(1)', opacity: 1 }, { left: start.x + 'px', top: start.y + 'px', transform: 'scale(.3)', opacity: 0 }], { duration: 800, easing: ease, fill: 'both' })
+  // the clause sentences behind the steps light up, one after the other
+  const sents = Object.fromEntries([...pg.querySelectorAll('.sn')].map((x) => [x.dataset.n, x]))
+  for (const [i, id] of F.order.entries()) setTimeout(() => alive() && sents[id].classList.add('lit'), i * 90)
+  await wait(F.order.length * 90 + 400)
+  if (!alive()) return
+  // each sentence turns into its step; the page gives way
   const box = {}
   F.order.forEach((id, i) => {
-    const n = F.nodes[id], p = pos(id)
-    const b = el('div', `fn k-${n.kind}${n.outcome === 'negative' ? ' neg' : ''}`, `<span>${n.label}</span>`, { left: p.x - nodeW / 2 + 'px', top: p.y + 'px', width: nodeW + 'px' })
-    b.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: 600 + i * 110, easing: 'ease-out', fill: 'both' })
+    const n = F.nodes[id], p = pos(id), A = rel(sents[id])
+    const dec = n.kind === 'decision'
+    const w = dec ? 88 : nodeW, h = dec ? 88 : 40
+    const b = el('div', `fn k-${n.kind}${n.outcome === 'negative' ? ' neg' : ''}`, `<span>${n.label}</span>`, { left: A.x + 'px', top: A.y + A.h / 2 + 'px', width: A.w + 'px', height: A.h + 'px', marginTop: -A.h / 2 + 'px', opacity: 1, backgroundColor: 'transparent', borderColor: 'transparent' })
+    const label = b.querySelector('span')
+    label.style.opacity = 0
+    const d = i * 80
+    b.animate([
+      { left: A.x + 'px', top: A.y + A.h / 2 + 'px', width: A.w + 'px', height: A.h + 'px', marginTop: -A.h / 2 + 'px', backgroundColor: 'rgba(240,217,207,0)', borderColor: 'rgba(232,69,44,0)' },
+      { backgroundColor: 'rgba(240,217,207,.9)', borderColor: 'rgba(232,69,44,1)', offset: 0.3 },
+      { left: p.x - w / 2 + 'px', top: p.y + 'px', width: w + 'px', height: h + 'px', marginTop: -h / 2 + 'px', backgroundColor: dec ? 'rgba(21,23,27,0)' : '#15171b', borderColor: dec ? 'rgba(255,255,255,0)' : 'rgba(255,255,255,.6)' },
+    ], { duration: 1100, delay: d, easing: ease, fill: 'both' })
+    label.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: d + 700, fill: 'both' })
+    setTimeout(() => b.classList.add('in'), d + 800)
     box[id] = b
   })
-  await wait(600 + F.order.length * 110)
+  pg.querySelectorAll('h2,.meta,p,.lbl').forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(6px)' }], { duration: 600, delay: 150, fill: 'both' }))
+  pg.animate([{ backgroundColor: '#f4f0e8', boxShadow: '0 30px 80px rgba(0,0,0,.6)' }, { backgroundColor: 'rgba(244,240,232,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 200, fill: 'both', easing: ease })
+  pg.classList.add('melt')
+  await wait(F.order.length * 80 + 1200)
   if (!alive()) return
   // the arrows draw themselves
   const svg = document.createElementNS(SVGNS, 'svg')
@@ -442,7 +464,7 @@ async function toFlow(alive) {
     box[main[i + 1]].classList.add('lit')
   }
   tok.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
-  caption(`<strong>${F.sourceName} → ${F.order.length} 个步骤与判断、${F.edges.length} 条走向</strong>，主线走一遍，分支一目了然。&emsp;示意：由 AI 助手阅读合同并提取，案图负责画图。合同为虚构。`)
+  caption(`<strong>${F.sourceName} ${F.contract.clauses.length} 条条款 → ${F.order.length} 个步骤与判断、${F.edges.length} 条走向</strong>，主线走一遍，分支一目了然。&emsp;示意：由 AI 助手阅读合同并提取，案图负责画图。合同为虚构。`)
   $$('.lens span').forEach((s) => s.classList.add('on'))
 }
 

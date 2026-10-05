@@ -9,7 +9,7 @@
 //  Run:  node site/prototypes/hero/build.mjs
 // ============================================================
 
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const HERE = fileURLToPath(new URL('.', import.meta.url))
@@ -125,7 +125,28 @@ function flowchart() {
   const mainPath = [startId]
   for (;;) { const e = p.edges.find((x) => x.main && x.from === mainPath.at(-1)); if (!e) break; mainPath.push(e.to) }
   const src = p.sources[0]
+  // the contract text: each clause split into sentences; each node takes the first free sentence holding its label
+  const stem = src.loc.file.replace(/\.[^.]+$/, '')
+  const rawName = readdirSync(`${REPO}examples/raw`).find((f) => f.startsWith(`${stem}-`))
+  if (!rawName) throw new Error(`no contract text for ${src.loc.file} in examples/raw/`)
+  const ctext = read(`${REPO}examples/raw/${rawName}`).split('\n')
+  const clauses = ctext.filter((l) => /^第.+条 /.test(l)).map((l) => l.match(/[^。；]+[。；]?/g))
+  const taken = new Set()
+  const sentenceOf = {}
+  for (const n of p.nodes) {
+    let hit = null
+    clauses.forEach((ss, ci) => ss.forEach((s, si) => { if (!hit && !taken.has(`${ci}.${si}`) && s.includes(n.label)) hit = `${ci}.${si}` }))
+    if (!hit) throw new Error(`flow node "${n.label}" is in no sentence of ${rawName}`)
+    taken.add(hit)
+    sentenceOf[hit] = n.id
+  }
+  const contract = {
+    title: ctext[0].replace(/^# /, ''),
+    meta: ctext.filter((l) => l.startsWith('> ')).slice(0, 2).map((l) => l.slice(2)),
+    clauses: clauses.map((ss, ci) => ss.map((s, si) => ({ s, n: sentenceOf[`${ci}.${si}`] }))),
+  }
   return {
+    contract,
     nodes: Object.fromEntries(p.nodes.map((n) => [n.id, { kind: n.kind, label: n.label, outcome: n.outcome }])),
     order: [...p.nodes].sort((a, b) => grid[a.id][1] - grid[b.id][1] || grid[a.id][0] - grid[b.id][0]).map((n) => n.id),
     edges: p.edges.map((e) => ({ from: e.from, to: e.to, condition: e.condition, main: !!e.main })),
@@ -191,6 +212,9 @@ ${read(`${HERE}lenses.css`)}</style></head><body class="lx">
   <h3>本院查明</h3>${facts.map((f) => `<p>${mark(f)}</p>`).join('')}
   <h3>上述事实，另有如下经过：</h3><ul id="bul">${sents.map((b) => `<li>${mark(b)}</li>`).join('')}</ul>
   <h3>本院认为</h3><p id="yrw">${mark(view2)}</p></div>
+ <div class="paper paper2" id="paper2"><span class="lbl">合同 · 虚构</span><div class="beam" id="beam2"></div>
+  <h2>${L.flow.contract.title}</h2>${L.flow.contract.meta.map((m) => `<p class="meta">${m}</p>`).join('')}
+  ${L.flow.contract.clauses.map((ss) => `<p class="cl">${ss.map((x) => (x.n ? `<span class="sn" data-n="${x.n}">${x.s}</span>` : x.s)).join('')}</p>`).join('')}</div>
 </div>
 <div class="bottom"><div class="lens"><span>① 事实 · 时间线</span><span>② 关系 · 关系图</span><span>③ 说理 · 论证图</span><span>④ 流程 · 流程图</span></div><button id="replay">↻ 重播</button></div>
 <p class="cap" id="cap" style="margin-top:1.2vh"></p>

@@ -48,5 +48,15 @@ test('every text in examples/raw/ is used by an example (none is left over)', ()
     const caseNo = (spec.sources ?? []).find((s) => s.type === 'case' && s.loc?.caseNo)?.loc.caseNo
     if (caseNo) used.add(rawOf(caseNo))
   }
+  // a contract text belongs to the flowchart example whose contract source names its file
+  // (采购合同.docx → 采购合同-….md)
+  for (const f of readdirSync('examples/procedure').filter((x) => x.endsWith('.zh-CN.json'))) {
+    const spec = JSON.parse(readFileSync(`examples/procedure/${f}`, 'utf8'))
+    for (const s of spec.sources ?? []) {
+      const stem = s.type === 'contract' && s.loc?.file?.replace(/\.[^.]+$/, '')
+      const raw = stem && rawFiles.find((r) => r.startsWith(`${stem}-`))
+      if (raw) used.add(raw)
+    }
+  }
   for (const r of rawFiles) assert.ok(used.has(r), `${r} belongs to no fact example`)
 })
