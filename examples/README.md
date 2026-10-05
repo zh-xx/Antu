@@ -60,7 +60,7 @@ MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 | 文件（同名前缀） | 节点 / 边 | 阶段 / 条款 | 特点 |
 |---|---|---|---|
 | `01-software-development-contract.*` | 14 / 16 | 5 / 2 | 3 个判定点，3 条整改后复验的回边 |
-| `02-purchase-contract.*` | 12 / 12 | 0 / 0 | 没有阶段和条款的一份，11 层，2 个终点 |
+| `02-purchase-contract.*` | 12 / 12 | 3 / 0 | 最短的一份，没有条款；配有虚构的合同全文（`raw/`），2 个终点 |
 | `03-labour-outsourcing-contract.*` | 9 / 9 | 2 / 7 | 条款最多，其中一条导致合同解除；2 条回边（每月循环） |
 | `04-non-disclosure-agreement.*` | 4 / 3 | 0 / 1 | 最小的一份，没有判定点 |
 | `05-premises-lease.*` | 19 / 19 | 4 / 4 | 14 层，3 个终点，2 条回边 |

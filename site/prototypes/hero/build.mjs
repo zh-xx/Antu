@@ -181,6 +181,7 @@ async function flowchart() {
   const { THEMES } = await vite.ssrLoadModule('/src/theme/themes.js')
   const T = THEMES.document.flow
   const g = buildProcedureGraph(p, {}, undefined, 'horizontal')
+  const stages = (g.stageBoxes ?? []).map((s) => ({ label: s.label, x: s.x, y: s.y, w: s.w, h: s.h }))
   if (g.errors.length) throw new Error(`the procedure example does not validate: ${g.errors.map((e) => e.message ?? e).join('; ')}`)
   const nodes = g.nodes.filter((n) => n.type === 'pnode').map((n) => {
     const k = n.data.node.kind, o = n.data.node.outcome ?? 'neutral', paint = T.outcome[o] ?? T.outcome.neutral
@@ -191,7 +192,7 @@ async function flowchart() {
     const lp = c.kind === 'back' ? T.link.back : c.kind === 'main' ? T.link.main : T.link.plain
     return { id: c.id, from: c.from, to: c.to, kind: c.kind, d: c.dCurve, label: c.label ?? '', lx: c.labelAt?.x, ly: c.labelAt?.y, lw: c.labelSize?.width, lh: c.labelSize?.height, width: lp.width, dash: lp.dash ?? '' }
   })
-  return { contract, size: g.size, nodes, links, mainPath, order: [...nodes].sort((a, b) => a.x - b.x || a.y - b.y).map((n) => n.id) }
+  return { contract, size: g.size, stages, nodes, links, mainPath, order: [...nodes].sort((a, b) => a.x - b.x || a.y - b.y).map((n) => n.id) }
 }
 
 {

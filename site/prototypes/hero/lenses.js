@@ -342,7 +342,7 @@ function flowFit() {
   const k = Math.min((W - 24) / F.size.width, (H - 16) / F.size.height, 1.4)
   return { k, ox: (W - F.size.width * k) / 2, oy: (H - F.size.height * k) / 2 }
 }
-const ZF = 2.2
+const ZF = 1.7
 // outline of one step, as Antu draws its kind: a pill for a start, a double pill for an end, a diamond for a decision
 function flowShape(n) {
   const W = n.w - 2, H = n.h - 2, dash = n.dash ? ` stroke-dasharray="${n.dash}"` : ''
@@ -379,6 +379,15 @@ async function toFlow(alive) {
   svg.setAttribute('height', F.size.height)
   svg.innerHTML = '<defs><marker id="farr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 1 L9 5 L0 9 Z" fill="#e8452c"/></marker></defs>'
   layer.appendChild(svg)
+  // Antu's stage bands, under everything
+  F.stages.forEach((st, i) => {
+    const b = document.createElement('div')
+    b.className = 'fstage'
+    Object.assign(b.style, { left: st.x + 'px', top: st.y + 'px', width: st.w + 'px', height: st.h + 'px' })
+    b.innerHTML = `<span>${st.label}</span>`
+    layer.appendChild(b)
+    b.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 300 + i * 150, fill: 'both' })
+  })
   const box = {}
   for (const n of F.nodes) {
     const b = document.createElement('div')
