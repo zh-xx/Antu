@@ -58,7 +58,7 @@ function reading(pg = paper, beam = '#beam') {
     const y = e.getBoundingClientRect().top - pr.top
     e.animate([{ opacity: 0.12 }, { opacity: 1 }], { duration: 350, delay: 200 + (y / pr.height) * 1300, fill: 'both' })
   })
-  $(beam).animate([{ top: '-70px', opacity: 1 }, { top: pr.height + 'px', opacity: 1 }], { duration: 1500, delay: 200, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'both' }).onfinish = () => ($(beam).style.opacity = 0)
+  $(beam).animate([{ top: '-70px', opacity: 1 }, { top: pr.height - 60 + 'px', opacity: 0 }], { duration: 1500, delay: 200, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'both' }).onfinish = () => ($(beam).style.opacity = 0)
   return wait(1800)
 }
 
