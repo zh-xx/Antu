@@ -9,7 +9,8 @@ const stage = $('#stage'), spread = $('#spread'), canvas = $('#canvas')
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
 const ease = 'cubic-bezier(.65,0,.2,1)'
 const PAPER = '#fbf9f4'
-let run = 0, frame = { x: 0, y: 0, k: 1 }, canvasColor = '#f7f8fa'
+let run = 0, frame = { x: 0, y: 0, k: 1 }, bg = '#060708'
+const ZOOM = 3
 
 // ---------- geometry
 function layout() {
@@ -19,6 +20,8 @@ function layout() {
   const k = Math.min(sw / F.w, sh / F.h)
   frame = { x: (sw - F.w * k) / 2, y: (sh - F.h * k) / 2, k }
   Object.assign(canvas.style, { left: frame.x + 'px', top: frame.y + 'px', width: F.w * k + 'px', height: F.h * k + 'px' })
+  // the pictures are laid out ZOOM times larger and scaled down, so moving in close stays sharp
+  Object.assign(canvas.querySelector('.cam').style, { width: F.w * k * ZOOM + 'px', height: F.h * k * ZOOM + 'px', transform: `scale(${1 / ZOOM})` })
 }
 // where an element is on the stage; a paragraph that runs into the next column counts by its first part
 const rel = (el) => {
@@ -34,11 +37,9 @@ function card(scene, id, hot = true) {
   const t = T(scene, id), n = D[scene].nodes[id], k = frame.k
   const a = document.createElement('div')
   a.className = 'actor'
-  Object.assign(a.style, {
-    left: t.x + 'px', top: t.y + 'px', width: t.w + 'px', height: t.h + 'px',
-    backgroundImage: `url(${img(scene, 'full').src})`, backgroundSize: `${F.w * k}px ${F.h * k}px`, backgroundPosition: `${-n.x * k}px ${-n.y * k}px`,
-  })
-  if (hot) a.innerHTML = '<div class="hot"></div>'
+  Object.assign(a.style, { left: t.x + 'px', top: t.y + 'px', width: t.w + 'px', height: t.h + 'px' })
+  a.innerHTML = '<div class="face"></div>' + (hot ? '<div class="hot"></div>' : '')
+  Object.assign(a.firstChild.style, { backgroundImage: `url(${img(scene, 'full').src})`, backgroundSize: `${F.w * k}px ${F.h * k}px`, backgroundPosition: `${-n.x * k}px ${-n.y * k}px` })
   stage.appendChild(a)
   return { a, t, n }
 }
@@ -59,9 +60,10 @@ function fly(o, from, { delay = 0, duration = 1100 } = {}) {
   const t = o.t, n = o.n, k = frame.k
   o.a.style.transform = ''
   o.a.animate([
-    { left: from.x + 'px', top: from.y + 'px', width: from.w + 'px', height: from.h + 'px', backgroundPosition: `${-n.x * k - (from.x - t.x)}px ${-n.y * k - (from.y - t.y)}px` },
-    { left: t.x + 'px', top: t.y + 'px', width: t.w + 'px', height: t.h + 'px', backgroundPosition: `${-n.x * k}px ${-n.y * k}px` },
+    { left: from.x + 'px', top: from.y + 'px', width: from.w + 'px', height: from.h + 'px' },
+    { left: t.x + 'px', top: t.y + 'px', width: t.w + 'px', height: t.h + 'px' },
   ], { duration, delay, easing: ease, fill: 'both' })
+  o.a.firstChild.animate([{ opacity: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1 }], { duration, delay, fill: 'both' })
   const hot = o.a.querySelector('.hot')
   if (hot) hot.animate([{ opacity: 1 }, { opacity: 1, offset: 0.55 }, { opacity: 0 }], { duration, delay, fill: 'both' })
   const w = o.a.querySelector('.words')
@@ -94,12 +96,14 @@ function light(els, step = 70) {
 function toCanvas(doc) {
   const from = rel(spread), to = { x: frame.x, y: frame.y, w: F.w * frame.k, h: F.h * frame.k }
   canvas.style.opacity = 1
-  canvas.animate([{ transform: flipFrom(from, to), backgroundColor: PAPER, borderRadius: '2px' }, { transform: 'none', backgroundColor: canvasColor, borderRadius: '12px' }], { duration: 1000, delay: 200, easing: ease, fill: 'both' })
+  canvas.animate([{ transform: flipFrom(from, to), backgroundColor: PAPER }, { transform: flipFrom(from, to), backgroundColor: PAPER, offset: 0.12 }, { transform: 'none', backgroundColor: bg }], { duration: 1100, delay: 150, easing: ease, fill: 'both' })
   $$('.pg').forEach((p) => p.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, delay: 250, fill: 'both' }))
   doc.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(5px)' }], { duration: 500, fill: 'both' })
 }
 function reveal(scene, at, { delay = 0, duration = 1300 } = {}) {
   const im = img(scene, 'lines')
+  im.classList.add('glow')
+  setTimeout(() => im.classList.remove('glow'), delay + duration + 200)
   const c = at ? `${at.x}px ${at.y}px` : null
   im.animate(c
     ? [{ opacity: 1, clipPath: `circle(0% at ${c})` }, { opacity: 1, clipPath: `circle(140% at ${c})` }]
@@ -110,20 +114,27 @@ async function settle(scene) {
   await wait(380)
   $$('.actor,.chipfly').forEach((e) => e.remove())
 }
-// move in close on one card of the picture, hold, and move back out
-async function pushIn(scene, id, z, hold) {
-  const n = D[scene].nodes[id], k = frame.k, cam = canvas.querySelector('.cam')
-  const cx = (n.x + n.w / 2) * k, cy = (n.y + n.h / 2) * k, W = F.w * k, H = F.h * k
-  const tx = Math.min(0, Math.max(W - W * z, W / 2 - cx * z)), ty = Math.min(0, Math.max(H - H * z, H / 2 - cy * z))
-  const a = cam.animate([{ transform: 'none' }, { transform: `translate(${tx}px,${ty}px) scale(${z})`, offset: 0.35 }, { transform: `translate(${tx}px,${ty}px) scale(${z})`, offset: 0.75 }, { transform: 'none' }], { duration: hold, easing: 'cubic-bezier(.6,0,.3,1)' })
-  await a.finished.catch(() => {})
+// the camera over the pictures: centre on a card at a zoom, or go back to the whole picture
+const cam = () => canvas.querySelector('.cam')
+function camTo(scene, id, z, ms, easing = 'cubic-bezier(.45,0,.35,1)') {
+  const c = cam(), k = frame.k, W = F.w * k, H = F.h * k
+  let to = `scale(${1 / ZOOM})`
+  if (id) {
+    const n = D[scene].nodes[id], cx = (n.x + n.w / 2) * k, cy = (n.y + n.h / 2) * k
+    const tx = Math.min(0, Math.max(W - W * z, W / 2 - cx * z)), ty = Math.min(0, Math.max(H - H * z, H / 2 - cy * z))
+    to = `translate(${tx}px,${ty}px) scale(${z / ZOOM})`
+  }
+  const from = getComputedStyle(c).transform
+  c.getAnimations().forEach((a) => a.cancel())
+  const a = c.animate([{ transform: from }, { transform: to }], { duration: ms, easing, fill: 'forwards' })
+  return a.finished.then(() => { c.style.transform = to; a.cancel() }).catch(() => {})
 }
 
 async function backToDoc(scene, doc) {
   const to = rel(spread), from = { x: frame.x, y: frame.y, w: F.w * frame.k, h: F.h * frame.k }
   for (const w of ['full', 'lines']) img(scene, w).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: 'both' })
   canvas.getAnimations().forEach((a) => a.cancel())
-  canvas.animate([{ transform: 'none', backgroundColor: canvasColor, borderRadius: '12px', opacity: 1 }, { transform: flipFrom(to, from), backgroundColor: PAPER, borderRadius: '2px', opacity: 1 }], { duration: 900, delay: 250, easing: ease, fill: 'both' })
+  canvas.animate([{ transform: 'none', backgroundColor: bg, opacity: 1 }, { transform: flipFrom(to, from), backgroundColor: PAPER, opacity: 1 }], { duration: 900, delay: 250, easing: ease, fill: 'both' })
   await wait(1050)
   $$('.pg').forEach((p) => { p.getAnimations().forEach((a) => a.cancel()) })
   canvas.getAnimations().forEach((a) => a.cancel())
@@ -148,7 +159,10 @@ async function factScene(alive) {
   await wait(250 + cards.length * 60 + 1150)
   if (!alive()) return
   await settle('fact')
-  await pushIn('fact', 'ev-11', 2.1, 3400)
+  await camTo('fact', D.fact.order[0], 3, 1400)
+  await camTo('fact', D.fact.order.at(-1), 3, 5200, 'cubic-bezier(.3,0,.7,1)')
+  await wait(500)
+  await camTo('fact', null, 1, 1300)
   if (!alive()) return
   await backToDoc('fact', doc)
 }
@@ -218,7 +232,10 @@ async function justScene(alive) {
   await wait(D.just.heads.length * 110 + 1100)
   if (!alive()) return
   await settle('just')
-  await wait(2600)
+  await camTo('just', D.just.root, 1.9, 1200)
+  for (const id of D.just.heads) { await camTo('just', id, 1.9, 850); await wait(250) }
+  await camTo('just', null, 1, 1200)
+  await wait(800)
 }
 
 async function flowScene(alive) {
@@ -228,7 +245,7 @@ async function flowScene(alive) {
   const to = rel(spread), from = { x: frame.x, y: frame.y, w: F.w * frame.k, h: F.h * frame.k }
   for (const w of ['full', 'lines']) img('just', w).animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: 'both' })
   canvas.getAnimations().forEach((a) => a.cancel())
-  canvas.animate([{ transform: 'none', backgroundColor: canvasColor, opacity: 1 }, { transform: flipFrom(to, from), backgroundColor: PAPER, opacity: 1 }], { duration: 900, delay: 250, easing: ease, fill: 'both' })
+  canvas.animate([{ transform: 'none', backgroundColor: bg, opacity: 1 }, { transform: flipFrom(to, from), backgroundColor: PAPER, opacity: 1 }], { duration: 900, delay: 250, easing: ease, fill: 'both' })
   await wait(1100)
   canvas.getAnimations().forEach((a) => a.cancel())
   canvas.style.opacity = 0
@@ -252,26 +269,30 @@ async function flowScene(alive) {
   await wait(250 + cards.length * 70 + 1150)
   if (!alive()) return
   await settle('flow')
-  // walk the main line once
+  // walk the main line once: a frame goes from step to step and the camera follows it
   const ring = document.createElement('div')
   ring.className = 'ring'
-  stage.appendChild(ring)
-  const pad = 5
+  cam().appendChild(ring)
+  const K = frame.k * ZOOM, pad = 4 * ZOOM / 2.2
+  const boxOf = (id) => { const n = D.flow.nodes[id]; return { left: n.x * K - pad + 'px', top: n.y * K - pad + 'px', width: n.w * K + pad * 2 + 'px', height: n.h * K + pad * 2 + 'px' } }
   for (const [i, id] of D.flow.mainPath.entries()) {
     if (!alive()) return
-    const t = T('flow', id)
-    const box = { left: t.x - pad + 'px', top: t.y - pad + 'px', width: t.w + pad * 2 + 'px', height: t.h + pad * 2 + 'px' }
-    if (i === 0) { Object.assign(ring.style, box); ring.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 250, fill: 'both' }) }
-    else ring.animate([{ left: ring.style.left, top: ring.style.top, width: ring.style.width, height: ring.style.height }, box], { duration: 300, easing: ease, fill: 'forwards' }).onfinish = () => Object.assign(ring.style, box)
-    await wait(360)
+    const box = boxOf(id)
+    if (i === 0) { Object.assign(ring.style, box); ring.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, fill: 'both' }); await camTo('flow', id, 2.2, 1200); continue }
+    const r = ring.animate([{ left: ring.style.left, top: ring.style.top, width: ring.style.width, height: ring.style.height }, box], { duration: 700, easing: ease, fill: 'forwards' })
+    r.onfinish = () => Object.assign(ring.style, box)
+    await camTo('flow', id, 2.2, 700, ease)
+    await wait(150)
   }
-  ring.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 500, delay: 300, fill: 'both' })
+  ring.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 500, fill: 'both' })
+  await camTo('flow', null, 1, 1300)
   dots('all')
 }
 
 // ---------- running it
 function reset() {
   $$('.actor,.chipfly,.ring').forEach((e) => e.remove())
+  cam().style.transform = `scale(${1 / ZOOM})`
   for (const e of [canvas, spread, ...spread.querySelectorAll('*'), ...canvas.querySelectorAll('img,.cam')]) e.getAnimations().forEach((a) => a.cancel())
   canvas.style.opacity = 0
   $$('.lit').forEach((e) => e.classList.remove('lit'))
@@ -295,7 +316,8 @@ async function start() {
   if (alive()) await flowScene(alive)
 }
 
-// the canvas colour is the colour of Antu's own canvas, read off the picture
+// the page is the colour Antu's canvas takes when its drawing is shown light on dark, so the drawing sits on
+// the page with no box around it; read off one of the pictures
 const probe = new Image()
 probe.onload = () => {
   try {
@@ -304,7 +326,8 @@ probe.onload = () => {
     const g = c.getContext('2d')
     g.drawImage(probe, 0, 0, 4, 4, 0, 0, 4, 4)
     const [r, gg, b] = g.getImageData(1, 1, 1, 1).data
-    canvasColor = `rgb(${r},${gg},${b})`
+    bg = `rgb(${255 - r},${255 - gg},${255 - b})`
+    document.body.style.setProperty('--bg', bg)
   } catch { /* keep the default */ }
 }
 probe.src = img('fact', 'full').src

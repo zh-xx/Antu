@@ -178,10 +178,10 @@ const contractHtml = `
   <p class="fiction">${esc(cmeta.find((l) => l.includes('本文书是虚构的')).replace(/\*\*/g, ''))}</p>`
 // ---- what Antu draws for each, captured from the real engine
 const shots = await captureAll([
-  { name: 'fact', spec: fact, preset: { theme: 'document', orientation: 'horizontal', viewIndex: 0 } },
+  { name: 'fact', spec: fact, preset: { theme: 'document', orientation: 'horizontal', viewIndex: 0 }, dpr: 3 },
   { name: 'rel', spec: relf, preset: { theme: 'document', orientation: 'horizontal' } },
-  { name: 'just', spec: just, preset: { theme: 'document', orientation: 'horizontal', fields: { collapsed: just.groups.map((g) => g.id) } } },
-  { name: 'flow', spec: proc, preset: { theme: 'document', orientation: 'horizontal' } },
+  { name: 'just', spec: just, preset: { theme: 'document', orientation: 'horizontal', fields: { collapsed: just.groups.map((g) => g.id) } }, dpr: 3 },
+  { name: 'flow', spec: proc, preset: { theme: 'document', orientation: 'horizontal' }, dpr: 3 },
 ])
 const need = { fact: events.map((e) => e.id), rel: relf.entities.map((e) => e.id), just: ['c-1', ...just.links.filter((l) => l.to === 'c-1').map((l) => l.from)], flow: proc.nodes.map((n) => n.id) }
 for (const [k, ids] of Object.entries(need)) for (const id of ids) if (!shots[k].nodes[id]) throw new Error(`${k}: Antu drew no card for ${id}`)
@@ -200,7 +200,7 @@ const html = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>案图 · 首页动画草稿</title>
 <style>${read(`${HERE}lenses.css`)}</style></head><body>
-<header class="bar"><span class="logo">案图</span><span class="tagline">一份文书，几张看得见的图</span></header>
+<span class="logo">案图</span><div class="glowlay"></div>
 <main class="stage" id="stage">
  <div class="spread" id="spread"><div class="pg"></div><div class="pg"></div>
   <div class="doc" id="judgment">${judgmentHtml}</div>

@@ -22,8 +22,9 @@ export async function captureAll(jobs) {
   const s = await launchBrowser({ width: FRAME.w, height: FRAME.h })
   const out = {}
   try {
-    await s.cdp('Emulation.setDeviceMetricsOverride', { width: FRAME.w, height: FRAME.h, deviceScaleFactor: 2, mobile: false })
-    for (const { name, spec, preset } of jobs) {
+    for (const { name, spec, preset, dpr = 2 } of jobs) {
+      // pictures a scene moves in close on are taken sharper
+      await s.cdp('Emulation.setDeviceMetricsOverride', { width: FRAME.w, height: FRAME.h, deviceScaleFactor: dpr, mobile: false })
       const file = join(dir, `${name}.html`)
       renderToFile(spec, { outPath: file, quiet: true, preset })
       await s.open(pathToFileURL(file).href + '?lang=zh', { settleMs: 1200 })
