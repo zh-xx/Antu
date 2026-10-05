@@ -173,6 +173,11 @@ what stands behind them: for a loan or guarantee dispute), `matrix` (parties dow
 for "is there any relation between A and B") `equity` (holders above what they hold, the share on each line, and what is held through others), `authority` (control, employment and agency as an organisation chart), `related` (one party and everyone tied to it, as a table to paste into a brief), `path` (the shortest chains of relations between two parties) or `summary` (each camp as one block: for many parties); a procedure diagram is `flow` (the default) or `route` (the main line as one line, with rework drawn as loops and early endings hanging below it). `layout`, `render` and `preview` all
 take it; `render --kind chronicle` makes the page open in the chronicle, and the reader can still switch.
 
+`--theme document|modern|legal` (for `render` and `preview`) sets the look of the picture: `document` is black and white,
+square, for print and filing (the default when nobody chooses); `modern` is rounded and pale; `legal` is navy, with red only
+for the adverse. Only the diagram is themed. Without `--theme` the reader picks one in the page; with it the page is
+fixed to that theme. Nothing in the JSON chooses a theme.
+
 **When it cannot look**, say so; never claim you checked how it looks:
 - `preview` ends with "no Chromium-based browser found" or "no picture could be taken" (exit code 3): there is no
   picture. If the user has a browser somewhere else, `ANTU_CHROME` can point at it.

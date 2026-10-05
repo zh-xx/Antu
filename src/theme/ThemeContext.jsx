@@ -40,6 +40,7 @@ export function themeVars(theme) {
     '--antu-chrome-radius': `${theme.chrome.radius}px`,
     '--antu-capsule-radius': `${theme.chrome.capsule}px`,
     '--antu-chip-radius': `${theme.chrome.chip}px`,
+    '--antu-pill-radius': `${theme.radius.pill}px`,
     '--antu-chrome-bg': theme.chrome.bg,
     '--antu-chrome-bg-pop': theme.chrome.bgPop,
     '--antu-chrome-border': theme.chrome.border,
