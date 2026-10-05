@@ -2236,7 +2236,9 @@ async function checkRenderProcedure(sampleFile) {
     // Hovering a row lights up the stages it applies in
     await browser.eval(`document.querySelector('.antu-rtable-row').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); 1`)
     await new Promise((r) => setTimeout(r, 400))
-    truthy('hovering a rule row lights its stages', (await count('.antu-rtable-row.is-lit')) === 1 && (await browser.eval(`[...document.querySelectorAll('.antu-pstage-box')].some((r) => r.getAttribute('stroke') === ${JSON.stringify(themeOf(DEFAULT_THEME).flow.stageLit.stroke)})`)))
+    // The strokes are read out of the page and compared here, not written into the script the browser runs
+    const strokes = await browser.eval(`[...document.querySelectorAll('.antu-pstage-box')].map((r) => r.getAttribute('stroke'))`)
+    truthy('hovering a rule row lights its stages', (await count('.antu-rtable-row.is-lit')) === 1 && strokes.includes(themeOf(DEFAULT_THEME).flow.stageLit.stroke))
     await browser.eval(`document.querySelector('.antu-rtable-row').dispatchEvent(new MouseEvent('mouseout', { bubbles: true })); 1`)
     await new Promise((r) => setTimeout(r, 400))
     // Issue #21: hovering a row is paint only, so it must not throw a zoomed-in reader back to the overview
