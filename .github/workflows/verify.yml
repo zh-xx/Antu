@@ -114,7 +114,7 @@ jobs:
         env:
           ANTU_REQUIRE_PYTHON: '1'
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: skill-from-this-commit
           path: ${{ runner.temp }}/skill-from-this-commit
