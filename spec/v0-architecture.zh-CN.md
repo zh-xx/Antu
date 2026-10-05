@@ -35,10 +35,10 @@
 
 | type | 表达的内容 | 对应法律思维 | 状态 |
 |---|---|---|---|
-| `relationship` | 谁和谁、以什么角色、存在什么法律关系 | 主体与法律关系界定 | 关系图已可用（schema 暂定） |
-| `fact` | 已发生事实的时间叙事 | 事实认定 | 时间图已可用 |
-| `procedure` | 程序路径与可能分支 | 程序运作 | 流程图已可用 |
-| `justification` | 规范+事实→结论的推理（说理） | 法律论证 | **schema 草案**（`spec/justification/`），尚无实现 |
+| `relationship` | 谁和谁、以什么角色、存在什么法律关系 | 主体与法律关系界定 | 九种画法已可用（schema 暂定） |
+| `fact` | 已发生事实的时间叙事 | 事实认定 | 时间图、大事记、比例时间轴已可用 |
+| `procedure` | 程序路径与可能分支 | 程序运作 | 流程图、路线图已可用 |
+| `justification` | 规范+事实→结论的推理（说理） | 法律论证 | 说理树已可用（schema 草案见 `spec/justification/`） |
 
 **分界备忘：**
 
@@ -157,14 +157,12 @@ fact 的 JSON          ← schema 规定到这一层为止，没有"我是什么
 ```
 JSON (信封) ──> [校验门卫] ──> 按大类路由 ──> 注册表（大类 × 子类）
                                               ├─ relationship
-                                              │    ├─ 子类…
-                                              │    └─ …
+                                              │    └─ graph, focus, chain, matrix, equity, authority, related, path, summary   ← 已做
                                               ├─ fact
-                                              │    ├─ timeline  时间图   ← 已做
-                                              │    └─ （泳道图等，待做）
+                                              │    └─ timeline, chronicle, scale   ← 已做
                                               ├─ procedure
-                                              │    └─ （含泳道式流程，天然对应它的时间流与分支）
-                                              └─ justification（草案）
+                                              │    └─ flow, route   ← 已做
+                                              └─ justification   ← 说理树已做
 ```
 
 - **一个大类 = 一套 schema**；**一个子类 = 一个渲染器**。schema 只规定到大类这一层，
@@ -172,7 +170,7 @@ JSON (信封) ──> [校验门卫] ──> 按大类路由 ──> 注册表�
 - 新增画法 = 注册一个子类渲染器，**核心本体不动**；
 - 底层渲染技术：React Flow（已选定，事实图已在用）。
 - 布局：**各子类自负**，不用统一布局库。事实图的时间图自己算网格（`src/renderers/fact/timeline/grid.js`）；
-  程序图的流程图把每个阶段单独交给 ELK 的分层算法排（elkjs，`src/renderers/procedure/flow/elk.js`），是按实测交叉数在 dagre 与手写排布之间选出的，阶段之间的线由自写的正交寻路走（`flow/router.js`，见 `spec/procedure/schema-draft.zh-CN.md` §6.1）；关系图大概率两者都会复用。
+  程序图的流程图把每个阶段单独交给 ELK 的分层算法排（elkjs，`src/renderers/procedure/flow/elk.js`），是按实测交叉数在 dagre 与手写排布之间选出的，阶段之间的线由自写的正交寻路走（`flow/router.js`，见 `spec/procedure/schema-draft.zh-CN.md` §6.1）；自上而下读的关系图各画法共用一套分层排布（`src/renderers/relationship/layered.js`）和一个线条层（`LineLayerNode.jsx`）。
 - 渲染器内部负责"语义 → React Flow nodes/edges"的翻译（翻译发生在渲染器内，不在规范内）。
 
 ## 6.1 产物形态：一个自包含的 HTML
@@ -220,7 +218,7 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
 ### 已确认
 - [x] 核心不生成 JSON；JSON 生成是 agent 职责
 - [x] 声明式两支柱（规范 + 引擎）
-- [x] 类型按表达目的划分；顶层四类（justification 只有 schema 草案）
+- [x] 类型按表达目的划分；顶层四类，都已有渲染器
 - [x] Source（来源）= 全局溯源机制，不设独立图类型；表达必须可溯源，引用而非复制（零冗余多对多）
 - [x] sources 存放 = 方案 B（图内自带来源副本，单图自洽）；结构化定位字段（loc 按 type 精雕），地基稳定优先
 - [x] 信封层共享；内容层语义独立；公共约定层规则共享

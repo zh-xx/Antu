@@ -61,11 +61,11 @@ Draw one fact specification as a **fixed grid**: rows are time, columns are lane
 - **Cell layer**: draws the underlying rectangles as dashed lines, so that at a glance you can see "the whole diagram is pieced together from rectangles". There is a switch in the control dock, **off by default**.
   One empty column is drawn on each side, to show the margin of the coordinate system.
 - **Colour**: cards are neutral throughout (white background, dark grey border), **no colour by side, and no coloured bar on the left**.
-  The side colours (blue / red) **appear only on the column headings** (there used to be a legend in the left column as well; it duplicated the column headings, so it was deleted).
-  The canvas palette is four greys, lighter at each step: card border `#8291a6` > link `#94a3b8` > axis `#b2c0d0` > grid line `#cbd5e1`.
+  The side colours **appear only on the column headings** (there used to be a legend in the left column as well; it duplicated the column headings, so it was deleted).
+  Every colour of the diagram, the sides, the card border, the link, the axis and the grid line, is the **theme's** (`spec/theme.md`), not a value written here: in the document theme they are all greys, and the two sides are told apart by the words of the headings and, on the time scale, by a circle and a square mark. Earlier versions of this document listed the hex values (blue `#2f6fed` / red `#e5484d`, four greys); those are the old default and no longer exist outside `src/theme/`.
 - **There is no side column, the canvas fills the whole window**, everything else is an overlay on the canvas, four of them in total:
   - **Top left: the label card**. What this diagram is (the JSON `title`), its type, its rendering kind, its size and its time span.
-    It is only a sign, not clickable; the **rendering kind switcher** is on that same row (see §9).
+    It has a fixed width (so the arrows of the picker do not move when a title or a way of drawing changes) and holds the **theme switch** (absent when the page is fixed to a theme). It is not part of the picture: the shell (this card, the dock, zoom, minimap) looks the same in every theme. It is only a sign, not clickable; the **rendering kind switcher** is on that same row (see §9).
   - **Bottom centre: the control dock**. The switches for "how to look at it": view, card fields, direction, underlying grid lines;
     separated off at the far right by a divider is the only **action** in the dock, export image (see §10).
     Why the four kinds of control take four different shapes is in §4.2.
@@ -132,12 +132,7 @@ and whether the line is tall enough and opaque enough (a 1px line you cannot see
 | Header (vertical) | 96 height reserved at the top |
 | Header (horizontal) | 150 width reserved at the left (wider than 96, because the heading text has to fit within one column) |
 | Axis dot diameter | 10 |
-| Side 1 colour | `#2f6fed` |
-| Side 2 colour | `#e5484d` |
-| Card border | `#8291a6` |
-| Link | `#94a3b8` |
-| Axis | `#b2c0d0` |
-| Grid line | `#cbd5e1` |
+| Colours (sides, card border, link, axis, grid line) | the theme's (`src/theme/themes.js`, `spec/theme.md`) |
 
 **The single source for these numbers is `src/renderers/fact/cardGeometry.js`** (`CARD_W`, `CARD_PAD_X`, `CARD_PAD_Y`, `LABEL_FONT`, `SNIPPET_FONT`, `TITLE_LINES`, `cardHeightOf`):
 inner width, font sizes, character limits and card height are all derived there,

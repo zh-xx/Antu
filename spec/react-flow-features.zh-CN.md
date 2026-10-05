@@ -184,6 +184,8 @@ const maxZoom = 3   // 上限只用来防止放大到荒唐的程度
 
 | 现象 | 原因 | 解法 |
 |---|---|---|
+| 只由装饰层画出的图（路线图、关系路径图），缩略图是空的 | 装饰层声明为 1×1，缩略图按声明的尺寸画节点 | 专为缩略图加一个和 `graph.size` 一样大的不可见节点（`Canvas.jsx` 里的 `miniGhost`）；适应视图仍用 `graph.size` |
+| 主题没有进到导出的图片里，或者外壳跟着主题变了 | CSS 变量设在了应用根上：导出只克隆 `.react-flow__viewport`，而外壳会继承根上的变量 | 把主题变量设在 viewport 元素上（`Canvas.jsx`）；导出会复制计算样式，变量跟着走 |
 | MiniMap 一片空白，一个方块都没有 | 节点尺寸是靠 `onNodesChange` 回写到节点对象上的；只传常量数组就没人接 | 节点放进 `useNodesState`，把 `onNodesChange` 交给 React Flow |
 | 0 尺寸的装饰节点整个看不见（连里面的线一起没） | 另一条独立规则：节点没有尺寸就被设成 `visibility: hidden`；装饰层本来就是 0×0，**`onNodesChange` 修不了它** | 在节点对象上写 `1×1`（别写 0×0，理由见下一条） |
 | **画布上「适应视图」按钮点了没反应** | 装饰层写了 `width: 0, height: 0`，节点**永远拿不到 `measured`**；React Flow 只要发现有一个节点没有 `measured`，就把 `nodesInitialized` 判成 false，而 `fitView` 那条队列路径要求它**必须为 true** 才结算 | 装饰层改成 `width: 1, height: 1`：有尺寸所以可见、也能被量到。1×1 对内容边界的影响可以忽略 |

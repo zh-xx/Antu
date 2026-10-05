@@ -35,10 +35,10 @@ The split is by **what the diagram expresses and why** (not by visual shape; vis
 
 | type | What it expresses | The legal thinking behind it | Status |
 |---|---|---|---|
-| `relationship` | Who is involved with whom, in what role, under what legal relationship | Defining the parties and the legal relationship | Graph available (schema provisional) |
-| `fact` | The temporal narrative of facts that have occurred | Finding the facts | Timeline available |
-| `procedure` | The procedural path and its possible branches | How procedure operates | Flowchart available |
-| `justification` | Reasoning (argumentation) from norms plus facts to a conclusion | Legal argumentation | **schema draft** (`spec/justification/`), not implemented |
+| `relationship` | Who is involved with whom, in what role, under what legal relationship | Defining the parties and the legal relationship | Nine ways of drawing available (schema provisional) |
+| `fact` | The temporal narrative of facts that have occurred | Finding the facts | Timeline, chronicle and time scale available |
+| `procedure` | The procedural path and its possible branches | How procedure operates | Flowchart and route map available |
+| `justification` | Reasoning (argumentation) from norms plus facts to a conclusion | Legal argumentation | Reasoning tree available (schema draft in `spec/justification/`) |
 
 **Boundary notes:**
 
@@ -156,20 +156,18 @@ Reason: LLM generation is the bottleneck, the renderer is not. Sacrificing the s
 ```
 JSON (envelope) ──> [validation gate] ──> route by top-level type ──> registry (top-level type × sub-type)
                                               ├─ relationship
-                                              │    ├─ sub-type…
-                                              │    └─ …
+                                              │    └─ graph, focus, chain, matrix, equity, authority, related, path, summary   ← done
                                               ├─ fact
-                                              │    ├─ timeline   ← done
-                                              │    └─ (swimlane etc., to be done)
+                                              │    └─ timeline, chronicle, scale   ← done
                                               ├─ procedure
-                                              │    └─ (including a swimlane-style flow, which maps naturally onto its flow of time and branches)
-                                              └─ justification (deferred)
+                                              │    └─ flow, route   ← done
+                                              └─ justification   ← reasoning tree done
 ```
 
 - **one top-level type = one schema**; **one sub-type = one renderer**. The schema specifies only down to the top-level type, and below it there is no "sub-type" field; for how sub-types divide see §3;
 - adding a way of drawing means registering one sub-type renderer, **with the core itself untouched**;
 - the underlying rendering technology is React Flow (chosen; already in use for the fact diagram).
-- Layout: **each sub-type is on its own**, with no shared layout library. The fact timeline computes its own grid (`src/renderers/fact/timeline/grid.js`); the procedure flowchart lays each stage out on its own with ELK's layered algorithm (elkjs, `src/renderers/procedure/flow/elk.js`), chosen over dagre and the hand-written layout by measured crossings, and routes the links between stages with its own orthogonal router (`flow/router.js`; `spec/procedure/schema-draft.md` §6.1); the relationship diagram will likely reuse both.
+- Layout: **each sub-type is on its own**, with no shared layout library. The fact timeline computes its own grid (`src/renderers/fact/timeline/grid.js`); the procedure flowchart lays each stage out on its own with ELK's layered algorithm (elkjs, `src/renderers/procedure/flow/elk.js`), chosen over dagre and the hand-written layout by measured crossings, and routes the links between stages with its own orthogonal router (`flow/router.js`; `spec/procedure/schema-draft.md` §6.1); the relationship views that read top to bottom share one layered layout (`src/renderers/relationship/layered.js`) and one line layer (`LineLayerNode.jsx`).
 - the renderer is responsible for translating semantics into React Flow nodes/edges (the translation happens inside the renderer, not inside the specification).
 
 ## 6.1 The deliverable: one self-contained HTML file
@@ -216,7 +214,7 @@ The structured locations in `sources` (page 6 of the contract, the case number a
 ### Confirmed
 - [x] The core does not generate JSON; generating JSON is the agent's job
 - [x] Two declarative pillars (specification + engine)
-- [x] Types are divided by what they express; four top-level types (justification deferred)
+- [x] Types are divided by what they express; four top-level types, all with a renderer
 - [x] Source = the global provenance mechanism, not a separate diagram type; every expression must carry its provenance, and reference rather than copy (zero-redundancy many-to-many)
 - [x] Where `sources` live = option B (each diagram carries its own copy of the sources, so one diagram is self-contained); structured location fields (`loc` refined per type), a stable foundation first
 - [x] The envelope is shared; the content layer is semantically independent; the shared conventions are agreed rules

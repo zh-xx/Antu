@@ -57,3 +57,10 @@ Put `"specVersion": 1` in the envelope of every diagram you write (the field tab
 knows for that type). Without it the file is read as the current generation, which is fine today; with it, a file
 written now can still be recognised as older after a later format change. A number higher than the engine
 knows is an error. The rules are in `spec/versioning.md`.
+
+## The look of the page is not for the agent to decide
+
+Nothing in the JSON chooses a theme (`document`, `modern`, `legal`; see `../theme.md`): the same file is shown to
+different readers. Leave `theme` out of `antu_render` / `antu_preview` and `--theme` out of the command line unless
+the user asked for a look; then the reader chooses in the page, and the default is black and white. A preview taken
+with a theme shows only that theme.

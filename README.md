@@ -68,7 +68,9 @@ The diagrams meet the needs of legal work because the specification itself is de
 
 ## Output
 
-One JSON document produces one self-contained HTML file of about 1.9 MB (most of it the layout engine, ELK). Engine and data are both inside the file. It issues no network requests, requires no server, and opens offline. It is suitable for archiving, circulation, and sending as an email attachment.
+One JSON document produces one self-contained HTML file of about 2.3 MB (most of it the layout engine, ELK). Engine and data are both inside the file. It issues no network requests, requires no server, and opens offline.
+
+The same JSON can be drawn in several ways (a picker in the label card) and in three **themes**: `document` (black and white, square, for print and filing; the default), `modern` and `legal` (navy). The reader switches in the page; `--theme` on the command line and `theme` on the MCP tools fix a page to one. Only the diagram is themed. See [spec/theme.md](spec/theme.md). It is suitable for archiving, circulation, and sending as an email attachment.
 
 ## Usage
 

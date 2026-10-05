@@ -232,7 +232,7 @@ server.registerTool(
     title: 'Build the self-contained HTML',
     description:
       'Turn the JSON into one self-contained HTML: the engine and the data both live in the file, with no network and no server. ' +
-      'Double-click to open it, and send it to someone or archive it as it is (about 420 KB). ' +
+      'Double-click to open it, and send it to someone or archive it as it is (about 2.3 MB). ' +
       '**It validates first**, and produces no file if that fails.',
     inputSchema: {
       spec: specArg,
