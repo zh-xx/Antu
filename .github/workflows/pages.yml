@@ -1,0 +1,56 @@
+name: Pages
+
+# The site: one page for every way of drawing, made from the cases in examples/ (tools/gen/pages.mjs), and an index
+# of the sketches. On every pull request it is built (so a change that breaks it is seen before the merge); on main
+# it is also published. Publishing needs Settings → Pages → Source: GitHub Actions, set once by the maintainer.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: pages-${{ github.event.pull_request.number || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the engine
+        run: npm run build:engine
+
+      - name: Make the pages
+        run: node tools/gen/pages.mjs --out _site
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
