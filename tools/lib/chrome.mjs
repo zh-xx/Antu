@@ -423,11 +423,6 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
       return r.result?.value
     },
 
-    /** Send any DevTools command (for the rare caller that needs more than the methods here) */
-    cdp(method, params = {}) {
-      return c.send(method, params)
-    },
-
     /** Base64 of a screenshot (what the MCP preview wants, not written to disk) */
     async screenshotData() {
       const { data } = await c.send('Page.captureScreenshot', { format: 'png' })

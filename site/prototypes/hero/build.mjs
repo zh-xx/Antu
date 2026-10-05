@@ -10,7 +10,6 @@
 // ============================================================
 
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
-import { captureAll } from './capture.mjs'
 import { fileURLToPath } from 'node:url'
 
 const HERE = fileURLToPath(new URL('.', import.meta.url))
@@ -89,131 +88,153 @@ ${body(v.name, v.note)}
 }
 
 // ------------------------------------------------------------
-//  Draft "lenses": a typeset judgment turns into Antu's timeline, its relationship graph and its reasoning
-//  tree; then a typeset contract turns into its flowchart. Each scene ends on what Antu itself draws for
-//  the example (capture.mjs); the build checks that every piece that moves comes from the document.
+//  Draft "lenses": one judgment (the 方远 case), shown as the timeline and then as the relationship graph.
+//  The timeline is all twelve events of the fact file, each matched to its sentence; the graph is the
+//  relationship file, and every highlighted name is a real mention in the judgment.
 // ------------------------------------------------------------
-{
-const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
-// "2032-04-13T11:00：" at the head of a sentence, written the way a judgment writes it
-const cnDate = (s) => s.replace(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?：/, (_, y, m, d, hh, mm) =>
-  `${y}年${+m}月${+d}日${hh ? `${+hh}时${mm === '00' ? '' : `${+mm}分`}` : ''}，`)
-
-const fact = JSON.parse(read(`${REPO}examples/fact/fang-yuan-loan-and-conflict.zh-CN.json`))
-const relf = JSON.parse(read(`${REPO}examples/relationship/fang-yuan-parties.zh-CN.json`))
-const just = JSON.parse(read(`${REPO}examples/justification/fang-yuan-defense-excess.zh-CN.json`))
-const proc = JSON.parse(read(`${REPO}examples/procedure/02-purchase-contract.zh-CN.json`))
-const jtext = read(`${REPO}examples/raw/（2032）示刑终1号-方远案-二审.md`)
-const jl = jtext.split('\n')
-
-// ---- the judgment: each sentence of the account is an event of the fact file
-const sents = jl.filter((l) => l.startsWith('- 20')).map((l) => l.slice(2))
-const events = fact.slots.flatMap((s) => s.events).sort((a, b) => a.date.localeCompare(b.date))
-events.forEach((e, i) => {
-  if (!sents[i]?.startsWith(`${e.date}：${e.label}`)) throw new Error(`sentence ${i + 1} of the judgment does not match event ${e.id}`)
-})
-// every party of the relationship file is named in the judgment; these are the names that light up
-const terms = { 'e-5': ['钟某', '郑某'], 'e-7': ['孟某', '严某', '程某'] }
-const byTerm = {}
-for (const e of relf.entities) {
-  for (const w of terms[e.id] ?? [e.label]) {
-    if (!jtext.includes(w)) throw new Error(`${w} (${e.label}) is never named in the judgment`)
-    byTerm[w] = e.id
+// the 方远 reasoning file, reduced to what a first screen can show: the holding, the five issues with the
+// point the court ruled on for each (and whether it held), and every other node of the issue as one line
+function reasoning() {
+  const j = JSON.parse(read(`${REPO}examples/justification/fang-yuan-defense-excess.zh-CN.json`))
+  const byId = Object.fromEntries(j.nodes.map((n) => [n.id, n]))
+  const root = j.nodes.find((n) => n.kind === 'conclusion' && !n.groupId)
+  const ORDER = ['norm', 'element', 'judgement', 'inference', 'fact', 'conclusion']
+  const issues = j.groups.map((g) => {
+    const link = j.links.find((l) => l.to === root.id && byId[l.from].groupId === g.id)
+    if (!link) throw new Error(`issue ${g.id} has no point linked to the holding`)
+    const head = byId[link.from]
+    const leaves = j.nodes.filter((n) => n.groupId === g.id && n !== head)
+      .sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind))
+      .map((n) => ({ kind: n.kind, label: n.label, holds: n.holds === 'no' ? false : undefined }))
+    return { label: g.label, head: head.label, holds: head.holds !== 'no', against: link.stance === 'against', leaves }
+  })
+  return {
+    root: root.label, issues, nodes: j.nodes.length, links: j.links.length,
+    kinds: { norm: '规范', element: '要件', judgement: '判断', inference: '推论', fact: '事实', conclusion: '结论' },
   }
 }
-const nameRe = new RegExp(Object.keys(byTerm).sort((a, b) => b.length - a.length).join('|'), 'g')
-const mark = (s) => esc(s).replace(nameRe, (w) => `<span class="nm" data-e="${byTerm[w]}">${w}</span>`)
-const meta = Object.fromEntries(jl.filter((l) => l.startsWith('> ')).map((l) => l.slice(2)).flatMap((l) => l.split(' | ')).map((kv) => kv.split('：')).filter((p) => p.length > 1).map(([k, ...v]) => [k, v.join('：')]))
-const viewAt = jl.indexOf('## 本院认为')
-const viewPara = jl[viewAt + 2]
-const closing = jl.slice(viewAt + 3).find((l) => l.trim())
-const fiction = jl.find((l) => l.includes('本文书是虚构的')).slice(2).replace(/\*\*/g, '')
-const judgmentHtml = `
-  <div class="court">${esc(meta['法院'])}</div>
-  <div class="kind">刑事判决书</div>
-  <div class="no">${esc(jl[0].replace(/^# /, ''))}</div>
-  <p class="party">${mark(meta['当事人'])}。</p>
-  <p class="lead"><b>本院查明</b></p>
-  ${jl.filter((l) => /^[一二三四]、/.test(l)).map((l) => `<p>${mark(l)}</p>`).join('')}
-  <p>上述事实，另有如下经过：</p>
-  ${sents.map((s, i) => `<p class="ev" data-id="${events[i].id}">${mark(cnDate(s))}</p>`).join('')}
-  <p id="yrw"><b>本院认为</b>　${mark(viewPara)}</p>
-  <p>${esc(closing)}</p>
-  <p class="fiction">${esc(fiction)}</p>`
 
-// ---- the contract: each step of the flowchart is named, word for word, in a sentence of a clause
-const csrc = proc.sources[0]
-const stem = csrc.loc.file.replace(/\.[^.]+$/, '')
-const craw = readdirSync(`${REPO}examples/raw`).find((f) => f.startsWith(`${stem}-`))
-if (!craw) throw new Error(`no contract text for ${csrc.loc.file} in examples/raw/`)
-const cl = read(`${REPO}examples/raw/${craw}`).split('\n')
-const clauses = cl.filter((l) => /^第.+条 /.test(l)).map((l) => {
-  const [head, ...rest] = l.split('：')
-  return { head, sents: rest.join('：').match(/[^。；]+[。；]?/g) }
-})
-const taken = {}
-for (const n of proc.nodes) {
-  let hit = null
-  clauses.forEach((c, ci) => {
-    const pieces = [c.head + '：' + c.sents[0], ...c.sents.slice(1)]
-    pieces.forEach((s, si) => { if (!hit && !taken[`${ci}.${si}`] && s.includes(n.label)) hit = `${ci}.${si}` })
+// the purchase-contract flow; the file has no positions, so the draft places each node on a small grid here
+// (column, row 0 = the main line, row 1 = the branch) and stops if a node is left out
+function flowchart() {
+  const p = JSON.parse(read(`${REPO}examples/procedure/02-purchase-contract.zh-CN.json`))
+  const grid = { 'n-1': [0, 0], 'n-2': [1, 0], 'n-3': [2, 0], 'n-4': [3, 0], 'n-5': [4, 0], 'n-6': [6, 0], 'n-11': [8, 0],
+    'n-7': [4, 1], 'n-8': [5, 1], 'n-9': [6, 1], 'n-10': [7, 1], 'n-12': [8, 1] }
+  for (const n of p.nodes) if (!grid[n.id]) throw new Error(`flow node ${n.id} has no place on the grid`)
+  const startId = p.nodes.find((n) => n.kind === 'start').id
+  const mainPath = [startId]
+  for (;;) { const e = p.edges.find((x) => x.main && x.from === mainPath.at(-1)); if (!e) break; mainPath.push(e.to) }
+  const src = p.sources[0]
+  // the contract text: each clause split into sentences; each node takes the first free sentence holding its label
+  const stem = src.loc.file.replace(/\.[^.]+$/, '')
+  const rawName = readdirSync(`${REPO}examples/raw`).find((f) => f.startsWith(`${stem}-`))
+  if (!rawName) throw new Error(`no contract text for ${src.loc.file} in examples/raw/`)
+  const ctext = read(`${REPO}examples/raw/${rawName}`).split('\n')
+  const clauses = ctext.filter((l) => /^第.+条 /.test(l)).map((l) => l.match(/[^。；]+[。；]?/g))
+  const taken = new Set()
+  const sentenceOf = {}
+  for (const n of p.nodes) {
+    let hit = null
+    clauses.forEach((ss, ci) => ss.forEach((s, si) => { if (!hit && !taken.has(`${ci}.${si}`) && s.includes(n.label)) hit = `${ci}.${si}` }))
+    if (!hit) throw new Error(`flow node "${n.label}" is in no sentence of ${rawName}`)
+    taken.add(hit)
+    sentenceOf[hit] = n.id
+  }
+  const contract = {
+    title: ctext[0].replace(/^# /, ''),
+    meta: ctext.filter((l) => l.startsWith('> ')).slice(0, 2).map((l) => l.slice(2)),
+    clauses: clauses.map((ss, ci) => ss.map((s, si) => ({ s, n: sentenceOf[`${ci}.${si}`] }))),
+  }
+  return {
+    contract,
+    nodes: Object.fromEntries(p.nodes.map((n) => [n.id, { kind: n.kind, label: n.label, outcome: n.outcome }])),
+    order: [...p.nodes].sort((a, b) => grid[a.id][1] - grid[b.id][1] || grid[a.id][0] - grid[b.id][0]).map((n) => n.id),
+    edges: p.edges.map((e) => ({ from: e.from, to: e.to, condition: e.condition, main: !!e.main })),
+    grid, mainPath, sourceName: src.name, sourceFile: src.loc?.file ?? '',
+  }
+}
+
+{
+  const fact = JSON.parse(read(`${REPO}examples/fact/fang-yuan-loan-and-conflict.zh-CN.json`))
+  const relf = JSON.parse(read(`${REPO}examples/relationship/fang-yuan-parties.zh-CN.json`))
+  const text = read(`${REPO}examples/raw/（2032）示刑终1号-方远案-二审.md`)
+  const lines = text.split('\n')
+  const view = fact.views[0]
+  const side = (ids) => {
+    const one = ids.length > 0 && ids.every((a) => view.side1.actors.includes(a))
+    const two = ids.length > 0 && ids.every((a) => view.side2.actors.includes(a))
+    return one ? 'above' : two ? 'below' : 'mid'
+  }
+  const sents = lines.filter((l) => l.startsWith('- 20')).map((l) => l.slice(2))
+  const events = fact.slots.flatMap((s) => s.events).sort((a, b) => a.date.localeCompare(b.date)).map((e, i) => {
+    if (!sents[i] || !sents[i].startsWith(`${e.date}：${e.label}`)) throw new Error(`sentence ${i + 1} of the judgment does not match event ${e.id}`)
+    return { id: e.id, label: e.label, when: e.date.replace('T', ' '), row: side(e.actorIds) }
   })
-  if (!hit) throw new Error(`flow step "${n.label}" is in no sentence of ${craw}`)
-  taken[hit] = n.id
-}
-const cmeta = cl.filter((l) => l.startsWith('> ')).map((l) => l.slice(2))
-const contractHtml = `
-  <div class="ctitle">${esc(cl[0].replace(/^# /, ''))}</div>
-  <div class="no">${esc(cmeta[0])}</div>
-  ${cmeta[1].split(' | ').map((p) => `<p class="party">${esc(p)}</p>`).join('')}
-  ${clauses.map((c, ci) => {
-    const head = `<b>${esc(c.head.replace(' ', '　'))}</b>　`
-    // the clause head belongs to its first sentence: when that sentence names a step, the head moves with it
-    const body = c.sents.map((s, si) => {
-      const id = taken[`${ci}.${si}`], text = (si === 0 ? head : '') + esc(s)
-      return id ? `<span class="sn" data-n="${id}">${text}</span>` : text
-    }).join('')
-    return `<p class="cl">${body}</p>`
-  }).join('')}
-  <p class="fiction">${esc(cmeta.find((l) => l.includes('本文书是虚构的')).replace(/\*\*/g, ''))}</p>`
-// ---- what Antu draws for each, captured from the real engine
-const shots = await captureAll([
-  { name: 'fact', spec: fact, preset: { theme: 'document', orientation: 'horizontal', viewIndex: 0 }, dpr: 3 },
-  { name: 'rel', spec: relf, preset: { theme: 'document', orientation: 'horizontal' } },
-  { name: 'just', spec: just, preset: { theme: 'document', orientation: 'horizontal', fields: { collapsed: just.groups.map((g) => g.id) } }, dpr: 3 },
-  { name: 'flow', spec: proc, preset: { theme: 'document', orientation: 'horizontal' }, dpr: 3 },
-])
-const need = { fact: events.map((e) => e.id), rel: relf.entities.map((e) => e.id), just: ['c-1', ...just.links.filter((l) => l.to === 'c-1').map((l) => l.from)], flow: proc.nodes.map((n) => n.id) }
-for (const [k, ids] of Object.entries(need)) for (const id of ids) if (!shots[k].nodes[id]) throw new Error(`${k}: Antu drew no card for ${id}`)
-
-const mainPath = [proc.nodes.find((n) => n.kind === 'start').id]
-for (;;) { const e = proc.edges.find((x) => x.main && x.from === mainPath.at(-1)); if (!e) break; mainPath.push(e.to) }
-const L = {
-  frame: { w: 1200, h: 600 },
-  fact: { nodes: shots.fact.nodes, order: need.fact },
-  rel: { nodes: shots.rel.nodes },
-  just: { nodes: shots.just.nodes, root: 'c-1', heads: need.just.slice(1) },
-  flow: { nodes: shots.flow.nodes, order: proc.nodes.map((n) => n.id), mainPath },
-}
-const img = (b64) => `data:image/webp;base64,${b64}`
-const html = `<!doctype html>
+  // the names to light up: each party's label, or its parts when it names several people
+  const terms = { 'e-5': ['钟某', '郑某'], 'e-7': ['孟某', '严某', '程某'] }
+  const entities = relf.entities.map((e) => {
+    const t = terms[e.id] ?? [e.label]
+    const mentions = t.reduce((n, w) => n + (text.split(w).length - 1), 0)
+    if (!mentions) throw new Error(`${e.label} is never named in the judgment`)
+    return { id: e.id, label: e.label, role: e.role, kind: e.kind, terms: t, mentions }
+  })
+  const byTerm = Object.fromEntries(entities.flatMap((e) => e.terms.map((w) => [w, e.id])))
+  const re = new RegExp(Object.keys(byTerm).sort((a, b) => b.length - a.length).join('|'), 'g')
+  const mark = (s) => s.replace(re, (w) => `<span class="nm" data-e="${byTerm[w]}">${w}</span>`)
+  const L = {
+    events,
+    sides: { above: view.side1.label, mid: view.axis.label, below: view.side2.label },
+    sideNote: { above: '方远、梁某', mid: '双方都在场，或无人', below: '钟某、郑某等' },
+    entities,
+    groups: Object.fromEntries(relf.groups.map((g) => [g.id, g.label])),
+    relations: relf.relations.map((r) => ({ id: r.id, from: r.from, to: r.to, kind: r.kind, label: r.label, amount: r.amount })),
+    totalMentions: entities.reduce((n, e) => n + e.mentions, 0),
+    judgmentName: `${lines[0].replace(/^# /, '')} · ${lines[2].replace(/^> /, '').replace('（虚构）', '')}`,
+    reason: reasoning(),
+    flow: flowchart(),
+  }
+  const facts = lines.filter((l) => /^[一二三四]、/.test(l))
+  const view2 = lines[lines.indexOf('## 本院认为') + 2]
+  if (!view2) throw new Error('the judgment has no 本院认为 paragraph')
+  const html = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>案图 · 首页动画草稿</title>
-<style>${read(`${HERE}lenses.css`)}</style></head><body>
-<span class="logo">案图</span><div class="glowlay"></div>
-<main class="stage" id="stage">
- <div class="spread" id="spread"><div class="pg"></div><div class="pg"></div>
-  <div class="doc" id="judgment">${judgmentHtml}</div>
-  <div class="doc" id="contract">${contractHtml}</div>
-  <div class="beam" id="beam"></div></div>
- <div class="canvas" id="canvas"><div class="cam">${Object.keys(shots).map((k) => `<img class="lines" data-k="${k}" src="${img(shots[k].lines)}" alt=""><img class="full" data-k="${k}" src="${img(shots[k].full)}" alt="">`).join('')}</div></div>
-</main>
-<footer class="foot"><div class="dots"><i></i><i></i><i></i><i></i></div>
- <button id="replay" aria-label="重播" title="重播"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button></footer>
+<title>案图 · 首页动画草稿 · 一份判决书，几种图</title>
+<style>${css}
+${read(`${HERE}lenses.css`)}</style></head><body class="lx">
+<header class="nav">
+ <a class="brand" href="#"><b>案图</b><span>Antu</span></a>
+ <div class="case" id="case" aria-live="polite"><span class="case-k" data-i18n="case">当前案例</span><span class="case-v" id="caseName"></span><i class="case-f" data-i18n="fiction">虚构</i></div>
+ <nav class="links">
+  <a href="#how" data-i18n="how">使用方法</a>
+  <a href="https://antu.nervonly.cn/" data-i18n="examples">示例</a>
+  <a class="gh" href="https://github.com/zh-xx/Antu" aria-label="GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a>
+  <span class="lang" role="group" aria-label="语言"><button class="on" data-lang="zh">中</button><button data-lang="en">EN</button></span>
+  <button class="start" id="startBtn" data-i18n="start">开始使用</button>
+ </nav>
+ <div class="pop" id="pop" hidden><b data-i18n="popTitle">交给你的 AI 助手</b><p data-i18n="popBody">复制下面这段话，发给你常用的 AI 助手，它会自己装好案图。</p><pre>（提示词正在整理，下一步放进来）</pre><button disabled data-i18n="copy">复制</button></div>
+</header>
+<section class="hero">
+<div class="top">
+ <div><h1>一份判决书，<br><em>几种看得见的图</em></h1></div>
+ <p class="lede">AI 助手读判决书，案图把事实、关系、说理、流程画成图。每个点，都能回到原文出处。</p>
+</div>
+<div class="stage" id="stage"><div class="scene-tag" id="scene"></div>
+ <div class="paper" id="paper"><span class="lbl">判决书 · 虚构</span><div class="beam" id="beam"></div>
+  <h2>${lines[0].replace(/^# /, '')}</h2><p class="meta">${mark(lines[2].replace(/^> /, ''))}</p>
+  <h3>本院查明</h3>${facts.map((f) => `<p>${mark(f)}</p>`).join('')}
+  <h3>上述事实，另有如下经过：</h3><ul id="bul">${sents.map((b) => `<li>${mark(b)}</li>`).join('')}</ul>
+  <h3>本院认为</h3><p id="yrw">${mark(view2)}</p></div>
+ <div class="paper paper2" id="paper2"><span class="lbl">合同 · 虚构</span><div class="beam" id="beam2"></div>
+  <h2>${L.flow.contract.title}</h2>${L.flow.contract.meta.map((m) => `<p class="meta">${m}</p>`).join('')}
+  ${L.flow.contract.clauses.map((ss) => `<p class="cl">${ss.map((x) => (x.n ? `<span class="sn" data-n="${x.n}">${x.s}</span>` : x.s)).join('')}</p>`).join('')}</div>
+</div>
+<div class="bottom"><div class="lens"><span>① 事实 · 时间线</span><span>② 关系 · 关系图</span><span>③ 说理 · 论证图</span><span>④ 流程 · 流程图</span></div><button id="replay">↻ 重播</button></div>
+<p class="cap" id="cap" style="margin-top:1.2vh"></p>
+</section>
 <script>window.__LENS__ = ${JSON.stringify(L).replace(/</g, '\\u003c')}</script>
 <script>${read(`${HERE}lenses.js`)}</script>
 </body></html>
 `
-writeFileSync(`${HERE}lenses.html`, html)
-console.log(`lenses.html  ${(html.length / 1024).toFixed(0)} KB`)
+  writeFileSync(`${HERE}lenses.html`, html)
+  console.log(`lenses.html  ${html.length} chars  (${events.length} events, ${L.totalMentions} mentions)`)
 }
