@@ -265,7 +265,7 @@ async function toGraph(alive) {
 }
 
 function reset() {
-  $$('.relcv,.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
+  $$('.flowcam,.flowcv,.relcv,.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
   paper.classList.remove('melt')
   $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit', 'hl', 'pick') })
   cam = { z: 1, tx: 0, ty: 0 }
@@ -273,7 +273,7 @@ function reset() {
   const pg = $('#paper2')
   ;[pg, ...pg.querySelectorAll('*')].forEach((e) => e.getAnimations().forEach((a) => a.cancel()))
   pg.classList.remove('melt')
-  pg.querySelectorAll('.sn').forEach((x) => x.classList.remove('lit'))
+  pg.querySelectorAll('.sn').forEach((x) => x.classList.remove('lit', 'hl', 'pick'))
 }
 
 // ---------- ③ reasoning: the court's view becomes the root, the issues branch from it, their reasons hang below
@@ -336,108 +336,135 @@ async function toReasoning(alive) {
   if (!alive()) return
 }
 
-// ---------- ④ flowchart: another document, a contract; it opens into its flow, and a token runs the main line
-async function toFlow(alive) {
+// ---------- ④ flowchart: a contract; the step named in each clause flies to Antu's own flowchart
+function flowFit() {
   const F = D.flow, W = stage.clientWidth, H = stage.clientHeight
-  const cols = Math.max(...Object.values(F.grid).map((g) => g[0])) + 1
-  const colW = W / cols, nodeW = Math.min(118, colW - 14)
-  const pos = (id) => { const [c, r] = F.grid[id]; return { x: c * colW + colW / 2, y: r === 0 ? H * 0.3 : H * 0.72 } }
+  const k = Math.min((W - 24) / F.size.width, (H - 16) / F.size.height, 1.4)
+  return { k, ox: (W - F.size.width * k) / 2, oy: (H - F.size.height * k) / 2 }
+}
+const ZF = 2.2
+// outline of one step, as Antu draws its kind: a pill for a start, a double pill for an end, a diamond for a decision
+function flowShape(n) {
+  const W = n.w - 2, H = n.h - 2, dash = n.dash ? ` stroke-dasharray="${n.dash}"` : ''
+  const st = `class="sh" style="fill:${n.kind === 'start' ? 'var(--chipbg)' : 'var(--panel)'};stroke:var(--nodeline)" stroke-width="${n.width}"${dash}`
+  if (n.kind === 'decision') return `<polygon ${st} points="${n.w / 2},1 ${n.w - 1},${n.h / 2} ${n.w / 2},${n.h - 1} 1,${n.h / 2}"/>`
+  if (n.kind === 'start') return `<rect ${st} x="1" y="1" width="${W}" height="${H}" rx="${H / 2}"/>`
+  if (n.kind === 'end') return `<rect ${st} x="1" y="1" width="${W}" height="${H}" rx="${H / 2}"/><rect fill="none" style="stroke:var(--nodeline)" stroke-width="1" x="5" y="5" width="${W - 8}" height="${H - 8}" rx="${(H - 8) / 2}"/>`
+  return `<rect ${st} x="1" y="1" width="${W}" height="${H}" rx="6"/>`
+}
+
+async function toFlow(alive) {
+  const F = D.flow, f = flowFit(), pg = $('#paper2')
+  paper.style.opacity = 0
   // the contract comes in, and is read
-  const pg = $('#paper2')
-  pg.animate([{ opacity: 0, transform: 'translateY(40px) scale(.97)' }, { opacity: 1, transform: 'rotateX(2deg) scale(.99)' }], { duration: 700, easing: ease, fill: 'both' })
-  await wait(600)
+  pg.animate([{ opacity: 0, transform: 'translateY(30px)' }, { opacity: 1, transform: 'none' }], { duration: 700, easing: ease, fill: 'both' })
+  await wait(500)
   await reading(pg, '#beam2')
   if (!alive()) return
-  // the clause sentences behind the steps light up, one after the other
-  const sents = Object.fromEntries([...pg.querySelectorAll('.sn')].map((x) => [x.dataset.n, x]))
-  for (const [i, id] of F.order.entries()) setTimeout(() => alive() && sents[id].classList.add('lit'), i * 90)
-  await wait(F.order.length * 90 + 400)
+  // the highlighter goes over each sentence that names a step; then the step's name in it is marked
+  const sn = Object.fromEntries([...pg.querySelectorAll('.sn')].map((x) => [x.dataset.n, x]))
+  const inDoc = [...pg.querySelectorAll('.sn')]
+  for (const x of inDoc) {
+    if (!alive()) return
+    x.classList.add('hl')
+    setTimeout(() => alive() && x.classList.add('pick'), 320)
+    await wait(170)
+  }
+  await wait(600)
   if (!alive()) return
-  // each sentence turns into its step; the page gives way
-  const box = {}
-  F.order.forEach((id, i) => {
-    const n = F.nodes[id], p = pos(id), A = rel(sents[id])
-    const dec = n.kind === 'decision'
-    const w = dec ? 88 : nodeW, h = dec ? 88 : 40
-    const b = el('div', `fn k-${n.kind}${n.outcome === 'negative' ? ' neg' : ''}`, `<span>${n.label}</span>`, { left: A.x + 'px', top: A.y + A.h / 2 + 'px', width: A.w + 'px', height: A.h + 'px', marginTop: -A.h / 2 + 'px', opacity: 1, backgroundColor: 'transparent', borderColor: 'transparent' })
-    const label = b.querySelector('span')
-    label.style.opacity = 0
-    const d = i * 80
-    b.animate([
-      { left: A.x + 'px', top: A.y + A.h / 2 + 'px', width: A.w + 'px', height: A.h + 'px', marginTop: -A.h / 2 + 'px', backgroundColor: 'rgba(240,217,207,0)', borderColor: 'rgba(232,69,44,0)' },
-      { backgroundColor: 'rgba(240,217,207,.9)', borderColor: 'rgba(232,69,44,1)', offset: 0.3 },
-      { left: p.x - w / 2 + 'px', top: p.y + 'px', width: w + 'px', height: h + 'px', marginTop: -h / 2 + 'px', backgroundColor: dec ? `rgba(${tok('panel-rgb')},0)` : tok('panel'), borderColor: dec ? 'rgba(0,0,0,0)' : tok('nodeline') },
-    ], { duration: 1100, delay: d, easing: ease, fill: 'both' })
-    label.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: d + 700, fill: 'both' })
-    setTimeout(() => b.classList.add('in'), d + 800)
-    box[id] = b
-  })
-  pg.querySelectorAll('h2,.meta,p,.lbl').forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(6px)' }], { duration: 600, delay: 150, fill: 'both' }))
-  pg.animate([{ backgroundColor: tok('paper'), boxShadow: tok('paper-shadow') }, { backgroundColor: 'rgba(0,0,0,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 200, fill: 'both', easing: ease })
-  pg.classList.add('melt')
-  await wait(F.order.length * 80 + 1200)
-  if (!alive()) return
-  // the arrows draw themselves
+  // Antu's canvas
+  const layer = el('div', 'flowcv', null, { left: f.ox + 'px', top: f.oy + 'px', width: F.size.width + 'px', height: F.size.height + 'px', transform: `scale(${f.k})` })
   const svg = document.createElementNS(SVGNS, 'svg')
-  svg.setAttribute('class', 'edges')
-  svg.setAttribute('width', W)
-  svg.setAttribute('height', H)
-  svg.innerHTML = '<defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#e8452c"/></marker></defs>'
-  stage.appendChild(svg)
-  const half = (id) => (F.nodes[id].kind === 'decision' ? 44 : nodeW / 2)
-  const halfH = (id) => (F.nodes[id].kind === 'decision' ? 44 : 20)
-  const paths = {}
-  F.edges.forEach((e, i) => {
-    const a = pos(e.from), b = pos(e.to)
-    let d, lx, ly
-    if (Math.abs(a.y - b.y) < 1) { const x1 = a.x + half(e.from), x2 = b.x - half(e.to); d = `M ${x1} ${a.y} L ${x2} ${b.y}`; lx = (x1 + x2) / 2; ly = a.y - 8 }
-    else if (Math.abs(a.x - b.x) < 1) { const dn = b.y > a.y ? 1 : -1; d = `M ${a.x} ${a.y + dn * halfH(e.from)} L ${b.x} ${b.y - dn * halfH(e.to)}`; lx = a.x + 8; ly = (a.y + b.y) / 2 }
-    else { const dn = b.y > a.y ? 1 : -1; d = `M ${a.x} ${a.y + dn * halfH(e.from)} L ${a.x} ${b.y} L ${b.x - half(e.to)} ${b.y}`; lx = a.x + 8; ly = (a.y + b.y) / 2 }
+  svg.setAttribute('width', F.size.width)
+  svg.setAttribute('height', F.size.height)
+  svg.innerHTML = '<defs><marker id="farr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 1 L9 5 L0 9 Z" fill="#e8452c"/></marker></defs>'
+  layer.appendChild(svg)
+  const box = {}
+  for (const n of F.nodes) {
+    const b = document.createElement('div')
+    b.className = `fnode k-${n.kind}`
+    Object.assign(b.style, { left: n.x + 'px', top: n.y + 'px', width: n.w + 'px', height: n.h + 'px' })
+    b.innerHTML = `<svg width="${n.w}" height="${n.h}">${flowShape(n)}</svg><b>${n.label}</b>${n.detail ? `<i>${n.detail}</i>` : ''}`
+    layer.appendChild(b)
+    box[n.id] = b
+  }
+  // the marked names leave the page and land on their steps
+  const P = (x, y) => ({ x: f.ox + x * f.k, y: f.oy + y * f.k })
+  pg.classList.add('melt')
+  pg.querySelectorAll('.ctitle,.no,p,.lbl').forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(5px)' }], { duration: 650, delay: 250, fill: 'both' }))
+  F.order.forEach((id, i) => {
+    const n = F.nodes.find((x) => x.id === id), src = sn[id].querySelector('.lb'), r = rel(src)
+    const fs = parseFloat(getComputedStyle(src).fontSize)
+    const w = el('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
+    const c = P(n.x + n.w / 2, n.y + n.h / 2), k = Math.min(13 * f.k / fs, 1.2)
+    const tx = c.x - r.x - (r.w * k) / 2, ty = c.y - r.y - (r.h * k) / 2, d = i * 75
+    w.animate([
+      { transform: 'translate(0,0) scale(1)', opacity: 1 },
+      { transform: `translate(${tx * 0.5}px,${ty * 0.5 - 40}px) scale(${(1 + k) / 2})`, opacity: 1, offset: 0.5 },
+      { transform: `translate(${tx}px,${ty}px) scale(${k})`, opacity: 1, offset: 0.9 },
+      { transform: `translate(${tx}px,${ty}px) scale(${k})`, opacity: 0 },
+    ], { duration: 1150, delay: d, easing: ease, fill: 'both' })
+    box[id].animate([{ opacity: 0, transform: 'scale(.7)' }, { opacity: 1, transform: 'scale(1.04)', offset: 0.7 }, { opacity: 1, transform: 'none' }], { duration: 420, delay: d + 980, easing: 'ease-out', fill: 'both' })
+  })
+  await wait(F.order.length * 75 + 1400)
+  if (!alive()) return
+  $$('.wordfly').forEach((w) => w.remove())
+  // the links draw themselves along Antu's routes, with their conditions
+  F.links.forEach((l, i) => {
     const p = document.createElementNS(SVGNS, 'path')
-    p.setAttribute('d', d)
+    p.setAttribute('d', l.d)
     p.setAttribute('fill', 'none')
+    p.setAttribute('class', 'ln')
+    p.setAttribute('stroke-width', l.width)
     p.style.stroke = '#e8452c'
-    p.setAttribute('stroke-width', e.main ? 2 : 1.3)
     svg.appendChild(p)
     const len = p.getTotalLength()
     p.style.strokeDasharray = `${len} ${len}`
-    p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 450, delay: i * 70, fill: 'both' }).onfinish = () => { p.style.strokeDasharray = 'none'; p.setAttribute('marker-end', 'url(#fa)') }
-    if (e.condition) {
-      const t = document.createElementNS(SVGNS, 'text')
-      t.setAttribute('class', 'cond')
-      t.setAttribute('x', lx)
-      t.setAttribute('y', ly)
-      t.setAttribute('text-anchor', Math.abs(a.y - b.y) < 1 ? 'middle' : 'start')
-      t.textContent = e.condition
-      t.style.opacity = 0
-      svg.appendChild(t)
-      t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: i * 70 + 350, fill: 'both' })
+    p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 500, delay: i * 80, easing: ease, fill: 'both' }).onfinish = () => {
+      p.style.strokeDasharray = l.dash || 'none'
+      p.setAttribute('marker-end', 'url(#farr)')
     }
-    paths[e.from + '>' + e.to] = p
+    if (l.label && l.lx != null) {
+      const t = document.createElement('span')
+      t.className = 'flab'
+      t.textContent = l.label
+      Object.assign(t.style, { left: l.lx + 'px', top: l.ly + 'px', width: l.lw + 'px', height: l.lh + 'px' })
+      layer.appendChild(t)
+      t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: i * 80 + 350, fill: 'both' })
+    }
   })
-  await wait(F.edges.length * 70 + 600)
+  await wait(F.links.length * 80 + 700)
   if (!alive()) return
-  // a token runs the main line, lighting each step as it passes
-  const token = el('div', 'token')
-  const main = F.mainPath
-  box[main[0]].classList.add('lit')
-  for (let i = 0; i < main.length - 1; i++) {
-    if (!alive()) return
-    const p = paths[main[i] + '>' + main[i + 1]], len = p.getTotalLength(), t0 = performance.now(), dur = 330
-    await new Promise((res) => {
-      ;(function f(now) {
-        const k = Math.min(1, (now - t0) / dur), pt = p.getPointAtLength(len * k)
-        token.style.left = pt.x + 'px'
-        token.style.top = pt.y + 'px'
-        token.style.opacity = 1
-        if (k < 1) requestAnimationFrame(f)
-        else res()
-      })(t0)
-    })
-    box[main[i + 1]].classList.add('lit')
+  // walk the main line: the camera moves in, follows the step that lights up, and pulls back out
+  const W = stage.clientWidth, H = stage.clientHeight
+  const at = (id) => {
+    const n = F.nodes.find((x) => x.id === id), z = ZF
+    const cx = f.ox + (n.x + n.w / 2) * f.k, cy = f.oy + (n.y + n.h / 2) * f.k
+    const tx = W / 2 - cx * z, ty = H / 2 - cy * z
+    return `translate(${tx}px,${ty}px) scale(${z})`
   }
-  token.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
+  const fcv = stage.querySelector('.flowcv')
+  const wrap = document.createElement('div')
+  wrap.className = 'flowcam'
+  Object.assign(wrap.style, { position: 'absolute', inset: '0', transformOrigin: '0 0', zIndex: 4 })
+  stage.appendChild(wrap)
+  wrap.appendChild(fcv)
+  let now = 'none'
+  for (const [i, id] of F.mainPath.entries()) {
+    if (!alive()) return
+    const next = at(id)
+    wrap.animate([{ transform: now }, { transform: next }], { duration: i === 0 ? 1100 : 650, easing: ease, fill: 'forwards' })
+    now = next
+    await wait(i === 0 ? 1000 : 520)
+    box[id].classList.add('lit')
+    await wait(i === 0 ? 300 : 180)
+  }
+  await wait(500)
+  if (!alive()) return
+  wrap.animate([{ transform: now }, { transform: 'none' }], { duration: 1200, easing: ease, fill: 'forwards' })
+  await wait(1200)
 }
+
 
 // the judgment's type is as large as fits on its spread
 function fitPaper() {
@@ -445,18 +472,28 @@ function fitPaper() {
   paper.style.setProperty('--fs', fs + 'px')
   while (fs > 8 && paper.scrollWidth > paper.clientWidth + 1) { fs -= 0.25; paper.style.setProperty('--fs', fs + 'px') }
 }
+// and the contract's, so its whole text is on its page
+function fitContract() {
+  const pg = $('#paper2')
+  let fs = 14
+  pg.style.setProperty('--cfs', fs + 'px')
+  // the last line of text must end above the folio (the sheet under the page does not count)
+  const fits = () => pg.querySelector('.fiction').getBoundingClientRect().bottom <= pg.getBoundingClientRect().bottom - 30
+  while (fs > 8 && !fits()) { fs -= 0.25; pg.style.setProperty('--cfs', fs + 'px') }
+}
 fitPaper()
-addEventListener('resize', fitPaper)
+fitContract()
+addEventListener('resize', () => { fitPaper(); fitContract() })
 
 // the four kinds: each plays on its own, from its document
 const SCENES = {
   fact: async (alive) => { await reading(); if (alive()) await toTimeline(alive) },
   relationship: async (alive) => { await reading(); if (alive()) await toGraph(alive) },
-  procedure: async (alive) => { paper.style.opacity = 0; await toFlow(alive) },
+  procedure: async (alive) => { await toFlow(alive) },
   justification: async (alive) => { await reading(); if (alive()) await toReasoning(alive) },
 }
 // the thin line under the chosen kind fills while its scene plays
-const SCENE_MS = { fact: 5200, relationship: 7200, procedure: 9500, justification: 6800 }
+const SCENE_MS = { fact: 15000, relationship: 7200, procedure: 16000, justification: 6800 }
 async function play(kind) {
   const me = ++run, alive = () => me === run
   $$('.kind').forEach((k) => {

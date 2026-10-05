@@ -95,9 +95,11 @@ ${body(v.name, v.note)}
 // ------------------------------------------------------------
 // The relationship graph exactly as Antu lays it out (its own layout code, run here; laid out across, where its lines and labels keep clear of each other),
 // with the line and outline of each kind from the document theme; the page only colours them
+let vitePromise = null
+const viteServer = () => (vitePromise ??= createServer({ root: REPO, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' }))
 async function relGraph(spec) {
-  const vite = await createServer({ root: REPO, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' })
-  try {
+  const vite = await viteServer()
+  {
     const { buildRelationshipGraph } = await vite.ssrLoadModule('/src/renderers/relationship/graph/layout.js')
     const { THEMES } = await vite.ssrLoadModule('/src/theme/themes.js')
     const T = THEMES.document
@@ -112,8 +114,6 @@ async function relGraph(spec) {
       return { id: c.id, kind: c.kind, d: c.dCurve, directed: !!c.directed, label: c.label, lx: c.labelAt.x, ly: c.labelAt.y, lw: c.labelSize.width, lh: c.labelSize.height, width: p.width, dash: p.dash ?? '', double: !!p.double }
     })
     return { size: g.size, groups: g.groupBoxes, ents, links }
-  } finally {
-    await vite.close()
   }
 }
 
@@ -139,13 +139,11 @@ function reasoning() {
   }
 }
 
-// the purchase-contract flow; the file has no positions, so the draft places each node on a small grid here
-// (column, row 0 = the main line, row 1 = the branch) and stops if a node is left out
-function flowchart() {
+// the purchase-contract flow, laid out by Antu's own procedure layout (across), with the outline of each kind and
+// outcome and the line of each link from the document theme; and the contract it comes from, each step named
+// word for word in one of its sentences
+async function flowchart() {
   const p = JSON.parse(read(`${REPO}examples/procedure/02-purchase-contract.zh-CN.json`))
-  const grid = { 'n-1': [0, 0], 'n-2': [1, 0], 'n-3': [2, 0], 'n-4': [3, 0], 'n-5': [4, 0], 'n-6': [6, 0], 'n-11': [8, 0],
-    'n-7': [4, 1], 'n-8': [5, 1], 'n-9': [6, 1], 'n-10': [7, 1], 'n-12': [8, 1] }
-  for (const n of p.nodes) if (!grid[n.id]) throw new Error(`flow node ${n.id} has no place on the grid`)
   const startId = p.nodes.find((n) => n.kind === 'start').id
   const mainPath = [startId]
   for (;;) { const e = p.edges.find((x) => x.main && x.from === mainPath.at(-1)); if (!e) break; mainPath.push(e.to) }
@@ -165,18 +163,35 @@ function flowchart() {
     taken.add(hit)
     sentenceOf[hit] = n.id
   }
+  // each sentence that names a step, with the step's name marked inside it
   const contract = {
     title: ctext[0].replace(/^# /, ''),
-    meta: ctext.filter((l) => l.startsWith('> ')).slice(0, 2).map((l) => l.slice(2)),
-    clauses: clauses.map((ss, ci) => ss.map((s, si) => ({ s, n: sentenceOf[`${ci}.${si}`] }))),
+    no: ctext.find((l) => l.startsWith('> 合同编号')).slice(2),
+    parties: ctext.find((l) => l.startsWith('> 甲方')).slice(2).split(' | '),
+    fiction: ctext.find((l) => l.includes('本文书是虚构的')).slice(2).replace(/\*\*/g, ''),
+    clauses: clauses.map((ss, ci) => ss.map((s, si) => {
+      const id = sentenceOf[`${ci}.${si}`]
+      if (!id) return { s }
+      const label = p.nodes.find((n) => n.id === id).label, at = s.indexOf(label)
+      return { n: id, pre: s.slice(0, at), label, post: s.slice(at + label.length) }
+    })),
   }
-  return {
-    contract,
-    nodes: Object.fromEntries(p.nodes.map((n) => [n.id, { kind: n.kind, label: n.label, outcome: n.outcome }])),
-    order: [...p.nodes].sort((a, b) => grid[a.id][1] - grid[b.id][1] || grid[a.id][0] - grid[b.id][0]).map((n) => n.id),
-    edges: p.edges.map((e) => ({ from: e.from, to: e.to, condition: e.condition, main: !!e.main })),
-    grid, mainPath, sourceName: src.name, sourceFile: src.loc?.file ?? '',
-  }
+  const vite = await viteServer()
+  const { buildProcedureGraph } = await vite.ssrLoadModule('/src/renderers/procedure/flow/layout.js')
+  const { THEMES } = await vite.ssrLoadModule('/src/theme/themes.js')
+  const T = THEMES.document.flow
+  const g = buildProcedureGraph(p, {}, undefined, 'horizontal')
+  if (g.errors.length) throw new Error(`the procedure example does not validate: ${g.errors.map((e) => e.message ?? e).join('; ')}`)
+  const nodes = g.nodes.filter((n) => n.type === 'pnode').map((n) => {
+    const k = n.data.node.kind, o = n.data.node.outcome ?? 'neutral', paint = T.outcome[o] ?? T.outcome.neutral
+    return { id: n.id, kind: k, outcome: o, label: n.data.node.label, detail: n.data.node.detail ? String(n.data.node.detail).split('\n')[0] : '',
+      x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h, width: paint.width, dash: paint.dash ?? '' }
+  })
+  const links = g.connections.map((c) => {
+    const lp = c.kind === 'back' ? T.link.back : c.kind === 'main' ? T.link.main : T.link.plain
+    return { id: c.id, from: c.from, to: c.to, kind: c.kind, d: c.dCurve, label: c.label ?? '', lx: c.labelAt?.x, ly: c.labelAt?.y, lw: c.labelSize?.width, lh: c.labelSize?.height, width: lp.width, dash: lp.dash ?? '' }
+  })
+  return { contract, size: g.size, nodes, links, mainPath, order: [...nodes].sort((a, b) => a.x - b.x || a.y - b.y).map((n) => n.id) }
 }
 
 {
@@ -228,7 +243,7 @@ function flowchart() {
     totalMentions: entities.reduce((n, e) => n + e.mentions, 0),
     judgmentName: `${lines[0].replace(/^# /, '')} · ${lines[2].replace(/^> /, '').replace('（虚构）', '')}`,
     reason: reasoning(),
-    flow: flowchart(),
+    flow: await flowchart(),
   }
   // the four kinds on the left, each with Antu's own sketch of it (assets/kinds), drawn in the page's colours
   const KINDS = [
@@ -284,9 +299,14 @@ ${read(`${HERE}lenses.css`)}</style>
   <h3>本院认为</h3><p id="yrw">${mark(view2)}</p>
   <p>${closing}</p>
   <p class="fiction">${fiction}</p></div>
- <div class="paper paper2" id="paper2"><span class="lbl">合同 · 虚构</span><div class="beam" id="beam2"></div>
-  <h2>${L.flow.contract.title}</h2>${L.flow.contract.meta.map((m) => `<p class="meta">${m}</p>`).join('')}
-  ${L.flow.contract.clauses.map((ss) => `<p class="cl">${ss.map((x) => (x.n ? `<span class="sn" data-n="${x.n}">${x.s}</span>` : x.s)).join('')}</p>`).join('')}</div>
+ <div class="paper paper2" id="paper2"><span class="lbl">合同 · 虚构</span><div class="beam" id="beam2"></div><i class="sheet sc"></i>
+  <div class="ctitle">${L.flow.contract.title}</div><div class="no">${L.flow.contract.no}</div>
+  ${L.flow.contract.parties.map((x) => `<p class="party">${x}</p>`).join('')}
+  ${L.flow.contract.clauses.map((ss) => `<p class="cl">${ss.map((x, si) => {
+    const text = (s) => (si === 0 ? s.replace(/^(第.+?条) /, '<b>$1</b>　') : s)
+    return x.n ? `<span class="sn" data-n="${x.n}">${text(x.pre)}<span class="lb">${x.label}</span>${x.post}</span>` : text(x.s)
+  }).join('')}</p>`).join('')}
+  <p class="fiction">${L.flow.contract.fiction}</p></div>
 </div>
 </div>
 </section>
@@ -297,3 +317,5 @@ ${read(`${HERE}lenses.css`)}</style>
   writeFileSync(`${HERE}lenses.html`, html)
   console.log(`lenses.html  ${html.length} chars  (${events.length} events, ${L.totalMentions} mentions)`)
 }
+
+if (vitePromise) await (await vitePromise).close()
