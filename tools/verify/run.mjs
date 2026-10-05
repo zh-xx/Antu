@@ -2015,6 +2015,38 @@ async function checkRenderRoute() {
   }
 }
 
+// ---------------------------------------------------------------
+// The minimap shows the whole picture, also when only decoration layers draw it
+// ---------------------------------------------------------------
+async function checkMinimapShowsExtent() {
+  section('minimap: every way of drawing has an extent in the minimap')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const cases = [
+    ['examples/procedure/05-premises-lease.zh-CN.json', ['flow', 'route']],
+    ['examples/relationship/marketplace-parties.zh-CN.json', ['graph', 'focus', 'chain', 'matrix', 'equity', 'authority', 'related', 'path', 'summary']],
+    ['examples/fact/neighbour-corridor-charging.zh-CN.json', ['timeline', 'chronicle', 'scale']],
+    ['examples/justification/fang-yuan-defense-excess.zh-CN.json', ['tree']],
+  ]
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    for (const [file, kinds] of cases) {
+      const spec = JSON.parse(readFileSync(join(REPO, file), 'utf8'))
+      for (const kind of kinds) {
+        const html = join(OUT, `minimap-${kind}.html`)
+        renderToFile(spec, { outPath: html, quiet: true, preset: { kind } })
+        await browser.open(`file://${html}?lang=zh`)
+        const widest = await browser.eval(`Math.max(0, ...[...document.querySelectorAll('.react-flow__minimap-node')].map((n) => +n.getAttribute('width')))`)
+        truthy(`${kind}: the minimap has a node as wide as the picture`, widest > 100, `widest minimap node ${widest}`)
+      }
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderLevelledViews() {
   section('render: relationship authority chart, related-party list, relation path, camp summary')
   if (!findChrome()) {
@@ -2914,6 +2946,7 @@ if (!shotOnly && !skipBrowser) {
   await checkRenderMatrix()
   await checkRenderEquity()
   await checkRenderLevelledViews()
+  await checkMinimapShowsExtent()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)

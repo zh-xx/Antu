@@ -28,6 +28,24 @@ const MAX_ZOOM = 3
 /** The pan range leaves this much on all four sides of the content: panning stops at the edge instead of sliding into blank space */
 const PAN_PAD = 160
 
+/** The whole picture as one empty node, for the minimap alone (see miniGhost below) */
+const MiniGhost = () => null
+const MINI_GHOST_ID = '__minimap__'
+const miniGhost = ({ width, height }) => ({
+  id: MINI_GHOST_ID,
+  type: 'miniGhost',
+  position: { x: 0, y: 0 },
+  width: Math.max(1, width),
+  height: Math.max(1, height),
+  draggable: false,
+  selectable: false,
+  connectable: false,
+  focusable: false,
+  data: {},
+  style: { pointerEvents: 'none', visibility: 'hidden' },
+})
+const miniColor = (node) => (node.id === MINI_GHOST_ID ? '#eef1f5' : '#cbd5e1')
+
 export default function Canvas({
   ref,
   graph,
@@ -48,7 +66,10 @@ export default function Canvas({
   // the nodes via onNodesChange, and everything that depends on size (the MiniMap and
   // the like) relies on that write-back.
   const { ariaLabels } = useLang()
-  const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes)
+  // The decoration layers are declared 1×1 (see fact/timeline/nodes.js), so the minimap saw nothing of a picture drawn
+  // only by layers (the route map, the relation path): one empty node as large as the picture gives it its extent
+  const allNodeTypes = useMemo(() => ({ ...nodeTypes, miniGhost: MiniGhost }), [nodeTypes])
+  const [nodes, setNodes, onNodesChange] = useNodesState([miniGhost(graph.size), ...graph.nodes])
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges)
 
   useEffect(() => {
@@ -59,7 +80,7 @@ export default function Canvas({
     // be measured again.
     setNodes((prev) => {
       const prevById = new Map(prev.map((n) => [n.id, n]))
-      return graph.nodes.map((n) => {
+      return [miniGhost(graph.size), ...graph.nodes].map((n) => {
         const old = prevById.get(n.id)
         return old?.selected ? { ...n, selected: true } : n
       })
@@ -178,7 +199,7 @@ export default function Canvas({
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
+        nodeTypes={allNodeTypes}
         ariaLabelConfig={ariaLabels}
         nodesDraggable={false}
         nodesConnectable={false}
@@ -217,7 +238,7 @@ export default function Canvas({
         <Controls showInteractive={false} onFitView={() => fit(300)} />
         {/* The display controls float centred below the canvas: the zoom controls are bottom left and the minimap bottom right, so the three do not collide */}
         <Panel position="bottom-center">{children}</Panel>
-        <MiniMap pannable zoomable nodeColor="#cbd5e1" />
+        <MiniMap pannable zoomable nodeColor={miniColor} />
       </ReactFlow>
     </main>
   )
