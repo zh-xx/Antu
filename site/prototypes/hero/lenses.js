@@ -262,25 +262,215 @@ async function toGraph(alive) {
 }
 
 function reset() {
-  $$('.actor,.mv,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges').forEach((e) => e.remove())
+  $$('.actor,.mv,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
   paper.classList.remove('melt')
   $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit') })
   ;[paper, $('#cap'), $('#scene')].forEach((e) => e.getAnimations().forEach((a) => a.cancel()))
+  $$('.lens span').forEach((s) => s.classList.remove('on'))
   $('#cap').style.opacity = 0
   lens(-1)
 }
+
+// take a scene's pieces away and bring the page back
+async function backToPage(sel, note) {
+  lens(-1)
+  $('#cap').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
+  sceneTag('↺', note)
+  $$(sel).forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)', transform: getComputedStyle(e).transform === 'none' ? 'scale(1)' : getComputedStyle(e).transform }, { opacity: 0, filter: 'blur(8px)' }], { duration: 600, fill: 'both', easing: 'ease-in' }))
+  await wait(450)
+  paper.classList.remove('melt')
+  $$('.paper > *:not(.beam)').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.animate([{ opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 600, fill: 'both' }) })
+  paper.getAnimations().forEach((a) => a.cancel())
+  paper.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'rotateX(2deg) scale(.99)' }], { duration: 600, fill: 'both', easing: ease })
+  $$('.nm').forEach((n) => n.classList.remove('lit'))
+  await wait(650)
+  $$(sel).forEach((e) => e.remove())
+}
+
+// ---------- ③ reasoning: the court's view becomes the root, the issues branch from it, their reasons hang below
+function reasoningLayout() {
+  const W = stage.clientWidth, H = stage.clientHeight, n = D.reason.issues.length
+  const colW = W / n
+  return {
+    root: { x: W / 2 - 200, y: 4, w: 400 },
+    heads: D.reason.issues.map((_, i) => ({ x: i * colW + 8, y: 0.2 * H, w: colW - 16 })),
+    chipY: 0.2 * H + 82, chipStep: Math.min(19, (H - 0.2 * H - 90) / Math.max(...D.reason.issues.map((g) => g.leaves.length))),
+  }
+}
+async function toReasoning(alive) {
+  lens(2)
+  sceneTag('③ 说理', '本院认为，拆成争点和理由')
+  const R = reasoningLayout(), src = $('#yrw')
+  // the court's view lights up, and becomes the root of the tree
+  const A = rel(src)
+  const root = el('div', 'rn root actor', `<small>判决结论</small><b>${D.reason.root}</b>`, { left: A.x + 'px', top: A.y + 'px', width: A.w + 'px', opacity: 1, background: '#f0d9cf' })
+  root.querySelector('b').style.opacity = 0
+  root.querySelector('small').style.opacity = 0
+  root.animate([{ boxShadow: '0 0 0 0 rgba(232,69,44,0)' }, { boxShadow: '0 0 0 3px #e8452c, 0 0 40px rgba(232,69,44,.7)' }], { duration: 500, fill: 'both' })
+  await wait(700)
+  if (!alive()) return
+  paperAway()
+  root.animate([
+    { left: A.x + 'px', top: A.y + 'px', width: A.w + 'px', backgroundColor: '#f0d9cf' },
+    { left: R.root.x + 'px', top: R.root.y + 'px', width: R.root.w + 'px', backgroundColor: '#15171b' },
+  ], { duration: 1000, easing: ease, fill: 'both' })
+  for (const e of root.querySelectorAll('b,small')) e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 600, fill: 'both' })
+  await wait(1100)
+  if (!alive()) return
+  // the issues branch from the root, each with what the court held on it
+  const svg = document.createElementNS(SVGNS, 'svg')
+  svg.setAttribute('class', 'edges')
+  svg.setAttribute('width', stage.clientWidth)
+  svg.setAttribute('height', stage.clientHeight)
+  stage.appendChild(svg)
+  const rootR = rel(root), rx = rootR.x + rootR.w / 2, ry = rootR.y + rootR.h
+  D.reason.issues.forEach((g, i) => {
+    const h = R.heads[i], cx = h.x + h.w / 2, d = i * 140
+    const p = document.createElementNS(SVGNS, 'path')
+    p.setAttribute('d', `M ${rx} ${ry} C ${rx} ${ry + 30}, ${cx} ${h.y - 34}, ${cx} ${h.y}`)
+    p.setAttribute('fill', 'none')
+    p.setAttribute('stroke', g.against ? '#e8452c' : 'rgba(255,255,255,.4)')
+    p.setAttribute('stroke-width', 1.5)
+    svg.appendChild(p)
+    const len = p.getTotalLength()
+    p.style.strokeDasharray = `${len} ${len}`
+    p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 600, delay: d, easing: ease, fill: 'both' }).onfinish = () => { if (g.against) p.style.strokeDasharray = '6 5' }
+    const head = el('div', `rn${g.holds ? '' : ' no'}`, `<small>${g.label}</small><b>${g.head}</b><span class="mk">${g.holds ? '成立' : '不成立'}</span>`, { left: h.x + 'px', top: h.y + 'px', width: h.w + 'px' })
+    head.animate([{ opacity: 0, transform: 'translateY(-14px) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 500, delay: d + 450, easing: 'ease-out', fill: 'both' })
+    // the reasons rain down under it
+    const trunk = el('div', 'trunk', null, { left: h.x + 10 + 'px', top: R.chipY - 6 + 'px', height: g.leaves.length * R.chipStep + 'px' })
+    trunk.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 700, delay: d + 900, easing: ease, fill: 'both' })
+    g.leaves.forEach((l, k) => {
+      const c = el('div', `chip k-${l.kind}${l.holds === false ? ' no' : ''}`, `<u>${D.reason.kinds[l.kind]}</u><span>${l.label}</span>`, { left: h.x + 18 + 'px', top: R.chipY + k * R.chipStep + 'px', width: h.w - 22 + 'px' })
+      c.animate([{ opacity: 0, transform: 'translateY(-26px)', filter: 'blur(3px)' }, { opacity: l.holds === false ? 0.5 : 1, transform: 'none', filter: 'blur(0)' }], { duration: 420, delay: d + 1000 + k * 55, easing: 'ease-out', fill: 'both' })
+    })
+  })
+  await wait(D.reason.issues.length * 140 + 1000 + 15 * 55 + 500)
+  if (!alive()) return
+  caption(`<strong>本院认为 → ${D.reason.issues.length} 个争点、${D.reason.nodes} 个论证节点、${D.reason.links} 条推理关系</strong>，不成立的主张也留在图上。&emsp;示意：由 AI 助手阅读并提取，案图负责画图。文书为虚构。`)
+  await wait(3000)
+}
+
+// ---------- ④ flowchart: another document, a contract; it opens into its flow, and a token runs the main line
+async function toFlow(alive) {
+  lens(-1)
+  $('#cap').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
+  sceneTag('④ 流程', '另一份文书：合同，变成流程图')
+  $$('.rn,.chip,.trunk,.edges').forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(8px)' }], { duration: 600, fill: 'both' }))
+  await wait(600)
+  $$('.rn,.chip,.trunk,.edges').forEach((e) => e.remove())
+  if (!alive()) return
+  lens(3)
+  const F = D.flow, W = stage.clientWidth, H = stage.clientHeight
+  const cols = Math.max(...Object.values(F.grid).map((g) => g[0])) + 1
+  const colW = W / cols, nodeW = Math.min(118, colW - 14)
+  const pos = (id) => { const [c, r] = F.grid[id]; return { x: c * colW + colW / 2, y: r === 0 ? H * 0.3 : H * 0.72 } }
+  // the file
+  const doc = el('div', 'doc', `<b>${F.sourceName}</b><s></s><i>${F.sourceFile}</i>`, { left: W / 2 + 'px', top: H / 2 + 'px' })
+  doc.animate([{ opacity: 0, transform: 'translateY(30px) rotate(-4deg)' }, { opacity: 1, transform: 'none' }], { duration: 600, easing: 'ease-out', fill: 'both' })
+  await wait(1100)
+  if (!alive()) return
+  // it flies to the start and becomes it; the nodes come up along the flow
+  const start = pos(F.order[0])
+  doc.animate([{ left: W / 2 + 'px', top: H / 2 + 'px', transform: 'scale(1)', opacity: 1 }, { left: start.x + 'px', top: start.y + 'px', transform: 'scale(.3)', opacity: 0 }], { duration: 800, easing: ease, fill: 'both' })
+  const box = {}
+  F.order.forEach((id, i) => {
+    const n = F.nodes[id], p = pos(id)
+    const b = el('div', `fn k-${n.kind}${n.outcome === 'negative' ? ' neg' : ''}`, `<span>${n.label}</span>`, { left: p.x - nodeW / 2 + 'px', top: p.y + 'px', width: nodeW + 'px' })
+    b.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: 600 + i * 110, easing: 'ease-out', fill: 'both' })
+    box[id] = b
+  })
+  await wait(600 + F.order.length * 110)
+  if (!alive()) return
+  // the arrows draw themselves
+  const svg = document.createElementNS(SVGNS, 'svg')
+  svg.setAttribute('class', 'edges')
+  svg.setAttribute('width', W)
+  svg.setAttribute('height', H)
+  svg.innerHTML = '<defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#cfcac0"/></marker></defs>'
+  stage.appendChild(svg)
+  const half = (id) => (F.nodes[id].kind === 'decision' ? 44 : nodeW / 2)
+  const halfH = (id) => (F.nodes[id].kind === 'decision' ? 44 : 20)
+  const paths = {}
+  F.edges.forEach((e, i) => {
+    const a = pos(e.from), b = pos(e.to)
+    let d, lx, ly
+    if (Math.abs(a.y - b.y) < 1) { const x1 = a.x + half(e.from), x2 = b.x - half(e.to); d = `M ${x1} ${a.y} L ${x2} ${b.y}`; lx = (x1 + x2) / 2; ly = a.y - 8 }
+    else if (Math.abs(a.x - b.x) < 1) { const dn = b.y > a.y ? 1 : -1; d = `M ${a.x} ${a.y + dn * halfH(e.from)} L ${b.x} ${b.y - dn * halfH(e.to)}`; lx = a.x + 8; ly = (a.y + b.y) / 2 }
+    else { const dn = b.y > a.y ? 1 : -1; d = `M ${a.x} ${a.y + dn * halfH(e.from)} L ${a.x} ${b.y} L ${b.x - half(e.to)} ${b.y}`; lx = a.x + 8; ly = (a.y + b.y) / 2 }
+    const p = document.createElementNS(SVGNS, 'path')
+    p.setAttribute('d', d)
+    p.setAttribute('fill', 'none')
+    p.setAttribute('stroke', '#cfcac0')
+    p.setAttribute('stroke-width', e.main ? 2 : 1.3)
+    svg.appendChild(p)
+    const len = p.getTotalLength()
+    p.style.strokeDasharray = `${len} ${len}`
+    p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 450, delay: i * 70, fill: 'both' }).onfinish = () => { p.style.strokeDasharray = 'none'; p.setAttribute('marker-end', 'url(#fa)') }
+    if (e.condition) {
+      const t = document.createElementNS(SVGNS, 'text')
+      t.setAttribute('class', 'cond')
+      t.setAttribute('x', lx)
+      t.setAttribute('y', ly)
+      t.setAttribute('text-anchor', Math.abs(a.y - b.y) < 1 ? 'middle' : 'start')
+      t.textContent = e.condition
+      t.style.opacity = 0
+      svg.appendChild(t)
+      t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: i * 70 + 350, fill: 'both' })
+    }
+    paths[e.from + '>' + e.to] = p
+  })
+  await wait(F.edges.length * 70 + 600)
+  if (!alive()) return
+  // a token runs the main line, lighting each step as it passes
+  const tok = el('div', 'token')
+  const main = F.mainPath
+  box[main[0]].classList.add('lit')
+  for (let i = 0; i < main.length - 1; i++) {
+    if (!alive()) return
+    const p = paths[main[i] + '>' + main[i + 1]], len = p.getTotalLength(), t0 = performance.now(), dur = 330
+    await new Promise((res) => {
+      ;(function f(now) {
+        const k = Math.min(1, (now - t0) / dur), pt = p.getPointAtLength(len * k)
+        tok.style.left = pt.x + 'px'
+        tok.style.top = pt.y + 'px'
+        tok.style.opacity = 1
+        if (k < 1) requestAnimationFrame(f)
+        else res()
+      })(t0)
+    })
+    box[main[i + 1]].classList.add('lit')
+  }
+  tok.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
+  caption(`<strong>${F.sourceName} → ${F.order.length} 个步骤与判断、${F.edges.length} 条走向</strong>，主线走一遍，分支一目了然。&emsp;示意：由 AI 助手阅读合同并提取，案图负责画图。合同为虚构。`)
+  $$('.lens span').forEach((s) => s.classList.add('on'))
+}
+
+// `#from=3` in the address starts at that scene (for checking one scene without waiting for the others)
+const FROM = +((location.hash.match(/from=(\d)/) || [])[1] || 1)
 
 async function start() {
   const me = ++run, alive = () => me === run
   reset()
   if (reduce) { lens(1); return }
-  await reading()
+  if (FROM <= 3) await reading()
   if (!alive()) return
-  await toTimeline(alive)
+  if (FROM <= 1) await toTimeline(alive)
   if (!alive()) return
-  await toGraph(alive)
+  if (FROM <= 2) {
+    await toGraph(alive)
+    if (!alive()) return
+    await wait(2800)
+    if (!alive()) return
+    await backToPage('.camp,.ent,.edges', '同一份判决书，再换一种看法')
+  }
+  if (!alive()) return
+  if (FROM <= 3) await toReasoning(alive)
+  if (!alive()) return
+  if (FROM > 3) paperAway()
+  await toFlow(alive)
 }
 
 $('#replay').onclick = start
-if (location.hash === '#manual') window.start = start
+if (location.hash.includes('manual')) window.start = start
 else setTimeout(start, 500)

@@ -92,6 +92,47 @@ ${body(v.name, v.note)}
 //  The timeline is all twelve events of the fact file, each matched to its sentence; the graph is the
 //  relationship file, and every highlighted name is a real mention in the judgment.
 // ------------------------------------------------------------
+// the 方远 reasoning file, reduced to what a first screen can show: the holding, the five issues with the
+// point the court ruled on for each (and whether it held), and every other node of the issue as one line
+function reasoning() {
+  const j = JSON.parse(read(`${REPO}examples/justification/fang-yuan-defense-excess.zh-CN.json`))
+  const byId = Object.fromEntries(j.nodes.map((n) => [n.id, n]))
+  const root = j.nodes.find((n) => n.kind === 'conclusion' && !n.groupId)
+  const ORDER = ['norm', 'element', 'judgement', 'inference', 'fact', 'conclusion']
+  const issues = j.groups.map((g) => {
+    const link = j.links.find((l) => l.to === root.id && byId[l.from].groupId === g.id)
+    if (!link) throw new Error(`issue ${g.id} has no point linked to the holding`)
+    const head = byId[link.from]
+    const leaves = j.nodes.filter((n) => n.groupId === g.id && n !== head)
+      .sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind))
+      .map((n) => ({ kind: n.kind, label: n.label, holds: n.holds === 'no' ? false : undefined }))
+    return { label: g.label, head: head.label, holds: head.holds !== 'no', against: link.stance === 'against', leaves }
+  })
+  return {
+    root: root.label, issues, nodes: j.nodes.length, links: j.links.length,
+    kinds: { norm: '规范', element: '要件', judgement: '判断', inference: '推论', fact: '事实', conclusion: '结论' },
+  }
+}
+
+// the purchase-contract flow; the file has no positions, so the draft places each node on a small grid here
+// (column, row 0 = the main line, row 1 = the branch) and stops if a node is left out
+function flowchart() {
+  const p = JSON.parse(read(`${REPO}examples/procedure/02-purchase-contract.zh-CN.json`))
+  const grid = { 'n-1': [0, 0], 'n-2': [1, 0], 'n-3': [2, 0], 'n-4': [3, 0], 'n-5': [4, 0], 'n-6': [6, 0], 'n-11': [8, 0],
+    'n-7': [4, 1], 'n-8': [5, 1], 'n-9': [6, 1], 'n-10': [7, 1], 'n-12': [8, 1] }
+  for (const n of p.nodes) if (!grid[n.id]) throw new Error(`flow node ${n.id} has no place on the grid`)
+  const startId = p.nodes.find((n) => n.kind === 'start').id
+  const mainPath = [startId]
+  for (;;) { const e = p.edges.find((x) => x.main && x.from === mainPath.at(-1)); if (!e) break; mainPath.push(e.to) }
+  const src = p.sources[0]
+  return {
+    nodes: Object.fromEntries(p.nodes.map((n) => [n.id, { kind: n.kind, label: n.label, outcome: n.outcome }])),
+    order: [...p.nodes].sort((a, b) => grid[a.id][1] - grid[b.id][1] || grid[a.id][0] - grid[b.id][0]).map((n) => n.id),
+    edges: p.edges.map((e) => ({ from: e.from, to: e.to, condition: e.condition, main: !!e.main })),
+    grid, mainPath, sourceName: src.name, sourceFile: src.loc?.file ?? '',
+  }
+}
+
 {
   const fact = JSON.parse(read(`${REPO}examples/fact/fang-yuan-loan-and-conflict.zh-CN.json`))
   const relf = JSON.parse(read(`${REPO}examples/relationship/fang-yuan-parties.zh-CN.json`))
@@ -127,8 +168,12 @@ ${body(v.name, v.note)}
     groups: Object.fromEntries(relf.groups.map((g) => [g.id, g.label])),
     relations: relf.relations.map((r) => ({ id: r.id, from: r.from, to: r.to, kind: r.kind, label: r.label, amount: r.amount })),
     totalMentions: entities.reduce((n, e) => n + e.mentions, 0),
+    reason: reasoning(),
+    flow: flowchart(),
   }
   const facts = lines.filter((l) => /^[一二三四]、/.test(l))
+  const view2 = lines[lines.indexOf('## 本院认为') + 2]
+  if (!view2) throw new Error('the judgment has no 本院认为 paragraph')
   const html = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>案图 · 首页动画草稿 · 一份判决书，几种图</title>
@@ -144,9 +189,10 @@ ${read(`${HERE}lenses.css`)}</style></head><body class="lx">
  <div class="paper" id="paper"><span class="lbl">判决书 · 虚构</span><div class="beam" id="beam"></div>
   <h2>${lines[0].replace(/^# /, '')}</h2><p class="meta">${mark(lines[2].replace(/^> /, ''))}</p>
   <h3>本院查明</h3>${facts.map((f) => `<p>${mark(f)}</p>`).join('')}
-  <h3>上述事实，另有如下经过：</h3><ul id="bul">${sents.map((b) => `<li>${mark(b)}</li>`).join('')}</ul></div>
+  <h3>上述事实，另有如下经过：</h3><ul id="bul">${sents.map((b) => `<li>${mark(b)}</li>`).join('')}</ul>
+  <h3>本院认为</h3><p id="yrw">${mark(view2)}</p></div>
 </div>
-<div class="bottom"><div class="lens"><span>① 事实 · 时间线</span><span>② 关系 · 关系图</span><span class="todo">③ 说理 · 论证图（待做）</span><span class="todo">④ 流程 · 流程图（待做）</span></div><button id="replay">↻ 重播</button></div>
+<div class="bottom"><div class="lens"><span>① 事实 · 时间线</span><span>② 关系 · 关系图</span><span>③ 说理 · 论证图</span><span>④ 流程 · 流程图</span></div><button id="replay">↻ 重播</button></div>
 <p class="cap" id="cap" style="margin-top:1.2vh"></p>
 </section>
 <script>window.__LENS__ = ${JSON.stringify(L).replace(/</g, '\\u003c')}</script>
