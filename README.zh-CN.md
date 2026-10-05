@@ -9,14 +9,17 @@ JSON，由固定的引擎画图，所以同一份 JSON 每次都得到同一张�
 
 ## 你能得到什么
 
-四类法律内容，每一类都有几种画法。页面里有选择器可以切换，JSON 里没有任何字段决定画法。
+四类法律内容，每一类都有几种画法。页面里有选择器可以切换，JSON 里没有任何字段决定画法。下面是页面自己在选择器里显示的示意图，每种画法一张；点名字可以打开一个能用这种画法画出来的案例（`npm run diagram -- <文件>`，再在页面里选画法）。
 
-| 图 | 画什么 | 画法 |
-|---|---|---|
-| 关系图 | 主体、角色、法律关系 | 关系图、聚焦图、担保链图、关系矩阵、股权图、控制与任职图、关联方清单、关系路径图、集团汇总图（schema 暂定） |
-| 事实图 | 时间、参与人、事件经过 | 时间图、大事记、比例时间轴 |
-| 程序图 | 程序路径与可能分支 | 流程图、路线图 |
-| 证成图 | 由规范与事实推出结论 | 说理树（schema 草案） |
+<table>
+<tr><th rowspan="2" align="left" valign="middle">关系图</th><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/graph.svg" width="88" alt="关系图"><br>关系图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/focus.svg" width="88" alt="聚焦图"><br>聚焦图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/chain.svg" width="88" alt="担保链图"><br>担保链图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/matrix.svg" width="88" alt="关系矩阵"><br>关系矩阵</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/equity.svg" width="88" alt="股权图"><br>股权图</a></td></tr>
+<tr><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/authority.svg" width="88" alt="控制与任职图"><br>控制与任职图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/related.svg" width="88" alt="关联方清单"><br>关联方清单</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/path.svg" width="88" alt="关系路径图"><br>关系路径图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/summary.svg" width="88" alt="集团汇总图"><br>集团汇总图</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">事实图</th><td align="center"><a href="examples/fact/neighbour-corridor-charging.zh-CN.json"><img src="assets/kinds/timeline.svg" width="88" alt="时间图"><br>时间图</a></td><td align="center"><a href="examples/fact/neighbour-corridor-charging.zh-CN.json"><img src="assets/kinds/chronicle.svg" width="88" alt="大事记"><br>大事记</a></td><td align="center"><a href="examples/fact/neighbour-corridor-charging.zh-CN.json"><img src="assets/kinds/scale.svg" width="88" alt="比例时间轴"><br>比例时间轴</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">程序图</th><td align="center"><a href="examples/procedure/05-premises-lease.zh-CN.json"><img src="assets/kinds/flow.svg" width="88" alt="流程图"><br>流程图</a></td><td align="center"><a href="examples/procedure/05-premises-lease.zh-CN.json"><img src="assets/kinds/route.svg" width="88" alt="路线图"><br>路线图</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">证成图</th><td align="center"><a href="examples/justification/fang-yuan-defense-excess.zh-CN.json"><img src="assets/kinds/tree.svg" width="88" alt="说理树"><br>说理树</a></td></tr>
+</table>
+
+关系图画主体、角色和法律关系；事实图画时间、参与人和事件经过；程序图画程序路径与可能分支；证成图画由规范与事实推出的结论。关系图和证成图的 schema 仍是草案。
 
 三种外观，叫**主题**：`document` 文书黑白（方正、纯黑白，适合打印和归档，默认）、`modern` 现代简洁、`legal` 法律蓝。读者在页面里
 切换，调用时也可以把页面固定成某一个。只有图本身受主题影响，详见 [spec/theme.md](spec/theme.md)。

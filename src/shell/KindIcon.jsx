@@ -179,6 +179,9 @@ const SKETCH = {
   ),
 }
 
+/** The kinds that have a sketch (tools/gen/kind-icons.mjs writes them out for the README) */
+export const SKETCH_KINDS = Object.keys(SKETCH)
+
 export default function KindIcon({ kind }) {
   return (
     <svg className="antu-kindicon" viewBox="0 0 80 48" aria-hidden="true" fill="none" stroke={INK} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">

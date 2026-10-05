@@ -11,14 +11,20 @@ JSON gives the same diagram every time, with the source of every point on it.
 ## What you get
 
 Four kinds of legal content, each drawn in several ways. A picker in the page switches between the ways, and nothing in
-the JSON chooses one.
+the JSON chooses one. These are the sketches the page itself shows in its picker, one for each way; click a name to open a case
+you can draw in that way (`npm run diagram -- <file>`, then pick the way in the page).
 
-| Diagram | What it shows | Ways of drawing it |
-|---|---|---|
-| Relationship | parties, roles, legal relationships | graph, focus, guarantee chain, matrix, equity tree, authority chart, related-party list, relation path, camp summary (schema provisional) |
-| Fact | time, participants, how events went | timeline, chronicle, time scale |
-| Procedure | the procedural path and its branches | flowchart, route map |
-| Justification | a conclusion drawn from norms and facts | reasoning tree (schema draft) |
+<table>
+<tr><th rowspan="2" align="left" valign="middle">Relationship</th><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/graph.svg" width="88" alt="graph"><br>graph</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/focus.svg" width="88" alt="focus view"><br>focus view</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/chain.svg" width="88" alt="guarantee chain"><br>guarantee chain</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/matrix.svg" width="88" alt="relation matrix"><br>relation matrix</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/equity.svg" width="88" alt="equity tree"><br>equity tree</a></td></tr>
+<tr><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/authority.svg" width="88" alt="authority chart"><br>authority chart</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/related.svg" width="88" alt="related-party list"><br>related-party list</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/path.svg" width="88" alt="relation path"><br>relation path</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/summary.svg" width="88" alt="camp summary"><br>camp summary</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">Fact</th><td align="center"><a href="examples/fact/neighbour-corridor-charging.en.json"><img src="assets/kinds/timeline.svg" width="88" alt="timeline"><br>timeline</a></td><td align="center"><a href="examples/fact/neighbour-corridor-charging.en.json"><img src="assets/kinds/chronicle.svg" width="88" alt="chronicle"><br>chronicle</a></td><td align="center"><a href="examples/fact/neighbour-corridor-charging.en.json"><img src="assets/kinds/scale.svg" width="88" alt="time scale"><br>time scale</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">Procedure</th><td align="center"><a href="examples/procedure/05-premises-lease.en.json"><img src="assets/kinds/flow.svg" width="88" alt="flowchart"><br>flowchart</a></td><td align="center"><a href="examples/procedure/05-premises-lease.en.json"><img src="assets/kinds/route.svg" width="88" alt="route map"><br>route map</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">Justification</th><td align="center"><a href="examples/justification/fang-yuan-defense-excess.en.json"><img src="assets/kinds/tree.svg" width="88" alt="reasoning tree"><br>reasoning tree</a></td></tr>
+</table>
+
+Relationship diagrams show parties, roles and legal relationships; fact diagrams the time, the participants and how events went;
+procedure diagrams a procedural path and its branches; justification diagrams a conclusion drawn from norms and facts. The
+relationship and justification schemas are still drafts.
 
 Three looks, called **themes**: `document` (black and white and square, for print and filing; the default), `modern`
 (rounded, pale) and `legal` (navy). The reader switches in the page, or a call fixes a page to one. Only the diagram is
