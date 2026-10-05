@@ -196,6 +196,8 @@ Easily confused, so listed separately:
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| The MiniMap is empty for a picture drawn only by decoration layers (the route map, the relation path) | the layers are declared 1×1, and the minimap draws nodes by their declared size | add one invisible node as large as `graph.size` for the minimap alone (`miniGhost` in `Canvas.jsx`); fitting still uses `graph.size` |
+| The theme does not reach the exported picture, or the shell changes with the theme | CSS variables were set on the app root: the export clones only `.react-flow__viewport`, and the shell would inherit them | set the theme's variables on the viewport element (`Canvas.jsx`); the export copies computed styles, so they go with it |
 | The MiniMap is blank, not a single block | node dimensions are written back onto the node objects by `onNodesChange`; pass only a constant array and nobody receives them | put the nodes in `useNodesState` and hand `onNodesChange` to React Flow |
 | A zero-size decorative node is invisible entirely (its lines go with it) | a separate rule: a node with no dimensions is given `visibility: hidden`; the decorative layer is 0×0 to begin with, and **`onNodesChange` cannot fix it** | give the node object `1×1` (not 0×0; see the next row) |
 | **The "fit view" button on the canvas does nothing** | the decorative layer was given `width: 0, height: 0`, so the node **never gets `measured`**; if React Flow finds a single node without `measured` it judges `nodesInitialized` false, and the queued `fitView` path requires it to be **true** before it resolves | give the decorative layer `width: 1, height: 1`: it has dimensions, so it is visible and measurable. A 1×1 effect on the content bounds is negligible |

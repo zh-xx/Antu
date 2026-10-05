@@ -28,6 +28,8 @@ Make a branch, open a pull request and let CI run; do not commit to `main` direc
 
 Each of these has cost the project two or three times.
 
+0. **A diagram's colours come from `src/theme/`, not from the view that draws it.** A colour written in a view or in the stylesheet does not follow the theme, so the document theme would not be black and white. `test/theme-lock.test.mjs` fails when one is written (the shell's dot grid and the export's white paper are the only exceptions); `tools/verify` fails when the document theme draws a colour. A new meaning gets a role in every theme, drawn in black and white too (see `spec/theme.md`).
+
 1. **Before adding a style, check whether anyone uses the class name.** `.antu-card` and `.antu-source` have both
    collided, and a clean-up deleted the other side's styles with them. `grep` the class name before adding CSS; when
    cleaning up, ask "who else uses this class", and do not delete a whole family by name.
