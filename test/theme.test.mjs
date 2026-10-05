@@ -17,9 +17,12 @@ test('every theme answers every role the first theme answers', () => {
   const base = THEMES[THEME_IDS[0]]
   for (const id of THEME_IDS) {
     const t = THEMES[id]
-    for (const group of ['chrome', 'font', 'color', 'radius', 'entity', 'relation', 'group', 'pill']) {
+    for (const group of ['chrome', 'font', 'color', 'radius', 'entity', 'relation', 'group', 'pill', 'flow']) {
       assert.equal(keysOf(t[group]), keysOf(base[group]), `${id}.${group}`)
     }
+    assert.equal(keysOf(t.flow.outcome), keysOf(base.flow.outcome), `${id}.flow.outcome`)
+    assert.equal(keysOf(t.justify.node), keysOf(base.justify.node), `${id}.justify.node`)
+    assert.equal(keysOf(t.justify.stance), keysOf(base.justify.stance), `${id}.justify.stance`)
     assert.equal(t.camp.length, base.camp.length, `${id}.camp`)
     for (const r of RELATIONS) assert.ok(t.relation[r], `${id} has ${r}`)
   }
@@ -33,6 +36,20 @@ test('in black and white every relation kind is told apart by width, dash or dou
       const key = [width, dash ?? '', !!double].join('|')
       assert.ok(!seen.has(key), `${id}: ${r} looks like ${seen.get(key)}`)
       seen.set(key, r)
+    }
+  }
+})
+
+test('the three outcomes, the six node kinds and the three stances differ in weight, dash or fill (so they read in black and white)', () => {
+  for (const id of THEME_IDS) {
+    const { flow, justify } = THEMES[id]
+    for (const [name, table] of [['outcome', flow.outcome], ['node', justify.node], ['stance', justify.stance]]) {
+      const seen = new Set()
+      for (const [k, p] of Object.entries(table)) {
+        const key = [p.width, p.dash ?? '', p.fill ?? ''].join('|')
+        assert.ok(!seen.has(key), `${id}: ${name} ${k} looks like another`)
+        seen.add(key)
+      }
     }
   }
 })

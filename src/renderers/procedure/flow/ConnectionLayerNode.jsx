@@ -15,11 +15,13 @@
 
 import { memo } from 'react'
 import { linkPaint } from './palette.js'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 /** The three link kinds. Each has its own arrowhead, so the head takes the line's colour. */
 const KINDS = ['main', 'branch', 'back']
 
 const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
+  const { theme } = useTheme()
   const { connections, width, height, showConditions, highlightMain, curved } = data
   // Straight or curved: the same route either way (layout.js computes both paths), so switching
   // moves no node and no label
@@ -41,13 +43,13 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
               markerUnits="userSpaceOnUse"
               orient="auto"
             >
-              <path d="M 0 1 L 9 5 L 0 9 Z" fill={linkPaint(k, highlightMain).stroke} />
+              <path d="M 0 1 L 9 5 L 0 9 Z" fill={linkPaint(k, highlightMain, theme).stroke} />
             </marker>
           ))}
         </defs>
         {connections.map((c) => {
           // Paint as attributes, so the exported image carries it (see palette.js)
-          const p = linkPaint(c.kind, highlightMain)
+          const p = linkPaint(c.kind, highlightMain, theme)
           return (
             <path
               key={c.id}

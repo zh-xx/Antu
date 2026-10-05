@@ -1,48 +1,34 @@
 // ============================================================
-//  src/renderers/procedure/flow/palette.js — the flowchart's SVG colours
+//  src/renderers/procedure/flow/palette.js — the flowchart's SVG paint, from the theme
 //
-//  Why colours live in JS and not in the stylesheet: the image export (shell/exportPng.js)
-//  clones the canvas with html-to-image, and SVG paint set by a CSS **class rule** does not
-//  survive that clone — measured: every shape and link came out filled solid black. Paint set
-//  as SVG **attributes** does (the timeline's axis arrow relies on the same thing). So every
-//  fill and stroke that has to be in the exported picture is written here and passed as an
-//  attribute; the stylesheet only adds what is screen-only (hover shadow, focus ring).
+//  Why paint is given as SVG attributes and not in the stylesheet: the image export (shell/exportPng.js)
+//  clones the canvas with html-to-image, and SVG paint set by a CSS **class rule** does not survive that
+//  clone (measured: every shape and link came out filled solid black). Paint set as SVG **attributes** does.
+//  So every fill and stroke that has to be in the exported picture comes from the theme (src/theme) and is
+//  passed as an attribute; the stylesheet only adds what is screen-only (hover shadow, focus ring).
 //
-//  Two dimensions, never mixed (spec/procedure/schema-draft.md §4.3): kind fixes the shape,
-//  outcome fixes the colour.
+//  Two dimensions, never mixed (spec/procedure/schema-draft.md §4.3): kind fixes the shape, outcome fixes
+//  the paint. In every theme a positive outcome is a heavier line and a negative one a dashed line, so the
+//  outcome reads in black and white too.
 // ============================================================
 
-/** Node outline and fill by outcome. neutral grey, positive green, negative red. */
-export const OUTCOME_PAINT = {
-  neutral: { stroke: '#64748b', fill: '#eef2ff' },
-  positive: { stroke: '#15803d', fill: '#dcfce7' },
-  negative: { stroke: '#b91c1c', fill: '#fee2e2' },
+/** Paint for one node's outline: { stroke, fill, width, dash? } (a note has no border and a fold) */
+export function nodePaint(kind, outcome, theme) {
+  const f = theme.flow
+  if (kind === 'note') return { ...f.note, width: 1 }
+  if (kind === 'start' && (outcome ?? 'neutral') === 'neutral') return { ...f.outcome.neutral, ...f.start }
+  return f.outcome[outcome] ?? f.outcome.neutral
 }
 
-/** The start pill: a tinted fill, so the entry is found at a glance (only when neutral) */
-export const START_PAINT = { stroke: '#334155', fill: '#e2e8f0' }
-
-/** A note takes no part in the flow: no border, a pale yellow sheet, only the fold is drawn */
-export const NOTE_PAINT = { stroke: 'none', fill: '#fef9c3', fold: '#ca8a04' }
-
-/** Paint for one node's outline */
-export function nodePaint(kind, outcome = 'neutral') {
-  if (kind === 'note') return NOTE_PAINT
-  if (kind === 'start' && outcome === 'neutral') return START_PAINT
-  return OUTCOME_PAINT[outcome] ?? OUTCOME_PAINT.neutral
-}
-
-/** A stage box: a pale wash behind its nodes, a hairline edge, a quiet title */
-export const STAGE_PAINT = { fill: '#f8fafc', stroke: '#cbd5e1', title: '#475569' }
-/** A stage box a looked-at rule applies in: a warmer wash and a stronger edge */
-export const STAGE_LIT_PAINT = { fill: '#fff7ed', stroke: '#f59e0b', title: '#b45309' }
+/** A stage box, and a stage box a looked-at rule applies in */
+export const stagePaint = (theme, lit) => (lit ? theme.flow.stageLit : theme.flow.stage)
 
 /**
- * Paint for one link. The main-line highlight is part of this, not a CSS state: with the
- * switch on, the exported picture has to show the main line too.
+ * Paint for one link. The main-line highlight is part of this, not a CSS state: with the switch on, the
+ * exported picture has to show the main line too.
  */
-export function linkPaint(kind, highlightMain) {
-  if (kind === 'back') return { stroke: '#64748b', width: 1.5, dash: '5 4' }
-  if (kind === 'main' && highlightMain) return { stroke: '#1e293b', width: 2.4, dash: undefined }
-  return { stroke: '#475569', width: 1.6, dash: undefined }
+export function linkPaint(kind, highlightMain, theme) {
+  const l = theme.flow.link
+  const p = kind === 'back' ? l.back : kind === 'main' && highlightMain ? l.main : l.plain
+  return { stroke: p.stroke, width: p.width, dash: p.dash }
 }

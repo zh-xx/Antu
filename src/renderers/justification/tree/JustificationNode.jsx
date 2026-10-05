@@ -20,17 +20,18 @@ import { PreviewContext } from '../../../shell/previewContext.js'
 import { SOURCE_TYPE_KEYS, labelOf } from '../../../core/labels.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import { nodePaint, REJECTED_OPACITY } from './palette.js'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 /** Inset of the outline from the box, so a stroke is not clipped at the edge */
 const INSET = 1
 
-function Outline({ kind, w, h, rejected }) {
-  const p = nodePaint(kind)
+function Outline({ kind, w, h, rejected, theme }) {
+  const p = nodePaint(kind, theme)
   const paint = {
     fill: p.fill,
     stroke: p.stroke,
     strokeWidth: p.width,
-    ...(rejected ? { strokeDasharray: '5 3' } : {}),
+    ...(rejected ? { strokeDasharray: '5 3' } : p.dash ? { strokeDasharray: p.dash } : {}),
   }
   const x = INSET
   const y = INSET
@@ -59,6 +60,7 @@ const JustificationNode = memo(function JustificationNode({ id, data }) {
   const { node, w, h, textW, lit = false, dim = false, copyOf, copies, groupLabel, sources, grounds, supports, vertical, layer } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
+  const { theme } = useTheme()
 
   const isPinned = pinnedId === id
   const showPreview = !pinnedId && hoveredId === id
@@ -87,7 +89,7 @@ const JustificationNode = memo(function JustificationNode({ id, data }) {
       }}
     >
       <svg className="antu-jn-svg" width={w} height={h} aria-hidden="true">
-        <Outline kind={node.kind} w={w} h={h} rejected={rejected} />
+        <Outline kind={node.kind} w={w} h={h} rejected={rejected} theme={theme} />
       </svg>
 
       {/* The text column is exactly as wide as metrics.js measured it, so the lines break where the box was sized for */}

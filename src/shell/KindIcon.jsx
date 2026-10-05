@@ -6,8 +6,8 @@
 //  The key is the registry's kind id (core/registry.js).
 // ============================================================
 
-const INK = '#64748b'
-const TINT = '#e8edf4'
+const INK = 'var(--antu-text-3)'
+const TINT = 'var(--antu-line)'
 
 /** Drawn on an 80 × 48 board */
 const SKETCH = {
@@ -63,9 +63,9 @@ const SKETCH = {
   route: (
     <>
       <path d="M6 20h68" strokeWidth="2.4" />
-      <circle cx="14" cy="20" r="3.2" fill="#fff" />
-      <circle cx="34" cy="20" r="3.2" fill="#fff" />
-      <circle cx="56" cy="20" r="3.2" fill="#fff" />
+      <circle cx="14" cy="20" r="3.2" fill="var(--antu-bg, #fff)" />
+      <circle cx="34" cy="20" r="3.2" fill="var(--antu-bg, #fff)" />
+      <circle cx="56" cy="20" r="3.2" fill="var(--antu-bg, #fff)" />
       <path d="M34 23v7M56 23v7" />
       <rect x="26" y="30" width="16" height="9" rx="2" fill={TINT} />
       <rect x="48" y="30" width="16" height="9" rx="2" fill={TINT} />
@@ -97,7 +97,7 @@ const SKETCH = {
   ),
   chain: (
     <>
-      <rect x="3" y="14" width="22" height="20" rx="2" strokeWidth="2" fill="#fff" />
+      <rect x="3" y="14" width="22" height="20" rx="2" strokeWidth="2" fill="var(--antu-bg, #fff)" />
       <path d="M25 24h6M31 12v24M31 12h6M31 36h6" />
       <rect x="37" y="6" width="16" height="12" rx="2" fill={TINT} />
       <rect x="37" y="30" width="16" height="12" rx="2" fill={TINT} />
@@ -107,7 +107,7 @@ const SKETCH = {
   ),
   matrix: (
     <>
-      <rect x="14" y="4" width="52" height="40" fill="#fff" />
+      <rect x="14" y="4" width="52" height="40" fill="var(--antu-bg, #fff)" />
       <path d="M14 14h52M14 24h52M14 34h52M27 4v40M40 4v40M53 4v40" />
       <rect x="27" y="14" width="13" height="10" fill={TINT} />
       <rect x="53" y="24" width="13" height="10" fill={TINT} />
