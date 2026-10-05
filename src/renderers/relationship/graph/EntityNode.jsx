@@ -15,44 +15,42 @@ import { memo, useContext } from 'react'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { SOURCE_TYPE_KEYS, labelOf } from '../../../core/labels.js'
 import { useLang } from '../../../shell/LangContext.jsx'
-import { entityPaint } from './palette.js'
+import { entityPaint, entityRadius } from './palette.js'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 /** Inset of the outline from the box, so a 1.5px stroke is not clipped at the edge */
 const INSET = 1
 
-function Outline({ kind, w, h, plain = false, end = false }) {
-  // plain: one neutral outline for every kind (the guarantee chain draws in one ink; the role line says what the party is)
-  if (plain) return <rect className="antu-rn-shape" fill={end ? '#0f172a' : '#ffffff'} stroke="#475569" strokeWidth={1.3} x={INSET} y={INSET} width={w - INSET * 2} height={h - INSET * 2} rx={4} />
-  const p = entityPaint(kind)
-  const paint = { fill: p.fill, stroke: p.stroke, strokeWidth: kind === 'company' ? 2 : 1.3 }
+function Outline({ kind, w, h, theme, end = false }) {
+  const p = entityPaint(kind, theme)
+  const rx0 = entityRadius(kind, theme)
+  // An end of a chain (the relation path) is a dark box in the theme's ink
+  const paint = { fill: end ? theme.color.ink : p.fill, stroke: end ? theme.color.ink : p.stroke, strokeWidth: p.width }
+  const dash = p.dash
   const x = INSET
   const y = INSET
   const W = w - INSET * 2
   const H = h - INSET * 2
+  const rx = Math.min(rx0, H / 2)
   switch (kind) {
-    case 'person':
-      return <rect className="antu-rn-shape" {...paint} x={x} y={y} width={W} height={H} rx={Math.min(14, H / 2)} />
-    case 'company':
-      return <rect className="antu-rn-shape" {...paint} x={x} y={y} width={W} height={H} rx={3} />
-    case 'organization':
-      return <rect className="antu-rn-shape" {...paint} strokeDasharray="6 4" x={x} y={y} width={W} height={H} rx={8} />
     case 'government':
       // A second ring, as an end pill has in the flowchart: it is what tells an organ of the state at a glance
       return (
         <>
-          <rect className="antu-rn-shape" {...paint} x={x} y={y} width={W} height={H} rx={4} />
-          <rect className="antu-rn-ring" fill="none" stroke={p.stroke} strokeWidth={1} x={x + 4} y={y + 4} width={W - 8} height={H - 8} rx={2} />
+          <rect className="antu-rn-shape" {...paint} strokeDasharray={dash} x={x} y={y} width={W} height={H} rx={rx} />
+          <rect className="antu-rn-ring" fill="none" stroke={end ? theme.color.bg : p.stroke} strokeWidth={0.75} x={x + 4} y={y + 4} width={W - 8} height={H - 8} rx={Math.max(0, rx - 2)} />
         </>
       )
     default:
-      return <rect className="antu-rn-shape" {...paint} strokeDasharray="2 3" x={x} y={y} width={W} height={H} rx={6} />
+      return <rect className="antu-rn-shape" {...paint} strokeDasharray={dash} x={x} y={y} width={W} height={H} rx={rx} />
   }
 }
 
 const EntityNode = memo(function EntityNode({ id, data }) {
-  const { entity, w, h, textW, lit = false, dim = false, groupLabel, sources, relations, vertical, layer, centre = false, plain = false, end = false, camp = null, hintKey = 'rel.previewHint' } = data
+  const { entity, w, h, textW, lit = false, dim = false, groupLabel, sources, relations, vertical, layer, centre = false, end = false, camp = null, hintKey = 'rel.previewHint' } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
+  const { theme } = useTheme()
 
   const isPinned = pinnedId === id
   const showPreview = !pinnedId && hoveredId === id
@@ -87,7 +85,7 @@ const EntityNode = memo(function EntityNode({ id, data }) {
         </span>
       )}
       <svg className="antu-rn-svg" width={w} height={h} aria-hidden="true">
-        <Outline kind={entity.kind} w={w} h={h} plain={plain} end={end} />
+        <Outline kind={entity.kind} w={w} h={h} theme={theme} end={end} />
       </svg>
 
       {/* The text column is exactly as wide as metrics.js measured it, so the lines break where the box was sized for */}

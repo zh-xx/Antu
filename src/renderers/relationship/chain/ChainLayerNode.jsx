@@ -8,8 +8,8 @@
 // ============================================================
 
 import { memo } from 'react'
-const INK = '#475569'
-const SOFT = '#94a3b8'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
+
 const R = 8
 
 /**
@@ -25,6 +25,9 @@ function elbow([x1, y1], [x2, y2], turnX) {
 }
 
 const ChainLayerNode = memo(function ChainLayerNode({ data }) {
+  const { theme } = useTheme()
+  const INK = theme.color.ink2
+  const SOFT = theme.color.ink4
   const { width, height, headings, links, chips, empties, frames, texts, showLabels = true } = data
   return (
     <div className="antu-ch-layer" style={{ width, height }}>
@@ -36,7 +39,7 @@ const ChainLayerNode = memo(function ChainLayerNode({ data }) {
         </defs>
         {frames.map((f, i) => (
           <g key={`f${i}`}>
-            <line x1={f.x} y1={f.y} x2={f.x + f.w} y2={f.y} stroke="#cbd5e1" />
+            <line x1={f.x} y1={f.y} x2={f.x + f.w} y2={f.y} stroke={theme.color.line} />
             <text x={f.titleAt[0]} y={f.titleAt[1]} fontSize={13} fontWeight={700} fill={INK}>
               {f.title}
             </text>

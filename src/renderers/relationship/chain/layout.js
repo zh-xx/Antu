@@ -168,7 +168,7 @@ export function buildChainGraph(spec, fields = {}) {
   const contentW = Math.max(counterEnds.length ? cX + counterW - PAD : gX + guarantorW - PAD, MIN_CONTENT_W)
   const width = contentW + PAD * 2
   /** A party box as wide as its column: same data, the text column follows */
-  const boxData = (entity, w, extra = {}) => ({ ...party.dataOf(entity, { layer: 1, hintKey: 'rel.previewHint', plain: true, ...extra }), w, textW: w - 28 })
+  const boxData = (entity, w, extra = {}) => ({ ...party.dataOf(entity, { layer: 1, hintKey: 'rel.previewHint', ...extra }), w, textW: w - 28 })
 
   const nodes = []
   const layer = { width, height: 0, headings: [], links: [], chips: [], empties: [], frames: [], texts: [] }

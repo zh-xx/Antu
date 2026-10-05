@@ -15,11 +15,13 @@
 // ============================================================
 
 import { memo, useMemo } from 'react'
-import { relationPaint, RELATION_PAINT, DIM_OPACITY } from './palette.js'
+import { relationPaint, DIM_OPACITY } from './palette.js'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { securesTies, lookedAt } from './secures.js'
 
 const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
   const { connections, width, height, hiddenKinds = [], showLabels, curved, litEntity = null } = data
+  const { theme } = useTheme()
 
   const visible = useMemo(() => connections.filter((c) => !hiddenKinds.includes(c.kind)), [connections, hiddenKinds])
   const kindsDrawn = useMemo(() => [...new Set(visible.filter((c) => c.directed).map((c) => c.kind))], [visible])
@@ -54,28 +56,28 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
               markerUnits="userSpaceOnUse"
               orient="auto"
             >
-              <path d="M 0 1 L 9 5 L 0 9 Z" fill={(RELATION_PAINT[k] ?? RELATION_PAINT.other).stroke} />
+              <path d="M 0 1 L 9 5 L 0 9 Z" fill={relationPaint(k, theme).stroke} />
             </marker>
           ))}
         </defs>
 
         {visible.map((c) => {
-          const p = relationPaint(c.kind)
+          const p = relationPaint(c.kind, theme)
           const d = curved ? c.dCurve : c.d
           const marker = c.directed ? `url(#antu-rarrow-${c.kind})` : undefined
           return (
             <g key={c.id} className={`antu-rlink k-${c.kind}`} opacity={opacityOf(c)}>
               <path d={d} fill="none" stroke={p.stroke} strokeWidth={c.faint ? Math.max(1, p.width * 0.75) : p.width} strokeDasharray={p.dash} markerEnd={marker} />
               {/* A double line: a pale one down the middle of a wide one */}
-              {p.double && <path d={d} fill="none" stroke="#ffffff" strokeWidth={p.width - 2.4} />}
+              {p.double && <path d={d} fill="none" stroke={theme.color.bg} strokeWidth={p.width - 2.4} />}
             </g>
           )
         })}
 
         {ties.map((t) => (
           <g key={`tie:${t.id}`} className="antu-rtie">
-            <line x1={t.from[0]} y1={t.from[1]} x2={t.to[0]} y2={t.to[1]} stroke={RELATION_PAINT.guarantee.stroke} strokeWidth={1.2} strokeDasharray="2 3" />
-            <circle cx={t.to[0]} cy={t.to[1]} r={3.2} fill={RELATION_PAINT.guarantee.stroke} />
+            <line x1={t.from[0]} y1={t.from[1]} x2={t.to[0]} y2={t.to[1]} stroke={relationPaint('guarantee', theme).stroke} strokeWidth={1.2} strokeDasharray="2 3" />
+            <circle cx={t.to[0]} cy={t.to[1]} r={3.2} fill={relationPaint('guarantee', theme).stroke} />
           </g>
         ))}
       </svg>

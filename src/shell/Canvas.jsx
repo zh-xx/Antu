@@ -16,6 +16,7 @@ import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react
 import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState, useEdgesState } from '@xyflow/react'
 
 import { useLang } from './LangContext.jsx'
+import { useTheme, themeVars } from '../theme/ThemeContext.jsx'
 import { FIT_PADDING, fitWidthZoom, fitZoom } from '../core/canvas.js'
 import { exportPng as runExportPng } from './exportPng.js'
 
@@ -48,6 +49,7 @@ export default function Canvas({
   // the nodes via onNodesChange, and everything that depends on size (the MiniMap and
   // the like) relies on that write-back.
   const { ariaLabels } = useLang()
+  const { theme } = useTheme()
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges)
 
@@ -167,6 +169,14 @@ export default function Canvas({
     [graph],
   )
 
+  // The theme reaches the diagram only: its CSS variables sit on the viewport (the layer the export clones), not on the
+  // app root, so the shell round it keeps one look in every theme
+  useEffect(() => {
+    const viewport = canvasRef.current?.querySelector('.react-flow__viewport')
+    if (!viewport) return
+    for (const [k, v] of Object.entries(themeVars(theme))) viewport.style.setProperty(k, v)
+  }, [theme, graph])
+
   return (
     <main
       className={`antu-canvas${showGrid ? ' show-grid' : ''}`}
@@ -211,7 +221,7 @@ export default function Canvas({
         minZoom={minZoom}
         maxZoom={MAX_ZOOM}
       >
-        {/* The background dot grid also uses the separator colour from the palette; do not introduce a new grey */}
+        {/* The shell (dot grid, zoom, minimap, dock) is not themed: only the diagram is; its variables are set on the viewport below */}
         <Background gap={20} color="#e8ebef" />
         {/* The padding must match the initial fit, or clicking the button once makes the zoom jump */}
         <Controls showInteractive={false} onFitView={() => fit(300)} />
