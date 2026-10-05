@@ -42,14 +42,6 @@ function timeline() {
     }),
   }
 }
-function graph() {
-  const W = stage.clientWidth, H = stage.clientHeight
-  const P = (x, y) => ({ x: x * W, y: y * H })
-  return {
-    camps: [{ id: 'g-1', x: 0.02 * W, y: 0.06 * H, w: 0.47 * W, h: 0.9 * H }, { id: 'g-2', x: 0.53 * W, y: 0.06 * H, w: 0.45 * W, h: 0.9 * H }],
-    at: { 'e-2': P(0.12, 0.3), 'e-3': P(0.36, 0.3), 'e-4': P(0.12, 0.62), 'e-1': P(0.3, 0.84), 'e-5': P(0.76, 0.3), 'e-6': P(0.65, 0.78), 'e-7': P(0.88, 0.78) },
-  }
-}
 
 // ---------- the scenes
 function reading(pg = paper, beam = '#beam') {
@@ -172,125 +164,106 @@ async function toTimeline(alive) {
   $$('.wordfly').forEach((w) => w.remove())
 }
 
-function edgePath(r, G) {
-  const a = G.at[r.from], b = G.at[r.to]
-  if (r.kind === 'debt') {
-    // the two loans arc over the top, one higher than the other, ending side by side
-    const first = r.id === 'r-1', lift = first ? 0.2 : 0.11, off = first ? -26 : 26
-    const y0 = Math.min(a.y, b.y) - 27, y = y0 - stage.clientHeight * lift
-    const ax = a.x - off, bx = b.x + off
-    return { d: `M ${ax} ${a.y - 27} C ${ax} ${y}, ${bx} ${y}, ${bx} ${b.y - 27}`, lx: (ax + bx) / 2, ly: y0 + (y - y0) * 0.75 }
-  }
-  const dx = b.x - a.x, dy = b.y - a.y
-  // cut the line at the edge of each box (150 × 54)
-  const cut = (p, s) => { const k = Math.min(75 / Math.abs(dx || 1e-6), 27 / Math.abs(dy || 1e-6)); return { x: p.x + s * dx * k, y: p.y + s * dy * k } }
-  const p = cut(a, 1), q = cut(b, -1)
-  return { d: `M ${p.x} ${p.y} L ${q.x} ${q.y}`, lx: (p.x + q.x) / 2, ly: (p.y + q.y) / 2 }
-}
-const STYLE = {
-  debt: { w: 2.4, dash: '', arrow: true, color: '#e8452c' },
-  guarantee: { w: 1.5, dash: '7 5', arrow: true },
-  kinship: { w: 1.4, dash: '', double: true },
-  control: { w: 2, dash: '', arrow: true },
-  employment: { w: 1.4, dash: '2 5', arrow: true },
-  agency: { w: 1.4, dash: '2 5', arrow: true },
+// the relationship graph as Antu lays it out (D.rel), fitted to the stage
+function relFit() {
+  const R = D.rel, W = stage.clientWidth, H = stage.clientHeight
+  const k = Math.min((W - 24) / R.size.width, (H - 16) / R.size.height, 1.6)
+  return { k, ox: (W - R.size.width * k) / 2, oy: (H - R.size.height * k) / 2 }
 }
 
 async function toGraph(alive) {
-  const G = graph()
+  const R = D.rel, f = relFit(), P = (x, y) => ({ x: f.ox + x * f.k, y: f.oy + y * f.k })
   // every name in the page lights up
   const pr = paper.getBoundingClientRect()
   const visible = $$('#paper .nm').filter((n) => {
-    const r = n.getBoundingClientRect(), box = n.closest('p,li').getBoundingClientRect()
-    return r.width > 0 && r.bottom <= box.bottom + 1 && r.right <= box.right + 1 && r.bottom <= pr.bottom - 30
+    const r = n.getBoundingClientRect()
+    return r.width > 0 && r.bottom <= pr.bottom - 10 && r.top >= pr.top
   })
   visible.forEach((n, i) => setTimeout(() => alive() && n.classList.add('lit'), (i * 37) % 900))
   await wait(1300)
   if (!alive()) return
-  // the camps and the parties' places
-  G.camps.forEach((c) => {
-    const box = el('div', 'camp', `<span>${D.groups[c.id]}</span>`, { left: c.x + 'px', top: c.y + 'px', width: c.w + 'px', height: c.h + 'px' })
-    show(box, 700, 500)
+  // the canvas: Antu's drawing, scaled; groups and parties wait for the names
+  const layer = el('div', 'relcv', null, { left: f.ox + 'px', top: f.oy + 'px', width: R.size.width + 'px', height: R.size.height + 'px', transform: `scale(${f.k})` })
+  const svg = document.createElementNS(SVGNS, 'svg')
+  svg.setAttribute('width', R.size.width)
+  svg.setAttribute('height', R.size.height)
+  svg.innerHTML = `<defs><marker id="rarr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 1 L9 5 L0 9 Z" style="fill:var(--edge)"/></marker></defs>`
+  layer.appendChild(svg)
+  const groups = R.groups.map((g) => {
+    const b = document.createElement('div')
+    b.className = 'rgroup'
+    Object.assign(b.style, { left: g.x + 'px', top: g.y + 'px', width: g.w + 'px', height: g.h + 'px' })
+    b.innerHTML = `<span>${g.label}</span>`
+    layer.appendChild(b)
+    return b
   })
   const ents = {}
-  for (const e of D.entities) {
-    const p = G.at[e.id]
-    ents[e.id] = el('div', `ent ${e.kind === 'company' ? 'co' : ''} ${e.kind === 'other' ? 'grp' : ''}`, `<b>${e.label}</b><i>${e.role}</i><em>0</em>`, { left: p.x + 'px', top: p.y + 'px' })
+  for (const e of R.ents) {
+    const b = document.createElement('div')
+    b.className = `rent k-${e.kind}`
+    Object.assign(b.style, { left: e.x + 'px', top: e.y + 'px', width: e.w + 'px', height: e.h + 'px', borderRadius: e.rx + 'px', borderWidth: Math.max(1, e.width) + 'px', borderStyle: e.dash ? (e.dash.startsWith('1') || e.dash.startsWith('2') ? 'dotted' : 'dashed') : 'solid' })
+    b.innerHTML = `<b>${e.label}</b>${e.role ? `<i>${e.role}</i>` : ''}`
+    layer.appendChild(b)
+    ents[e.id] = b
   }
+  groups.forEach((g, i) => g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, delay: 400 + i * 120, fill: 'both' }))
   paperAway()
-  // each mention flies to its party; the party appears with the first one and counts them in
+  // each name flies to its party; the party comes up with the first one and pulses at each one after
   const got = {}
   visible.forEach((n, i) => {
-    const id = n.dataset.e, from = rel(n), to = G.at[id]
-    const m = el('span', 'mv', n.textContent, { left: from.x + 'px', top: from.y + 'px', fontSize: '12px', color: '#fff', background: '#e8452c', padding: '0 2px', borderRadius: '2px', fontFamily: 'var(--serif)' })
+    const id = n.dataset.e, from = rel(n), e = R.ents.find((x) => x.id === id), c = P(e.x + e.w / 2, e.y + e.h / 2)
+    const m = el('span', 'mv', n.textContent, { left: from.x + 'px', top: from.y + 'px', fontSize: from.h * 0.7 + 'px', color: '#fff', background: '#e8452c', padding: '0 2px', borderRadius: '2px', fontFamily: 'var(--fang)', lineHeight: 1.2 })
     n.classList.remove('lit')
     const delay = 200 + (i % 24) * 45 + Math.random() * 200
-    const fly = m.animate([
+    m.animate([
       { transform: 'translate(0,0) scale(1)', opacity: 1 },
-      { transform: `translate(${(to.x - from.x) * 0.5 + (Math.random() - 0.5) * 120}px,${(to.y - from.y) * 0.5 + (Math.random() - 0.5) * 120}px) scale(1.15)`, opacity: 1, offset: 0.5 },
-      { transform: `translate(${to.x - from.x - from.w / 2}px,${to.y - from.y - from.h / 2}px) scale(.5)`, opacity: 0 },
-    ], { duration: 1100, delay, easing: ease, fill: 'both' })
-    fly.onfinish = () => {
+      { transform: `translate(${(c.x - from.x) * 0.5 + (Math.random() - 0.5) * 120}px,${(c.y - from.y) * 0.5 + (Math.random() - 0.5) * 120}px) scale(1.15)`, opacity: 1, offset: 0.5 },
+      { transform: `translate(${c.x - from.x - from.w / 2}px,${c.y - from.y - from.h / 2}px) scale(.5)`, opacity: 0 },
+    ], { duration: 1100, delay, easing: ease, fill: 'both' }).onfinish = () => {
       m.remove()
       if (!alive()) return
       const box = ents[id]
       got[id] = (got[id] || 0) + 1
-      if (got[id] === 1) box.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1.06)', offset: 0.7 }, { opacity: 1, transform: 'scale(1)' }], { duration: 420, fill: 'both', easing: 'ease-out' })
-      else box.animate([{ boxShadow: '0 0 0 0 rgba(232,69,44,.8)' }, { boxShadow: '0 0 0 10px rgba(232,69,44,0)' }], { duration: 400 })
-      box.querySelector('em').textContent = got[id]
+      if (got[id] === 1) box.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1.05)', offset: 0.7 }, { opacity: 1, transform: 'none' }], { duration: 420, fill: 'both', easing: 'ease-out' })
+      else box.animate([{ boxShadow: '0 0 0 0 rgba(232,69,44,.8)' }, { boxShadow: '0 0 0 9px rgba(232,69,44,0)' }], { duration: 400 })
     }
   })
   await wait(200 + 24 * 45 + 200 + 1100 + 200)
   if (!alive()) return
-  // parties no visible mention reached still come up, and every count settles on the whole judgment's
-  for (const e of D.entities) {
-    const box = ents[e.id]
-    if (!got[e.id]) show(box, 400)
-    box.querySelector('em').textContent = '×' + e.mentions
-  }
-  // the relations draw themselves
-  const svg = document.createElementNS(SVGNS, 'svg')
-  svg.setAttribute('class', 'edges')
-  svg.setAttribute('width', stage.clientWidth)
-  svg.setAttribute('height', stage.clientHeight)
-  svg.innerHTML = '<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" style="fill:var(--edge)"/></marker><marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#e8452c"/></marker></defs>'
-  stage.appendChild(svg)
-  D.relations.forEach((r, i) => {
-    const s = STYLE[r.kind] || STYLE.control, g = edgePath(r, G), color = s.color || 'var(--edge)'
-    const mk = (w, extra = {}) => {
+  for (const e of R.ents) if (!got[e.id]) ents[e.id].animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, fill: 'both' })
+  // the relations draw themselves, along Antu's own routes
+  R.links.forEach((l, i) => {
+    const delay = 100 + i * 150
+    const mk = (w, color) => {
       const p = document.createElementNS(SVGNS, 'path')
-      p.setAttribute('d', g.d)
+      p.setAttribute('d', l.d)
       p.setAttribute('fill', 'none')
-      p.style.stroke = extra.stroke || color
       p.setAttribute('stroke-width', w)
+      p.style.stroke = color
       svg.appendChild(p)
       return p
     }
-    const delay = 150 + i * 160
-    let line
-    if (s.double) { mk(4.6); line = mk(1.8, { stroke: 'var(--bg)' }) } else line = mk(s.w)
-    const len = line.getTotalLength()
-    for (const p of [...svg.querySelectorAll('path')].slice(-(s.double ? 2 : 1))) {
+    const parts = l.double ? [mk(l.width, 'var(--edge)'), mk(l.width - 2.4, 'var(--bg)')] : [mk(l.width, l.kind === 'debt' ? '#e8452c' : 'var(--edge)')]
+    const len = parts[0].getTotalLength()
+    parts.forEach((p, k) => {
       p.style.strokeDasharray = `${len} ${len}`
-      p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 700, delay, easing: ease, fill: 'both' }).onfinish = () => {
-        p.style.strokeDasharray = s.dash || 'none'
-        if (s.arrow && p === line) p.setAttribute('marker-end', s.color ? 'url(#ahr)' : 'url(#ah)')
+      p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 750, delay, easing: ease, fill: 'both' }).onfinish = () => {
+        p.style.strokeDasharray = k === 0 && l.dash ? l.dash : 'none'
+        if (k === 0 && l.directed) p.setAttribute('marker-end', 'url(#rarr)')
       }
-    }
-    const text = r.label + (r.amount ? ` ${r.amount}` : '')
-    const t = document.createElementNS(SVGNS, 'g')
-    const w = text.length * 11.5 + 12
-    t.innerHTML = `<rect class="labbg" x="${g.lx - w / 2}" y="${g.ly - 10}" width="${w}" height="20" rx="4"/><text class="lab" x="${g.lx}" y="${g.ly + 4}" text-anchor="middle">${text}</text>`
-    t.style.opacity = 0
-    svg.appendChild(t)
-    t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: delay + 500, fill: 'both' })
+    })
+    const t = document.createElement('span')
+    t.className = 'rlab'
+    t.textContent = l.label
+    Object.assign(t.style, { left: l.lx + 'px', top: l.ly + 'px', width: l.lw + 'px', height: l.lh + 'px' })
+    layer.appendChild(t)
+    t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: delay + 550, fill: 'both' })
   })
-  await wait(150 + D.relations.length * 160 + 900)
-  if (!alive()) return
+  await wait(100 + R.links.length * 150 + 900)
 }
 
 function reset() {
-  $$('.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
+  $$('.relcv,.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
   paper.classList.remove('melt')
   $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit', 'hl', 'pick') })
   cam = { z: 1, tx: 0, ty: 0 }

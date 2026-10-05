@@ -11,6 +11,7 @@
 
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { createServer } from 'vite'
 
 const HERE = fileURLToPath(new URL('.', import.meta.url))
 const REPO = fileURLToPath(new URL('../../../', import.meta.url))
@@ -92,6 +93,30 @@ ${body(v.name, v.note)}
 //  The timeline is all twelve events of the fact file, each matched to its sentence; the graph is the
 //  relationship file, and every highlighted name is a real mention in the judgment.
 // ------------------------------------------------------------
+// The relationship graph exactly as Antu lays it out (its own layout code, run here; laid out across, where its lines and labels keep clear of each other),
+// with the line and outline of each kind from the document theme; the page only colours them
+async function relGraph(spec) {
+  const vite = await createServer({ root: REPO, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' })
+  try {
+    const { buildRelationshipGraph } = await vite.ssrLoadModule('/src/renderers/relationship/graph/layout.js')
+    const { THEMES } = await vite.ssrLoadModule('/src/theme/themes.js')
+    const T = THEMES.document
+    const g = buildRelationshipGraph(spec, {}, undefined, 'horizontal')
+    if (g.errors.length) throw new Error(`the relationship example does not validate: ${g.errors.map((e) => e.message ?? e).join('; ')}`)
+    const ents = g.nodes.filter((n) => n.type === 'rnode').map((n) => {
+      const e = n.data.entity, p = T.entity[e.kind] ?? T.entity.other
+      return { id: n.id, label: e.label, role: e.role ?? '', kind: e.kind, x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h, rx: Math.min(T.radius[e.kind] ?? 0, n.data.h / 2), width: p.width, dash: p.dash ?? '' }
+    })
+    const links = g.connections.map((c) => {
+      const p = T.relation[c.kind] ?? T.relation.other
+      return { id: c.id, kind: c.kind, d: c.dCurve, directed: !!c.directed, label: c.label, lx: c.labelAt.x, ly: c.labelAt.y, lw: c.labelSize.width, lh: c.labelSize.height, width: p.width, dash: p.dash ?? '', double: !!p.double }
+    })
+    return { size: g.size, groups: g.groupBoxes, ents, links }
+  } finally {
+    await vite.close()
+  }
+}
+
 // the 方远 reasoning file, reduced to what a first screen can show: the holding, the five issues with the
 // point the court ruled on for each (and whether it held), and every other node of the issue as one line
 function reasoning() {
@@ -199,6 +224,7 @@ function flowchart() {
     entities,
     groups: Object.fromEntries(relf.groups.map((g) => [g.id, g.label])),
     relations: relf.relations.map((r) => ({ id: r.id, from: r.from, to: r.to, kind: r.kind, label: r.label, amount: r.amount })),
+    rel: await relGraph(relf),
     totalMentions: entities.reduce((n, e) => n + e.mentions, 0),
     judgmentName: `${lines[0].replace(/^# /, '')} · ${lines[2].replace(/^> /, '').replace('（虚构）', '')}`,
     reason: reasoning(),
