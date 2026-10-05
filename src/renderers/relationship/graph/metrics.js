@@ -12,6 +12,7 @@
 
 // The same text measure the fact cards and the procedure nodes use, so a CJK character counts the same everywhere
 import { textEm } from '../../fact/cardGeometry.js'
+import { nodeHeight, nodeWidth } from '../../../theme/scale.js'
 
 /** Entity text: the name, and the role under it */
 export const ENTITY_FONT = 14
@@ -21,10 +22,11 @@ export const ROLE_LINE = 16
 export const ENTITY_MAX_LINES = 2
 /** Inner padding of a box */
 export const ENTITY_PAD_X = 16
+/** Top and bottom together (5 px each): a name is 40 px high, a name and a role 48 */
 export const ENTITY_PAD_Y = 10
 /** The text column: never narrower than this, and wrapped once wider than the cap */
-export const TEXT_MIN_W = 76
-export const TEXT_MAX_W = 160
+export const TEXT_MIN_W = 96
+export const TEXT_MAX_W = 168
 
 /**
  * ELK spacing between two levels of a camp. ELK adds room for a relation's label on top of this, so it
@@ -85,15 +87,21 @@ export function labelBox(text) {
   return { width, height: lines * LABEL_LINE + 2 }
 }
 
-/** The single source of entity sizes. Returns { w, h, textW }: textW is the width of the text column the entity draws its text in. */
+/**
+ * The single source of entity sizes. Returns { w, h, textW }: textW is the width of the text column the entity
+ * draws its text in. On the scale of src/theme/scale.js (issue #97): the width is 120, 160 or 200 (the least that
+ * holds the name and the role on one line, 200 at most, the name wrapping to two lines beyond), the height is on
+ * the 8 px grid and at least 40 (40 for a name, 48 for a name and a role, 56 or 64 or more when it wraps).
+ */
 export function sizeOf(entity) {
   const label = String(entity?.label ?? '')
   const role = entity?.role ? String(entity.role) : ''
   const labelW = emOf(label, BOLD_FACTOR) * ENTITY_FONT
   // The role shows on one line, so it can widen the box only up to the cap
   const roleW = role ? textEm(role) * ROLE_FONT : 0
-  const textW = Math.ceil(Math.min(TEXT_MAX_W, Math.max(TEXT_MIN_W, labelW, roleW)))
+  const w = nodeWidth(Math.min(TEXT_MAX_W, Math.max(labelW, roleW)) + ENTITY_PAD_X * 2)
+  const textW = w - ENTITY_PAD_X * 2
   const lines = Math.min(ENTITY_MAX_LINES, Math.max(1, Math.ceil(labelW / textW - 1e-9)))
   const textH = lines * ENTITY_LINE + (role ? ROLE_LINE + 2 : 0)
-  return { w: textW + ENTITY_PAD_X * 2, h: textH + ENTITY_PAD_Y * 2, textW }
+  return { w, h: nodeHeight(textH + ENTITY_PAD_Y), textW }
 }

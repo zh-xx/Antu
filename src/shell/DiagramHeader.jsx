@@ -16,14 +16,19 @@
 //    neighbour in one click; the name opens a panel with a sketch of every way, to pick any in two.
 //    With one kind there is no picker.
 //    size and time span
+//    the theme: three choices in a row (document black and white, modern, legal blue), remembered; a page made
+//    with `--theme` is fixed to that one and shows no choice
 // ============================================================
 
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from './LangContext.jsx'
 import KindIcon from './KindIcon.jsx'
+import { useTheme, THEME_IDS } from '../theme/ThemeContext.jsx'
+import { themeOf } from '../theme/themes.js'
 
 export default function DiagramHeader({ title, typeLabel, info = [], kinds = [], kind, onSelectKind }) {
   const { t } = useLang()
+  const { id: themeId, setTheme, forced: themeForced } = useTheme()
 
   // With only one rendering kind there is nothing to pick
   const multi = kinds.length > 1
@@ -98,6 +103,16 @@ export default function DiagramHeader({ title, typeLabel, info = [], kinds = [],
         )}
 
         {info.length > 0 && <p className="antu-header-info">{info.join(' · ')}</p>}
+
+        {!themeForced && (
+          <div className="antu-header-theme" role="group" aria-label={t('header.theme')}>
+            {THEME_IDS.map((id) => (
+              <button key={id} className={`antu-header-themeopt${id === themeId ? ' is-on' : ''}`} aria-pressed={id === themeId} onClick={() => setTheme(id)} title={t(themeOf(id).labelKey)}>
+                {t(themeOf(id).labelKey)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {open && (

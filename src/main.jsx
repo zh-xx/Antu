@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import { LangProvider } from './shell/LangContext.jsx'
+import { ThemeProvider } from './theme/ThemeContext.jsx'
 import './styles.css'
 
 // First register "knowledge" (plain JS): how each type is validated and which
@@ -28,6 +29,8 @@ import './renderers/justification/tree/register.js'
 // The language is resolved once at the outermost layer and passed down (see shell/LangContext.jsx).
 createRoot(document.getElementById('root')).render(
   <LangProvider>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </LangProvider>,
 )

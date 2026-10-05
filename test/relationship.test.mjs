@@ -434,9 +434,12 @@ test('secures: the tie joins a guarantee to the claim it secures, and only when 
 test('text slack goes on Latin letters only, so a Chinese diagram is not left loose', () => {
   const latin = buildRelationshipGraph({ ...base(), entities: base().entities.map((e) => ({ ...e, label: 'Wang Wu Wang', role: undefined })) })
   const cjk = buildRelationshipGraph({ ...base(), entities: base().entities.map((e) => ({ ...e, label: '星河商贸有限公司', role: undefined })) })
-  const w = (g) => g.nodes[0].data.textW
-  assert.ok(w(latin) > 12 * 14 * 0.5, 'Latin text is given room for a bold face')
-  assert.equal(w(cjk), Math.ceil(8 * 14), 'eight CJK characters are eight ems, not more')
+  const box = (g) => g.nodes[0].data.w
+  assert.ok(box(latin) > 12 * 14 * 0.5, 'Latin text is given room for a bold face')
+  // Eight CJK characters are eight ems (112 px) and the box adds 16 px of padding on each side: 144 px, so the
+  // 160 px step. Not wider: the box is the least step that holds the text
+  assert.equal(box(cjk), 160, 'eight CJK characters are eight ems, not more')
+  assert.equal(cjk.nodes[0].data.textW, 160 - 32)
 })
 
 test('looking at an entity brings out its relations and the claims its guarantees secure', () => {

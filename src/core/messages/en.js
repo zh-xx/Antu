@@ -128,6 +128,10 @@ export const en = {
 
   'graphKind.timeline': 'Timeline',
   'graphKind.flow': 'Flowchart',
+  'header.theme': 'Theme',
+  'theme.document': 'Document',
+  'theme.modern': 'Modern',
+  'theme.legal': 'Legal blue',
   'header.kindOpen': ({ n }) => `All ${n} ways of drawing`,
   'header.kindPrev': 'Previous way of drawing',
   'header.kindNext': 'Next way of drawing',

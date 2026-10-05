@@ -49,6 +49,7 @@ import { readExample, listExamples, listAgentGuides, describeSchema, layoutRepor
 } from '../mcp/engine.mjs'
 import { listKnowledgeTypes, layoutOf, layoutKindsOf } from '../../src/core/registry.js'
 import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.js'
+import { DEFAULT_THEME, themeOf } from '../../src/theme/themes.js'
 import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
 import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
@@ -993,10 +994,11 @@ async function checkExport(browser, spec) {
     `sample point (${sx},${sy}), image ${shot.width}×${shot.height}`,
   )
   const rgb = await sample(sx, sy)
-  // Not merely "dark": it has to be the colour of the axis line (a little slack for sampling a
-  // semi-transparent line)
-  const near = Math.abs(rgb[0] - 178) < 40 && Math.abs(rgb[1] - 192) < 40 && Math.abs(rgb[2] - 208) < 40
-  truthy('the exported image has an arrow at the end of the timeline', near, `sampled rgb(${rgb}) at (${sx},${sy}), axis colour about rgb(178,192,208)`)
+  // Not merely "dark": it has to be the colour of the axis line, which is the theme's (the default theme
+  // when nothing is chosen), with a little slack for sampling a semi-transparent line
+  const axis = [1, 3, 5].map((i) => parseInt(themeOf(DEFAULT_THEME).color.axis.slice(i, i + 2), 16))
+  const near = rgb.every((v, i) => Math.abs(v - axis[i]) < 40)
+  truthy('the exported image has an arrow at the end of the timeline', near, `sampled rgb(${rgb}) at (${sx},${sy}), axis colour about rgb(${axis})`)
 }
 
 // ---------------------------------------------------------------
@@ -2016,6 +2018,46 @@ async function checkRenderRoute() {
 }
 
 // ---------------------------------------------------------------
+// The document theme is black and white: no page of it draws a colour (issue #97)
+// ---------------------------------------------------------------
+async function checkDocumentThemeIsGrey() {
+  section('theme: the document theme draws only greys')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const spec = JSON.parse(readFileSync(join(REPO, 'examples/relationship/marketplace-parties.zh-CN.json'), 'utf8'))
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    for (const kind of ['graph', 'focus', 'chain', 'matrix', 'equity', 'authority', 'related', 'path', 'summary']) {
+      const html = join(OUT, `theme-grey-${kind}.html`)
+      renderToFile(spec, { outPath: html, quiet: true, preset: { kind, theme: 'document' } })
+      await browser.open(`file://${html}?lang=zh`)
+      const found = await browser.eval(`(() => {
+        const grey = (c) => {
+          const m = /rgba?\\(([^)]*)\\)/.exec(c)
+          if (!m) return true
+          const [r, g, b, a = 1] = m[1].split(/[ ,\\/]+/).filter(Boolean).map(Number)
+          return +a === 0 || Math.max(r, g, b) - Math.min(r, g, b) <= 6
+        }
+        const bad = new Map()
+        for (const el of document.querySelectorAll('.react-flow__viewport, .react-flow__viewport *')) {
+          const cs = getComputedStyle(el)
+          for (const prop of ['color', 'backgroundColor', 'borderTopColor', 'borderLeftColor', 'fill', 'stroke']) {
+            const v = cs[prop]
+            if (v && v.startsWith('rgb') && !grey(v)) bad.set(prop + ' ' + v + ' ' + (el.getAttribute('class') || el.tagName).slice(0, 40), 1)
+          }
+        }
+        return [...bad.keys()].slice(0, 6)
+      })()`)
+      eq(`${kind}: no colour in the document theme`, found, [])
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
+// ---------------------------------------------------------------
 // The minimap shows the whole picture, also when only decoration layers draw it
 // ---------------------------------------------------------------
 async function checkMinimapShowsExtent() {
@@ -2946,6 +2988,7 @@ if (!shotOnly && !skipBrowser) {
   await checkRenderMatrix()
   await checkRenderEquity()
   await checkRenderLevelledViews()
+  await checkDocumentThemeIsGrey()
   await checkMinimapShowsExtent()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)
