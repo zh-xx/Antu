@@ -57,7 +57,7 @@ function words(o, el) {
 // fly a card from where its words were to where Antu put it: its box changes size (nothing is stretched),
 // lit like the words at first, and Antu's card shows through as it lands
 function fly(o, from, { delay = 0, duration = 1100 } = {}) {
-  const t = o.t, n = o.n, k = frame.k
+  const t = o.t
   o.a.style.transform = ''
   o.a.animate([
     { left: from.x + 'px', top: from.y + 'px', width: from.w + 'px', height: from.h + 'px' },
