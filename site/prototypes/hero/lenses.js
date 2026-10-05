@@ -416,13 +416,28 @@ const SCENES = {
   procedure: async (alive) => { paper.style.opacity = 0; await toFlow(alive) },
   justification: async (alive) => { await reading(); if (alive()) await toReasoning(alive) },
 }
+// the thin line under the chosen kind fills while its scene plays
+const SCENE_MS = { fact: 5200, relationship: 7200, procedure: 9500, justification: 6800 }
 async function play(kind) {
   const me = ++run, alive = () => me === run
-  $$('.kind').forEach((k) => k.classList.toggle('on', k.dataset.kind === kind))
+  $$('.kind').forEach((k) => {
+    const on = k.dataset.kind === kind, bar = k.querySelector('.prog')
+    k.classList.toggle('on', on)
+    bar.getAnimations({ subtree: true }).forEach((a) => a.cancel())
+    bar.style.setProperty('--p', 0)
+  })
+  const bar = $(`.kind[data-kind="${kind}"] .prog`)
   reset()
   paper.style.opacity = ''
-  if (reduce) return
+  if (reduce) { bar.style.setProperty('--p', 1); return }
+  const t0 = performance.now()
+  ;(function tick(now) {
+    if (!alive()) return
+    bar.style.setProperty('--p', Math.min(0.96, (now - t0) / SCENE_MS[kind]))
+    requestAnimationFrame(tick)
+  })(t0)
   await SCENES[kind](alive)
+  if (alive()) { run++; bar.style.setProperty('--p', 1) }
 }
 $$('.kind').forEach((k) => (k.onclick = () => play(k.dataset.kind)))
 // `#kind=procedure` in the address starts with that kind (for checking one alone)
