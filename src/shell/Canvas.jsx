@@ -16,6 +16,7 @@ import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react
 import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState, useEdgesState } from '@xyflow/react'
 
 import { useLang } from './LangContext.jsx'
+import { useTheme } from '../theme/ThemeContext.jsx'
 import { FIT_PADDING, fitWidthZoom, fitZoom } from '../core/canvas.js'
 import { exportPng as runExportPng } from './exportPng.js'
 
@@ -48,6 +49,7 @@ export default function Canvas({
   // the nodes via onNodesChange, and everything that depends on size (the MiniMap and
   // the like) relies on that write-back.
   const { ariaLabels } = useLang()
+  const { theme } = useTheme()
   const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges)
 
@@ -211,13 +213,13 @@ export default function Canvas({
         minZoom={minZoom}
         maxZoom={MAX_ZOOM}
       >
-        {/* The background dot grid also uses the separator colour from the palette; do not introduce a new grey */}
-        <Background gap={20} color="#e8ebef" />
+        {/* The background dot grid is the theme's separator colour */}
+        <Background gap={20} color={theme.color.line} />
         {/* The padding must match the initial fit, or clicking the button once makes the zoom jump */}
         <Controls showInteractive={false} onFitView={() => fit(300)} />
         {/* The display controls float centred below the canvas: the zoom controls are bottom left and the minimap bottom right, so the three do not collide */}
         <Panel position="bottom-center">{children}</Panel>
-        <MiniMap pannable zoomable nodeColor="#cbd5e1" />
+        <MiniMap pannable zoomable nodeColor={theme.color.ink4} />
       </ReactFlow>
     </main>
   )

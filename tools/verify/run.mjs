@@ -2017,6 +2017,46 @@ async function checkRenderRoute() {
   }
 }
 
+// ---------------------------------------------------------------
+// The document theme is black and white: no page of it draws a colour (issue #97)
+// ---------------------------------------------------------------
+async function checkDocumentThemeIsGrey() {
+  section('theme: the document theme draws only greys')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const spec = JSON.parse(readFileSync(join(REPO, 'examples/relationship/marketplace-parties.zh-CN.json'), 'utf8'))
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    for (const kind of ['graph', 'focus', 'chain', 'matrix', 'equity', 'authority', 'related', 'path', 'summary']) {
+      const html = join(OUT, `theme-grey-${kind}.html`)
+      renderToFile(spec, { outPath: html, quiet: true, preset: { kind, theme: 'document' } })
+      await browser.open(`file://${html}?lang=zh`)
+      const found = await browser.eval(`(() => {
+        const grey = (c) => {
+          const m = /rgba?\\(([^)]*)\\)/.exec(c)
+          if (!m) return true
+          const [r, g, b, a = 1] = m[1].split(/[ ,\\/]+/).filter(Boolean).map(Number)
+          return +a === 0 || Math.max(r, g, b) - Math.min(r, g, b) <= 6
+        }
+        const bad = new Map()
+        for (const el of document.querySelectorAll('.antu-app *')) {
+          const cs = getComputedStyle(el)
+          for (const prop of ['color', 'backgroundColor', 'borderTopColor', 'borderLeftColor', 'fill', 'stroke']) {
+            const v = cs[prop]
+            if (v && v.startsWith('rgb') && !grey(v)) bad.set(prop + ' ' + v + ' ' + (el.getAttribute('class') || el.tagName).slice(0, 40), 1)
+          }
+        }
+        return [...bad.keys()].slice(0, 6)
+      })()`)
+      eq(`${kind}: no colour in the document theme`, found, [])
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderLevelledViews() {
   section('render: relationship authority chart, related-party list, relation path, camp summary')
   if (!findChrome()) {
@@ -2916,6 +2956,7 @@ if (!shotOnly && !skipBrowser) {
   await checkRenderMatrix()
   await checkRenderEquity()
   await checkRenderLevelledViews()
+  await checkDocumentThemeIsGrey()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)

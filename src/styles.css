@@ -45,8 +45,8 @@
   background: var(--antu-chrome-bg, rgba(255, 255, 255, 0.72));
   -webkit-backdrop-filter: var(--antu-chrome-blur, blur(16px) saturate(1.8));
   backdrop-filter: var(--antu-chrome-blur, blur(16px) saturate(1.8));
-  border: var(--antu-chrome-border, 1px solid rgba(15, 23, 42, 0.07));
-  box-shadow: var(--antu-chrome-shadow, 0 4px 18px rgba(15, 23, 42, 0.10));
+  border: var(--antu-chrome-border, 1px solid rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.07));
+  box-shadow: var(--antu-chrome-shadow, 0 4px 18px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.10));
 }
 .antu-dock-chip {
   /* inline-flex + 居中：里面的箭头才不会跟着基线往下掉 */
@@ -66,18 +66,18 @@
 /* 按下去要有回响：所有控件都得有 :active，而且要比"开着"更深一档，
    否则点一个已经开着的开关时，底色反而变浅，看着像没接住这一下。
    桌面端不缩放（那是 iOS 的做法），只变色。 */
-.antu-dock-chip:hover { background: rgba(15, 23, 42, 0.05); }
+.antu-dock-chip:hover { background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.05); }
 /* 开关打开时的底色要比分段控件的轨道更深一档，
    否则"这个开关是开的"和"这一段被选中"看着像同一种东西。
    三层色阶：胶囊底最浅、分段轨道居中、打开的开关最深。 */
 .antu-dock-chip.is-open,
 .antu-dock-chip.is-on {
-  background: rgba(15, 23, 42, 0.12);
+  background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.12);
   color: var(--antu-text);
   font-weight: 600;
 }
 /* 排在 .is-on 后面：两者特异性一样，写前面的话"开着"的开关按下去没反应 */
-.antu-dock-chip:active { background: rgba(15, 23, 42, 0.16); }
+.antu-dock-chip:active { background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.16); }
 /* 胶囊里唯一一个**动作**（点了就下文件），不是开关。
    开关的底色最浅是透明、最深是 12% 灰，所以实心那一档只留给动作，
    一眼就能和"开着"的开关区分开。
@@ -106,7 +106,7 @@
 /* 导出中：不能再用"实心黑压到 55% 透明"，那会糊成一块中间调的灰，
    看着仍像能点。换成和开关同一层的浅底 + 次要色文字，一眼就是"停用了"。 */
 .antu-dock-action:disabled {
-  background: rgba(15, 23, 42, 0.10);
+  background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.10);
   color: var(--antu-text-3);
   cursor: default;
 }
@@ -134,7 +134,7 @@
   width: 1px;
   height: 16px;
   margin: 0 8px;
-  background: rgba(15, 23, 42, 0.12);
+  background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.12);
 }
 /* 箭头用两条边旋转出来，比用字符好对齐：字符坐在基线上，天生偏下。
    两条边拼出的角默认朝右下，转 225 度就朝上（菜单是在上方弹出的）。 */
@@ -160,8 +160,8 @@
   background: var(--antu-chrome-bg-pop, rgba(255, 255, 255, 0.88));
   -webkit-backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
   backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
-  border: var(--antu-chrome-border, 1px solid rgba(15, 23, 42, 0.07));
-  box-shadow: var(--antu-chrome-shadow, 0 10px 30px rgba(15, 23, 42, 0.14));
+  border: var(--antu-chrome-border, 1px solid rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.07));
+  box-shadow: var(--antu-chrome-shadow, 0 10px 30px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.14));
 }
 .antu-dock-opt {
   display: flex;
@@ -178,7 +178,7 @@
   text-align: left;
   cursor: pointer;
 }
-.antu-dock-opt:hover:not(:disabled) { background: rgba(15, 23, 42, 0.05); }
+.antu-dock-opt:hover:not(:disabled) { background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.05); }
 .antu-dock-opt.is-on { color: var(--antu-text); font-weight: 600; }
 .antu-dock-opt:disabled { color: var(--antu-text-4); cursor: not-allowed; }
 .antu-dock-tick { width: 12px; flex: none; color: var(--antu-text-2); }
@@ -189,7 +189,7 @@
   gap: 1px;
   padding: 2px;
   border-radius: var(--antu-chip-radius, 999px);
-  background: rgba(15, 23, 42, 0.06);
+  background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.06);
 }
 .antu-dock-seg-item {
   padding: 3px 11px;
@@ -208,10 +208,10 @@
   background: #fff;
   color: var(--antu-text);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 1px 2px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.14);
 }
 /* 必须排在 .is-on 后面：两者特异性一样，写前面的话按下去毫无反应 */
-.antu-dock-seg-item:active { background: rgba(15, 23, 42, 0.08); }
+.antu-dock-seg-item:active { background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.08); }
 
 .antu-error-title { font-weight: 600; color: #b91c1c; margin-bottom: 6px; }
 .antu-error-hint { color: var(--antu-text-3); }
@@ -455,7 +455,7 @@
 .react-flow__node-card:hover { z-index: 10 !important; }
 
 /* 悬停时轻微浮起；详情浮层见下方 .antu-preview */
-.antu-card:hover { box-shadow: 0 4px 14px rgba(15, 23, 42, .10); }
+.antu-card:hover { box-shadow: 0 4px 14px rgba(var(--antu-shadow-rgb, 15, 23, 42), .10); }
 /* 选中的卡片由 React Flow 在节点包裹层加 selected 类 */
 .react-flow__node.selected .antu-card {
   border-color: #6d86a8;
@@ -554,8 +554,8 @@
   border-radius: var(--antu-radius);
   /* 两层阴影：近处一层勾边，远处一层拉开高度 */
   box-shadow:
-    0 2px 8px rgba(15, 23, 42, .10),
-    0 14px 34px rgba(15, 23, 42, .18);
+    0 2px 8px rgba(var(--antu-shadow-rgb, 15, 23, 42), .10),
+    0 14px 34px rgba(var(--antu-shadow-rgb, 15, 23, 42), .18);
   font-size: 12px;
   line-height: 1.65;
   color: var(--antu-text-2);
@@ -694,12 +694,12 @@
 .antu-header-card {
   max-width: min(440px, 46vw);
   padding: 10px 13px 11px;
-  border: var(--antu-chrome-border, 1px solid rgba(15, 23, 42, 0.06));
+  border: var(--antu-chrome-border, 1px solid rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.06));
   border-radius: var(--antu-chrome-radius, 14px);
   background: var(--antu-chrome-bg, rgba(255, 255, 255, 0.78));
   -webkit-backdrop-filter: var(--antu-chrome-blur, blur(16px) saturate(1.8));
   backdrop-filter: var(--antu-chrome-blur, blur(16px) saturate(1.8));
-  box-shadow: var(--antu-chrome-shadow, 0 4px 18px rgba(15, 23, 42, 0.09));
+  box-shadow: var(--antu-chrome-shadow, 0 4px 18px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.09));
 }
 
 .antu-header-title {
@@ -794,7 +794,7 @@
   line-height: 1.6;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .12);
+  box-shadow: 0 1px 2px rgba(var(--antu-shadow-rgb, 15, 23, 42), .12);
 }
 .antu-header-current-name { overflow: hidden; text-overflow: ellipsis; }
 .antu-header-count { flex: none; color: var(--antu-text-4); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
@@ -812,8 +812,8 @@
   background: var(--antu-chrome-bg-pop, rgba(255, 255, 255, 0.96));
   -webkit-backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
   backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
-  border: var(--antu-chrome-border, 1px solid rgba(15, 23, 42, 0.06));
-  box-shadow: var(--antu-chrome-shadow, 0 14px 38px rgba(15, 23, 42, 0.16));
+  border: var(--antu-chrome-border, 1px solid rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.06));
+  box-shadow: var(--antu-chrome-shadow, 0 14px 38px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.16));
 }
 @media (max-width: 520px) { .antu-header-panel { grid-template-columns: repeat(2, 118px); } }
 .antu-header-cell {
@@ -832,7 +832,7 @@
   cursor: pointer;
 }
 .antu-header-cell:hover { border-color: #94a3b8; }
-.antu-header-cell.is-on { border: 2px solid #334155; padding: 5px; color: var(--antu-text); font-weight: 650; }
+.antu-header-cell.is-on { border: 2px solid var(--antu-text-2); padding: 5px; color: var(--antu-text); font-weight: 650; }
 .antu-kindicon { display: block; width: 100%; height: auto; }
 
 /* ---------- 渲染器不可用时的兜底 ---------- */
@@ -847,7 +847,7 @@
   padding: 14px 16px;
   border-radius: 14px;
   background: #fff;
-  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 6px 24px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.12);
   font-size: 12.5px;
   line-height: 1.7;
   color: var(--antu-text-2);
@@ -903,7 +903,7 @@
 .antu-pn-svg { position: absolute; left: 0; top: 0; overflow: visible; }
 .antu-pn-shape { transition: stroke .15s, filter .15s; }
 
-.antu-pn:hover .antu-pn-shape { filter: drop-shadow(0 3px 8px rgba(15, 23, 42, .12)); }
+.antu-pn:hover .antu-pn-shape { filter: drop-shadow(0 3px 8px rgba(var(--antu-shadow-rgb, 15, 23, 42), .12)); }
 .react-flow__node-pnode:hover { z-index: 10 !important; }
 .react-flow__node.selected .antu-pn-shape { stroke-width: 2; }
 .antu-pn:focus-visible .antu-pn-shape { stroke: #2f6fed; stroke-width: 2; }
@@ -958,7 +958,7 @@
   background: rgba(255, 255, 255, .85);
   font-size: 12px;
   line-height: 16px;
-  color: #334155;
+  color: var(--antu-text-2);
   text-align: center;
   overflow-wrap: anywhere;
   overflow: hidden;
@@ -1078,7 +1078,7 @@
 .antu-rn.is-dim { opacity: .35; }
 .antu-rn-svg { position: absolute; left: 0; top: 0; overflow: visible; }
 .antu-rn-shape { transition: stroke .15s, filter .15s; }
-.antu-rn:hover .antu-rn-shape { filter: drop-shadow(0 3px 8px rgba(15, 23, 42, .12)); }
+.antu-rn:hover .antu-rn-shape { filter: drop-shadow(0 3px 8px rgba(var(--antu-shadow-rgb, 15, 23, 42), .12)); }
 .antu-rn.is-lit .antu-rn-shape { filter: drop-shadow(0 0 6px var(--antu-text-3)); }
 .react-flow__node-rnode:hover { z-index: 10 !important; }
 .react-flow__node.selected .antu-rn-shape { stroke-width: 2; }
@@ -1132,7 +1132,7 @@
   background: rgba(255, 255, 255, .85);
   font-size: 12px;
   line-height: 16px;
-  color: #334155;
+  color: var(--antu-text-2);
   text-align: center;
   overflow-wrap: anywhere;
   overflow: hidden;
@@ -1169,7 +1169,7 @@
 .antu-jn.is-dim { opacity: .35; }
 .antu-jn-svg { position: absolute; left: 0; top: 0; overflow: visible; }
 .antu-jn-shape { transition: stroke .15s, filter .15s; }
-.antu-jn:hover .antu-jn-shape { filter: drop-shadow(0 3px 8px rgba(15, 23, 42, .12)); }
+.antu-jn:hover .antu-jn-shape { filter: drop-shadow(0 3px 8px rgba(var(--antu-shadow-rgb, 15, 23, 42), .12)); }
 .antu-jn.is-lit .antu-jn-shape { filter: drop-shadow(0 0 6px var(--antu-text-3)); }
 .react-flow__node-jnode:hover { z-index: 10 !important; }
 .react-flow__node.selected .antu-jn-shape { stroke-width: 2; }
@@ -1265,12 +1265,12 @@
   background: #fff;
   border: 1px solid #d5dce5;
   border-radius: var(--antu-radius);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  box-shadow: 0 1px 2px rgba(var(--antu-shadow-rgb, 15, 23, 42), .05);
   color: var(--antu-text);
   cursor: pointer;
   transition: box-shadow .15s ease-out, border-color .15s ease-out;
 }
-.antu-chr-card:hover { box-shadow: 0 4px 14px rgba(15, 23, 42, .10); }
+.antu-chr-card:hover { box-shadow: 0 4px 14px rgba(var(--antu-shadow-rgb, 15, 23, 42), .10); }
 .antu-chr-card:focus-visible { outline: 2px solid var(--antu-side1); outline-offset: 2px; }
 .react-flow__node.selected .antu-chr-card { border-color: #6d86a8; box-shadow: 0 0 0 3px rgba(47, 111, 237, .16); }
 .antu-chr-title {
@@ -1382,14 +1382,14 @@
   background: #fff;
   border: 1px solid #d5dce5;
   border-radius: var(--antu-radius);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  box-shadow: 0 1px 2px rgba(var(--antu-shadow-rgb, 15, 23, 42), .05);
   color: var(--antu-text);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.antu-sc-card:hover { box-shadow: 0 4px 14px rgba(15, 23, 42, .10); }
+.antu-sc-card:hover { box-shadow: 0 4px 14px rgba(var(--antu-shadow-rgb, 15, 23, 42), .10); }
 .antu-sc-card:focus-visible { outline: 2px solid var(--antu-side1); outline-offset: 2px; }
 .react-flow__node.selected .antu-sc-card { border-color: #6d86a8; box-shadow: 0 0 0 3px rgba(47, 111, 237, .16); }
 .antu-sc-card.is-undated { border-style: dashed; }
@@ -1459,7 +1459,7 @@
   box-sizing: border-box;
   padding: 18px;
   background: #fff;
-  border: 2px solid #334155;
+  border: 2px solid var(--antu-text-2);
   border-radius: 6px;
   color: var(--antu-text);
   font-size: 12.5px;

@@ -34,6 +34,7 @@ export function themeVars(theme) {
     '--antu-side1': c.side1,
     '--antu-side2': c.side2,
     '--antu-axis': c.axis,
+    '--antu-shadow-rgb': theme.shadowRgb,
     '--antu-chrome-radius': `${theme.chrome.radius}px`,
     '--antu-capsule-radius': `${theme.chrome.capsule}px`,
     '--antu-chip-radius': `${theme.chrome.chip}px`,
