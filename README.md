@@ -4,9 +4,10 @@
 
 [中文](README.zh-CN.md) | **English**
 
-Turn one JSON document into one self-contained HTML legal diagram: it opens offline and can be archived, printed or
-sent as an attachment. An AI agent reads the case materials and writes the JSON; a fixed engine draws the picture, so the same
-JSON gives the same diagram every time, with the source of every point on it.
+Antu turns one JSON document into one self-contained HTML legal diagram. The page opens offline, and can be archived,
+printed or sent as an attachment. An AI agent can read the case materials and write the JSON; the engine then draws the
+diagram from it, and the same JSON gives the same diagram. Antu is at version 0.x, and the formats of the relationship
+and justification diagrams are still drafts.
 
 ## What you get
 
@@ -51,19 +52,19 @@ agent ──> extract key information ──> one JSON ──> engine ──> di
 
 | Role | Does | Determinism |
 |---|---|---|
-| Model | reads documents, extracts facts, understands meaning | may vary |
-| Engine | draws the diagram per the specification | fully deterministic, independent of the model |
-| JSON specification | the only interface between the two | fixed |
+| Model | reads documents, extracts facts, understands meaning | the result may differ from run to run |
+| Engine | draws the diagram according to the specification | the same JSON gives the same diagram, whichever model wrote it |
+| JSON specification | the only interface between the two | versioned (see [spec/versioning.md](spec/versioning.md)) |
 
-The engine does not write JSON; the agent does not draw. This turns a task on which models differ widely, drawing a
-diagram that follows legal conventions, into one every model can do: putting information into JSON.
+The engine does not write JSON, and the agent does not draw. The model is asked only to put information into JSON; drawing
+is left to the engine.
 
-**Why not a general-purpose charting tool, or a model that draws the picture itself?**
+**Why a specification of its own?**
 
-1. General charting syntax is nodes, edges and state machines. It has no place for procedural standing or where a piece of evidence comes from. Antu's specification is made for these four kinds of content.
-2. The quality of the picture does not depend on the model: the model only extracts; a fixed engine draws.
-3. The same input gives the same picture, at any time and in any environment, so a diagram given to a judge or to the other side can be reproduced.
-4. Provenance is fixed when the facts are extracted: each fact records which document it comes from, which page and under which provision. When the diagram exists, the provenance is already on it.
+1. General-purpose charting syntax is built on nodes, edges and state machines, and has no place for things such as procedural standing or the source of a piece of evidence. Antu's specification is written for these four kinds of content.
+2. The picture does not depend on which model extracted the information, because the engine draws it.
+3. The same JSON gives the same picture at any time and in any environment, so a diagram handed to the court or to the other side can be reproduced.
+4. Provenance is recorded when the facts are extracted: each fact states which document it comes from, which page and under which provision, so the source is already on the diagram once it is drawn.
 
 ### Provenance
 
@@ -77,7 +78,7 @@ diagram that follows legal conventions, into one every model can do: putting inf
 ### The page you get
 
 One self-contained HTML file of about 2.3 MB (most of it the layout engine, ELK). Engine and data are both inside it. It makes
-no network request, needs no server and opens offline: suitable for archiving, circulating and sending by email.
+no network request, needs no server and opens offline. It can be archived, circulated or sent by email.
 
 ## Use it with an agent
 
@@ -93,8 +94,8 @@ no network request, needs no server and opens offline: suitable for archiving, c
 ```
 
 An agent can read the specification, look at examples, validate, work out the geometry, make the page and take a screenshot
-to check the result. Validation confirms only that the JSON is well formed, not that the diagram is satisfactory, so the
-screenshot is a necessary step. The reference material for an agent is 5.4k tokens (a 3.2k-character field table plus a
+to check the result. Validation confirms only that the JSON is well formed, not that the diagram is satisfactory, so it is
+worth taking a screenshot and looking at it. The reference material for an agent is 5.4k tokens (a 3.2k-character field table plus a
 5.1k-character mechanism note).
 
 ### The skill (no MCP)
