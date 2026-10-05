@@ -86,3 +86,73 @@ ${body(v.name, v.note)}
   writeFileSync(`${HERE}${v.file}.html`, html)
   console.log(`${v.file}.html  ${html.length} chars`)
 }
+
+// ------------------------------------------------------------
+//  Draft "lenses": one judgment (the 方远 case), shown as the timeline and then as the relationship graph.
+//  The timeline is all twelve events of the fact file, each matched to its sentence; the graph is the
+//  relationship file, and every highlighted name is a real mention in the judgment.
+// ------------------------------------------------------------
+{
+  const fact = JSON.parse(read(`${REPO}examples/fact/fang-yuan-loan-and-conflict.zh-CN.json`))
+  const relf = JSON.parse(read(`${REPO}examples/relationship/fang-yuan-parties.zh-CN.json`))
+  const text = read(`${REPO}examples/raw/（2032）示刑终1号-方远案-二审.md`)
+  const lines = text.split('\n')
+  const view = fact.views[0]
+  const side = (ids) => {
+    const one = ids.length > 0 && ids.every((a) => view.side1.actors.includes(a))
+    const two = ids.length > 0 && ids.every((a) => view.side2.actors.includes(a))
+    return one ? 'above' : two ? 'below' : 'mid'
+  }
+  const sents = lines.filter((l) => l.startsWith('- 20')).map((l) => l.slice(2))
+  const events = fact.slots.flatMap((s) => s.events).sort((a, b) => a.date.localeCompare(b.date)).map((e, i) => {
+    if (!sents[i] || !sents[i].startsWith(`${e.date}：${e.label}`)) throw new Error(`sentence ${i + 1} of the judgment does not match event ${e.id}`)
+    return { id: e.id, label: e.label, when: e.date.replace('T', ' '), row: side(e.actorIds) }
+  })
+  // the names to light up: each party's label, or its parts when it names several people
+  const terms = { 'e-5': ['钟某', '郑某'], 'e-7': ['孟某', '严某', '程某'] }
+  const entities = relf.entities.map((e) => {
+    const t = terms[e.id] ?? [e.label]
+    const mentions = t.reduce((n, w) => n + (text.split(w).length - 1), 0)
+    if (!mentions) throw new Error(`${e.label} is never named in the judgment`)
+    return { id: e.id, label: e.label, role: e.role, kind: e.kind, terms: t, mentions }
+  })
+  const byTerm = Object.fromEntries(entities.flatMap((e) => e.terms.map((w) => [w, e.id])))
+  const re = new RegExp(Object.keys(byTerm).sort((a, b) => b.length - a.length).join('|'), 'g')
+  const mark = (s) => s.replace(re, (w) => `<span class="nm" data-e="${byTerm[w]}">${w}</span>`)
+  const L = {
+    events,
+    sides: { above: view.side1.label, mid: view.axis.label, below: view.side2.label },
+    sideNote: { above: '方远、梁某', mid: '双方都在场，或无人', below: '钟某、郑某等' },
+    entities,
+    groups: Object.fromEntries(relf.groups.map((g) => [g.id, g.label])),
+    relations: relf.relations.map((r) => ({ id: r.id, from: r.from, to: r.to, kind: r.kind, label: r.label, amount: r.amount })),
+    totalMentions: entities.reduce((n, e) => n + e.mentions, 0),
+  }
+  const facts = lines.filter((l) => /^[一二三四]、/.test(l))
+  const html = `<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>案图 · 首页动画草稿 · 一份判决书，几种图</title>
+<style>${css}
+${read(`${HERE}lenses.css`)}</style></head><body class="lx">
+<section class="hero">
+<span class="tag">草稿 · 一份判决书，几种图</span>
+<div class="top">
+ <div><p class="eyebrow">案图 · ANTU</p><h1>一份判决书，<br><em>几种看得见的图</em></h1></div>
+ <p class="lede">AI 助手读判决书，案图把事实、关系、说理、流程画成图。每个点，都能回到原文出处。</p>
+</div>
+<div class="stage" id="stage"><div class="scene-tag" id="scene"></div>
+ <div class="paper" id="paper"><span class="lbl">判决书 · 虚构</span><div class="beam" id="beam"></div>
+  <h2>${lines[0].replace(/^# /, '')}</h2><p class="meta">${mark(lines[2].replace(/^> /, ''))}</p>
+  <h3>本院查明</h3>${facts.map((f) => `<p>${mark(f)}</p>`).join('')}
+  <h3>上述事实，另有如下经过：</h3><ul id="bul">${sents.map((b) => `<li>${mark(b)}</li>`).join('')}</ul></div>
+</div>
+<div class="bottom"><div class="lens"><span>① 事实 · 时间线</span><span>② 关系 · 关系图</span><span class="todo">③ 说理 · 论证图（待做）</span><span class="todo">④ 流程 · 流程图（待做）</span></div><button id="replay">↻ 重播</button></div>
+<p class="cap" id="cap" style="margin-top:1.2vh"></p>
+</section>
+<script>window.__LENS__ = ${JSON.stringify(L).replace(/</g, '\\u003c')}</script>
+<script>${read(`${HERE}lenses.js`)}</script>
+</body></html>
+`
+  writeFileSync(`${HERE}lenses.html`, html)
+  console.log(`lenses.html  ${html.length} chars  (${events.length} events, ${L.totalMentions} mentions)`)
+}

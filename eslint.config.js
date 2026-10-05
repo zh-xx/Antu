@@ -58,7 +58,7 @@ export default [
   // so the helpers that common.js defines are globals to the variant files
   {
     files: ['site/prototypes/hero/*.js'],
-    ignores: ['site/prototypes/hero/common.js'],
+    ignores: ['site/prototypes/hero/common.js', 'site/prototypes/hero/lenses.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'script',
@@ -76,6 +76,12 @@ export default [
     languageOptions: { ecmaVersion: 'latest', sourceType: 'script', globals: { ...globals.browser } },
     // what this file defines is used by the variant files, so it looks unused from here
     rules: { ...RULES, 'no-unused-vars': 'off' },
+  },
+  {
+    // lenses.js stands on its own
+    files: ['site/prototypes/hero/lenses.js'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'script', globals: { ...globals.browser } },
+    rules: RULES,
   },
 
   {
