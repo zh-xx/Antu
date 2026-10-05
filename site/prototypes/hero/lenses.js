@@ -26,19 +26,6 @@ const el = (tag, cls, html, style) => {
 }
 const show = (e, ms = 400, delay = 0) => e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, delay, fill: 'both' })
 
-// the case the stage is showing, named in the top bar
-function showCase(which) {
-  const name = which === 'contract'
-    ? `${D.flow.contract.title} · ${D.flow.contract.meta[0].replace(/^合同编号：/, '').replace('（虚构）', '')}`
-    : D.judgmentName
-  const el = $('#caseName')
-  if (el.textContent === name) return
-  el.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(-4px)' }], { duration: 200 }).onfinish = () => {
-    el.textContent = name
-    el.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 260 })
-  }
-}
-
 function lens(i) {
   $$('.lens span').forEach((s, k) => s.classList.toggle('on', k === i))
 }
@@ -87,12 +74,14 @@ function reading(pg = paper, beam = '#beam') {
   return wait(1800)
 }
 
-const HOT = '#f0d9cf', PANEL = '#15171b'
+// colours that follow the light / dark mode
+const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim()
+const HOT = '#f0d9cf'
 const SH_A = 'inset 3px 0 0 #e8452c, inset 0 0 0 0 rgba(255,255,255,.12), 0 0 0 rgba(0,0,0,0)'
-const SH_B = 'inset 0 0 0 0 #e8452c, inset 0 0 0 1px rgba(255,255,255,.16), 0 10px 26px rgba(0,0,0,.45)'
+const SH_B = () => `inset 0 0 0 0 #e8452c, inset 0 0 0 1px ${tok('camp-line')}, ${tok('card-shadow')}`
 const paperAway = () => (paper.classList.add('melt'), [
   ...$$('.paper > *:not(.beam)').map((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(6px)' }], { duration: 600, fill: 'both', easing: 'ease-in' })),
-  paper.animate([{ backgroundColor: '#f4f0e8', boxShadow: '0 30px 80px rgba(0,0,0,.6)' }, { backgroundColor: 'rgba(244,240,232,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 100, fill: 'both', easing: ease }),
+  paper.animate([{ backgroundColor: tok('paper'), boxShadow: tok('paper-shadow') }, { backgroundColor: 'rgba(0,0,0,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 100, fill: 'both', easing: ease }),
 ])
 
 async function toTimeline(alive) {
@@ -124,7 +113,7 @@ async function toTimeline(alive) {
     const d = i * 70, B = o.B
     anims.push(o.a.animate([
       { left: o.A.x + 'px', top: o.A.y + 'px', width: o.A.w + 'px', height: o.A.h + 'px', backgroundColor: HOT, borderRadius: '2px', boxShadow: SH_A },
-      { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px', height: B.h + 'px', backgroundColor: PANEL, borderRadius: '8px', boxShadow: SH_B },
+      { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px', height: B.h + 'px', backgroundColor: tok('panel'), borderRadius: '8px', boxShadow: SH_B() },
     ], { duration: 1100, delay: d, easing: ease, fill: 'both' }))
     anims.push(o.a.querySelector('.txt').animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(4px)' }], { duration: 420, delay: d + 60, fill: 'both' }))
     anims.push(o.a.querySelector('.face').animate([{ opacity: 0, filter: 'blur(4px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 500, delay: d + 600, fill: 'both' }))
@@ -237,22 +226,22 @@ async function toGraph(alive) {
   svg.setAttribute('class', 'edges')
   svg.setAttribute('width', stage.clientWidth)
   svg.setAttribute('height', stage.clientHeight)
-  svg.innerHTML = '<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#cfcac0"/></marker><marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#e8452c"/></marker></defs>'
+  svg.innerHTML = '<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" style="fill:var(--edge)"/></marker><marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#e8452c"/></marker></defs>'
   stage.appendChild(svg)
   D.relations.forEach((r, i) => {
-    const s = STYLE[r.kind] || STYLE.control, g = edgePath(r, G), color = s.color || '#cfcac0'
+    const s = STYLE[r.kind] || STYLE.control, g = edgePath(r, G), color = s.color || 'var(--edge)'
     const mk = (w, extra = {}) => {
       const p = document.createElementNS(SVGNS, 'path')
       p.setAttribute('d', g.d)
       p.setAttribute('fill', 'none')
-      p.setAttribute('stroke', extra.stroke || color)
+      p.style.stroke = extra.stroke || color
       p.setAttribute('stroke-width', w)
       svg.appendChild(p)
       return p
     }
     const delay = 150 + i * 160
     let line
-    if (s.double) { mk(4.6); line = mk(1.8, { stroke: '#0d0e11' }) } else line = mk(s.w)
+    if (s.double) { mk(4.6); line = mk(1.8, { stroke: 'var(--bg)' }) } else line = mk(s.w)
     const len = line.getTotalLength()
     for (const p of [...svg.querySelectorAll('path')].slice(-(s.double ? 2 : 1))) {
       p.style.strokeDasharray = `${len} ${len}`
@@ -286,7 +275,6 @@ function reset() {
   pg.querySelectorAll('.sn').forEach((x) => x.classList.remove('lit'))
   $('#cap').style.opacity = 0
   lens(-1)
-  showCase('judgment')
 }
 
 // take a scene's pieces away and bring the page back
@@ -330,7 +318,7 @@ async function toReasoning(alive) {
   paperAway()
   root.animate([
     { left: A.x + 'px', top: A.y + 'px', width: A.w + 'px', backgroundColor: '#f0d9cf' },
-    { left: R.root.x + 'px', top: R.root.y + 'px', width: R.root.w + 'px', backgroundColor: '#15171b' },
+    { left: R.root.x + 'px', top: R.root.y + 'px', width: R.root.w + 'px', backgroundColor: tok('panel') },
   ], { duration: 1000, easing: ease, fill: 'both' })
   for (const e of root.querySelectorAll('b,small')) e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 600, fill: 'both' })
   await wait(1100)
@@ -347,7 +335,7 @@ async function toReasoning(alive) {
     const p = document.createElementNS(SVGNS, 'path')
     p.setAttribute('d', `M ${rx} ${ry} C ${rx} ${ry + 30}, ${cx} ${h.y - 34}, ${cx} ${h.y}`)
     p.setAttribute('fill', 'none')
-    p.setAttribute('stroke', g.against ? '#e8452c' : 'rgba(255,255,255,.4)')
+    p.style.stroke = g.against ? '#e8452c' : 'var(--edge-soft)'
     p.setAttribute('stroke-width', 1.5)
     svg.appendChild(p)
     const len = p.getTotalLength()
@@ -374,7 +362,6 @@ async function toFlow(alive) {
   lens(-1)
   $('#cap').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
   sceneTag('④ 流程', '换一份文书：合同条款，变成流程图')
-  showCase('contract')
   $$('.rn,.chip,.trunk,.edges').forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(8px)' }], { duration: 600, fill: 'both' }))
   await wait(600)
   $$('.rn,.chip,.trunk,.edges').forEach((e) => e.remove())
@@ -408,14 +395,14 @@ async function toFlow(alive) {
     b.animate([
       { left: A.x + 'px', top: A.y + A.h / 2 + 'px', width: A.w + 'px', height: A.h + 'px', marginTop: -A.h / 2 + 'px', backgroundColor: 'rgba(240,217,207,0)', borderColor: 'rgba(232,69,44,0)' },
       { backgroundColor: 'rgba(240,217,207,.9)', borderColor: 'rgba(232,69,44,1)', offset: 0.3 },
-      { left: p.x - w / 2 + 'px', top: p.y + 'px', width: w + 'px', height: h + 'px', marginTop: -h / 2 + 'px', backgroundColor: dec ? 'rgba(21,23,27,0)' : '#15171b', borderColor: dec ? 'rgba(255,255,255,0)' : 'rgba(255,255,255,.6)' },
+      { left: p.x - w / 2 + 'px', top: p.y + 'px', width: w + 'px', height: h + 'px', marginTop: -h / 2 + 'px', backgroundColor: dec ? `rgba(${tok('panel-rgb')},0)` : tok('panel'), borderColor: dec ? 'rgba(0,0,0,0)' : tok('nodeline') },
     ], { duration: 1100, delay: d, easing: ease, fill: 'both' })
     label.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: d + 700, fill: 'both' })
     setTimeout(() => b.classList.add('in'), d + 800)
     box[id] = b
   })
   pg.querySelectorAll('h2,.meta,p,.lbl').forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(6px)' }], { duration: 600, delay: 150, fill: 'both' }))
-  pg.animate([{ backgroundColor: '#f4f0e8', boxShadow: '0 30px 80px rgba(0,0,0,.6)' }, { backgroundColor: 'rgba(244,240,232,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 200, fill: 'both', easing: ease })
+  pg.animate([{ backgroundColor: tok('paper'), boxShadow: tok('paper-shadow') }, { backgroundColor: 'rgba(0,0,0,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 200, fill: 'both', easing: ease })
   pg.classList.add('melt')
   await wait(F.order.length * 80 + 1200)
   if (!alive()) return
@@ -424,7 +411,7 @@ async function toFlow(alive) {
   svg.setAttribute('class', 'edges')
   svg.setAttribute('width', W)
   svg.setAttribute('height', H)
-  svg.innerHTML = '<defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#cfcac0"/></marker></defs>'
+  svg.innerHTML = '<defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" style="fill:var(--edge)"/></marker></defs>'
   stage.appendChild(svg)
   const half = (id) => (F.nodes[id].kind === 'decision' ? 44 : nodeW / 2)
   const halfH = (id) => (F.nodes[id].kind === 'decision' ? 44 : 20)
@@ -438,7 +425,7 @@ async function toFlow(alive) {
     const p = document.createElementNS(SVGNS, 'path')
     p.setAttribute('d', d)
     p.setAttribute('fill', 'none')
-    p.setAttribute('stroke', '#cfcac0')
+    p.style.stroke = 'var(--edge)'
     p.setAttribute('stroke-width', e.main ? 2 : 1.3)
     svg.appendChild(p)
     const len = p.getTotalLength()
@@ -460,7 +447,7 @@ async function toFlow(alive) {
   await wait(F.edges.length * 70 + 600)
   if (!alive()) return
   // a token runs the main line, lighting each step as it passes
-  const tok = el('div', 'token')
+  const token = el('div', 'token')
   const main = F.mainPath
   box[main[0]].classList.add('lit')
   for (let i = 0; i < main.length - 1; i++) {
@@ -469,16 +456,16 @@ async function toFlow(alive) {
     await new Promise((res) => {
       ;(function f(now) {
         const k = Math.min(1, (now - t0) / dur), pt = p.getPointAtLength(len * k)
-        tok.style.left = pt.x + 'px'
-        tok.style.top = pt.y + 'px'
-        tok.style.opacity = 1
+        token.style.left = pt.x + 'px'
+        token.style.top = pt.y + 'px'
+        token.style.opacity = 1
         if (k < 1) requestAnimationFrame(f)
         else res()
       })(t0)
     })
     box[main[i + 1]].classList.add('lit')
   }
-  tok.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
+  token.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
   caption(`<strong>${F.sourceName} ${F.contract.clauses.length} 条条款 → ${F.order.length} 个步骤与判断、${F.edges.length} 条走向</strong>，主线走一遍，分支一目了然。&emsp;示意：由 AI 助手阅读合同并提取，案图负责画图。合同为虚构。`)
   $$('.lens span').forEach((s) => s.classList.add('on'))
 }
@@ -508,17 +495,24 @@ async function start() {
   await toFlow(alive)
 }
 
-// the top bar: the start button opens the prompt box; the language switch (labels only, in this draft)
+// the top bar: the start button opens the prompt box; the language switch (the top bar's labels only, in
+// this draft); light / dark, remembered in this browser
 $('#startBtn').onclick = (e) => { e.stopPropagation(); $('#pop').hidden = !$('#pop').hidden }
 document.addEventListener('click', (e) => { if (!$('#pop').contains(e.target)) $('#pop').hidden = true })
-const EN = { case: 'Now showing', fiction: 'fictional', how: 'How to use', examples: 'Examples', start: 'Get started', popTitle: 'Hand it to your AI assistant', popBody: 'Copy the text below and send it to the AI assistant you use; it installs Antu by itself.', copy: 'Copy' }
+const EN = { examples: 'Examples', start: 'Get started', popTitle: 'Hand it to your AI assistant', popBody: 'Copy the text below and send it to the AI assistant you use; it installs Antu by itself.', copy: 'Copy' }
 const ZH = Object.fromEntries($$('[data-i18n]').map((e) => [e.dataset.i18n, e.textContent]))
 $$('.lang button').forEach((b) => (b.onclick = () => {
-  $$('.lang button').forEach((x) => x.classList.toggle('on', x === b))
-  const dict = b.dataset.lang === 'en' ? EN : ZH
-  $$('[data-i18n]').forEach((e) => (e.textContent = dict[e.dataset.i18n]))
+  const lang = b.dataset.lang
+  $('.lang').dataset.on = lang
+  $$('.lang button').forEach((x) => x.setAttribute('aria-checked', String(x === b)))
+  const dict = lang === 'en' ? EN : ZH
+  $$('[data-i18n]').forEach((e) => e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150 }).onfinish = () => { e.textContent = dict[e.dataset.i18n]; e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 }) })
 }))
-$('#caseName').textContent = D.judgmentName
+$('#mode').onclick = () => {
+  const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'
+  document.documentElement.dataset.theme = next
+  try { localStorage.setItem('antu.site.theme', next) } catch { /* not remembered */ }
+}
 
 $('#replay').onclick = start
 if (location.hash.includes('manual')) window.start = start

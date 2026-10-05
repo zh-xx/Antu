@@ -2,7 +2,7 @@
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>案图 · 首页动画草稿 · 一份判决书，几种图</title>
 <style>
-:root{--bg:#0b0c0e;--panel:#14161a;--hair:rgba(255,255,255,.12);--txt:#f2efe9;--mut:#8d8f94;--red:#e8452c;--redsoft:rgba(232,69,44,.16);--paper:#f4f0e8;--pink:#1a1713;
+:root{--edge:#cfcac0;--edge-soft:rgba(255,255,255,.3);--nodeline:rgba(255,255,255,.55);--camp-line:rgba(255,255,255,.16);--camp-bg:rgba(255,255,255,.025);--chipbg:rgba(255,255,255,.08);--labbg:#0d0e11;--mut2:#5f6166;--link:#b9bbbf;--navbg:rgba(11,12,14,.82);--paper-shadow:0 30px 80px rgba(0,0,0,.6);--card-shadow:0 12px 34px rgba(0,0,0,.45);--panel-rgb:21,23,27;--bg:#0b0c0e;--panel:#15171b;--hair:rgba(255,255,255,.12);--txt:#f2efe9;--mut:#8d8f94;--red:#e8452c;--redsoft:rgba(232,69,44,.16);--paper:#f4f0e8;--pink:#1a1713;
 --sans:"PingFang SC","HarmonyOS Sans SC","Noto Sans CJK SC","Source Han Sans SC","Microsoft YaHei",system-ui,sans-serif;
 --serif:"Songti SC","Noto Serif CJK SC","Source Han Serif SC","STSong","SimSun",serif}
 *{box-sizing:border-box}
@@ -22,7 +22,7 @@ h1 em{font-style:normal;color:var(--red)}
 @media(max-width:820px){.stage{grid-template-columns:1fr;max-height:none}}
 /* the paper */
 .paper{position:relative;background:var(--paper);color:#1d1b17;padding:20px 24px;overflow:hidden;border-radius:3px;
- box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06);transform:rotateY(7deg) rotateX(1.5deg) scale(.985);transform-origin:right center;font-family:var(--serif)}
+ box-shadow:var(--paper-shadow),0 0 0 1px rgba(255,255,255,.06);transform:rotateY(7deg) rotateX(1.5deg) scale(.985);transform-origin:right center;font-family:var(--serif)}
 .paper.melt:after{opacity:0;transition:opacity .5s}
 .paper:after{content:"";position:absolute;left:0;right:0;bottom:0;height:90px;background:linear-gradient(transparent,var(--paper));pointer-events:none}
 .paper h2{font:700 17px/1.4 var(--serif);margin:0 0 2px;text-align:center}
@@ -41,12 +41,12 @@ h1 em{font-style:normal;color:var(--red)}
 .board{position:relative;padding:4px 0 0 34px;display:flex;flex-direction:column;justify-content:space-between}
 .axis{position:absolute;left:11px;top:14px;bottom:30px;width:2px;transform-origin:top;transform:scaleY(0);background:linear-gradient(var(--red),rgba(232,69,44,.25));box-shadow:0 0 14px var(--red)}
 .slot{position:relative;flex:1;min-height:0;margin-bottom:7px}
-.card{visibility:hidden;position:absolute;inset:0;background:linear-gradient(180deg,#191b20,#121418);border:1px solid var(--hair);border-radius:10px;padding:6px 16px;opacity:0;
- box-shadow:0 12px 34px rgba(0,0,0,.45);display:flex;flex-direction:column;justify-content:center;gap:2px}
+.card{visibility:hidden;position:absolute;inset:0;background:var(--panel);border:1px solid var(--hair);border-radius:10px;padding:6px 16px;opacity:0;
+ box-shadow:var(--card-shadow);display:flex;flex-direction:column;justify-content:center;gap:2px}
 .card .t{font:600 12px/1 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--red);letter-spacing:.06em}
 .card .l{font:600 15px/1.35 var(--sans);color:var(--txt)}
 .card .s{font-size:11.5px;color:var(--mut);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.card .s b{font-weight:500;color:#cfcac0;border:1px solid var(--hair);border-radius:99px;padding:0 9px;line-height:1.65;background:rgba(255,255,255,.03)}
+.card .s b{font-weight:500;color:var(--edge);border:1px solid var(--hair);border-radius:99px;padding:0 9px;line-height:1.65;background:rgba(255,255,255,.03)}
 .card .s u{text-decoration:none;color:var(--red);font-size:10.5px;letter-spacing:.1em}
 .dot{position:absolute;left:-30px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:var(--red);opacity:0;box-shadow:0 0 0 0 rgba(232,69,44,.6)}
 .dot.ping{animation:ping 1s ease-out}
@@ -59,7 +59,7 @@ h1 em{font-style:normal;color:var(--red)}
 .cap strong{color:var(--txt);font-weight:600}
 button{font:500 12.5px/1 var(--sans);color:var(--txt);background:transparent;border:1px solid var(--hair);border-radius:99px;padding:9px 18px;cursor:pointer;transition:.2s}
 button:hover{border-color:var(--red);color:var(--red)}
-.note{position:relative;margin:1vh 0 0;color:#5f6166;font-size:11.5px}
+.note{position:relative;margin:1vh 0 0;color:var(--mut2);font-size:11.5px}
 .actor{position:absolute;z-index:5;overflow:hidden;font-family:var(--serif)}
 .actor .txt{position:absolute;left:0;top:0;padding:2px 8px;font-size:12px;line-height:1.6;color:#000;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .actor .face{position:absolute;left:0;top:0;padding:6px 16px;display:flex;flex-direction:column;justify-content:center;gap:2px;opacity:0;font-family:var(--sans)}
@@ -95,55 +95,55 @@ button:hover{border-color:var(--red);color:var(--red)}
 .spine{position:absolute;height:2px;background:linear-gradient(90deg,rgba(232,69,44,.3),var(--red));box-shadow:0 0 12px var(--red);transform-origin:left;transform:scaleX(0);z-index:3}
 .rowlbl{position:absolute;left:0;width:130px;font:600 12.5px/1.4 var(--sans);color:var(--txt);opacity:0;z-index:3}
 .rowlbl small{display:block;font-weight:400;color:var(--mut);font-size:11px}
-.stub{position:absolute;width:1.5px;background:rgba(255,255,255,.35);transform-origin:center;transform:scaleY(0);z-index:3}
+.stub{position:absolute;width:1.5px;background:var(--edge-soft);transform-origin:center;transform:scaleY(0);z-index:3}
 .tdot{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:var(--red);opacity:0;z-index:4}
 .actor .face.tl{padding:6px 10px;gap:3px;justify-content:flex-start}
 .actor .face.tl .t{font-size:10.5px}
 .actor .face.tl .l{font-size:12px;line-height:1.35;font-weight:600}
 /* relationship graph */
-.camp{position:absolute;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(255,255,255,.025);opacity:0;z-index:2}
+.camp{position:absolute;border:1px solid var(--camp-line);border-radius:12px;background:var(--camp-bg);opacity:0;z-index:2}
 .camp span{position:absolute;left:14px;top:10px;font:600 12px/1 var(--sans);color:var(--mut);letter-spacing:.1em}
-.ent{position:absolute;z-index:6;width:150px;height:54px;margin:-27px 0 0 -75px;border:1px solid rgba(255,255,255,.5);border-radius:12px;background:#15171b;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.ent{position:absolute;z-index:6;width:150px;height:54px;margin:-27px 0 0 -75px;border:1px solid var(--nodeline);border-radius:12px;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;box-shadow:var(--card-shadow)}
 .ent.co{border-radius:3px;border-width:2px}
 .ent.grp{border-style:dashed}
 .ent b{font:700 15px/1.2 var(--sans);color:var(--txt)}
 .ent i{font-style:normal;font-size:11px;color:var(--mut);margin-top:2px}
 .ent em{position:absolute;right:-10px;top:-10px;font:600 10.5px/1 ui-monospace,Menlo,Consolas,monospace;color:#fff;background:var(--red);border-radius:99px;padding:4px 7px;font-style:normal;box-shadow:0 0 14px rgba(232,69,44,.7)}
 .edges{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:visible}
-.edges .lab{font:500 11.5px var(--sans);fill:#cfcac0}
-.edges .labbg{fill:#0d0e11}
+.edges .lab{font:500 11.5px var(--sans);fill:var(--edge)}
+.edges .labbg{fill:var(--labbg)}
 .lens{display:flex;gap:6px;align-items:center}
-.lens span{font-size:12px;color:#5f6166;border:1px solid transparent;border-radius:99px;padding:6px 12px;transition:.3s}
+.lens span{font-size:12px;color:var(--mut2);border:1px solid transparent;border-radius:99px;padding:6px 12px;transition:.3s}
 .lens span.on{color:var(--txt);border-color:var(--red);box-shadow:0 0 12px rgba(232,69,44,.35)}
 .lens span.todo{opacity:.5}
 /* reasoning tree */
-.rn{position:absolute;z-index:6;background:#15171b;border:1px solid rgba(255,255,255,.45);border-radius:10px;padding:8px 12px;opacity:0;box-shadow:0 10px 28px rgba(0,0,0,.5)}
+.rn{position:absolute;z-index:6;background:var(--panel);border:1px solid var(--nodeline);border-radius:10px;padding:8px 12px;opacity:0;box-shadow:var(--card-shadow)}
 .rn small{display:block;font:500 10.5px/1.3 var(--sans);color:var(--mut);letter-spacing:.04em}
 .rn b{display:block;font:700 13px/1.4 var(--sans);color:var(--txt)}
 .rn.root{border-color:var(--red);box-shadow:0 0 0 1px var(--red),0 0 30px rgba(232,69,44,.35);text-align:center}
 .rn.root b{font-size:15px}
-.rn .mk{position:absolute;right:8px;top:7px;font:600 10.5px/1 var(--sans);padding:3px 7px;border-radius:99px;background:rgba(255,255,255,.08);color:#cfcac0}
-.rn.no{border-style:dashed;border-color:rgba(255,255,255,.3)}
-.rn.no b{color:#9a9ca0;text-decoration:line-through;text-decoration-color:var(--red)}
+.rn .mk{position:absolute;right:8px;top:7px;font:600 10.5px/1 var(--sans);padding:3px 7px;border-radius:99px;background:var(--chipbg);color:var(--edge)}
+.rn.no{border-style:dashed;border-color:var(--edge-soft)}
+.rn.no b{color:var(--mut);text-decoration:line-through;text-decoration-color:var(--red)}
 .rn.no .mk{background:var(--red);color:#fff}
-.chip{position:absolute;z-index:5;height:16px;display:flex;align-items:center;gap:5px;font:11px/16px var(--sans);color:#cfcac0;white-space:nowrap;overflow:hidden;opacity:0}
-.chip u{text-decoration:none;flex:none;font-size:9.5px;line-height:14px;padding:0 4px;border:1px solid rgba(255,255,255,.22);border-radius:3px;color:#9a9ca0}
+.chip{position:absolute;z-index:5;height:16px;display:flex;align-items:center;gap:5px;font:11px/16px var(--sans);color:var(--edge);white-space:nowrap;overflow:hidden;opacity:0}
+.chip u{text-decoration:none;flex:none;font-size:9.5px;line-height:14px;padding:0 4px;border:1px solid var(--edge-soft);border-radius:3px;color:var(--mut)}
 .chip.k-norm u{border-color:var(--red);color:var(--red)}
 .chip span{overflow:hidden;text-overflow:ellipsis}
 .chip.no{opacity:.5;text-decoration:line-through}
-.trunk{position:absolute;z-index:4;width:1px;background:rgba(255,255,255,.22);transform-origin:top;transform:scaleY(0)}
+.trunk{position:absolute;z-index:4;width:1px;background:var(--edge-soft);transform-origin:top;transform:scaleY(0)}
 /* flowchart */
-.doc{position:absolute;z-index:8;width:150px;height:190px;margin:-95px 0 0 -75px;background:var(--paper);border-radius:4px;box-shadow:0 24px 60px rgba(0,0,0,.6);opacity:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#1d1b17}
+.doc{position:absolute;z-index:8;width:150px;height:190px;margin:-95px 0 0 -75px;background:var(--paper);border-radius:4px;box-shadow:var(--card-shadow);opacity:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#1d1b17}
 .doc:before{content:"";position:absolute;right:0;top:0;border-width:0 26px 26px 0;border-style:solid;border-color:var(--bg) #d9d2c3 #d9d2c3 var(--bg)}
 .doc b{font:700 14px/1.3 var(--sans)}
 .doc i{font-style:normal;font:11px/1 ui-monospace,Menlo,Consolas,monospace;color:#6b665c}
 .doc s{text-decoration:none;display:block;margin-bottom:24px;width:90px;height:3px;background:#d9d2c3;box-shadow:0 8px 0 #d9d2c3,0 16px 0 #d9d2c3,0 24px 0 #d9d2c3}
-.fn{position:absolute;z-index:6;height:40px;margin-top:-20px;display:flex;align-items:center;justify-content:center;text-align:center;font:600 12.5px/1.25 var(--sans);color:var(--txt);background:#15171b;border:1.4px solid rgba(255,255,255,.6);border-radius:6px;opacity:0;padding:0 8px}
+.fn{position:absolute;z-index:6;height:40px;margin-top:-20px;display:flex;align-items:center;justify-content:center;text-align:center;font:600 12.5px/1.25 var(--sans);color:var(--txt);background:var(--panel);border:1.4px solid var(--nodeline);border-radius:6px;opacity:0;padding:0 8px}
 .fn.k-start,.fn.k-end{border-radius:99px}
-.fn.k-end.in{box-shadow:0 0 0 3px #0b0c0e,0 0 0 4.4px rgba(255,255,255,.6)}
+.fn.k-end.in{box-shadow:0 0 0 3px var(--bg),0 0 0 4.4px var(--nodeline)}
 .fn.neg{border-style:dashed}
 .fn.k-decision{background:none;border:none}
-.fn.k-decision:before{content:"";position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;transform:rotate(45deg);border:1.4px solid rgba(255,255,255,.6);background:#15171b;z-index:-1;border-radius:4px}
+.fn.k-decision:before{content:"";position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;transform:rotate(45deg);border:1.4px solid var(--nodeline);background:var(--panel);z-index:-1;border-radius:4px}
 .fn.k-decision span{font-size:11px;max-width:74px}
 .fn.lit{border-color:var(--red);box-shadow:0 0 0 1px var(--red),0 0 22px rgba(232,69,44,.55)}
 .fn.k-decision.lit:before{border-color:var(--red);box-shadow:0 0 22px rgba(232,69,44,.55)}
@@ -161,40 +161,56 @@ button:hover{border-color:var(--red);color:var(--red)}
 .fn.k-decision:before{opacity:0;transition:opacity .35s}
 .fn.k-decision.in:before{opacity:1}
 
-/* top bar: name, the case on stage, links, and the one red button */
-.lx .nav{position:sticky;top:0;z-index:50;height:60px;display:flex;align-items:center;gap:28px;padding:0 5vw;background:rgba(11,12,14,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.07)}
-.brand{display:flex;align-items:baseline;gap:9px;text-decoration:none;flex:none}
-.brand b{font:900 22px/1 var(--serif);color:var(--txt);letter-spacing:.06em}
-.brand span{font:600 13px/1 var(--sans);color:var(--mut);letter-spacing:.14em;text-transform:uppercase}
-.case{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:10px;font-size:12.5px}
-.case-k{color:#5f6166;letter-spacing:.12em;flex:none}
-.case-v{color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.case-f{font-style:normal;flex:none;font-size:10.5px;color:var(--red);border:1px solid rgba(232,69,44,.5);border-radius:99px;padding:1px 8px}
-.links{display:flex;align-items:center;gap:22px;flex:none}
-.links a{color:#b9bbbf;text-decoration:none;font-size:13px;transition:color .2s}
+
+/* top bar: the name, a few links, and the one red button */
+.lx .nav{position:sticky;top:0;z-index:50;height:84px;display:flex;align-items:center;justify-content:space-between;padding:0 5vw;background:var(--navbg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--hair);transition:background .4s}
+.brand{display:flex;align-items:baseline;gap:12px;text-decoration:none}
+.brand b{font:900 30px/1 var(--serif);color:var(--txt);letter-spacing:.06em}
+.brand span{font:600 15px/1 var(--sans);color:var(--mut);letter-spacing:.22em;text-transform:uppercase}
+.links{display:flex;align-items:center;gap:26px}
+.links a{color:var(--link);text-decoration:none;font-size:14.5px;transition:color .2s}
 .links a:hover{color:var(--txt)}
-.links .gh{display:flex;align-items:center;gap:6px}
-.lang{display:flex;border:1px solid var(--hair);border-radius:99px;padding:2px}
-.lang button{border:0;background:none;color:#7c7f84;font:500 11.5px/1 var(--sans);padding:5px 9px;border-radius:99px;cursor:pointer}
-.lang button.on{background:rgba(255,255,255,.1);color:var(--txt)}
-.links .start{border:0;background:var(--red);color:#fff;font:600 13px/1 var(--sans);padding:10px 18px;border-radius:99px;cursor:pointer;box-shadow:0 0 0 0 rgba(232,69,44,.5),0 6px 20px rgba(232,69,44,.35);transition:transform .2s,box-shadow .2s}
+.links .gh{display:flex;align-items:center;gap:7px}
+.sep{width:1px;height:22px;background:var(--hair)}
+.lang{position:relative;display:flex;padding:3px;border-radius:99px;background:var(--chipbg);border:1px solid var(--hair)}
+.lang .knob{position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:99px;background:var(--panel);box-shadow:0 1px 3px rgba(0,0,0,.25),0 0 0 1px var(--hair);transition:transform .35s cubic-bezier(.65,0,.2,1)}
+.lang[data-on="en"] .knob{transform:translateX(100%)}
+.lang button{position:relative;z-index:1;width:52px;border:0;background:none;color:var(--mut);font:500 12.5px/1 var(--sans);letter-spacing:.06em;padding:8px 0;cursor:pointer;transition:color .3s}
+.lang button[aria-checked="true"]{color:var(--txt)}
+.mode{position:relative;width:40px;height:40px;border-radius:50%;border:1px solid var(--hair);background:var(--chipbg);color:var(--txt);cursor:pointer;display:grid;place-items:center;overflow:hidden;transition:border-color .2s}
+.mode:hover{border-color:var(--red)}
+.mode svg{position:absolute;transition:transform .5s cubic-bezier(.65,0,.2,1),opacity .35s}
+.mode .sun{transform:rotate(-90deg) scale(.4);opacity:0}
+html[data-theme="light"] .mode .moon{transform:rotate(90deg) scale(.4);opacity:0}
+html[data-theme="light"] .mode .sun{transform:none;opacity:1}
+.links .start{border:0;background:var(--red);color:#fff;font:600 14.5px/1 var(--sans);padding:13px 24px;border-radius:99px;cursor:pointer;box-shadow:0 6px 20px rgba(232,69,44,.35);transition:transform .2s,box-shadow .2s}
 .links .start:hover{transform:translateY(-1px);box-shadow:0 0 0 4px rgba(232,69,44,.18),0 8px 26px rgba(232,69,44,.45)}
-.pop{position:absolute;right:5vw;top:68px;width:360px;background:#15171b;border:1px solid var(--hair);border-radius:14px;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
-.pop b{font-size:14px}
-.pop p{color:var(--mut);font-size:12.5px;margin:6px 0 10px}
-.pop pre{margin:0 0 12px;padding:12px;background:#0b0c0e;border:1px dashed var(--hair);border-radius:8px;color:#7c7f84;font:12px/1.6 var(--sans);white-space:pre-wrap}
-.pop button{border:1px solid var(--hair);background:none;color:#7c7f84;border-radius:99px;padding:6px 14px;font-size:12px}
-.lx .hero{height:calc(100vh - 60px);padding-top:3vh}
-@media(max-width:900px){.case-k,.links a:not(.gh),.gh span{display:none}.lx .nav{gap:14px;padding:0 16px}}
-</style></head><body class="lx">
+.pop{position:absolute;right:5vw;top:92px;width:380px;background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:20px;box-shadow:var(--card-shadow)}
+.pop b{font-size:14.5px;color:var(--txt)}
+.pop p{color:var(--mut);font-size:13px;margin:6px 0 12px}
+.pop pre{margin:0 0 12px;padding:12px;background:var(--bg);border:1px dashed var(--hair);border-radius:8px;color:var(--mut2);font:12.5px/1.6 var(--sans);white-space:pre-wrap}
+.pop button{border:1px solid var(--hair);background:none;color:var(--mut2);border-radius:99px;padding:7px 15px;font-size:12.5px}
+.lx .hero{height:calc(100vh - 84px);padding-top:3vh;transition:background .4s}
+body.lx{transition:background .4s,color .4s}
+@media(max-width:900px){.links a:not(.gh),.gh span,.sep{display:none}.lx .nav{padding:0 16px;height:68px}.links{gap:12px}.brand b{font-size:24px}.lx .hero{height:calc(100vh - 68px)}}
+
+/* light mode: the same page on warm white */
+html[data-theme="light"]{--bg:#f5f3ee;--panel:#ffffff;--panel-rgb:255,255,255;--txt:#1c1b18;--mut:#6e6a62;--mut2:#9a958b;--hair:rgba(0,0,0,.1);
+ --edge:#3d3a34;--edge-soft:rgba(0,0,0,.28);--nodeline:rgba(0,0,0,.55);--camp-line:rgba(0,0,0,.14);--camp-bg:rgba(0,0,0,.025);--chipbg:rgba(0,0,0,.045);
+ --labbg:#f5f3ee;--link:#4a4740;--navbg:rgba(245,243,238,.85);--paper:#ffffff;--paper-shadow:0 24px 60px rgba(60,40,20,.16);--card-shadow:0 10px 26px rgba(60,40,20,.12)}
+html[data-theme="light"] .hero{background:radial-gradient(60% 55% at 72% 55%,rgba(232,69,44,.07),transparent 70%),var(--bg)}
+html[data-theme="light"] .hero:before{opacity:.35}
+html[data-theme="light"] .beam{mix-blend-mode:multiply}
+</style>
+<script>try { const t = localStorage.getItem('antu.site.theme'); if (t) document.documentElement.dataset.theme = t } catch {}</script></head><body class="lx">
 <header class="nav">
  <a class="brand" href="#"><b>案图</b><span>Antu</span></a>
- <div class="case" id="case" aria-live="polite"><span class="case-k" data-i18n="case">当前案例</span><span class="case-v" id="caseName"></span><i class="case-f" data-i18n="fiction">虚构</i></div>
  <nav class="links">
-  <a href="#how" data-i18n="how">使用方法</a>
   <a href="https://antu.nervonly.cn/" data-i18n="examples">示例</a>
-  <a class="gh" href="https://github.com/zh-xx/Antu" aria-label="GitHub"><svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a>
-  <span class="lang" role="group" aria-label="语言"><button class="on" data-lang="zh">中</button><button data-lang="en">EN</button></span>
+  <a class="gh" href="https://github.com/zh-xx/Antu" aria-label="GitHub"><svg viewBox="0 0 16 16" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a>
+  <span class="sep" aria-hidden="true"></span>
+  <div class="lang" role="radiogroup" aria-label="Language"><i class="knob" aria-hidden="true"></i><button role="radio" aria-checked="true" data-lang="zh">中文</button><button role="radio" aria-checked="false" data-lang="en">EN</button></div>
+  <button class="mode" id="mode" aria-label="切换明暗" title="切换明暗"><svg class="moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg></button>
   <button class="start" id="startBtn" data-i18n="start">开始使用</button>
  </nav>
  <div class="pop" id="pop" hidden><b data-i18n="popTitle">交给你的 AI 助手</b><p data-i18n="popBody">复制下面这段话，发给你常用的 AI 助手，它会自己装好案图。</p><pre>（提示词正在整理，下一步放进来）</pre><button disabled data-i18n="copy">复制</button></div>
@@ -246,19 +262,6 @@ const el = (tag, cls, html, style) => {
 }
 const show = (e, ms = 400, delay = 0) => e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, delay, fill: 'both' })
 
-// the case the stage is showing, named in the top bar
-function showCase(which) {
-  const name = which === 'contract'
-    ? `${D.flow.contract.title} · ${D.flow.contract.meta[0].replace(/^合同编号：/, '').replace('（虚构）', '')}`
-    : D.judgmentName
-  const el = $('#caseName')
-  if (el.textContent === name) return
-  el.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(-4px)' }], { duration: 200 }).onfinish = () => {
-    el.textContent = name
-    el.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 260 })
-  }
-}
-
 function lens(i) {
   $$('.lens span').forEach((s, k) => s.classList.toggle('on', k === i))
 }
@@ -307,12 +310,14 @@ function reading(pg = paper, beam = '#beam') {
   return wait(1800)
 }
 
-const HOT = '#f0d9cf', PANEL = '#15171b'
+// colours that follow the light / dark mode
+const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim()
+const HOT = '#f0d9cf'
 const SH_A = 'inset 3px 0 0 #e8452c, inset 0 0 0 0 rgba(255,255,255,.12), 0 0 0 rgba(0,0,0,0)'
-const SH_B = 'inset 0 0 0 0 #e8452c, inset 0 0 0 1px rgba(255,255,255,.16), 0 10px 26px rgba(0,0,0,.45)'
+const SH_B = () => `inset 0 0 0 0 #e8452c, inset 0 0 0 1px ${tok('camp-line')}, ${tok('card-shadow')}`
 const paperAway = () => (paper.classList.add('melt'), [
   ...$$('.paper > *:not(.beam)').map((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(6px)' }], { duration: 600, fill: 'both', easing: 'ease-in' })),
-  paper.animate([{ backgroundColor: '#f4f0e8', boxShadow: '0 30px 80px rgba(0,0,0,.6)' }, { backgroundColor: 'rgba(244,240,232,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 100, fill: 'both', easing: ease }),
+  paper.animate([{ backgroundColor: tok('paper'), boxShadow: tok('paper-shadow') }, { backgroundColor: 'rgba(0,0,0,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 100, fill: 'both', easing: ease }),
 ])
 
 async function toTimeline(alive) {
@@ -344,7 +349,7 @@ async function toTimeline(alive) {
     const d = i * 70, B = o.B
     anims.push(o.a.animate([
       { left: o.A.x + 'px', top: o.A.y + 'px', width: o.A.w + 'px', height: o.A.h + 'px', backgroundColor: HOT, borderRadius: '2px', boxShadow: SH_A },
-      { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px', height: B.h + 'px', backgroundColor: PANEL, borderRadius: '8px', boxShadow: SH_B },
+      { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px', height: B.h + 'px', backgroundColor: tok('panel'), borderRadius: '8px', boxShadow: SH_B() },
     ], { duration: 1100, delay: d, easing: ease, fill: 'both' }))
     anims.push(o.a.querySelector('.txt').animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(4px)' }], { duration: 420, delay: d + 60, fill: 'both' }))
     anims.push(o.a.querySelector('.face').animate([{ opacity: 0, filter: 'blur(4px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 500, delay: d + 600, fill: 'both' }))
@@ -457,22 +462,22 @@ async function toGraph(alive) {
   svg.setAttribute('class', 'edges')
   svg.setAttribute('width', stage.clientWidth)
   svg.setAttribute('height', stage.clientHeight)
-  svg.innerHTML = '<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#cfcac0"/></marker><marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#e8452c"/></marker></defs>'
+  svg.innerHTML = '<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" style="fill:var(--edge)"/></marker><marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#e8452c"/></marker></defs>'
   stage.appendChild(svg)
   D.relations.forEach((r, i) => {
-    const s = STYLE[r.kind] || STYLE.control, g = edgePath(r, G), color = s.color || '#cfcac0'
+    const s = STYLE[r.kind] || STYLE.control, g = edgePath(r, G), color = s.color || 'var(--edge)'
     const mk = (w, extra = {}) => {
       const p = document.createElementNS(SVGNS, 'path')
       p.setAttribute('d', g.d)
       p.setAttribute('fill', 'none')
-      p.setAttribute('stroke', extra.stroke || color)
+      p.style.stroke = extra.stroke || color
       p.setAttribute('stroke-width', w)
       svg.appendChild(p)
       return p
     }
     const delay = 150 + i * 160
     let line
-    if (s.double) { mk(4.6); line = mk(1.8, { stroke: '#0d0e11' }) } else line = mk(s.w)
+    if (s.double) { mk(4.6); line = mk(1.8, { stroke: 'var(--bg)' }) } else line = mk(s.w)
     const len = line.getTotalLength()
     for (const p of [...svg.querySelectorAll('path')].slice(-(s.double ? 2 : 1))) {
       p.style.strokeDasharray = `${len} ${len}`
@@ -506,7 +511,6 @@ function reset() {
   pg.querySelectorAll('.sn').forEach((x) => x.classList.remove('lit'))
   $('#cap').style.opacity = 0
   lens(-1)
-  showCase('judgment')
 }
 
 // take a scene's pieces away and bring the page back
@@ -550,7 +554,7 @@ async function toReasoning(alive) {
   paperAway()
   root.animate([
     { left: A.x + 'px', top: A.y + 'px', width: A.w + 'px', backgroundColor: '#f0d9cf' },
-    { left: R.root.x + 'px', top: R.root.y + 'px', width: R.root.w + 'px', backgroundColor: '#15171b' },
+    { left: R.root.x + 'px', top: R.root.y + 'px', width: R.root.w + 'px', backgroundColor: tok('panel') },
   ], { duration: 1000, easing: ease, fill: 'both' })
   for (const e of root.querySelectorAll('b,small')) e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 600, fill: 'both' })
   await wait(1100)
@@ -567,7 +571,7 @@ async function toReasoning(alive) {
     const p = document.createElementNS(SVGNS, 'path')
     p.setAttribute('d', `M ${rx} ${ry} C ${rx} ${ry + 30}, ${cx} ${h.y - 34}, ${cx} ${h.y}`)
     p.setAttribute('fill', 'none')
-    p.setAttribute('stroke', g.against ? '#e8452c' : 'rgba(255,255,255,.4)')
+    p.style.stroke = g.against ? '#e8452c' : 'var(--edge-soft)'
     p.setAttribute('stroke-width', 1.5)
     svg.appendChild(p)
     const len = p.getTotalLength()
@@ -594,7 +598,6 @@ async function toFlow(alive) {
   lens(-1)
   $('#cap').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
   sceneTag('④ 流程', '换一份文书：合同条款，变成流程图')
-  showCase('contract')
   $$('.rn,.chip,.trunk,.edges').forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(8px)' }], { duration: 600, fill: 'both' }))
   await wait(600)
   $$('.rn,.chip,.trunk,.edges').forEach((e) => e.remove())
@@ -628,14 +631,14 @@ async function toFlow(alive) {
     b.animate([
       { left: A.x + 'px', top: A.y + A.h / 2 + 'px', width: A.w + 'px', height: A.h + 'px', marginTop: -A.h / 2 + 'px', backgroundColor: 'rgba(240,217,207,0)', borderColor: 'rgba(232,69,44,0)' },
       { backgroundColor: 'rgba(240,217,207,.9)', borderColor: 'rgba(232,69,44,1)', offset: 0.3 },
-      { left: p.x - w / 2 + 'px', top: p.y + 'px', width: w + 'px', height: h + 'px', marginTop: -h / 2 + 'px', backgroundColor: dec ? 'rgba(21,23,27,0)' : '#15171b', borderColor: dec ? 'rgba(255,255,255,0)' : 'rgba(255,255,255,.6)' },
+      { left: p.x - w / 2 + 'px', top: p.y + 'px', width: w + 'px', height: h + 'px', marginTop: -h / 2 + 'px', backgroundColor: dec ? `rgba(${tok('panel-rgb')},0)` : tok('panel'), borderColor: dec ? 'rgba(0,0,0,0)' : tok('nodeline') },
     ], { duration: 1100, delay: d, easing: ease, fill: 'both' })
     label.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: d + 700, fill: 'both' })
     setTimeout(() => b.classList.add('in'), d + 800)
     box[id] = b
   })
   pg.querySelectorAll('h2,.meta,p,.lbl').forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(6px)' }], { duration: 600, delay: 150, fill: 'both' }))
-  pg.animate([{ backgroundColor: '#f4f0e8', boxShadow: '0 30px 80px rgba(0,0,0,.6)' }, { backgroundColor: 'rgba(244,240,232,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 200, fill: 'both', easing: ease })
+  pg.animate([{ backgroundColor: tok('paper'), boxShadow: tok('paper-shadow') }, { backgroundColor: 'rgba(0,0,0,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 200, fill: 'both', easing: ease })
   pg.classList.add('melt')
   await wait(F.order.length * 80 + 1200)
   if (!alive()) return
@@ -644,7 +647,7 @@ async function toFlow(alive) {
   svg.setAttribute('class', 'edges')
   svg.setAttribute('width', W)
   svg.setAttribute('height', H)
-  svg.innerHTML = '<defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#cfcac0"/></marker></defs>'
+  svg.innerHTML = '<defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" style="fill:var(--edge)"/></marker></defs>'
   stage.appendChild(svg)
   const half = (id) => (F.nodes[id].kind === 'decision' ? 44 : nodeW / 2)
   const halfH = (id) => (F.nodes[id].kind === 'decision' ? 44 : 20)
@@ -658,7 +661,7 @@ async function toFlow(alive) {
     const p = document.createElementNS(SVGNS, 'path')
     p.setAttribute('d', d)
     p.setAttribute('fill', 'none')
-    p.setAttribute('stroke', '#cfcac0')
+    p.style.stroke = 'var(--edge)'
     p.setAttribute('stroke-width', e.main ? 2 : 1.3)
     svg.appendChild(p)
     const len = p.getTotalLength()
@@ -680,7 +683,7 @@ async function toFlow(alive) {
   await wait(F.edges.length * 70 + 600)
   if (!alive()) return
   // a token runs the main line, lighting each step as it passes
-  const tok = el('div', 'token')
+  const token = el('div', 'token')
   const main = F.mainPath
   box[main[0]].classList.add('lit')
   for (let i = 0; i < main.length - 1; i++) {
@@ -689,16 +692,16 @@ async function toFlow(alive) {
     await new Promise((res) => {
       ;(function f(now) {
         const k = Math.min(1, (now - t0) / dur), pt = p.getPointAtLength(len * k)
-        tok.style.left = pt.x + 'px'
-        tok.style.top = pt.y + 'px'
-        tok.style.opacity = 1
+        token.style.left = pt.x + 'px'
+        token.style.top = pt.y + 'px'
+        token.style.opacity = 1
         if (k < 1) requestAnimationFrame(f)
         else res()
       })(t0)
     })
     box[main[i + 1]].classList.add('lit')
   }
-  tok.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
+  token.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
   caption(`<strong>${F.sourceName} ${F.contract.clauses.length} 条条款 → ${F.order.length} 个步骤与判断、${F.edges.length} 条走向</strong>，主线走一遍，分支一目了然。&emsp;示意：由 AI 助手阅读合同并提取，案图负责画图。合同为虚构。`)
   $$('.lens span').forEach((s) => s.classList.add('on'))
 }
@@ -728,17 +731,24 @@ async function start() {
   await toFlow(alive)
 }
 
-// the top bar: the start button opens the prompt box; the language switch (labels only, in this draft)
+// the top bar: the start button opens the prompt box; the language switch (the top bar's labels only, in
+// this draft); light / dark, remembered in this browser
 $('#startBtn').onclick = (e) => { e.stopPropagation(); $('#pop').hidden = !$('#pop').hidden }
 document.addEventListener('click', (e) => { if (!$('#pop').contains(e.target)) $('#pop').hidden = true })
-const EN = { case: 'Now showing', fiction: 'fictional', how: 'How to use', examples: 'Examples', start: 'Get started', popTitle: 'Hand it to your AI assistant', popBody: 'Copy the text below and send it to the AI assistant you use; it installs Antu by itself.', copy: 'Copy' }
+const EN = { examples: 'Examples', start: 'Get started', popTitle: 'Hand it to your AI assistant', popBody: 'Copy the text below and send it to the AI assistant you use; it installs Antu by itself.', copy: 'Copy' }
 const ZH = Object.fromEntries($$('[data-i18n]').map((e) => [e.dataset.i18n, e.textContent]))
 $$('.lang button').forEach((b) => (b.onclick = () => {
-  $$('.lang button').forEach((x) => x.classList.toggle('on', x === b))
-  const dict = b.dataset.lang === 'en' ? EN : ZH
-  $$('[data-i18n]').forEach((e) => (e.textContent = dict[e.dataset.i18n]))
+  const lang = b.dataset.lang
+  $('.lang').dataset.on = lang
+  $$('.lang button').forEach((x) => x.setAttribute('aria-checked', String(x === b)))
+  const dict = lang === 'en' ? EN : ZH
+  $$('[data-i18n]').forEach((e) => e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150 }).onfinish = () => { e.textContent = dict[e.dataset.i18n]; e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 }) })
 }))
-$('#caseName').textContent = D.judgmentName
+$('#mode').onclick = () => {
+  const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'
+  document.documentElement.dataset.theme = next
+  try { localStorage.setItem('antu.site.theme', next) } catch { /* not remembered */ }
+}
 
 $('#replay').onclick = start
 if (location.hash.includes('manual')) window.start = start
