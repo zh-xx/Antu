@@ -2026,31 +2026,41 @@ async function checkDocumentThemeIsGrey() {
     bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
     return
   }
-  const spec = JSON.parse(readFileSync(join(REPO, 'examples/relationship/marketplace-parties.zh-CN.json'), 'utf8'))
+  // One example of each type, and every way of drawing it
+  const cases = [
+    ['examples/relationship/marketplace-parties.zh-CN.json', ['graph', 'focus', 'chain', 'matrix', 'equity', 'authority', 'related', 'path', 'summary']],
+    ['examples/procedure/05-premises-lease.zh-CN.json', ['flow', 'route']],
+    ['examples/fact/neighbour-corridor-charging.zh-CN.json', ['timeline', 'chronicle', 'scale']],
+    ['examples/justification/fang-yuan-defense-excess.zh-CN.json', ['tree']],
+  ]
   const browser = await launchBrowser({ width: 1600, height: 900 })
   try {
-    for (const kind of ['graph', 'focus', 'chain', 'matrix', 'equity', 'authority', 'related', 'path', 'summary']) {
-      const html = join(OUT, `theme-grey-${kind}.html`)
-      renderToFile(spec, { outPath: html, quiet: true, preset: { kind, theme: 'document' } })
-      await browser.open(`file://${html}?lang=zh`)
-      const found = await browser.eval(`(() => {
-        const grey = (c) => {
-          const m = /rgba?\\(([^)]*)\\)/.exec(c)
-          if (!m) return true
-          const [r, g, b, a = 1] = m[1].split(/[ ,\\/]+/).filter(Boolean).map(Number)
-          return +a === 0 || Math.max(r, g, b) - Math.min(r, g, b) <= 6
-        }
-        const bad = new Map()
-        for (const el of document.querySelectorAll('.react-flow__viewport, .react-flow__viewport *')) {
-          const cs = getComputedStyle(el)
-          for (const prop of ['color', 'backgroundColor', 'borderTopColor', 'borderLeftColor', 'fill', 'stroke']) {
-            const v = cs[prop]
-            if (v && v.startsWith('rgb') && !grey(v)) bad.set(prop + ' ' + v + ' ' + (el.getAttribute('class') || el.tagName).slice(0, 40), 1)
+    for (const [file, kinds] of cases) {
+      const spec = JSON.parse(readFileSync(join(REPO, file), 'utf8'))
+      for (const kind of kinds) {
+        const html = join(OUT, `theme-grey-${kind}.html`)
+        renderToFile(spec, { outPath: html, quiet: true, preset: { kind, theme: 'document' } })
+        await browser.open(`file://${html}?lang=zh`)
+        // Only the diagram is themed (the viewport); open the preview of the first box as well, for it is part of it
+        const found = await browser.eval(`(() => {
+          const grey = (c) => {
+            const m = /rgba?\\(([^)]*)\\)/.exec(c)
+            if (!m) return true
+            const [r, g, b, a = 1] = m[1].split(/[ ,\\/]+/).filter(Boolean).map(Number)
+            return +a === 0 || Math.max(r, g, b) - Math.min(r, g, b) <= 6
           }
-        }
-        return [...bad.keys()].slice(0, 6)
-      })()`)
-      eq(`${kind}: no colour in the document theme`, found, [])
+          const bad = new Map()
+          for (const el of document.querySelectorAll('.react-flow__viewport, .react-flow__viewport *')) {
+            const cs = getComputedStyle(el)
+            for (const prop of ['color', 'backgroundColor', 'borderTopColor', 'borderLeftColor', 'fill', 'stroke']) {
+              const v = cs[prop]
+              if (v && v.startsWith('rgb') && !grey(v)) bad.set(prop + ' ' + v + ' ' + (el.getAttribute('class') || el.tagName).toString().slice(0, 40), 1)
+            }
+          }
+          return [...bad.keys()].slice(0, 6)
+        })()`)
+        eq(`${kind}: no colour in the document theme`, found, [])
+      }
     }
   } finally {
     await browser.close()
