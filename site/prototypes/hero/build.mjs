@@ -331,6 +331,49 @@ ${read(`${HERE}lenses.css`)}</style>
 </div>
 </div>
 </section>
+
+<section class="sec" id="how">
+ <h2 class="sec-t">怎么用</h2>
+ <ol class="steps">
+  <li><b>1</b><h3>复制提示词</h3><p>点右上角「开始使用」，复制那段话。</p></li>
+  <li><b>2</b><h3>交给 AI 助手</h3><p>发给你常用的 AI 助手，它会自己装好案图。</p></li>
+  <li><b>3</b><h3>把文书给它</h3><p>说要哪一类图。它读文书、标出处，案图负责画图。</p></li>
+ </ol>
+</section>
+
+<section class="sec" id="tools">
+ <h2 class="sec-t">支持的 AI 工具</h2>
+ <table class="tools">
+  <thead><tr><th>工具</th><th>怎么接入</th><th>状态</th></tr></thead>
+  <tbody>
+   <tr><td>Claude Code</td><td>把技能包 <code>skills/antu/</code> 拷到 <code>~/.claude/skills/antu/</code></td><td><span class="st st-wait">未实测</span></td></tr>
+   <tr><td>Codex</td><td>把技能包拷到 <code>~/.codex/skills/antu/</code>，重启 Codex</td><td><span class="st st-wait">未实测</span></td></tr>
+   <tr><td>Cursor</td><td>在 MCP 设置里加入案图的服务端 <code>tools/mcp/server.mjs</code></td><td><span class="st st-wait">未实测</span></td></tr>
+   <tr class="tbd"><td>待补充</td><td>—</td><td>—</td></tr>
+   <tr class="tbd"><td>待补充</td><td>—</td><td>—</td></tr>
+  </tbody>
+ </table>
+ <p class="sec-note">「未实测」：按各工具的文档应当可用，还没有在真实客户端里试过。</p>
+</section>
+
+<section class="sec" id="trust">
+ <h2 class="sec-t">安全与保密</h2>
+ <div class="cards3">
+  <div><h3>每个点都有出处</h3><p>图上的每个节点都能回到原文，方便核对。</p></div>
+  <div><h3>案图不上传</h3><p>生成的是一个离线的网页文件，打开不需要联网。</p></div>
+  <div><h3>文书由你的 AI 助手读</h3><p>它的服务商能看到文书内容。提取的结果需要你核对。</p></div>
+ </div>
+</section>
+
+<section class="sec" id="more">
+ <h2 class="sec-t">更多效果</h2>
+ <div class="placeholder">示例页正在整理，之后放在这里。</div>
+</section>
+
+<footer class="pfoot">
+ <span>案图 Antu · 开源（AGPL-3.0-or-later）· 0.x 早期版本，仍在变化</span>
+ <a href="https://github.com/zh-xx/Antu">GitHub</a>
+</footer>
 <script>window.__LENS__ = ${JSON.stringify(L).replace(/</g, '\\u003c')}</script>
 <script>${read(`${HERE}lenses.js`)}</script>
 </body></html>
