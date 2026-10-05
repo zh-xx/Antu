@@ -106,7 +106,7 @@ agent 可以读取规范、查看示例、校验、计算几何、生成页面�
 
 - 供人阅读的设计文档在 [`spec/`](spec/)：[架构](spec/v0-architecture.md)、[来源的 7 类字段](spec/source-schema-draft.md)、[主题](spec/theme.md)、[MCP 服务端](spec/mcp-server.md)，以及各类图（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 agent 看的说明在 [`spec/agent/`](spec/agent/)。
 - [CHANGELOG.md](CHANGELOG.md)，版本号的规则见 [spec/versioning.md](spec/versioning.md)。
-- 已知问题与需求在 [GitHub issues](https://github.com/zh-xx/Antu/issues) 里管理。贡献者的做事规矩见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- 已知问题与需求记录在 [GitHub issues](https://github.com/zh-xx/Antu/issues)。参与贡献前，请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 许可证
 
