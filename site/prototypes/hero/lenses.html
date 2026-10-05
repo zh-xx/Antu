@@ -236,9 +236,6 @@ html{--fang:"FangSong","STFangsong","FangSong_GB2312","Noto Serif CJK SC","Sourc
 /* the judgment, set as it is printed: an open spread, two columns, FangSong, the court and the title centred */
 .lx #paper{left:50%;width:min(940px,100%);margin-left:calc(min(940px,100%) / -2);transform:none;padding:30px 40px 24px;
  column-count:2;column-gap:72px;column-fill:auto;font:var(--fs,11px)/1.72 var(--fang);color:#1f1d19}
-.lx #paper::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:1px;background:linear-gradient(transparent,rgba(0,0,0,.08) 12%,rgba(0,0,0,.08) 88%,transparent);box-shadow:0 0 18px 8px rgba(0,0,0,.035)}
-.lx #paper.melt::before{opacity:0;transition:opacity .4s}
-.lx #paper:after{display:none}
 .lx #paper .court{text-align:center;font:700 1.4em/1.6 var(--hei);letter-spacing:.14em}
 .lx #paper .ttl{text-align:center;font:700 1.75em/1.5 var(--song);letter-spacing:.7em;padding-left:.7em;margin:.1em 0 .2em}
 .lx #paper .no{text-align:right;margin-bottom:.6em}
@@ -257,6 +254,23 @@ html{--fang:"FangSong","STFangsong","FangSong_GB2312","Noto Serif CJK SC","Sourc
 .actor .face.tv .l{font:600 11.5px/1.3 var(--sans);color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .actor .face.tv .s{font:10px/1.3 var(--sans);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .actor .face.tv .t{font:10px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--red);letter-spacing:.02em}
+
+/* two sheets side by side with a narrow gap, a few sheets showing under each outer edge, a folio at the foot */
+.lx #paper{background:transparent!important;box-shadow:none!important;overflow:visible;isolation:isolate;transform-origin:0 0}
+.lx #paper::before,.lx #paper::after{content:"";position:absolute;top:0;bottom:0;width:calc(50% - 7px);z-index:-1;background:var(--paper);border-radius:2px;
+ display:flex;align-items:flex-end;justify-content:center;padding-bottom:9px;box-sizing:border-box;font:9.5px/1 var(--sans);color:#a39d90;letter-spacing:.2em;opacity:1;transition:opacity .45s}
+.lx #paper::before{left:0;content:"第 1 页";box-shadow:-2px 2px 0 -.5px #ebe5d8,-4px 4px 0 -1px #ddd6c6,-6px 6px 0 -1.5px #cfc7b5,0 24px 50px rgba(0,0,0,.45)}
+.lx #paper::after{right:0;left:auto;height:auto;content:"第 2 页";box-shadow:2px 2px 0 -.5px #ebe5d8,4px 4px 0 -1px #ddd6c6,6px 6px 0 -1.5px #cfc7b5,0 24px 50px rgba(0,0,0,.45)}
+html[data-theme="light"] .lx #paper::before{box-shadow:-2px 2px 0 -.5px #ebe5d8,-4px 4px 0 -1px #ddd6c6,-6px 6px 0 -1.5px #cfc7b5,0 18px 40px rgba(60,40,20,.14)}
+html[data-theme="light"] .lx #paper::after{box-shadow:2px 2px 0 -.5px #ebe5d8,4px 4px 0 -1px #ddd6c6,6px 6px 0 -1.5px #cfc7b5,0 18px 40px rgba(60,40,20,.14)}
+.lx #paper.melt::before,.lx #paper.melt::after{opacity:0}
+/* the highlighter: it goes over the sentence, then the words the card takes are marked */
+.lx #paper li{background:linear-gradient(rgba(240,200,180,.55),rgba(240,200,180,.55)) no-repeat 0 0/0 100%;transition:background-size .55s cubic-bezier(.5,0,.3,1)}
+.lx #paper li.hl{background-size:100% 100%}
+.lx #paper li .dt,.lx #paper li .lb{border-radius:2px;transition:background .35s,box-shadow .35s,color .35s}
+.lx #paper li.pick .dt,.lx #paper li.pick .lb{background:rgba(232,69,44,.16);box-shadow:inset 0 -1.5px 0 var(--red);color:#000}
+.wordfly{position:absolute;z-index:25;white-space:nowrap;transform-origin:0 0;pointer-events:none;color:var(--txt);line-height:1.2;text-shadow:0 0 12px rgba(232,69,44,.55)}
+.lx .show .stage{overflow:hidden}
 </style>
 <script>try { const t = localStorage.getItem('antu.site.theme'); if (t) document.documentElement.dataset.theme = t } catch {}</script></head><body class="lx">
 <header class="nav">
@@ -289,7 +303,7 @@ html{--fang:"FangSong","STFangsong","FangSong_GB2312","Noto Serif CJK SC","Sourc
   <div class="court">示例省高级人民法院</div><div class="ttl">刑事判决书</div><div class="no">（2032）示刑终1号</div>
   <p class="party">上诉人（原审被告人）<span class="nm" data-e="e-1">方远</span>。</p>
   <h3>本院查明</h3><p>一、借款合同（80 万元）载明：2030年7月28日，<span class="nm" data-e="e-2">梁某</span>及其丈夫<span class="nm" data-e="e-3">方某</span>向<span class="nm" data-e="e-5">钟某</span>、<span class="nm" data-e="e-5">郑某</span>借款80万元，双方口头约定月息6%。</p><p>二、房屋买卖合同（20 万元抵押）载明：另外20万元，通过签订房屋买卖合同，用<span class="nm" data-e="e-3">方某</span>名下的一套住房作为抵押，双方约定如逾期还款，则将该住房过户给<span class="nm" data-e="e-5">郑某</span>。</p><p>三、执法记录视频与现场监控载明：<span class="nm" data-e="e-2">梁某</span>指认<span class="nm" data-e="e-6">姜某</span>打<span class="nm" data-e="e-1">方远</span>耳光，<span class="nm" data-e="e-6">姜某</span>等否认并称是经济纠纷；民警警告双方不能动手；<span class="nm" data-e="e-1">方远</span>欲离开被讨债人员阻止。</p><p>四、尸体检验鉴定意见载明：<span class="nm" data-e="e-6">姜某</span>系腹部损伤后造成肝固有动脉裂伤及肝右叶创伤导致失血性休克死亡。</p>
-  <p>上述事实，另有如下经过：</p><ul id="bul"><li>2030年7月28日，<span class="nm" data-e="e-2">梁某</span>夫妇向<span class="nm" data-e="e-5">钟某</span>、<span class="nm" data-e="e-5">郑某</span>借款 80 万元。双方口头约定月息 6%，该笔借款成为后续债务纠纷的起点。</li><li>2031年10月20日，<span class="nm" data-e="e-2">梁某</span>累计还款 120 万元。还款期间，<span class="nm" data-e="e-5">钟某</span>、<span class="nm" data-e="e-5">郑某</span>因<span class="nm" data-e="e-2">梁某</span>还款不及时，曾指使他人采取在<span class="nm" data-e="e-4">远华公司</span>车棚内驻扎、在办公楼前支锅做饭等方式催债。</li><li>2031年11月1日，<span class="nm" data-e="e-2">梁某</span>夫妇再借 28 万元。8 万元口头约定月息 6%；另 20 万元通过签订房屋买卖合同，以<span class="nm" data-e="e-3">方某</span>名下住房作抵押，约定逾期则过户给<span class="nm" data-e="e-5">郑某</span>。</li><li>2032年1月6日，<span class="nm" data-e="e-2">梁某</span>再还款 24 万元。<span class="nm" data-e="e-5">钟某</span>、<span class="nm" data-e="e-5">郑某</span>认为该款是偿还第一笔 80 万元的利息，<span class="nm" data-e="e-2">梁某</span>夫妇则认为是偿还第二笔借款；此后<span class="nm" data-e="e-2">梁某</span>夫妇未再还款，也未办理住房过户。</li><li>2032年4月1日，<span class="nm" data-e="e-5">郑某</span>等人换锁强行入住抵押房屋。<span class="nm" data-e="e-5">郑某</span>出示房屋买卖合同，民警调解后离去。</li><li>2032年4月13日11时，<span class="nm" data-e="e-5">郑某</span>等搬物品，<span class="nm" data-e="e-5">钟某</span>推倒<span class="nm" data-e="e-2">梁某</span>在地。民警处警时<span class="nm" data-e="e-5">钟某</span>称系房屋买卖纠纷，告知双方协商或通过诉讼解决；民警离开后，<span class="nm" data-e="e-5">钟某</span>责骂<span class="nm" data-e="e-2">梁某</span>，并将<span class="nm" data-e="e-2">梁某</span>推倒在地、踩住其手臂。当日下午，<span class="nm" data-e="e-5">郑某</span>等人将房屋内物品搬至<span class="nm" data-e="e-4">远华公司</span>门口。</li><li>2032年4月13日21时，双方达成口头协议。<span class="nm" data-e="e-3">方某</span>通过他人调解与<span class="nm" data-e="e-5">钟某</span>达成口头协议：次日将住房过户给<span class="nm" data-e="e-5">郑某</span>，此后再付 25 万元，借款本金及利息即全部结清。</li><li>2032年4月14日16时，<span class="nm" data-e="e-5">郑某</span>纠集多人到<span class="nm" data-e="e-4">远华公司</span>讨债。因<span class="nm" data-e="e-3">方某</span>、<span class="nm" data-e="e-2">梁某</span>未去办理过户手续，<span class="nm" data-e="e-5">郑某</span>纠集孔某等人到<span class="nm" data-e="e-4">远华公司</span>讨债，先后在办公楼前呼喊、在财务室内及餐厅外盯守，并在办公楼门厅外烧烤、饮酒，催促<span class="nm" data-e="e-2">梁某</span>还款。</li><li>2032年4月14日21时53分，<span class="nm" data-e="e-6">姜某</span>等人进入接待室辱骂并裸露下体。<span class="nm" data-e="e-6">姜某</span>用污秽言语辱骂<span class="nm" data-e="e-2">梁某</span>、<span class="nm" data-e="e-1">方远</span>及其家人，将烟头弹到<span class="nm" data-e="e-2">梁某</span>胸前衣服上，并褪下裤子裸露下体朝<span class="nm" data-e="e-2">梁某</span>等人转动身体；其后又脱下<span class="nm" data-e="e-1">方远</span>的鞋让<span class="nm" data-e="e-2">梁某</span>闻，并拍打<span class="nm" data-e="e-1">方远</span>面颊，其他讨债人员揪抓<span class="nm" data-e="e-1">方远</span>头发、按压其肩部不准起身。</li><li>2032年4月14日22时17分，民警到达接待室后离开寻找报警人。民警朱某带领辅警到达接待室了解情况，<span class="nm" data-e="e-2">梁某</span>和<span class="nm" data-e="e-1">方远</span>指认<span class="nm" data-e="e-6">姜某</span>殴打<span class="nm" data-e="e-1">方远</span>，<span class="nm" data-e="e-6">姜某</span>等人否认并称系讨债；民警警告双方不能打架后，带领辅警到院内寻找报警人。</li><li>2032年4月14日22时26分，<span class="nm" data-e="e-1">方远</span>持刀捅刺四名讨债人员。<span class="nm" data-e="e-1">方远</span>、<span class="nm" data-e="e-2">梁某</span>欲随民警离开被阻拦，<span class="nm" data-e="e-6">姜某</span>等人卡<span class="nm" data-e="e-1">方远</span>颈部并将其推拉至东南角；<span class="nm" data-e="e-1">方远</span>持刃长 12 厘米的水果刀警告，<span class="nm" data-e="e-6">姜某</span>出言挑衅并逼近，<span class="nm" data-e="e-1">方远</span>遂捅刺<span class="nm" data-e="e-6">姜某</span>腹部一刀，又捅刺<span class="nm" data-e="e-7">程某</span>、<span class="nm" data-e="e-7">严某</span>、<span class="nm" data-e="e-7">孟某</span>各一刀。</li><li>2032年4月15日2时18分，<span class="nm" data-e="e-6">姜某</span>经抢救无效死亡。<span class="nm" data-e="e-6">姜某</span>被送至示例县人民医院救治，次日 2 时 18 分经抢救无效死亡；<span class="nm" data-e="e-7">严某</span>、<span class="nm" data-e="e-7">孟某</span>损伤构成重伤二级，<span class="nm" data-e="e-7">程某</span>构成轻伤二级。</li></ul>
+  <p>上述事实，另有如下经过：</p><ul id="bul"><li><span class="dt">2030年7月28日</span>，<span class="lb"><span class="nm" data-e="e-2">梁某</span>夫妇向<span class="nm" data-e="e-5">钟某</span>、<span class="nm" data-e="e-5">郑某</span>借款 80 万元</span>。双方口头约定月息 6%，该笔借款成为后续债务纠纷的起点。</li><li><span class="dt">2031年10月20日</span>，<span class="lb"><span class="nm" data-e="e-2">梁某</span>累计还款 120 万元</span>。还款期间，<span class="nm" data-e="e-5">钟某</span>、<span class="nm" data-e="e-5">郑某</span>因<span class="nm" data-e="e-2">梁某</span>还款不及时，曾指使他人采取在<span class="nm" data-e="e-4">远华公司</span>车棚内驻扎、在办公楼前支锅做饭等方式催债。</li><li><span class="dt">2031年11月1日</span>，<span class="lb"><span class="nm" data-e="e-2">梁某</span>夫妇再借 28 万元</span>。8 万元口头约定月息 6%；另 20 万元通过签订房屋买卖合同，以<span class="nm" data-e="e-3">方某</span>名下住房作抵押，约定逾期则过户给<span class="nm" data-e="e-5">郑某</span>。</li><li><span class="dt">2032年1月6日</span>，<span class="lb"><span class="nm" data-e="e-2">梁某</span>再还款 24 万元</span>。<span class="nm" data-e="e-5">钟某</span>、<span class="nm" data-e="e-5">郑某</span>认为该款是偿还第一笔 80 万元的利息，<span class="nm" data-e="e-2">梁某</span>夫妇则认为是偿还第二笔借款；此后<span class="nm" data-e="e-2">梁某</span>夫妇未再还款，也未办理住房过户。</li><li><span class="dt">2032年4月1日</span>，<span class="lb"><span class="nm" data-e="e-5">郑某</span>等人换锁强行入住抵押房屋</span>。<span class="nm" data-e="e-5">郑某</span>出示房屋买卖合同，民警调解后离去。</li><li><span class="dt">2032年4月13日11时</span>，<span class="lb"><span class="nm" data-e="e-5">郑某</span>等搬物品，<span class="nm" data-e="e-5">钟某</span>推倒<span class="nm" data-e="e-2">梁某</span>在地</span>。民警处警时<span class="nm" data-e="e-5">钟某</span>称系房屋买卖纠纷，告知双方协商或通过诉讼解决；民警离开后，<span class="nm" data-e="e-5">钟某</span>责骂<span class="nm" data-e="e-2">梁某</span>，并将<span class="nm" data-e="e-2">梁某</span>推倒在地、踩住其手臂。当日下午，<span class="nm" data-e="e-5">郑某</span>等人将房屋内物品搬至<span class="nm" data-e="e-4">远华公司</span>门口。</li><li><span class="dt">2032年4月13日21时</span>，<span class="lb">双方达成口头协议</span>。<span class="nm" data-e="e-3">方某</span>通过他人调解与<span class="nm" data-e="e-5">钟某</span>达成口头协议：次日将住房过户给<span class="nm" data-e="e-5">郑某</span>，此后再付 25 万元，借款本金及利息即全部结清。</li><li><span class="dt">2032年4月14日16时</span>，<span class="lb"><span class="nm" data-e="e-5">郑某</span>纠集多人到<span class="nm" data-e="e-4">远华公司</span>讨债</span>。因<span class="nm" data-e="e-3">方某</span>、<span class="nm" data-e="e-2">梁某</span>未去办理过户手续，<span class="nm" data-e="e-5">郑某</span>纠集孔某等人到<span class="nm" data-e="e-4">远华公司</span>讨债，先后在办公楼前呼喊、在财务室内及餐厅外盯守，并在办公楼门厅外烧烤、饮酒，催促<span class="nm" data-e="e-2">梁某</span>还款。</li><li><span class="dt">2032年4月14日21时53分</span>，<span class="lb"><span class="nm" data-e="e-6">姜某</span>等人进入接待室辱骂并裸露下体</span>。<span class="nm" data-e="e-6">姜某</span>用污秽言语辱骂<span class="nm" data-e="e-2">梁某</span>、<span class="nm" data-e="e-1">方远</span>及其家人，将烟头弹到<span class="nm" data-e="e-2">梁某</span>胸前衣服上，并褪下裤子裸露下体朝<span class="nm" data-e="e-2">梁某</span>等人转动身体；其后又脱下<span class="nm" data-e="e-1">方远</span>的鞋让<span class="nm" data-e="e-2">梁某</span>闻，并拍打<span class="nm" data-e="e-1">方远</span>面颊，其他讨债人员揪抓<span class="nm" data-e="e-1">方远</span>头发、按压其肩部不准起身。</li><li><span class="dt">2032年4月14日22时17分</span>，<span class="lb">民警到达接待室后离开寻找报警人</span>。民警朱某带领辅警到达接待室了解情况，<span class="nm" data-e="e-2">梁某</span>和<span class="nm" data-e="e-1">方远</span>指认<span class="nm" data-e="e-6">姜某</span>殴打<span class="nm" data-e="e-1">方远</span>，<span class="nm" data-e="e-6">姜某</span>等人否认并称系讨债；民警警告双方不能打架后，带领辅警到院内寻找报警人。</li><li><span class="dt">2032年4月14日22时26分</span>，<span class="lb"><span class="nm" data-e="e-1">方远</span>持刀捅刺四名讨债人员</span>。<span class="nm" data-e="e-1">方远</span>、<span class="nm" data-e="e-2">梁某</span>欲随民警离开被阻拦，<span class="nm" data-e="e-6">姜某</span>等人卡<span class="nm" data-e="e-1">方远</span>颈部并将其推拉至东南角；<span class="nm" data-e="e-1">方远</span>持刃长 12 厘米的水果刀警告，<span class="nm" data-e="e-6">姜某</span>出言挑衅并逼近，<span class="nm" data-e="e-1">方远</span>遂捅刺<span class="nm" data-e="e-6">姜某</span>腹部一刀，又捅刺<span class="nm" data-e="e-7">程某</span>、<span class="nm" data-e="e-7">严某</span>、<span class="nm" data-e="e-7">孟某</span>各一刀。</li><li><span class="dt">2032年4月15日2时18分</span>，<span class="lb"><span class="nm" data-e="e-6">姜某</span>经抢救无效死亡</span>。<span class="nm" data-e="e-6">姜某</span>被送至示例县人民医院救治，次日 2 时 18 分经抢救无效死亡；<span class="nm" data-e="e-7">严某</span>、<span class="nm" data-e="e-7">孟某</span>损伤构成重伤二级，<span class="nm" data-e="e-7">程某</span>构成轻伤二级。</li></ul>
   <h3>本院认为</h3><p id="yrw">对正在进行的非法限制他人人身自由的行为，应当认定为示意条款甲第一款规定的「不法侵害」，可以进行正当防卫。</p>
   <p>综上，依照示意条款，判决如下：（虚构，从略）</p>
   <p class="fiction">本文书是虚构的：案件、人名、单位、日期、金额和条款均为编造，不对应任何真实案件。它由 Antu 的示例数据整理而成，只用来演示「从原文摘录出处」，不是法律文书，也不是法律意见。</p></div>
@@ -366,29 +380,85 @@ function reading(pg = paper, beam = '#beam') {
 
 // colours that follow the light / dark mode
 const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim()
-const HOT = '#f0d9cf'
-const SH_A = 'inset 3px 0 0 #e8452c, inset 0 0 0 0 rgba(255,255,255,.12), 0 0 0 rgba(0,0,0,0)'
 const SH_B = () => `inset 0 0 0 0 #e8452c, inset 0 0 0 1px ${tok('camp-line')}, ${tok('card-shadow')}`
 const paperAway = () => (paper.classList.add('melt'), [
   ...$$('.paper > *:not(.beam)').map((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(6px)' }], { duration: 600, fill: 'both', easing: 'ease-in' })),
   paper.animate([{ backgroundColor: tok('paper'), boxShadow: tok('paper-shadow') }, { backgroundColor: 'rgba(0,0,0,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 100, fill: 'both', easing: ease }),
 ])
 
+// the camera on the judgment: the paper is moved and scaled so that the given lines fill the stage
+let cam = { z: 1, tx: 0, ty: 0 }
+function zoomTo(els, ms) {
+  const pr = paper.getBoundingClientRect(), rs = els.map((e) => e.getBoundingClientRect())
+  const x1 = Math.min(...rs.map((r) => r.left)), y1 = Math.min(...rs.map((r) => r.top)), x2 = Math.max(...rs.map((r) => r.right)), y2 = Math.max(...rs.map((r) => r.bottom))
+  const R = { x: (x1 - pr.left) / cam.z, y: (y1 - pr.top) / cam.z, w: (x2 - x1) / cam.z, h: (y2 - y1) / cam.z }
+  const W = stage.clientWidth, H = stage.clientHeight
+  const z = Math.min(W * 0.84 / R.w, H * 0.8 / R.h, 2.3)
+  const next = { z, tx: W / 2 - paper.offsetLeft - z * (R.x + R.w / 2), ty: H / 2 - paper.offsetTop - z * (R.y + R.h / 2) }
+  const T = (c) => `translate(${c.tx}px,${c.ty}px) scale(${c.z})`
+  paper.animate([{ transform: T(cam) }, { transform: T(next) }], { duration: ms, easing: 'cubic-bezier(.6,0,.25,1)', fill: 'forwards' })
+  cam = next
+  return wait(ms)
+}
+// the highlighter goes over each sentence, then the date and the event's name in it are marked
+async function sweep(lis, alive) {
+  for (const li of lis) {
+    if (!alive()) return
+    li.classList.add('hl')
+    setTimeout(() => alive() && li.classList.add('pick'), 380)
+    await wait(240)
+  }
+  await wait(520)
+}
+
 async function toTimeline(alive) {
   const L = timeline(), lis = $$('#bul li')
-  // each sentence of the account becomes its own object, lit
+  cam = { z: 1, tx: 0, ty: 0 }
+  // move in on the account, page by page, and mark what the timeline takes from each sentence
+  const mid = paper.getBoundingClientRect().left + paper.getBoundingClientRect().width / 2
+  const leftLis = lis.filter((li) => li.getBoundingClientRect().left < mid), rightLis = lis.filter((li) => !leftLis.includes(li))
+  await zoomTo(leftLis, 1000)
+  if (!alive()) return
+  await sweep(leftLis, alive)
+  if (!alive()) return
+  await zoomTo(rightLis, 900)
+  if (!alive()) return
+  await sweep(rightLis, alive)
+  if (!alive()) return
+  // back to the whole spread, so every sentence is in sight when it leaves
+  paper.animate([{ transform: `translate(${cam.tx}px,${cam.ty}px) scale(${cam.z})` }, { transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.6,0,.25,1)', fill: 'forwards' })
+  cam = { z: 1, tx: 0, ty: 0 }
+  await wait(950)
+  if (!alive()) return
+  // each sentence becomes its own object; the two marked pieces of it fly to their places on the card
   const acts = D.events.map((e, i) => {
     const li = lis[i], A = rel(li), B = L.cards[i]
-    const a = el('div', 'actor', `<div class="txt" style="width:${A.w}px;height:${A.h}px">${li.innerHTML}</div><div class="face tv" style="width:${B.w}px;height:${B.h}px"><div class="l">${e.label}</div>${e.summary && B.h >= 50 ? `<div class="s">${e.summary}</div>` : ''}<div class="t">${e.when}</div></div>`,
+    const a = el('div', 'actor', `<div class="face tv" style="width:${B.w}px;height:${B.h}px"><div class="l">${e.label}</div>${e.summary && B.h >= 50 ? `<div class="s">${e.summary}</div>` : ''}<div class="t">${e.when}</div></div>`,
       { left: A.x + 'px', top: A.y + 'px', width: A.w + 'px', height: A.h + 'px', backgroundColor: 'transparent' })
-    const fs = getComputedStyle(li).fontSize
-    Object.assign(a.querySelector('.txt').style, { fontSize: fs, lineHeight: getComputedStyle(li).lineHeight, textIndent: '2em', fontFamily: 'var(--fang)', padding: '0 6px', textAlign: 'justify', whiteSpace: 'normal', display: 'block', webkitLineClamp: 'none', color: '#1f1d19' })
-    li.style.visibility = 'hidden'
-    return { a, A, B, li }
+    const words = ['dt', 'lb'].map((k) => {
+      const src = li.querySelector('.' + k), r = rel(src.getClientRects().length ? { getBoundingClientRect: () => src.getClientRects()[0] } : src)
+      const fs = parseFloat(getComputedStyle(src).fontSize) * cam.z
+      const w = el('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
+      return { w, r, fs, to: k === 'dt' ? '.t' : '.l' }
+    })
+    return { a, A, B, li, words }
   })
-  acts.forEach((o, i) => o.a.animate([{ backgroundColor: 'rgba(240,217,207,0)', boxShadow: SH_A }, { backgroundColor: HOT, boxShadow: SH_A }], { duration: 200, delay: i * 60, fill: 'both' }))
-  await wait(12 * 60 + 400)
-  if (!alive()) return
+  // the words land on the lines of the card where they are written
+  acts.forEach((o, i) => {
+    const d = i * 70
+    o.words.forEach((w) => {
+      const t = o.a.querySelector(w.to), tfs = parseFloat(getComputedStyle(t).fontSize)
+      const tx = o.B.x + t.offsetLeft + o.a.querySelector('.face').offsetLeft, ty = o.B.y + t.offsetTop
+      // as large as the card writes it, but never wider than the card
+      const k = Math.min(tfs / w.fs, (o.B.w - 20) / w.w.offsetWidth)
+      w.w.animate([
+        { transform: 'translate(0,0) scale(1)', opacity: 1 },
+        { transform: `translate(${(tx - w.r.x) * 0.5}px,${(ty - w.r.y) * 0.5 - 30}px) scale(${(1 + k) / 2})`, opacity: 1, offset: 0.5 },
+        { transform: `translate(${tx - w.r.x}px,${ty - w.r.y}px) scale(${k})`, opacity: 1, offset: 0.92 },
+        { transform: `translate(${tx - w.r.x}px,${ty - w.r.y}px) scale(${k})`, opacity: 0 },
+      ], { duration: 1150, delay: d, easing: ease, fill: 'both' })
+    })
+  })
   paperAway()
   // the column heads and the axis
   D.cols.forEach((c, k) => {
@@ -400,11 +470,11 @@ async function toTimeline(alive) {
   acts.forEach((o, i) => {
     const d = i * 70, B = o.B
     o.a.animate([
-      { left: o.A.x + 'px', top: o.A.y + 'px', width: o.A.w + 'px', height: o.A.h + 'px', backgroundColor: HOT, borderRadius: '2px', boxShadow: SH_A },
-      { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px', height: B.h + 'px', backgroundColor: tok('panel'), borderRadius: '8px', boxShadow: SH_B() },
+      { left: o.A.x + 'px', top: o.A.y + 'px', width: o.A.w + 'px', height: o.A.h + 'px', backgroundColor: 'rgba(240,200,180,0)', borderRadius: '2px', boxShadow: 'none', opacity: 1 },
+      { backgroundColor: tok('panel'), opacity: 0.35, offset: 0.4 },
+      { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px', height: B.h + 'px', backgroundColor: tok('panel'), borderRadius: '8px', boxShadow: SH_B(), opacity: 1 },
     ], { duration: 1100, delay: d, easing: ease, fill: 'both' })
-    o.a.querySelector('.txt').animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(4px)' }], { duration: 420, delay: d + 60, fill: 'both' })
-    o.a.querySelector('.face').animate([{ opacity: 0, filter: 'blur(4px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 500, delay: d + 600, fill: 'both' })
+    o.a.querySelector('.face').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: d + 1040, fill: 'both' })
     // a card of one party is joined to the axis by a short line, with a dot where it meets the axis
     if (B.side) {
       const x1 = B.side < 0 ? B.x + B.w : L.axisX, x2 = B.side < 0 ? L.axisX : B.x
@@ -415,6 +485,7 @@ async function toTimeline(alive) {
     }
   })
   await wait(12 * 70 + 1400)
+  $$('.wordfly').forEach((w) => w.remove())
 }
 
 function edgePath(r, G) {
@@ -535,9 +606,10 @@ async function toGraph(alive) {
 }
 
 function reset() {
-  $$('.actor,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
+  $$('.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
   paper.classList.remove('melt')
-  $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit') })
+  $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit', 'hl', 'pick') })
+  cam = { z: 1, tx: 0, ty: 0 }
   paper.getAnimations().forEach((a) => a.cancel())
   const pg = $('#paper2')
   ;[pg, ...pg.querySelectorAll('*')].forEach((e) => e.getAnimations().forEach((a) => a.cancel()))

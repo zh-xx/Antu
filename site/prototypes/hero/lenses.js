@@ -64,29 +64,85 @@ function reading(pg = paper, beam = '#beam') {
 
 // colours that follow the light / dark mode
 const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim()
-const HOT = '#f0d9cf'
-const SH_A = 'inset 3px 0 0 #e8452c, inset 0 0 0 0 rgba(255,255,255,.12), 0 0 0 rgba(0,0,0,0)'
 const SH_B = () => `inset 0 0 0 0 #e8452c, inset 0 0 0 1px ${tok('camp-line')}, ${tok('card-shadow')}`
 const paperAway = () => (paper.classList.add('melt'), [
   ...$$('.paper > *:not(.beam)').map((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(6px)' }], { duration: 600, fill: 'both', easing: 'ease-in' })),
   paper.animate([{ backgroundColor: tok('paper'), boxShadow: tok('paper-shadow') }, { backgroundColor: 'rgba(0,0,0,0)', boxShadow: '0 0 0 rgba(0,0,0,0)' }], { duration: 800, delay: 100, fill: 'both', easing: ease }),
 ])
 
+// the camera on the judgment: the paper is moved and scaled so that the given lines fill the stage
+let cam = { z: 1, tx: 0, ty: 0 }
+function zoomTo(els, ms) {
+  const pr = paper.getBoundingClientRect(), rs = els.map((e) => e.getBoundingClientRect())
+  const x1 = Math.min(...rs.map((r) => r.left)), y1 = Math.min(...rs.map((r) => r.top)), x2 = Math.max(...rs.map((r) => r.right)), y2 = Math.max(...rs.map((r) => r.bottom))
+  const R = { x: (x1 - pr.left) / cam.z, y: (y1 - pr.top) / cam.z, w: (x2 - x1) / cam.z, h: (y2 - y1) / cam.z }
+  const W = stage.clientWidth, H = stage.clientHeight
+  const z = Math.min(W * 0.84 / R.w, H * 0.8 / R.h, 2.3)
+  const next = { z, tx: W / 2 - paper.offsetLeft - z * (R.x + R.w / 2), ty: H / 2 - paper.offsetTop - z * (R.y + R.h / 2) }
+  const T = (c) => `translate(${c.tx}px,${c.ty}px) scale(${c.z})`
+  paper.animate([{ transform: T(cam) }, { transform: T(next) }], { duration: ms, easing: 'cubic-bezier(.6,0,.25,1)', fill: 'forwards' })
+  cam = next
+  return wait(ms)
+}
+// the highlighter goes over each sentence, then the date and the event's name in it are marked
+async function sweep(lis, alive) {
+  for (const li of lis) {
+    if (!alive()) return
+    li.classList.add('hl')
+    setTimeout(() => alive() && li.classList.add('pick'), 380)
+    await wait(240)
+  }
+  await wait(520)
+}
+
 async function toTimeline(alive) {
   const L = timeline(), lis = $$('#bul li')
-  // each sentence of the account becomes its own object, lit
+  cam = { z: 1, tx: 0, ty: 0 }
+  // move in on the account, page by page, and mark what the timeline takes from each sentence
+  const mid = paper.getBoundingClientRect().left + paper.getBoundingClientRect().width / 2
+  const leftLis = lis.filter((li) => li.getBoundingClientRect().left < mid), rightLis = lis.filter((li) => !leftLis.includes(li))
+  await zoomTo(leftLis, 1000)
+  if (!alive()) return
+  await sweep(leftLis, alive)
+  if (!alive()) return
+  await zoomTo(rightLis, 900)
+  if (!alive()) return
+  await sweep(rightLis, alive)
+  if (!alive()) return
+  // back to the whole spread, so every sentence is in sight when it leaves
+  paper.animate([{ transform: `translate(${cam.tx}px,${cam.ty}px) scale(${cam.z})` }, { transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.6,0,.25,1)', fill: 'forwards' })
+  cam = { z: 1, tx: 0, ty: 0 }
+  await wait(950)
+  if (!alive()) return
+  // each sentence becomes its own object; the two marked pieces of it fly to their places on the card
   const acts = D.events.map((e, i) => {
     const li = lis[i], A = rel(li), B = L.cards[i]
-    const a = el('div', 'actor', `<div class="txt" style="width:${A.w}px;height:${A.h}px">${li.innerHTML}</div><div class="face tv" style="width:${B.w}px;height:${B.h}px"><div class="l">${e.label}</div>${e.summary && B.h >= 50 ? `<div class="s">${e.summary}</div>` : ''}<div class="t">${e.when}</div></div>`,
+    const a = el('div', 'actor', `<div class="face tv" style="width:${B.w}px;height:${B.h}px"><div class="l">${e.label}</div>${e.summary && B.h >= 50 ? `<div class="s">${e.summary}</div>` : ''}<div class="t">${e.when}</div></div>`,
       { left: A.x + 'px', top: A.y + 'px', width: A.w + 'px', height: A.h + 'px', backgroundColor: 'transparent' })
-    const fs = getComputedStyle(li).fontSize
-    Object.assign(a.querySelector('.txt').style, { fontSize: fs, lineHeight: getComputedStyle(li).lineHeight, textIndent: '2em', fontFamily: 'var(--fang)', padding: '0 6px', textAlign: 'justify', whiteSpace: 'normal', display: 'block', webkitLineClamp: 'none', color: '#1f1d19' })
-    li.style.visibility = 'hidden'
-    return { a, A, B, li }
+    const words = ['dt', 'lb'].map((k) => {
+      const src = li.querySelector('.' + k), r = rel(src.getClientRects().length ? { getBoundingClientRect: () => src.getClientRects()[0] } : src)
+      const fs = parseFloat(getComputedStyle(src).fontSize) * cam.z
+      const w = el('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
+      return { w, r, fs, to: k === 'dt' ? '.t' : '.l' }
+    })
+    return { a, A, B, li, words }
   })
-  acts.forEach((o, i) => o.a.animate([{ backgroundColor: 'rgba(240,217,207,0)', boxShadow: SH_A }, { backgroundColor: HOT, boxShadow: SH_A }], { duration: 200, delay: i * 60, fill: 'both' }))
-  await wait(12 * 60 + 400)
-  if (!alive()) return
+  // the words land on the lines of the card where they are written
+  acts.forEach((o, i) => {
+    const d = i * 70
+    o.words.forEach((w) => {
+      const t = o.a.querySelector(w.to), tfs = parseFloat(getComputedStyle(t).fontSize)
+      const tx = o.B.x + t.offsetLeft + o.a.querySelector('.face').offsetLeft, ty = o.B.y + t.offsetTop
+      // as large as the card writes it, but never wider than the card
+      const k = Math.min(tfs / w.fs, (o.B.w - 20) / w.w.offsetWidth)
+      w.w.animate([
+        { transform: 'translate(0,0) scale(1)', opacity: 1 },
+        { transform: `translate(${(tx - w.r.x) * 0.5}px,${(ty - w.r.y) * 0.5 - 30}px) scale(${(1 + k) / 2})`, opacity: 1, offset: 0.5 },
+        { transform: `translate(${tx - w.r.x}px,${ty - w.r.y}px) scale(${k})`, opacity: 1, offset: 0.92 },
+        { transform: `translate(${tx - w.r.x}px,${ty - w.r.y}px) scale(${k})`, opacity: 0 },
+      ], { duration: 1150, delay: d, easing: ease, fill: 'both' })
+    })
+  })
   paperAway()
   // the column heads and the axis
   D.cols.forEach((c, k) => {
@@ -98,11 +154,11 @@ async function toTimeline(alive) {
   acts.forEach((o, i) => {
     const d = i * 70, B = o.B
     o.a.animate([
-      { left: o.A.x + 'px', top: o.A.y + 'px', width: o.A.w + 'px', height: o.A.h + 'px', backgroundColor: HOT, borderRadius: '2px', boxShadow: SH_A },
-      { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px', height: B.h + 'px', backgroundColor: tok('panel'), borderRadius: '8px', boxShadow: SH_B() },
+      { left: o.A.x + 'px', top: o.A.y + 'px', width: o.A.w + 'px', height: o.A.h + 'px', backgroundColor: 'rgba(240,200,180,0)', borderRadius: '2px', boxShadow: 'none', opacity: 1 },
+      { backgroundColor: tok('panel'), opacity: 0.35, offset: 0.4 },
+      { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px', height: B.h + 'px', backgroundColor: tok('panel'), borderRadius: '8px', boxShadow: SH_B(), opacity: 1 },
     ], { duration: 1100, delay: d, easing: ease, fill: 'both' })
-    o.a.querySelector('.txt').animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(4px)' }], { duration: 420, delay: d + 60, fill: 'both' })
-    o.a.querySelector('.face').animate([{ opacity: 0, filter: 'blur(4px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 500, delay: d + 600, fill: 'both' })
+    o.a.querySelector('.face').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: d + 1040, fill: 'both' })
     // a card of one party is joined to the axis by a short line, with a dot where it meets the axis
     if (B.side) {
       const x1 = B.side < 0 ? B.x + B.w : L.axisX, x2 = B.side < 0 ? L.axisX : B.x
@@ -113,6 +169,7 @@ async function toTimeline(alive) {
     }
   })
   await wait(12 * 70 + 1400)
+  $$('.wordfly').forEach((w) => w.remove())
 }
 
 function edgePath(r, G) {
@@ -233,9 +290,10 @@ async function toGraph(alive) {
 }
 
 function reset() {
-  $$('.actor,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
+  $$('.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
   paper.classList.remove('melt')
-  $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit') })
+  $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit', 'hl', 'pick') })
+  cam = { z: 1, tx: 0, ty: 0 }
   paper.getAnimations().forEach((a) => a.cancel())
   const pg = $('#paper2')
   ;[pg, ...pg.querySelectorAll('*')].forEach((e) => e.getAnimations().forEach((a) => a.cancel()))

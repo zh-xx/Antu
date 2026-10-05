@@ -249,7 +249,12 @@ ${read(`${HERE}lenses.css`)}</style>
   <div class="court">${meta['法院']}</div><div class="ttl">刑事判决书</div><div class="no">${lines[0].replace(/^# /, '')}</div>
   <p class="party">${mark(meta['当事人'])}。</p>
   <h3>本院查明</h3>${facts.map((f) => `<p>${mark(f)}</p>`).join('')}
-  <p>上述事实，另有如下经过：</p><ul id="bul">${sents.map((b) => `<li>${mark(cnDate(b))}</li>`).join('')}</ul>
+  <p>上述事实，另有如下经过：</p><ul id="bul">${sents.map((b, i) => {
+    // the date and the event's name, word for word at the head of its sentence, are what the card takes
+    const e = events[i], s = cnDate(b), dt = s.slice(0, s.indexOf('，') + 1), rest = s.slice(dt.length)
+    if (!rest.startsWith(e.label)) throw new Error(`sentence ${i + 1}: the event name is not at its head`)
+    return `<li><span class="dt">${dt.slice(0, -1)}</span>，<span class="lb">${mark(e.label)}</span>${mark(rest.slice(e.label.length))}</li>`
+  }).join('')}</ul>
   <h3>本院认为</h3><p id="yrw">${mark(view2)}</p>
   <p>${closing}</p>
   <p class="fiction">${fiction}</p></div>

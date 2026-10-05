@@ -156,9 +156,6 @@ html{--fang:"FangSong","STFangsong","FangSong_GB2312","Noto Serif CJK SC","Sourc
 /* the judgment, set as it is printed: an open spread, two columns, FangSong, the court and the title centred */
 .lx #paper{left:50%;width:min(940px,100%);margin-left:calc(min(940px,100%) / -2);transform:none;padding:30px 40px 24px;
  column-count:2;column-gap:72px;column-fill:auto;font:var(--fs,11px)/1.72 var(--fang);color:#1f1d19}
-.lx #paper::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:1px;background:linear-gradient(transparent,rgba(0,0,0,.08) 12%,rgba(0,0,0,.08) 88%,transparent);box-shadow:0 0 18px 8px rgba(0,0,0,.035)}
-.lx #paper.melt::before{opacity:0;transition:opacity .4s}
-.lx #paper:after{display:none}
 .lx #paper .court{text-align:center;font:700 1.4em/1.6 var(--hei);letter-spacing:.14em}
 .lx #paper .ttl{text-align:center;font:700 1.75em/1.5 var(--song);letter-spacing:.7em;padding-left:.7em;margin:.1em 0 .2em}
 .lx #paper .no{text-align:right;margin-bottom:.6em}
@@ -177,3 +174,20 @@ html{--fang:"FangSong","STFangsong","FangSong_GB2312","Noto Serif CJK SC","Sourc
 .actor .face.tv .l{font:600 11.5px/1.3 var(--sans);color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .actor .face.tv .s{font:10px/1.3 var(--sans);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .actor .face.tv .t{font:10px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--red);letter-spacing:.02em}
+
+/* two sheets side by side with a narrow gap, a few sheets showing under each outer edge, a folio at the foot */
+.lx #paper{background:transparent!important;box-shadow:none!important;overflow:visible;isolation:isolate;transform-origin:0 0}
+.lx #paper::before,.lx #paper::after{content:"";position:absolute;top:0;bottom:0;width:calc(50% - 7px);z-index:-1;background:var(--paper);border-radius:2px;
+ display:flex;align-items:flex-end;justify-content:center;padding-bottom:9px;box-sizing:border-box;font:9.5px/1 var(--sans);color:#a39d90;letter-spacing:.2em;opacity:1;transition:opacity .45s}
+.lx #paper::before{left:0;content:"第 1 页";box-shadow:-2px 2px 0 -.5px #ebe5d8,-4px 4px 0 -1px #ddd6c6,-6px 6px 0 -1.5px #cfc7b5,0 24px 50px rgba(0,0,0,.45)}
+.lx #paper::after{right:0;left:auto;height:auto;content:"第 2 页";box-shadow:2px 2px 0 -.5px #ebe5d8,4px 4px 0 -1px #ddd6c6,6px 6px 0 -1.5px #cfc7b5,0 24px 50px rgba(0,0,0,.45)}
+html[data-theme="light"] .lx #paper::before{box-shadow:-2px 2px 0 -.5px #ebe5d8,-4px 4px 0 -1px #ddd6c6,-6px 6px 0 -1.5px #cfc7b5,0 18px 40px rgba(60,40,20,.14)}
+html[data-theme="light"] .lx #paper::after{box-shadow:2px 2px 0 -.5px #ebe5d8,4px 4px 0 -1px #ddd6c6,6px 6px 0 -1.5px #cfc7b5,0 18px 40px rgba(60,40,20,.14)}
+.lx #paper.melt::before,.lx #paper.melt::after{opacity:0}
+/* the highlighter: it goes over the sentence, then the words the card takes are marked */
+.lx #paper li{background:linear-gradient(rgba(240,200,180,.55),rgba(240,200,180,.55)) no-repeat 0 0/0 100%;transition:background-size .55s cubic-bezier(.5,0,.3,1)}
+.lx #paper li.hl{background-size:100% 100%}
+.lx #paper li .dt,.lx #paper li .lb{border-radius:2px;transition:background .35s,box-shadow .35s,color .35s}
+.lx #paper li.pick .dt,.lx #paper li.pick .lb{background:rgba(232,69,44,.16);box-shadow:inset 0 -1.5px 0 var(--red);color:#000}
+.wordfly{position:absolute;z-index:25;white-space:nowrap;transform-origin:0 0;pointer-events:none;color:var(--txt);line-height:1.2;text-shadow:0 0 12px rgba(232,69,44,.55)}
+.lx .show .stage{overflow:hidden}
