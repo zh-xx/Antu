@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>案图 · 首页动画草稿 · 一份判决书，几种图</title>
+<title>案图 Antu · 法律文书，一眼看清</title>
 <style>
 :root{--edge:#cfcac0;--edge-soft:rgba(255,255,255,.3);--nodeline:rgba(255,255,255,.55);--camp-line:rgba(255,255,255,.16);--camp-bg:rgba(255,255,255,.025);--chipbg:rgba(255,255,255,.08);--labbg:#0d0e11;--mut2:#5f6166;--link:#b9bbbf;--navbg:rgba(11,12,14,.82);--paper-shadow:0 30px 80px rgba(0,0,0,.6);--card-shadow:0 12px 34px rgba(0,0,0,.45);--panel-rgb:21,23,27;--bg:#0b0c0e;--panel:#15171b;--hair:rgba(255,255,255,.12);--txt:#f2efe9;--mut:#8d8f94;--red:#e8452c;--redsoft:rgba(232,69,44,.16);--paper:#f4f0e8;--pink:#1a1713;
 --sans:"PingFang SC","HarmonyOS Sans SC","Noto Sans CJK SC","Source Han Sans SC","Microsoft YaHei",system-ui,sans-serif;
@@ -201,6 +201,29 @@ html[data-theme="light"]{--bg:#f5f3ee;--panel:#ffffff;--panel-rgb:255,255,255;--
 html[data-theme="light"] .hero{background:radial-gradient(60% 55% at 72% 55%,rgba(232,69,44,.07),transparent 70%),var(--bg)}
 html[data-theme="light"] .hero:before{opacity:.35}
 html[data-theme="light"] .beam{mix-blend-mode:multiply}
+
+/* the hero: one line of title, then the four kinds on the left and the stage on the right */
+.lx .hero{display:flex;flex-direction:column;padding:4vh 5vw 3vh}
+.title{margin:0 0 3.5vh;font:900 clamp(30px,4.2vw,56px)/1.1 var(--serif);letter-spacing:.02em;color:var(--txt)}
+.title em{font-style:normal;color:var(--red)}
+.show{flex:1;min-height:0;display:grid;grid-template-columns:150px minmax(0,1fr);gap:3.5vw}
+.lx .show .stage{margin:0;height:100%}
+.kinds{display:flex;flex-direction:column;gap:10px;justify-content:center}
+.kind{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:14px 16px 12px;border-radius:14px;border:1px solid transparent;background:none;color:var(--mut);cursor:pointer;text-align:left;transition:background .3s,border-color .3s,color .3s}
+.kind .sk{display:block;width:96px;height:58px;opacity:.6;transition:opacity .3s}
+.kind .sk svg{width:100%;height:100%}
+.kind .skf{fill:var(--chipbg)}
+.kind b{font:700 17px/1 var(--sans);letter-spacing:.2em;color:inherit}
+.kind:hover{color:var(--txt)}
+.kind:hover .sk{opacity:.9}
+.kind.on{color:var(--txt);background:var(--camp-bg);border-color:var(--hair);box-shadow:inset 3px 0 0 var(--red)}
+.kind.on .sk{opacity:1;color:var(--red)}
+.kind.on .skf{fill:rgba(232,69,44,.14)}
+@media(max-width:820px){.show{grid-template-columns:1fr;grid-template-rows:auto 1fr}.kinds{flex-direction:row;overflow-x:auto}.kind .sk{width:64px;height:38px}}
+.rn small{padding-right:52px}
+.actor .face.tl{padding:6px 9px}
+.actor .face.tl .t{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:clip;letter-spacing:0}
+.actor .face.tl .l{font-size:11.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 </style>
 <script>try { const t = localStorage.getItem('antu.site.theme'); if (t) document.documentElement.dataset.theme = t } catch {}</script></head><body class="lx">
 <header class="nav">
@@ -216,11 +239,19 @@ html[data-theme="light"] .beam{mix-blend-mode:multiply}
  <div class="pop" id="pop" hidden><b data-i18n="popTitle">交给你的 AI 助手</b><p data-i18n="popBody">复制下面这段话，发给你常用的 AI 助手，它会自己装好案图。</p><pre>（提示词正在整理，下一步放进来）</pre><button disabled data-i18n="copy">复制</button></div>
 </header>
 <section class="hero">
-<div class="top">
- <div><h1>一份判决书，<br><em>几种看得见的图</em></h1></div>
- <p class="lede">AI 助手读判决书，案图把事实、关系、说理、流程画成图。每个点，都能回到原文出处。</p>
-</div>
-<div class="stage" id="stage"><div class="scene-tag" id="scene"></div>
+<h1 class="title">法律文书，<em>一眼看清</em></h1>
+<div class="show">
+ <nav class="kinds" aria-label="四类图">
+  <button class="kind on" data-kind="fact"><span class="sk"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 24h68"></path><circle cx="16" cy="24" r="2" fill="currentColor"></circle><circle cx="36" cy="24" r="2" fill="currentColor"></circle><circle cx="58" cy="24" r="2" fill="currentColor"></circle><rect x="8" y="6" width="18" height="11" rx="2" class="skf"></rect><rect x="28" y="31" width="18" height="11" rx="2" class="skf"></rect><rect x="50" y="6" width="18" height="11" rx="2" class="skf"></rect><path d="M16 17v5M36 31v-5M58 17v5"></path></svg>
+</span><b>事实</b></button>
+  <button class="kind" data-kind="relationship"><span class="sk"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 12l24 8M16 12l8 24M40 20l8 18M24 36h24M40 20l26-10M48 38l20-4"></path><circle cx="16" cy="12" r="5" class="skf"></circle><circle cx="40" cy="20" r="5" class="skf"></circle><circle cx="24" cy="36" r="5" class="skf"></circle><circle cx="48" cy="38" r="5" class="skf"></circle><circle cx="67" cy="10" r="5" class="skf"></circle><circle cx="69" cy="34" r="5" class="skf"></circle></svg>
+</span><b>关系</b></button>
+  <button class="kind" data-kind="procedure"><span class="sk"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="18" width="16" height="12" rx="2" class="skf"></rect><path d="M19 24h6"></path><path d="M25 24l7-8 7 8-7 8z" class="skf"></path><path d="M39 24h8M32 32v8h15"></path><rect x="47" y="17" width="16" height="12" rx="2" class="skf"></rect><rect x="47" y="35" width="16" height="10" rx="2" class="skf"></rect><path d="M63 24h8"></path></svg>
+</span><b>程序</b></button>
+  <button class="kind" data-kind="justification"><span class="sk"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="26" y="2" width="28" height="9" rx="2" fill="currentColor" stroke="currentColor"></rect><path d="M40 11v5M16 16h48M16 16v5M40 16v5M64 16v5"></path><rect x="6" y="21" width="20" height="8" rx="2" class="skf"></rect><rect x="30" y="21" width="20" height="8" rx="2" class="skf"></rect><rect x="54" y="21" width="20" height="8" rx="2" class="skf"></rect><path d="M16 29v5M40 29v5M64 29v5M10 34h12M34 34h12M58 34h12"></path><rect x="4" y="38" width="12" height="7" rx="2"></rect><rect x="18" y="38" width="12" height="7" rx="2"></rect><rect x="34" y="38" width="12" height="7" rx="2"></rect><rect x="58" y="38" width="12" height="7" rx="2"></rect></svg>
+</span><b>证成</b></button>
+ </nav>
+ <div class="stage" id="stage">
  <div class="paper" id="paper"><span class="lbl">判决书 · 虚构</span><div class="beam" id="beam"></div>
   <h2>（2032）示刑终1号</h2><p class="meta"><span class="nm" data-e="e-1">方远</span>故意伤害二审刑事判决书（虚构）</p>
   <h3>本院查明</h3><p>一、借款合同（80 万元）载明：2030年7月28日，<span class="nm" data-e="e-2">梁某</span>及其丈夫<span class="nm" data-e="e-3">方某</span>向<span class="nm" data-e="e-5">钟某</span>、<span class="nm" data-e="e-5">郑某</span>借款80万元，双方口头约定月息6%。</p><p>二、房屋买卖合同（20 万元抵押）载明：另外20万元，通过签订房屋买卖合同，用<span class="nm" data-e="e-3">方某</span>名下的一套住房作为抵押，双方约定如逾期还款，则将该住房过户给<span class="nm" data-e="e-5">郑某</span>。</p><p>三、执法记录视频与现场监控载明：<span class="nm" data-e="e-2">梁某</span>指认<span class="nm" data-e="e-6">姜某</span>打<span class="nm" data-e="e-1">方远</span>耳光，<span class="nm" data-e="e-6">姜某</span>等否认并称是经济纠纷；民警警告双方不能动手；<span class="nm" data-e="e-1">方远</span>欲离开被讨债人员阻止。</p><p>四、尸体检验鉴定意见载明：<span class="nm" data-e="e-6">姜某</span>系腹部损伤后造成肝固有动脉裂伤及肝右叶创伤导致失血性休克死亡。</p>
@@ -230,13 +261,11 @@ html[data-theme="light"] .beam{mix-blend-mode:multiply}
   <h2>采购合同</h2><p class="meta">合同编号：PO-2026-088（虚构）</p><p class="meta">甲方（买方）：示例甲方商贸有限公司 | 乙方（卖方）：示例乙方制造有限公司</p>
   <p class="cl"><span class="sn" data-n="n-1">第一条 合同签订：本合同经双方签字盖章后成立。</span>合同总价款约为人民币 80,000 元。</p><p class="cl"><span class="sn" data-n="n-2">第二条 订单：甲方下单应采用书面订单，写明货物名称、规格、数量和交货地点。</span></p><p class="cl"><span class="sn" data-n="n-3">第三条 交货：乙方发货应在收到订单后十五日内完成，并随货附送货单与合格证明。</span></p><p class="cl"><span class="sn" data-n="n-4">第四条 收货：甲方收货时应当场清点数量，并在送货单上签收。</span></p><p class="cl"><span class="sn" data-n="n-5">第五条 检验：甲方应在收货后七日内检验货物质量是否合格。</span>合格的，按第六条付款；不合格的，按第七条处理。</p><p class="cl"><span class="sn" data-n="n-6">第六条 付款：货物检验合格后三十日内，甲方付款至乙方指定账户。</span><span class="sn" data-n="n-11">甲方付清全部价款时，合同履行完毕。</span></p><p class="cl"><span class="sn" data-n="n-7">第七条 质量异议：检验不合格的，由甲方提出质量异议，并以书面形式写明不合格的情形。</span></p><p class="cl"><span class="sn" data-n="n-8">第八条 协商：乙方收到异议后，双方协商解决，可以约定退换、修理或者减价。</span></p><p class="cl"><span class="sn" data-n="n-9">第九条 协商结果：协商是否成功，以双方签署的书面协议为准。</span>协商成功的，乙方按协议处理后，甲方按第六条付款。</p><p class="cl"><span class="sn" data-n="n-10">第十条 违约：协商不成的，进入违约处理，违约方赔偿对方因此受到的损失。</span></p><p class="cl"><span class="sn" data-n="n-12">第十一条 终止：违约处理完毕后，合同终止。</span></p></div>
 </div>
-<div class="bottom"><div class="lens"><span>① 事实 · 时间线</span><span>② 关系 · 关系图</span><span>③ 说理 · 论证图</span><span>④ 流程 · 流程图</span></div><button id="replay">↻ 重播</button></div>
-<p class="cap" id="cap" style="margin-top:1.2vh"></p>
+</div>
 </section>
 <script>window.__LENS__ = {"events":[{"id":"ev-1","label":"梁某夫妇向钟某、郑某借款 80 万元","when":"2030-07-28","row":"mid"},{"id":"ev-2","label":"梁某累计还款 120 万元","when":"2031-10-20","row":"above"},{"id":"ev-3","label":"梁某夫妇再借 28 万元","when":"2031-11-01","row":"mid"},{"id":"ev-4","label":"梁某再还款 24 万元","when":"2032-01-06","row":"above"},{"id":"ev-5","label":"郑某等人换锁强行入住抵押房屋","when":"2032-04-01","row":"below"},{"id":"ev-6","label":"郑某等搬物品，钟某推倒梁某在地","when":"2032-04-13 11:00","row":"below"},{"id":"ev-7","label":"双方达成口头协议","when":"2032-04-13 21:00","row":"mid"},{"id":"ev-8","label":"郑某纠集多人到远华公司讨债","when":"2032-04-14 16:00","row":"below"},{"id":"ev-9","label":"姜某等人进入接待室辱骂并裸露下体","when":"2032-04-14 21:53","row":"below"},{"id":"ev-10","label":"民警到达接待室后离开寻找报警人","when":"2032-04-14 22:17","row":"mid"},{"id":"ev-11","label":"方远持刀捅刺四名讨债人员","when":"2032-04-14 22:26","row":"above"},{"id":"ev-12","label":"姜某经抢救无效死亡","when":"2032-04-15 02:18","row":"below"}],"sides":{"above":"方远母子","mid":"双方交涉与客观经过","below":"讨债方"},"sideNote":{"above":"方远、梁某","mid":"双方都在场，或无人","below":"钟某、郑某等"},"entities":[{"id":"e-1","label":"方远","role":"被告人","kind":"person","terms":["方远"],"mentions":15},{"id":"e-2","label":"梁某","role":"方远之母，借款人","kind":"person","terms":["梁某"],"mentions":20},{"id":"e-3","label":"方某","role":"梁某之夫，共同借款人","kind":"person","terms":["方某"],"mentions":5},{"id":"e-4","label":"远华公司","role":"梁某经营","kind":"company","terms":["远华公司"],"mentions":4},{"id":"e-5","label":"钟某、郑某","role":"出借人","kind":"other","terms":["钟某","郑某"],"mentions":21},{"id":"e-6","label":"姜某","role":"讨债人员，死亡","kind":"person","terms":["姜某"],"mentions":12},{"id":"e-7","label":"孟某、严某、程某等","role":"讨债人员，受伤","kind":"other","terms":["孟某","严某","程某"],"mentions":6}],"groups":{"g-1":"方远一方","g-2":"出借与讨债一方"},"relations":[{"id":"r-1","from":"e-5","to":"e-2","kind":"debt","label":"第一笔借款","amount":"80 万元"},{"id":"r-2","from":"e-5","to":"e-2","kind":"debt","label":"第二笔借款","amount":"28 万元"},{"id":"r-3","from":"e-3","to":"e-5","kind":"guarantee","label":"住房抵押（20 万元）"},{"id":"r-4","from":"e-2","to":"e-3","kind":"kinship","label":"夫妻"},{"id":"r-5","from":"e-2","to":"e-1","kind":"kinship","label":"母子"},{"id":"r-6","from":"e-2","to":"e-4","kind":"control","label":"经营"},{"id":"r-7","from":"e-4","to":"e-1","kind":"employment","label":"员工"},{"id":"r-8","from":"e-5","to":"e-6","kind":"agency","label":"指使催债"},{"id":"r-9","from":"e-5","to":"e-7","kind":"agency","label":"指使催债"}],"totalMentions":83,"judgmentName":"（2032）示刑终1号 · 方远故意伤害二审刑事判决书","reason":{"root":"防卫过当，构成故意伤害罪，判处有期徒刑四年","issues":[{"label":"争点一：是否具有防卫性","head":"方远的捅刺行为具有防卫性","holds":true,"against":false,"leaves":[{"kind":"norm","label":"示意条款甲第 1 款：正当防卫须同时具备五项条件（防卫限度见争点三）"},{"kind":"element","label":"起因：不法侵害客观存在"},{"kind":"element","label":"时间：不法侵害正在进行"},{"kind":"element","label":"对象：针对不法侵害者本人"},{"kind":"element","label":"意图：为制止不法侵害"},{"kind":"fact","label":"姜某等人进入接待室讨债，收走梁某、方远的手机"},{"kind":"fact","label":"姜某辱骂梁某、方远及家人；将烟头弹到梁某胸前；褪裤裸露下体；脱方远的鞋让梁某闻"},{"kind":"fact","label":"姜某拍打方远面颊；其他讨债人员揪抓方远头发、按压其肩部不准起身"},{"kind":"fact","label":"钟某责骂梁某，将梁某推倒在地并踩住其手臂"},{"kind":"fact","label":"此前钟某、郑某指使姜某等人在远华公司车棚驻扎、办公楼前支锅做饭等方式催债"},{"kind":"fact","label":"民警警告双方不能打架后，带辅警离开接待室去院内寻找报警人"},{"kind":"fact","label":"方远、梁某想随民警离开，姜某等人阻拦，并强迫方远坐下"},{"kind":"fact","label":"姜某等人卡方远颈部，将其推拉至接待室东南角"},{"kind":"fact","label":"方远持刃长 12 厘米的水果刀，警告姜某等人不要靠近；姜某出言挑衅并逼近"},{"kind":"fact","label":"方远捅刺姜某腹部，又各捅刺围逼在身边的程某胸部、严某腹部、孟某背部一刀"}]},{"label":"争点二：是否属于特殊防卫","head":"属于特殊防卫，不负刑事责任","holds":false,"against":true,"leaves":[{"kind":"norm","label":"示意条款甲第 3 款：对正在进行的行凶、杀人、抢劫、强奸、绑架等严重危及人身安全的暴力犯罪防卫，不属于防卫过当"},{"kind":"element","label":"正在进行严重危及人身安全的暴力犯罪","holds":false},{"kind":"judgement","label":"这些侵害是非法限制自由、侮辱、轻微殴打，不是严重危及人身安全的暴力犯罪"}]},{"label":"争点三：是否明显超过必要限度","head":"明显超过必要限度造成重大损害","holds":true,"against":false,"leaves":[{"kind":"norm","label":"示意条款甲第 2 款：正当防卫明显超过必要限度造成重大损害的，应当负刑事责任"},{"kind":"judgement","label":"方远面临的侵害并不紧迫、不严重"},{"kind":"judgement","label":"防卫手段与后果过重"},{"kind":"inference","label":"姜某一方意图是施压催债，未携带、使用任何器械"},{"kind":"inference","label":"民警进入时双方没有激烈对峙和肢体冲突；警告后对方无打架言行"},{"kind":"inference","label":"警车警灯闪烁清晰可见，方远应当知道民警并未离开"},{"kind":"inference","label":"姜某等人虽挑衅、围逼，但没有实施强烈的攻击行为"},{"kind":"fact","label":"院内停着的警车警灯闪烁，接待室内透过玻璃可以看见"},{"kind":"fact","label":"捅刺造成一死、二重伤、一轻伤，其中一人被从背后捅伤；22 时 26 分辅警闻声返回"}]},{"label":"争点四：定什么罪","head":"构成防卫过当下的故意伤害罪，而非故意杀人罪","holds":true,"against":false,"leaves":[{"kind":"norm","label":"示意条款乙：故意伤害致人死亡的，适用较重的刑罚档次"},{"kind":"judgement","label":"方远对过当的伤亡结果持听之任之的态度"},{"kind":"inference","label":"在案证据不能证实方远追求或放任致人死亡：每人一刀，不连刺同一人，只刺围逼者，目的是离开"}]},{"label":"争点五：如何量刑","head":"对方远减轻处罚，判处有期徒刑四年","holds":true,"against":false,"leaves":[{"kind":"norm","label":"示意条款甲第 2 款：防卫过当，应当减轻或者免除处罚"},{"kind":"judgement","label":"被害方对引发本案有严重过错"},{"kind":"judgement","label":"损害远大于所保护的合法权益，且除姜某外另三人并未侮辱梁某"},{"kind":"fact","label":"方远归案后如实供述主要罪行"}]}],"nodes":40,"links":48,"kinds":{"norm":"规范","element":"要件","judgement":"判断","inference":"推论","fact":"事实","conclusion":"结论"}},"flow":{"contract":{"title":"采购合同","meta":["合同编号：PO-2026-088（虚构）","甲方（买方）：示例甲方商贸有限公司 | 乙方（卖方）：示例乙方制造有限公司"],"clauses":[[{"s":"第一条 合同签订：本合同经双方签字盖章后成立。","n":"n-1"},{"s":"合同总价款约为人民币 80,000 元。"}],[{"s":"第二条 订单：甲方下单应采用书面订单，写明货物名称、规格、数量和交货地点。","n":"n-2"}],[{"s":"第三条 交货：乙方发货应在收到订单后十五日内完成，并随货附送货单与合格证明。","n":"n-3"}],[{"s":"第四条 收货：甲方收货时应当场清点数量，并在送货单上签收。","n":"n-4"}],[{"s":"第五条 检验：甲方应在收货后七日内检验货物质量是否合格。","n":"n-5"},{"s":"合格的，按第六条付款；"},{"s":"不合格的，按第七条处理。"}],[{"s":"第六条 付款：货物检验合格后三十日内，甲方付款至乙方指定账户。","n":"n-6"},{"s":"甲方付清全部价款时，合同履行完毕。","n":"n-11"}],[{"s":"第七条 质量异议：检验不合格的，由甲方提出质量异议，并以书面形式写明不合格的情形。","n":"n-7"}],[{"s":"第八条 协商：乙方收到异议后，双方协商解决，可以约定退换、修理或者减价。","n":"n-8"}],[{"s":"第九条 协商结果：协商是否成功，以双方签署的书面协议为准。","n":"n-9"},{"s":"协商成功的，乙方按协议处理后，甲方按第六条付款。"}],[{"s":"第十条 违约：协商不成的，进入违约处理，违约方赔偿对方因此受到的损失。","n":"n-10"}],[{"s":"第十一条 终止：违约处理完毕后，合同终止。","n":"n-12"}]]},"nodes":{"n-1":{"kind":"start","label":"合同签订"},"n-2":{"kind":"step","label":"甲方下单"},"n-3":{"kind":"step","label":"乙方发货"},"n-4":{"kind":"step","label":"甲方收货"},"n-5":{"kind":"decision","label":"货物质量是否合格"},"n-6":{"kind":"step","label":"甲方付款"},"n-7":{"kind":"step","label":"甲方提出质量异议"},"n-8":{"kind":"step","label":"双方协商解决"},"n-9":{"kind":"decision","label":"协商是否成功"},"n-10":{"kind":"step","label":"违约处理","outcome":"negative"},"n-11":{"kind":"end","label":"合同履行完毕","outcome":"positive"},"n-12":{"kind":"end","label":"合同终止","outcome":"negative"}},"order":["n-1","n-2","n-3","n-4","n-5","n-6","n-11","n-7","n-8","n-9","n-10","n-12"],"edges":[{"from":"n-1","to":"n-2","main":true},{"from":"n-2","to":"n-3","main":true},{"from":"n-3","to":"n-4","main":true},{"from":"n-4","to":"n-5","main":true},{"from":"n-5","to":"n-6","condition":"合格","main":true},{"from":"n-5","to":"n-7","condition":"不合格","main":false},{"from":"n-7","to":"n-8","main":false},{"from":"n-8","to":"n-9","main":false},{"from":"n-9","to":"n-6","condition":"是","main":false},{"from":"n-9","to":"n-10","condition":"否","main":false},{"from":"n-6","to":"n-11","main":true},{"from":"n-10","to":"n-12","main":false}],"grid":{"n-1":[0,0],"n-2":[1,0],"n-3":[2,0],"n-4":[3,0],"n-5":[4,0],"n-6":[6,0],"n-11":[8,0],"n-7":[4,1],"n-8":[5,1],"n-9":[6,1],"n-10":[7,1],"n-12":[8,1]},"mainPath":["n-1","n-2","n-3","n-4","n-5","n-6","n-11"],"sourceName":"采购合同","sourceFile":"采购合同.docx"}}</script>
-<script>// Draft "lenses" (issue #107): one judgment, seen as more than one diagram.
-// 1. the page is read  2. its twelve sentences turn into the timeline  3. the timeline rewinds into the page
-// 4. every name in the page lights up and the mentions gather into the parties  5. the relations draw themselves.
+<script>// Draft "lenses" (issue #107): the four kinds of diagram, each made from its document. Pick one on the left:
+// the page is read, then its sentences (or names, or clauses) turn into the diagram.
 // Everything shown comes from window.__LENS__, which build.mjs made from the case files in examples/.
 const D = window.__LENS__
 const $ = (s) => document.querySelector(s)
@@ -262,31 +291,22 @@ const el = (tag, cls, html, style) => {
 }
 const show = (e, ms = 400, delay = 0) => e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, delay, fill: 'both' })
 
-function lens(i) {
-  $$('.lens span').forEach((s, k) => s.classList.toggle('on', k === i))
-}
-function caption(text) {
-  const c = $('#cap')
-  c.innerHTML = text
-  c.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 500, fill: 'both' })
-}
-function sceneTag(n, text) {
-  const t = $('#scene')
-  t.innerHTML = `<b>${n}</b>${text}`
-  t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, fill: 'both' })
-}
 
 // ---------- layouts (from the stage's size, so they fit any screen)
-const CW = 144, CH = 56
+const CH = 56
 function timeline() {
   const W = stage.clientWidth, H = stage.clientHeight, n = D.events.length
-  const left = 150, step = (W - left - CW - 4) / (n - 1), mid = Math.round(H * 0.5)
+  const left = 136, mid = Math.round(H * 0.5)
+  // cards of one row alternate between two tiers, so two cards in a row and tier are at least two steps apart
+  const CW = Math.min(144, Math.floor((W - left - 4) / (n + 1) * 2 - 6))
+  const step = (W - left - CW - 4) / (n - 1)
   const yOf = (row, tier) => row === 'mid' ? mid - CH / 2
     : row === 'above' ? mid - CH / 2 - 26 - CH - tier * (CH + 10)
       : mid + CH / 2 + 26 + tier * (CH + 10)
+  const seen = { above: 0, below: 0, mid: 0 }
   return {
     mid, left, W,
-    cards: D.events.map((e, i) => ({ x: left + i * step, y: yOf(e.row, e.row === 'mid' ? 0 : i % 2), w: CW, h: CH, cx: left + i * step + CW / 2, row: e.row })),
+    cards: D.events.map((e, i) => ({ x: left + i * step, y: yOf(e.row, e.row === 'mid' ? 0 : seen[e.row]++ % 2), w: CW, h: CH, cx: left + i * step + CW / 2, row: e.row })),
     rows: [['above', yOf('above', 0) - 20], ['mid', mid - 18], ['below', yOf('below', 0) + 18]],
   }
 }
@@ -321,8 +341,6 @@ const paperAway = () => (paper.classList.add('melt'), [
 ])
 
 async function toTimeline(alive) {
-  lens(0)
-  sceneTag('① 事实', '判决书里的经过，变成时间线')
   const L = timeline(), lis = $$('#bul li')
   // each sentence of the account becomes its own object, lit
   const acts = D.events.map((e, i) => {
@@ -364,19 +382,6 @@ async function toTimeline(alive) {
   })
   await wait(12 * 70 + 1400)
   if (!alive()) return
-  caption(`<strong>${D.events.length} 句经过 → ${D.events.length} 个时间节点</strong>，按当事人分在时间线两侧。&emsp;示意：由 AI 助手阅读并提取，案图负责画图。文书为虚构。`)
-  await wait(2600)
-  if (!alive()) return
-  // rewind: the same animations, backwards, faster
-  lens(-1)
-  $('#cap').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
-  sceneTag('↺', '同一份判决书，换一种看法')
-  for (const a of anims) { a.playbackRate = -2.4 }
-  await Promise.all(anims.map((a) => a.finished.catch(() => {})))
-  acts.forEach((o) => { o.a.remove(); o.li.style.visibility = '' })
-  paper.classList.remove('melt')
-  $$('.spine,.rowlbl,.stub,.tdot').forEach((e) => e.remove())
-  await wait(300)
 }
 
 function edgePath(r, G) {
@@ -404,8 +409,6 @@ const STYLE = {
 }
 
 async function toGraph(alive) {
-  lens(1)
-  sceneTag('② 关系', '全文的人名，汇聚成当事人和关系')
   const G = graph()
   // every name in the page lights up
   const pr = paper.getBoundingClientRect()
@@ -496,37 +499,17 @@ async function toGraph(alive) {
   })
   await wait(150 + D.relations.length * 160 + 900)
   if (!alive()) return
-  caption(`<strong>全文 ${D.totalMentions} 处人名 → ${D.entities.length} 个当事人、${D.relations.length} 条关系</strong>，数字是判决书里实际出现的次数。&emsp;示意：由 AI 助手阅读并提取，案图负责画图。文书为虚构。`)
 }
 
 function reset() {
   $$('.actor,.mv,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
   paper.classList.remove('melt')
   $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit') })
-  ;[paper, $('#cap'), $('#scene')].forEach((e) => e.getAnimations().forEach((a) => a.cancel()))
-  $$('.lens span').forEach((s) => s.classList.remove('on'))
+  paper.getAnimations().forEach((a) => a.cancel())
   const pg = $('#paper2')
   ;[pg, ...pg.querySelectorAll('*')].forEach((e) => e.getAnimations().forEach((a) => a.cancel()))
   pg.classList.remove('melt')
   pg.querySelectorAll('.sn').forEach((x) => x.classList.remove('lit'))
-  $('#cap').style.opacity = 0
-  lens(-1)
-}
-
-// take a scene's pieces away and bring the page back
-async function backToPage(sel, note) {
-  lens(-1)
-  $('#cap').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
-  sceneTag('↺', note)
-  $$(sel).forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)', transform: getComputedStyle(e).transform === 'none' ? 'scale(1)' : getComputedStyle(e).transform }, { opacity: 0, filter: 'blur(8px)' }], { duration: 600, fill: 'both', easing: 'ease-in' }))
-  await wait(450)
-  paper.classList.remove('melt')
-  $$('.paper > *:not(.beam)').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.animate([{ opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 600, fill: 'both' }) })
-  paper.getAnimations().forEach((a) => a.cancel())
-  paper.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'rotateX(2deg) scale(.99)' }], { duration: 600, fill: 'both', easing: ease })
-  $$('.nm').forEach((n) => n.classList.remove('lit'))
-  await wait(650)
-  $$(sel).forEach((e) => e.remove())
 }
 
 // ---------- ③ reasoning: the court's view becomes the root, the issues branch from it, their reasons hang below
@@ -540,8 +523,6 @@ function reasoningLayout() {
   }
 }
 async function toReasoning(alive) {
-  lens(2)
-  sceneTag('③ 说理', '本院认为，拆成争点和理由')
   const R = reasoningLayout(), src = $('#yrw')
   // the court's view lights up, and becomes the root of the tree
   const A = rel(src)
@@ -589,20 +570,10 @@ async function toReasoning(alive) {
   })
   await wait(D.reason.issues.length * 140 + 1000 + 15 * 55 + 500)
   if (!alive()) return
-  caption(`<strong>本院认为 → ${D.reason.issues.length} 个争点、${D.reason.nodes} 个论证节点、${D.reason.links} 条推理关系</strong>，不成立的主张也留在图上。&emsp;示意：由 AI 助手阅读并提取，案图负责画图。文书为虚构。`)
-  await wait(3000)
 }
 
 // ---------- ④ flowchart: another document, a contract; it opens into its flow, and a token runs the main line
 async function toFlow(alive) {
-  lens(-1)
-  $('#cap').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
-  sceneTag('④ 流程', '换一份文书：合同条款，变成流程图')
-  $$('.rn,.chip,.trunk,.edges').forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(8px)' }], { duration: 600, fill: 'both' }))
-  await wait(600)
-  $$('.rn,.chip,.trunk,.edges').forEach((e) => e.remove())
-  if (!alive()) return
-  lens(3)
   const F = D.flow, W = stage.clientWidth, H = stage.clientHeight
   const cols = Math.max(...Object.values(F.grid).map((g) => g[0])) + 1
   const colW = W / cols, nodeW = Math.min(118, colW - 14)
@@ -702,34 +673,27 @@ async function toFlow(alive) {
     box[main[i + 1]].classList.add('lit')
   }
   token.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
-  caption(`<strong>${F.sourceName} ${F.contract.clauses.length} 条条款 → ${F.order.length} 个步骤与判断、${F.edges.length} 条走向</strong>，主线走一遍，分支一目了然。&emsp;示意：由 AI 助手阅读合同并提取，案图负责画图。合同为虚构。`)
-  $$('.lens span').forEach((s) => s.classList.add('on'))
 }
 
-// `#from=3` in the address starts at that scene (for checking one scene without waiting for the others)
-const FROM = +((location.hash.match(/from=(\d)/) || [])[1] || 1)
-
-async function start() {
+// the four kinds: each plays on its own, from its document
+const SCENES = {
+  fact: async (alive) => { await reading(); if (alive()) await toTimeline(alive) },
+  relationship: async (alive) => { await reading(); if (alive()) await toGraph(alive) },
+  procedure: async (alive) => { paper.style.opacity = 0; await toFlow(alive) },
+  justification: async (alive) => { await reading(); if (alive()) await toReasoning(alive) },
+}
+async function play(kind) {
   const me = ++run, alive = () => me === run
+  $$('.kind').forEach((k) => k.classList.toggle('on', k.dataset.kind === kind))
   reset()
-  if (reduce) { lens(1); return }
-  if (FROM <= 3) await reading()
-  if (!alive()) return
-  if (FROM <= 1) await toTimeline(alive)
-  if (!alive()) return
-  if (FROM <= 2) {
-    await toGraph(alive)
-    if (!alive()) return
-    await wait(2800)
-    if (!alive()) return
-    await backToPage('.camp,.ent,.edges', '同一份判决书，再换一种看法')
-  }
-  if (!alive()) return
-  if (FROM <= 3) await toReasoning(alive)
-  if (!alive()) return
-  if (FROM > 3) paperAway()
-  await toFlow(alive)
+  paper.style.opacity = ''
+  if (reduce) return
+  await SCENES[kind](alive)
 }
+$$('.kind').forEach((k) => (k.onclick = () => play(k.dataset.kind)))
+// `#kind=procedure` in the address starts with that kind (for checking one alone)
+const FIRST = (location.hash.match(/kind=(\w+)/) || [])[1] || 'fact'
+const start = () => play(FIRST)
 
 // the top bar: the start button opens the prompt box; the language switch (the top bar's labels only, in
 // this draft); light / dark, remembered in this browser
@@ -750,7 +714,6 @@ $('#mode').onclick = () => {
   try { localStorage.setItem('antu.site.theme', next) } catch { /* not remembered */ }
 }
 
-$('#replay').onclick = start
 if (location.hash.includes('manual')) window.start = start
 else setTimeout(start, 500)
 </script>

@@ -193,12 +193,22 @@ function flowchart() {
     reason: reasoning(),
     flow: flowchart(),
   }
+  // the four kinds on the left, each with Antu's own sketch of it (assets/kinds), drawn in the page's colours
+  const KINDS = [
+    { id: 'fact', label: '事实', icon: 'timeline' },
+    { id: 'relationship', label: '关系', icon: 'graph' },
+    { id: 'procedure', label: '程序', icon: 'flow' },
+    { id: 'justification', label: '证成', icon: 'tree' },
+  ]
+  const sketch = (name) => read(`${REPO}assets/kinds/${name}.svg`)
+    .replace(/ width="\d+" height="\d+"/, '')
+    .replace(/stroke="#64748b"/g, 'stroke="currentColor"').replace(/fill="#64748b"/g, 'fill="currentColor"').replace(/fill="#e2e8f0"/g, 'class="skf"')
   const facts = lines.filter((l) => /^[一二三四]、/.test(l))
   const view2 = lines[lines.indexOf('## 本院认为') + 2]
   if (!view2) throw new Error('the judgment has no 本院认为 paragraph')
   const html = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>案图 · 首页动画草稿 · 一份判决书，几种图</title>
+<title>案图 Antu · 法律文书，一眼看清</title>
 <style>${css}
 ${read(`${HERE}lenses.css`)}</style>
 <script>try { const t = localStorage.getItem('antu.site.theme'); if (t) document.documentElement.dataset.theme = t } catch {}</script></head><body class="lx">
@@ -215,11 +225,12 @@ ${read(`${HERE}lenses.css`)}</style>
  <div class="pop" id="pop" hidden><b data-i18n="popTitle">交给你的 AI 助手</b><p data-i18n="popBody">复制下面这段话，发给你常用的 AI 助手，它会自己装好案图。</p><pre>（提示词正在整理，下一步放进来）</pre><button disabled data-i18n="copy">复制</button></div>
 </header>
 <section class="hero">
-<div class="top">
- <div><h1>一份判决书，<br><em>几种看得见的图</em></h1></div>
- <p class="lede">AI 助手读判决书，案图把事实、关系、说理、流程画成图。每个点，都能回到原文出处。</p>
-</div>
-<div class="stage" id="stage"><div class="scene-tag" id="scene"></div>
+<h1 class="title">法律文书，<em>一眼看清</em></h1>
+<div class="show">
+ <nav class="kinds" aria-label="四类图">
+  ${KINDS.map((k, i) => `<button class="kind${i === 0 ? ' on' : ''}" data-kind="${k.id}"><span class="sk">${sketch(k.icon)}</span><b>${k.label}</b></button>`).join('\n  ')}
+ </nav>
+ <div class="stage" id="stage">
  <div class="paper" id="paper"><span class="lbl">判决书 · 虚构</span><div class="beam" id="beam"></div>
   <h2>${lines[0].replace(/^# /, '')}</h2><p class="meta">${mark(lines[2].replace(/^> /, ''))}</p>
   <h3>本院查明</h3>${facts.map((f) => `<p>${mark(f)}</p>`).join('')}
@@ -229,8 +240,7 @@ ${read(`${HERE}lenses.css`)}</style>
   <h2>${L.flow.contract.title}</h2>${L.flow.contract.meta.map((m) => `<p class="meta">${m}</p>`).join('')}
   ${L.flow.contract.clauses.map((ss) => `<p class="cl">${ss.map((x) => (x.n ? `<span class="sn" data-n="${x.n}">${x.s}</span>` : x.s)).join('')}</p>`).join('')}</div>
 </div>
-<div class="bottom"><div class="lens"><span>① 事实 · 时间线</span><span>② 关系 · 关系图</span><span>③ 说理 · 论证图</span><span>④ 流程 · 流程图</span></div><button id="replay">↻ 重播</button></div>
-<p class="cap" id="cap" style="margin-top:1.2vh"></p>
+</div>
 </section>
 <script>window.__LENS__ = ${JSON.stringify(L).replace(/</g, '\\u003c')}</script>
 <script>${read(`${HERE}lenses.js`)}</script>

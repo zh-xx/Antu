@@ -1,6 +1,5 @@
-// Draft "lenses" (issue #107): one judgment, seen as more than one diagram.
-// 1. the page is read  2. its twelve sentences turn into the timeline  3. the timeline rewinds into the page
-// 4. every name in the page lights up and the mentions gather into the parties  5. the relations draw themselves.
+// Draft "lenses" (issue #107): the four kinds of diagram, each made from its document. Pick one on the left:
+// the page is read, then its sentences (or names, or clauses) turn into the diagram.
 // Everything shown comes from window.__LENS__, which build.mjs made from the case files in examples/.
 const D = window.__LENS__
 const $ = (s) => document.querySelector(s)
@@ -26,31 +25,22 @@ const el = (tag, cls, html, style) => {
 }
 const show = (e, ms = 400, delay = 0) => e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, delay, fill: 'both' })
 
-function lens(i) {
-  $$('.lens span').forEach((s, k) => s.classList.toggle('on', k === i))
-}
-function caption(text) {
-  const c = $('#cap')
-  c.innerHTML = text
-  c.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 500, fill: 'both' })
-}
-function sceneTag(n, text) {
-  const t = $('#scene')
-  t.innerHTML = `<b>${n}</b>${text}`
-  t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, fill: 'both' })
-}
 
 // ---------- layouts (from the stage's size, so they fit any screen)
-const CW = 144, CH = 56
+const CH = 56
 function timeline() {
   const W = stage.clientWidth, H = stage.clientHeight, n = D.events.length
-  const left = 150, step = (W - left - CW - 4) / (n - 1), mid = Math.round(H * 0.5)
+  const left = 136, mid = Math.round(H * 0.5)
+  // cards of one row alternate between two tiers, so two cards in a row and tier are at least two steps apart
+  const CW = Math.min(144, Math.floor((W - left - 4) / (n + 1) * 2 - 6))
+  const step = (W - left - CW - 4) / (n - 1)
   const yOf = (row, tier) => row === 'mid' ? mid - CH / 2
     : row === 'above' ? mid - CH / 2 - 26 - CH - tier * (CH + 10)
       : mid + CH / 2 + 26 + tier * (CH + 10)
+  const seen = { above: 0, below: 0, mid: 0 }
   return {
     mid, left, W,
-    cards: D.events.map((e, i) => ({ x: left + i * step, y: yOf(e.row, e.row === 'mid' ? 0 : i % 2), w: CW, h: CH, cx: left + i * step + CW / 2, row: e.row })),
+    cards: D.events.map((e, i) => ({ x: left + i * step, y: yOf(e.row, e.row === 'mid' ? 0 : seen[e.row]++ % 2), w: CW, h: CH, cx: left + i * step + CW / 2, row: e.row })),
     rows: [['above', yOf('above', 0) - 20], ['mid', mid - 18], ['below', yOf('below', 0) + 18]],
   }
 }
@@ -85,8 +75,6 @@ const paperAway = () => (paper.classList.add('melt'), [
 ])
 
 async function toTimeline(alive) {
-  lens(0)
-  sceneTag('① 事实', '判决书里的经过，变成时间线')
   const L = timeline(), lis = $$('#bul li')
   // each sentence of the account becomes its own object, lit
   const acts = D.events.map((e, i) => {
@@ -128,19 +116,6 @@ async function toTimeline(alive) {
   })
   await wait(12 * 70 + 1400)
   if (!alive()) return
-  caption(`<strong>${D.events.length} 句经过 → ${D.events.length} 个时间节点</strong>，按当事人分在时间线两侧。&emsp;示意：由 AI 助手阅读并提取，案图负责画图。文书为虚构。`)
-  await wait(2600)
-  if (!alive()) return
-  // rewind: the same animations, backwards, faster
-  lens(-1)
-  $('#cap').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
-  sceneTag('↺', '同一份判决书，换一种看法')
-  for (const a of anims) { a.playbackRate = -2.4 }
-  await Promise.all(anims.map((a) => a.finished.catch(() => {})))
-  acts.forEach((o) => { o.a.remove(); o.li.style.visibility = '' })
-  paper.classList.remove('melt')
-  $$('.spine,.rowlbl,.stub,.tdot').forEach((e) => e.remove())
-  await wait(300)
 }
 
 function edgePath(r, G) {
@@ -168,8 +143,6 @@ const STYLE = {
 }
 
 async function toGraph(alive) {
-  lens(1)
-  sceneTag('② 关系', '全文的人名，汇聚成当事人和关系')
   const G = graph()
   // every name in the page lights up
   const pr = paper.getBoundingClientRect()
@@ -260,37 +233,17 @@ async function toGraph(alive) {
   })
   await wait(150 + D.relations.length * 160 + 900)
   if (!alive()) return
-  caption(`<strong>全文 ${D.totalMentions} 处人名 → ${D.entities.length} 个当事人、${D.relations.length} 条关系</strong>，数字是判决书里实际出现的次数。&emsp;示意：由 AI 助手阅读并提取，案图负责画图。文书为虚构。`)
 }
 
 function reset() {
   $$('.actor,.mv,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
   paper.classList.remove('melt')
   $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit') })
-  ;[paper, $('#cap'), $('#scene')].forEach((e) => e.getAnimations().forEach((a) => a.cancel()))
-  $$('.lens span').forEach((s) => s.classList.remove('on'))
+  paper.getAnimations().forEach((a) => a.cancel())
   const pg = $('#paper2')
   ;[pg, ...pg.querySelectorAll('*')].forEach((e) => e.getAnimations().forEach((a) => a.cancel()))
   pg.classList.remove('melt')
   pg.querySelectorAll('.sn').forEach((x) => x.classList.remove('lit'))
-  $('#cap').style.opacity = 0
-  lens(-1)
-}
-
-// take a scene's pieces away and bring the page back
-async function backToPage(sel, note) {
-  lens(-1)
-  $('#cap').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
-  sceneTag('↺', note)
-  $$(sel).forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)', transform: getComputedStyle(e).transform === 'none' ? 'scale(1)' : getComputedStyle(e).transform }, { opacity: 0, filter: 'blur(8px)' }], { duration: 600, fill: 'both', easing: 'ease-in' }))
-  await wait(450)
-  paper.classList.remove('melt')
-  $$('.paper > *:not(.beam)').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.animate([{ opacity: 0, filter: 'blur(6px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 600, fill: 'both' }) })
-  paper.getAnimations().forEach((a) => a.cancel())
-  paper.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'rotateX(2deg) scale(.99)' }], { duration: 600, fill: 'both', easing: ease })
-  $$('.nm').forEach((n) => n.classList.remove('lit'))
-  await wait(650)
-  $$(sel).forEach((e) => e.remove())
 }
 
 // ---------- ③ reasoning: the court's view becomes the root, the issues branch from it, their reasons hang below
@@ -304,8 +257,6 @@ function reasoningLayout() {
   }
 }
 async function toReasoning(alive) {
-  lens(2)
-  sceneTag('③ 说理', '本院认为，拆成争点和理由')
   const R = reasoningLayout(), src = $('#yrw')
   // the court's view lights up, and becomes the root of the tree
   const A = rel(src)
@@ -353,20 +304,10 @@ async function toReasoning(alive) {
   })
   await wait(D.reason.issues.length * 140 + 1000 + 15 * 55 + 500)
   if (!alive()) return
-  caption(`<strong>本院认为 → ${D.reason.issues.length} 个争点、${D.reason.nodes} 个论证节点、${D.reason.links} 条推理关系</strong>，不成立的主张也留在图上。&emsp;示意：由 AI 助手阅读并提取，案图负责画图。文书为虚构。`)
-  await wait(3000)
 }
 
 // ---------- ④ flowchart: another document, a contract; it opens into its flow, and a token runs the main line
 async function toFlow(alive) {
-  lens(-1)
-  $('#cap').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
-  sceneTag('④ 流程', '换一份文书：合同条款，变成流程图')
-  $$('.rn,.chip,.trunk,.edges').forEach((e) => e.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(8px)' }], { duration: 600, fill: 'both' }))
-  await wait(600)
-  $$('.rn,.chip,.trunk,.edges').forEach((e) => e.remove())
-  if (!alive()) return
-  lens(3)
   const F = D.flow, W = stage.clientWidth, H = stage.clientHeight
   const cols = Math.max(...Object.values(F.grid).map((g) => g[0])) + 1
   const colW = W / cols, nodeW = Math.min(118, colW - 14)
@@ -466,34 +407,27 @@ async function toFlow(alive) {
     box[main[i + 1]].classList.add('lit')
   }
   token.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
-  caption(`<strong>${F.sourceName} ${F.contract.clauses.length} 条条款 → ${F.order.length} 个步骤与判断、${F.edges.length} 条走向</strong>，主线走一遍，分支一目了然。&emsp;示意：由 AI 助手阅读合同并提取，案图负责画图。合同为虚构。`)
-  $$('.lens span').forEach((s) => s.classList.add('on'))
 }
 
-// `#from=3` in the address starts at that scene (for checking one scene without waiting for the others)
-const FROM = +((location.hash.match(/from=(\d)/) || [])[1] || 1)
-
-async function start() {
+// the four kinds: each plays on its own, from its document
+const SCENES = {
+  fact: async (alive) => { await reading(); if (alive()) await toTimeline(alive) },
+  relationship: async (alive) => { await reading(); if (alive()) await toGraph(alive) },
+  procedure: async (alive) => { paper.style.opacity = 0; await toFlow(alive) },
+  justification: async (alive) => { await reading(); if (alive()) await toReasoning(alive) },
+}
+async function play(kind) {
   const me = ++run, alive = () => me === run
+  $$('.kind').forEach((k) => k.classList.toggle('on', k.dataset.kind === kind))
   reset()
-  if (reduce) { lens(1); return }
-  if (FROM <= 3) await reading()
-  if (!alive()) return
-  if (FROM <= 1) await toTimeline(alive)
-  if (!alive()) return
-  if (FROM <= 2) {
-    await toGraph(alive)
-    if (!alive()) return
-    await wait(2800)
-    if (!alive()) return
-    await backToPage('.camp,.ent,.edges', '同一份判决书，再换一种看法')
-  }
-  if (!alive()) return
-  if (FROM <= 3) await toReasoning(alive)
-  if (!alive()) return
-  if (FROM > 3) paperAway()
-  await toFlow(alive)
+  paper.style.opacity = ''
+  if (reduce) return
+  await SCENES[kind](alive)
 }
+$$('.kind').forEach((k) => (k.onclick = () => play(k.dataset.kind)))
+// `#kind=procedure` in the address starts with that kind (for checking one alone)
+const FIRST = (location.hash.match(/kind=(\w+)/) || [])[1] || 'fact'
+const start = () => play(FIRST)
 
 // the top bar: the start button opens the prompt box; the language switch (the top bar's labels only, in
 // this draft); light / dark, remembered in this browser
@@ -514,6 +448,5 @@ $('#mode').onclick = () => {
   try { localStorage.setItem('antu.site.theme', next) } catch { /* not remembered */ }
 }
 
-$('#replay').onclick = start
 if (location.hash.includes('manual')) window.start = start
 else setTimeout(start, 500)
