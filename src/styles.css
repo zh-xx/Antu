@@ -692,7 +692,9 @@
 }
 
 .antu-header-card {
-  max-width: min(440px, 46vw);
+  /* One width, so the arrows do not move when the kind or the title changes */
+  box-sizing: border-box;
+  width: min(300px, 46vw);
   padding: 10px 13px 11px;
   border: var(--antu-chrome-border, 1px solid rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.06));
   border-radius: var(--antu-chrome-radius, 14px);

@@ -16,7 +16,7 @@ import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react
 import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState, useEdgesState } from '@xyflow/react'
 
 import { useLang } from './LangContext.jsx'
-import { useTheme } from '../theme/ThemeContext.jsx'
+import { useTheme, themeVars } from '../theme/ThemeContext.jsx'
 import { FIT_PADDING, fitWidthZoom, fitZoom } from '../core/canvas.js'
 import { exportPng as runExportPng } from './exportPng.js'
 
@@ -169,6 +169,14 @@ export default function Canvas({
     [graph],
   )
 
+  // The theme reaches the diagram only: its CSS variables sit on the viewport (the layer the export clones), not on the
+  // app root, so the shell round it keeps one look in every theme
+  useEffect(() => {
+    const viewport = canvasRef.current?.querySelector('.react-flow__viewport')
+    if (!viewport) return
+    for (const [k, v] of Object.entries(themeVars(theme))) viewport.style.setProperty(k, v)
+  }, [theme, graph])
+
   return (
     <main
       className={`antu-canvas${showGrid ? ' show-grid' : ''}`}
@@ -213,13 +221,13 @@ export default function Canvas({
         minZoom={minZoom}
         maxZoom={MAX_ZOOM}
       >
-        {/* The background dot grid is the theme's separator colour */}
-        <Background gap={20} color={theme.color.line} />
+        {/* The shell (dot grid, zoom, minimap, dock) is not themed: only the diagram is; its variables are set on the viewport below */}
+        <Background gap={20} color="#e8ebef" />
         {/* The padding must match the initial fit, or clicking the button once makes the zoom jump */}
         <Controls showInteractive={false} onFitView={() => fit(300)} />
         {/* The display controls float centred below the canvas: the zoom controls are bottom left and the minimap bottom right, so the three do not collide */}
         <Panel position="bottom-center">{children}</Panel>
-        <MiniMap pannable zoomable nodeColor={theme.color.ink4} />
+        <MiniMap pannable zoomable nodeColor="#cbd5e1" />
       </ReactFlow>
     </main>
   )

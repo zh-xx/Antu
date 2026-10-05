@@ -2041,7 +2041,7 @@ async function checkDocumentThemeIsGrey() {
           return +a === 0 || Math.max(r, g, b) - Math.min(r, g, b) <= 6
         }
         const bad = new Map()
-        for (const el of document.querySelectorAll('.antu-app *')) {
+        for (const el of document.querySelectorAll('.react-flow__viewport, .react-flow__viewport *')) {
           const cs = getComputedStyle(el)
           for (const prop of ['color', 'backgroundColor', 'borderTopColor', 'borderLeftColor', 'fill', 'stroke']) {
             const v = cs[prop]
