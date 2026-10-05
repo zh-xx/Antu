@@ -3,6 +3,25 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## Unreleased
+
+The look of a diagram is now a theme (#97, #99, #100, #101).
+
+### Added
+- **Three themes**: `document` (black and white, square, for print and filing; the default), `modern` (rounded, pale greys) and `legal` (navy, red only for the adverse). Every meaning is also carried without colour, so a black-and-white print reads the same. The reader switches in the label card and the choice is remembered. See [spec/theme.md](spec/theme.md).
+- **A shared scale**: an 8 px grid for node sizes, five type sizes, four line weights and four line styles.
+- **`--theme document|modern|legal`** for `render` and `preview` in the command line, and an optional `theme` on `antu_render` and `antu_preview`. It fixes the page to that theme; an unknown name is refused. Nothing in the JSON chooses a theme.
+
+### Changed
+- Only the picture is themed; the label card, the zoom buttons, the bar below and the minimap look the same in every theme.
+- Without a choice, a page opens in the `document` theme: black and white instead of the former blue-grey and colours. The same JSON draws the same picture, apart from colour, corners and fonts.
+- The label card has a fixed width, so the arrows do not move when the way of drawing changes.
+- The minimap shows the extent of a picture that is drawn only by decoration layers (the route map, the relation path), where it used to be empty.
+- Fact diagrams, time scale: side 2 is drawn as a square and side 1 as a circle, so the sides differ without colour.
+
+### Breaking
+- None. No field, rule or tool parameter changed; `theme` is new and optional. A page that was fixed to the old colours now opens in the `document` theme unless the reader or the call chooses another.
+
 ## 0.7.0
 
 The same JSON can now be drawn in more than one way, and the page has a picker for it: three ways for a fact diagram, two for a procedure, nine for a relationship diagram (#85, #87, #89, #91, #93, #95).
