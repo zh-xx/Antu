@@ -167,7 +167,8 @@ async function toTimeline(alive) {
 // the relationship graph as Antu lays it out (D.rel), fitted to the stage
 function relFit() {
   const R = D.rel, W = stage.clientWidth, H = stage.clientHeight
-  const k = Math.min((W - 24) / R.size.width, (H - 16) / R.size.height, 1.6)
+  // a little smaller than the stage, so the graph sits with room around it
+  const k = Math.min((W - 24) / R.size.width, (H - 16) / R.size.height, 1.6) * 0.8
   return { k, ox: (W - R.size.width * k) / 2, oy: (H - R.size.height * k) / 2 }
 }
 
@@ -187,7 +188,7 @@ async function toGraph(alive) {
   const svg = document.createElementNS(SVGNS, 'svg')
   svg.setAttribute('width', R.size.width)
   svg.setAttribute('height', R.size.height)
-  svg.innerHTML = `<defs><marker id="rarr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 1 L9 5 L0 9 Z" style="fill:var(--edge)"/></marker></defs>`
+  svg.innerHTML = `<defs><marker id="rarr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 1 L9 5 L0 9 Z" fill="#e8452c"/></marker></defs>`
   layer.appendChild(svg)
   const groups = R.groups.map((g) => {
     const b = document.createElement('div')
@@ -243,7 +244,8 @@ async function toGraph(alive) {
       svg.appendChild(p)
       return p
     }
-    const parts = l.double ? [mk(l.width, 'var(--edge)'), mk(l.width - 2.4, 'var(--bg)')] : [mk(l.width, l.kind === 'debt' ? '#e8452c' : 'var(--edge)')]
+    // every relation in the accent red, as the timeline's axis is; the kind still shows in its dash and weight
+    const parts = l.double ? [mk(l.width, '#e8452c'), mk(l.width - 2.4, 'var(--bg)')] : [mk(l.width, '#e8452c')]
     const len = parts[0].getTotalLength()
     parts.forEach((p, k) => {
       p.style.strokeDasharray = `${len} ${len}`
@@ -314,7 +316,7 @@ async function toReasoning(alive) {
     const p = document.createElementNS(SVGNS, 'path')
     p.setAttribute('d', `M ${rx} ${ry} C ${rx} ${ry + 30}, ${cx} ${h.y - 34}, ${cx} ${h.y}`)
     p.setAttribute('fill', 'none')
-    p.style.stroke = g.against ? '#e8452c' : 'var(--edge-soft)'
+    p.style.stroke = '#e8452c'
     p.setAttribute('stroke-width', 1.5)
     svg.appendChild(p)
     const len = p.getTotalLength()
@@ -380,7 +382,7 @@ async function toFlow(alive) {
   svg.setAttribute('class', 'edges')
   svg.setAttribute('width', W)
   svg.setAttribute('height', H)
-  svg.innerHTML = '<defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" style="fill:var(--edge)"/></marker></defs>'
+  svg.innerHTML = '<defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1 L9 5 L0 9 Z" fill="#e8452c"/></marker></defs>'
   stage.appendChild(svg)
   const half = (id) => (F.nodes[id].kind === 'decision' ? 44 : nodeW / 2)
   const halfH = (id) => (F.nodes[id].kind === 'decision' ? 44 : 20)
@@ -394,7 +396,7 @@ async function toFlow(alive) {
     const p = document.createElementNS(SVGNS, 'path')
     p.setAttribute('d', d)
     p.setAttribute('fill', 'none')
-    p.style.stroke = 'var(--edge)'
+    p.style.stroke = '#e8452c'
     p.setAttribute('stroke-width', e.main ? 2 : 1.3)
     svg.appendChild(p)
     const len = p.getTotalLength()
