@@ -4,42 +4,39 @@
 
 [English](README.md) | **中文**
 
-法律工作可视化渲染内核。输入一份 JSON，输出一个自包含的 HTML 文件，可离线打开、归档、传阅。
+案图把一份 JSON 变成一个自包含的 HTML 法律图。页面可以离线打开，也可以归档、打印或作为附件发送。可以由 AI agent 阅读案件材料并写出
+JSON，再由引擎据此画图；同一份 JSON 得到的图是一致的。案图目前处于 0.x 阶段，关系图和证成图的格式仍是草案。
 
-在成品 HTML 后加 `?lang=en` 或 `?lang=zh` 可指定界面语言。数据本身不翻译：案件内容随 JSON 走。
+## 你能得到什么
 
----
+四类法律内容，每一类都有几种画法。页面里有选择器可以切换，JSON 里没有任何字段决定画法。下面是页面自己在选择器里显示的示意图，每种画法一张；点名字可以打开一个能用这种画法画出来的案例（`npm run diagram -- <文件>`，再在页面里选画法）。
 
-# 案图是什么
+<table>
+<tr><th rowspan="2" align="left" valign="middle">关系图</th><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/graph.svg" width="88" alt="关系图"><br>关系图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/focus.svg" width="88" alt="聚焦图"><br>聚焦图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/chain.svg" width="88" alt="担保链图"><br>担保链图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/matrix.svg" width="88" alt="关系矩阵"><br>关系矩阵</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/equity.svg" width="88" alt="股权图"><br>股权图</a></td></tr>
+<tr><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/authority.svg" width="88" alt="控制与任职图"><br>控制与任职图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/related.svg" width="88" alt="关联方清单"><br>关联方清单</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/path.svg" width="88" alt="关系路径图"><br>关系路径图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/summary.svg" width="88" alt="集团汇总图"><br>集团汇总图</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">事实图</th><td align="center"><a href="examples/fact/neighbour-corridor-charging.zh-CN.json"><img src="assets/kinds/timeline.svg" width="88" alt="时间图"><br>时间图</a></td><td align="center"><a href="examples/fact/neighbour-corridor-charging.zh-CN.json"><img src="assets/kinds/chronicle.svg" width="88" alt="大事记"><br>大事记</a></td><td align="center"><a href="examples/fact/neighbour-corridor-charging.zh-CN.json"><img src="assets/kinds/scale.svg" width="88" alt="比例时间轴"><br>比例时间轴</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">程序图</th><td align="center"><a href="examples/procedure/05-premises-lease.zh-CN.json"><img src="assets/kinds/flow.svg" width="88" alt="流程图"><br>流程图</a></td><td align="center"><a href="examples/procedure/05-premises-lease.zh-CN.json"><img src="assets/kinds/route.svg" width="88" alt="路线图"><br>路线图</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">证成图</th><td align="center"><a href="examples/justification/fang-yuan-defense-excess.zh-CN.json"><img src="assets/kinds/tree.svg" width="88" alt="说理树"><br>说理树</a></td></tr>
+</table>
 
-案图把法律工作的四类内容绘制成图。其规范为这四类内容专门定义，不沿用通用图表语法。
+关系图画主体、角色和法律关系；事实图画时间、参与人和事件经过；程序图画程序路径与可能分支；证成图画由规范与事实推出的结论。关系图和证成图的 schema 仍是草案。
 
-## 四类图
+三种外观，叫**主题**：`document` 文书黑白（方正、纯黑白，适合打印和归档，默认）、`modern` 现代简洁、`legal` 法律蓝。读者在页面里
+切换，调用时也可以把页面固定成某一个。只有图本身受主题影响，详见 [spec/theme.md](spec/theme.md)。
 
-| 图 | 绘制内容 | 状态 |
-|---|---|---|
-| 关系图 | 主体、角色、法律关系 | 关系图、聚焦图、担保链图、关系矩阵、股权图、控制与任职图、关联方清单、关系路径图、集团汇总图子类可用（schema 暂定） |
-| 事实图 | 时间、参与人、事件经过 | 时间图、大事记、比例时间轴已可用 |
-| 程序图 | 程序路径与可能分支 | 流程图、路线图已可用 |
-| 证成图 | 规范与事实推出结论 | 说理树可用（schema 草案） |
+## 试一试
 
-## 为什么用案图
+```bash
+npm install
+npm run diagram -- examples/fact/neighbour-corridor-charging.zh-CN.json
+# → examples/fact/neighbour-corridor-charging.zh-CN.html   （用浏览器打开）
+```
 
-**一、通用可视化工具的语法不适用于法律工作。** 通用工具的语法建立在节点、边、时序、状态机等概念之上。法律工作的结构是主体、法律关系、程序路径与论证说理。通用工具可以完成绘制，但其语法中没有为诉讼地位、证据出处这类法律要素预留位置。
+想让 agent 来做，见下面的[接入 agent](#接入-agent)。
 
-**二、成图质量不应取决于所用的大语言模型。** 通行的做法是让模型直接生成图形，模型能力不同，成图质量差异明显。案图不采用这一路径。模型只负责从案件材料中提取关键信息并输出一份 JSON，渲染由固定的引擎完成。因此，无论使用何种模型，成图结果一致。
+在生成的页面后加 `?lang=en` 或 `?lang=zh` 可指定界面语言。数据本身不翻译：案件内容随 JSON 走。
 
-**三、同一份输入应当产生同一张图。** 交付给法官或对方当事人的图，如果每次生成结果不同，就无法复现。案图的渲染过程不经过模型，同一份 JSON 在任何时间、任何环境下渲染，结果完全相同。
-
-**四、出处自生成时即已确定。** 通行的做法是在成图之后追问结论的依据，再通过对话补充查证。案图要求提取信息时即写明每一条事实出自哪一份材料、第几页、依据哪一条法律。成图时，出处已在图上。
-
-法律工作对交付材料的要求是可复现、可溯源。以上四点分别指向这两项要求。
-
----
-
-# 案图怎么工作
-
-## 分工
+## 怎么工作
 
 ```
 agent ──> 提取关键信息 ──> 一份 JSON ──> 引擎 ──> 图
@@ -47,36 +44,31 @@ agent ──> 提取关键信息 ──> 一份 JSON ──> 引擎 ──> 图
 
 | 角色 | 职责 | 确定性 |
 |---|---|---|
-| 模型 | 读文书、提取事实、理解语义 | 允许不确定 |
-| 引擎 | 按规范渲染成图 | 完全确定，与模型无关 |
-| JSON 规范 | 两者的分界，唯一接口 | 固定不变 |
+| 模型 | 读文书、提取事实、理解语义 | 每次的结果可能不同 |
+| 引擎 | 按规范画图 | 同一份 JSON 得到同一张图，与由哪个模型写出无关 |
+| JSON 规范 | 两者之间唯一的接口 | 有版本号（见 [spec/versioning.md](spec/versioning.md)） |
 
-这一分工把“生成一张符合法律规范的图”这一模型能力差异较大的任务，转换为“将信息提取为 JSON”这一各类模型均可完成的任务。引擎不生成 JSON，agent 不承担渲染。两者的边界是 JSON 规范。
+引擎不写 JSON，agent 不画图。对模型的要求只有一件事：把信息提取成 JSON；画图交给引擎。
 
-图形能够符合法律工作的需要，原因是规范本身为法律工作设计，而非套用通用图表语法。
+**为什么另定一套规范？**
 
-## 出处
+1. 通用图表的语法建立在节点、边、状态机之上，没有为诉讼地位、证据出处这类要素预留位置。案图的规范是为这四类内容专门写的。
+2. 图不取决于由哪个模型来提取信息，因为画图的是引擎。
+3. 同一份 JSON 在任何时间、任何环境下得到同一张图，所以交给法院或对方当事人的图可以复现。
+4. 出处在提取事实时就记录下来：每一条事实写明出自哪份材料、第几页、依据哪一条法律，因此图画出来时，出处已经在图上。
+
+### 出处
 
 | 环节 | 做法 |
 |---|---|
 | 挂载 | 事件挂证据、文书；主张挂法条、判例；关系挂合同、登记记录 |
 | 定位 | 结构化定位，可校验、可反查：案号、合同页码、法条条号 |
-| 引用 | 来源表仅存一份，多处表达引用同一个 id，不重复复制 |
+| 引用 | 来源表仅存一份，多处表达引用同一个 id |
 | 边界 | 图上仅标明依据所在材料与页码。原始材料不打包，不跳转，由使用者自行查阅 |
 
-## 产物
+### 你得到的页面
 
-一份 JSON 生成一个自包含的 HTML 文件，约 2.3 MB（大部分是布局引擎 ELK），引擎与数据均在文件内，不发起网络请求，不需要服务器，可离线打开。适用于归档、传阅、作为邮件附件发送。
-
-同一份 JSON 可以用多种画法来画（标签卡里有选择器），也有三套**主题**：`document` 文书黑白（方正、纯黑白，适合打印和归档，默认）、`modern` 现代简洁、`legal` 法律蓝。读者在页面里切换；命令行的 `--theme` 和 MCP 工具的 `theme` 可以把页面固定成某个主题。只有图本身受主题影响，详见 [spec/theme.md](spec/theme.md)。
-
-## 用法
-
-```bash
-npm install
-npm run diagram -- examples/fact/neighbour-corridor-charging.zh-CN.json
-# → examples/fact/neighbour-corridor-charging.zh-CN.html
-```
+一个自包含的 HTML 文件，约 2.3 MB（大部分是布局引擎 ELK），引擎与数据都在文件里，不发起网络请求，不需要服务器，可以离线打开，也可以归档、传阅或作为邮件附件发送。
 
 ## 接入 agent
 
@@ -91,7 +83,7 @@ npm run diagram -- examples/fact/neighbour-corridor-charging.zh-CN.json
 }
 ```
 
-agent 可以读取规范、查看示例、校验、计算几何、生成成品，并截图核对效果。校验仅能确认 JSON 合法，不能确认成图效果合格，因此截图核对是必要步骤。agent 的参考资料为 5.4k token（字段表 3.2k 字符 + 机制说明 5.1k 字符）。
+agent 可以读取规范、查看示例、校验、计算几何、生成页面，并截图核对效果。校验只能确认 JSON 合法，不能确认成图合格，建议截图看一眼。agent 的参考资料为 5.4k token（字段表 3.2k 字符 + 机制说明 5.1k 字符）。
 
 ### 技能包（不装 MCP）
 
@@ -110,11 +102,11 @@ agent 可以读取规范、查看示例、校验、计算几何、生成成品�
 - **程序图（流程图）**：[spec/agent/procedure/guide.md](spec/agent/procedure/guide.md)（一页机制说明）、[spec/procedure/schema-draft.zh-CN.md](spec/procedure/schema-draft.zh-CN.md)（字段定义与排布规则），并参考 [examples/agent/procedure/7-rules.zh-CN.json](examples/agent/procedure/7-rules.zh-CN.json)，或一份真实合同，如 [examples/procedure/05-premises-lease.zh-CN.json](examples/procedure/05-premises-lease.zh-CN.json)。
 - **关系图**：[spec/agent/relationship/guide.md](spec/agent/relationship/guide.md)（一页机制说明）、[spec/relationship/schema-draft.zh-CN.md](spec/relationship/schema-draft.zh-CN.md)（字段定义与排布规则，暂定），并参考 [examples/agent/relationship/3-guarantee.zh-CN.json](examples/agent/relationship/3-guarantee.zh-CN.json)，或一份（虚构的）完整案例，如 [examples/relationship/fang-yuan-parties.zh-CN.json](examples/relationship/fang-yuan-parties.zh-CN.json)。
 
-## 设计文档
+## 更多
 
-`spec/` 目录下，供人阅读：架构 [v0-architecture.md](spec/v0-architecture.md)、来源的 7 类字段 [source-schema-draft.md](spec/source-schema-draft.md)、事实图 [spec/fact/](spec/fact/)、程序图 [spec/procedure/schema-draft.zh-CN.md](spec/procedure/schema-draft.zh-CN.md)、MCP 服务端 [mcp-server.md](spec/mcp-server.md)。给 agent 看的说明在 [spec/agent/](spec/agent/)。
-
-已知问题与需求在 [GitHub issues](https://github.com/zh-xx/Antu/issues) 里管理。贡献者的做事规矩见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- 供人阅读的设计文档在 [`spec/`](spec/)：[架构](spec/v0-architecture.md)、[来源的 7 类字段](spec/source-schema-draft.md)、[主题](spec/theme.md)、[MCP 服务端](spec/mcp-server.md)，以及各类图（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 agent 看的说明在 [`spec/agent/`](spec/agent/)。
+- [CHANGELOG.md](CHANGELOG.md)，版本号的规则见 [spec/versioning.md](spec/versioning.md)。
+- 已知问题与需求记录在 [GitHub issues](https://github.com/zh-xx/Antu/issues)。参与贡献前，请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 许可证
 

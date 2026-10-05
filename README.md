@@ -4,83 +4,83 @@
 
 [中文](README.zh-CN.md) | **English**
 
-A rendering core for legal work visualization. Input one JSON document, output one self-contained
-HTML file that opens offline and can be archived or circulated.
+Antu turns one JSON document into one self-contained HTML legal diagram. The page opens offline, and can be archived,
+printed or sent as an attachment. An AI agent can read the case materials and write the JSON; the engine then draws the
+diagram from it, and the same JSON gives the same diagram. Antu is at version 0.x, and the formats of the relationship
+and justification diagrams are still drafts.
 
-Add `?lang=en` or `?lang=zh` to a generated HTML file to pin the interface language. The data
-itself is never translated: case content travels with the JSON.
+## What you get
 
----
+Four kinds of legal content, each drawn in several ways. A picker in the page switches between the ways, and nothing in
+the JSON chooses one. These are the sketches the page itself shows in its picker, one for each way; click a name to open a case
+you can draw in that way (`npm run diagram -- <file>`, then pick the way in the page).
 
-# What Antu is
+<table>
+<tr><th rowspan="2" align="left" valign="middle">Relationship</th><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/graph.svg" width="88" alt="graph"><br>graph</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/focus.svg" width="88" alt="focus view"><br>focus view</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/chain.svg" width="88" alt="guarantee chain"><br>guarantee chain</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/matrix.svg" width="88" alt="relation matrix"><br>relation matrix</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/equity.svg" width="88" alt="equity tree"><br>equity tree</a></td></tr>
+<tr><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/authority.svg" width="88" alt="authority chart"><br>authority chart</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/related.svg" width="88" alt="related-party list"><br>related-party list</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/path.svg" width="88" alt="relation path"><br>relation path</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/summary.svg" width="88" alt="camp summary"><br>camp summary</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">Fact</th><td align="center"><a href="examples/fact/neighbour-corridor-charging.en.json"><img src="assets/kinds/timeline.svg" width="88" alt="timeline"><br>timeline</a></td><td align="center"><a href="examples/fact/neighbour-corridor-charging.en.json"><img src="assets/kinds/chronicle.svg" width="88" alt="chronicle"><br>chronicle</a></td><td align="center"><a href="examples/fact/neighbour-corridor-charging.en.json"><img src="assets/kinds/scale.svg" width="88" alt="time scale"><br>time scale</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">Procedure</th><td align="center"><a href="examples/procedure/05-premises-lease.en.json"><img src="assets/kinds/flow.svg" width="88" alt="flowchart"><br>flowchart</a></td><td align="center"><a href="examples/procedure/05-premises-lease.en.json"><img src="assets/kinds/route.svg" width="88" alt="route map"><br>route map</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">Justification</th><td align="center"><a href="examples/justification/fang-yuan-defense-excess.en.json"><img src="assets/kinds/tree.svg" width="88" alt="reasoning tree"><br>reasoning tree</a></td></tr>
+</table>
 
-Antu renders four kinds of legal content as diagrams. Its specification is defined specifically for these four kinds, and does not reuse the syntax of general-purpose charting tools.
+Relationship diagrams show parties, roles and legal relationships; fact diagrams the time, the participants and how events went;
+procedure diagrams a procedural path and its branches; justification diagrams a conclusion drawn from norms and facts. The
+relationship and justification schemas are still drafts.
 
-## The four diagram types
+Three looks, called **themes**: `document` (black and white and square, for print and filing; the default), `modern`
+(rounded, pale) and `legal` (navy). The reader switches in the page, or a call fixes a page to one. Only the diagram is
+themed. See [spec/theme.md](spec/theme.md).
 
-| Diagram | Content rendered | Status |
-|---|---|---|
-| Relationship | Parties, roles, legal relationships | Graph, focus, guarantee-chain, matrix, equity-tree, authority, related-party, path and camp-summary sub-types available (schema provisional) |
-| Fact | Timeline, participants, sequence of events | Timeline, chronicle and time-scale sub-types available |
-| Procedure | Procedural path and possible branches | Flowchart and route-map sub-types available |
-| Justification | Conclusion derived from norms and facts | Reasoning tree available (schema draft) |
+## Try it
 
-## Why use Antu
+```bash
+npm install
+npm run diagram -- examples/fact/neighbour-corridor-charging.en.json
+# → examples/fact/neighbour-corridor-charging.en.html   (open it in a browser)
+```
 
-**1. The syntax of general-purpose visualization tools does not fit legal work.** That syntax is built on nodes, edges, temporal sequences, and state machines. The structure of legal work is parties, legal relationships, procedural paths, and argumentation. General-purpose tools can produce a diagram, but their syntax reserves no place for legal elements such as procedural standing or the provenance of evidence.
+To let an agent do it, see [Use it with an agent](#use-it-with-an-agent) below.
 
-**2. Diagram quality should not depend on which large language model is used.** The common approach has the model generate the graphic directly, so quality varies with model capability. Antu does not take that path. The model only extracts key information from case materials and outputs a JSON document; rendering is performed by a fixed engine. The result is therefore identical regardless of which model is used.
+Add `?lang=en` or `?lang=zh` to a generated page to pin the interface language. The data itself is never translated: case
+content travels with the JSON.
 
-**3. The same input should produce the same diagram.** A diagram delivered to a judge or to opposing counsel cannot be reproduced if each generation differs. Antu's rendering process does not pass through a model, so the same JSON document renders identically at any time and in any environment.
-
-**4. Provenance is fixed at generation time.** The common approach is to ask, after the diagram exists, what a conclusion rests on, and then to verify through further dialogue. Antu requires, at the moment of extraction, that each fact record which document it comes from, at which page, and under which provision of law. When the diagram is produced, the provenance is already on it.
-
-Legal work requires that delivered materials be reproducible and traceable. The four points above address these two requirements.
-
----
-
-# How Antu works
-
-## Division of labour
+## How it works
 
 ```
 agent ──> extract key information ──> one JSON ──> engine ──> diagram
 ```
 
-| Role | Responsibility | Determinism |
+| Role | Does | Determinism |
 |---|---|---|
-| Model | Reads documents, extracts facts, understands meaning | May be non-deterministic |
-| Engine | Renders the diagram per the specification | Fully deterministic, model-independent |
-| JSON specification | The boundary and only interface between the two | Fixed |
+| Model | reads documents, extracts facts, understands meaning | the result may differ from run to run |
+| Engine | draws the diagram according to the specification | the same JSON gives the same diagram, whichever model wrote it |
+| JSON specification | the only interface between the two | versioned (see [spec/versioning.md](spec/versioning.md)) |
 
-This division converts a task on which model capability varies widely, namely producing a diagram that conforms to legal conventions, into a task every model can perform, namely extracting information into JSON. The engine does not generate JSON; the agent does not render. The boundary between them is the JSON specification.
+The engine does not write JSON, and the agent does not draw. The model is asked only to put information into JSON; drawing
+is left to the engine.
 
-The diagrams meet the needs of legal work because the specification itself is designed for legal work, rather than adapting the syntax of general-purpose charting.
+**Why a specification of its own?**
 
-## Provenance
+1. General-purpose charting syntax is built on nodes, edges and state machines, and has no place for things such as procedural standing or the source of a piece of evidence. Antu's specification is written for these four kinds of content.
+2. The picture does not depend on which model extracted the information, because the engine draws it.
+3. The same JSON gives the same picture at any time and in any environment, so a diagram handed to the court or to the other side can be reproduced.
+4. Provenance is recorded when the facts are extracted: each fact states which document it comes from, which page and under which provision, so the source is already on the diagram once it is drawn.
+
+### Provenance
 
 | Aspect | Approach |
 |---|---|
-| Attachment | Events attach evidence and documents; claims attach statutes and precedents; relationships attach contracts and registration records |
-| Location | Structured location, verifiable and reverse-lookupable: case number, contract page, article number |
-| Reference | The source table is stored once; multiple expressions reference the same id, with no duplication |
-| Boundary | The diagram states only which material and page a point rests on. Source materials are neither bundled nor linked; the user consults them directly |
+| Attachment | events attach evidence and documents; claims attach statutes and precedents; relationships attach contracts and registration records |
+| Location | structured and checkable: case number, contract page, article number |
+| Reference | the source table is stored once; several expressions refer to the same id |
+| Boundary | the diagram says only which material and page a point rests on. The materials are neither bundled nor linked; the user looks them up directly |
 
-## Output
+### The page you get
 
-One JSON document produces one self-contained HTML file of about 2.3 MB (most of it the layout engine, ELK). Engine and data are both inside the file. It issues no network requests, requires no server, and opens offline.
+One self-contained HTML file of about 2.3 MB (most of it the layout engine, ELK). Engine and data are both inside it. It makes
+no network request, needs no server and opens offline. It can be archived, circulated or sent by email.
 
-The same JSON can be drawn in several ways (a picker in the label card) and in three **themes**: `document` (black and white, square, for print and filing; the default), `modern` and `legal` (navy). The reader switches in the page; `--theme` on the command line and `theme` on the MCP tools fix a page to one. Only the diagram is themed. See [spec/theme.md](spec/theme.md). It is suitable for archiving, circulation, and sending as an email attachment.
-
-## Usage
-
-```bash
-npm install
-npm run diagram -- examples/fact/neighbour-corridor-charging.en.json
-# → examples/fact/neighbour-corridor-charging.en.html
-```
-
-## Agent integration
+## Use it with an agent
 
 ```json
 {
@@ -93,7 +93,10 @@ npm run diagram -- examples/fact/neighbour-corridor-charging.en.json
 }
 ```
 
-An agent can read the specification, view examples, validate, compute geometry, produce output, and take a screenshot to check the result. Validation confirms only that the JSON is well formed; it cannot confirm that the diagram is satisfactory, so taking a screenshot is a necessary step. The reference material for an agent is 5.4k tokens (a 3.2k-character field table plus a 5.1k-character mechanism note).
+An agent can read the specification, look at examples, validate, work out the geometry, make the page and take a screenshot
+to check the result. Validation confirms only that the JSON is well formed, not that the diagram is satisfactory, so it is
+worth taking a screenshot and looking at it. The reference material for an agent is 5.4k tokens (a 3.2k-character field table plus a
+5.1k-character mechanism note).
 
 ### The skill (no MCP)
 
@@ -112,11 +115,11 @@ Without MCP and without the skill, read the documents in this order.
 - **Procedure (flowchart)**: [spec/agent/procedure/guide.md](spec/agent/procedure/guide.md) (a one-page note on the mechanism), then [spec/procedure/schema-draft.md](spec/procedure/schema-draft.md) (field definitions and layout rules), and consult [examples/agent/procedure/7-rules.en.json](examples/agent/procedure/7-rules.en.json) or a real contract such as [examples/procedure/05-premises-lease.en.json](examples/procedure/05-premises-lease.en.json).
 - **Relationship (graph)**: [spec/agent/relationship/guide.md](spec/agent/relationship/guide.md) (a one-page note on the mechanism), then [spec/relationship/schema-draft.md](spec/relationship/schema-draft.md) (field definitions and layout rules, provisional), and consult [examples/agent/relationship/3-guarantee.en.json](examples/agent/relationship/3-guarantee.en.json) or a worked case such as [examples/relationship/fang-yuan-parties.en.json](examples/relationship/fang-yuan-parties.en.json).
 
-## Design documents
+## More
 
-Under `spec/`, written for human readers: architecture [v0-architecture.md](spec/v0-architecture.md), the seven source types [source-schema-draft.md](spec/source-schema-draft.md), the fact diagram ([spec/fact/](spec/fact/)), the procedure diagram [spec/procedure/schema-draft.md](spec/procedure/schema-draft.md), MCP server [mcp-server.md](spec/mcp-server.md). The notes written for agents are under [spec/agent/](spec/agent/).
-
-Known problems and requests are tracked as [GitHub issues](https://github.com/zh-xx/Antu/issues). Working rules for contributors are in [CONTRIBUTING.md](CONTRIBUTING.md).
+- Design documents for people, under [`spec/`](spec/): [architecture](spec/v0-architecture.md), [the source types](spec/source-schema-draft.md), [themes](spec/theme.md), [the MCP server](spec/mcp-server.md), and the diagrams ([fact](spec/fact/), [procedure](spec/procedure/schema-draft.md), [relationship](spec/relationship/schema-draft.md), [justification](spec/justification/schema-draft.md)). The notes for agents are under [`spec/agent/`](spec/agent/).
+- [CHANGELOG.md](CHANGELOG.md) and the versioning rules in [spec/versioning.md](spec/versioning.md).
+- Known problems and requests are tracked as [GitHub issues](https://github.com/zh-xx/Antu/issues). Working rules for contributors are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
