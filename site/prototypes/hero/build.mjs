@@ -117,26 +117,39 @@ async function relGraph(spec) {
   }
 }
 
-// the 方远 reasoning file, reduced to what a first screen can show: the holding, the five issues with the
-// point the court ruled on for each (and whether it held), and every other node of the issue as one line
-function reasoning() {
+// The 方远 reasoning tree as Antu lays it out (across, where five issues stack under the holding): first with
+// every issue folded, as it opens, then with issue three open. Each card keeps its kind and holds; lines take the
+// width and dash of their stance from the document theme
+async function reasoning() {
   const j = JSON.parse(read(`${REPO}examples/justification/fang-yuan-defense-excess.zh-CN.json`))
-  const byId = Object.fromEntries(j.nodes.map((n) => [n.id, n]))
-  const root = j.nodes.find((n) => n.kind === 'conclusion' && !n.groupId)
-  const ORDER = ['norm', 'element', 'judgement', 'inference', 'fact', 'conclusion']
-  const issues = j.groups.map((g) => {
-    const link = j.links.find((l) => l.to === root.id && byId[l.from].groupId === g.id)
-    if (!link) throw new Error(`issue ${g.id} has no point linked to the holding`)
-    const head = byId[link.from]
-    const leaves = j.nodes.filter((n) => n.groupId === g.id && n !== head)
-      .sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind))
-      .map((n) => ({ kind: n.kind, label: n.label, holds: n.holds === 'no' ? false : undefined }))
-    return { label: g.label, head: head.label, holds: head.holds !== 'no', against: link.stance === 'against', leaves }
-  })
-  return {
-    root: root.label, issues, nodes: j.nodes.length, links: j.links.length,
-    kinds: { norm: '规范', element: '要件', judgement: '判断', inference: '推论', fact: '事实', conclusion: '结论' },
+  const vite = await viteServer()
+  const { buildJustificationGraph } = await vite.ssrLoadModule('/src/renderers/justification/tree/layout.js')
+  const { THEMES } = await vite.ssrLoadModule('/src/theme/themes.js')
+  const T = THEMES.document.justify
+  const all = j.groups.map((g) => g.id)
+  const OPEN = 'g-3'
+  const take = (collapsed) => {
+    const g = buildJustificationGraph(j, { collapsed }, undefined, 'horizontal')
+    if (g.errors.length) throw new Error(`the reasoning example does not validate: ${g.errors.map((e) => e.message ?? e).join('; ')}`)
+    return {
+      size: g.size,
+      groups: g.groupBoxes.map((x) => ({ id: x.groupId, label: x.label, x: x.x, y: x.y, w: x.w, h: x.h, folded: !!x.collapsed, hidden: x.hidden ?? 0 })),
+      nodes: g.nodes.map((n) => {
+        const d = n.data.node, p = T.node[d.kind] ?? T.node.fact
+        return { id: n.id, kind: d.kind, holds: d.holds ?? '', label: d.label, group: n.data.groupId ?? '', copy: !!n.data.copyOf,
+          x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h, textW: n.data.textW, width: p.width, dash: p.dash ?? '' }
+      }),
+      links: g.connections.map((c) => {
+        const s = T.stance[c.stance] ?? T.stance.for
+        return { from: c.from, to: c.to, stance: c.stance, d: c.dCurve, width: s.width, dash: s.dash ?? '' }
+      }),
+    }
   }
+  const folded = take(all), open = take(all.filter((x) => x !== OPEN))
+  const root = j.nodes.find((n) => n.kind === 'conclusion' && !n.groupId)
+  const heads = j.links.filter((l) => l.to === root.id).map((l) => j.nodes.find((n) => n.id === l.from))
+  return { folded, open, open_group: OPEN, root: root.id, heads: heads.map((n) => ({ id: n.id, label: n.label })), rootLabel: root.label,
+    kinds: { conclusion: '结论', norm: '规范', element: '要件', fact: '事实', inference: '推断', judgement: '评价' }, holds: { yes: '✓ 成立', no: '✗ 否定' } }
 }
 
 // the purchase-contract flow, laid out by Antu's own procedure layout (across), with the outline of each kind and
@@ -243,7 +256,7 @@ async function flowchart() {
     rel: await relGraph(relf),
     totalMentions: entities.reduce((n, e) => n + e.mentions, 0),
     judgmentName: `${lines[0].replace(/^# /, '')} · ${lines[2].replace(/^> /, '').replace('（虚构）', '')}`,
-    reason: reasoning(),
+    reason: await reasoning(),
     flow: await flowchart(),
   }
   // the four kinds on the left, each with Antu's own sketch of it (assets/kinds), drawn in the page's colours
@@ -260,7 +273,10 @@ async function flowchart() {
   const meta = Object.fromEntries(lines.filter((l) => l.startsWith('> ')).map((l) => l.slice(2)).flatMap((l) => l.split(' | ')).map((kv) => kv.split('：')).filter((p) => p.length > 1).map(([k, ...v]) => [k, v.join('：')]))
   const fiction = lines.find((l) => l.includes('本文书是虚构的')).slice(2).replace(/\*\*/g, '')
   const view2 = lines[lines.indexOf('## 本院认为') + 2]
-  const closing = lines.slice(lines.indexOf('## 本院认为') + 3).find((l) => l.trim())
+  const reasonParas = lines.slice(lines.indexOf('## 本院认为') + 3).filter((l) => l.trim())
+  for (const h of [...L.reason.heads, { id: L.reason.root, label: L.reason.rootLabel }]) {
+    if (!reasonParas.some((p) => p.includes(h.label))) throw new Error(`the judgment's reasoning does not state "${h.label}" (${h.id})`)
+  }
   if (!view2) throw new Error('the judgment has no 本院认为 paragraph')
   const html = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -298,7 +314,12 @@ ${read(`${HERE}lenses.css`)}</style>
     return `<li><span class="dt">${dt.slice(0, -1)}</span>，<span class="lb">${mark(e.label)}</span>${mark(rest.slice(e.label.length))}</li>`
   }).join('')}</ul>
   <h3>本院认为</h3><p id="yrw">${mark(view2)}</p>
-  <p>${closing}</p>
+  ${reasonParas.map((para) => {
+    const hit = [...L.reason.heads, { id: L.reason.root, label: L.reason.rootLabel }].filter((h) => para.includes(h.label))
+    let html = mark(para)
+    for (const h of hit) html = html.replace(mark(h.label), `<span class="jh" data-n="${h.id}">${mark(h.label)}</span>`)
+    return `<p class="rp${hit.length ? ' has' : ''}">${html}</p>`
+  }).join('')}
   <p class="fiction">${fiction}</p></div>
  <div class="paper paper2" id="paper2"><span class="lbl">合同 · 虚构</span><div class="beam" id="beam2"></div><i class="sheet sc"></i>
   <div class="ctitle">${L.flow.contract.title}</div><div class="no">${L.flow.contract.no}</div>

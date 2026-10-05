@@ -60,3 +60,29 @@ test('every text in examples/raw/ is used by an example (none is left over)', ()
   }
   for (const r of rawFiles) assert.ok(used.has(r), `${r} belongs to no fact example`)
 })
+
+// A reasoning example whose judgment has its 本院认为 written out is the court's reasoning drawn out: the
+// holding, and the point the court ruled on for each issue, are in that 本院认为 word for word. So far only
+// the 方远 judgment has it written out (the corridor case's 本院认为 is still one line).
+const REASONING_WRITTEN_OUT = ['fang-yuan-defense-excess.zh-CN.json']
+test('the holding and each issue of a reasoning example are in its judgment\'s reasoning', () => {
+  let checked = 0
+  for (const f of REASONING_WRITTEN_OUT) {
+    const spec = JSON.parse(readFileSync(`examples/justification/${f}`, 'utf8'))
+    const caseNo = (spec.sources ?? []).find((s) => s.type === 'case' && s.loc?.caseNo)?.loc.caseNo
+    const raw = caseNo && rawOf(caseNo)
+    assert.ok(raw, `${f}: no text in examples/raw/ for its case number (${caseNo})`)
+    const text = readFileSync(`examples/raw/${raw}`, 'utf8')
+    const at = text.indexOf('## 本院认为')
+    assert.ok(at >= 0, `${raw} has no 本院认为`)
+    const reasoning = plain(text.slice(at))
+    const byId = Object.fromEntries(spec.nodes.map((n) => [n.id, n]))
+    const root = spec.nodes.find((n) => n.kind === 'conclusion' && !n.groupId)
+    const heads = spec.links.filter((l) => l.to === root.id).map((l) => byId[l.from])
+    for (const n of [root, ...heads]) {
+      assert.ok(reasoning.includes(plain(n.label)), `${f}: "${n.label}" (${n.id}) is not in the 本院认为 of ${raw}`)
+      checked += 1
+    }
+  }
+  assert.ok(checked >= 6, `only ${checked} points checked`)
+})

@@ -265,9 +265,10 @@ async function toGraph(alive) {
 }
 
 function reset() {
-  $$('.flowcam,.flowcv,.relcv,.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
+  $$('.jcv,.jcard.ghost,.flowcam,.flowcv,.relcv,.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
   paper.classList.remove('melt')
   $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit', 'hl', 'pick') })
+  $$('#paper .rp').forEach((p) => p.classList.remove('hl', 'pick'))
   cam = { z: 1, tx: 0, ty: 0 }
   paper.getAnimations().forEach((a) => a.cancel())
   const pg = $('#paper2')
@@ -276,64 +277,137 @@ function reset() {
   pg.querySelectorAll('.sn').forEach((x) => x.classList.remove('lit', 'hl', 'pick'))
 }
 
-// ---------- ③ reasoning: the court's view becomes the root, the issues branch from it, their reasons hang below
-function reasoningLayout() {
-  const W = stage.clientWidth, H = stage.clientHeight, n = D.reason.issues.length
-  const colW = W / n
-  return {
-    root: { x: W / 2 - 200, y: 4, w: 400 },
-    heads: D.reason.issues.map((_, i) => ({ x: i * colW + 8, y: 0.2 * H, w: colW - 16 })),
-    chipY: 0.2 * H + 82, chipStep: Math.min(19, (H - 0.2 * H - 90) / Math.max(...D.reason.issues.map((g) => g.leaves.length))),
-  }
+// ---------- ③ reasoning: the court's view, issue by issue, becomes Antu's reasoning tree
+const JR = { conclusion: 9, norm: 3, element: 16, inference: 8, judgement: 8, fact: 3 }
+// one card as Antu draws it: an outline by kind (dashed when the court held against it), the kind and holds on top
+function jCard(n) {
+  const R = D.reason, b = document.createElement('div')
+  const rej = n.holds === 'no'
+  b.className = `jcard k-${n.kind}${rej ? ' rej' : ''}`
+  Object.assign(b.style, { left: n.x + 'px', top: n.y + 'px', width: n.w + 'px', height: n.h + 'px' })
+  const dash = rej ? ' stroke-dasharray="5 3"' : n.dash ? ` stroke-dasharray="${n.dash}"` : ''
+  const rx = Math.min(JR[n.kind] ?? 3, (n.h - 2) / 2)
+  b.innerHTML = `<svg width="${n.w}" height="${n.h}"><rect class="sh" x="1" y="1" width="${n.w - 2}" height="${n.h - 2}" rx="${rx}" stroke-width="${n.width}"${dash}/></svg>` +
+    `<div class="jb" style="width:${n.textW}px"><div class="jt"><span>${R.kinds[n.kind] ?? ''}</span>${n.holds ? `<em class="h-${n.holds}">${R.holds[n.holds]}</em>` : ''}</div><div class="jl">${n.label}</div></div>`
+  return b
 }
-async function toReasoning(alive) {
-  const R = reasoningLayout(), src = $('#yrw')
-  // the court's view lights up, and becomes the root of the tree
-  const A = rel(src)
-  const root = el('div', 'rn root actor', `<small>判决结论</small><b>${D.reason.root}</b>`, { left: A.x + 'px', top: A.y + 'px', width: A.w + 'px', opacity: 1, background: '#f0d9cf' })
-  root.querySelector('b').style.opacity = 0
-  root.querySelector('small').style.opacity = 0
-  root.animate([{ boxShadow: '0 0 0 0 rgba(232,69,44,0)' }, { boxShadow: '0 0 0 3px #e8452c, 0 0 40px rgba(232,69,44,.7)' }], { duration: 500, fill: 'both' })
-  await wait(700)
-  if (!alive()) return
-  paperAway()
-  root.animate([
-    { left: A.x + 'px', top: A.y + 'px', width: A.w + 'px', backgroundColor: '#f0d9cf' },
-    { left: R.root.x + 'px', top: R.root.y + 'px', width: R.root.w + 'px', backgroundColor: tok('panel') },
-  ], { duration: 1000, easing: ease, fill: 'both' })
-  for (const e of root.querySelectorAll('b,small')) e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 600, fill: 'both' })
-  await wait(1100)
-  if (!alive()) return
-  // the issues branch from the root, each with what the court held on it
+function jLayer(L, fit) {
+  const layer = el('div', 'jcv', null, { left: fit.ox + 'px', top: fit.oy + 'px', width: L.size.width + 'px', height: L.size.height + 'px', transform: `scale(${fit.k})` })
   const svg = document.createElementNS(SVGNS, 'svg')
-  svg.setAttribute('class', 'edges')
-  svg.setAttribute('width', stage.clientWidth)
-  svg.setAttribute('height', stage.clientHeight)
-  stage.appendChild(svg)
-  const rootR = rel(root), rx = rootR.x + rootR.w / 2, ry = rootR.y + rootR.h
-  D.reason.issues.forEach((g, i) => {
-    const h = R.heads[i], cx = h.x + h.w / 2, d = i * 140
+  svg.setAttribute('width', L.size.width)
+  svg.setAttribute('height', L.size.height)
+  svg.innerHTML = '<defs><marker id="jarr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 1 L9 5 L0 9 Z" fill="#e8452c"/></marker></defs>'
+  layer.appendChild(svg)
+  const groups = L.groups.map((g) => {
+    const b = document.createElement('div')
+    b.className = `jgroup${g.folded ? ' folded' : ''}`
+    Object.assign(b.style, { left: g.x + 'px', top: g.y + 'px', width: g.w + 'px', height: g.h + 'px' })
+    b.innerHTML = `<span>${g.folded ? '▸' : '▾'} ${g.label}${g.folded ? ` · 已收起 ${g.hidden} 个` : ''}</span>`
+    layer.appendChild(b)
+    return b
+  })
+  const cards = {}
+  for (const n of L.nodes) { cards[n.id] = jCard(n); layer.appendChild(cards[n.id]) }
+  return { layer, svg, groups, cards }
+}
+function jLinks(L, svg, delay0 = 0, step = 90) {
+  L.links.forEach((l, i) => {
     const p = document.createElementNS(SVGNS, 'path')
-    p.setAttribute('d', `M ${rx} ${ry} C ${rx} ${ry + 30}, ${cx} ${h.y - 34}, ${cx} ${h.y}`)
+    p.setAttribute('d', l.d)
     p.setAttribute('fill', 'none')
+    p.setAttribute('class', 'ln')
+    p.setAttribute('stroke-width', l.width)
     p.style.stroke = '#e8452c'
-    p.setAttribute('stroke-width', 1.5)
     svg.appendChild(p)
     const len = p.getTotalLength()
     p.style.strokeDasharray = `${len} ${len}`
-    p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 600, delay: d, easing: ease, fill: 'both' }).onfinish = () => { if (g.against) p.style.strokeDasharray = '6 5' }
-    const head = el('div', `rn${g.holds ? '' : ' no'}`, `<small>${g.label}</small><b>${g.head}</b><span class="mk">${g.holds ? '成立' : '不成立'}</span>`, { left: h.x + 'px', top: h.y + 'px', width: h.w + 'px' })
-    head.animate([{ opacity: 0, transform: 'translateY(-14px) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 500, delay: d + 450, easing: 'ease-out', fill: 'both' })
-    // the reasons rain down under it
-    const trunk = el('div', 'trunk', null, { left: h.x + 10 + 'px', top: R.chipY - 6 + 'px', height: g.leaves.length * R.chipStep + 'px' })
-    trunk.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 700, delay: d + 900, easing: ease, fill: 'both' })
-    g.leaves.forEach((l, k) => {
-      const c = el('div', `chip k-${l.kind}${l.holds === false ? ' no' : ''}`, `<u>${D.reason.kinds[l.kind]}</u><span>${l.label}</span>`, { left: h.x + 18 + 'px', top: R.chipY + k * R.chipStep + 'px', width: h.w - 22 + 'px' })
-      c.animate([{ opacity: 0, transform: 'translateY(-26px)', filter: 'blur(3px)' }, { opacity: l.holds === false ? 0.5 : 1, transform: 'none', filter: 'blur(0)' }], { duration: 420, delay: d + 1000 + k * 55, easing: 'ease-out', fill: 'both' })
-    })
+    p.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 600, delay: delay0 + i * step, easing: ease, fill: 'both' }).onfinish = () => {
+      p.style.strokeDasharray = l.dash || 'none'
+      p.setAttribute('marker-end', 'url(#jarr)')
+    }
   })
-  await wait(D.reason.issues.length * 140 + 1000 + 15 * 55 + 500)
+  return delay0 + L.links.length * step + 600
+}
+// fit a box of a layout (or all of it) to the stage
+function jFit(L, box) {
+  const W = stage.clientWidth, H = stage.clientHeight
+  const b = box ?? { x: 0, y: 0, w: L.size.width, h: L.size.height }
+  const k = Math.min((W - 32) / b.w, (H - 24) / b.h, 1.3)
+  return { k, ox: (W - b.w * k) / 2 - b.x * k, oy: (H - b.h * k) / 2 - b.y * k }
+}
+
+async function toReasoning(alive) {
+  const R = D.reason, F1 = R.folded, F2 = R.open
+  const paras = $$('#paper .rp'), all = [$('#yrw'), ...paras]
+  cam = { z: 1, tx: 0, ty: 0 }
+  // move in on the court's view; the highlighter goes over each paragraph, then marks what the court holds in it
+  await zoomTo(all, 1100)
   if (!alive()) return
+  for (const p of paras) {
+    if (!alive()) return
+    p.classList.add('hl')
+    if (p.classList.contains('has')) setTimeout(() => alive() && p.classList.add('pick'), 380)
+    await wait(330)
+  }
+  await wait(700)
+  if (!alive()) return
+  paper.animate([{ transform: `translate(${cam.tx}px,${cam.ty}px) scale(${cam.z})` }, { transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.6,0,.25,1)', fill: 'forwards' })
+  cam = { z: 1, tx: 0, ty: 0 }
+  await wait(950)
+  if (!alive()) return
+  // Antu's tree, every issue folded: the marked words fly to their cards
+  const f1 = jFit(F1), A = jLayer(F1, f1)
+  Object.values(A.cards).forEach((c) => (c.style.opacity = 0))
+  A.groups.forEach((g, i) => g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 400 + i * 120, fill: 'both' }))
+  paperAway()
+  const marked = $$('#paper .jh')
+  marked.forEach((src, i) => {
+    const id = src.dataset.n, n = F1.nodes.find((x) => x.id === id), r = rel(src.getClientRects()[0] ? { getBoundingClientRect: () => src.getClientRects()[0] } : src)
+    const fs = parseFloat(getComputedStyle(src).fontSize)
+    const w = el('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
+    const cx = f1.ox + (n.x + n.w / 2) * f1.k, cy = f1.oy + (n.y + n.h / 2) * f1.k
+    const k = Math.min((n.w - 24) * f1.k / w.offsetWidth, 13 * f1.k / fs, 1.4)
+    const tx = cx - r.x - (w.offsetWidth * k) / 2, ty = cy - r.y - (r.h * k) / 2, d = 200 + i * 110
+    w.animate([
+      { transform: 'translate(0,0) scale(1)', opacity: 1 },
+      { transform: `translate(${tx * 0.5}px,${ty * 0.5 - 40}px) scale(${(1 + k) / 2})`, opacity: 1, offset: 0.5 },
+      { transform: `translate(${tx}px,${ty}px) scale(${k})`, opacity: 1, offset: 0.9 },
+      { transform: `translate(${tx}px,${ty}px) scale(${k})`, opacity: 0 },
+    ], { duration: 1150, delay: d, easing: ease, fill: 'both' })
+    A.cards[id].animate([{ opacity: 0, transform: 'scale(.7)' }, { opacity: 1, transform: 'scale(1.04)', offset: 0.7 }, { opacity: 1, transform: 'none' }], { duration: 420, delay: d + 980, easing: 'ease-out', fill: 'both' })
+  })
+  await wait(200 + marked.length * 110 + 1300)
+  if (!alive()) return
+  $$('.wordfly').forEach((w) => w.remove())
+  await wait(jLinks(F1, A.svg) + 1400)
+  if (!alive()) return
+  // issue three opens, where it is argued: the cards both trees share move to their new places, the rest of
+  // the issue unfolds around them, and the camera comes round to the open issue
+  const box = F2.groups.find((g) => g.id === R.open_group)
+  const f2 = jFit(F2, { x: box.x - 8, y: box.y - 8, w: box.w + 16, h: box.h + 16 })
+  const B = jLayer(F2, f2)
+  B.layer.style.opacity = 0
+  const scr = (f, n) => ({ x: f.ox + n.x * f.k, y: f.oy + n.y * f.k, w: n.w * f.k, h: n.h * f.k })
+  const shared = F1.nodes.filter((n) => F2.nodes.some((m) => m.id === n.id))
+  const ghosts = shared.map((n) => {
+    const m = F2.nodes.find((x) => x.id === n.id), a = scr(f1, n), b = scr(f2, m)
+    const g = jCard(n)
+    Object.assign(g.style, { left: '0px', top: '0px', transformOrigin: '0 0', zIndex: 6 })
+    stage.appendChild(g)
+    g.classList.add('ghost')
+    g.animate([{ transform: `translate(${a.x}px,${a.y}px) scale(${f1.k})` }, { transform: `translate(${b.x}px,${b.y}px) scale(${f2.k * (m.w / n.w)})` }], { duration: 1300, easing: ease, fill: 'both' })
+    return g
+  })
+  A.layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
+  await wait(1300)
+  if (!alive()) return
+  B.layer.style.opacity = 1
+  ghosts.forEach((g) => g.remove())
+  const fresh = F2.nodes.filter((n) => !shared.some((s) => s.id === n.id)).sort((a, b) => a.x - b.x || a.y - b.y)
+  B.groups.forEach((g) => g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, fill: 'both' }))
+  Object.values(B.cards).forEach((c) => (c.style.opacity = 1))
+  fresh.forEach((n, i) => B.cards[n.id].animate([{ opacity: 0, transform: 'translateX(-14px) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 450, delay: 150 + i * 80, easing: 'ease-out', fill: 'both' }))
+  await wait(jLinks(F2, B.svg, 300, 60) + 300)
 }
 
 // ---------- ④ flowchart: a contract; the step named in each clause flies to Antu's own flowchart
@@ -502,7 +576,7 @@ const SCENES = {
   justification: async (alive) => { await reading(); if (alive()) await toReasoning(alive) },
 }
 // the thin line under the chosen kind fills while its scene plays
-const SCENE_MS = { fact: 15000, relationship: 7200, procedure: 16000, justification: 6800 }
+const SCENE_MS = { fact: 15000, relationship: 7200, procedure: 16000, justification: 17000 }
 async function play(kind) {
   const me = ++run, alive = () => me === run
   $$('.kind').forEach((k) => {
