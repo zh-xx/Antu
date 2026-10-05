@@ -30,7 +30,7 @@ import { useLang } from './shell/LangContext.jsx'
 import DiagramHeader from './shell/DiagramHeader.jsx'
 import { readPrefs, writePrefs } from './shell/prefs.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
-import { useTheme, themeVars } from './theme/ThemeContext.jsx'
+import { useTheme } from './theme/ThemeContext.jsx'
 
 /**
  * Kinds from the page's preset (window.__ANTU_PRESET__, written by tools/lib/fill.mjs):
@@ -84,7 +84,7 @@ function diagramInfo(spec, t, formatNumber) {
 
 export default function App() {
   const { t, lang, labelOf, formatNumber } = useLang()
-  const { id: themeId, theme } = useTheme()
+  const { id: themeId } = useTheme()
   const [spec, setSpec] = useState(null)
   const [errors, setErrors] = useState([])
 
@@ -136,7 +136,7 @@ export default function App() {
   const ready = errors.length === 0 && Renderer
 
   return (
-    <div className="antu-app" data-theme={themeId} style={themeVars(theme)}>
+    <div className="antu-app" data-theme={themeId}>
       {/* The label card is always shown, with no switch. It used to control both
           "whether it shows on screen" and "whether the export carries it"; now the
           export never carries the heading (spec/fact/rendering.md §10.2 changed),
