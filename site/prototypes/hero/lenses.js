@@ -27,21 +27,19 @@ const show = (e, ms = 400, delay = 0) => e.animate([{ opacity: 0 }, { opacity: 1
 
 
 // ---------- layouts (from the stage's size, so they fit any screen)
-const CH = 56
+// Antu's vertical timeline, fitted to the stage: a row per event, a column per party, the axis in between
 function timeline() {
-  const W = stage.clientWidth, H = stage.clientHeight, n = D.events.length
-  const left = 136, mid = Math.round(H * 0.5)
-  // cards of one row alternate between two tiers, so two cards in a row and tier are at least two steps apart
-  const CW = Math.min(144, Math.floor((W - left - 4) / (n + 1) * 2 - 6))
-  const step = (W - left - CW - 4) / (n - 1)
-  const yOf = (row, tier) => row === 'mid' ? mid - CH / 2
-    : row === 'above' ? mid - CH / 2 - 26 - CH - tier * (CH + 10)
-      : mid + CH / 2 + 26 + tier * (CH + 10)
-  const seen = { above: 0, below: 0, mid: 0 }
+  const W = stage.clientWidth, H = stage.clientHeight, n = D.events.length, m = D.cols.length
+  const headH = 40, top = headH + 14, rowH = (H - top - 16) / n
+  const colW = Math.min(270, (W - 20) / m), x0 = (W - colW * m) / 2
+  const CH = Math.min(54, rowH - 6), CW = colW - 12
+  const axisCol = D.cols.findIndex((c) => c.key === 'axis'), axisX = x0 + axisCol * colW + colW / 2
   return {
-    mid, left, W,
-    cards: D.events.map((e, i) => ({ x: left + i * step, y: yOf(e.row, e.row === 'mid' ? 0 : seen[e.row]++ % 2), w: CW, h: CH, cx: left + i * step + CW / 2, row: e.row })),
-    rows: [['above', yOf('above', 0) - 20], ['mid', mid - 18], ['below', yOf('below', 0) + 18]],
+    axisX, top, bottom: top + rowH * n, headH, x0, colW,
+    cards: D.events.map((e, i) => {
+      const cy = top + rowH * i + rowH / 2, x = x0 + e.col * colW + 9
+      return { x, y: cy - CH / 2, w: CW, h: CH, cy, col: e.col, side: e.col < axisCol ? -1 : e.col > axisCol ? 1 : 0 }
+    }),
   }
 }
 function graph() {
@@ -56,7 +54,7 @@ function graph() {
 // ---------- the scenes
 function reading(pg = paper, beam = '#beam') {
   const pr = pg.getBoundingClientRect()
-  pg.querySelectorAll('h2,.meta,h3,p,li').forEach((e) => {
+  pg.querySelectorAll('h2,.meta,h3,p,li,.court,.ttl,.no').forEach((e) => {
     const y = e.getBoundingClientRect().top - pr.top
     e.animate([{ opacity: 0.12 }, { opacity: 1 }], { duration: 350, delay: 200 + (y / pr.height) * 1300, fill: 'both' })
   })
@@ -79,43 +77,42 @@ async function toTimeline(alive) {
   // each sentence of the account becomes its own object, lit
   const acts = D.events.map((e, i) => {
     const li = lis[i], A = rel(li), B = L.cards[i]
-    const a = el('div', 'actor', `<div class="txt" style="width:${A.w}px;height:${A.h}px">${li.innerHTML}</div><div class="face tl" style="width:${B.w}px;height:${B.h}px"><div class="t">${e.when}</div><div class="l">${e.label}</div></div>`,
+    const a = el('div', 'actor', `<div class="txt" style="width:${A.w}px;height:${A.h}px">${li.innerHTML}</div><div class="face tv" style="width:${B.w}px;height:${B.h}px"><div class="l">${e.label}</div>${e.summary && B.h >= 50 ? `<div class="s">${e.summary}</div>` : ''}<div class="t">${e.when}</div></div>`,
       { left: A.x + 'px', top: A.y + 'px', width: A.w + 'px', height: A.h + 'px', backgroundColor: 'transparent' })
+    const fs = getComputedStyle(li).fontSize
+    Object.assign(a.querySelector('.txt').style, { fontSize: fs, lineHeight: getComputedStyle(li).lineHeight, textIndent: '2em', fontFamily: 'var(--fang)', padding: '0 6px', textAlign: 'justify', whiteSpace: 'normal', display: 'block', webkitLineClamp: 'none', color: '#1f1d19' })
     li.style.visibility = 'hidden'
     return { a, A, B, li }
   })
-  for (const [i, o] of acts.entries()) {
-    o.a.animate([{ backgroundColor: 'rgba(240,217,207,0)', boxShadow: SH_A }, { backgroundColor: HOT, boxShadow: SH_A }], { duration: 200, delay: i * 60, fill: 'both' })
-  }
+  acts.forEach((o, i) => o.a.animate([{ backgroundColor: 'rgba(240,217,207,0)', boxShadow: SH_A }, { backgroundColor: HOT, boxShadow: SH_A }], { duration: 200, delay: i * 60, fill: 'both' }))
   await wait(12 * 60 + 400)
   if (!alive()) return
-  const anims = paperAway()
-  // the spine, the side labels
-  const spine = el('div', 'spine', null, { left: L.left - 10 + 'px', width: L.W - L.left + 10 + 'px', top: L.mid - 1 + 'px' })
-  anims.push(spine.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 1300, delay: 300, easing: ease, fill: 'both' }))
-  for (const [row, y] of L.rows) {
-    const r = el('div', 'rowlbl', `${D.sides[row]}<small>${D.sideNote[row]}</small>`, { top: y - 10 + 'px' })
-    anims.push(show(r, 500, 700))
-  }
+  paperAway()
+  // the column heads and the axis
+  D.cols.forEach((c, k) => {
+    const h = el('div', 'tl-head', `${c.head}${c.sub ? `<small>${c.sub}</small>` : ''}`, { left: L.x0 + k * L.colW + 'px', width: L.colW + 'px', top: '4px' })
+    show(h, 500, 600 + k * 80)
+  })
+  const ax = el('div', 'vaxis', null, { left: L.axisX + 'px', top: L.top - 8 + 'px', height: L.bottom - L.top + 12 + 'px' })
+  ax.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 1500, delay: 350, easing: ease, fill: 'both' })
   acts.forEach((o, i) => {
     const d = i * 70, B = o.B
-    anims.push(o.a.animate([
+    o.a.animate([
       { left: o.A.x + 'px', top: o.A.y + 'px', width: o.A.w + 'px', height: o.A.h + 'px', backgroundColor: HOT, borderRadius: '2px', boxShadow: SH_A },
       { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px', height: B.h + 'px', backgroundColor: tok('panel'), borderRadius: '8px', boxShadow: SH_B() },
-    ], { duration: 1100, delay: d, easing: ease, fill: 'both' }))
-    anims.push(o.a.querySelector('.txt').animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(4px)' }], { duration: 420, delay: d + 60, fill: 'both' }))
-    anims.push(o.a.querySelector('.face').animate([{ opacity: 0, filter: 'blur(4px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 500, delay: d + 600, fill: 'both' }))
-    // the branch from the card to the spine, and the dot on it
-    if (B.row !== 'mid') {
-      const top = B.row === 'above' ? B.y + B.h : L.mid, h = B.row === 'above' ? L.mid - (B.y + B.h) : B.y - L.mid
-      const s = el('div', 'stub', null, { left: B.cx + 'px', top: top + 'px', height: h + 'px' })
-      anims.push(s.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 400, delay: d + 1000, fill: 'both' }))
-      const dot = el('div', 'tdot', null, { left: B.cx + 'px', top: L.mid + 'px' })
-      anims.push(show(dot, 200, d + 1200))
+    ], { duration: 1100, delay: d, easing: ease, fill: 'both' })
+    o.a.querySelector('.txt').animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(4px)' }], { duration: 420, delay: d + 60, fill: 'both' })
+    o.a.querySelector('.face').animate([{ opacity: 0, filter: 'blur(4px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 500, delay: d + 600, fill: 'both' })
+    // a card of one party is joined to the axis by a short line, with a dot where it meets the axis
+    if (B.side) {
+      const x1 = B.side < 0 ? B.x + B.w : L.axisX, x2 = B.side < 0 ? L.axisX : B.x
+      const st = el('div', 'hstub', null, { left: x1 + 'px', top: B.cy + 'px', width: x2 - x1 + 'px', transformOrigin: B.side < 0 ? 'right' : 'left' })
+      st.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 400, delay: d + 1000, fill: 'both' })
+      const dot = el('div', 'tdot', null, { left: L.axisX + 'px', top: B.cy + 'px' })
+      show(dot, 200, d + 1200)
     }
   })
   await wait(12 * 70 + 1400)
-  if (!alive()) return
 }
 
 function edgePath(r, G) {
@@ -236,7 +233,7 @@ async function toGraph(alive) {
 }
 
 function reset() {
-  $$('.actor,.mv,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
+  $$('.actor,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
   paper.classList.remove('melt')
   $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit') })
   paper.getAnimations().forEach((a) => a.cancel())
@@ -408,6 +405,15 @@ async function toFlow(alive) {
   }
   token.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'both' })
 }
+
+// the judgment's type is as large as fits on its spread
+function fitPaper() {
+  let fs = 13
+  paper.style.setProperty('--fs', fs + 'px')
+  while (fs > 8 && paper.scrollWidth > paper.clientWidth + 1) { fs -= 0.25; paper.style.setProperty('--fs', fs + 'px') }
+}
+fitPaper()
+addEventListener('resize', fitPaper)
 
 // the four kinds: each plays on its own, from its document
 const SCENES = {

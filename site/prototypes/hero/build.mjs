@@ -160,15 +160,27 @@ function flowchart() {
   const text = read(`${REPO}examples/raw/（2032）示刑终1号-方远案-二审.md`)
   const lines = text.split('\n')
   const view = fact.views[0]
-  const side = (ids) => {
-    const one = ids.length > 0 && ids.every((a) => view.side1.actors.includes(a))
-    const two = ids.length > 0 && ids.every((a) => view.side2.actors.includes(a))
-    return one ? 'above' : two ? 'below' : 'mid'
+  // Antu's vertical timeline for this view: one column per party (side one mirrored, so its first party is next
+  // to the axis), the axis between the sides; an event of one party sits in that party's column, an event of
+  // both sides (or of nobody) on the axis
+  const actorName = Object.fromEntries(fact.actors.map((a) => [a.id, a.name]))
+  const cols = [
+    ...[...view.side1.actors].reverse().map((a) => ({ key: a, head: view.side1.label, sub: actorName[a] })),
+    { key: 'axis', head: view.axis.label, sub: '' },
+    ...view.side2.actors.map((a) => ({ key: a, head: view.side2.label, sub: actorName[a] === view.side2.label ? '' : actorName[a] })),
+  ]
+  const colOf = (ids) => {
+    const s1 = ids.filter((a) => view.side1.actors.includes(a)), s2 = ids.filter((a) => view.side2.actors.includes(a))
+    if (!ids.length || (s1.length && s2.length)) return cols.findIndex((c) => c.key === 'axis')
+    if (ids.length > 1) throw new Error(`event with several parties of one side: ${ids}`)
+    return cols.findIndex((c) => c.key === ids[0])
   }
+  const cnDate = (s) => s.replace(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?：/, (_, y, m, d, hh, mm) =>
+    `${y}年${+m}月${+d}日${hh ? `${+hh}时${mm === '00' ? '' : `${+mm}分`}` : ''}，`)
   const sents = lines.filter((l) => l.startsWith('- 20')).map((l) => l.slice(2))
   const events = fact.slots.flatMap((s) => s.events).sort((a, b) => a.date.localeCompare(b.date)).map((e, i) => {
     if (!sents[i] || !sents[i].startsWith(`${e.date}：${e.label}`)) throw new Error(`sentence ${i + 1} of the judgment does not match event ${e.id}`)
-    return { id: e.id, label: e.label, when: e.date.replace('T', ' '), row: side(e.actorIds) }
+    return { id: e.id, label: e.label, summary: e.summary ?? '', when: e.date.replace('T', ' '), col: colOf(e.actorIds) }
   })
   // the names to light up: each party's label, or its parts when it names several people
   const terms = { 'e-5': ['钟某', '郑某'], 'e-7': ['孟某', '严某', '程某'] }
@@ -183,8 +195,7 @@ function flowchart() {
   const mark = (s) => s.replace(re, (w) => `<span class="nm" data-e="${byTerm[w]}">${w}</span>`)
   const L = {
     events,
-    sides: { above: view.side1.label, mid: view.axis.label, below: view.side2.label },
-    sideNote: { above: '方远、梁某', mid: '双方都在场，或无人', below: '钟某、郑某等' },
+    cols,
     entities,
     groups: Object.fromEntries(relf.groups.map((g) => [g.id, g.label])),
     relations: relf.relations.map((r) => ({ id: r.id, from: r.from, to: r.to, kind: r.kind, label: r.label, amount: r.amount })),
@@ -204,7 +215,10 @@ function flowchart() {
     .replace(/ width="\d+" height="\d+"/, '')
     .replace(/stroke="#64748b"/g, 'stroke="currentColor"').replace(/fill="#64748b"/g, 'fill="currentColor"').replace(/fill="#e2e8f0"/g, 'class="skf"')
   const facts = lines.filter((l) => /^[一二三四]、/.test(l))
+  const meta = Object.fromEntries(lines.filter((l) => l.startsWith('> ')).map((l) => l.slice(2)).flatMap((l) => l.split(' | ')).map((kv) => kv.split('：')).filter((p) => p.length > 1).map(([k, ...v]) => [k, v.join('：')]))
+  const fiction = lines.find((l) => l.includes('本文书是虚构的')).slice(2).replace(/\*\*/g, '')
   const view2 = lines[lines.indexOf('## 本院认为') + 2]
+  const closing = lines.slice(lines.indexOf('## 本院认为') + 3).find((l) => l.trim())
   if (!view2) throw new Error('the judgment has no 本院认为 paragraph')
   const html = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -232,10 +246,13 @@ ${read(`${HERE}lenses.css`)}</style>
  </nav>
  <div class="stage" id="stage">
  <div class="paper" id="paper"><span class="lbl">判决书 · 虚构</span><div class="beam" id="beam"></div>
-  <h2>${lines[0].replace(/^# /, '')}</h2><p class="meta">${mark(lines[2].replace(/^> /, ''))}</p>
+  <div class="court">${meta['法院']}</div><div class="ttl">刑事判决书</div><div class="no">${lines[0].replace(/^# /, '')}</div>
+  <p class="party">${mark(meta['当事人'])}。</p>
   <h3>本院查明</h3>${facts.map((f) => `<p>${mark(f)}</p>`).join('')}
-  <h3>上述事实，另有如下经过：</h3><ul id="bul">${sents.map((b) => `<li>${mark(b)}</li>`).join('')}</ul>
-  <h3>本院认为</h3><p id="yrw">${mark(view2)}</p></div>
+  <p>上述事实，另有如下经过：</p><ul id="bul">${sents.map((b) => `<li>${mark(cnDate(b))}</li>`).join('')}</ul>
+  <h3>本院认为</h3><p id="yrw">${mark(view2)}</p>
+  <p>${closing}</p>
+  <p class="fiction">${fiction}</p></div>
  <div class="paper paper2" id="paper2"><span class="lbl">合同 · 虚构</span><div class="beam" id="beam2"></div>
   <h2>${L.flow.contract.title}</h2>${L.flow.contract.meta.map((m) => `<p class="meta">${m}</p>`).join('')}
   ${L.flow.contract.clauses.map((ss) => `<p class="cl">${ss.map((x) => (x.n ? `<span class="sn" data-n="${x.n}">${x.s}</span>` : x.s)).join('')}</p>`).join('')}</div>
