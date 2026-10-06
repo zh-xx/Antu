@@ -82,31 +82,41 @@ no network request, needs no server and opens offline. It can be archived, circu
 
 ## Use it with an agent
 
+There are two ways, for two kinds of user.
+
+### The skill (most people)
+
+The easiest way: tell your agent (Claude Code, Codex and others that read skills) one sentence, and it installs the latest skill itself:
+
+> Please install the Antu skill for yourself: run `npx skills add zh-xx/Antu -g -y`.
+
+Or run the command yourself in a terminal: `npx skills add zh-xx/Antu -g`. It needs [Node.js](https://nodejs.org) 18 or newer. Later, `npx skills update -g` is meant to bring the skill to the newest release (we have seen it report "up to date"; we have not yet seen it pick up a new release). The agent may ask you to confirm the command, and a skill runs with the agent's permissions, so read what you install; the installer also sends anonymous usage data unless `DISABLE_TELEMETRY=1` is set. If the installer finds no agent it knows, or you want it for one agent only, add `-a <the agent's name>` (for example `-a claude-code`). **We have tried the command itself in a sandbox (it finds the skill, installs it and reports it up to date); we have not tried the one sentence in a real client yet** (#53).
+
+The skill is [`skills/antu/`](skills/antu/): a `SKILL.md` (how to choose a diagram, how to write the JSON honestly, how to make the page), the guide and field table of each kind, examples, and a viewer page with a Python script that puts the data in. It needs no network; with Node 18 or newer there is also a one-file command line, `scripts/antu.mjs` (`validate`, `layout`, `render`, `preview`), so the agent can check its diagram before it draws it and, with Chrome, Edge or Chromium on the machine, look at a screenshot of the result; without Node the Python script does the page. It is the state of the **last release** (rules in [spec/versioning.md](spec/versioning.md)), so a new version appears after a release; the pages it makes carry the version: `<meta name="generator" content="antu X.Y.Z">`.
+
+Other ways to put the skill in place: copy the folder `skills/antu/` to `~/.claude/skills/antu/` (Claude Code) or `~/.codex/skills/antu/` (Codex, then restart it); or, for a client that "imports a local skill package" (such as WorkBuddy), download `antu-skill-<version>.zip` from [Releases](https://github.com/zh-xx/Antu/releases) and import it. **We have not tried these in a real client yet.**
+
+### The MCP server (for those who set up MCP themselves)
+
+Antu is also an MCP server, published on npm as [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu) and listed in the [MCP registry](https://registry.modelcontextprotocol.io) as `io.github.zh-xx/antu`. Where an MCP client keeps its server list differs from client to client, so we give the block once; put it where your client asks for it (see its documentation):
+
 ```json
 {
   "mcpServers": {
     "antu": {
-      "command": "node",
-      "args": ["/absolute/path/to/antu/tools/mcp/server.mjs"]
+      "command": "npx",
+      "args": ["-y", "-p", "@zh-xx/antu", "antu-mcp"]
     }
   }
 }
 ```
 
+It needs [Node.js](https://nodejs.org) 18 or newer; `npx` downloads the package (about 2 MB) on the first start and checks again later. **We have tried the package itself (installed from npm into an empty folder, it starts and lists its seven tools); we have not tried this block in a real client** (#53).
+
 An agent can read the specification, look at examples, validate, work out the geometry, make the page and take a screenshot
 to check the result. Validation confirms only that the JSON is well formed, not that the diagram is satisfactory, so it is
-worth taking a screenshot and looking at it. The reference material for an agent is 5.4k tokens (a 3.2k-character field table plus a
+worth taking a screenshot and looking at it. `antu_render` writes the page into the folder the server was started in unless you give it a path; `antu_preview` needs Chrome, Edge or Chromium on the machine (without one it says so, and the other tools still work). The reference material for an agent is 5.4k tokens (a 3.2k-character field table plus a
 5.1k-character mechanism note).
-
-### The skill (no MCP)
-
-Without MCP, give the agent the **skill** [`skills/antu/`](skills/antu/): a `SKILL.md` (how to choose a diagram, how to write the JSON honestly, how to make the page), the guide and field table of each kind, examples, and a viewer page with a Python script that puts the data in. It needs no network; with Node 18 or newer there is also a one-file command line, `scripts/antu.mjs` (`validate`, `layout`, `render`, `preview`), so the agent can check its diagram before it draws it and, with Chrome, Edge or Chromium on the machine, look at a screenshot of the result; without Node the Python script does the page.
-
-- **Claude Code**: copy the whole `skills/antu/` folder to `~/.claude/skills/antu/` (or `.claude/skills/antu/` in a project).
-- **Codex**: copy it to `~/.codex/skills/antu/` (or `.codex/skills/antu/` in a project) and restart Codex.
-- **WorkBuddy and other clients that "import a local skill package"**: download `antu-skill-<version>.zip` from [Releases](https://github.com/zh-xx/Antu/releases) and import it. **We have not tried this in WorkBuddy yet.**
-
-**These three ways come from each client's public material; we have not run each of them in a real client yet**, and this will be updated once we have. The skill is the state of the **last release** (rules in [spec/versioning.md](spec/versioning.md)); the pages it makes carry the version: `<meta name="generator" content="antu X.Y.Z">`.
 
 Without MCP and without the skill, read the documents in this order.
 
