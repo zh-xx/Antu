@@ -3,6 +3,27 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.9.0
+
+The package that carries Antu to people: `@zh-xx/antu` for npm, with the command line and the MCP server in it, and the way to publish it (#80, #113, #114, #116). The lawyer-facing home page of the site (#107, #108). The contract is not touched.
+
+### Added
+- **The npm package `@zh-xx/antu`**, built by `node tools/build-npm.mjs` into `dist-npm/`: two commands, `antu` (the command line of the skill: `validate`, `layout`, `render`, `preview`) and `antu-mcp` (the MCP server, over stdio), each one bundled file with its dependencies inside, so `npx` downloads about 2 MB and nothing is built on the user's machine. With them: the viewer page, the agent guides and examples the server serves, the licence and the third-party notices.
+- **The package is tested as users get it**: `tools/verify/npm-pack.mjs` packs it, installs the tarball into an empty folder and runs the command line and the MCP server over stdio (the seven tools, a guide, validate, layout, render); a CI job `npm-package` does it on every pull request.
+- **The way to publish**: a manual workflow, *Publish npm* (`.github/workflows/publish-npm.yml`), separate from *Release*. It refuses a commit that is not on `main`, a version without its tag on that commit and red checks; it builds and tests the package and shows what would go out (`npm publish --dry-run`). A dry run is the default; a real publish waits for the maintainer to approve the `npm` environment and uses the identity of the workflow, not a stored token. Nothing has been published by it yet (see `spec/versioning.md`).
+- **The MCP registry entry**: the package carries `mcpName` and a generated `server.json` (`io.github.zh-xx/antu`); `test/npm-package.test.mjs` keeps the package, `server.json` and the skill on the one version of `package.json`.
+- **The home page of the site** (`site/prototypes/hero/`, generated into `index.html` of the Pages site): a top bar, the four kinds drawn in front of the reader from one document each, light and dark. It is a page for the site, not part of the engine's contract.
+
+### Changed
+- `antu_render` without `outPath`, when the server was installed from npm, writes `<title>.html` in the folder the server runs in; from a repository it still writes `dist-html/<title>.html`.
+- The example gallery of the Pages site moved to `gallery.html`; `index.html` is the home page.
+- The procedure example `02-purchase-contract` has three stages, and a fictional contract text (`examples/raw/`) it is drawn from, so the home page can show a flowchart made sentence by sentence.
+- The judgment text of the Fang Yuan case in `examples/raw/` has its reasoning written out.
+- Tool versions: the MCP SDK 1.31.0, vite 8.3.2, `setup-node` 7, `download-artifact` 8, `upload-pages-artifact` 5, `source-map-js` 1.2.2.
+
+### Breaking
+- None. The JSON of every type, the names and parameters of the MCP tools and the subcommands of the command line are as in 0.8.0.
+
 ## 0.8.0
 
 The look of a diagram is now a theme: three themes, the document theme black and white and the default (#97, #99, #100, #101, #102). The READMEs and several documents are brought up to date (#103, #104, #105).

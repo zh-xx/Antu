@@ -9,7 +9,7 @@ description: >-
   contract flow, the parties, or a judgment's reasoning.
 license: AGPL-3.0-or-later
 metadata:
-  version: "0.8.0"
+  version: "0.9.0"
 ---
 
 # Antu: legal diagrams from JSON
@@ -17,7 +17,7 @@ metadata:
 You write the JSON; the engine draws it. The result is **one HTML file** that opens in any browser with no
 install and no network, prints, and can be forwarded. Nothing is uploaded anywhere.
 
-This skill is Antu **0.8.0**. The pages it makes say so: `<meta name="generator" content="antu 0.8.0">`.
+This skill is Antu **0.9.0**. The pages it makes say so: `<meta name="generator" content="antu 0.9.0">`.
 
 **`<skill-dir>`** below is the folder that holds this `SKILL.md` (it has `scripts/`, `references/`, `examples/` and
 `assets/` beside it). Every command is written with it, so it runs from **any** directory: put the real path in.
