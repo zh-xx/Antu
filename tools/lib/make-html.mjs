@@ -16,11 +16,18 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { SPEC_MARKER, escapeForScript } from './fill.mjs'
+import { SPEC_MARKER, escapeForScript, fillViewer } from './fill.mjs'
 import { licenseNotice } from './notices.mjs'
 
-/** The repository root. This file is under tools/lib/, so two levels up. */
-export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+// set by the bundler of the npm package (vite.mcp.config.js); a run from the source has none
+const PACKAGED = typeof __ANTU_PACKAGE__ !== 'undefined'
+
+/**
+ * The root the files are read from. In the repository this file is under tools/lib/, so two levels up. In the npm
+ * package the server is one bundled file, bin/antu-mcp.mjs, and the guides, the examples and assets/viewer.html lie
+ * under the package root (tools/build-npm.mjs), so it is one level up.
+ */
+export const REPO = PACKAGED ? resolve(dirname(fileURLToPath(import.meta.url)), '..') : resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 const ENGINE_JS = join(REPO, 'dist-engine/engine.js')
 const ENGINE_CSS = join(REPO, 'dist-engine/engine.css')
@@ -90,6 +97,8 @@ export { SPEC_MARKER, escapeForScript }
 
 /** The engine's version, from package.json (written once there; spec/versioning.md) */
 export function engineVersion() {
+  // eslint-disable-next-line no-undef
+  if (typeof __ANTU_VERSION__ !== 'undefined') return __ANTU_VERSION__
   return JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version
 }
 
@@ -144,10 +153,19 @@ export function slugify(text) {
  * Without outPath it writes to dist-html/<title>.html.
  */
 export function renderToFile(spec, { outPath, preset, force = false, quiet = false } = {}) {
-  ensureEngine({ force, quiet })
-  const engine = readEngine()
-  const html = buildHtml(spec, { ...engine, preset })
-  const target = resolve(outPath || join(REPO, 'dist-html', `${slugify(spec?.title)}.html`))
+  let html
+  if (PACKAGED) {
+    // no build tools in the package: the page is the viewer template with the data put in, as the command line
+    // in the skill makes it; the title is the one thing the template cannot know, so it is set here
+    const title = escapeHtml(spec?.title || 'Antu')
+    html = fillViewer(readFileSync(join(REPO, 'assets/viewer.html'), 'utf8'), spec, { preset }).replace(/<title>[^<]*<\/title>/, () => `<title>${title} · Antu</title>`)
+  } else {
+    ensureEngine({ force, quiet })
+    const engine = readEngine()
+    html = buildHtml(spec, { ...engine, preset })
+  }
+  // in the package there is no repository to write into: the folder the user works in
+  const target = resolve(outPath || (PACKAGED ? `${slugify(spec?.title)}.html` : join(REPO, 'dist-html', `${slugify(spec?.title)}.html`)))
   mkdirSync(dirname(target), { recursive: true })
   writeFileSync(target, html)
   return { path: target, bytes: Buffer.byteLength(html) }

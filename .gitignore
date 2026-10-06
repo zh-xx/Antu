@@ -3,6 +3,8 @@ node_modules/
 dist/
 dist-engine/
 dist-cli/
+dist-mcp/
+dist-npm/
 dist-html/
 .verify/
 build/
