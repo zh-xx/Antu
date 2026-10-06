@@ -56,6 +56,24 @@ jobs:
           path: .verify/screenshot.png
           if-no-files-found: ignore
 
+  # The npm package (#80): built, packed, installed from the tarball into an empty folder, and run: the command line
+  # and the MCP server over stdio (tools/verify/npm-pack.mjs). It publishes nothing.
+  npm-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: The package, packed and run from an empty folder
+        run: node tools/verify/npm-pack.mjs
+
   # The skill's command line (skills/antu/scripts/antu.mjs) promises "Node 18 or newer, nothing installed beside it",
   # and the Python script (scripts/make_html.py) promises "Python 3, standard library only". This job holds them to
   # it on each system a user may have (Linux, macOS, Windows) and on each Node version we promise: it copies
