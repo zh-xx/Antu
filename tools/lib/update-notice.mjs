@@ -19,7 +19,7 @@ import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const PACKAGE_NAME = '@zh-xx/antu'
-export const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME.replace('/', '%2f')}/latest`
+export const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME.replace(/\//g, '%2f')}/latest`
 export const DAY_MS = 24 * 60 * 60 * 1000
 const TIMEOUT_MS = 1500
 
