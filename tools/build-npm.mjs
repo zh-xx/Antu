@@ -14,7 +14,7 @@
 //    node tools/build-npm.mjs --out DIR  write it into DIR instead
 //
 //  dist-npm/
-//    package.json  README.md  LICENSE  THIRD-PARTY-NOTICES.md
+//    package.json  server.json  README.md  LICENSE  THIRD-PARTY-NOTICES.md
 //    bin/antu.mjs  bin/antu-mcp.mjs
 //    assets/viewer.html
 //    examples/     (the examples the server lists; not README.md)
@@ -31,6 +31,8 @@ import { REPO, buildViewerHtml, engineVersion, ensureEngine, readEngine } from '
 import { REPO_URL, licenseNotice, thirdPartyNotices } from './lib/notices.mjs'
 
 export const PACKAGE_NAME = '@zh-xx/antu'
+/** The name of the server in the MCP registry: with a GitHub login it must start with io.github.<owner>/ */
+export const MCP_NAME = 'io.github.zh-xx/antu'
 export const NPM_DIR = join(REPO, 'dist-npm')
 
 /** package.json of the package, written from the repository's one (version, licence, author) */
@@ -46,10 +48,28 @@ export function packageJson() {
     repository: { type: 'git', url: `git+${REPO_URL}.git` },
     bugs: { url: `${REPO_URL}/issues` },
     keywords: ['legal', 'diagram', 'mcp', 'model-context-protocol', 'agent', 'visualization'],
+    // the mark the MCP registry looks for in the npm package before it lists the server (it must equal server.json's name)
+    mcpName: MCP_NAME,
     type: 'module',
     bin: { antu: 'bin/antu.mjs', 'antu-mcp': 'bin/antu-mcp.mjs' },
     engines: { node: '>=18' },
     publishConfig: { access: 'public' },
+  }
+}
+
+/**
+ * server.json: what the MCP registry holds about the server. It holds no code, only where to get it (this npm
+ * package), so the package must be published first. Written from the same package.json, so the two cannot differ.
+ */
+export function serverJson() {
+  const pkg = packageJson()
+  return {
+    $schema: 'https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json',
+    name: MCP_NAME,
+    description: 'Legal diagrams (fact, procedure, relationship, justification) from JSON, as one offline HTML page.',
+    repository: { url: REPO_URL, source: 'github' },
+    version: pkg.version,
+    packages: [{ registryType: 'npm', identifier: pkg.name, version: pkg.version, transport: { type: 'stdio' } }],
   }
 }
 
@@ -75,6 +95,7 @@ export async function writeNpmPackage(dir = NPM_DIR) {
   mkdirSync(join(dir, 'assets'), { recursive: true })
 
   writeFileSync(join(dir, 'package.json'), `${JSON.stringify(packageJson(), null, 2)}\n`)
+  writeFileSync(join(dir, 'server.json'), `${JSON.stringify(serverJson(), null, 2)}\n`)
   writeFileSync(join(dir, 'bin/antu.mjs'), await bundle('vite.cli.config.js', 'dist-cli/antu.mjs'), { mode: 0o755 })
   writeFileSync(join(dir, 'bin/antu-mcp.mjs'), await bundle('vite.mcp.config.js', 'dist-mcp/antu-mcp.mjs'), { mode: 0o755 })
 

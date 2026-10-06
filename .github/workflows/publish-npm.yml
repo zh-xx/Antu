@@ -1,0 +1,160 @@
+name: Publish npm
+
+# When it runs: only when started by hand (Actions tab -> Publish npm -> Run workflow). It is not part of the Release
+# workflow: the Release makes the tag, the GitHub release and the skill zip; this one publishes the npm package
+# @zh-xx/antu and its entry in the MCP registry for a version that is already released (issues #80 and #113).
+#
+# What it does, in order:
+#   1. check: the commit is on main, its version has a tag v<version> on that very commit (so only a released
+#      version is published), every check on it has passed; the package is built and tested packed
+#      (tools/verify/npm-pack.mjs); `npm publish --dry-run` shows what would go out.
+#   2. publish (only when dry_run is off, and only after the maintainer approves the `npm` environment): the npm
+#      package, with a provenance statement, then the MCP registry entry. No token is stored anywhere: npm and the
+#      registry both accept the identity of this workflow (OpenID Connect).
+#
+# DRY RUN IS THE DEFAULT. Publishing to npm cannot be taken back (a version can only be deprecated, and its number
+# is never free again), so a real publish is a choice made on purpose.
+#
+# One-time setup by the maintainer, not done by this file:
+#   - the FIRST version of the package is published by hand from the maintainer's computer: npm cannot add a trusted
+#     publisher to a package that does not exist yet;
+#   - then, on npmjs.com, the package's settings -> Trusted Publisher: GitHub Actions, owner zh-xx, repository Antu,
+#     workflow file publish-npm.yml, environment npm;
+#   - in the repository settings, create the environment `npm` and put the maintainer in "Required reviewers".
+# Not yet tried end to end: npm and the registry have not been published to from this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'The commit to publish. Default: the latest commit of main. It must be on main and carry the tag v<version>.'
+        required: false
+        default: main
+      dry_run:
+        description: 'Do every check, build and test the package and show what would be published, but publish nothing'
+        type: boolean
+        default: true
+      registry:
+        description: 'Also publish the entry in the MCP registry (only when dry run is off)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  checks: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.check.outputs.sha }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check that this commit can be published
+        id: check
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::$sha is not on main; not publishing"
+            exit 1
+          fi
+
+          # Only a released version is published: the tag must exist and point at this very commit
+          git fetch --quiet --tags origin
+          tagged="$(git rev-list -n 1 "refs/tags/${tag}" 2>/dev/null || true)"
+          if [ "$tagged" != "$sha" ]; then
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "::warning::the tag ${tag} is not on this commit ($tagged); a real publish would stop here. Run the Release workflow first."
+            else
+              echo "::error::the tag ${tag} is not on this commit; run the Release workflow first"
+              exit 1
+            fi
+          fi
+
+          {
+            echo "sha=${sha}"
+            echo "version=${version}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check that CI is green on this commit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/verify/ci-green.mjs "${{ steps.check.outputs.sha }}" --ignore "$GITHUB_JOB"
+
+      # Build the package, pack it, install the tarball in an empty folder and run it
+      - name: The package, packed and run from an empty folder
+        run: node tools/verify/npm-pack.mjs
+
+      - name: What would be published (dry run)
+        run: |
+          node tools/build-npm.mjs --out "$RUNNER_TEMP/antu-npm"
+          cd "$RUNNER_TEMP/antu-npm"
+          npm publish --dry-run --access public
+
+  publish:
+    needs: check
+    if: ${{ inputs.dry_run != true }}
+    runs-on: ubuntu-latest
+    # created in the repository settings, with the maintainer as required reviewer: nothing is published before a
+    # person approves it here
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.check.outputs.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      # publishing with the identity of the workflow needs npm 11.5.1 or newer
+      - name: Use a recent npm
+        run: npm install -g npm@^11.5.1
+
+      - name: Build the package
+        run: node tools/build-npm.mjs --out "$RUNNER_TEMP/antu-npm"
+
+      - name: Publish the npm package
+        working-directory: ${{ runner.temp }}/antu-npm
+        run: npm publish --access public --provenance
+
+      # The registry holds only where to get the server, so it comes after the package is on npm
+      - name: Install the registry's publisher
+        if: ${{ inputs.registry }}
+        working-directory: ${{ runner.temp }}/antu-npm
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      - name: Publish the entry in the MCP registry
+        if: ${{ inputs.registry }}
+        working-directory: ${{ runner.temp }}/antu-npm
+        run: |
+          set -euo pipefail
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish

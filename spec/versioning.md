@@ -89,6 +89,16 @@ the engine was updated. (A new *hint* is not a break: a hint never stops a diagr
    a build of that version writes, or if the packed zip, unpacked into an empty folder, fails the skill's own checks
    (`tools/verify/skill-cli.mjs --skill`). Nothing is released from a branch, and nothing is tagged by hand.
 
+5. The npm package `@zh-xx/antu` and its entry in the MCP registry are published for a version that is already
+   released, by the **Publish npm** workflow (Actions tab → Run workflow), which is separate from the Release one. It
+   refuses if the commit is not on `main`, if the tag `vX.Y.Z` is not on that very commit, or if a check is red; it
+   builds the package and tests it packed (`tools/verify/npm-pack.mjs`) and shows what would be published. **A dry
+   run is the default**: publishing to npm cannot be taken back, so a real publish is a choice made on purpose, and
+   it waits for the maintainer's approval of the `npm` environment. The package, `server.json` and the skill carry
+   the one version of `package.json` (`test/npm-package.test.mjs`). The first version of the package is published by
+   hand by the maintainer, because npm cannot name this workflow as a trusted publisher of a package that does not
+   exist yet; the setup is written at the top of `.github/workflows/publish-npm.yml`.
+
 ## The agent skill (`skills/antu/`)
 
 The skill is what an agent is given to draw with Antu when it has no MCP server: a `SKILL.md` (how to choose a

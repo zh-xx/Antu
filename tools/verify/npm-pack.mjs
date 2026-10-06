@@ -44,7 +44,7 @@ try {
   if (info) {
     check('package is small (under 4 MB packed)', info.size < 4 * 1024 * 1024, `${info.size} bytes`)
     const names = info.files.map((f) => f.path)
-    for (const must of ['package.json', 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'bin/antu.mjs', 'bin/antu-mcp.mjs', 'assets/viewer.html', 'spec/agent/fact/guide.md']) {
+    for (const must of ['package.json', 'server.json', 'LICENSE', 'THIRD-PARTY-NOTICES.md', 'bin/antu.mjs', 'bin/antu-mcp.mjs', 'assets/viewer.html', 'spec/agent/fact/guide.md']) {
       check(`package holds ${must}`, names.includes(must))
     }
     check('package holds no source of the repository', !names.some((n) => n.startsWith('src/') || n.startsWith('tools/') || n.startsWith('node_modules/')))
