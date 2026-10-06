@@ -151,6 +151,51 @@ async function reasoning() {
     kinds: { conclusion: '结论', norm: '规范', element: '要件', fact: '事实', inference: '推断', judgement: '评价' }, holds: { yes: '✓ 成立', no: '✗ 否定' } }
 }
 
+// Antu's flowchart layout aligns the boxes of a stage by their tops, so a step that follows a decision can sit
+// beside its point, not on its centre line, and the link leaves the decision off its tip and enters the step off
+// its middle. For the home page only, those steps (and what follows them in the row) are moved onto the
+// decision's centre line, and the links from the decision are drawn straight from its tip into the middle of the
+// step. The product's own layout is not touched. The build stops if a link from a decision is still off line.
+function tidyAfterDecisions(nodes, links) {
+  const by = Object.fromEntries(nodes.map((n) => [n.id, n]))
+  const cy = (n) => n.y + n.h / 2
+  const rowAfter = (id, seen = new Set()) => {
+    // the step and what follows it straight on, in the same row (single forward link out, to the right)
+    if (seen.has(id)) return []
+    seen.add(id)
+    const outs = links.filter((l) => l.from === id && l.kind !== 'back' && by[l.to].x > by[id].x && Math.abs(cy(by[l.to]) - cy(by[id])) < 40)
+    return [id, ...(outs.length === 1 ? rowAfter(outs[0].to, seen) : [])]
+  }
+  for (const dec of nodes.filter((n) => n.kind === 'decision')) {
+    for (const l of links.filter((x) => x.from === dec.id && x.kind !== 'back')) {
+      const t = by[l.to]
+      if (t.x <= dec.x + dec.w || Math.abs(cy(t) - cy(dec)) > 40) continue // not a step beside it (a step below is entered from above)
+      const dy = cy(dec) - cy(t)
+      if (Math.abs(dy) < 0.5) continue
+      for (const id of rowAfter(l.to)) by[id].y += dy
+      l.d = `M ${dec.x + dec.w} ${cy(dec)} L ${t.x} ${cy(dec)}`
+      if (l.label) l.ly = cy(dec) - 22
+    }
+  }
+  // links between boxes of one row are straight lines between their sides
+  for (const l of links) {
+    const a = by[l.from], t = by[l.to]
+    if (/^M [\d.]+ [\d.]+ L [\d.]+ [\d.]+$/.test(l.d)) {
+      const y = cy(a)
+      if (Math.abs(cy(t) - y) < 0.5) l.d = `M ${a.x + a.w} ${y} L ${t.x} ${y}`
+    }
+  }
+  // a link that comes back into a step from below ends under its middle, wherever the step is now
+  for (const l of links.filter((x) => x.kind === 'branch' && x.d.includes('C') && by[x.to].y < by[x.from].y)) {
+    const t = by[l.to]
+    l.d = l.d.replace(/L ([\d.]+) [\d.]+$/, `L ${t.x + t.w / 2} ${t.y + t.h}`)
+  }
+  for (const l of links) {
+    const a = by[l.from], t = by[l.to]
+    if (a.kind === 'decision' && l.kind !== 'back' && t.x > a.x + a.w && Math.abs(cy(t) - cy(a)) > 0.5) throw new Error(`link ${l.from} > ${l.to} is still off the decision's centre line`)
+  }
+}
+
 // the purchase-contract flow, laid out by Antu's own procedure layout (across), with the outline of each kind and
 // outcome and the line of each link from the document theme; and the contract it comes from, each step named
 // word for word in one of its sentences
@@ -204,6 +249,7 @@ async function flowchart() {
     const lp = c.kind === 'back' ? T.link.back : c.kind === 'main' ? T.link.main : T.link.plain
     return { id: c.id, from: c.from, to: c.to, kind: c.kind, d: c.dCurve, label: c.label ?? '', lx: c.labelAt?.x, ly: c.labelAt?.y, lw: c.labelSize?.width, lh: c.labelSize?.height, width: lp.width, dash: lp.dash ?? '' }
   })
+  tidyAfterDecisions(nodes, links)
   return { contract, size: g.size, stages, nodes, links, mainPath, order: [...nodes].sort((a, b) => a.x - b.x || a.y - b.y).map((n) => n.id) }
 }
 
