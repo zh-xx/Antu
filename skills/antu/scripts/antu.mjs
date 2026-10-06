@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Antu 0.8.0
+// Antu 0.9.0
 // Copyright (C) 2026 Ji Cheng
 //
 // Antu is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public
@@ -13,9 +13,9 @@
 // publish them, or sell them on any terms you like. This licence covers Antu's code in the page, and the notices in
 // the page must stay with it.
 //
-// Corresponding Source of this version: https://github.com/zh-xx/Antu/tree/v0.8.0
-// The licence: https://github.com/zh-xx/Antu/blob/v0.8.0/LICENSE
-// Third-party notices: https://github.com/zh-xx/Antu/blob/v0.8.0/skills/antu/THIRD-PARTY-NOTICES.md
+// Corresponding Source of this version: https://github.com/zh-xx/Antu/tree/v0.9.0
+// The licence: https://github.com/zh-xx/Antu/blob/v0.9.0/LICENSE
+// Third-party notices: https://github.com/zh-xx/Antu/blob/v0.9.0/skills/antu/THIRD-PARTY-NOTICES.md
 //
 // === The licence of Antu ===
 //
@@ -1470,7 +1470,7 @@ import{execFileSync as e,spawn as t,spawnSync as n}from"node:child_process";impo
         if (!el) return null
         const r = el.getBoundingClientRect()
         return JSON.stringify({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) })
-      })()`);if(!t)throw Error(`Cannot click element: ${e}`);let{x:n,y:r}=JSON.parse(t);for(let e of[`mousePressed`,`mouseReleased`])await _.send(`Input.dispatchMouseEvent`,{type:e,x:n,y:r,button:`left`,clickCount:1})},get requests(){return v.slice()},get errors(){return y.slice()},async close(){_.close(),await Pa(p),await Ia(h)}};return b}async function Zne(e,{width:t=1600,height:n=900,settleMs:r=800}={}){let i=Date.now(),a=await Xne({width:t,height:n});try{await a.open(p(e).href,{settleMs:r});let o=await a.eval(`document.querySelectorAll(${JSON.stringify(ka)}).length`);return{data:await a.screenshotData(),mimeType:`image/png`,width:t,height:n,cards:o,ms:Date.now()-i}}finally{await a.close()}}var La=`0.8.0`,Ra=`Antu ${La}: check and draw an Antu diagram (JSON)
+      })()`);if(!t)throw Error(`Cannot click element: ${e}`);let{x:n,y:r}=JSON.parse(t);for(let e of[`mousePressed`,`mouseReleased`])await _.send(`Input.dispatchMouseEvent`,{type:e,x:n,y:r,button:`left`,clickCount:1})},get requests(){return v.slice()},get errors(){return y.slice()},async close(){_.close(),await Pa(p),await Ia(h)}};return b}async function Zne(e,{width:t=1600,height:n=900,settleMs:r=800}={}){let i=Date.now(),a=await Xne({width:t,height:n});try{await a.open(p(e).href,{settleMs:r});let o=await a.eval(`document.querySelectorAll(${JSON.stringify(ka)}).length`);return{data:await a.screenshotData(),mimeType:`image/png`,width:t,height:n,cards:o,ms:Date.now()-i}}finally{await a.close()}}var La=`0.9.0`,Ra=`Antu ${La}: check and draw an Antu diagram (JSON)
 
   node antu.mjs validate <spec.json>                       is the JSON valid? (each problem, with its field path)
   node antu.mjs layout   <spec.json> [--orientation vertical|horizontal] [--kind K]
