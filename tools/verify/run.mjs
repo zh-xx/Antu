@@ -580,16 +580,18 @@ function checkData() {
     agentRefTok < 6,
     `${agentRefTok.toFixed(1)}k tokens (schema ${schemaTok.toFixed(1)}k + guide ${guideTok.toFixed(1)}k)`,
   )
-  // And the advertised number must match, so it cannot go stale unnoticed.
+  // And the advertised size must match, so it cannot go stale unnoticed. The README states it in characters, which
+  // can be counted exactly (a count of tokens depends on the tokenizer and on the language of the text).
   const readme = readFileSync(join(REPO, 'README.md'), 'utf8')
-  const claimed = readme.match(/agent is ([\d.]+)k tokens/)
-  truthy('README states the size of the agent reference material', !!claimed, claimed ? claimed[1] : 'not stated')
+  const claimed = readme.match(/field table of about ([\d.]+)k characters and a mechanism note of about ([\d.]+)k characters/)
+  truthy('README states the size of the agent reference material', !!claimed, claimed ? `${claimed[1]}k + ${claimed[2]}k characters` : 'not stated')
   if (claimed) {
-    const diff = Math.abs(Number(claimed[1]) - agentRefTok)
+    const schemaChars = describeSchema('fact').text.length / 1000
+    const guideChars = readAgentGuide('fact').length / 1000
     truthy(
       'the size stated in README matches measurement',
-      diff <= 0.6,
-      `README says ${claimed[1]}k, measured ${agentRefTok.toFixed(1)}k`,
+      Math.abs(Number(claimed[1]) - schemaChars) <= 0.15 && Math.abs(Number(claimed[2]) - guideChars) <= 0.15,
+      `README says ${claimed[1]}k + ${claimed[2]}k characters, measured ${schemaChars.toFixed(2)}k + ${guideChars.toFixed(2)}k`,
     )
   }
 

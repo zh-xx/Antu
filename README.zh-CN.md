@@ -4,12 +4,12 @@
 
 [English](README.md) | **中文**
 
-案图把一份 JSON 变成一个自包含的 HTML 法律图。页面可以离线打开，也可以归档、打印或作为附件发送。可以由 AI agent 阅读案件材料并写出
+案图把一份 JSON 变成一个自包含的 HTML 法律图。页面是一个约 2.3 MB 的文件，不发起网络请求，不需要服务器；可以离线打开，也可以归档、打印或作为附件发送。可以由 AI Agent 阅读案件材料并写出
 JSON，再由引擎据此画图；同一份 JSON 得到的图是一致的。案图目前处于 0.x 阶段，关系图和证成图的格式仍是草案。
 
-## 你能得到什么
+## 图的类型
 
-四类法律内容，每一类都有几种画法。页面里有选择器可以切换，JSON 里没有任何字段决定画法。下面是页面自己在选择器里显示的示意图，每种画法一张；点名字可以打开一个能用这种画法画出来的案例（`npm run diagram -- <文件>`，再在页面里选画法）。
+四类法律内容，每一类有多种画法。页面里的选择器可以切换画法，JSON 中没有任何字段决定画法。
 
 <table>
 <tr><th rowspan="2" align="left" valign="middle">关系图</th><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/graph.svg" width="88" alt="关系图"><br>关系图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/focus.svg" width="88" alt="聚焦图"><br>聚焦图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/chain.svg" width="88" alt="担保链图"><br>担保链图</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/matrix.svg" width="88" alt="关系矩阵"><br>关系矩阵</a></td><td align="center"><a href="examples/relationship/marketplace-parties.zh-CN.json"><img src="assets/kinds/equity.svg" width="88" alt="股权图"><br>股权图</a></td></tr>
@@ -24,22 +24,19 @@ JSON，再由引擎据此画图；同一份 JSON 得到的图是一致的。案�
 三种外观，叫**主题**：`document` 文书黑白（方正、纯黑白，适合打印和归档，默认）、`modern` 现代简洁、`legal` 法律蓝。读者在页面里
 切换，调用时也可以把页面固定成某一个。只有图本身受主题影响，详见 [spec/theme.md](spec/theme.md)。
 
-## 试一试
+## 使用
 
 ```bash
 npm install
 npm run diagram -- examples/fact/neighbour-corridor-charging.zh-CN.json
-# → examples/fact/neighbour-corridor-charging.zh-CN.html   （用浏览器打开）
 ```
 
-想让 agent 来做，见下面的[接入 agent](#接入-agent)。
+页面生成在 JSON 文件旁边。页面的界面语言用 `?lang=en` 或 `?lang=zh` 指定；案件内容不翻译。
 
-在生成的页面后加 `?lang=en` 或 `?lang=zh` 可指定界面语言。数据本身不翻译：案件内容随 JSON 走。
-
-## 怎么工作
+## 原理
 
 ```
-agent ──> 提取关键信息 ──> 一份 JSON ──> 引擎 ──> 图
+Agent ──> 提取关键信息 ──> 一份 JSON ──> 引擎 ──> 图
 ```
 
 | 角色 | 职责 | 确定性 |
@@ -48,63 +45,46 @@ agent ──> 提取关键信息 ──> 一份 JSON ──> 引擎 ──> 图
 | 引擎 | 按规范画图 | 同一份 JSON 得到同一张图，与由哪个模型写出无关 |
 | JSON 规范 | 两者之间唯一的接口 | 有版本号（见 [spec/versioning.md](spec/versioning.md)） |
 
-引擎不写 JSON，agent 不画图。对模型的要求只有一件事：把信息提取成 JSON；画图交给引擎。
 
-**为什么另定一套规范？**
+引擎不写 JSON，Agent 不画图：模型只负责把信息写进 JSON，画图由引擎完成。JSON 规范自成一套，原因有四：
 
-1. 通用图表的语法建立在节点、边、状态机之上，没有为诉讼地位、证据出处这类要素预留位置。案图的规范是为这四类内容专门写的。
-2. 图不取决于由哪个模型来提取信息，因为画图的是引擎。
-3. 同一份 JSON 在任何时间、任何环境下得到同一张图，所以交给法院或对方当事人的图可以复现。
-4. 出处在提取事实时就记录下来：每一条事实写明出自哪份材料、第几页、依据哪一条法律，因此图画出来时，出处已经在图上。
+1. 通用图表语法建立在节点、边和状态机之上，没有为诉讼地位、证据出处这类要素预留位置。
+2. 图不取决于由哪个模型提取信息。
+3. 同一份 JSON 在任何时间、任何环境下得到同一张图，交给法院或对方当事人的图可以复现。
+4. 出处在提取事实时记录：每一条事实写明所依据的材料、页码和条文，图上随之标出。材料本身不打包，也不跳转。
 
-### 出处
+## 接入 Agent
 
-| 环节 | 做法 |
-|---|---|
-| 挂载 | 事件挂证据、文书；主张挂法条、判例；关系挂合同、登记记录 |
-| 定位 | 结构化定位，可校验、可反查：案号、合同页码、法条条号 |
-| 引用 | 来源表仅存一份，多处表达引用同一个 id |
-| 边界 | 图上仅标明依据所在材料与页码。原始材料不打包，不跳转，由使用者自行查阅 |
+Agent 的参考资料，以事实图为例，是约 3.3k 字符的字段表和约 5.8k 字符的机制说明。
 
-### 你得到的页面
+### Skill
 
-一个自包含的 HTML 文件，约 2.3 MB（大部分是布局引擎 ELK），引擎与数据都在文件里，不发起网络请求，不需要服务器，可以离线打开，也可以归档、传阅或作为邮件附件发送。
+```
+npx skills add zh-xx/Antu -g
+```
 
-## 接入 agent
+Skill 位于 [`skills/antu/`](skills/antu/)；每个[发布](https://github.com/zh-xx/Antu/releases)也附有 `antu-skill-<版本>.zip`。
+
+### MCP
+
+MCP 服务是 npm 包 [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu)，在 [MCP 注册表](https://registry.modelcontextprotocol.io)中登记为 `io.github.zh-xx/antu`。
 
 ```json
 {
   "mcpServers": {
     "antu": {
-      "command": "node",
-      "args": ["/绝对路径/antu/tools/mcp/server.mjs"]
+      "command": "npx",
+      "args": ["-y", "-p", "@zh-xx/antu", "antu-mcp"]
     }
   }
 }
 ```
 
-agent 可以读取规范、查看示例、校验、计算几何、生成页面，并截图核对效果。校验只能确认 JSON 合法，不能确认成图合格，建议截图看一眼。agent 的参考资料为 5.4k token（字段表 3.2k 字符 + 机制说明 5.1k 字符）。
+工具：`antu_schema`、`antu_guide`、`antu_examples`、`antu_validate`、`antu_layout`、`antu_render`、`antu_preview`。
 
-### 技能包（不装 MCP）
+## 文档
 
-没有 MCP 时，给 agent 一个**技能包** [`skills/antu/`](skills/antu/)：`SKILL.md`（怎么选图、怎么如实地写 JSON、怎么出页面）、四类图的说明和字段表、示例，以及一个查看页模板和把数据填进去的 Python 脚本。不需要联网；有 Node 18 以上时多一个单文件命令行 `scripts/antu.mjs`（`validate` 校验、`layout` 排版报告、`render` 出页面、`preview` 截图看图），让 agent 交稿前先自查，电脑上有 Chrome、Edge 或 Chromium 时还能看一眼成图；没有 Node 就用 Python 脚本。
-
-- **Claude Code**：把 `skills/antu/` 整个目录拷到 `~/.claude/skills/antu/`（或项目里的 `.claude/skills/antu/`）。
-- **Codex**：拷到 `~/.codex/skills/antu/`（或项目里的 `.codex/skills/antu/`），重启 Codex。
-- **WorkBuddy 等能「导入本地技能包」的客户端**：到 [Releases](https://github.com/zh-xx/Antu/releases) 下载 `antu-skill-<版本>.zip` 导入。**这一条我们还没在 WorkBuddy 上试过。**
-
-**这三种装法来自各客户端的公开资料，我们还没有在真实客户端里逐一跑通**；跑通之后这里会更新。技能包是**上一次发布**的状态（规则见 [spec/versioning.md](spec/versioning.md)），它做的页面里写着版本号：`<meta name="generator" content="antu X.Y.Z">`。
-
-未接入 MCP、也不用技能包时，按以下顺序阅读。
-
-- **事实图（时间图）**：[spec/fact/schema-draft.md](spec/fact/schema-draft.md)（字段定义）、[spec/fact/timeline-rules.md](spec/fact/timeline-rules.md)（事件排布规则），并参考 [examples/fact/neighbour-corridor-charging.zh-CN.json](examples/fact/neighbour-corridor-charging.zh-CN.json)。
-- **证成图（说理树）**：[spec/agent/justification/guide.md](spec/agent/justification/guide.md)（一页机制说明）、[spec/justification/schema-draft.zh-CN.md](spec/justification/schema-draft.zh-CN.md)（字段定义、规则、排布和画法，草案），并参考 [examples/agent/justification/2-against-and-rejected.zh-CN.json](examples/agent/justification/2-against-and-rejected.zh-CN.json)，或一份（虚构的）完整案例，如 [examples/justification/neighbour-corridor-liability.zh-CN.json](examples/justification/neighbour-corridor-liability.zh-CN.json)。
-- **程序图（流程图）**：[spec/agent/procedure/guide.md](spec/agent/procedure/guide.md)（一页机制说明）、[spec/procedure/schema-draft.zh-CN.md](spec/procedure/schema-draft.zh-CN.md)（字段定义与排布规则），并参考 [examples/agent/procedure/7-rules.zh-CN.json](examples/agent/procedure/7-rules.zh-CN.json)，或一份真实合同，如 [examples/procedure/05-premises-lease.zh-CN.json](examples/procedure/05-premises-lease.zh-CN.json)。
-- **关系图**：[spec/agent/relationship/guide.md](spec/agent/relationship/guide.md)（一页机制说明）、[spec/relationship/schema-draft.zh-CN.md](spec/relationship/schema-draft.zh-CN.md)（字段定义与排布规则，暂定），并参考 [examples/agent/relationship/3-guarantee.zh-CN.json](examples/agent/relationship/3-guarantee.zh-CN.json)，或一份（虚构的）完整案例，如 [examples/relationship/fang-yuan-parties.zh-CN.json](examples/relationship/fang-yuan-parties.zh-CN.json)。
-
-## 更多
-
-- 供人阅读的设计文档在 [`spec/`](spec/)：[架构](spec/v0-architecture.md)、[来源的 7 类字段](spec/source-schema-draft.md)、[主题](spec/theme.md)、[MCP 服务端](spec/mcp-server.md)，以及各类图（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 agent 看的说明在 [`spec/agent/`](spec/agent/)。
+- 供人阅读的设计文档在 [`spec/`](spec/)：[架构](spec/v0-architecture.md)、[来源的 7 类字段](spec/source-schema-draft.md)、[主题](spec/theme.md)、[MCP 服务端](spec/mcp-server.md)，以及各类图（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 Agent 看的说明在 [`spec/Agent/`](spec/Agent/)。
 - [CHANGELOG.md](CHANGELOG.md)，版本号的规则见 [spec/versioning.md](spec/versioning.md)。
 - 已知问题与需求记录在 [GitHub issues](https://github.com/zh-xx/Antu/issues)。参与贡献前，请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
