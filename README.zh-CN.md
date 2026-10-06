@@ -72,23 +72,19 @@ agent ──> 提取关键信息 ──> 一份 JSON ──> 引擎 ──> 图
 
 ## 接入 agent
 
-有两种方式，对应两类用户。
+### 技能包
 
-### 技能包（大多数人）
-
-最省事的办法：对你的 agent（Claude Code、Codex 等读技能包的客户端）说一句话，它会自己把最新的技能包装上：
+对你的 agent 说一句话，它会自己把最新的技能包装上：
 
 > 请为你自己安装案图 Skill：运行 `npx skills add zh-xx/Antu -g -y`。
 
-也可以自己在终端里运行：`npx skills add zh-xx/Antu -g`。需要装有 [Node.js](https://nodejs.org) 18 或更新。之后用 `npx skills update -g` 把技能包更新到最新的发布（我们见过它报告「已是最新」，还没有见过它发现并更新到一个新发布）。agent 可能会请你确认这条命令；技能包是以 agent 的权限运行的，所以装之前请看一眼装的是什么；安装器还会匿名上报使用情况，设环境变量 `DISABLE_TELEMETRY=1` 可以关掉。如果安装器找不到它认识的 agent，或者你只想装给某一个 agent，加上 `-a <agent 的名字>`（例如 `-a claude-code`）。**这条命令本身我们在沙箱里试过（能找到技能包、装上、并显示已是最新）；这一句话在真实客户端里的效果我们还没试过**（#53）。
+也可以自己运行 `npx skills add zh-xx/Antu -g`；更新用 `npx skills update -g`。需要装有 [Node.js](https://nodejs.org) 18 或更新。技能包是以 agent 的权限运行的。**这条命令我们在沙箱里试过（能找到技能包、装上、并显示已是最新）；这一句话在真实客户端里的效果我们还没试过**（#53）。
 
-技能包是 [`skills/antu/`](skills/antu/)：`SKILL.md`（怎么选图、怎么如实地写 JSON、怎么出页面）、四类图的说明和字段表、示例，以及一个查看页模板和把数据填进去的 Python 脚本。不需要联网；有 Node 18 以上时多一个单文件命令行 `scripts/antu.mjs`（`validate` 校验、`layout` 排版报告、`render` 出页面、`preview` 截图看图），让 agent 交稿前先自查，电脑上有 Chrome、Edge 或 Chromium 时还能看一眼成图；没有 Node 就用 Python 脚本。它是**上一次发布**的状态（规则见 [spec/versioning.md](spec/versioning.md)），所以新版本在发布之后才会出现；它做的页面里写着版本号：`<meta name="generator" content="antu X.Y.Z">`。
+技能包是 [`skills/antu/`](skills/antu/)：`SKILL.md`（怎么选图、怎么如实地写 JSON、怎么出页面）、四类图的说明和字段表、示例，以及一个查看页模板和把数据填进去的 Python 脚本。不需要联网；有 Node 18 以上时多一个单文件命令行 `scripts/antu.mjs`（`validate` 校验、`layout` 排版报告、`render` 出页面、`preview` 截图看图），电脑上有 Chrome、Edge 或 Chromium 时 agent 还能看一眼成图。它是**上一次发布**的状态（规则见 [spec/versioning.md](spec/versioning.md)），也附在每个[发布](https://github.com/zh-xx/Antu/releases)上，文件名是 `antu-skill-<版本>.zip`；它做的页面里写着版本号：`<meta name="generator" content="antu X.Y.Z">`。
 
-放进去的其他办法：把 `skills/antu/` 整个目录拷到 `~/.claude/skills/antu/`（Claude Code）或 `~/.codex/skills/antu/`（Codex，然后重启）；或者，对能「导入本地技能包」的客户端（如 WorkBuddy），到 [Releases](https://github.com/zh-xx/Antu/releases) 下载 `antu-skill-<版本>.zip` 导入。**这几种我们还没有在真实客户端里试过。**
+### MCP 服务
 
-### MCP 服务（给自己配置 MCP 的人）
-
-案图也是一个 MCP 服务，发布在 npm 上，包名 [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu)，并登记在 [MCP 注册表](https://registry.modelcontextprotocol.io)里，名字是 `io.github.zh-xx/antu`。各个 MCP 客户端存放服务列表的地方不一样，所以这里只给一段配置文本；放到你的客户端要求的位置（见它自己的文档）：
+发布在 npm 上，包名 [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu)，并登记在 [MCP 注册表](https://registry.modelcontextprotocol.io)里，名字是 `io.github.zh-xx/antu`。配置文本：
 
 ```json
 {
@@ -101,9 +97,9 @@ agent ──> 提取关键信息 ──> 一份 JSON ──> 引擎 ──> 图
 }
 ```
 
-需要装有 [Node.js](https://nodejs.org) 18 或更新；`npx` 在第一次启动时下载这个包（约 2 MB），之后会再检查。**包本身我们试过（从 npm 装进空文件夹，能启动，并列出它的七个工具）；这段配置在真实客户端里我们还没试过**（#53）。
+需要装有 [Node.js](https://nodejs.org) 18 或更新。**包本身我们试过（从 npm 装进空文件夹，能启动，并列出它的七个工具）；这段配置在真实客户端里我们还没试过**（#53）。
 
-agent 可以读取规范、查看示例、校验、计算几何、生成页面，并截图核对效果。校验只能确认 JSON 合法，不能确认成图合格，建议截图看一眼。`antu_render` 不指定路径时，把页面写在服务启动时所在的文件夹；`antu_preview` 需要电脑上有 Chrome、Edge 或 Chromium（没有就会说明，其余工具照常可用）。agent 的参考资料为 5.4k token（字段表 3.2k 字符 + 机制说明 5.1k 字符）。
+agent 可以读取规范、查看示例、校验、计算几何、生成页面，并截图核对效果。校验只能确认 JSON 合法，不能确认成图合格，建议截图看一眼。`antu_render` 不指定路径时，把页面写在服务启动时所在的文件夹；`antu_preview` 需要电脑上有 Chrome、Edge 或 Chromium。agent 的参考资料为 5.4k token（字段表 3.2k 字符 + 机制说明 5.1k 字符）。
 
 未接入 MCP、也不用技能包时，按以下顺序阅读。
 
