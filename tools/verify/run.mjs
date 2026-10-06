@@ -582,7 +582,7 @@ function checkData() {
   )
   // And the advertised number must match, so it cannot go stale unnoticed.
   const readme = readFileSync(join(REPO, 'README.md'), 'utf8')
-  const claimed = readme.match(/agent is ([\d.]+)k tokens/)
+  const claimed = readme.match(/agent is ([\d.]+)k tokens/i)
   truthy('README states the size of the agent reference material', !!claimed, claimed ? claimed[1] : 'not stated')
   if (claimed) {
     const diff = Math.abs(Number(claimed[1]) - agentRefTok)

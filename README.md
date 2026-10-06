@@ -60,6 +60,8 @@ The engine does not write JSON, and the Agent does not draw. The model puts info
 
 ## Agent Integration
 
+The reference material for an Agent is 5.4k tokens (a 3.2k-character field table plus a 5.1k-character mechanism note).
+
 ### Skill
 
 ```
