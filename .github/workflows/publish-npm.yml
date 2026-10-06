@@ -16,11 +16,16 @@ name: Publish npm
 # is never free again), so a real publish is a choice made on purpose.
 #
 # One-time setup by the maintainer, not done by this file:
-#   - the FIRST version of the package is published by hand from the maintainer's computer: npm cannot add a trusted
-#     publisher to a package that does not exist yet;
+#   - in the repository settings, create the environment `npm` and put the maintainer in "Required reviewers";
+#   - the FIRST version of the package cannot use the workflow's identity: npm cannot add a trusted publisher to a
+#     package that does not exist yet. It is published either by hand from the maintainer's computer, or with this
+#     workflow and a SHORT-LIVED TOKEN: run it with `use_token` on. The token is a granular access token from
+#     npmjs.com (read and write, limited to the @zh-xx scope, expiring in a few days), stored as a secret named
+#     NPM_TOKEN of the `npm` ENVIRONMENT (not of the repository), so only this job can read it, and only after the
+#     approval. Delete the token on npmjs.com and the secret in the repository as soon as the first version is out;
 #   - then, on npmjs.com, the package's settings -> Trusted Publisher: GitHub Actions, owner zh-xx, repository Antu,
-#     workflow file publish-npm.yml, environment npm;
-#   - in the repository settings, create the environment `npm` and put the maintainer in "Required reviewers".
+#     workflow file publish-npm.yml, environment npm. From then on every version is published with `use_token` off,
+#     with no token anywhere.
 # Not yet tried end to end: npm and the registry have not been published to from this workflow.
 on:
   workflow_dispatch:
@@ -37,6 +42,10 @@ on:
         description: 'Also publish the entry in the MCP registry (only when dry run is off)'
         type: boolean
         default: true
+      use_token:
+        description: 'FIRST version only: publish with the short-lived token NPM_TOKEN of the npm environment, not the identity of the workflow'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -123,11 +132,13 @@ jobs:
         with:
           ref: ${{ needs.check.outputs.sha }}
 
+      # As the setup-node documentation shows for publishing: no package cache in a job that publishes (a poisoned cache
+      # would end up in what is published), and a recent Node
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: npm
+          node-version: 24
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm ci
@@ -139,7 +150,23 @@ jobs:
       - name: Build the package
         run: node tools/build-npm.mjs --out "$RUNNER_TEMP/antu-npm"
 
-      - name: Publish the npm package
+      # The first version only: with the short-lived token (see the top of this file)
+      - name: Publish the npm package (first version, with the short-lived token)
+        if: ${{ inputs.use_token }}
+        working-directory: ${{ runner.temp }}/antu-npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::use_token is on but the secret NPM_TOKEN of the npm environment is empty"
+            exit 1
+          fi
+          npm publish --access public --provenance
+
+      # Every later version: the identity of the workflow, no token
+      - name: Publish the npm package (trusted publisher, no token)
+        if: ${{ !inputs.use_token }}
         working-directory: ${{ runner.temp }}/antu-npm
         run: npm publish --access public --provenance
 

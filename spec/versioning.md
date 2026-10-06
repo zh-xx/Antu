@@ -95,9 +95,11 @@ the engine was updated. (A new *hint* is not a break: a hint never stops a diagr
    builds the package and tests it packed (`tools/verify/npm-pack.mjs`) and shows what would be published. **A dry
    run is the default**: publishing to npm cannot be taken back, so a real publish is a choice made on purpose, and
    it waits for the maintainer's approval of the `npm` environment. The package, `server.json` and the skill carry
-   the one version of `package.json` (`test/npm-package.test.mjs`). The first version of the package is published by
-   hand by the maintainer, because npm cannot name this workflow as a trusted publisher of a package that does not
-   exist yet; the setup is written at the top of `.github/workflows/publish-npm.yml`.
+   the one version of `package.json` (`test/npm-package.test.mjs`). The first version of the package cannot use
+   the workflow's identity, because npm cannot name this workflow as a trusted publisher of a package that does not
+   exist yet: it is published by hand by the maintainer, or by the same workflow with `use_token` on and a short-lived
+   token kept as a secret of the `npm` environment (deleted afterwards). Every later version is published without a
+   token. The setup is written at the top of `.github/workflows/publish-npm.yml`.
 
 ## The agent skill (`skills/antu/`)
 
