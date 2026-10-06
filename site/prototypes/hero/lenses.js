@@ -475,7 +475,7 @@ function fitContract() {
   const pg = $('#paper2')
   let fs = 14
   pg.style.setProperty('--cfs', fs + 'px')
-  // the last line of text must end above the folio (the sheet under the page does not count)
+  // the last line of text must end above the folio
   const fits = () => pg.querySelector('.fiction').getBoundingClientRect().bottom <= pg.getBoundingClientRect().bottom - 30
   while (fs > 8 && !fits()) { fs -= 0.25; pg.style.setProperty('--cfs', fs + 'px') }
 }

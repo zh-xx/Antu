@@ -156,8 +156,10 @@ async function reasoning() {
 // its middle. For the home page only, those steps (and what follows them in the row) are moved onto the
 // decision's centre line, and the links from the decision are drawn straight from its tip into the middle of the
 // step. The product's own layout is not touched. The build stops if a link from a decision is still off line.
-function tidyAfterDecisions(nodes, links) {
+function tidyAfterDecisions(nodes, links, stages) {
   const by = Object.fromEntries(nodes.map((n) => [n.id, n]))
+  // which stage each box is in, before anything moves
+  const stageOf = new Map(nodes.map((n) => [n.id, stages.find((s) => n.x >= s.x && n.x + n.w <= s.x + s.w && n.y >= s.y && n.y + n.h <= s.y + s.h)]))
   const cy = (n) => n.y + n.h / 2
   const rowAfter = (id, seen = new Set()) => {
     // the step and what follows it straight on, in the same row (single forward link out, to the right)
@@ -177,12 +179,45 @@ function tidyAfterDecisions(nodes, links) {
       if (l.label) l.ly = cy(dec) - 22
     }
   }
+  // a step entered from a decision's bottom point sits under it (its row moves sideways), and a link that goes back
+  // up from a decision into a step above comes into that step's bottom straight (that step's row moves sideways)
+  const cx = (n) => n.x + n.w / 2
+  for (const dec of nodes.filter((n) => n.kind === 'decision')) {
+    for (const l of links.filter((x) => x.from === dec.id && x.kind !== 'back')) {
+      const t = by[l.to]
+      if (t.y >= dec.y + dec.h && Math.abs(cx(t) - cx(dec)) < 40) {
+        const dx = cx(dec) - cx(t)
+        if (Math.abs(dx) > 0.5) { for (const id of rowAfter(l.to)) by[id].x += dx; if (l.lx != null) l.lx += dx }
+        l.d = `M ${cx(dec)} ${dec.y + dec.h} L ${cx(dec)} ${t.y}`
+      }
+    }
+  }
+  for (const dec of nodes.filter((n) => n.kind === 'decision')) {
+    for (const l of links.filter((x) => x.from === dec.id && x.kind === 'branch' && x.d.includes('C'))) {
+      const t = by[l.to]
+      if (t.y + t.h > dec.y) continue
+      const dx = cx(dec) - cx(t)
+      if (Math.abs(dx) > 0.5) for (const id of rowAfter(l.to)) by[id].x += dx
+      l.d = `M ${cx(dec)} ${dec.y} L ${cx(dec)} ${t.y + t.h}`
+      if (l.lx != null) l.lx = cx(dec) + 4
+    }
+  }
+  // a stage box grows to hold what moved into its edge, with the room it had
+  for (const s of stages) {
+    const inside = nodes.filter((n) => stageOf.get(n.id) === s)
+    const right = Math.max(...inside.map((n) => n.x + n.w))
+    if (right + 14 > s.x + s.w) s.w = right + 14 - s.x
+  }
   // links between boxes of one row are straight lines between their sides
   for (const l of links) {
     const a = by[l.from], t = by[l.to]
     if (/^M [\d.]+ [\d.]+ L [\d.]+ [\d.]+$/.test(l.d)) {
       const y = cy(a)
-      if (Math.abs(cy(t) - y) < 0.5) l.d = `M ${a.x + a.w} ${y} L ${t.x} ${y}`
+      if (Math.abs(cy(t) - y) < 0.5) {
+        const was = l.d
+        l.d = `M ${a.x + a.w} ${y} L ${t.x} ${y}`
+        if (was !== l.d && l.label && l.lw != null && a.kind === 'decision' && t.x - (a.x + a.w) > 90) l.lx = (a.x + a.w + t.x) / 2 - l.lw / 2
+      }
     }
   }
   // a link that comes back into a step from below ends under its middle, wherever the step is now
@@ -193,6 +228,10 @@ function tidyAfterDecisions(nodes, links) {
   for (const l of links) {
     const a = by[l.from], t = by[l.to]
     if (a.kind === 'decision' && l.kind !== 'back' && t.x > a.x + a.w && Math.abs(cy(t) - cy(a)) > 0.5) throw new Error(`link ${l.from} > ${l.to} is still off the decision's centre line`)
+    if (a.kind === 'decision' && !/ [CQ] /.test(l.d) && /^M ([\d.]+) [\d.]+ L ([\d.]+) [\d.]+$/.test(l.d)) {
+      const [, x1, x2] = l.d.match(/^M ([\d.]+) [\d.]+ L ([\d.]+) [\d.]+$/)
+      if (x1 === x2 && (Math.abs(+x1 - cx(a)) > 0.5 || Math.abs(+x2 - cx(t)) > 0.5)) throw new Error(`link ${l.from} > ${l.to} is not straight between the two boxes`)
+    }
   }
 }
 
@@ -249,7 +288,7 @@ async function flowchart() {
     const lp = c.kind === 'back' ? T.link.back : c.kind === 'main' ? T.link.main : T.link.plain
     return { id: c.id, from: c.from, to: c.to, kind: c.kind, d: c.dCurve, label: c.label ?? '', lx: c.labelAt?.x, ly: c.labelAt?.y, lw: c.labelSize?.width, lh: c.labelSize?.height, width: lp.width, dash: lp.dash ?? '' }
   })
-  tidyAfterDecisions(nodes, links)
+  tidyAfterDecisions(nodes, links, stages)
   return { contract, size: g.size, stages, nodes, links, mainPath, order: [...nodes].sort((a, b) => a.x - b.x || a.y - b.y).map((n) => n.id) }
 }
 
@@ -348,7 +387,7 @@ ${read(`${HERE}lenses.css`)}</style>
   ${KINDS.map((k, i) => `<button class="kind${i === 0 ? ' on' : ''}" data-kind="${k.id}"><span class="sk">${sketch(k.icon)}</span><b>${k.label}</b><i class="prog"></i></button>`).join('\n  ')}
  </nav>
  <div class="stage" id="stage">
- <div class="paper" id="paper"><span class="lbl">判决书 · 虚构</span><div class="beam" id="beam"></div><i class="sheet sl"></i><i class="sheet sr"></i>
+ <div class="paper" id="paper"><span class="lbl">判决书 · 虚构</span><div class="beam" id="beam"></div>
   <div class="court">${meta['法院']}</div><div class="ttl">刑事判决书</div><div class="no">${lines[0].replace(/^# /, '')}</div>
   <p class="party">${mark(meta['当事人'])}。</p>
   <h3>本院查明</h3>${facts.map((f) => `<p>${mark(f)}</p>`).join('')}
@@ -366,7 +405,7 @@ ${read(`${HERE}lenses.css`)}</style>
     return `<p class="rp${hit.length ? ' has' : ''}">${html}</p>`
   }).join('')}
   <p class="fiction">${fiction}</p></div>
- <div class="paper paper2" id="paper2"><span class="lbl">合同 · 虚构</span><div class="beam" id="beam2"></div><i class="sheet sc"></i>
+ <div class="paper paper2" id="paper2"><span class="lbl">合同 · 虚构</span><div class="beam" id="beam2"></div>
   <div class="ctitle">${L.flow.contract.title}</div><div class="no">${L.flow.contract.no}</div>
   ${L.flow.contract.parties.map((x) => `<p class="party">${x}</p>`).join('')}
   ${L.flow.contract.clauses.map((ss) => `<p class="cl">${ss.map((x, si) => {
