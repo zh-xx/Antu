@@ -14,15 +14,13 @@ metadata:
 
 # Antu: legal diagrams from JSON
 
-You write the JSON; the engine draws it. The result is **one HTML file** that opens in any browser with no
-install and no network, prints, and can be forwarded. Nothing is uploaded anywhere.
+You write the JSON; the engine draws it. The result is **one HTML file** that opens in any browser with no install and
+no network, prints, and can be forwarded. Nothing is uploaded anywhere. This skill is Antu **{{version}}**; the pages it
+makes say so: `<meta name="generator" content="antu {{version}}">`.
 
-This skill is Antu **{{version}}**. The pages it makes say so: `<meta name="generator" content="antu {{version}}">`.
-
-**`<skill-dir>`** below is the folder that holds this `SKILL.md` (it has `scripts/`, `references/`, `examples/` and
-`assets/` beside it). Every command is written with it, so it runs from **any** directory: put the real path in.
-Keep your own files (the JSON and the page) where the user works, or in the folder they name, never inside the
-skill folder.
+**`<skill-dir>`** is the folder that holds this `SKILL.md` (`scripts/`, `references/`, `examples/` and `assets/` are
+beside it). Commands are written with it so that they run from any directory: put the real path in. Keep your own files
+(the JSON and the page) where the user works, never inside the skill folder.
 
 ## 1. Choose the kind of diagram
 
@@ -33,171 +31,106 @@ skill folder.
 | who the parties are and how they are tied: shareholding, loans, guarantees, control, regulators | `relationship` | `references/guide-relationship.md` |
 | why a court decided as it did: conclusion, issues, norms, elements, facts | `justification` | `references/guide-justification.md` |
 
-If the request fits two, make two diagrams rather than one overloaded one, and say so. If it fits none (a
-chart of numbers, an org chart of a firm), say that Antu does not draw it.
+If the request fits two, make two diagrams rather than one overloaded one, and say so. If it fits none (a chart of
+numbers, an org chart of a firm), say that Antu does not draw it.
 
 ## 2. Write the JSON
 
-1. Read the guide for the kind, then its field table: `references/fields-<kind>.md`. Every field, whether it
-   is required, and what it means is there.
-2. Open one example of that kind in `examples/<kind>/` and follow its shape. `1-minimal` is the smallest;
-   the others each add one idea.
-   **Fact diagram with two or more parties**: `1-minimal` is not enough. It has no `groups`, so every card stands
-   on the middle axis and the page does not show who did what. To put each party on its own side, give the
-   diagram `groups` (one per party or side, each event carrying its `groupId`: see `3-groups`) or `views` that
-   split by party (see `4-views`); an act of both goes on the axis.
+1. Read the guide for the kind, then its field table `references/fields-<kind>.md`: every field, whether it is
+   required, and what it means.
+2. Open one example of that kind in `examples/<kind>/` and follow its shape: `1-minimal` is the smallest, the others
+   each add one idea.
+   **Fact diagram with two or more parties**: `1-minimal` is not enough. It has no `groups`, so every card stands on
+   the middle axis and the page does not show who did what. To put each party on its own side, give the diagram
+   `groups` (one per party or side, each event carrying its `groupId`: see `3-groups`) or `views` that split by party
+   (see `4-views`); an act of both goes on the axis.
 3. Write the file in the **user's language** (the examples come in `.zh-CN.json` and `.en.json`).
 4. Put `"specVersion": 1` in the envelope, next to `"type"`.
 
 **What goes in the diagram comes from the user's material, not from you.**
-- Do not invent a date, a time, an article number, a version of a statute, a case number or a name. If the
-  material does not say, leave the field out, or put the question to the user.
-- A sentence that is your inference, not something the material says, must be marked as such where the
-  format has a place for it (see the guide), or left out.
-- Keep each node's text to what the material says, in its own words as far as you can. Put the full text
-  that does not fit on the node in `detail`, and where it came from in `sources`.
-- When you are not sure a legal point is right, do not dress it as certain: say so to the user in your
-  reply, and do not put it in the diagram.
-- **Something the user says they are unsure of** ("好像", "不确定", "可能"): leave it out of the diagram, and say in
-  your reply that you left it out and why. Offer to add it once they have confirmed it.
-- **An event with no date** ("之后一直没有回复"): leave `date` out of it. It is optional, and the card then says the
-  date is unknown. Do not borrow the date of the event before it, and do not use `approx` for a date that is
-  missing (`approx` is for one that was estimated). Its place in the `slots` array puts it in order.
-- Leave the optional marks that the material does not say out: `combine` (and / or) only when the reasoning
-  says all or any of what it rests on is needed; `approx` only for a date you really cannot give exactly.
-- If the user gave no source document, leave `sources` out. The checker's notes that a fact or a norm has no
-  source are **notes, not errors**: the diagram is right without them. Tell the user that no sources are
-  recorded.
+- Do not invent a date, a time, an article number, a version of a statute, a case number or a name. If the material
+  does not say, leave the field out, or put the question to the user.
+- Mark your own inference where the format has a place for it (see the guide), or leave it out. Keep each node's text to
+  what the material says, in its own words as far as you can; the full text that does not fit goes in `detail`, and where
+  it came from in `sources`. If the user gave no source document, leave `sources` out: the checker's notes about a
+  missing source are **notes, not errors**, and the user is told that no sources are recorded.
+- A legal point you are not sure of, or something the user says they are unsure of ("好像", "不确定", "可能"): leave it
+  out of the diagram, say so in your reply and why, and offer to add it once it is confirmed.
+- An event with no date: leave `date` out (the card then says the date is unknown). Do not borrow the date of the event
+  before it, and do not use `approx` (that is for a date that was estimated). Its place in the `slots` array orders it.
+- Leave out the optional marks the material does not support: `combine` (and / or) only when the reasoning says all or
+  any of what it rests on is needed; `approx` only for a date you really cannot give exactly.
 
-## 2b. Reading the guides without the MCP server
+## 3. Check, make, look
 
-The guides in `references/` were written for agents that have the MCP server, so they talk about its tools.
-Here is what each means in this folder:
-
-| The guide says | Here |
-| --- | --- |
-| `antu_validate` | `node <skill-dir>/scripts/antu.mjs validate spec.json` (section 3) |
-| `antu_layout` | `node <skill-dir>/scripts/antu.mjs layout spec.json` |
-| `antu_render` | `node <skill-dir>/scripts/antu.mjs render spec.json -o diagram.html`, or the Python script (section 4) |
-| `antu_schema` | `references/fields-<kind>.md` |
-| `antu_examples` | `examples/<kind>/` |
-| `antu_preview` ("look at the picture before you deliver") | `node <skill-dir>/scripts/antu.mjs preview spec.json -o shot.png`, then open the PNG with your own tool and look at it (section 4b). If it cannot take the picture, or you cannot read images, you have **not** seen the page: do not say you checked how it looks, and tell the user |
-
-A path in a guide that begins `spec/` or `src/` is for the people who maintain Antu and is not in this folder:
-ignore it.
-
-## 3. Check the data
-
-- **If the tools `antu_validate` and `antu_layout` are available** (the Antu MCP server is installed): call
-  `antu_validate` until it passes, then `antu_layout` to see how big the picture is and which orientation fits.
-- **Else, if `node` runs** (Node 18 or newer): the file `scripts/antu.mjs` is the same checker, with nothing to
-  install. Run it from wherever you are:
-
-  ```
-  node <skill-dir>/scripts/antu.mjs validate spec.json
-  node <skill-dir>/scripts/antu.mjs layout spec.json
-  ```
-
-  `validate` prints each problem with its field path (exit code 1 when there are any) or "Validation passed";
-  fix the JSON and run it again until it passes. `layout` says how big the picture is and which orientation
-  suits it, and, for a fact diagram, which views do not fit. Do this before you make the page.
-- **Otherwise** there is no checker you can run. Go through the field table once more against your JSON:
-  required fields present, ids unique, every reference (`actorIds`, `sourceIds`, `from`, `to`, `groupId` …)
-  points at an id that exists. The page checks the data again when it opens and **lists every problem it
-  finds instead of the diagram**: tell the user to send you that list if they see one, then fix the JSON and
-  make the file again.
-- The "cross-field rules" that the end of a field table says `antu_validate` reports (a dangling reference, a
-  span running backwards, two events in one lane of one time slot …) are real rules: when you have no checker,
-  check each by hand. For the fact diagram, the guide's section "one event per cell" says how to see and fix
-  the last one.
-
-**Whether the reader can read it.** Before you make the page, `layout` tells you: its line
-`Text on one screen (1600×900): … px` is the size the body text is drawn at when the page opens fitted to a
-1600×900 screen (it matches the page to within a few percent, a little on the small side). It adds a note when
-the text is **under 11 px** (small; the reader can zoom in) and when it is **under 9 px** (too small to read
-without zooming in). `render` prints the same lines after it writes the page, but run `layout` first: it is
-cheaper to split the JSON than to make the page twice.
-
-When it says too small, split the diagram the way the note says: a justification tree **by issue** (or leave it
-whole when the note says that with every issue folded the text reads well: the reader can fold issues with the
-"收起争点" / "Fold issues" switch), a procedure **by stage**, a relationship diagram **by group**, a timeline **into
-periods**. Write one JSON for each piece from the same material, give each piece a clear title of its own (for
-example the issue's name), check each with `layout` again, and tell the user it is in pieces and why. **Never drop
-facts to make it fit.** When it only says small, you may leave it whole and tell the user they can zoom in.
-
-The guides mention tools named `antu_*`. They exist only with the MCP server; without it, use the command
-above if you can, and otherwise the field tables and examples in this skill.
-
-## 4. Make the HTML
-
-**With Node** (the same file): it checks the data first and refuses a diagram that has problems.
+The guides name four actions: `validate`, `layout`, `preview` and `render`. Here they are the subcommands of
+`scripts/antu.mjs` (Node 18 or newer, nothing to install). If the Antu MCP server is installed, its tools `antu_validate`,
+`antu_layout`, `antu_preview` and `antu_render` do the same.
 
 ```
+node <skill-dir>/scripts/antu.mjs validate spec.json
+node <skill-dir>/scripts/antu.mjs layout spec.json
 node <skill-dir>/scripts/antu.mjs render spec.json -o diagram.html
-```
-
-**With Python 3** (standard library only; it does not check the data beyond "parses, known `type`"):
-
-```
-python3 <skill-dir>/scripts/make_html.py spec.json -o diagram.html
-```
-
-**Without either**: copy `<skill-dir>/assets/viewer.html` to the new file and replace the **one** piece of text
-`/*ANTU_SPEC*/null` with the JSON of the diagram, written on one line, with every `<` written as `\u003c`.
-Change nothing else in the file.
-
-Keep the JSON next to the HTML (same name, `.json`): the JSON is the source and can be edited and made
-again; the HTML is the product.
-
-## 4b. Look at it
-
-Passing validation does not mean it looks good. **With Node** and a Chromium-based browser on the machine (Chrome,
-Edge or Chromium; Windows has Edge), take a screenshot of the diagram and look at it before you deliver:
-
-```
 node <skill-dir>/scripts/antu.mjs preview spec.json -o shot.png
 ```
 
-It checks the data first, makes the page in a temporary place, opens it in the browser without a window, and writes
-the PNG. Open the PNG with the tool you have for reading images, and look for what validation cannot see: cards
-or nodes crowded together, text too small to read, a line running through a card, a diagram that is mostly empty,
-headings cut off. If something is wrong, change the JSON and run `preview` again. `--orientation vertical|horizontal`
-shows the other orientation; `--width` and `--height` change the screen size (1600×900 by default). Keep the PNG
-out of the user's folder unless they want it.
+- `validate` prints each problem with its field path (exit code 1 when there are any) or "Validation passed". Fix the
+  JSON and run it again until it passes.
+- `layout` says how big the picture is, which orientation suits it and, for a fact diagram, which views do not fit. Run it
+  before `render`.
+- `render` checks the data first, refuses a diagram that has problems, and writes the page. Keep the JSON next to the
+  HTML (same name, `.json`): the JSON is the source and can be edited and made again; the HTML is the product.
+- `preview` takes a screenshot of the diagram, because passing validation does not mean it looks good. It needs a
+  Chromium-based browser on the machine (Chrome, Edge or Chromium; Windows has Edge). Open the PNG with the tool you
+  have for reading images and look for what validation cannot see: cards or nodes crowded together, text too small to
+  read, a line running through a card, a diagram that is mostly empty, headings cut off. If something is wrong, change
+  the JSON and run it again. `--orientation vertical|horizontal` shows the other orientation; `--width` and `--height`
+  change the screen size (1600×900 by default). Keep the PNG out of the user's folder unless they want it.
 
-`--kind` picks another way of drawing the same JSON: a fact diagram is `timeline` (the default), `chronicle`
-(one column in order, with the time passed between events written in) or `scale` (distance is real time, so the
-reader sees where events crowd together); a relationship diagram is `graph` (the default), `focus` (one party in
-the middle, the parties tied to it around it: for a case with many parties) `chain` (one block per claim with its guarantors and
-what stands behind them: for a loan or guarantee dispute), `matrix` (parties down and across, each cell the relations from its row to its column:
-for "is there any relation between A and B") `equity` (holders above what they hold, the share on each line, and what is held through others), `authority` (control, employment and agency as an organisation chart), `related` (one party and everyone tied to it, as a table to paste into a brief), `path` (the shortest chains of relations between two parties) or `summary` (each camp as one block: for many parties); a procedure diagram is `flow` (the default) or `route` (the main line as one line, with rework drawn as loops and early endings hanging below it). `layout`, `render` and `preview` all
-take it; `render --kind chronicle` makes the page open in the chronicle, and the reader can still switch.
+**Whether the reader can read it.** `layout` has a line `Text on one screen (1600×900): … px`: the size the body text is
+drawn at when the page opens fitted to a 1600×900 screen. It adds a note when the text is **under 11 px** (small; the
+reader can zoom in) and when it is **under 9 px** (too small to read without zooming in). Run `layout` first: it is
+cheaper to split the JSON than to make the page twice.
 
-`--theme document|modern|legal` (for `render` and `preview`) sets the look of the picture: `document` is black and white,
-square, for print and filing (the default when nobody chooses); `modern` is rounded and pale; `legal` is navy, with red only
-for the adverse. Only the diagram is themed. Without `--theme` the reader picks one in the page; with it the page is
-fixed to that theme. Nothing in the JSON chooses a theme.
+When it says too small, split the diagram the way the note says: a justification tree **by issue** (or leave it whole
+when the note says that with every issue folded the text reads well: the reader can fold issues with the "收起争点" /
+"Fold issues" switch), a procedure **by stage**, a relationship diagram **by group**, a timeline **into periods**. Write
+one JSON for each piece from the same material, give each piece a clear title of its own (for example the issue's name),
+check each with `layout` again, and tell the user it is in pieces and why. **Never drop facts to make it fit.** When it
+only says small, you may leave it whole and tell the user they can zoom in.
 
-**When it cannot look**, say so; never claim you checked how it looks:
+`--kind K` (for `layout`, `render` and `preview`) picks another way of drawing the same JSON; the guide of each kind
+lists its ways, and the reader can still switch in the page. `--theme document|modern|legal` (for `render` and
+`preview`) fixes the look of the picture: `document` is black and white and square, for print and filing (the default when
+nobody chooses); `modern` is rounded and pale; `legal` is navy, with red only for the adverse. Nothing in the JSON chooses
+a way of drawing or a theme.
+
+**Without Node**, with Python 3 (standard library only): `python3 <skill-dir>/scripts/make_html.py spec.json -o
+diagram.html` makes the page. It checks only that the JSON parses and that the `type` is known. The page checks the data
+again when it opens and **lists every problem it finds instead of the diagram**: tell the user to send you that list if
+they see one, then fix the JSON and make the file again. Check the JSON by hand against the field table: required fields
+present, ids unique, every reference (`actorIds`, `sourceIds`, `from`, `to`, `groupId` …) points at an id that exists, and
+the cross-field rules at the end of the table. There is no `layout` and no `preview`. **Without Node and without Python**
+this environment cannot make the page: say so to the user.
+
+**When you cannot look**, say so; never claim you checked how it looks:
 - `preview` ends with "no Chromium-based browser found" or "no picture could be taken" (exit code 3): there is no
   picture. If the user has a browser somewhere else, `ANTU_CHROME` can point at it.
 - You have no way to read an image file: the picture exists but you have not seen it.
 - No Node: there is no `preview`.
 
-In each case rely on `layout` for size and orientation, and tell the user that you could not view the result and
-that they should open the page and look.
+In each case rely on `layout` for size and orientation, and tell the user that you could not view the result and that
+they should open the page and look.
 
-## 5. Tell the user
+## 4. Tell the user
 
-Give the path of the HTML file. Say what it shows and what you had to leave out or could not tell from their
-material, in a few lines. In the page the reader can hover and click the items for detail, switch the way of
-drawing in the label card at the top left (a fact diagram: Timeline, Chronicle or Time scale; a relationship diagram: Graph, Focus view, Guarantee chain, Relation matrix, Equity tree, Control and employment, Related parties, Relation path or Camp summary; a procedure: Flowchart or Route map), and use the bar at the bottom:
-switch orientation (vertical / horizontal), switch the language, export an image. The page's own labels
-follow the browser's language (a Chinese browser shows Chinese); if the user sees them in the wrong language,
-the EN / 中文 switch in that bar changes them.
+Give the path of the HTML file. Say what it shows and what you had to leave out or could not tell from their material, in
+a few lines. In the page the reader can hover and click the items for detail, switch the way of drawing in the label card
+at the top left, and use the bar at the bottom: switch orientation (vertical / horizontal), switch the language (the
+page's labels follow the browser's language; the EN / 中文 switch changes them), export an image.
 
-**The bar also has switches that show or hide things on the diagram.** Some of them are **off until the reader
-turns them on**, so do not count on them for what the diagram has to say; tell the user where to look.
+**The bar also has switches that show or hide things on the diagram.** Some of them are **off until the reader turns
+them on**, so do not count on them for what the diagram has to say; tell the user where to look.
 
 | Kind | Switches in the bar (on by default unless it says off) |
 | --- | --- |
@@ -208,26 +141,20 @@ turns them on**, so do not count on them for what the diagram has to say; tell t
 
 What this means for what you write:
 
-- **Fact diagram: a card shows its title, its summary and its time.** Its party names and its source marks are
-  off by default. So if who did it matters, say so in the title or the summary, or give the diagram `groups` so
-  each party has its own side (see section 2); and tell the user that **Parties** and **Sources** in the bar show
-  them on the cards.
-- A `detail` (the full text that did not fit) and the `sources` are in the overlay that opens when the reader
-  points at or clicks an item, in every kind.
+- **Fact diagram: a card shows its title, its summary and its time.** Its party names and its source marks are off by
+  default. So if who did it matters, say so in the title or the summary, or give the diagram `groups` so each party has
+  its own side (see section 2); and tell the user that **Parties** and **Sources** in the bar show them on the cards.
+- A `detail` (the full text that did not fit) and the `sources` are in the overlay that opens when the reader points at or
+  clicks an item, in every kind.
 
-## Licence
+## Licence and version
 
-Antu is free software under the GNU AGPL, version 3 or any later version: `LICENSE` is in this folder, and
-`THIRD-PARTY-NOTICES.md` holds the notices of the code of others that is inside the viewer and the command line.
-Every page this skill makes carries the licence and the place of the source (the block `antu-license` in the page).
-If the user asks: it may be used, changed and shared, including commercially; a changed version that is shared or
-offered over a network must be released under the same licence with the notices kept. The data in a page
-(the user's diagram and the material it comes from) is not covered by the licence: it stays the user's (an additional
-permission, stated in the page). Do not describe the licence
-beyond that: say that the text in `LICENSE` is what counts.
+Antu is free software under the GNU AGPL, version 3 or any later version: `LICENSE` and `THIRD-PARTY-NOTICES.md` are in
+this folder, and every page this skill makes carries the licence and the place of the source (the block `antu-license` in
+the page). If the user asks: it may be used, changed and shared, including commercially; a changed version that is shared
+or offered over a network must be released under the same licence with the notices kept. The data in a page (the user's
+diagram and the material it comes from) is not covered by the licence: it stays the user's. Do not describe the licence
+beyond that: the text in `LICENSE` is what counts.
 
-## Updating this skill
-
-The version is at the top. The newest one is at https://github.com/zh-xx/Antu/releases. If the user asks
-whether this is up to date, tell them the version above and that address; do not claim to know what the
-newest version is.
+The version is at the top; the newest one is at https://github.com/zh-xx/Antu/releases. If the user asks whether this is
+up to date, tell them the version above and that address; do not claim to know what the newest version is.
