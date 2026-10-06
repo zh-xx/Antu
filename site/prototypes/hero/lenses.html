@@ -1015,7 +1015,13 @@ async function play(kind) {
     bar.style.setProperty('--p', Math.min(0.96, (now - t0) / SCENE_MS[kind]))
     requestAnimationFrame(tick)
   })(t0)
-  await SCENES[kind](alive)
+  // a plain switch, so a name taken from the page or the address can only reach one of the four
+  switch (kind) {
+    case 'fact': await SCENES.fact(alive); break
+    case 'relationship': await SCENES.relationship(alive); break
+    case 'procedure': await SCENES.procedure(alive); break
+    case 'justification': await SCENES.justification(alive); break
+  }
   if (alive()) { run++; bar.style.setProperty('--p', 1) }
 }
 $$('.kind').forEach((k) => (k.onclick = () => play(k.dataset.kind)))
