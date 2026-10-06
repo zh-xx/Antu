@@ -184,7 +184,7 @@ html{--fang:"FangSong","STFangsong","FangSong_GB2312","Noto Serif CJK SC","Sourc
 .lx #paper::before{left:0;content:"— 1 —";background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .3 0 0 0 0 .22 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),linear-gradient(90deg,#f7f3ea 0%,#f6f2e8 82%,#ece6d8 96%,#e2dccd 100%)}
 .lx #paper::after{right:0;content:"— 2 —";background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .3 0 0 0 0 .22 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),linear-gradient(270deg,#f7f3ea 0%,#f6f2e8 82%,#ece6d8 96%,#e2dccd 100%)}
 html[data-theme="light"] .lx #paper::before,html[data-theme="light"] .lx #paper::after{box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 1px 1px rgba(60,40,20,.12),0 3px 6px rgba(60,40,20,.08),0 14px 30px rgba(60,40,20,.1)}
-html[data-theme="light"] .lx #paper.melt::before,.lx #paper.melt::after{opacity:0}
+.lx #paper.melt::before,.lx #paper.melt::after{opacity:0}
 /* the highlighter: it goes over the sentence, then the words the card takes are marked */
 .lx #paper li{background:linear-gradient(rgba(240,200,180,.55),rgba(240,200,180,.55)) no-repeat 0 0/0 100%;transition:background-size .55s cubic-bezier(.5,0,.3,1)}
 .lx #paper li.hl{background-size:100% 100%}
