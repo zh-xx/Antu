@@ -105,11 +105,6 @@ html[data-theme="light"] .mode .moon{transform:rotate(90deg) scale(.4);opacity:0
 html[data-theme="light"] .mode .sun{transform:none;opacity:1}
 .links .start{border:0;background:var(--red);color:#fff;font:600 14.5px/1 var(--sans);padding:13px 24px;border-radius:99px;cursor:pointer;box-shadow:0 6px 20px rgba(232,69,44,.35);transition:transform .2s,box-shadow .2s}
 .links .start:hover{transform:translateY(-1px);box-shadow:0 0 0 4px rgba(232,69,44,.18),0 8px 26px rgba(232,69,44,.45)}
-.pop{position:absolute;right:5vw;top:92px;width:380px;background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:20px;box-shadow:var(--card-shadow)}
-.pop b{font-size:14.5px;color:var(--txt)}
-.pop p{color:var(--mut);font-size:13px;margin:6px 0 12px}
-.pop pre{margin:0 0 12px;padding:12px;background:var(--bg);border:1px dashed var(--hair);border-radius:8px;color:var(--mut2);font:12.5px/1.6 var(--sans);white-space:pre-wrap}
-.pop button{border:1px solid var(--hair);background:none;color:var(--mut2);border-radius:99px;padding:7px 15px;font-size:12.5px}
 .lx .hero{height:calc(100vh - 84px);padding-top:3vh;transition:background .4s}
 body.lx{transition:background .4s,color .4s}
 @media(max-width:900px){.links a:not(.gh),.gh span,.sep{display:none}.lx .nav{padding:0 16px;height:68px}.links{gap:12px}.brand b{font-size:24px}.lx .hero{height:calc(100vh - 68px)}}
@@ -274,27 +269,40 @@ html[data-theme="light"] .lx #paper2::before{box-shadow:inset 0 1px 0 rgba(255,2
 .jcard.k-conclusion .jl{font-weight:600}
 .jcard.rej .jl{text-decoration:line-through;text-decoration-color:var(--red)}
 
-/* the sections under the first screen: few words, quiet */
-.sec{max-width:1040px;margin:0 auto;padding:13vh 5vw 0}
-.sec-t{margin:0 0 36px;font:700 clamp(22px,2.4vw,30px)/1.3 var(--serif);letter-spacing:.06em;color:var(--txt)}
-.sec h3{margin:0 0 6px;font:600 16px/1.4 var(--sans);color:var(--txt)}
-.sec p{margin:0;color:var(--mut);font-size:14px;line-height:1.75}
-.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
-.steps li{position:relative;padding-top:58px;border-top:1px solid var(--hair)}
-.steps b{position:absolute;top:14px;left:0;font:700 26px/1 var(--serif);color:var(--red)}
-.tools{width:100%;border-collapse:collapse;font-size:14px}
-.tools th{text-align:left;font:500 12px/1 var(--sans);letter-spacing:.14em;color:var(--mut);padding:0 12px 12px 0;border-bottom:1px solid var(--hair)}
-.tools td{padding:16px 12px 16px 0;border-bottom:1px solid var(--hair);color:var(--txt);vertical-align:top}
-.tools td:first-child{font-weight:600;white-space:nowrap;width:140px}
-.tools td:last-child{width:96px}
-.tools code{font:12.5px ui-monospace,Menlo,Consolas,monospace;color:var(--edge);background:var(--chipbg);padding:1px 6px;border-radius:4px}
-.tools tr.tbd td{color:var(--mut2);font-weight:400}
-.st{display:inline-block;font-size:12px;padding:3px 10px;border-radius:99px;white-space:nowrap}
-.st-wait{color:var(--mut);border:1px dashed var(--hair)}
-.sec-note{margin-top:14px!important;font-size:12.5px!important;color:var(--mut2)!important}
-.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
-.cards3>div{padding-top:22px;border-top:2px solid var(--red)}
-.placeholder{padding:46px;border:1px dashed var(--hair);border-radius:14px;text-align:center;color:var(--mut2);font-size:14px}
+/* under the first screen: a robot at work, for now */
+html{scroll-behavior:smooth}
+.build{scroll-margin-top:84px;min-height:82vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12vh 5vw 4vh}
+.robot{width:min(280px,64vw);height:auto;overflow:visible;color:var(--txt)}
+.robot .r-line{fill:none;stroke:var(--nodeline);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.robot .r-panel{fill:var(--panel)}
+.robot .r-fill{fill:var(--txt)}
+.robot .r-shadow{fill:var(--chipbg)}
+.robot .r-hat{fill:var(--red);stroke:var(--red);stroke-width:2;stroke-linejoin:round}
+.robot .r-hatline{stroke:rgba(255,255,255,.55);stroke-width:2;fill:none}
+.robot .r-chest{fill:var(--chipbg)}
+.robot .r-bar{fill:var(--red);transform-box:fill-box;transform-origin:0 50%;animation:rbar 2.6s ease-in-out infinite}
+.robot .r-dot{fill:var(--mut2);animation:rdot 1.4s infinite}
+.robot .r-dot.d2{animation-delay:.2s}.robot .r-dot.d3{animation-delay:.4s}
+.robot .r-eyes{transform-box:fill-box;transform-origin:50% 50%;animation:rblink 4.2s infinite}
+.robot .r-teeth{fill:none;stroke:var(--nodeline);stroke-width:6;stroke-dasharray:5.9 5.9}
+.robot .spin{transform-box:fill-box;transform-origin:50% 50%;animation:rspin 6s linear infinite}
+.robot .r-armR{transform-box:view-box;transform-origin:170px 150px;animation:rhit 1.1s cubic-bezier(.5,0,.6,1) infinite}
+.robot .r-armL{transform-box:view-box;transform-origin:90px 150px;animation:rwave 3.4s ease-in-out infinite}
+.robot .r-hh{fill:var(--txt);stroke:none}
+.robot .r-sparks path{stroke:var(--red);stroke-width:2.2;stroke-linecap:round;fill:none;opacity:0;animation:rspark 1.1s infinite}
+.robot .r-sparks path:nth-child(2){animation-delay:.03s}.robot .r-sparks path:nth-child(3){animation-delay:.06s}
+.robot{animation:rbob 2.2s ease-in-out infinite}
+@keyframes rbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes rbar{0%{transform:scaleX(.08)}70%{transform:scaleX(.9)}100%{transform:scaleX(.08)}}
+@keyframes rdot{0%,100%{opacity:.25}40%{opacity:1;fill:var(--red)}}
+@keyframes rblink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes rspin{to{transform:rotate(360deg)}}
+@keyframes rhit{0%{transform:rotate(-22deg)}45%{transform:rotate(14deg)}55%{transform:rotate(14deg)}100%{transform:rotate(-22deg)}}
+@keyframes rwave{0%,100%{transform:rotate(0)}50%{transform:rotate(-12deg)}}
+@keyframes rspark{0%,40%{opacity:0;transform:translate(0,0)}48%{opacity:1}70%{opacity:0;transform:translate(6px,-3px)}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.robot,.robot *{animation:none!important}.robot .r-bar{transform:scaleX(.6)}}
+.build-t{margin:30px 0 8px;font:700 clamp(24px,2.6vw,32px)/1.3 var(--serif);letter-spacing:.14em;color:var(--txt)}
+.build-s{margin:0;color:var(--mut);font-size:14px;letter-spacing:.06em}
 .pfoot{max-width:1040px;margin:14vh auto 0;padding:26px 5vw 40px;display:flex;justify-content:space-between;gap:20px;font-size:12.5px;color:var(--mut2);position:relative}
 .pfoot::before{content:"";position:absolute;top:0;left:5vw;right:5vw;border-top:1px solid var(--hair)}
 .pfoot a{color:var(--link);text-decoration:none}

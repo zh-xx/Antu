@@ -556,11 +556,10 @@ $$('.kind').forEach((k) => (k.onclick = () => play(k.dataset.kind)))
 const FIRST = (location.hash.match(/kind=(\w+)/) || [])[1] || 'fact'
 const start = () => play(FIRST)
 
-// the top bar: the start button opens the prompt box; the language switch (the top bar's labels only, in
-// this draft); light / dark, remembered in this browser
-$('#startBtn').onclick = (e) => { e.stopPropagation(); $('#pop').hidden = !$('#pop').hidden }
-document.addEventListener('click', (e) => { if (!$('#pop').contains(e.target)) $('#pop').hidden = true })
-const EN = { examples: 'Examples', start: 'Get started', popTitle: 'Hand it to your AI assistant', popBody: 'Copy the text below and send it to the AI assistant you use; it installs Antu by itself.', copy: 'Copy' }
+// the top bar: the start button and Examples go to the under-construction notice for now; the language
+// switch (the top bar's labels and the notice only, in this draft); light / dark, remembered in this browser
+$('#startBtn').onclick = () => $('#building').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
+const EN = { examples: 'Examples', start: 'Get started', building: 'Under construction', buildingSub: 'More is on its way. See you soon.' }
 const ZH = Object.fromEntries($$('[data-i18n]').map((e) => [e.dataset.i18n, e.textContent]))
 $$('.lang button').forEach((b) => (b.onclick = () => {
   const lang = b.dataset.lang
