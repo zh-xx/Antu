@@ -79,7 +79,7 @@ The MCP server is the npm package [`@zh-xx/antu`](https://www.npmjs.com/package/
   "mcpServers": {
     "antu": {
       "command": "npx",
-      "args": ["-y", "-p", "@zh-xx/antu", "antu-mcp"]
+      "args": ["-y", "-p", "@zh-xx/antu@latest", "antu-mcp"]
     }
   }
 }

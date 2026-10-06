@@ -12,6 +12,7 @@
 //  ANTU_REGISTRY_URL points it at another address (the unit test does).
 // ============================================================
 
+import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
@@ -100,7 +101,7 @@ export async function updateNotice({ current, where = whereRuns(), env = process
   try {
     if (env.ANTU_NO_UPDATE_NOTIFIER || where === 'source' || compareVersions(current, current) === null) return ''
     const url = env.ANTU_REGISTRY_URL || REGISTRY_URL
-    const cacheFile = join(tmpdir(), `antu-update-check-${Buffer.from(url).toString('hex').slice(-16)}.json`)
+    const cacheFile = join(tmpdir(), `antu-update-check-${createHash('sha1').update(url).digest('hex').slice(0, 16)}.json`)
     const latest = await latestVersion({ url, cacheFile, now })
     return latest ? noticeText({ current, latest, where }) : ''
   } catch {
