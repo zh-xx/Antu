@@ -1,5 +1,5 @@
 // The site on GitHub Pages (tools/gen/pages.mjs): a page for every registered way of drawing, in both languages,
-// and an index that links to each of them and shows its sketch.
+// and a gallery that links to each of them and shows its sketch.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, mkdtempSync, readFileSync, readdirSync, statSync } from 'node:fs'
@@ -21,7 +21,7 @@ test('the site has a page for every registered way of drawing, in both languages
 
   const out = mkdtempSync(join(tmpdir(), 'antu-site-'))
   const written = writeSite(out)
-  const index = readFileSync(join(out, 'index.html'), 'utf8')
+  const index = readFileSync(join(out, 'gallery.html'), 'utf8')
   for (const { type, kinds } of SITE) {
     for (const kind of kinds) {
       assert.ok(existsSync(join(out, 'kinds', `${kind}.svg`)), `sketch of ${kind}`)
@@ -32,6 +32,8 @@ test('the site has a page for every registered way of drawing, in both languages
       }
     }
   }
+  // the home page is the committed lenses.html
+  assert.equal(readFileSync(join(out, 'index.html'), 'utf8'), readFileSync('site/prototypes/hero/lenses.html', 'utf8'))
   // a page is a real page: it carries the engine and opens in the way asked
   const page = readFileSync(join(out, pageName('procedure', 'route', 'en')), 'utf8')
   assert.match(page, /"defaultKind":"route"/)
