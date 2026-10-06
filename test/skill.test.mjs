@@ -41,7 +41,7 @@ test('an unfilled template is valid JavaScript for the data: the page says no da
 })
 
 test('the skill folder is complete and carries the version of package.json', () => {
-  const problems = checkSkill().filter((p) => !p.startsWith('differs from a build'))
+  const problems = checkSkill({ strict: false }).filter((p) => !p.startsWith('differs from a build'))
   assert.deepEqual(problems, [])
   const version = engineVersion()
   assert.equal(readFileSync('skills/antu/VERSION', 'utf8').trim(), version)

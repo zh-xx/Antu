@@ -149,12 +149,9 @@ What this means for what you write:
 
 ## Licence and version
 
-Antu is free software under the GNU AGPL, version 3 or any later version: `LICENSE` and `THIRD-PARTY-NOTICES.md` are in
-this folder, and every page this skill makes carries the licence and the place of the source (the block `antu-license` in
-the page). If the user asks: it may be used, changed and shared, including commercially; a changed version that is shared
-or offered over a network must be released under the same licence with the notices kept. The data in a page (the user's
-diagram and the material it comes from) is not covered by the licence: it stays the user's. Do not describe the licence
-beyond that: the text in `LICENSE` is what counts.
+Antu is licensed under the GNU AGPL, version 3 or any later version (`LICENSE`). The data in a page (the user's diagram
+and the material it comes from) is not covered by the licence: it stays the user's. For anything else about the licence,
+read `LICENSE-NOTES.md` and do not describe it beyond that file.
 
 The version is at the top; the newest one is at https://github.com/zh-xx/Antu/releases. If the user asks whether this is
 up to date, tell them the version above and that address; do not claim to know what the newest version is.
