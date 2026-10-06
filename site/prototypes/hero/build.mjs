@@ -118,7 +118,7 @@ async function relGraph(spec) {
 }
 
 // The 方远 reasoning tree as Antu lays it out (across, where five issues stack under the holding), every issue
-// folded, as it opens. Each card keeps its kind and holds; lines take the
+// folded, as it opens, then with issue two open (the same pieces, in the places Antu gives them then). Each card keeps its kind and holds; lines take the
 // width and dash of their stance from the document theme
 async function reasoning() {
   const j = JSON.parse(read(`${REPO}examples/justification/fang-yuan-defense-excess.zh-CN.json`))
@@ -144,10 +144,11 @@ async function reasoning() {
       }),
     }
   }
-  const folded = take(all)
+  const OPEN = 'g-2' // the issue the court rejected: four cards, norm to holding, a whole chain in a small space
+  const folded = take(all), open = take(all.filter((x) => x !== OPEN))
   const root = j.nodes.find((n) => n.kind === 'conclusion' && !n.groupId)
   const heads = j.links.filter((l) => l.to === root.id).map((l) => j.nodes.find((n) => n.id === l.from))
-  return { folded, root: root.id, heads: heads.map((n) => ({ id: n.id, label: n.label })), rootLabel: root.label,
+  return { folded, open, openGroup: OPEN, root: root.id, heads: heads.map((n) => ({ id: n.id, label: n.label })), rootLabel: root.label,
     kinds: { conclusion: '结论', norm: '规范', element: '要件', fact: '事实', inference: '推断', judgement: '评价' }, holds: { yes: '✓ 成立', no: '✗ 否定' } }
 }
 

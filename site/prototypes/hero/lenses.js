@@ -239,7 +239,7 @@ async function toGraph(alive) {
 }
 
 function reset() {
-  $$('.jcv,.flowcv,.relcv,.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
+  $$('.jcv,.jghost,.flowcv,.relcv,.actor,.wordfly,.mv,.tl-head,.vaxis,.hstub,.spine,.rowlbl,.stub,.tdot,.camp,.ent,.edges,.rn,.chip,.trunk,.doc,.fn,.token').forEach((e) => e.remove())
   paper.classList.remove('melt')
   $$('#bul li, .paper > *:not(.beam), .nm').forEach((e) => { e.getAnimations().forEach((a) => a.cancel()); e.style.visibility = ''; e.classList.remove('lit', 'hl', 'pick') })
   $$('#paper .rp').forEach((p) => p.classList.remove('hl', 'pick'))
@@ -281,6 +281,15 @@ function jLayer(L, fit) {
   })
   const cards = {}
   for (const n of L.nodes) { cards[n.id] = jCard(n); layer.appendChild(cards[n.id]) }
+  // Antu sizes a card from its own estimate of the text; a card that comes up a line short grows down to hold it
+  for (const n of L.nodes) {
+    const c = cards[n.id], need = c.querySelector('.jb').offsetHeight + 18
+    if (need > n.h + 0.5) {
+      c.style.height = need + 'px'
+      c.querySelector('svg').setAttribute('height', need)
+      c.querySelector('rect.sh').setAttribute('height', need - 2)
+    }
+  }
   return { layer, svg, groups, cards }
 }
 function jLinks(L, svg, delay0 = 0, step = 90) {
@@ -302,12 +311,14 @@ function jLinks(L, svg, delay0 = 0, step = 90) {
   return delay0 + L.links.length * step + 600
 }
 // fit a box of a layout (or all of it) to the stage
-function jFit(L, box) {
+function jFit(L, box, scale) {
   const W = stage.clientWidth, H = stage.clientHeight
   const b = box ?? { x: 0, y: 0, w: L.size.width, h: L.size.height }
-  const k = Math.min((W - 32) / b.w, (H - 24) / b.h, 1.3)
+  const k = scale ?? Math.min((W - 32) / b.w, (H - 24) / b.h, 1.3)
   return { k, ox: (W - b.w * k) / 2 - b.x * k, oy: (H - b.h * k) / 2 - b.y * k }
 }
+// the scale that fits the larger of the tree's two states, so it can be kept from one state to the other
+const jScale = (...Ls) => Math.min(...Ls.map((L) => jFit(L).k))
 
 async function toReasoning(alive) {
   const R = D.reason, F1 = R.folded
@@ -322,7 +333,7 @@ async function toReasoning(alive) {
   await wait(450)
   if (!alive()) return
   // Antu's tree, every issue folded: the marked words fly to their cards
-  const f1 = jFit(F1), A = jLayer(F1, f1)
+  const k1 = jScale(F1, R.open), f1 = jFit(F1, null, k1), A = jLayer(F1, f1)
   Object.values(A.cards).forEach((c) => (c.style.opacity = 0))
   A.groups.forEach((g, i) => g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 400 + i * 120, fill: 'both' }))
   paperAway()
@@ -345,7 +356,34 @@ async function toReasoning(alive) {
   await wait(100 + marked.length * 80 + 950)
   if (!alive()) return
   $$('.wordfly').forEach((w) => w.remove())
-  await wait(jLinks(F1, A.svg, 0, 70))
+  await wait(jLinks(F1, A.svg, 0, 70) + 450)
+  if (!alive()) return
+  // issue two opens, where the court turned the argument down: the cards both states share move to their new
+  // places, the rest of the chain comes in, and the lines draw again. One scale for both states, so nothing zooms
+  const F2 = R.open, B = jLayer(F2, jFit(F2, null, k1))
+  B.layer.style.opacity = 0
+  const fit1 = jFit(F1, null, k1), fit2 = jFit(F2, null, k1)
+  const scr = (f, n) => ({ x: f.ox + n.x * f.k, y: f.oy + n.y * f.k })
+  const shared = F1.nodes.filter((n) => F2.nodes.some((m) => m.id === n.id))
+  const ghosts = shared.map((n) => {
+    const m = F2.nodes.find((x) => x.id === n.id), a = scr(fit1, n), b = scr(fit2, m)
+    const g = jCard(n)
+    Object.assign(g.style, { left: '0px', top: '0px', transformOrigin: '0 0', zIndex: 6 })
+    g.classList.add('jghost')
+    stage.appendChild(g)
+    g.animate([{ transform: `translate(${a.x}px,${a.y}px) scale(${k1})` }, { transform: `translate(${b.x}px,${b.y}px) scale(${k1})` }], { duration: 800, easing: ease, fill: 'both' })
+    return g
+  })
+  A.layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'both' })
+  await wait(800)
+  if (!alive()) return
+  B.layer.style.opacity = 1
+  ghosts.forEach((g) => g.remove())
+  const fresh = F2.nodes.filter((n) => !shared.some((s) => s.id === n.id))
+  B.groups.forEach((g) => g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 350, fill: 'both' }))
+  Object.values(B.cards).forEach((c) => (c.style.opacity = 1))
+  fresh.forEach((n, i) => B.cards[n.id].animate([{ opacity: 0, transform: 'translateX(-12px)' }, { opacity: 1, transform: 'none' }], { duration: 350, delay: 100 + i * 80, easing: 'ease-out', fill: 'both' }))
+  await wait(jLinks(F2, B.svg, 150, 55))
 }
 
 // ---------- ④ flowchart: a contract; the step named in each clause flies to Antu's own flowchart
@@ -491,7 +529,7 @@ const SCENES = {
   justification: async (alive) => { await reading(); if (alive()) await toReasoning(alive) },
 }
 // the thin line under the chosen kind fills while its scene plays
-const SCENE_MS = { fact: 6500, relationship: 5500, procedure: 6500, justification: 6000 }
+const SCENE_MS = { fact: 6500, relationship: 5500, procedure: 6500, justification: 8500 }
 async function play(kind) {
   const me = ++run, alive = () => me === run
   $$('.kind').forEach((k) => {
