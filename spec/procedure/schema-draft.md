@@ -674,7 +674,7 @@ of §5 over them, then **translates each into procedure JSON**, landing in `exam
 | File (same prefix) | Nodes | Edges | Back edges | Longest chain | Stages | Features |
 |---|---|---|---|---|---|---|
 | `01-software-development-contract.*` | 26 | 37 | 9 | 12 | 5 | each of the three stages carries a delay branch |
-| `02-purchase-contract.*` | 12 | 12 | 0 | 10 | 0 | the shortest; no back edges and no stages (tests the "no stages" path) |
+| `02-purchase-contract.*` | 12 | 12 | 0 | 10 | 3 | the shortest; no back edges (the stages were added later, for the home page; `04` and the agent examples cover the "no stages" path) |
 | `03-labour-outsourcing-contract.*` | 15 | 26 | 6 | 7 | 2 | one node with 7 outgoing edges, 5 of them into 2 targets |
 | `04-non-disclosure-agreement.*` | 6 | 6 | 0 | 5 | 0 | the smallest |
 | `05-premises-lease.*` | 32 | 34 | 3 | 16 | 4 | most nodes, 4 ends |

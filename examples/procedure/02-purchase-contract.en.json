@@ -10,19 +10,24 @@
   "sources": [
     { "id": "s-1", "type": "contract", "name": "Purchase Contract", "loc": { "file": "采购合同.docx" } }
   ],
+  "stages": [
+    { "id": "st-1", "label": "Ordering and delivery" },
+    { "id": "st-2", "label": "Inspection and payment" },
+    { "id": "st-3", "label": "Quality dispute" }
+  ],
   "nodes": [
-    { "id": "n-1", "kind": "start", "label": "Contract signed", "detail": "PO-2026-088 · total price ≈ ¥80,000", "sourceIds": ["s-1"] },
-    { "id": "n-2", "kind": "step", "label": "Party A places order", "actorIds": ["a-1"] },
-    { "id": "n-3", "kind": "step", "label": "Party B ships goods", "actorIds": ["a-2"] },
-    { "id": "n-4", "kind": "step", "label": "Party A receives goods", "actorIds": ["a-1"] },
-    { "id": "n-5", "kind": "decision", "label": "Goods quality conforming?" },
-    { "id": "n-6", "kind": "step", "label": "Party A pays", "actorIds": ["a-1"] },
-    { "id": "n-7", "kind": "step", "label": "Party A raises quality objection", "actorIds": ["a-1"] },
-    { "id": "n-8", "kind": "step", "label": "Both parties negotiate", "actorIds": ["a-1", "a-2"] },
-    { "id": "n-9", "kind": "decision", "label": "Negotiation successful?" },
-    { "id": "n-10", "kind": "step", "label": "Breach handling", "detail": "Breaching party compensates losses", "outcome": "negative" },
-    { "id": "n-11", "kind": "end", "label": "Performance complete", "outcome": "positive" },
-    { "id": "n-12", "kind": "end", "label": "Contract terminated", "outcome": "negative" }
+    { "id": "n-1", "kind": "start", "label": "Contract signed", "stageId": "st-1", "detail": "PO-2026-088 · total price ≈ ¥80,000", "sourceIds": ["s-1"] },
+    { "id": "n-2", "kind": "step", "label": "Party A places order", "stageId": "st-1", "actorIds": ["a-1"] },
+    { "id": "n-3", "kind": "step", "label": "Party B ships goods", "stageId": "st-1", "actorIds": ["a-2"] },
+    { "id": "n-4", "kind": "step", "label": "Party A receives goods", "stageId": "st-1", "actorIds": ["a-1"] },
+    { "id": "n-5", "kind": "decision", "label": "Goods quality conforming?", "stageId": "st-2" },
+    { "id": "n-6", "kind": "step", "label": "Party A pays", "stageId": "st-2", "actorIds": ["a-1"] },
+    { "id": "n-7", "kind": "step", "label": "Party A raises quality objection", "stageId": "st-3", "actorIds": ["a-1"] },
+    { "id": "n-8", "kind": "step", "label": "Both parties negotiate", "stageId": "st-3", "actorIds": ["a-1", "a-2"] },
+    { "id": "n-9", "kind": "decision", "label": "Negotiation successful?", "stageId": "st-3" },
+    { "id": "n-10", "kind": "step", "label": "Breach handling", "stageId": "st-3", "detail": "Breaching party compensates losses", "outcome": "negative" },
+    { "id": "n-11", "kind": "end", "label": "Performance complete", "stageId": "st-2", "outcome": "positive" },
+    { "id": "n-12", "kind": "end", "label": "Contract terminated", "stageId": "st-3", "outcome": "negative" }
   ],
   "edges": [
     { "from": "n-1", "to": "n-2", "main": true },

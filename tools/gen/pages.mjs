@@ -3,7 +3,8 @@
 //
 //  `node tools/gen/pages.mjs [--out DIR]` (DIR is _site by default) writes, from the cases in examples/:
 //    <type>-<kind>.<lang>.html   a case of that type, opening in that way (the reader can still switch in the page)
-//    index.html                  the sketches of the ways, each linking to its page
+//    gallery.html                the sketches of the ways, each linking to its page
+//    index.html                  the home page, copied from site/prototypes/hero/lenses.html (made by that folder's build.mjs)
 //  The pages are made by the same code as any page (tools/lib/make-html.mjs), so what is shown there is what a
 //  reader gets. The cases are fictional (examples/README.md). The workflow is .github/workflows/pages.yml;
 //  the engine has to be built first (`npm run build:engine`).
@@ -59,7 +60,9 @@ export function writeSite(out, repo = '.') {
 <style>body{font:15px/1.5 system-ui,"PingFang SC","Microsoft YaHei",sans-serif;color:#0f172a;max-width:960px;margin:0 auto;padding:24px}h2{margin-top:40px}h3{margin:20px 0 8px;font-size:15px}
 .ways{display:flex;flex-wrap:wrap;gap:12px}.way{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;color:inherit;text-decoration:none;font-size:13px}.way:hover{border-color:#64748b}
 footer{margin-top:48px;color:#64748b;font-size:13px}</style></head><body>${sections.join('')}<footer>Antu 案图 · <a href="https://github.com/zh-xx/Antu">source</a></footer></body></html>`
-  writeFileSync(join(out, 'index.html'), html)
+  writeFileSync(join(out, 'gallery.html'), html)
+  written.push('gallery.html')
+  copyFileSync(join(repo, 'site/prototypes/hero/lenses.html'), join(out, 'index.html'))
   written.push('index.html')
   return written
 }

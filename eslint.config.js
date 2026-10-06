@@ -45,12 +45,42 @@ export default [
 
   // Node 侧：构建脚本与 MCP 服务端
   {
-    files: ['tools/**/*.mjs', '*.config.js'],
+    files: ['tools/**/*.mjs', 'site/**/*.mjs', '*.config.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: { ...globals.node },
     },
+    rules: RULES,
+  },
+
+  // Home-page animation drafts (site/prototypes/hero): browser scripts that are joined into one page by build.mjs,
+  // so the helpers that common.js defines are globals to the variant files
+  {
+    files: ['site/prototypes/hero/*.js'],
+    ignores: ['site/prototypes/hero/common.js', 'site/prototypes/hero/lenses.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        H: 'readonly', $: 'readonly', $$: 'readonly', wait: 'readonly', stage: 'readonly', paper: 'readonly', idx: 'readonly',
+        rel: 'readonly', reading: 'readonly', ending: 'readonly', scramble: 'readonly',
+      },
+    },
+    rules: RULES,
+  },
+
+  {
+    files: ['site/prototypes/hero/common.js'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'script', globals: { ...globals.browser } },
+    // what this file defines is used by the variant files, so it looks unused from here
+    rules: { ...RULES, 'no-unused-vars': 'off' },
+  },
+  {
+    // lenses.js stands on its own
+    files: ['site/prototypes/hero/lenses.js'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'script', globals: { ...globals.browser } },
     rules: RULES,
   },
 

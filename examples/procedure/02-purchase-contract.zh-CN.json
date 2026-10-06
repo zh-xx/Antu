@@ -10,19 +10,24 @@
   "sources": [
     { "id": "s-1", "type": "contract", "name": "采购合同", "loc": { "file": "采购合同.docx" } }
   ],
+  "stages": [
+    { "id": "st-1", "label": "订货与交付" },
+    { "id": "st-2", "label": "验收与付款" },
+    { "id": "st-3", "label": "质量争议" }
+  ],
   "nodes": [
-    { "id": "n-1", "kind": "start", "label": "合同签订", "detail": "PO-2026-088 · 总价款约 ¥80,000", "sourceIds": ["s-1"] },
-    { "id": "n-2", "kind": "step", "label": "甲方下单", "actorIds": ["a-1"] },
-    { "id": "n-3", "kind": "step", "label": "乙方发货", "actorIds": ["a-2"] },
-    { "id": "n-4", "kind": "step", "label": "甲方收货", "actorIds": ["a-1"] },
-    { "id": "n-5", "kind": "decision", "label": "货物质量是否合格" },
-    { "id": "n-6", "kind": "step", "label": "甲方付款", "actorIds": ["a-1"] },
-    { "id": "n-7", "kind": "step", "label": "甲方提出质量异议", "actorIds": ["a-1"] },
-    { "id": "n-8", "kind": "step", "label": "双方协商解决", "actorIds": ["a-1", "a-2"] },
-    { "id": "n-9", "kind": "decision", "label": "协商是否成功" },
-    { "id": "n-10", "kind": "step", "label": "违约处理", "detail": "违约方赔偿损失", "outcome": "negative" },
-    { "id": "n-11", "kind": "end", "label": "合同履行完毕", "outcome": "positive" },
-    { "id": "n-12", "kind": "end", "label": "合同终止", "outcome": "negative" }
+    { "id": "n-1", "kind": "start", "label": "合同签订", "stageId": "st-1", "detail": "PO-2026-088 · 总价款约 ¥80,000", "sourceIds": ["s-1"] },
+    { "id": "n-2", "kind": "step", "label": "甲方下单", "stageId": "st-1", "actorIds": ["a-1"] },
+    { "id": "n-3", "kind": "step", "label": "乙方发货", "stageId": "st-1", "actorIds": ["a-2"] },
+    { "id": "n-4", "kind": "step", "label": "甲方收货", "stageId": "st-1", "actorIds": ["a-1"] },
+    { "id": "n-5", "kind": "decision", "label": "货物质量是否合格", "stageId": "st-2" },
+    { "id": "n-6", "kind": "step", "label": "甲方付款", "stageId": "st-2", "actorIds": ["a-1"] },
+    { "id": "n-7", "kind": "step", "label": "甲方提出质量异议", "stageId": "st-3", "actorIds": ["a-1"] },
+    { "id": "n-8", "kind": "step", "label": "双方协商解决", "stageId": "st-3", "actorIds": ["a-1", "a-2"] },
+    { "id": "n-9", "kind": "decision", "label": "协商是否成功", "stageId": "st-3" },
+    { "id": "n-10", "kind": "step", "label": "违约处理", "stageId": "st-3", "detail": "违约方赔偿损失", "outcome": "negative" },
+    { "id": "n-11", "kind": "end", "label": "合同履行完毕", "stageId": "st-2", "outcome": "positive" },
+    { "id": "n-12", "kind": "end", "label": "合同终止", "stageId": "st-3", "outcome": "negative" }
   ],
   "edges": [
     { "from": "n-1", "to": "n-2", "main": true },
