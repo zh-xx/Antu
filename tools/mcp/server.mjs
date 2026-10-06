@@ -24,10 +24,11 @@ import { tEn } from '../../src/core/i18n.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { engineVersion } from '../lib/make-html.mjs'
 import {
   describeSchema,
   listKnowledgeTypes,
@@ -42,9 +43,7 @@ import { PREVIEW_CHECK, kindProblem, validate, validationMessage, layoutMessage 
 import { screenshot, findChrome } from './preview.mjs'
 
 // The version is written once, in package.json (spec/versioning.md)
-const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
-
-const server = new McpServer({ name: 'antu', version: pkg.version })
+const server = new McpServer({ name: 'antu', version: engineVersion() })
 
 /** The JSON in the spec is an arbitrarily nested structure; the schema is not redefined here: validation is the engine's job */
 const specArg = z.looseObject({}).describe('the Antu JSON (envelope + content layer; see the spec resources)')
