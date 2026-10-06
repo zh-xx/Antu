@@ -23,6 +23,12 @@ const el = (tag, cls, html, style) => {
   stage.appendChild(e)
   return e
 }
+// the same, for plain text (copied from the page, never read as markup)
+const elt = (tag, cls, text, style) => {
+  const e = el(tag, cls, null, style)
+  e.textContent = text
+  return e
+}
 const show = (e, ms = 400, delay = 0) => e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, delay, fill: 'both' })
 
 
@@ -86,7 +92,7 @@ async function toTimeline(alive) {
     const words = ['dt', 'lb'].map((k) => {
       const src = li.querySelector('.' + k), r = rel(src.getClientRects().length ? { getBoundingClientRect: () => src.getClientRects()[0] } : src)
       const fs = parseFloat(getComputedStyle(src).fontSize)
-      const w = el('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
+      const w = elt('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
       return { w, r, fs, to: k === 'dt' ? '.t' : '.l' }
     })
     return { a, A, B, li, words }
@@ -187,7 +193,7 @@ async function toGraph(alive) {
   const got = {}
   visible.forEach((n, i) => {
     const id = n.dataset.e, from = rel(n), e = R.ents.find((x) => x.id === id), c = P(e.x + e.w / 2, e.y + e.h / 2)
-    const m = el('span', 'mv', n.textContent, { left: from.x + 'px', top: from.y + 'px', fontSize: from.h * 0.7 + 'px', color: '#fff', background: '#e8452c', padding: '0 2px', borderRadius: '2px', fontFamily: 'var(--fang)', lineHeight: 1.2 })
+    const m = elt('span', 'mv', n.textContent, { left: from.x + 'px', top: from.y + 'px', fontSize: from.h * 0.7 + 'px', color: '#fff', background: '#e8452c', padding: '0 2px', borderRadius: '2px', fontFamily: 'var(--fang)', lineHeight: 1.2 })
     n.classList.remove('lit')
     const delay = 150 + (i % 24) * 30 + Math.random() * 150
     m.animate([
@@ -341,7 +347,7 @@ async function toReasoning(alive) {
   marked.forEach((src, i) => {
     const id = src.dataset.n, n = F1.nodes.find((x) => x.id === id), r = rel(src.getClientRects()[0] ? { getBoundingClientRect: () => src.getClientRects()[0] } : src)
     const fs = parseFloat(getComputedStyle(src).fontSize)
-    const w = el('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
+    const w = elt('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
     const cx = f1.ox + (n.x + n.w / 2) * f1.k, cy = f1.oy + (n.y + n.h / 2) * f1.k
     const k = Math.min((n.w - 24) * f1.k / w.offsetWidth, 13 * f1.k / fs, 1.4)
     const tx = cx - r.x - (w.offsetWidth * k) / 2, ty = cy - r.y - (r.h * k) / 2, d = 100 + i * 80
@@ -453,7 +459,7 @@ async function toFlow(alive) {
   F.order.forEach((id, i) => {
     const n = F.nodes.find((x) => x.id === id), src = sn[id].querySelector('.lb'), r = rel(src)
     const fs = parseFloat(getComputedStyle(src).fontSize)
-    const w = el('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
+    const w = elt('span', 'wordfly', src.textContent, { left: r.x + 'px', top: r.y + 'px', fontSize: fs + 'px', fontFamily: 'var(--fang)' })
     const c = P(n.x + n.w / 2, n.y + n.h / 2), k = Math.min(13 * f.k / fs, 1.2)
     const tx = c.x - r.x - (r.w * k) / 2, ty = c.y - r.y - (r.h * k) / 2, d = i * 55
     w.animate([
@@ -553,7 +559,8 @@ async function play(kind) {
 }
 $$('.kind').forEach((k) => (k.onclick = () => play(k.dataset.kind)))
 // `#kind=procedure` in the address starts with that kind (for checking one alone)
-const FIRST = (location.hash.match(/kind=(\w+)/) || [])[1] || 'fact'
+const asked = (location.hash.match(/kind=(\w+)/) || [])[1]
+const FIRST = ['fact', 'relationship', 'procedure', 'justification'].includes(asked) ? asked : 'fact'
 const start = () => play(FIRST)
 
 // the top bar: the start button and Examples go to the under-construction notice for now; the language
