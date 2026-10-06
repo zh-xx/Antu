@@ -2637,7 +2637,7 @@ async function checkSkillPage() {
     // the two ways the skill has of making the page: the Python script, and the Node command line
     const makers = {
       python: (src, out) => spawnSync('python3', [join(REPO, 'skills/antu/scripts/make_html.py'), src, '-o', out]),
-      node: (src, out) => spawnSync(process.execPath, [join(REPO, 'skills/antu/scripts/antu.mjs'), 'render', src, '-o', out]),
+      node: (src, out) => spawnSync(process.execPath, [join(REPO, 'skills/antu/scripts/antu.mjs'), 'render', src, '-o', out], { env: { ...process.env, ANTU_NO_UPDATE_NOTIFIER: '1' } }),
     }
     for (const type of ['fact', 'procedure', 'relationship', 'justification']) {
       const file = join(REPO, 'examples/agent', type, `1-minimal.zh-CN.json`)

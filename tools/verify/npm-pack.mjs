@@ -11,12 +11,14 @@
 //  has no node_modules beside it.      node tools/verify/npm-pack.mjs
 // ============================================================
 
-import { spawnSync } from 'node:child_process'
+import { execFile, spawnSync } from 'node:child_process'
+import { createServer } from 'node:http'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
@@ -61,7 +63,7 @@ try {
   check('no dependencies installed beside it', !existsSync(join(user, 'node_modules/@modelcontextprotocol')) && !existsSync(join(user, 'node_modules/react')))
 
   const cli = join(root, 'bin/antu.mjs')
-  const run = (...args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', cwd: user })
+  const run = (...args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', cwd: user, env: { ...process.env, ANTU_NO_UPDATE_NOTIFIER: '1' } })
   const v = run('--version')
   check('antu --version', v.status === 0 && v.stdout.trim() === `antu ${version}`, `${v.stdout.trim()} ${v.stderr.trim()}`)
   for (const type of TYPES) {
@@ -72,6 +74,39 @@ try {
     const out = join(user, `cli-${type}.html`)
     const ren = run('render', spec, '-o', out)
     check(`${type}: antu render`, ren.status === 0 && existsSync(out) && readFileSync(out, 'utf8').includes('"type"'), ren.stderr.trim())
+  }
+
+  // the update notice at the end of a command (tools/lib/update-notice.mjs): a registry that names a newer version, the
+  // command line run from where npm puts it, then the same with the notice switched off
+  {
+    const registry = createServer((req, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ version: '99.0.0' }))
+    })
+    await new Promise((r) => registry.listen(0, '127.0.0.1', r))
+    try {
+      const spec = join(root, 'examples/agent/fact/1-minimal.zh-CN.json')
+      const env = { ...process.env, ANTU_REGISTRY_URL: `http://127.0.0.1:${registry.address().port}/latest` }
+      delete env.ANTU_NO_UPDATE_NOTIFIER
+      // asynchronous on purpose: the registry above lives in this process, which a blocking spawn would stop from answering
+      const runAsync = async (extra) => {
+        try {
+          const { stdout } = await promisify(execFile)(process.execPath, [cli, 'validate', spec], { encoding: 'utf8', cwd: user, env: { ...env, ...extra } })
+          return { status: 0, stdout }
+        } catch (e) {
+          return { status: e.code, stdout: e.stdout ?? '' }
+        }
+      }
+      const asked = await runAsync({})
+      check('antu: a newer version in the registry ends the output with a notice', asked.status === 0 && /Notice: Antu 99\.0\.0 is out/.test(asked.stdout) && /npm update -g @zh-xx\/antu/.test(asked.stdout), asked.stdout.slice(-300))
+      check('antu: the notice comes after the answer', asked.stdout.indexOf('Validation passed') >= 0 && asked.stdout.indexOf('Validation passed') < asked.stdout.indexOf('Notice:'))
+      const off = await runAsync({ ANTU_NO_UPDATE_NOTIFIER: '1' })
+      check('antu: switched off, no notice', off.status === 0 && !off.stdout.includes('Notice:'), off.stdout.slice(-200))
+      const ver = spawnSync(process.execPath, [cli, '--version'], { encoding: 'utf8', cwd: user, env })
+      check('antu --version does not ask', ver.stdout.trim() === `antu ${version}`)
+    } finally {
+      await new Promise((r) => registry.close(r))
+    }
   }
 
   // the MCP server, started the way a client starts it, in the user's folder

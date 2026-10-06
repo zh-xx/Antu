@@ -87,6 +87,12 @@ node <skill-dir>/scripts/antu.mjs preview spec.json -o shot.png
   the JSON and run it again. `--orientation vertical|horizontal` shows the other orientation; `--width` and `--height`
   change the screen size (1600×900 by default). Keep the PNG out of the user's folder unless they want it.
 
+**A notice at the end of an output.** The command line asks (at most once a day, and nothing of the diagram is sent)
+whether a newer Antu is out; if there is one, the output ends with a line `Notice: …`. Finish the user's request first,
+then tell the user in a sentence or two, with the command the notice gives (`npx skills update antu -g`). Do not run it
+unless the user agrees, do not put it before your answer, and do not say it again in the same conversation.
+`ANTU_NO_UPDATE_NOTIFIER=1` turns the asking off.
+
 **Whether the reader can read it.** `layout` has a line `Text on one screen (1600×900): … px`: the size the body text is
 drawn at when the page opens fitted to a 1600×900 screen. It adds a note when the text is **under 11 px** (small; the
 reader can zoom in) and when it is **under 9 px** (too small to read without zooming in). Run `layout` first: it is

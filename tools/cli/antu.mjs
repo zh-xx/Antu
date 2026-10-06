@@ -32,6 +32,7 @@ import { THEME_IDS, isTheme } from '../../src/theme/themes.js'
 import { PREVIEW_CHECK, kindProblem, layoutMessage, notesOf, validate, validationMessage } from '../lib/report.mjs'
 import { fillViewer } from '../lib/fill.mjs'
 import { findChrome, screenshotPage } from '../lib/chrome.mjs'
+import { updateNotice } from '../lib/update-notice.mjs'
 
 // set by the bundler (vite.cli.config.js); a run from the source has none
 // eslint-disable-next-line no-undef
@@ -49,6 +50,9 @@ const USAGE = `Antu ${VERSION}: check and draw an Antu diagram (JSON)
                                                            validate, make the page, and take a screenshot of it to look at
                                                            (needs Chrome, Edge or Chromium; ANTU_CHROME points at one)
   node antu.mjs --version
+
+  Once a day the command asks the npm registry for the newest version number and, if there is a newer one, ends with a
+  notice. Nothing of the diagram is sent. ANTU_NO_UPDATE_NOTIFIER=1 turns it off.
 
   --kind K: which way of drawing the same JSON. fact: timeline (the default), chronicle or scale;
             relationship: graph (the default), focus, chain, matrix, equity, authority, related, path or summary;
@@ -183,7 +187,7 @@ async function preview(spec, file, option, kind, theme) {
   }
 }
 
-async function main(argv) {
+async function run(argv) {
   const [command, ...rest] = argv
   if (!command || command === '--help' || command === '-h') return say(USAGE)
   if (command === '--version' || command === '-v') return say(`antu ${VERSION}`)
@@ -236,6 +240,16 @@ async function main(argv) {
   if (size.length) say(`\n${size.join('\n')}`)
   const notes = notesOf(spec)
   if (notes.length) say(`\n${notes.length} note(s), not errors:\n${notes.map((n) => `  - ${n}`).join('\n')}`)
+}
+
+async function main(argv) {
+  // asks (at most once a day) whether a newer Antu is out, while the command works; says so at the end of a command that
+  // finished (a command that fails exits at once and says nothing of it). tools/lib/update-notice.mjs
+  const command = argv[0]
+  const asking = ['validate', 'layout', 'render', 'preview'].includes(command) ? updateNotice({ current: VERSION }) : Promise.resolve('')
+  await run(argv)
+  const notice = await asking
+  if (notice) say(`\n${notice}`)
 }
 
 await main(process.argv.slice(2))
