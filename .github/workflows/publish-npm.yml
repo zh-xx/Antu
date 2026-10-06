@@ -12,6 +12,9 @@ name: Publish npm
 #      package, with a provenance statement, then the MCP registry entry. No token is stored anywhere: npm and the
 #      registry both accept the identity of this workflow (OpenID Connect).
 #
+# `npm` off publishes only the MCP registry entry of a version that is already on npm (the entry cannot be changed
+# for a version once the registry has it, and npm refuses the same version twice, so each part can be done alone).
+#
 # DRY RUN IS THE DEFAULT. Publishing to npm cannot be taken back (a version can only be deprecated, and its number
 # is never free again), so a real publish is a choice made on purpose.
 #
@@ -36,6 +39,10 @@ on:
         default: main
       dry_run:
         description: 'Do every check, build and test the package and show what would be published, but publish nothing'
+        type: boolean
+        default: true
+      npm:
+        description: 'Publish the npm package. Turn it off to publish only the MCP registry entry of a version that is already on npm'
         type: boolean
         default: true
       registry:
@@ -112,6 +119,7 @@ jobs:
         run: node tools/verify/npm-pack.mjs
 
       - name: What would be published (dry run)
+        if: ${{ inputs.npm }}
         run: |
           node tools/build-npm.mjs --out "$RUNNER_TEMP/antu-npm"
           cd "$RUNNER_TEMP/antu-npm"
@@ -152,7 +160,7 @@ jobs:
 
       # The first version only: with the short-lived token (see the top of this file)
       - name: Publish the npm package (first version, with the short-lived token)
-        if: ${{ inputs.use_token }}
+        if: ${{ inputs.npm && inputs.use_token }}
         working-directory: ${{ runner.temp }}/antu-npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -166,11 +174,28 @@ jobs:
 
       # Every later version: the identity of the workflow, no token
       - name: Publish the npm package (trusted publisher, no token)
-        if: ${{ !inputs.use_token }}
+        if: ${{ inputs.npm && !inputs.use_token }}
         working-directory: ${{ runner.temp }}/antu-npm
         run: npm publish --access public --provenance
 
-      # The registry holds only where to get the server, so it comes after the package is on npm
+      # The registry holds only where to get the server, so the version it names must already be on npm: it is
+      # asked for (a few tries, the registry of npm can lag a minute or two behind a publish)
+      - name: Check that this version is on npm
+        if: ${{ inputs.registry }}
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5 6 7 8; do
+            if curl -fsS "https://registry.npmjs.org/@zh-xx%2fantu/${VERSION}" >/dev/null 2>&1; then
+              echo "@zh-xx/antu@${VERSION} is on npm"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::@zh-xx/antu@${VERSION} is not on npm; the registry entry would point at nothing"
+          exit 1
+
       - name: Install the registry's publisher
         if: ${{ inputs.registry }}
         working-directory: ${{ runner.temp }}/antu-npm
