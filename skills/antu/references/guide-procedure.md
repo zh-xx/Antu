@@ -107,3 +107,15 @@ delivering.
 The reader can switch to the **route map**: the main line as one line, with rework loops and early endings
 hanging below it. It needs a clear main line, so **mark `main` along the whole line from start to end**
 (or on none, and the engine infers it). `kind: "route"` on `layout`, `preview` and `render` shows it.
+
+## The examples
+
+Each adds one idea (`<name>.zh-CN.json`, `<name>.en.json`):
+
+- `1-minimal`: three steps in a line
+- `2-decision`: decision point, conditions, edge back
+- `3-branches`: several edges from one step
+- `4-stages`: stages, actors, outcomes
+- `5-inferred-spine`: engine infers the main line
+- `6-merged-edges`: several edges to one target
+- `7-rules`: what may happen at any time

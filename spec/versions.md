@@ -18,4 +18,4 @@ Written by `node tools/gen/versions.mjs` from the registry (`diagrams` in `src/r
 |  |  | `relationship/related` | 1 | experimental | 0.7.0 |  |
 |  |  | `relationship/path` | 1 | experimental | 0.7.0 |  |
 |  |  | `relationship/summary` | 1 | experimental | 0.7.0 |  |
-| `justification` | 1 | `justification/tree` | 1 | experimental | 0.2.0 | yes (default) |
+| `justification` | 1 | `justification/tree` | 2 | experimental | 0.2.0 | yes (default) |

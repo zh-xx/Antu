@@ -9,14 +9,14 @@ description: >-
   contract flow, the parties, or a judgment's reasoning.
 license: AGPL-3.0-or-later
 metadata:
-  version: "0.9.1"
+  version: "0.10.0"
 ---
 
 # Antu: legal diagrams from JSON
 
 You write the JSON; the engine draws it. The result is **one HTML file** that opens in any browser with no install and
-no network, prints, and can be forwarded. Nothing is uploaded anywhere. This skill is Antu **0.9.1**; the pages it
-makes say so: `<meta name="generator" content="antu 0.9.1">`.
+no network, prints, and can be forwarded. Nothing is uploaded anywhere. This skill is Antu **0.10.0**; the pages it
+makes say so: `<meta name="generator" content="antu 0.10.0">`.
 
 **`<skill-dir>`** is the folder that holds this `SKILL.md` (`scripts/`, `references/`, `examples/` and `assets/` are
 beside it). Commands are written with it so that they run from any directory: put the real path in. Keep your own files
@@ -98,9 +98,11 @@ drawn at when the page opens fitted to a 1600×900 screen. It adds a note when t
 reader can zoom in) and when it is **under 9 px** (too small to read without zooming in). Run `layout` first: it is
 cheaper to split the JSON than to make the page twice.
 
-When it says too small, split the diagram the way the note says: a justification tree **by issue** (or leave it whole
-when the note says that with every issue folded the text reads well: the reader can fold issues with the "收起争点" /
-"Fold issues" switch), a procedure **by stage**, a relationship diagram **by group**, a timeline **into periods**. Write
+When it says too small, split the diagram the way the note says: a justification tree **by issue**, a procedure **by
+stage**, a relationship diagram **by group**, a timeline **into periods**. The one exception is a justification tree of
+several issues whose `layout` says `Opens with the issues folded`: the page then opens with every issue folded to its
+conclusion, readable, and the reader unfolds an issue by clicking its title (or all of them with "收起争点" / "Fold
+issues"); leave it whole and tell the user so. Split it by issue only if the line after still says under 9 px. Write
 one JSON for each piece from the same material, give each piece a clear title of its own (for example the issue's name),
 check each with `layout` again, and tell the user it is in pieces and why. **Never drop facts to make it fit.** When it
 only says small, you may leave it whole and tell the user they can zoom in.

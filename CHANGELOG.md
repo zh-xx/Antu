@@ -3,6 +3,24 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.10.0
+
+Version management of the types and the diagrams (#131), a trial that measures how weaker models use the skill (#135, #136), and the details it found (#137 to #144). The contract is not touched.
+
+### Added
+- **A list of the types and the diagrams with their versions**: `spec/versions.md`, written from the registry (the list is kept in step by a test); `antu versions [--json]` on the command line and the MCP tool `antu_versions` (the server now has eight tools). Each of the four types has a format generation (all 1); each of the 15 diagrams has a version, a status (`experimental`, `stable`, `deprecated`) and the release it came in. A diagram that is in `layouts` without being in `diagrams` is refused at registration. The rules are in `spec/versioning.md` ("Managing a type", "The diagrams"); each type has `spec/<type>/changes.md` for changes to its JSON.
+- **The fact layout report says how many events a view draws** ("N of M events drawn") and names the ones it leaves out, so a view that names parties and so leaves out an event is no surprise (#137).
+- **The agent guides name the examples an agent can open**, and a test keeps the names to the files (#138). The size of a guide is held at 6.5k tokens.
+- **The trial** (`tools/trial/`, `spec/trial.md`): a small agent that has a weaker model (by default `deepseek-flash`) draw with the released skill, and a scoring list for judging the result by reading it. It is a tool for the maintainers; it is not part of the package.
+- **The label card at the top left of every page folds** to one line with an arrow and unfolds again; it opens unfolded, the choice is remembered, and it is not in an exported image (#144).
+
+### Changed
+- **`justification/tree` is version 2.** A diagram with more than one issue whose text, at the reference canvas of 1600 × 900, would be under 9 px, and that gets larger when folded, opens with all its issues folded; `layout` says so ("Opens with the issues folded: unfolded, its text would be …"), and the dock shows the state (#139). A reader's own fold, once made, wins.
+- A connector that steps sideways by a few pixels between two boxes is drawn as one straight line, in the justification tree and the relationship graph (#142).
+
+### Breaking
+- None. The JSON of every type, the names and parameters of the MCP tools that were there, and the subcommands of the command line are as in 0.9.1.
+
 ## 0.9.1
 
 How people get Antu and hear of a newer one (#113, #127), and the home page's way in (#128). The contract is not touched.

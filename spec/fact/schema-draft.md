@@ -1,6 +1,6 @@
 # fact · Schema draft v0
 
-> Status: **implemented** (status line checked against 0.9.1). The field set has been trimmed per the sponsor's decisions. Field names and constraints may still change in a 0.x release, with a changelog entry (`spec/versioning.md`). Besides the timeline, two more ways of drawing the same JSON are implemented, as first attempts: the chronicle and the time scale (`spec/fact/rendering.md` §9.1 and §9.2).
+> Status: **implemented** (status line checked against 0.10.0). The field set has been trimmed per the sponsor's decisions. Field names and constraints may still change in a 0.x release, with a changelog entry (`spec/versioning.md`). Besides the timeline, two more ways of drawing the same JSON are implemented, as first attempts: the chronicle and the time scale (`spec/fact/rendering.md` §9.1 and §9.2).
 
 > **This document is for designers.** An agent writing JSON uses a different one:
 > fields come from the MCP tool `antu_schema`, mechanism from `spec/agent/fact/guide.md`.
