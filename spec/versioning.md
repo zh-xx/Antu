@@ -111,6 +111,10 @@ default (this error is written when the first diagram is removed). A page alread
 layout, the size of the text, the three themes, printing, the examples and the guide for agents, the tests. Adding a
 diagram is an addition, so a minor release while the engine is at 0.x.
 
+The list of all types and diagrams with their versions is `spec/versions.md`. It is written from the registry by
+`node tools/gen/versions.mjs` and a test fails when it is out of date, so it is not edited by hand. The command line
+(`antu versions`, with `--json`) and the MCP server (`antu_versions`) tell the same list.
+
 The page does not yet say which version of a diagram drew it; that is open in #131.
 
 ## How a release is made

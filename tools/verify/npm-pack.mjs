@@ -25,7 +25,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { writeNpmPackage } from '../build-npm.mjs'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const TOOLS = ['antu_schema', 'antu_guide', 'antu_examples', 'antu_validate', 'antu_layout', 'antu_render', 'antu_preview']
+const TOOLS = ['antu_schema', 'antu_guide', 'antu_examples', 'antu_validate', 'antu_layout', 'antu_render', 'antu_preview', 'antu_versions']
 const TYPES = ['fact', 'procedure', 'relationship', 'justification']
 const failures = []
 let passed = 0
@@ -66,6 +66,10 @@ try {
   const run = (...args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', cwd: user, env: { ...process.env, ANTU_NO_UPDATE_NOTIFIER: '1' } })
   const v = run('--version')
   check('antu --version', v.status === 0 && v.stdout.trim() === `antu ${version}`, `${v.stdout.trim()} ${v.stderr.trim()}`)
+  const vers = run('versions')
+  check('antu versions lists the types and the diagrams', vers.status === 0 && vers.stdout.includes(`Antu ${version}`) && /relationship: format generation \d+/.test(vers.stdout) && /equity +v\d+ +\w+ +since \d+\.\d+\.\d+/.test(vers.stdout), vers.stderr.trim() || vers.stdout.slice(0, 160))
+  const versJson = run('versions', '--json')
+  check('antu versions --json is JSON with the four types', versJson.status === 0 && JSON.parse(versJson.stdout).types.length === 4, versJson.stderr.trim())
   for (const type of TYPES) {
     const spec = join(root, `examples/agent/${type}/1-minimal.zh-CN.json`)
     check(`${type}: the example is in the package`, existsSync(spec))
@@ -122,6 +126,10 @@ try {
     check('mcp: antu_guide gives the fact guide', !guide.isError && text(guide).length > 500, text(guide).slice(0, 120))
     const schema = await client.callTool({ name: 'antu_schema', arguments: { type: 'procedure' } })
     check('mcp: antu_schema gives a field table', !schema.isError && text(schema).length > 200, text(schema).slice(0, 120))
+    const vv = await client.callTool({ name: 'antu_versions', arguments: { type: 'relationship' } })
+    check('mcp: antu_versions tells the diagrams of a type', !vv.isError && /equity +v\d+/.test(text(vv)) && !/fact:/.test(text(vv)), text(vv).slice(0, 160))
+    const vbad = await client.callTool({ name: 'antu_versions', arguments: { type: 'nope' } })
+    check('mcp: antu_versions refuses an unknown type', vbad.isError === true, text(vbad).slice(0, 120))
     const examples = await client.callTool({ name: 'antu_examples', arguments: { type: 'justification' } })
     check('mcp: antu_examples lists examples', !examples.isError && /\.json/.test(text(examples)), text(examples).slice(0, 120))
 
