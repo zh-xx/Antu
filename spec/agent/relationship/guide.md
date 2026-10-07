@@ -90,3 +90,13 @@ render      the self-contained HTML
 - **`share` is only for `equity`, `amount` only for `debt` and `contract`, `secures` only for `guarantee`.**
 - **An entity nothing relates to floats beside the diagram** (a hint): relate it or leave it out.
 - **`amount` is a string**, written the way it should be read, with the currency.
+
+## The examples
+
+Each adds one idea (`<name>.zh-CN.json`, `<name>.en.json`):
+
+- `1-minimal`: one loan
+- `2-equity`: who holds whom, how much
+- `3-guarantee`: names the claim it secures
+- `4-groups`: camps
+- `5-kinship`: undirected beside directed relations
