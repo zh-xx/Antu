@@ -5,7 +5,7 @@
 //  that bypassed the branch rule, a check that failed after the merge). It asks GitHub for the check runs of the
 //  commit and stops unless `verify` is there and every run, except the release job itself, has finished and passed.
 //
-//    node tools/verify/ci-green.mjs <sha> [--ignore <job name>]
+//    node tools/verify/ci-green.mjs <sha> [--ignore <job name>]...
 //
 //  Reads GITHUB_REPOSITORY (owner/name), GITHUB_API_URL (GitHub Actions sets it) and, if set, GITHUB_TOKEN. The judging is a pure function (`judge`), so the
 //  unit test holds it to cases without the network.
@@ -19,11 +19,12 @@ const PASSING = new Set(['success', 'skipped', 'neutral'])
 
 /**
  * @param {Array<{name: string, status: string, conclusion: string|null}>} runs the commit's check runs
- * @param {{ignore?: string}} [opts] a job to leave out (the release job itself is still running)
+ * @param {{ignore?: string|string[]}} [opts] jobs to leave out (the release job itself is still running)
  * @returns {string[]} what stops the release, empty when everything is green
  */
-export function judge(runs, { ignore = '' } = {}) {
-  const seen = runs.filter((r) => r.name !== ignore)
+export function judge(runs, { ignore = [] } = {}) {
+  const left = [ignore].flat()
+  const seen = runs.filter((r) => !left.includes(r.name))
   const problems = []
   if (!seen.some((r) => r.name === REQUIRED)) problems.push(`no "${REQUIRED}" check on this commit (did CI run? it may not have started yet)`)
   for (const r of seen) {
@@ -50,10 +51,10 @@ async function fetchRuns(repo, sha, token) {
 async function main() {
   const args = process.argv.slice(2)
   const sha = args.find((a) => /^[0-9a-f]{7,40}$/.test(a))
-  const ignore = args.includes('--ignore') ? args[args.indexOf('--ignore') + 1] : ''
+  const ignore = args.flatMap((a, i) => (a === '--ignore' ? [args[i + 1]] : []))
   const repo = process.env.GITHUB_REPOSITORY
   if (!sha || !repo) {
-    console.error('usage: GITHUB_REPOSITORY=owner/name node tools/verify/ci-green.mjs <sha> [--ignore <job name>]')
+    console.error('usage: GITHUB_REPOSITORY=owner/name node tools/verify/ci-green.mjs <sha> [--ignore <job name>]...')
     process.exit(2)
   }
   const runs = await fetchRuns(repo, sha, process.env.GITHUB_TOKEN)
@@ -63,7 +64,7 @@ async function main() {
     for (const p of problems) console.error(`  - ${p}`)
     process.exit(1)
   }
-  console.log(`${sha.slice(0, 7)} is green (${runs.filter((r) => r.name !== ignore).length} checks)`)
+  console.log(`${sha.slice(0, 7)} is green (${runs.filter((r) => !ignore.includes(r.name)).length} checks)`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

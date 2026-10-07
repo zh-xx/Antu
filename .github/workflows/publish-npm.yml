@@ -112,7 +112,13 @@ jobs:
       - name: Check that CI is green on this commit
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node tools/verify/ci-green.mjs "${{ steps.check.outputs.sha }}" --ignore "$GITHUB_JOB"
+        run: |
+          # The gate is the one on main, not the one in the tagged commit: a version already released is checked
+          # again (the MCP registry entry alone, after a run that stopped half way) and must be judged by today's rules.
+          # The jobs of this workflow are left out: a failed `publish` of an earlier run stays red on the commit.
+          git fetch --depth 1 origin main
+          git show FETCH_HEAD:tools/verify/ci-green.mjs > "$RUNNER_TEMP/ci-green.mjs"
+          node "$RUNNER_TEMP/ci-green.mjs" "${{ steps.check.outputs.sha }}" --ignore "$GITHUB_JOB" --ignore publish
 
       # Build the package, pack it, install the tarball in an empty folder and run it
       - name: The package, packed and run from an empty folder
@@ -179,14 +185,14 @@ jobs:
         run: npm publish --access public --provenance
 
       # The registry holds only where to get the server, so the version it names must already be on npm: it is
-      # asked for (a few tries, the registry of npm can lag a minute or two behind a publish)
+      # asked for (the registry of npm can lag several minutes behind a publish: 0.9.1 took about five, so it is asked for ten)
       - name: Check that this version is on npm
         if: ${{ inputs.registry }}
         env:
           VERSION: ${{ needs.check.outputs.version }}
         run: |
           set -euo pipefail
-          for i in 1 2 3 4 5 6 7 8; do
+          for i in $(seq 1 30); do
             if curl -fsS "https://registry.npmjs.org/@zh-xx%2fantu/${VERSION}" >/dev/null 2>&1; then
               echo "@zh-xx/antu@${VERSION} is on npm"
               exit 0

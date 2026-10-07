@@ -34,3 +34,9 @@ test('the release job itself, still running, is left out; any other run is not',
   assert.deepEqual(judge(runs, { ignore: 'release' }), [])
   assert.equal(judge(runs).length, 1)
 })
+
+test('several jobs can be left out, so a failed publish of an earlier run does not stop the registry entry', () => {
+  const runs = [run('verify'), run('check', 'in_progress', null), run('publish', 'completed', 'failure')]
+  assert.deepEqual(judge(runs, { ignore: ['check', 'publish'] }), [])
+  assert.equal(judge(runs, { ignore: 'check' }).length, 1)
+})
