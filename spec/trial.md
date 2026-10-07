@@ -11,8 +11,9 @@ Antu is made so that models of every strength, in every agent, can reach a high 
 ## Running it
 
 ```
-node tools/trial/run.mjs --model fake --case fact-corridor            # a stand-in model: the whole flow without a model
-node tools/trial/run.mjs --model deepseek-flash --case fact-corridor
+node tools/trial/run.mjs --case fact-corridor                   # the default model, `deepseek-flash` (the weaker, cheaper one: the one that shows what the engine does for a model that needs help)
+node tools/trial/run.mjs --model deepseek-v4-pro --case fact-corridor
+node tools/trial/run.mjs --model fake --case fact-corridor      # a stand-in model: the whole flow without a model
 ```
 
 A run is kept in `runs/<time>-<model>-<case>/` (not committed): `transcript.json`, `work/` (`spec.json`, `diagram.html`), `final-*.txt` (the command line run once more by the script), `preview.png`, `summary.txt` (the model's last message) and `report.json` (the checks below).

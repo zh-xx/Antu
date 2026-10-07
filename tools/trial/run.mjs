@@ -1,6 +1,7 @@
 // ============================================================
 //  tools/trial/run.mjs — one run of the trial: one model, one case
 //
+//    node tools/trial/run.mjs --case fact-corridor                 (the default model of models.json: deepseek-flash)
 //    node tools/trial/run.mjs --model fake --case fact-corridor
 //    node tools/trial/run.mjs --model deepseek-flash --case fact-corridor [--max-turns 14] [--out runs] [--skill skills/antu]
 //
@@ -55,12 +56,12 @@ async function main() {
   findChromium()
   const models = JSON.parse(readFileSync(join(REPO, 'tools/trial/models.json'), 'utf8'))
   const cases = JSON.parse(readFileSync(join(REPO, 'tools/trial/cases.json'), 'utf8'))
-  const modelName = arg('model')
+  const modelName = arg('model', models.default)
   const caseId = arg('case')
   const cfg = models[modelName]
   const kase = cases.find((c) => c.id === caseId)
   if (!cfg || !kase) {
-    console.error(`usage: node tools/trial/run.mjs --model <${Object.keys(models).join('|')}> --case <${cases.map((c) => c.id).join('|')}>`)
+    console.error(`usage: node tools/trial/run.mjs --model <${Object.keys(models).filter((k) => k !== 'default').join('|')}> (default ${models.default}) --case <${cases.map((c) => c.id).join('|')}>`)
     process.exit(2)
   }
   const skillDir = resolve(REPO, arg('skill', 'skills/antu'))
