@@ -136,6 +136,8 @@ export const en = {
   'header.kindPrev': 'Previous way of drawing',
   'header.kindNext': 'Next way of drawing',
   'header.kindGroup': 'Way of drawing',
+  'header.fold': 'Fold the card',
+  'header.unfold': 'Show the card',
   'graphKind.chronicle': 'Chronicle',
   'graphKind.scale': 'Time scale',
 

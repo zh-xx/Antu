@@ -2237,6 +2237,20 @@ async function checkKindSwitching(sampleFile) {
     // Remembered for this diagram: opened again, the page is in the time scale
     await browser.open(`file://${html}?lang=en`, { waitFor: `document.querySelectorAll('.antu-sc-card').length` })
     eq('switch: the choice is remembered when the page is opened again', await current(), names[2])
+    // The label card folds to one line and unfolds again; it opens unfolded, and the choice is remembered
+    const cardRows = () => browser.eval(`({ folded: !!document.querySelector('.antu-header-card.is-folded'), title: document.querySelector('.antu-header-title')?.textContent || '', picker: !!document.querySelector('.antu-header-pick'), h: document.querySelector('.antu-header-card')?.getBoundingClientRect().height || 0 })`)
+    const open0 = await cardRows()
+    truthy('fold: the card opens unfolded, with the picker', !open0.folded && open0.picker)
+    await browser.eval(`document.querySelector('.antu-header-fold').click()`)
+    await settle(300)
+    const shut = await cardRows()
+    truthy('fold: the arrow folds the card to one line that keeps the title', shut.folded && !shut.picker && shut.title === open0.title && shut.h < open0.h / 2)
+    await browser.open(`file://${html}?lang=en`)
+    truthy('fold: the folded card is remembered when the page is opened again', (await cardRows()).folded)
+    await browser.eval(`document.querySelector('.antu-header-fold').click()`)
+    await settle(300)
+    const again = await cardRows()
+    truthy('fold: the arrow unfolds it again', !again.folded && again.picker)
   } finally {
     await browser.close()
   }
