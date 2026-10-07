@@ -82,7 +82,7 @@ MCP 服务是 npm 包 [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu)
 }
 ```
 
-工具：`antu_schema`、`antu_guide`、`antu_examples`、`antu_validate`、`antu_layout`、`antu_render`、`antu_preview`。
+工具：`antu_schema`、`antu_guide`、`antu_examples`、`antu_validate`、`antu_layout`、`antu_render`、`antu_preview`、`antu_versions`。
 
 ## 文档
 

@@ -11,6 +11,7 @@
 //                                                         validates first, and refuses a diagram with problems
 //    node antu.mjs preview spec.json [-o shot.png]        validates, makes the page, takes a screenshot of it in a
 //                                                         headless Chromium-based browser (Chrome, Edge, Chromium)
+//    node antu.mjs versions [--json]                      the types and the diagrams, and the version of each
 //    node antu.mjs --version
 //
 //  Exit code: 0 done, 1 the diagram has problems (or no geometry yet), 2 the command itself was wrong,
@@ -33,6 +34,7 @@ import { PREVIEW_CHECK, kindProblem, layoutMessage, notesOf, validate, validatio
 import { fillViewer } from '../lib/fill.mjs'
 import { findChrome, screenshotPage } from '../lib/chrome.mjs'
 import { updateNotice } from '../lib/update-notice.mjs'
+import { formatVersions, versionsReport } from '../lib/versions.mjs'
 
 // set by the bundler (vite.cli.config.js); a run from the source has none
 // eslint-disable-next-line no-undef
@@ -49,6 +51,8 @@ const USAGE = `Antu ${VERSION}: check and draw an Antu diagram (JSON)
   node antu.mjs preview  <spec.json> [-o <out.png>] [--orientation vertical|horizontal] [--kind K] [--theme T] [--width 1600] [--height 900]
                                                            validate, make the page, and take a screenshot of it to look at
                                                            (needs Chrome, Edge or Chromium; ANTU_CHROME points at one)
+  node antu.mjs versions [--json]                          the types and the diagrams (the ways of drawing), and the
+                                                           version and status of each
   node antu.mjs --version
 
   Once a day the command asks the npm registry for the newest version number and, if there is a newer one, ends with a
@@ -191,6 +195,10 @@ async function run(argv) {
   const [command, ...rest] = argv
   if (!command || command === '--help' || command === '-h') return say(USAGE)
   if (command === '--version' || command === '-v') return say(`antu ${VERSION}`)
+  if (command === 'versions') {
+    const r = versionsReport(VERSION)
+    return say(rest.includes('--json') ? JSON.stringify(r, null, 2) : formatVersions(r))
+  }
   if (!['validate', 'layout', 'render', 'preview'].includes(command)) return fail(`unknown command "${command}"\n\n${USAGE}`, 2)
 
   const valued = ['-o', '--out', '--orientation', '--kind', '--theme', '--width', '--height']

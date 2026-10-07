@@ -40,6 +40,7 @@ import {
 } from './engine.mjs'
 import { THEME_IDS } from '../../src/theme/themes.js'
 import { PREVIEW_CHECK, kindProblem, validate, validationMessage, layoutMessage } from '../lib/report.mjs'
+import { formatVersions, versionsReport } from '../lib/versions.mjs'
 import { screenshot, findChrome } from './preview.mjs'
 
 // The version is written once, in package.json (spec/versioning.md)
@@ -150,6 +151,23 @@ server.registerTool(
   async ({ type = 'fact' }) => {
     const r = describeSchema(type)
     return r.ok ? OK(r.text) : FAIL(r.reason)
+  },
+)
+
+server.registerTool(
+  'antu_versions',
+  {
+    title: 'Versions of the types and the diagrams',
+    description:
+      'Which diagram types and which ways of drawing (`kind`) there are, with the version and status of each way and the generation of each type\'s JSON format. ' +
+      'Read-only; no arguments needed. Use it to see what `kind` values exist and whether one is still experimental or deprecated.',
+    inputSchema: {
+      type: z.string().optional().describe('only this type (fact, procedure, relationship, justification); omit for all'),
+    },
+  },
+  async ({ type }) => {
+    const r = versionsReport(engineVersion(), type)
+    return r.types.length ? OK(formatVersions(r)) : FAIL(`no type "${type}". Types: ${versionsReport(engineVersion()).types.map((t) => t.type).join(', ')}`)
   },
 )
 

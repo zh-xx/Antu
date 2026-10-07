@@ -87,7 +87,7 @@ The MCP server is the npm package [`@zh-xx/antu`](https://www.npmjs.com/package/
 }
 ```
 
-Tools: `antu_schema`, `antu_guide`, `antu_examples`, `antu_validate`, `antu_layout`, `antu_render`, `antu_preview`.
+Tools: `antu_schema`, `antu_guide`, `antu_examples`, `antu_validate`, `antu_layout`, `antu_render`, `antu_preview`, `antu_versions`.
 
 ## Documentation
 

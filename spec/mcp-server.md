@@ -47,7 +47,7 @@ how large the content is, which orientation to use, and which views do not fit. 
 preview reuses **the browser already installed on the machine** (how it is located is
 in §4); no headless browser is bundled. The whole server makes no network requests.
 
-## 2. Seven tools
+## 2. Eight tools
 
 Two groups. **Reference material for agents and documents for designers are two
 different things**; do not mix them.
@@ -68,6 +68,7 @@ than an empty table (an empty table reads as "this type exists, it is just empty
 | `antu_layout` | Computes the geometry: content size, fit zoom, suggested orientation, whether each view fits. For a procedure the suggested orientation is always the one the diagram opens with (vertical), and which orientation fits a screen better is reported apart | — | no |
 | `antu_render` | Produces the self-contained HTML | — | no |
 | `antu_preview` | Returns a PNG screenshot | one image | **yes** |
+| `antu_versions` | Which diagram types and which ways of drawing (`kind`) there are, with the version and status of each and the generation of each type's JSON format; optional `type`. The same list as `antu versions` on the command line and `spec/versions.md` | a few lines | no |
 
 `antu_layout`, `antu_render` and `antu_preview` take an optional `kind`: the way of drawing (a fact
 diagram is `timeline`, the default, `chronicle` or `scale`; a relationship diagram is `graph`, the default, `focus`, `chain`, `matrix`, `equity`, `authority`, `related`, `path` or `summary`; a procedure diagram is `flow`, the default, or `route`). An unknown kind is refused with the list of
