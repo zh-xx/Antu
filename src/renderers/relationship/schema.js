@@ -423,6 +423,19 @@ export const relationshipKnowledge = {
    */
   notes: (spec) => hintsOfRelationship(spec),
 
+  /** The version, status and release of each way of drawing (spec/versioning.md, "The diagrams"); the same names as `layouts` */
+  diagrams: {
+    graph: { version: 1, status: 'experimental', since: '0.2.0' },
+    focus: { version: 1, status: 'experimental', since: '0.7.0' },
+    chain: { version: 1, status: 'experimental', since: '0.7.0' },
+    matrix: { version: 1, status: 'experimental', since: '0.7.0' },
+    equity: { version: 1, status: 'experimental', since: '0.7.0' },
+    authority: { version: 1, status: 'experimental', since: '0.7.0' },
+    related: { version: 1, status: 'experimental', since: '0.7.0' },
+    path: { version: 1, status: 'experimental', since: '0.7.0' },
+    summary: { version: 1, status: 'experimental', since: '0.7.0' },
+  },
+
   /** Which ways of drawing a relationship diagram exist. The first is the default. */
   layouts: {
     graph: buildRelationshipGraph,

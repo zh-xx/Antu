@@ -34,6 +34,9 @@ const registry = new Map()
  */
 const knowledge = new Map()
 
+/** The states of a diagram (spec/versioning.md, "The diagrams") */
+export const DIAGRAM_STATUSES = ['experimental', 'stable', 'deprecated']
+
 /**
  * Register the knowledge of one type.
  * @param type the type
@@ -44,7 +47,30 @@ export function registerKnowledge(type, k) {
   if (!k?.validate) throw new Error('registerKnowledge: validate is required')
   if (!k?.describe) throw new Error('registerKnowledge: describe is required (the agent-facing field table)')
   if (!Number.isInteger(k.specVersion) || k.specVersion < 1) throw new Error('registerKnowledge: specVersion is required, a whole number (the generation of this type\'s JSON format, core/specVersion.js)')
+  checkDiagrams(type, k)
   knowledge.set(type, k)
+}
+
+/**
+ * Every way of drawing a type (`layouts`) has an entry in `diagrams`, and only those do:
+ * { version: whole number >= 1, status, since: the release it came in }.
+ */
+function checkDiagrams(type, k) {
+  const kinds = Object.keys(k.layouts ?? {})
+  const listed = Object.keys(k.diagrams ?? {})
+  for (const kind of kinds) if (!listed.includes(kind)) throw new Error(`registerKnowledge: ${type}/${kind} has a layout but no entry in diagrams (version, status, since)`)
+  for (const kind of listed) if (!kinds.includes(kind)) throw new Error(`registerKnowledge: ${type}/${kind} is in diagrams but has no layout`)
+  for (const [kind, d] of Object.entries(k.diagrams ?? {})) {
+    if (!Number.isInteger(d.version) || d.version < 1) throw new Error(`registerKnowledge: ${type}/${kind}: version must be a whole number >= 1`)
+    if (!DIAGRAM_STATUSES.includes(d.status)) throw new Error(`registerKnowledge: ${type}/${kind}: status must be one of ${DIAGRAM_STATUSES.join(', ')}`)
+    if (!/^\d+\.\d+\.\d+$/.test(d.since ?? '')) throw new Error(`registerKnowledge: ${type}/${kind}: since must be a release number such as 0.7.0`)
+  }
+}
+
+/** The diagrams of a type, in the order of its layouts (the first is the default): [{ type, kind, version, status, since }] */
+export function diagramsOf(type) {
+  const k = knowledge.get(type)
+  return Object.entries(k?.diagrams ?? {}).map(([kind, d]) => ({ type, kind, ...d }))
 }
 
 /**

@@ -1,11 +1,12 @@
 # Versioning
 
-Two things carry a version, and they are kept apart on purpose.
+Three things carry a version, and they are kept apart on purpose.
 
 | | What it is | Where it lives | Form |
 | --- | --- | --- | --- |
 | **The release** | the engine and its tools (renderers, MCP server, command line) as a whole | `package.json` (written once; the MCP server reads it from there) | `major.minor.patch`, [SemVer](https://semver.org) |
 | **The format generation** | the JSON format of one diagram type (`fact`, `procedure`, `relationship`, `justification`) | the type's knowledge (`specVersion` in `src/renderers/<type>/schema.js`); a data file may state it as `"specVersion"` in its envelope | one whole number per type, starting at 1 |
+| **The diagram** | one way of drawing a type's JSON (`relationship/equity`, `fact/chronicle` …) | `diagrams` in the knowledge of the type (`src/renderers/<type>/schema.js`), beside `layouts` | a whole number from 1, with a status and the release it came in |
 
 ## The release number
 
@@ -69,6 +70,48 @@ the engine was updated. (A new *hint* is not a break: a hint never stops a diagr
     entry says how to bring a file over, and the engine points at it.
 - A break to a type's format is always a **minor** release while the engine is at 0.x, and a **major**
   one from 1.0.
+
+## Managing a type (the JSON spec)
+
+A type owns the JSON format; a change to it reaches every diagram of the type. What is said above about the
+format generation holds; this adds how a change is recorded and how a field comes and goes.
+
+- **The record of changes.** Each type has `spec/<type>/changes.md`. A change to the format is an entry in it: the
+  generation, the field, what changed (added, deprecated, changed in meaning, removed) and, if a file has to
+  change, how. The changelog of the release names the change in one line and points to the record. A test requires a
+  section for the generation the type is at.
+- **The life of a field.** A new field is added without raising the generation. A field that is to go is first
+  *deprecated*: it is still read for at least one release, the checker answers with a hint (never an error) that names
+  what takes its place, and the record says so. Removing a field, or changing what it means, raises the generation.
+- **An older file.** A file of an earlier generation is read as it is when the engine still can, with a hint; when it
+  cannot, the error says what to change. The record has a note on how to bring a file over from each generation.
+  There is no tool for it yet.
+- **A whole type.** A new type enters as a draft (the status words of a design document). A type is retired only
+  after it has been marked deprecated for at least one release, and with the maintainer's approval.
+
+## The diagrams
+
+A diagram is one way of drawing the JSON of a type: its name is the pair of the type and the way (`fact/scale`,
+`relationship/equity`), and the way is the value of `kind` on the command line and in the MCP tools. A diagram owns
+how the picture is drawn; it does not touch the format. The list of diagrams is `diagrams` in the knowledge of each
+type, with the same names as its `layouts`; a type cannot be registered when the two differ. Each entry has:
+
+- **`version`**, a whole number from 1. It goes up when the picture changes in a way a reader would notice: the
+  layout, the order of reading, what is shown by default. A small fix (a spacing, a label that was misplaced) does not
+  raise it and is only a line of the changelog. The changelog names the diagram a line is about.
+- **`status`**: `experimental` (new, or not yet settled), `stable` or `deprecated`. A new diagram starts as
+  `experimental`; only the maintainer writes `stable`, as with `confirmed` for a design document.
+- **`since`**, the release it came in.
+
+**Removing a diagram.** It is first marked `deprecated` and stays for at least one release. After that, `--kind` and the
+MCP `kind` answer a removed name with an error that names the diagram to use instead, and do not fall back to the
+default (this error is written when the first diagram is removed). A page already made is one file and is not touched.
+
+**Polishing.** Each diagram is worked on through an issue of its own, with a list to go through: the quality of the
+layout, the size of the text, the three themes, printing, the examples and the guide for agents, the tests. Adding a
+diagram is an addition, so a minor release while the engine is at 0.x.
+
+The page does not yet say which version of a diagram drew it; that is open in #131.
 
 ## How a release is made
 

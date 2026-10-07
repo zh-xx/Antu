@@ -174,6 +174,11 @@ export const justificationKnowledge = {
   /** What validation cannot call an error but the author should see: rules 13 to 18 of the spec */
   notes: (spec) => hintsOfJustification(spec),
 
+  /** The version, status and release of each way of drawing (spec/versioning.md, "The diagrams"); the same names as `layouts` */
+  diagrams: {
+    tree: { version: 1, status: 'experimental', since: '0.2.0' },
+  },
+
   /** Which kinds a justification diagram has. Currently the tree only. */
   layouts: {
     tree: buildJustificationGraph,
