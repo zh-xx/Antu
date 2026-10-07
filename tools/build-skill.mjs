@@ -40,7 +40,7 @@ const CLI = 'scripts/antu.mjs'
  * releases (`checkSkill({ strict: false })`, the unit test) lets it be missing, the release workflow's check
  * (`--check`) does not. The release pull request empties this list.
  */
-export const ADDED_SINCE_RELEASE = ['LICENSE-NOTES.md']
+export const ADDED_SINCE_RELEASE = []
 
 /** The licence notes of the skill: what an agent may say when asked, written from the same text as the pages and the notices */
 export function licenseNotes() {
