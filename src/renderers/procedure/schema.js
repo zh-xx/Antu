@@ -274,6 +274,12 @@ export const procedureKnowledge = {
   /** Validation: there is only one copy of the rules, in flow/rules.js */
   validate: (spec) => validateProcedure(spec),
 
+  /** The version, status and release of each way of drawing (spec/versioning.md, "The diagrams"); the same names as `layouts` */
+  diagrams: {
+    flow: { version: 1, status: 'experimental', since: '0.2.0' },
+    route: { version: 1, status: 'experimental', since: '0.7.0' },
+  },
+
   /** Which kinds a procedure diagram has. The first is the default. */
   layouts: {
     flow: buildProcedureGraph,
