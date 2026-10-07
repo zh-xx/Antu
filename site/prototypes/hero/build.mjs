@@ -423,12 +423,12 @@ ${read(`${HERE}lenses.css`)}</style>
  <p class="start-s" data-i18n="startS">两种方式，任选其一。</p>
  <div class="ways">
   <div class="way">
-   <div class="way-h"><span class="num">01</span><h3>Skill</h3><span class="chip" data-i18n="chip1">一句话</span></div>
+   <div class="way-h"><span class="num">01</span><h3>Skill</h3><span class="way-chip" data-i18n="chip1">一句话</span></div>
    <p class="way-d" data-i18n="skillT">把下面这句话发给你的 Agent。</p>
    <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">prompt</span><button class="copy" data-for="skillText" data-i18n="copy">复制</button></div><code id="skillText" data-i18n="skillText">请安装案图（Antu）这个 Skill：运行 npx skills add zh-xx/Antu -g -y，然后用它为我的案件材料画图。</code></div>
   </div>
   <div class="way">
-   <div class="way-h"><span class="num">02</span><h3>MCP</h3><span class="chip" data-i18n="chip2">一段配置</span></div>
+   <div class="way-h"><span class="num">02</span><h3>MCP</h3><span class="way-chip" data-i18n="chip2">一段配置</span></div>
    <p class="way-d" data-i18n="mcpT">把这段配置加入你的 MCP 客户端。</p>
    <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">json</span><button class="copy" data-for="mcpText" data-i18n="copy">复制</button></div><pre id="mcpText">{
   "mcpServers": {
@@ -443,7 +443,7 @@ ${read(`${HERE}lenses.css`)}</style>
  <p class="eyebrow why-e">WHY ANTU</p>
  <h2 class="start-t" data-i18n="whyT">为什么适合法律工作</h2>
  <ol class="why">
-  <li><span class="no">一</span><b data-i18n="w1t">材料不出本机。</b><span class="wd" data-i18n="w1">案件材料和生成的图都不上传到任何服务器。图是单个 HTML 文件，页面打开时不发起网络请求，离线可用。</span></li>
+  <li><span class="no">一</span><b data-i18n="w1t">案图在本机运行。</b><span class="wd" data-i18n="w1">生成图的程序在本机运行。图是单个 HTML 文件，页面打开时不发起网络请求，离线可用。案图自己除每天一次的版本检查（不含任何材料，可关闭）外不联网。需要注意：Agent 读取材料时，材料会交给它所用的模型服务，这一部分不在案图的控制范围内，请按所用 Agent 的数据政策决定是否使用。</span></li>
   <li><span class="no">二</span><b data-i18n="w2t">每个节点可追溯到原文。</b><span class="wd" data-i18n="w2">事实、条款、争点都可以记录出处并附原文摘录；点击节点即可查看，便于核对。</span></li>
   <li><span class="no">三</span><b data-i18n="w3t">只依据材料，不替当事人补充。</b><span class="wd" data-i18n="w3">Skill 要求 Agent 不得编造日期、条文序号、案号和人名；材料没有的写“日期不详”，不确定的法律问题不入图，并向用户说明。</span></li>
   <li><span class="no">四</span><b data-i18n="w4t">先校验，后成图。</b><span class="wd" data-i18n="w4">数据有问题时，系统按字段路径指出，并拒绝生成，不会输出一张看似完整却有错的图。</span></li>

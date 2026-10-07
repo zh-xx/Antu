@@ -578,7 +578,7 @@ const EN = {
   skillText: 'Please install the Antu skill: run npx skills add zh-xx/Antu -g -y, then use it to draw diagrams from my case material.',
   mcpT: 'Add this configuration to your MCP client.',
   copy: 'Copy', whyT: 'Why it suits legal work',
-  w1t: 'Your material stays on your machine.', w1: 'Neither the case material nor the diagram is uploaded to any server. The diagram is a single HTML file; the page makes no network request when it opens and works offline.',
+  w1t: 'Antu runs on your machine.', w1: 'The program that makes the diagram runs on your machine. The diagram is a single HTML file; the page makes no network request when it opens and works offline. Apart from a version check once a day (it carries none of your material and can be turned off), Antu itself does not go online. Note that when an Agent reads your material, the material goes to the model service the Agent uses; that part is outside Antu’s control, so use it according to the data policy of the Agent you use.',
   w2t: 'Every node can be traced to the original text.', w2: 'Facts, clauses and issues can record their sources with an excerpt of the original; click a node to see it, for checking.',
   w3t: 'Only what the material says; nothing added on the parties’ behalf.', w3: 'The Skill requires the Agent not to invent dates, article numbers, case numbers or names; what the material does not give is shown as “date unknown”, and a legal point that is uncertain is left out and the user is told.',
   w4t: 'Checked first, drawn after.', w4: 'When the data has a problem, the system names the field path and refuses to draw, rather than produce a diagram that looks complete but is wrong.',
