@@ -75,8 +75,9 @@ it twice.
 ## Big diagrams
 
 A reader can fold each issue up to its conclusion (its box title is a button; the dock has "Fold issues"), so a
-diagram of several issues can be read at a glance. Nothing to write for it: it is not in the JSON. Still split a
-diagram that grows past about 60 nodes.
+diagram of several issues can be read at a glance. Nothing to write for it: it is not in the JSON. A diagram whose
+text would be under 9 px fitted to a screen **opens with its issues folded** (`layout` says "Opens with the issues
+folded"). Still split a diagram that grows past about 60 nodes.
 
 ## After writing
 
@@ -98,3 +99,14 @@ render      the self-contained HTML
 - **`holds` is not for facts and norms; `date` is only for facts** (`2032-04-14` or `2032-04-14T22:22`).
 - **At least one conclusion has no outgoing link**: the conclusion the whole reasoning leads to.
 - **Do not invent a date**: leave `date` out when the source does not give one.
+
+## The examples
+
+Each adds one idea (`<name>.zh-CN.json`, `<name>.en.json`):
+
+- `1-minimal`: conclusion, norm, element, two facts
+- `2-against-and-rejected`: the rejected side
+- `3-issues`: one box per issue
+- `4-shared-fact`: one fact, two issues
+- `5-sources`: time and sources
+- `6-all-or-any`: and / or

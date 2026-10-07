@@ -1,6 +1,6 @@
 # fact（事实图）· Schema 草案 v0
 
-> 状态：**已实现**（状态行对照 0.9.1 检查过）。字段已按发起人决策精简。字段名/约束在 0.x 阶段仍可能改，改时写进 CHANGELOG（`spec/versioning.md`）。除时间图外，同一份 JSON 还有两种画法已实现（都是第一版）：大事记和比例时间轴（`spec/fact/rendering.md` §9.1、§9.2）。
+> 状态：**已实现**（状态行对照 0.10.0 检查过）。字段已按发起人决策精简。字段名/约束在 0.x 阶段仍可能改，改时写进 CHANGELOG（`spec/versioning.md`）。除时间图外，同一份 JSON 还有两种画法已实现（都是第一版）：大事记和比例时间轴（`spec/fact/rendering.md` §9.1、§9.2）。
 
 > **这份是给设计者看的。** agent 写 JSON 用的是另一份：
 > 字段见 MCP 的 `antu_schema`，机制见 `spec/agent/fact/guide.md`。

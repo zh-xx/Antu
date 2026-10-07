@@ -71,9 +71,9 @@ test('SKILL.md says what the page bar switches and that some are off by default,
   assert.match(text, /under 11 px/)
   assert.match(text, /under 9 px/)
   assert.match(text, /Never drop\s+facts to make it fit/)
-  assert.match(text, /by issue/)
-  assert.match(text, /by stage/)
-  assert.match(text, /by group/)
+  assert.match(text, /by\s+issue/)
+  assert.match(text, /by\s+stage/)
+  assert.match(text, /by\s+group/)
 })
 
 test('SKILL.md is a valid skill: name = folder, a description within the limit, no placeholder left', () => {

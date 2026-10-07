@@ -186,7 +186,7 @@ export const justificationKnowledge = {
 
   /** The version, status and release of each way of drawing (spec/versioning.md, "The diagrams"); the same names as `layouts` */
   diagrams: {
-    tree: { version: 1, status: 'experimental', since: '0.2.0' },
+    tree: { version: 2, status: 'experimental', since: '0.2.0' },
   },
 
   /** Which kinds a justification diagram has. Currently the tree only. */
