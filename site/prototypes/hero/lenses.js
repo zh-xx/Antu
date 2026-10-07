@@ -571,8 +571,19 @@ const start = () => play(FIRST)
 
 // the top bar: the start button and Examples go to the under-construction notice for now; the language
 // switch (the top bar's labels and the notice only, in this draft); light / dark, remembered in this browser
-$('#startBtn').onclick = () => $('#building').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
-const EN = { examples: 'Examples', start: 'Get started', building: 'Under construction', buildingSub: 'More is on its way. See you soon.' }
+$('#startBtn').onclick = () => $('#start').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
+const EN = {
+  examples: 'Examples', start: 'Get started', startT: 'Get started',
+  skillT: 'Skill: send this sentence to your Agent',
+  skillText: 'Please install the Antu skill: run npx skills add zh-xx/Antu -g -y, then use it to draw diagrams from my case material.',
+  mcpT: 'MCP: add this configuration to your MCP client',
+  copy: 'Copy', whyT: 'Why it suits legal work',
+  w1t: 'Your material stays on your machine.', w1: 'Neither the case material nor the diagram is uploaded to any server. The diagram is a single HTML file; the page makes no network request when it opens and works offline.',
+  w2t: 'Every node can be traced to the original text.', w2: 'Facts, clauses and issues can record their sources with an excerpt of the original; click a node to see it, for checking.',
+  w3t: 'Only what the material says; nothing added on the parties’ behalf.', w3: 'The Skill requires the Agent not to invent dates, article numbers, case numbers or names; what the material does not give is shown as “date unknown”, and a legal point that is uncertain is left out and the user is told.',
+  w4t: 'Checked first, drawn after.', w4: 'When the data has a problem, the system names the field path and refuses to draw, rather than produce a diagram that looks complete but is wrong.',
+  w5t: 'Archived, printed, forwarded.', w5: 'The default black-and-white, square-cornered style suits printing and filing; the diagram can be sent as an attachment and the recipient needs to install nothing.',
+}
 const ZH = Object.fromEntries($$('[data-i18n]').map((e) => [e.dataset.i18n, e.textContent]))
 $$('.lang button').forEach((b) => (b.onclick = () => {
   const lang = b.dataset.lang
@@ -580,6 +591,13 @@ $$('.lang button').forEach((b) => (b.onclick = () => {
   $$('.lang button').forEach((x) => x.setAttribute('aria-checked', String(x === b)))
   const dict = lang === 'en' ? EN : ZH
   $$('[data-i18n]').forEach((e) => e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150 }).onfinish = () => { e.textContent = dict[e.dataset.i18n]; e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 }) })
+}))
+$$('.copy').forEach((b) => (b.onclick = async () => {
+  const done = $('.lang').dataset.on === 'en' ? 'Copied' : '已复制'
+  try { await navigator.clipboard.writeText($('#' + b.dataset.for).textContent) } catch { return }
+  const before = b.textContent
+  b.textContent = done
+  setTimeout(() => { b.textContent = before }, 1500)
 }))
 $('#mode').onclick = () => {
   const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'
