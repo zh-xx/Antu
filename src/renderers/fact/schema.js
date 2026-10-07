@@ -30,6 +30,18 @@ import { tEn } from '../../core/i18n.js'
  * req = required; ty = type; note = one-line explanation an agent can act on. Only **field-level**
  * rules are listed; cross-field rules are reported by the validator at run time (see spec/agent/fact/guide.md).
  */
+/** The numbers and the names of the events a view leaves out, for the layout report */
+function hiddenNote(view, grid) {
+  const names = [...new Set(grid.hiddenEvents.flatMap((h) => h.actorIds))].map((id) => `${id} ${grid.actorById.get(id)?.name ?? ''}`.trim())
+  return {
+    label: view.label,
+    drawn: grid.eventCount,
+    total: grid.eventCount + grid.hiddenEvents.length,
+    parties: names.join(', '),
+    ids: grid.hiddenEvents.map((h) => h.id).join(', '),
+  }
+}
+
 /** The generation of this type's JSON format (core/specVersion.js, spec/versioning.md): +1 on a breaking change */
 export const FACT_SPEC_VERSION = 1
 
@@ -261,6 +273,7 @@ export const factKnowledge = {
         index: i,
         label: view.label,
         events: graph.eventCount ?? grid.eventCount ?? 0,
+        hidden: grid.hiddenEvents.length > 0 ? hiddenNote(view, grid) : null,
         slots: grid.rows.length,
         columns: cols,
         blocked: graph.errors.length > 0,
@@ -312,7 +325,9 @@ export const factKnowledge = {
     for (const row of r.rows) {
       const c = row.columns
       const mark = row.blocked ? `does not fit (${row.blockReason})` : 'fits'
-      lines.push(`  ${row.index}. ${row.label}: side1 ${c.side1} / axis ${c.axis} / side2 ${c.side2}, ${row.events} events -> ${mark}`)
+      const drawn = row.hidden ? `${row.hidden.drawn} of ${row.hidden.total} events drawn` : `${row.events} events`
+      lines.push(`  ${row.index}. ${row.label}: side1 ${c.side1} / axis ${c.axis} / side2 ${c.side2}, ${drawn} -> ${mark}`)
+      if (row.hidden) lines.push(`     left out: events ${row.hidden.ids}, of ${row.hidden.parties}: the view names parties on its sides and these are on neither. If they should be drawn, put the party on a side, or leave both side lists empty to show every event.`)
     }
     if (r.blockedViews.length > 0) {
       lines.push('')

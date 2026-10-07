@@ -108,6 +108,7 @@ export function buildGrid(spec, view) {
     groupIndexById: new Map(),
     sourceById: new Map(),
     eventCount: 0,
+    hiddenEvents: [],
   }
 
   // ---------- party list ----------
@@ -210,6 +211,8 @@ export function buildGrid(spec, view) {
   const seenActorsOnSide = { [SIDE.SIDE1]: new Set(), [SIDE.SIDE2]: new Set() }
   /** Flattened events: { slotIndex, event, side, actorId|null } */
   const flat = []
+  /** Events a view that names parties leaves out: { id, label, actorIds } (reported, not an error) */
+  const hiddenEvents = []
 
   slots.forEach((slot, si) => {
     const at = `slots[${si}]`
@@ -305,6 +308,7 @@ export function buildGrid(spec, view) {
           ids.length > 0 &&
           !ids.some((id) => inScope.includes(id))
         ) {
+          hiddenEvents.push({ id: e.id, label: e.label, actorIds: ids })
           return
         }
         if (ids.length === 1 && in1.includes(ids[0])) {
@@ -411,5 +415,6 @@ export function buildGrid(spec, view) {
     groupIndexById,
     sourceById,
     eventCount,
+    hiddenEvents,
   }
 }
