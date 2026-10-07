@@ -371,7 +371,7 @@ ${read(`${HERE}lenses.css`)}</style>
 <script>try { const t = localStorage.getItem('antu.site.theme'); if (t) document.documentElement.dataset.theme = t } catch {}</script></head><body class="lx">
 <header class="nav">
  <a class="brand" href="#"><b>案图</b><span>Antu</span></a>
- <p class="motto">法律文书，<em>一眼看清</em></p>
+ <p class="motto"><span data-i18n="motto1">法律文书，</span><em data-i18n="motto2">一眼看清</em></p>
  <nav class="links">
   <a href="#start" data-i18n="examples">示例</a>
   <a class="gh" href="https://github.com/zh-xx/Antu" aria-label="GitHub"><svg viewBox="0 0 16 16" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a>
@@ -384,10 +384,10 @@ ${read(`${HERE}lenses.css`)}</style>
 <section class="hero">
 <div class="show">
  <nav class="kinds" aria-label="四类图">
-  ${KINDS.map((k, i) => `<button class="kind${i === 0 ? ' on' : ''}" data-kind="${k.id}"><span class="sk">${sketch(k.icon)}</span><b>${k.label}</b><i class="prog"></i></button>`).join('\n  ')}
+  ${KINDS.map((k, i) => `<button class="kind${i === 0 ? ' on' : ''}" data-kind="${k.id}"><span class="sk">${sketch(k.icon)}</span><b data-i18n="k-${k.id}">${k.label}</b><i class="prog"></i></button>`).join('\n  ')}
  </nav>
  <div class="stage" id="stage">
- <div class="paper" id="paper"><span class="lbl">判决书 · 虚构</span><div class="beam" id="beam"></div>
+ <div class="paper" id="paper"><span class="lbl" data-i18n="lblJ">判决书 · 虚构</span><div class="beam" id="beam"></div>
   <div class="court">${meta['法院']}</div><div class="ttl">刑事判决书</div><div class="no">${lines[0].replace(/^# /, '')}</div>
   <p class="party">${mark(meta['当事人'])}。</p>
   <h3>本院查明</h3>${facts.map((f) => `<p>${mark(f)}</p>`).join('')}
@@ -405,7 +405,7 @@ ${read(`${HERE}lenses.css`)}</style>
     return `<p class="rp${hit.length ? ' has' : ''}">${html}</p>`
   }).join('')}
   <p class="fiction">${fiction}</p></div>
- <div class="paper paper2" id="paper2"><span class="lbl">合同 · 虚构</span><div class="beam" id="beam2"></div>
+ <div class="paper paper2" id="paper2"><span class="lbl" data-i18n="lblC">合同 · 虚构</span><div class="beam" id="beam2"></div>
   <div class="ctitle">${L.flow.contract.title}</div><div class="no">${L.flow.contract.no}</div>
   ${L.flow.contract.parties.map((x) => `<p class="party">${x}</p>`).join('')}
   ${L.flow.contract.clauses.map((ss) => `<p class="cl">${ss.map((x, si) => {
@@ -415,19 +415,6 @@ ${read(`${HERE}lenses.css`)}</style>
   <p class="fiction">${L.flow.contract.fiction}</p></div>
 </div>
 </div>
-</section>
-
-<section class="gs why-sec" id="why" aria-labelledby="whyT">
- <p class="eyebrow">WHY ANTU</p>
- <h2 class="gs-t" id="whyT" data-i18n="whyT">适合法律工作</h2>
- <ul class="tiles">
-  <li><span class="no">一</span><b data-i18n="w1t">本机运行</b><span class="wd" data-i18n="w1">程序在本机运行，页面不联网，离线可用</span></li>
-  <li><span class="no">二</span><b data-i18n="w2t">可追溯原文</b><span class="wd" data-i18n="w2">每个节点可附出处和原文摘录</span></li>
-  <li><span class="no">三</span><b data-i18n="w3t">只依据材料</b><span class="wd" data-i18n="w3">Skill 要求 Agent 不编造日期、条文序号、案号和人名</span></li>
-  <li><span class="no">四</span><b data-i18n="w4t">先校验后成图</b><span class="wd" data-i18n="w4">数据有误时按字段路径指出，并拒绝生成</span></li>
-  <li><span class="no">五</span><b data-i18n="w5t">可存档、可打印、可转发</b><span class="wd" data-i18n="w5">单个 HTML 文件，黑白方正样式，无需安装即可打开</span></li>
- </ul>
- <p class="caveat" data-i18n="caveat">案图每天检查一次版本，不含任何材料，可关闭。Agent 读取材料时，材料会交给它所用的模型服务，案图无法控制，请按所用 Agent 的数据政策决定是否使用。</p>
 </section>
 
 <section class="gs" id="start" aria-labelledby="startT">
@@ -457,8 +444,21 @@ ${read(`${HERE}lenses.css`)}</style>
  </div>
 </section>
 
+<section class="gs why-sec" id="why" aria-labelledby="whyT">
+ <p class="eyebrow">WHY ANTU</p>
+ <h2 class="gs-t" id="whyT" data-i18n="whyT">适合法律工作</h2>
+ <ul class="tiles">
+  <li><span class="no" data-i18n="n1">一</span><b data-i18n="w1t">本机运行</b><span class="wd" data-i18n="w1">程序在本机运行，页面不联网，离线可用</span></li>
+  <li><span class="no" data-i18n="n2">二</span><b data-i18n="w2t">可追溯原文</b><span class="wd" data-i18n="w2">每个节点可附出处和原文摘录</span></li>
+  <li><span class="no" data-i18n="n3">三</span><b data-i18n="w3t">只依据材料</b><span class="wd" data-i18n="w3">Skill 要求 Agent 不编造日期、条文序号、案号和人名</span></li>
+  <li><span class="no" data-i18n="n4">四</span><b data-i18n="w4t">先校验后成图</b><span class="wd" data-i18n="w4">数据有误时按字段路径指出，并拒绝生成</span></li>
+  <li><span class="no" data-i18n="n5">五</span><b data-i18n="w5t">可存档、可打印、可转发</b><span class="wd" data-i18n="w5">单个 HTML 文件，黑白方正样式，无需安装即可打开</span></li>
+ </ul>
+ <p class="caveat" data-i18n="caveat">案图每天检查一次版本，不含任何材料，可关闭。Agent 读取材料时，材料会交给它所用的模型服务，案图无法控制，请按所用 Agent 的数据政策决定是否使用。</p>
+</section>
+
 <footer class="pfoot">
- <span>案图 Antu · 开源（AGPL-3.0-or-later）· 0.x 早期版本，仍在变化</span>
+ <span data-i18n="foot">案图 Antu · 开源（AGPL-3.0-or-later）· 0.x 早期版本，仍在变化</span>
  <a href="https://github.com/zh-xx/Antu">GitHub</a>
 </footer>
 <script>window.__LENS__ = ${JSON.stringify(L).replace(/</g, '\\u003c')}</script>
