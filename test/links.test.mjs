@@ -1,5 +1,5 @@
 // A link between two boxes of different sizes, whose middles differ by a few px, runs straight, steps sideways by a
-// few px and runs on; it is drawn as one straight line instead (src/core/links.js, issue 142).
+// few px and runs on; it is drawn as one straight line instead (src/core/links.js).
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
