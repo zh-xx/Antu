@@ -129,6 +129,8 @@ export const zh = {
   'header.kindPrev': '上一种画法',
   'header.kindNext': '下一种画法',
   'header.kindGroup': '画法',
+  'header.fold': '收起标题卡',
+  'header.unfold': '展开标题卡',
   'graphKind.chronicle': '大事记',
   'graphKind.scale': '比例时间轴',
 

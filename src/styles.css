@@ -704,6 +704,29 @@
   box-shadow: var(--antu-chrome-shadow, 0 4px 18px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.09));
 }
 
+.antu-header-top { display: flex; align-items: flex-start; gap: 8px; }
+.antu-header-top .antu-header-title { flex: 1 1 auto; min-width: 0; }
+/* The fold arrow sits at the top right of the card; folded, the card is one line wide as its title */
+.antu-header-fold {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: -3px -6px -3px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--antu-text-3);
+  cursor: pointer;
+}
+.antu-header-fold:hover { background: var(--antu-chip, #f0f3f7); color: var(--antu-text); }
+.antu-header-card.is-folded { display: flex; align-items: center; gap: 8px; width: auto; max-width: min(300px, 46vw); padding: 5px 7px 5px 12px; }
+.antu-header-card.is-folded .antu-header-type { flex: none; }
+.antu-header-card.is-folded .antu-header-title { flex: 1 1 auto; min-width: 0; }
+.antu-header-card.is-folded .antu-header-fold { margin: 0; }
+
 .antu-header-title {
   font-family: var(--antu-font-head, inherit);
   margin: 0;
