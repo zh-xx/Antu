@@ -4,6 +4,8 @@
 //  The release workflow runs this before it publishes: a commit may be on main and still have red checks (a merge
 //  that bypassed the branch rule, a check that failed after the merge). It asks GitHub for the check runs of the
 //  commit and stops unless `verify` is there and every run, except the release job itself, has finished and passed.
+//  When a check ran more than once on the commit (a job re-run, or a workflow started again after it was stopped), only
+//  the latest run of that name counts: an earlier red one that a later run has replaced no longer stops anything.
 //
 //    node tools/verify/ci-green.mjs <sha> [--ignore <job name>]...
 //
@@ -18,13 +20,18 @@ const REQUIRED = 'verify'
 const PASSING = new Set(['success', 'skipped', 'neutral'])
 
 /**
- * @param {Array<{name: string, status: string, conclusion: string|null}>} runs the commit's check runs
+ * @param {Array<{id?: number, name: string, status: string, conclusion: string|null}>} runs the commit's check runs
  * @param {{ignore?: string|string[]}} [opts] jobs to leave out (the release job itself is still running)
  * @returns {string[]} what stops the release, empty when everything is green
  */
 export function judge(runs, { ignore = [] } = {}) {
   const left = [ignore].flat()
-  const seen = runs.filter((r) => !left.includes(r.name))
+  const latest = new Map()
+  for (const r of runs) {
+    const before = latest.get(r.name)
+    if (!before || (r.id ?? 0) > (before.id ?? 0)) latest.set(r.name, r)
+  }
+  const seen = [...latest.values()].filter((r) => !left.includes(r.name))
   const problems = []
   if (!seen.some((r) => r.name === REQUIRED)) problems.push(`no "${REQUIRED}" check on this commit (did CI run? it may not have started yet)`)
   for (const r of seen) {
@@ -64,7 +71,7 @@ async function main() {
     for (const p of problems) console.error(`  - ${p}`)
     process.exit(1)
   }
-  console.log(`${sha.slice(0, 7)} is green (${runs.filter((r) => !ignore.includes(r.name)).length} checks)`)
+  console.log(`${sha.slice(0, 7)} is green (${new Set(runs.map((r) => r.name).filter((n) => !ignore.includes(n))).size} checks)`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
