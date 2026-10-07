@@ -1,6 +1,14 @@
 # Antu 案图
 
 [![Verify](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
+[![CodeQL](https://github.com/zh-xx/Antu/actions/workflows/codeql.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/codeql.yml)
+[![Release](https://img.shields.io/github/v/release/zh-xx/Antu)](https://github.com/zh-xx/Antu/releases)
+[![npm](https://img.shields.io/npm/v/@zh-xx/antu?label=npm)](https://www.npmjs.com/package/@zh-xx/antu)
+[![License: AGPL-3.0-or-later](https://img.shields.io/github/license/zh-xx/Antu)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A518-339933)](package.json)
+[![Status: 0.x](https://img.shields.io/badge/status-0.x%20draft-orange)](CHANGELOG.md)
+[![Demo](https://img.shields.io/badge/demo-online-blue)](https://zh-xx.github.io/Antu/)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
 [中文](README.zh-CN.md) | **English**
 
