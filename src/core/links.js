@@ -3,7 +3,7 @@
 //
 //  The orthogonal router anchors a link at the middle of the side of each node. Two nodes of different sizes whose middles
 //  differ by a few pixels (a box 53 high beside one 72 high) then get a link that runs straight, steps sideways by 2 or 3
-//  px, and runs on: drawn with round corners it looks like a link that missed (issue 142). `straightenJog` makes that link one straight line.
+//  px, and runs on: drawn with round corners it looks like a link that missed. `straightenJog` makes that link one straight line.
 //  It works in the frame the layouts route in (the layouts turn the whole picture afterwards when it is drawn left to
 //  right), for a link between two layers and for one between two nodes of a layer.
 // ============================================================
