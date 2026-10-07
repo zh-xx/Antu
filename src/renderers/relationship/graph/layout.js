@@ -35,6 +35,7 @@
 import { validateRelationship, hintsOfRelationship, isDirected } from './rules.js'
 import { elkLayoutSync } from '../../procedure/flow/elk.js'
 import { toPathD, toCurveD } from '../../procedure/flow/layout.js'
+import { straightenJog } from '../../../core/links.js'
 import { routeLink } from '../../procedure/flow/router.js'
 import { toReal } from '../../procedure/flow/columns.js'
 import { textEm } from '../../fact/cardGeometry.js'
@@ -581,6 +582,10 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     drawn[i] = c
     done.push(c)
   }
+  // a link that steps sideways by a few px between two boxes of different sizes becomes one straight line
+  drawn.forEach((c) => {
+    c.points = straightenJog(c.points, placed.get(relations[c.index].from), placed.get(relations[c.index].to))
+  })
   const placedLabels = []
   for (const i of order) {
     const c = drawn[i]
