@@ -37,6 +37,7 @@
 import { validateJustification, hintsOfJustification, stanceOf } from './rules.js'
 import { elkLayoutSync } from '../../procedure/flow/elk.js'
 import { toPathD, toCurveD } from '../../procedure/flow/layout.js'
+import { straightenJog } from '../../../core/links.js'
 import { routeLink } from '../../procedure/flow/router.js'
 import { toReal } from '../../procedure/flow/columns.js'
 import { titleBoxOf, edgesOfBox, portCostFor, segsOf, placeOnLine, fallbackRoute } from '../../relationship/graph/layout.js'
@@ -474,6 +475,10 @@ function layOut(spec, orientation, collapsed, merged) {
   const nodeGroup = new Map(placements.map((m) => [m.pid, boxes.some((bx) => bx.groupId === m.group) ? m.group : null]))
   const boxOf = new Map(boxes.map((bx) => [bx.groupId, bx]))
   const { drawn, order } = routeSet(links.map((k, i) => i), placed, { nodeRects, titles, borders, boxOf, nodeGroup })
+  // a link that steps sideways by a few px between two boxes of different sizes becomes one straight line
+  drawn.forEach((c) => {
+    c.points = straightenJog(c.points, placed.get(ends[c.index].from), placed.get(ends[c.index].to))
+  })
 
   // ── ④ the labels that exist, each on its own line ──
   const placedLabels = []
