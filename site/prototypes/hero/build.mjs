@@ -371,9 +371,9 @@ ${read(`${HERE}lenses.css`)}</style>
 <script>try { const t = localStorage.getItem('antu.site.theme'); if (t) document.documentElement.dataset.theme = t } catch {}</script></head><body class="lx">
 <header class="nav">
  <a class="brand" href="#"><b>案图</b><span>Antu</span></a>
- <p class="motto">法律文书，<em>一眼看清</em></p>
+ <p class="motto"><span data-i18n="motto1">法律文书，</span><em data-i18n="motto2">一眼看清</em></p>
  <nav class="links">
-  <a href="#building" data-i18n="examples">示例</a>
+  <a href="#start" data-i18n="examples">示例</a>
   <a class="gh" href="https://github.com/zh-xx/Antu" aria-label="GitHub"><svg viewBox="0 0 16 16" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a>
   <span class="sep" aria-hidden="true"></span>
   <div class="lang" role="radiogroup" aria-label="Language"><i class="knob" aria-hidden="true"></i><button role="radio" aria-checked="true" data-lang="zh">中文</button><button role="radio" aria-checked="false" data-lang="en">EN</button></div>
@@ -384,10 +384,10 @@ ${read(`${HERE}lenses.css`)}</style>
 <section class="hero">
 <div class="show">
  <nav class="kinds" aria-label="四类图">
-  ${KINDS.map((k, i) => `<button class="kind${i === 0 ? ' on' : ''}" data-kind="${k.id}"><span class="sk">${sketch(k.icon)}</span><b>${k.label}</b><i class="prog"></i></button>`).join('\n  ')}
+  ${KINDS.map((k, i) => `<button class="kind${i === 0 ? ' on' : ''}" data-kind="${k.id}"><span class="sk">${sketch(k.icon)}</span><b data-i18n="k-${k.id}">${k.label}</b><i class="prog"></i></button>`).join('\n  ')}
  </nav>
  <div class="stage" id="stage">
- <div class="paper" id="paper"><span class="lbl">判决书 · 虚构</span><div class="beam" id="beam"></div>
+ <div class="paper" id="paper"><span class="lbl" data-i18n="lblJ">判决书 · 虚构</span><div class="beam" id="beam"></div>
   <div class="court">${meta['法院']}</div><div class="ttl">刑事判决书</div><div class="no">${lines[0].replace(/^# /, '')}</div>
   <p class="party">${mark(meta['当事人'])}。</p>
   <h3>本院查明</h3>${facts.map((f) => `<p>${mark(f)}</p>`).join('')}
@@ -405,7 +405,7 @@ ${read(`${HERE}lenses.css`)}</style>
     return `<p class="rp${hit.length ? ' has' : ''}">${html}</p>`
   }).join('')}
   <p class="fiction">${fiction}</p></div>
- <div class="paper paper2" id="paper2"><span class="lbl">合同 · 虚构</span><div class="beam" id="beam2"></div>
+ <div class="paper paper2" id="paper2"><span class="lbl" data-i18n="lblC">合同 · 虚构</span><div class="beam" id="beam2"></div>
   <div class="ctitle">${L.flow.contract.title}</div><div class="no">${L.flow.contract.no}</div>
   ${L.flow.contract.parties.map((x) => `<p class="party">${x}</p>`).join('')}
   ${L.flow.contract.clauses.map((ss) => `<p class="cl">${ss.map((x, si) => {
@@ -417,28 +417,48 @@ ${read(`${HERE}lenses.css`)}</style>
 </div>
 </section>
 
-<section class="build" id="building" aria-labelledby="buildT">
- <svg class="robot" viewBox="0 0 260 230" role="img" aria-label="一个戴安全帽的机器人在敲打">
-  <ellipse class="r-shadow" cx="130" cy="214" rx="64" ry="8"/>
-  <g class="r-gear" transform="translate(44 184)"><g class="spin"><circle r="15" class="r-teeth"/><circle r="9" class="r-line"/><circle r="3" class="r-fill"/></g></g>
-  <rect class="r-line r-panel" x="96" y="192" width="20" height="18" rx="6"/><rect class="r-line r-panel" x="144" y="192" width="20" height="18" rx="6"/>
-  <rect class="r-line r-panel" x="90" y="132" width="80" height="62" rx="14"/>
-  <rect class="r-chest" x="104" y="150" width="52" height="8" rx="4"/><rect class="r-bar" x="104" y="150" width="52" height="8" rx="4"/>
-  <circle class="r-dot" cx="112" cy="174" r="3"/><circle class="r-dot d2" cx="130" cy="174" r="3"/><circle class="r-dot d3" cx="148" cy="174" r="3"/>
-  <g class="r-armL"><path class="r-line" d="M90 150 L66 170"/><circle class="r-line r-panel" cx="63" cy="173" r="5"/></g>
-  <rect class="r-line r-panel" x="80" y="64" width="100" height="62" rx="18"/>
-  <g class="r-eyes"><circle class="r-fill" cx="108" cy="94" r="7"/><circle class="r-fill" cx="152" cy="94" r="7"/></g>
-  <path class="r-line" d="M116 110 Q130 118 144 110" fill="none"/>
-  <path class="r-hat" d="M88 66 C88 42 108 32 130 32 C152 32 172 42 172 66 Z"/><rect class="r-hat" x="78" y="62" width="104" height="8" rx="4"/><path class="r-hatline" d="M130 32 L130 62"/>
-  <g class="r-armR"><path class="r-line" d="M170 150 L196 160"/><g class="r-hammer"><path class="r-line" d="M196 160 L214 132"/><rect class="r-hh" x="204" y="116" width="26" height="14" rx="3" transform="rotate(-34 217 123)"/></g></g>
-  <g class="r-sparks"><path d="M222 146 l10 -6"/><path d="M226 154 l12 0"/><path d="M220 162 l9 7"/></g>
- </svg>
- <h2 class="build-t" id="buildT" data-i18n="building">正在建设中</h2>
- <p class="build-s" data-i18n="buildingSub">更多内容正在准备，很快和你见面。</p>
+<section class="gs" id="start" aria-labelledby="startT">
+ <p class="eyebrow">GET STARTED</p>
+ <h2 class="gs-t" id="startT" data-i18n="startT">开始使用</h2>
+ <p class="gs-s" data-i18n="startS">任选其一</p>
+ <div class="way">
+  <div class="tabs" role="tablist">
+   <button class="tab" role="tab" id="tab-skill" aria-selected="true" aria-controls="panel-skill" data-tab="skill">Skill<i data-i18n="chip1">一句话</i></button>
+   <button class="tab" role="tab" id="tab-mcp" aria-selected="false" aria-controls="panel-mcp" data-tab="mcp">MCP<i data-i18n="chip2">一段配置</i></button>
+  </div>
+  <div class="panel" role="tabpanel" id="panel-skill" aria-labelledby="tab-skill">
+   <p class="way-d" data-i18n="skillT">把下面这句话发给你的 Agent</p>
+   <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">prompt</span><button class="copy" data-for="skillText" data-i18n="copy">复制</button></div><code id="skillText" data-i18n="skillText">请安装案图（Antu）这个 Skill：运行 npx skills add zh-xx/Antu -g -y，然后用它为我的案件材料画图。</code></div>
+  </div>
+  <div class="panel" role="tabpanel" id="panel-mcp" aria-labelledby="tab-mcp" hidden>
+   <p class="way-d" data-i18n="mcpT">把这段配置加入你的 MCP 客户端</p>
+   <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">json</span><button class="copy" data-for="mcpText" data-i18n="copy">复制</button></div><pre id="mcpText">{
+  "mcpServers": {
+    "antu": {
+      "command": "npx",
+      "args": ["-y", "-p", "@zh-xx/antu@latest", "antu-mcp"]
+    }
+  }
+}</pre></div>
+  </div>
+ </div>
+</section>
+
+<section class="gs why-sec" id="why" aria-labelledby="whyT">
+ <p class="eyebrow">WHY ANTU</p>
+ <h2 class="gs-t" id="whyT" data-i18n="whyT">适合法律工作</h2>
+ <ul class="tiles">
+  <li><span class="no" data-i18n="n1">一</span><b data-i18n="w1t">本机运行</b><span class="wd" data-i18n="w1">程序在本机运行，页面不联网，离线可用</span></li>
+  <li><span class="no" data-i18n="n2">二</span><b data-i18n="w2t">可追溯原文</b><span class="wd" data-i18n="w2">每个节点可附出处和原文摘录</span></li>
+  <li><span class="no" data-i18n="n3">三</span><b data-i18n="w3t">只依据材料</b><span class="wd" data-i18n="w3">Skill 要求 Agent 不编造日期、条文序号、案号和人名</span></li>
+  <li><span class="no" data-i18n="n4">四</span><b data-i18n="w4t">先校验后成图</b><span class="wd" data-i18n="w4">数据有误时按字段路径指出，并拒绝生成</span></li>
+  <li><span class="no" data-i18n="n5">五</span><b data-i18n="w5t">可存档、可打印、可转发</b><span class="wd" data-i18n="w5">单个 HTML 文件，黑白方正样式，无需安装即可打开</span></li>
+ </ul>
+ <p class="caveat" data-i18n="caveat">案图每天检查一次版本，不含任何材料，可关闭。Agent 读取材料时，材料会交给它所用的模型服务，案图无法控制，请按所用 Agent 的数据政策决定是否使用。</p>
 </section>
 
 <footer class="pfoot">
- <span>案图 Antu · 开源（AGPL-3.0-or-later）· 0.x 早期版本，仍在变化</span>
+ <span data-i18n="foot">案图 Antu · 开源（AGPL-3.0-or-later）· 0.x 早期版本，仍在变化</span>
  <a href="https://github.com/zh-xx/Antu">GitHub</a>
 </footer>
 <script>window.__LENS__ = ${JSON.stringify(L).replace(/</g, '\\u003c')}</script>
