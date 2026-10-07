@@ -1,7 +1,7 @@
 // ============================================================
-//  tools/trial/agent.mjs — a small agent: a model, three tools and a loop
+//  tools/trial/agent.mjs — a small agent: a model, four tools and a loop
 //
-//  The model is given the skill (SKILL.md) and a request, and may read files, write files in its own working folder
+//  The model is given the skill (SKILL.md) and a request, and may list and read files, write files in its own working folder
 //  and run the skill's command line. It sees what the command says (the checker's problems, the layout notes) and may
 //  correct itself, until it stops asking for tools or the turns run out. Any model with an OpenAI-compatible
 //  chat/completions interface with tool calls can be used (tools/trial/models.json).
@@ -9,17 +9,18 @@
 //  What it is for: to see what level of drawing the engine lets a model reach (spec/trial.md). It is not a real agent
 //  product: those have their own prompts, tools and ways of loading a skill.
 //
-//  Safety: the model reaches only the three tools. It reads the case material, the skill folder and its working
+//  Safety: the model reaches only the four tools. It reads the case material, the skill folder and its working
 //  folder, and writes only in its working folder; the command line runs with a clean environment (no variable of this
 //  process is passed on). The key of a model, when one is needed, never leaves `callModel`.
 // ============================================================
 
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'node:fs'
+import { mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync, statSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
 
 export const TOOLS = [
   { type: 'function', function: { name: 'read_file', description: 'Read a text file. Paths: skill/... (the skill folder), material/... (the case material), or a file in your working folder.', parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } } },
+  { type: 'function', function: { name: 'list_files', description: 'List the files and folders of a folder. Paths: skill/... (the skill folder), material/..., or a folder of your working folder (. for the working folder itself).', parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } } },
   { type: 'function', function: { name: 'write_file', description: 'Write a text file in your working folder (a relative path, no ..).', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } },
   { type: 'function', function: { name: 'antu', description: 'Run the skill\'s command line: node <skill-dir>/scripts/antu.mjs <args>. Give the arguments after antu.mjs, e.g. ["validate","spec.json"], ["layout","spec.json"], ["render","spec.json","-o","diagram.html"], ["preview","spec.json","-o","shot.png"]. File names are in your working folder.', parameters: { type: 'object', properties: { args: { type: 'array', items: { type: 'string' } } }, required: ['args'] } } },
 ]
@@ -35,6 +36,8 @@ export function makeTools({ work, skillDir, materialDir }) {
     return full
   }
   const readable = (p) => {
+    if (p === 'skill') return skillDir
+    if (p === 'material') return materialDir
     if (p.startsWith('skill/')) return inside(skillDir, p.slice(6))
     if (p.startsWith('material/')) return inside(materialDir, p.slice(9))
     return inside(work, p)
@@ -44,6 +47,12 @@ export function makeTools({ work, skillDir, materialDir }) {
       const full = readable(String(path))
       if (!existsSync(full) || !statSync(full).isFile()) return `error: no such file: ${path}`
       return readFileSync(full, 'utf8').slice(0, CAP)
+    },
+    list_files({ path }) {
+      const p = String(path || '.')
+      const full = p === '.' ? work : readable(p)
+      if (!existsSync(full) || !statSync(full).isDirectory()) return `error: no such folder: ${p}`
+      return readdirSync(full, { withFileTypes: true }).map((e) => (e.isDirectory() ? `${e.name}/` : e.name)).sort().slice(0, 300).join('\n')
     },
     write_file({ path, content }) {
       const full = inside(work, String(path))
@@ -73,7 +82,7 @@ export async function callModel(cfg, messages, { signal } = {}) {
     if (!process.env[cfg.keyEnv]) throw new Error(`the variable ${cfg.keyEnv} is not set`)
     headers.Authorization = `Bearer ${process.env[cfg.keyEnv]}`
   }
-  const body = (msgs) => JSON.stringify({ model: cfg.model, messages: msgs, tools: TOOLS, tool_choice: 'auto', max_tokens: cfg.maxTokens ?? 16000 })
+  const body = (msgs) => JSON.stringify({ model: cfg.model, messages: msgs, tools: TOOLS, tool_choice: 'auto', max_tokens: cfg.maxTokens ?? 48000 })
   const post = (msgs) => fetch(`${cfg.baseUrl}/chat/completions`, { method: 'POST', headers, body: body(msgs), signal })
   let res = await post(messages)
   if (res.status === 400) {
@@ -104,7 +113,12 @@ export async function runAgent({ provider, system, user, tools, maxTurns = 14, o
     messages.push(msg)
     onTurn(turns, msg)
     const calls = msg.tool_calls ?? []
-    if (!calls.length) { stopped = 'done'; turns += 1; break }
+    if (!calls.length) {
+      // a model that thinks until its output runs out has not finished, whatever the empty answer looks like
+      stopped = answer.choices[0].finish_reason === 'length' ? 'length' : 'done'
+      turns += 1
+      break
+    }
     for (const c of calls) {
       let out
       try {
