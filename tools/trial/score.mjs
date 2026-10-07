@@ -28,13 +28,15 @@ export function numbersNotInMaterial(spec, material) {
   return [...new Set(found.filter((n) => !material.includes(n)))]
 }
 
+// The names of the parties (`actors` of a fact diagram, `entities` of a relationship diagram, `actors` of a procedure):
+// the ones that must be there. Labels of nodes, groups and sources are the model's own wording, so they are not counted.
 const namesOf = (spec) => {
   const out = []
-  walk(spec, (k, v) => { if (k === 'name' && typeof v === 'string' && v.length >= 2) out.push(v) })
+  for (const list of [spec.actors, spec.entities]) for (const x of Array.isArray(list) ? list : []) if (typeof x?.name === 'string' && x.name.length >= 2) out.push(x.name)
   return [...new Set(out)]
 }
 
-/** How much of the reference the diagram has: the names, and the length of each list both have */
+/** How much of the reference the diagram has: the names of the parties, and the length of each list both have */
 export function coverage(spec, reference) {
   const text = JSON.stringify(spec)
   const names = namesOf(reference)

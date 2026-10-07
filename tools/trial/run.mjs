@@ -3,7 +3,7 @@
 //
 //    node tools/trial/run.mjs --case fact-corridor                 (the default model of models.json: deepseek-flash)
 //    node tools/trial/run.mjs --model fake --case fact-corridor
-//    node tools/trial/run.mjs --model deepseek-flash --case fact-corridor [--max-turns 14] [--out runs] [--skill skills/antu]
+//    node tools/trial/run.mjs --model deepseek-flash --case fact-corridor [--max-turns 24] [--out runs] [--skill skills/antu]
 //
 //  The model gets the skill and the request of the case (tools/trial/cases.json), works in its own folder, and
 //  everything is kept in runs/<time>-<model>-<case>/ (not committed): transcript.json, work/ (spec.json,
@@ -85,7 +85,7 @@ async function main() {
   const t0 = Date.now()
   let result
   try {
-    result = await runAgent({ provider, system, user, tools, maxTurns: Number(arg('max-turns', 14)), onTurn: (i, m) => console.log(`  turn ${i + 1}: ${m.tool_calls?.length ? m.tool_calls.map((c) => c.function.name).join(', ') : 'answer'}`) })
+    result = await runAgent({ provider, system, user, tools, maxTurns: Number(arg('max-turns', 24)), onTurn: (i, m) => console.log(`  turn ${i + 1}: ${m.tool_calls?.length ? m.tool_calls.map((c) => c.function.name).join(', ') : 'answer'}`) })
   } catch (e) {
     result = { messages: [], turns: 0, usage: { prompt: 0, completion: 0 }, stopped: `error: ${redact(e.message, cfg)}` }
     console.error(result.stopped)

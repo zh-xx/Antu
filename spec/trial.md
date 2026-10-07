@@ -4,7 +4,7 @@ Antu is made so that models of every strength, in every agent, can reach a high 
 
 ## What it is, and is not
 
-- `tools/trial/` is a small agent: a model, three tools (read a file, write a file in its own folder, run the skill's command line) and a loop (`agent.mjs`). Any model with an OpenAI-compatible chat/completions interface and tool calls can be put in `models.json`.
+- `tools/trial/` is a small agent: a model, four tools (list a folder, read a file, write a file in its own folder, run the skill's command line) and a loop (`agent.mjs`). Any model with an OpenAI-compatible chat/completions interface and tool calls can be put in `models.json`.
 - It tests the model **with the skill and the engine**. It is not a real agent product (those have their own prompts, tools and ways of loading a skill) and does not test installation or whether an agent chooses the skill; those are tried in the real clients.
 - The cases (`cases.json`) are the fictional judgments and contracts of `examples/raw/`; each has a reference diagram written by hand in `examples/`. No real case is used.
 
@@ -21,12 +21,12 @@ A run is kept in `runs/<time>-<model>-<case>/` (not committed): `transcript.json
 ## Keys and safety
 
 - A model's key is stored in the cloud environment as an *API credential*: the agent proxy adds it to requests for the listed host, after they leave the session, so the key never reaches the process, the tools or the environment. A model with `"keyEnv": null` is called without a key header. For a model reached another way, `keyEnv` names the variable that holds its key; the key is used only in `callModel` and is taken out of what is saved.
-- The model reaches only the three tools. It reads the case material, the skill folder and its working folder, writes only in its working folder, and the command line runs with a clean environment.
+- The model reaches only the four tools. It reads the case material, the skill folder and its working folder, writes only in its working folder, and the command line runs with a clean environment.
 - Node's own `fetch` does not read the proxy variables: `run.mjs` starts itself again with `NODE_USE_ENV_PROXY=1` when a proxy is set.
 
 ## What is checked by the script (`score.mjs`)
 
-Not a matter of opinion: whether the diagram passes `validate`; the dates, article numbers and case numbers written in the diagram that the material does not have; how much of the reference it has (names, length of each list); turns and tokens.
+Not a matter of opinion: whether the diagram passes `validate`; the dates, article numbers and case numbers written in the diagram that the material does not have; how much of the reference it has (the names of the parties, the length of each list); turns and tokens.
 
 ## What is judged by reading the run
 

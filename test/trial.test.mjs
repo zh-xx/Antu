@@ -37,6 +37,19 @@ test('the tools read the skill, the material and the working folder, and nothing
   }
 })
 
+test('a folder can be listed, inside the same limits', () => {
+  const { root, tools } = sandbox()
+  try {
+    assert.match(tools.list_files({ path: 'skill/examples' }), /fact\//)
+    assert.match(tools.list_files({ path: 'material' }), /case\.md/)
+    assert.match(tools.list_files({ path: '.' }), /^$/)
+    assert.match(tools.list_files({ path: 'nope' }), /no such folder/)
+    assert.throws(() => tools.list_files({ path: '..' }), /outside the allowed folder/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('a file can be written only inside the working folder', () => {
   const { root, work, tools } = sandbox()
   try {
@@ -108,7 +121,7 @@ test('dates and numbers that the material does not have are found, the others ar
 })
 
 test('the coverage counts the names of the reference that the diagram has and the lists both have', () => {
-  const reference = { actors: [{ name: '钱敏' }, { name: '孙浩' }], slots: [1, 2, 3] }
+  const reference = { actors: [{ name: '钱敏' }, { name: '孙浩' }], sources: [{ name: '不计入' }], slots: [1, 2, 3] }
   const spec = { actors: [{ name: '钱敏' }], slots: [1, 2] }
   const c = coverage(spec, reference)
   assert.deepEqual(c.names, { have: 1, of: 2, missing: ['孙浩'] })
