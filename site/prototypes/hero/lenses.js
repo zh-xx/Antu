@@ -571,15 +571,45 @@ const start = () => play(FIRST)
 
 // the top bar: the start button and Examples go to the under-construction notice for now; the language
 // switch (the top bar's labels and the notice only, in this draft); light / dark, remembered in this browser
-$('#startBtn').onclick = () => $('#building').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
-const EN = { examples: 'Examples', start: 'Get started', building: 'Under construction', buildingSub: 'More is on its way. See you soon.' }
+$('#startBtn').onclick = () => $('#start').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
+const EN = {
+  examples: 'Examples', start: 'Get started', startT: 'Get started', startS: 'Choose either', chip1: 'One sentence', chip2: 'One configuration',
+  skillT: 'Send this sentence to your Agent',
+  skillText: 'Please install the Antu skill: run npx skills add zh-xx/Antu -g -y, then use it to draw diagrams from my case material.',
+  mcpT: 'Add this configuration to your MCP client',
+  motto1: 'Legal documents, ', motto2: 'at a glance', 'k-fact': 'Facts', 'k-relationship': 'Relations', 'k-procedure': 'Procedure', 'k-justification': 'Reasoning',
+  lblJ: 'Judgment · fictional', lblC: 'Contract · fictional', n1: '1', n2: '2', n3: '3', n4: '4', n5: '5',
+  foot: 'Antu · open source (AGPL-3.0-or-later) · early 0.x version, still changing',
+  copy: 'Copy', whyT: 'Suited to legal work',
+  w1t: 'Runs on your machine', w1: 'The program runs on your machine; the page makes no network request and works offline',
+  w2t: 'Traceable to the original', w2: 'Every node can carry its source and an excerpt of the original text',
+  w3t: 'Only what the material says', w3: 'The Skill requires the Agent not to invent dates, article numbers, case numbers or names',
+  w4t: 'Checked first, drawn after', w4: 'If the data is wrong, the field path is named and drawing is refused',
+  w5t: 'Archive, print, forward', w5: 'One HTML file in a black-and-white, square-cornered style; opens with nothing to install',
+  caveat: 'Antu checks for a new version once a day, carrying none of your material; this can be turned off. When an Agent reads your material, it goes to the model service that Agent uses. Antu cannot control that, so use it according to the data policy of the Agent you use.',
+}
 const ZH = Object.fromEntries($$('[data-i18n]').map((e) => [e.dataset.i18n, e.textContent]))
 $$('.lang button').forEach((b) => (b.onclick = () => {
   const lang = b.dataset.lang
   $('.lang').dataset.on = lang
   $$('.lang button').forEach((x) => x.setAttribute('aria-checked', String(x === b)))
   const dict = lang === 'en' ? EN : ZH
+  const T = lang === 'en' ? { title: 'Antu · Legal documents, at a glance', mode: 'Switch light / dark', kinds: 'Four kinds of diagram' } : { title: '案图 Antu · 法律文书，一眼看清', mode: '切换明暗', kinds: '四类图' }
+  document.title = T.title
+  document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN'
+  $('#mode').setAttribute('aria-label', T.mode); $('#mode').title = T.mode
+  $('.kinds').setAttribute('aria-label', T.kinds)
   $$('[data-i18n]').forEach((e) => e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150 }).onfinish = () => { e.textContent = dict[e.dataset.i18n]; e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 }) })
+}))
+$$('.copy').forEach((b) => (b.onclick = async () => {
+  const done = $('.lang').dataset.on === 'en' ? 'Copied' : '已复制'
+  try { await navigator.clipboard.writeText($('#' + b.dataset.for).textContent) } catch { return }
+  const before = b.textContent
+  b.textContent = done
+  setTimeout(() => { b.textContent = before }, 1500)
+}))
+$$('.tab').forEach((t) => (t.onclick = () => {
+  $$('.tab').forEach((x) => { const on = x === t; x.setAttribute('aria-selected', String(on)); $('#panel-' + x.dataset.tab).hidden = !on })
 }))
 $('#mode').onclick = () => {
   const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'
