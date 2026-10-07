@@ -24,6 +24,8 @@ A run is kept in `runs/<time>-<model>-<case>/` (not committed): `transcript.json
 - The model reaches only the four tools. It reads the case material, the skill folder and its working folder, writes only in its working folder, and the command line runs with a clean environment.
 - Node's own `fetch` does not read the proxy variables: `run.mjs` starts itself again with `NODE_USE_ENV_PROXY=1` when a proxy is set.
 
+A run ends `done` (the model stopped asking for tools), `turns` (the turn limit, 24) or `length` (its output ran out while it was still thinking: it did not finish).
+
 ## What is checked by the script (`score.mjs`)
 
 Not a matter of opinion: whether the diagram passes `validate`; the dates, article numbers and case numbers written in the diagram that the material does not have; how much of the reference it has (the names of the parties, the length of each list); turns and tokens.

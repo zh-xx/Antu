@@ -82,7 +82,7 @@ export async function callModel(cfg, messages, { signal } = {}) {
     if (!process.env[cfg.keyEnv]) throw new Error(`the variable ${cfg.keyEnv} is not set`)
     headers.Authorization = `Bearer ${process.env[cfg.keyEnv]}`
   }
-  const body = (msgs) => JSON.stringify({ model: cfg.model, messages: msgs, tools: TOOLS, tool_choice: 'auto', max_tokens: cfg.maxTokens ?? 16000 })
+  const body = (msgs) => JSON.stringify({ model: cfg.model, messages: msgs, tools: TOOLS, tool_choice: 'auto', max_tokens: cfg.maxTokens ?? 48000 })
   const post = (msgs) => fetch(`${cfg.baseUrl}/chat/completions`, { method: 'POST', headers, body: body(msgs), signal })
   let res = await post(messages)
   if (res.status === 400) {
@@ -113,7 +113,12 @@ export async function runAgent({ provider, system, user, tools, maxTurns = 14, o
     messages.push(msg)
     onTurn(turns, msg)
     const calls = msg.tool_calls ?? []
-    if (!calls.length) { stopped = 'done'; turns += 1; break }
+    if (!calls.length) {
+      // a model that thinks until its output runs out has not finished, whatever the empty answer looks like
+      stopped = answer.choices[0].finish_reason === 'length' ? 'length' : 'done'
+      turns += 1
+      break
+    }
     for (const c of calls) {
       let out
       try {

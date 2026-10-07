@@ -113,6 +113,17 @@ test('a loop that never stops asking for tools ends at the turn limit', async ()
   }
 })
 
+test('an answer cut off by the output limit is not taken for a finished run', async () => {
+  const cut = async () => ({ choices: [{ finish_reason: 'length', message: { role: 'assistant', content: '', reasoning_content: 'thinking…' } }] })
+  const { root, tools } = sandbox()
+  try {
+    const r = await runAgent({ provider: cut, system: 's', user: 'u', tools, maxTurns: 3 })
+    assert.equal(r.stopped, 'length')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('dates and numbers that the material does not have are found, the others are not', () => {
   const material = '2030年6月2日，钱敏充电。依据第三条，（2031）示民终1号。'
   const spec = { events: [{ date: '2030-06-02' }, { date: '2030-06-03T10:00' }, { dateEnd: '2030-06' }], note: '第三条和第九条，（2031）示民终1号，（2031）示民终2号' }
