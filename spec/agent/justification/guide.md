@@ -75,8 +75,9 @@ it twice.
 ## Big diagrams
 
 A reader can fold each issue up to its conclusion (its box title is a button; the dock has "Fold issues"), so a
-diagram of several issues can be read at a glance. Nothing to write for it: it is not in the JSON. Still split a
-diagram that grows past about 60 nodes.
+diagram of several issues can be read at a glance. Nothing to write for it: it is not in the JSON. A diagram whose
+text would be under 9 px fitted to a screen **opens with its issues folded** (`layout` says "Opens with the issues
+folded"). Still split a diagram that grows past about 60 nodes.
 
 ## After writing
 

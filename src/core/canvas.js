@@ -51,6 +51,9 @@ export function fitWidthZoom(size, viewport) {
 // ------------------------------------------------------------
 
 /** Below this the body text needs zooming in to be read */
+/** The screen the reports of `layout` and the choice of how a diagram opens are judged at */
+export const REFERENCE_CANVAS = { width: 1600, height: 900 }
+
 export const TEXT_MIN_PX = 9
 /** Below this the body text is small, though readable */
 export const TEXT_OK_PX = 11
