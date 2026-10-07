@@ -112,3 +112,15 @@ diagram looks good. Always run `preview` and look before delivering.
 - **Keep the summary short.** `summary` fits one line of the card (about 22 full-width
   characters); a longer one is **rejected**, not truncated, because it would overflow
   the card. Put the long text in `detail`.
+
+## The examples
+
+Each adds one idea (`<name>.zh-CN.json`, `<name>.en.json`):
+
+- `1-minimal`: two parties, no `groups` (every card on the axis)
+- `2-single-actor`: one party
+- `3-groups`: `groupId` picks the side
+- `4-views`: the same data, two views
+- `5-duration`: spans and approximate times
+- `6-sources`: facts traced to sources
+- `7-undated`: no `date`

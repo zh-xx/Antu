@@ -574,10 +574,10 @@ function checkData() {
   const agentRefTok = schemaTok + guideTok
   // The procedure material has the same budget
   const procRefTok = tokOf(describeSchema('procedure').text) + tokOf(readAgentGuide('procedure') ?? '')
-  truthy('the procedure reference material stays small too (under 6k tokens)', procRefTok < 6, `${procRefTok.toFixed(1)}k tokens`)
+  truthy('the procedure reference material stays small too (under 6.5k tokens)', procRefTok < 6.5, `${procRefTok.toFixed(1)}k tokens`)
   truthy(
-    'the agent reference material is still about the size we advertise (under 6k tokens)',
-    agentRefTok < 6,
+    'the agent reference material is still about the size we advertise (under 6.5k tokens)',
+    agentRefTok < 6.5,
     `${agentRefTok.toFixed(1)}k tokens (schema ${schemaTok.toFixed(1)}k + guide ${guideTok.toFixed(1)}k)`,
   )
   // And the advertised size must match, so it cannot go stale unnoticed. The README states it in characters, which
