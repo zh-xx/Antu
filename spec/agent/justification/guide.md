@@ -1,7 +1,7 @@
 # Mechanism notes for an agent
 
-> This is an **operating note**, not the specification. The field list is served by
-> `antu_schema`, examples by `antu_examples`, and the design rationale lives in
+> This is an **operating note**, not the specification. The field list is a separate
+> document, the examples are separate files, and the design rationale lives in
 > `spec/justification/schema-draft.md` (you do not need it to write JSON).
 >
 > **This file is English on purpose.** It goes into a model's context, the same as
@@ -81,14 +81,14 @@ diagram that grows past about 60 nodes.
 ## After writing
 
 ```
-antu_validate   each problem with its path and id: links[3] (f-9 -> e-9): `to` refers to ...
-                on a pass it can still add notes (a fact with no source, nothing supports a conclusion)
-antu_layout     counts, layers, size per orientation; no rendering
-antu_preview    a screenshot: is each issue clear, do the lines cross badly, is anything cut off
-antu_render     the self-contained HTML
+validate    each problem with its path and id: links[3] (f-9 -> e-9): `to` refers to ...
+            on a pass it can still add notes (a fact with no source, nothing supports a conclusion)
+layout      counts, layers, size per orientation; no rendering
+preview     a screenshot: is each issue clear, do the lines cross badly, is anything cut off
+render      the self-contained HTML
 ```
 
-**Passing validation is only the pass mark.** Always look with `antu_preview` before delivering. A big diagram
+**Passing validation is only the pass mark.** Always look with `preview` before delivering. A big diagram
 (past about 40 nodes) is small on one screen: split it, one diagram per issue.
 
 ## Also easy to get wrong

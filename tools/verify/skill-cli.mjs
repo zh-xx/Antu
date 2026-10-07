@@ -38,7 +38,7 @@ const work = mkdtempSync(join(tmpdir(), 'antu-skill-cli-'))
 try {
   cpSync(SKILL_DIR, join(work, 'antu'), { recursive: true })
   const cli = join(work, 'antu/scripts/antu.mjs')
-  const run = (...args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', cwd: work })
+  const run = (...args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', cwd: work, env: { ...process.env, ANTU_NO_UPDATE_NOTIFIER: '1' } })
   const version = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version
 
   const v = run('--version')
@@ -60,7 +60,7 @@ try {
   // committed skill is the last release until the next one), so it is checked only where the command line has it.
   if (run('--help').stdout.includes('preview')) {
     const runWith = (env, ...args) =>
-      spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', cwd: work, env: { ...process.env, ...env } })
+      spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', cwd: work, env: { ...process.env, ANTU_NO_UPDATE_NOTIFIER: '1', ...env } })
     // the size a PNG says it is, from its header
     const pngSize = (file) => {
       const b = existsSync(file) ? readFileSync(file) : Buffer.alloc(0)

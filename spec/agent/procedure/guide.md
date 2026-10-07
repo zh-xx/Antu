@@ -1,7 +1,7 @@
 # Mechanism notes for an agent
 
-> This is an **operating note**, not the specification. The field list is served by
-> `antu_schema`, examples by `antu_examples`, and the design rationale lives in the
+> This is an **operating note**, not the specification. The field list is a separate
+> document, the examples are separate files, and the design rationale lives in the
 > human-facing documents under `spec/` (you do not need them to write JSON).
 >
 > **This file is English on purpose.** It goes into a model's context, the same as
@@ -86,13 +86,13 @@ they are not in the data.
 ## After writing
 
 ```
-antu_validate   each problem with its path and node id: nodes (n-4): kind is "decision" but ...
-antu_layout     counts, layers, loops, rules, size per orientation; no rendering
-antu_preview    a screenshot: is the main line obvious, are the branches readable
-antu_render     the self-contained HTML
+validate    each problem with its path and node id: nodes (n-4): kind is "decision" but ...
+layout      counts, layers, loops, rules, size per orientation; no rendering
+preview     a screenshot: is the main line obvious, are the branches readable
+render      the self-contained HTML
 ```
 
-**Passing validation is only the pass mark.** Always look with `antu_preview` before
+**Passing validation is only the pass mark.** Always look with `preview` before
 delivering.
 
 ## Also easy to get wrong
@@ -106,4 +106,4 @@ delivering.
 
 The reader can switch to the **route map**: the main line as one line, with rework loops and early endings
 hanging below it. It needs a clear main line, so **mark `main` along the whole line from start to end**
-(or on none, and the engine infers it). `kind: "route"` on antu_layout / antu_preview / antu_render shows it.
+(or on none, and the engine infers it). `kind: "route"` on `layout`, `preview` and `render` shows it.

@@ -70,6 +70,8 @@ npx skills add zh-xx/Antu -g
 
 The Skill is in [`skills/antu/`](skills/antu/); each [release](https://github.com/zh-xx/Antu/releases) also carries it as `antu-skill-<version>.zip`.
 
+The command line asks the npm registry once a day whether a newer Antu is out (one GET request, nothing of any diagram) and, if so, ends its output with a notice. `ANTU_NO_UPDATE_NOTIFIER=1` turns it off.
+
 ### MCP
 
 The MCP server is the npm package [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu), registered as `io.github.zh-xx/antu` in the [MCP registry](https://registry.modelcontextprotocol.io).
@@ -79,7 +81,7 @@ The MCP server is the npm package [`@zh-xx/antu`](https://www.npmjs.com/package/
   "mcpServers": {
     "antu": {
       "command": "npx",
-      "args": ["-y", "-p", "@zh-xx/antu", "antu-mcp"]
+      "args": ["-y", "-p", "@zh-xx/antu@latest", "antu-mcp"]
     }
   }
 }

@@ -27,12 +27,34 @@ import { build as viteBuild } from 'vite'
 
 import { REPO, SPEC_MARKER, buildViewerHtml, engineVersion, ensureEngine, readEngine } from './lib/make-html.mjs'
 import { describeSchema, listKnowledgeTypes, readAgentGuide } from './mcp/engine.mjs'
-import { licenseNotice, thirdPartyNotices } from './lib/notices.mjs'
+import { ADDITIONAL_PERMISSION, COPYRIGHT, LICENSE_SPDX, REPO_URL, licenseNotice, thirdPartyNotices } from './lib/notices.mjs'
 
 export const SKILL_DIR = join(REPO, 'skills/antu')
 const VIEWER = 'assets/viewer.html'
 /** The command line, bundled into one file (vite.cli.config.js): large, and rebuilt by every build like the viewer */
 const CLI = 'scripts/antu.mjs'
+
+/**
+ * Files the sources add to the skill after the last release. The skill folder is the state of the last release and
+ * is rebuilt in the release pull request, so such a file is missing from the folder until then: a check made between
+ * releases (`checkSkill({ strict: false })`, the unit test) lets it be missing, the release workflow's check
+ * (`--check`) does not. The release pull request empties this list.
+ */
+export const ADDED_SINCE_RELEASE = ['LICENSE-NOTES.md']
+
+/** The licence notes of the skill: what an agent may say when asked, written from the same text as the pages and the notices */
+export function licenseNotes() {
+  return `# Licence notes
+
+${COPYRIGHT}. Antu is free software under the GNU Affero General Public License, version 3 or any later version (\`LICENSE\`, SPDX \`${LICENSE_SPDX}\`). The source is at ${REPO_URL}.
+
+In short: it may be used, changed and shared, including commercially. A changed version that is shared, or offered to others over a network, must be released under the same licence, with the notices kept and the source made available. There is no warranty. This summary is not the licence; the text in \`LICENSE\` is.
+
+${ADDITIONAL_PERMISSION.join('\n')}
+
+The code of other projects inside the viewer page and the command line keeps its own licence; its notices are in \`THIRD-PARTY-NOTICES.md\`. Every page this skill makes carries the licence and the place of the source (the block \`antu-license\` in the page).
+`
+}
 
 /** Every file of the skill except the viewer (which is large and is checked by its stamp), as path -> text */
 export function skillFiles() {
@@ -62,6 +84,7 @@ export function skillFiles() {
   // they travel with the skill (so with the zip)
   files.set('LICENSE', readFileSync(join(REPO, 'LICENSE'), 'utf8'))
   files.set('THIRD-PARTY-NOTICES.md', thirdPartyNotices())
+  files.set('LICENSE-NOTES.md', licenseNotes())
   return files
 }
 
@@ -100,14 +123,15 @@ export async function writeSkill(dir = SKILL_DIR) {
 }
 
 /** Differences between the skill folder and a build: [] when there are none */
-export function checkSkill() {
+export function checkSkill({ strict = true } = {}) {
   const problems = []
   const version = engineVersion()
   const want = skillFiles()
   for (const [path, text] of want) {
     const file = join(SKILL_DIR, path)
-    if (!existsSync(file)) problems.push(`missing: ${path}`)
-    else if (readFileSync(file, 'utf8') !== text) problems.push(`differs from a build: ${path}`)
+    if (!existsSync(file)) {
+      if (strict || !ADDED_SINCE_RELEASE.includes(path)) problems.push(`missing: ${path}`)
+    } else if (readFileSync(file, 'utf8') !== text) problems.push(`differs from a build: ${path}`)
   }
   const have = []
   const walk = (dir, prefix = '') => {
