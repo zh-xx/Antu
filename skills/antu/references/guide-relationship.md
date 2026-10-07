@@ -1,7 +1,7 @@
 # Mechanism notes for an agent
 
-> This is an **operating note**, not the specification. The field list is served by
-> `antu_schema`, examples by `antu_examples`, and the design rationale lives in
+> This is an **operating note**, not the specification. The field list is a separate
+> document, the examples are separate files, and the design rationale lives in
 > `spec/relationship/schema-draft.md` (you do not need it to write JSON).
 >
 > **This file is English on purpose.** It goes into a model's context, the same as
@@ -23,7 +23,7 @@ relation between A and B". The **equity tree** draws the `equity` relations in l
 line, so **write `share` on every equity relation**. The **authority chart** draws `control`, `employment` and `agency` as an organisation chart; the **related-party
 list** is a table of one party's relations (to paste into a brief); the **path** draws the shortest chains between
 two parties; the **summary** draws each camp (`groupId`) as one block. The same JSON draws in all nine;
-`kind: "focus"`, `"chain"`, `"matrix"`, `"equity"`, `"authority"`, `"related"`, `"path"` or `"summary"` on antu_layout / antu_preview / antu_render shows it.
+`kind: "focus"`, `"chain"`, `"matrix"`, `"equity"`, `"authority"`, `"related"`, `"path"` or `"summary"` on `layout`, `preview` and `render` shows it.
 
 ## Three things, three places
 
@@ -75,14 +75,14 @@ group (`groupId`); groups do not nest. Leave a party out of every group and it s
 ## After writing
 
 ```
-antu_validate   each problem with its path and id: relations (r-2): `secures` points at ...
-                on a pass it can still add notes (an entity nothing relates to, shares over 100%)
-antu_layout     counts, layers, size per orientation; no rendering
-antu_preview    a screenshot: are the camps clear, do the lines cross badly
-antu_render     the self-contained HTML
+validate    each problem with its path and id: relations (r-2): `secures` points at ...
+            on a pass it can still add notes (an entity nothing relates to, shares over 100%)
+layout      counts, layers, size per orientation; no rendering
+preview     a screenshot: are the camps clear, do the lines cross badly
+render      the self-contained HTML
 ```
 
-**Passing validation is only the pass mark.** Always look with `antu_preview` before delivering.
+**Passing validation is only the pass mark.** Always look with `preview` before delivering.
 
 ## Also easy to get wrong
 

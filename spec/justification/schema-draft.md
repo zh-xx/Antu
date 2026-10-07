@@ -1,6 +1,6 @@
 # justification · Schema draft v0
 
-> Status: **implemented** (status line checked against 0.9.0). Validation (§5), layout (§6.1), the look and the interface (§6.2) are implemented; **the corpus is two fictional case diagrams, and there are six small examples for an agent**. Items marked **⚠ proposal** stand until the sponsor changes them; §7 lists the questions still open and how the schema goes on until they are answered.
+> Status: **implemented** (status line checked against 0.9.1). Validation (§5), layout (§6.1), the look and the interface (§6.2) are implemented; **the corpus is two fictional case diagrams, and there are six small examples for an agent**. Items marked **⚠ proposal** stand until the sponsor changes them; §7 lists the questions still open and how the schema goes on until they are answered.
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (a new top-level type only when the elements do not fit an existing one). Written after `spec/relationship/schema-draft.md`.
 > Scope: justification = **one side's reasoning for "why the decision goes this way"**: norms plus facts, and how they lead, layer by layer, to a conclusion. What happened over time → `fact`; who stands in what relation to whom → `relationship`; the path of a procedure → `procedure`.
 

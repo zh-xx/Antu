@@ -3,6 +3,22 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.9.1
+
+How people get Antu and hear of a newer one (#113, #127), and the home page's way in (#128). The contract is not touched.
+
+### Added
+- **A notice of a newer version.** After `validate`, `layout`, `render` or `preview` has finished, the command line asks the npm registry, at most once a day, for the newest version number; if it is newer than the running one, the output ends with a `Notice:` line that names the command to update (`npx skills update antu -g` for the skill, `npm update -g @zh-xx/antu` for the package) and tells the agent to pass it on and not to run it without the user's agreement. The request carries nothing of any diagram; the answer is kept in the temporary folder for a day; no network, a slow registry (1.5 s) or a bad answer gives no notice and never fails the command. `ANTU_NO_UPDATE_NOTIFIER=1` turns it off; `--version` and a clone of the repository do not ask. **This is the first network request the command line makes.**
+- **`LICENSE-NOTES.md` in the skill**, made from the same text as the pages and the notices; `SKILL.md` keeps a short licence section and refers to it.
+- **The home page of the site** has a *Get started* section (the sentence that installs the skill, the MCP configuration, each with a copy button) and the points on why Antu suits legal work, in place of the under-construction notice. The page's own text (motto, kinds, labels, footer, title) follows the language switch; the specimen documents stay in Chinese.
+
+### Changed
+- `SKILL.md` is shorter (about 12 KB, down from about 16.5 KB; four sections instead of nine). The agent guides name four actions, `validate`, `layout`, `preview` and `render`, which are also the subcommands of the command line, instead of the MCP tools.
+- The MCP configuration in the READMEs asks for `@zh-xx/antu@latest`, so that a client with an older copy in the `npx` cache takes the newest version. The README states the daily version check.
+
+### Breaking
+- None. The JSON of every type, the names and parameters of the MCP tools and the subcommands of the command line are as in 0.9.0.
+
 ## 0.9.0
 
 The package that carries Antu to people: `@zh-xx/antu` for npm, with the command line and the MCP server in it, and the way to publish it (#80, #113, #114, #116). The lawyer-facing home page of the site (#107, #108). The contract is not touched.
