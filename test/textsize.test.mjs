@@ -63,14 +63,16 @@ test('every kind reports it, with its own body font, in the geometry report and 
 
 test('the real cases that are too small say so, the fact diagram too (it used to say nothing)', () => {
   const tooSmall = [
-    'examples/justification/fang-yuan-defense-excess.zh-CN.json',
-    'examples/justification/neighbour-corridor-liability.zh-CN.json',
     'examples/fact/fang-yuan-loan-and-conflict.zh-CN.json',
     'examples/procedure/05-premises-lease.zh-CN.json',
   ]
   for (const file of tooSmall) assert.match(layoutMessage(spec(file)).text, /too small to read without zooming in/, file)
-  // a justification of several issues says what folding them gives
-  assert.match(layoutMessage(spec(tooSmall[0])).text, /With every issue folded the text is/)
+  // a justification of several issues that would be too small opens with its issues folded, and says so instead
+  for (const file of ['examples/justification/fang-yuan-defense-excess.zh-CN.json', 'examples/justification/neighbour-corridor-liability.zh-CN.json']) {
+    const text = layoutMessage(spec(file)).text
+    assert.match(text, /Opens with the issues folded: unfolded, its text would be/, file)
+    assert.doesNotMatch(text, /too small to read without zooming in/, file)
+  }
   // the smallest example says nothing more than the size
   assert.doesNotMatch(layoutMessage(spec('examples/agent/fact/1-minimal.zh-CN.json')).text, /Note: the text/)
 })

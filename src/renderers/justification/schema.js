@@ -12,8 +12,9 @@
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateJustification, hintsOfJustification, NODE_KINDS, STANCES, HOLDS_KINDS, COMBINES } from './tree/rules.js'
 import { buildJustificationGraph } from './tree/layout.js'
-import { fitZoom, textSizeLines } from '../../core/canvas.js'
+import { fitZoom, textPx, textSizeLines } from '../../core/canvas.js'
 import { NODE_FONT } from './tree/metrics.js'
+import { foldDefault } from './tree/foldDefault.js'
 
 /**
  * Field metadata: req = required; ty = type; note = a one-line explanation. Cross-field rules
@@ -116,8 +117,14 @@ export const justificationKnowledge = {
     // With every issue folded: the reader's way of seeing a big reasoning whole, without splitting it
     const issues = Array.isArray(spec.groups) ? spec.groups.map((x) => x?.id).filter(Boolean) : []
     const folded = issues.length > 1 ? fitZoom(layout(spec, { collapsed: issues }, undefined, 'horizontal').size, canvas) : undefined
+    // Too small to read as it stands: it opens with the issues folded (tree/foldDefault.js), and says so here
+    const opensFolded = foldDefault(spec, layout).issues.length > 0
     return {
-      text: { font: NODE_FONT, canvas, open: { name: 'horizontal', fit: h.fit }, other: { name: 'vertical', fit: v.fit }, folded },
+      opensFolded,
+      unfolded: h.fit,
+      text: opensFolded
+        ? { font: NODE_FONT, canvas, open: { name: 'horizontal, issues folded', fit: folded }, other: { name: 'vertical', fit: v.fit } }
+        : { font: NODE_FONT, canvas, open: { name: 'horizontal', fit: h.fit }, other: { name: 'vertical', fit: v.fit }, folded },
       counts: {
         nodes: g.stats.nodes,
         links: g.stats.links,
@@ -152,6 +159,9 @@ export const justificationKnowledge = {
     ]
     if (r.betterFit !== r.suggestedOrientation) {
       lines.push(`Vertical fits a screen better (${v.fit} vs ${h.fit}); the reader can switch to it.`)
+    }
+    if (r.opensFolded) {
+      lines.push(`Opens with the issues folded: unfolded, its text would be ${textPx(r.text.font, r.unfolded).toFixed(1)} px. The reader unfolds an issue by clicking its title ("Fold issues" in the bar folds or unfolds all).`)
     }
     lines.push(...textSizeLines(r.text, 'one diagram per issue'))
     if (r.hints.length) {

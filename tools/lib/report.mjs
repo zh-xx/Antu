@@ -11,9 +11,10 @@ import { knowledgeOf, layoutOf as layoutFromRegistry, layoutKindsOf } from '../.
 // come from the registry.
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
+import { REFERENCE_CANVAS } from '../../src/core/canvas.js'
 
 /** The default assumption for canvas size: used to compute the "fit zoom". The same size the verify script uses */
-export const CANVAS = { width: 1600, height: 900 }
+export const CANVAS = REFERENCE_CANVAS
 
 // The layout functions no longer keep their own list: they go through the registry
 // (registered in renderers/index.js). There used to be a hand-written LAYOUTS here

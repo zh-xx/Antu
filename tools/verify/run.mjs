@@ -69,6 +69,7 @@ import { buildProcedureGraph } from '../../src/renderers/procedure/flow/layout.j
 import { sizeOf } from '../../src/renderers/procedure/flow/metrics.js'
 import { buildRelationshipGraph } from '../../src/renderers/relationship/graph/layout.js'
 import { buildJustificationGraph } from '../../src/renderers/justification/tree/layout.js'
+import { foldDefault } from '../../src/renderers/justification/tree/foldDefault.js'
 import { translate } from '../../src/core/i18n.js'
 
 const argv = process.argv.slice(2)
@@ -2780,6 +2781,15 @@ async function checkRenderJustification(sampleFile) {
     const count = (sel) => browser.eval(`document.querySelectorAll(${JSON.stringify(sel)}).length`)
     const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms))
     const zoomOf = () => browser.eval(`+(parseFloat(document.querySelector('.react-flow__viewport').style.transform.split('scale(')[1])).toFixed(3)`)
+
+    // Nothing chosen yet (#139): a diagram whose text would be unreadable opens with its issues folded; any other opens whole.
+    // Then the choice is made explicit (nothing folded), so the checks below are of the whole diagram as they always were.
+    const dflt = foldDefault(spec, buildJustificationGraph)
+    const openedAs = buildJustificationGraph(spec, { collapsed: dflt.issues }, undefined, 'horizontal')
+    eq(`it opens ${dflt.issues.length ? 'with every issue folded' : 'whole'} (the text is ${dflt.issues.length ? 'under 9 px unfolded' : 'readable as it is'})`, await count('.antu-jn'), openedAs.nodes.length)
+    eq('the dock chip for folding shows the state it opened in', await count('.antu-dock-chip.is-on') >= (dflt.issues.length ? 1 : 0), true)
+    await browser.eval(`localStorage.setItem('antu.prefs', JSON.stringify({ ...JSON.parse(localStorage.getItem('antu.prefs') || '{}'), justificationFolded: { ['jus:' + ${JSON.stringify(spec.title)}]: [] } })); 1`)
+    await browser.open(`file://${html}?lang=zh`)
 
     eq('node count (the data, plus the copies of shared facts)', await count('.antu-jn'), layout.nodes.length)
     eq('copies are marked', await count('.antu-jn.is-copy'), layout.stats.copies)

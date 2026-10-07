@@ -26,6 +26,7 @@ import { readPrefs, writePrefs } from '../../../shell/prefs.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import IssueBoxNode from './IssueBoxNode.jsx'
+import { foldDefault } from './foldDefault.js'
 import JustificationNode from './JustificationNode.jsx'
 import LinkLayerNode from './LinkLayerNode.jsx'
 import JustificationDock from './JustificationDock.jsx'
@@ -87,7 +88,9 @@ export default function JustificationTree({ spec }) {
   // Issues folded up: remembered per diagram. They change the geometry, so they go into layout and re-fit the view.
   const issueIds = useMemo(() => (Array.isArray(spec?.groups) ? spec.groups.map((g) => g?.id).filter(Boolean) : []), [spec])
   const [foldPrefs, setFoldPrefs] = useState(() => readPrefs().justificationFolded || {})
-  const folded = useMemo(() => (PRESET?.fields?.collapsed ?? foldPrefs[specKey] ?? []).filter((id) => issueIds.includes(id)), [foldPrefs, specKey, issueIds])
+  // Nothing chosen yet: a diagram whose text would be unreadable opens folded (foldDefault.js); the reader unfolds what is being read
+  const openFolded = useMemo(() => foldDefault(spec, buildJustificationGraph).issues, [spec])
+  const folded = useMemo(() => (PRESET?.fields?.collapsed ?? foldPrefs[specKey] ?? openFolded).filter((id) => issueIds.includes(id)), [foldPrefs, specKey, issueIds, openFolded])
   // The latest choice is kept in a ref too: two clicks before a render (a fast double click) must both count
   const foldedRef = useRef(folded)
   const foldMapRef = useRef(foldPrefs)
