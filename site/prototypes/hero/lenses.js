@@ -573,16 +573,17 @@ const start = () => play(FIRST)
 // switch (the top bar's labels and the notice only, in this draft); light / dark, remembered in this browser
 $('#startBtn').onclick = () => $('#start').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
 const EN = {
-  examples: 'Examples', start: 'Get started', startT: 'Get started', startS: 'Two ways; choose either.', chip1: 'One sentence', chip2: 'One configuration',
-  skillT: 'Send this sentence to your Agent.',
+  examples: 'Examples', start: 'Get started', startT: 'Get started', startS: 'Choose either', chip1: 'One sentence', chip2: 'One configuration',
+  skillT: 'Send this sentence to your Agent',
   skillText: 'Please install the Antu skill: run npx skills add zh-xx/Antu -g -y, then use it to draw diagrams from my case material.',
-  mcpT: 'Add this configuration to your MCP client.',
-  copy: 'Copy', whyT: 'Why it suits legal work',
-  w1t: 'Antu runs on your machine.', w1: 'The program that makes the diagram runs on your machine. The diagram is a single HTML file; the page makes no network request when it opens and works offline. Apart from a version check once a day (it carries none of your material and can be turned off), Antu itself does not go online. Note that when an Agent reads your material, the material goes to the model service the Agent uses; that part is outside Antu’s control, so use it according to the data policy of the Agent you use.',
-  w2t: 'Every node can be traced to the original text.', w2: 'Facts, clauses and issues can record their sources with an excerpt of the original; click a node to see it, for checking.',
-  w3t: 'Only what the material says; nothing added on the parties’ behalf.', w3: 'The Skill requires the Agent not to invent dates, article numbers, case numbers or names; what the material does not give is shown as “date unknown”, and a legal point that is uncertain is left out and the user is told.',
-  w4t: 'Checked first, drawn after.', w4: 'When the data has a problem, the system names the field path and refuses to draw, rather than produce a diagram that looks complete but is wrong.',
-  w5t: 'Archived, printed, forwarded.', w5: 'The default black-and-white, square-cornered style suits printing and filing; the diagram can be sent as an attachment and the recipient needs to install nothing.',
+  mcpT: 'Add this configuration to your MCP client',
+  copy: 'Copy', whyT: 'Suited to legal work',
+  w1t: 'Runs on your machine', w1: 'The program runs on your machine; the page makes no network request and works offline',
+  w2t: 'Traceable to the original', w2: 'Every node can carry its source and an excerpt of the original text',
+  w3t: 'Only what the material says', w3: 'The Skill requires the Agent not to invent dates, article numbers, case numbers or names',
+  w4t: 'Checked first, drawn after', w4: 'If the data is wrong, the field path is named and drawing is refused',
+  w5t: 'Archive, print, forward', w5: 'One HTML file in a black-and-white, square-cornered style; opens with nothing to install',
+  caveat: 'Antu checks for a new version once a day, carrying none of your material; this can be turned off. When an Agent reads your material, it goes to the model service that Agent uses. Antu cannot control that, so use it according to the data policy of the Agent you use.',
 }
 const ZH = Object.fromEntries($$('[data-i18n]').map((e) => [e.dataset.i18n, e.textContent]))
 $$('.lang button').forEach((b) => (b.onclick = () => {
@@ -598,6 +599,9 @@ $$('.copy').forEach((b) => (b.onclick = async () => {
   const before = b.textContent
   b.textContent = done
   setTimeout(() => { b.textContent = before }, 1500)
+}))
+$$('.tab').forEach((t) => (t.onclick = () => {
+  $$('.tab').forEach((x) => { const on = x === t; x.setAttribute('aria-selected', String(on)); $('#panel-' + x.dataset.tab).hidden = !on })
 }))
 $('#mode').onclick = () => {
   const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'

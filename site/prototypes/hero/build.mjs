@@ -417,19 +417,34 @@ ${read(`${HERE}lenses.css`)}</style>
 </div>
 </section>
 
-<section class="start" id="start" aria-labelledby="startT">
+<section class="gs why-sec" id="why" aria-labelledby="whyT">
+ <p class="eyebrow">WHY ANTU</p>
+ <h2 class="gs-t" id="whyT" data-i18n="whyT">适合法律工作</h2>
+ <ul class="tiles">
+  <li><span class="no">一</span><b data-i18n="w1t">本机运行</b><span class="wd" data-i18n="w1">程序在本机运行，页面不联网，离线可用</span></li>
+  <li><span class="no">二</span><b data-i18n="w2t">可追溯原文</b><span class="wd" data-i18n="w2">每个节点可附出处和原文摘录</span></li>
+  <li><span class="no">三</span><b data-i18n="w3t">只依据材料</b><span class="wd" data-i18n="w3">Skill 要求 Agent 不编造日期、条文序号、案号和人名</span></li>
+  <li><span class="no">四</span><b data-i18n="w4t">先校验后成图</b><span class="wd" data-i18n="w4">数据有误时按字段路径指出，并拒绝生成</span></li>
+  <li><span class="no">五</span><b data-i18n="w5t">可存档、可打印、可转发</b><span class="wd" data-i18n="w5">单个 HTML 文件，黑白方正样式，无需安装即可打开</span></li>
+ </ul>
+ <p class="caveat" data-i18n="caveat">案图每天检查一次版本，不含任何材料，可关闭。Agent 读取材料时，材料会交给它所用的模型服务，案图无法控制，请按所用 Agent 的数据政策决定是否使用。</p>
+</section>
+
+<section class="gs" id="start" aria-labelledby="startT">
  <p class="eyebrow">GET STARTED</p>
- <h2 class="start-t" id="startT" data-i18n="startT">开始使用</h2>
- <p class="start-s" data-i18n="startS">两种方式，任选其一。</p>
- <div class="ways">
-  <div class="way">
-   <div class="way-h"><span class="num">01</span><h3>Skill</h3><span class="way-chip" data-i18n="chip1">一句话</span></div>
-   <p class="way-d" data-i18n="skillT">把下面这句话发给你的 Agent。</p>
+ <h2 class="gs-t" id="startT" data-i18n="startT">开始使用</h2>
+ <p class="gs-s" data-i18n="startS">任选其一</p>
+ <div class="way">
+  <div class="tabs" role="tablist">
+   <button class="tab" role="tab" id="tab-skill" aria-selected="true" aria-controls="panel-skill" data-tab="skill">Skill<i data-i18n="chip1">一句话</i></button>
+   <button class="tab" role="tab" id="tab-mcp" aria-selected="false" aria-controls="panel-mcp" data-tab="mcp">MCP<i data-i18n="chip2">一段配置</i></button>
+  </div>
+  <div class="panel" role="tabpanel" id="panel-skill" aria-labelledby="tab-skill">
+   <p class="way-d" data-i18n="skillT">把下面这句话发给你的 Agent</p>
    <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">prompt</span><button class="copy" data-for="skillText" data-i18n="copy">复制</button></div><code id="skillText" data-i18n="skillText">请安装案图（Antu）这个 Skill：运行 npx skills add zh-xx/Antu -g -y，然后用它为我的案件材料画图。</code></div>
   </div>
-  <div class="way">
-   <div class="way-h"><span class="num">02</span><h3>MCP</h3><span class="way-chip" data-i18n="chip2">一段配置</span></div>
-   <p class="way-d" data-i18n="mcpT">把这段配置加入你的 MCP 客户端。</p>
+  <div class="panel" role="tabpanel" id="panel-mcp" aria-labelledby="tab-mcp" hidden>
+   <p class="way-d" data-i18n="mcpT">把这段配置加入你的 MCP 客户端</p>
    <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">json</span><button class="copy" data-for="mcpText" data-i18n="copy">复制</button></div><pre id="mcpText">{
   "mcpServers": {
     "antu": {
@@ -440,15 +455,6 @@ ${read(`${HERE}lenses.css`)}</style>
 }</pre></div>
   </div>
  </div>
- <p class="eyebrow why-e">WHY ANTU</p>
- <h2 class="start-t" data-i18n="whyT">为什么适合法律工作</h2>
- <ol class="why">
-  <li><span class="no">一</span><b data-i18n="w1t">案图在本机运行。</b><span class="wd" data-i18n="w1">生成图的程序在本机运行。图是单个 HTML 文件，页面打开时不发起网络请求，离线可用。案图自己除每天一次的版本检查（不含任何材料，可关闭）外不联网。需要注意：Agent 读取材料时，材料会交给它所用的模型服务，这一部分不在案图的控制范围内，请按所用 Agent 的数据政策决定是否使用。</span></li>
-  <li><span class="no">二</span><b data-i18n="w2t">每个节点可追溯到原文。</b><span class="wd" data-i18n="w2">事实、条款、争点都可以记录出处并附原文摘录；点击节点即可查看，便于核对。</span></li>
-  <li><span class="no">三</span><b data-i18n="w3t">只依据材料，不替当事人补充。</b><span class="wd" data-i18n="w3">Skill 要求 Agent 不得编造日期、条文序号、案号和人名；材料没有的写“日期不详”，不确定的法律问题不入图，并向用户说明。</span></li>
-  <li><span class="no">四</span><b data-i18n="w4t">先校验，后成图。</b><span class="wd" data-i18n="w4">数据有问题时，系统按字段路径指出，并拒绝生成，不会输出一张看似完整却有错的图。</span></li>
-  <li><span class="no">五</span><b data-i18n="w5t">可存档、可打印、可转发。</b><span class="wd" data-i18n="w5">默认的黑白方正样式适合打印和归档；图可以作为附件发送，收件人无需安装任何软件。</span></li>
- </ol>
 </section>
 
 <footer class="pfoot">
