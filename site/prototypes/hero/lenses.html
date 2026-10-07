@@ -351,18 +351,32 @@ html[data-theme="light"] .lx #paper2::before{box-shadow:inset 0 1px 0 rgba(255,2
 
 /* under the first screen: how to start, and why it suits legal work */
 html{scroll-behavior:smooth}
-.start{scroll-margin-top:84px;max-width:1040px;margin:0 auto;padding:12vh 5vw 4vh}
-.start-t{margin:0 0 22px;font:700 clamp(24px,2.6vw,32px)/1.3 var(--serif);letter-spacing:.14em;color:var(--txt)}
-.why-t{margin-top:9vh}
-.ways{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+.start{scroll-margin-top:84px;max-width:1040px;margin:0 auto;padding:14vh 5vw 4vh;position:relative}
+.start:before{content:"";position:absolute;inset:6vh 0 auto;height:420px;pointer-events:none;background:radial-gradient(50% 60% at 50% 0%,rgba(232,69,44,.10),transparent 70%)}
+.start>*{position:relative}
+.start-t{margin:0;font:900 clamp(30px,3.6vw,46px)/1.15 var(--serif);letter-spacing:.04em;color:var(--txt)}
+.start-s{margin:10px 0 0;color:var(--mut);font-size:15px}
+.ways{display:grid;align-items:start;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;margin-top:34px}
 @media(max-width:820px){.ways{grid-template-columns:1fr}}
-.way h3{margin:0 0 10px;font:600 14px/1.5 var(--sans);color:var(--mut)}
-.copybox{position:relative;background:var(--panel);border:1px solid var(--hair);border-radius:10px;padding:16px 84px 16px 18px}
-.copybox code,.copybox pre{display:block;margin:0;font:13px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--txt);white-space:pre-wrap;overflow-wrap:anywhere}
-.copy{position:absolute;right:10px;top:10px;padding:6px 12px}
-.why{list-style:none;margin:0;padding:0;display:grid;gap:14px}
-.why li{padding:14px 18px;border:1px solid var(--hair);border-left:3px solid var(--red);border-radius:6px;background:var(--panel);color:var(--mut);font-size:14px;line-height:1.7}
-.why b{display:block;margin-bottom:2px;color:var(--txt);font:600 15px/1.5 var(--sans)}
+.way{display:flex;flex-direction:column;padding:22px 22px 24px;border:1px solid var(--hair);border-radius:16px;background:linear-gradient(180deg,rgba(var(--panel-rgb),.9),rgba(var(--panel-rgb),.55))}
+.way-h{display:flex;align-items:center;gap:12px}
+.way-h .num{font:600 12px/1 ui-monospace,Menlo,Consolas,monospace;color:var(--red);letter-spacing:.1em}
+.way-h h3{margin:0;font:900 24px/1 var(--serif);letter-spacing:.03em;color:var(--txt)}
+.chip{margin-left:auto;font-size:11.5px;color:var(--mut);border:1px solid var(--hair);border-radius:99px;padding:3px 11px}
+.way-d{margin:12px 0 16px;color:var(--mut);font-size:14px}
+.copybox{border:1px solid var(--hair);border-radius:10px;overflow:hidden;background:var(--labbg)}
+.cb-bar{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-bottom:1px solid var(--hair);background:var(--chipbg)}
+.cb-dots{display:flex;gap:6px}.cb-dots i{width:8px;height:8px;border-radius:50%;background:var(--hair)}
+.cb-name{font:11.5px/1 ui-monospace,Menlo,Consolas,monospace;color:var(--mut2);letter-spacing:.06em}
+.copy{margin-left:auto;padding:6px 14px;font-size:12px}
+.copybox code,.copybox pre{display:block;margin:0;padding:16px 18px;font:13px/1.75 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--txt);white-space:pre-wrap;overflow-wrap:anywhere}
+.why-e{margin-top:15vh}
+.why{list-style:none;margin:30px 0 0;padding:0;border-top:1px solid var(--hair)}
+.why li{display:grid;grid-template-columns:64px minmax(0,5fr) minmax(0,8fr);gap:8px 28px;align-items:baseline;padding:24px 4px;border-bottom:1px solid var(--hair)}
+.why .no{font:900 30px/1 var(--serif);color:var(--red)}
+.why b{font:700 18px/1.5 var(--serif);color:var(--txt);letter-spacing:.02em}
+.why .wd{color:var(--mut);font-size:14px;line-height:1.8}
+@media(max-width:820px){.why li{grid-template-columns:44px 1fr}.why .wd{grid-column:2}}
 .pfoot{max-width:1040px;margin:14vh auto 0;padding:26px 5vw 40px;display:flex;justify-content:space-between;gap:20px;font-size:12.5px;color:var(--mut2);position:relative}
 .pfoot::before{content:"";position:absolute;top:0;left:5vw;right:5vw;border-top:1px solid var(--hair)}
 .pfoot a{color:var(--link);text-decoration:none}
@@ -415,31 +429,36 @@ html{scroll-behavior:smooth}
 </section>
 
 <section class="start" id="start" aria-labelledby="startT">
+ <p class="eyebrow">GET STARTED</p>
  <h2 class="start-t" id="startT" data-i18n="startT">开始使用</h2>
+ <p class="start-s" data-i18n="startS">两种方式，任选其一。</p>
  <div class="ways">
   <div class="way">
-   <h3 data-i18n="skillT">Skill：把下面这句话发给你的 Agent</h3>
-   <div class="copybox"><code id="skillText" data-i18n="skillText">请安装案图（Antu）这个 Skill：运行 npx skills add zh-xx/Antu -g -y，然后用它为我的案件材料画图。</code><button class="copy" data-for="skillText" data-i18n="copy">复制</button></div>
+   <div class="way-h"><span class="num">01</span><h3>Skill</h3><span class="chip" data-i18n="chip1">一句话</span></div>
+   <p class="way-d" data-i18n="skillT">把下面这句话发给你的 Agent。</p>
+   <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">prompt</span><button class="copy" data-for="skillText" data-i18n="copy">复制</button></div><code id="skillText" data-i18n="skillText">请安装案图（Antu）这个 Skill：运行 npx skills add zh-xx/Antu -g -y，然后用它为我的案件材料画图。</code></div>
   </div>
   <div class="way">
-   <h3 data-i18n="mcpT">MCP：把这段配置加入你的 MCP 客户端</h3>
-   <div class="copybox"><pre id="mcpText">{
+   <div class="way-h"><span class="num">02</span><h3>MCP</h3><span class="chip" data-i18n="chip2">一段配置</span></div>
+   <p class="way-d" data-i18n="mcpT">把这段配置加入你的 MCP 客户端。</p>
+   <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">json</span><button class="copy" data-for="mcpText" data-i18n="copy">复制</button></div><pre id="mcpText">{
   "mcpServers": {
     "antu": {
       "command": "npx",
       "args": ["-y", "-p", "@zh-xx/antu@latest", "antu-mcp"]
     }
   }
-}</pre><button class="copy" data-for="mcpText" data-i18n="copy">复制</button></div>
+}</pre></div>
   </div>
  </div>
- <h2 class="start-t why-t" data-i18n="whyT">为什么适合法律工作</h2>
+ <p class="eyebrow why-e">WHY ANTU</p>
+ <h2 class="start-t" data-i18n="whyT">为什么适合法律工作</h2>
  <ol class="why">
-  <li><b data-i18n="w1t">材料不出本机。</b><span data-i18n="w1">案件材料和生成的图都不上传到任何服务器。图是单个 HTML 文件，页面打开时不发起网络请求，离线可用。</span></li>
-  <li><b data-i18n="w2t">每个节点可追溯到原文。</b><span data-i18n="w2">事实、条款、争点都可以记录出处并附原文摘录；点击节点即可查看，便于核对。</span></li>
-  <li><b data-i18n="w3t">只依据材料，不替当事人补充。</b><span data-i18n="w3">Skill 要求 Agent 不得编造日期、条文序号、案号和人名；材料没有的写“日期不详”，不确定的法律问题不入图，并向用户说明。</span></li>
-  <li><b data-i18n="w4t">先校验，后成图。</b><span data-i18n="w4">数据有问题时，系统按字段路径指出，并拒绝生成，不会输出一张看似完整却有错的图。</span></li>
-  <li><b data-i18n="w5t">可存档、可打印、可转发。</b><span data-i18n="w5">默认的黑白方正样式适合打印和归档；图可以作为附件发送，收件人无需安装任何软件。</span></li>
+  <li><span class="no">一</span><b data-i18n="w1t">材料不出本机。</b><span class="wd" data-i18n="w1">案件材料和生成的图都不上传到任何服务器。图是单个 HTML 文件，页面打开时不发起网络请求，离线可用。</span></li>
+  <li><span class="no">二</span><b data-i18n="w2t">每个节点可追溯到原文。</b><span class="wd" data-i18n="w2">事实、条款、争点都可以记录出处并附原文摘录；点击节点即可查看，便于核对。</span></li>
+  <li><span class="no">三</span><b data-i18n="w3t">只依据材料，不替当事人补充。</b><span class="wd" data-i18n="w3">Skill 要求 Agent 不得编造日期、条文序号、案号和人名；材料没有的写“日期不详”，不确定的法律问题不入图，并向用户说明。</span></li>
+  <li><span class="no">四</span><b data-i18n="w4t">先校验，后成图。</b><span class="wd" data-i18n="w4">数据有问题时，系统按字段路径指出，并拒绝生成，不会输出一张看似完整却有错的图。</span></li>
+  <li><span class="no">五</span><b data-i18n="w5t">可存档、可打印、可转发。</b><span class="wd" data-i18n="w5">默认的黑白方正样式适合打印和归档；图可以作为附件发送，收件人无需安装任何软件。</span></li>
  </ol>
 </section>
 
@@ -1023,10 +1042,10 @@ const start = () => play(FIRST)
 // switch (the top bar's labels and the notice only, in this draft); light / dark, remembered in this browser
 $('#startBtn').onclick = () => $('#start').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
 const EN = {
-  examples: 'Examples', start: 'Get started', startT: 'Get started',
-  skillT: 'Skill: send this sentence to your Agent',
+  examples: 'Examples', start: 'Get started', startT: 'Get started', startS: 'Two ways; choose either.', chip1: 'One sentence', chip2: 'One configuration',
+  skillT: 'Send this sentence to your Agent.',
   skillText: 'Please install the Antu skill: run npx skills add zh-xx/Antu -g -y, then use it to draw diagrams from my case material.',
-  mcpT: 'MCP: add this configuration to your MCP client',
+  mcpT: 'Add this configuration to your MCP client.',
   copy: 'Copy', whyT: 'Why it suits legal work',
   w1t: 'Your material stays on your machine.', w1: 'Neither the case material nor the diagram is uploaded to any server. The diagram is a single HTML file; the page makes no network request when it opens and works offline.',
   w2t: 'Every node can be traced to the original text.', w2: 'Facts, clauses and issues can record their sources with an excerpt of the original; click a node to see it, for checking.',

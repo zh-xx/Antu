@@ -573,10 +573,10 @@ const start = () => play(FIRST)
 // switch (the top bar's labels and the notice only, in this draft); light / dark, remembered in this browser
 $('#startBtn').onclick = () => $('#start').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
 const EN = {
-  examples: 'Examples', start: 'Get started', startT: 'Get started',
-  skillT: 'Skill: send this sentence to your Agent',
+  examples: 'Examples', start: 'Get started', startT: 'Get started', startS: 'Two ways; choose either.', chip1: 'One sentence', chip2: 'One configuration',
+  skillT: 'Send this sentence to your Agent.',
   skillText: 'Please install the Antu skill: run npx skills add zh-xx/Antu -g -y, then use it to draw diagrams from my case material.',
-  mcpT: 'MCP: add this configuration to your MCP client',
+  mcpT: 'Add this configuration to your MCP client.',
   copy: 'Copy', whyT: 'Why it suits legal work',
   w1t: 'Your material stays on your machine.', w1: 'Neither the case material nor the diagram is uploaded to any server. The diagram is a single HTML file; the page makes no network request when it opens and works offline.',
   w2t: 'Every node can be traced to the original text.', w2: 'Facts, clauses and issues can record their sources with an excerpt of the original; click a node to see it, for checking.',
