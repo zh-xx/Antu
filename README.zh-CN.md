@@ -65,6 +65,8 @@ npx skills add zh-xx/Antu -g
 
 Skill 位于 [`skills/antu/`](skills/antu/)；每个[发布](https://github.com/zh-xx/Antu/releases)也附有 `antu-skill-<版本>.zip`。
 
+命令行每天向 npm 注册表询问一次是否有更新的案图版本（一次 GET 请求，不含任何图的内容）；有则在输出末尾给出提示。设置 `ANTU_NO_UPDATE_NOTIFIER=1` 可关闭。
+
 ### MCP
 
 MCP 服务是 npm 包 [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu)，在 [MCP 注册表](https://registry.modelcontextprotocol.io)中登记为 `io.github.zh-xx/antu`。
