@@ -1,0 +1,8 @@
+[
+  { "id": "fact-corridor", "type": "fact", "material": "examples/raw/（2031）示民终1号-楼道充电劝阻案-二审.md", "reference": "examples/fact/neighbour-corridor-charging.zh-CN.json", "ask": "帮我把这个案子发生的经过，按时间顺序画成图，让人一眼看清谁在什么时候做了什么。" },
+  { "id": "fact-lending", "type": "fact", "material": "examples/raw/（2031）示民初1号-民间借贷案-一审.md", "reference": "examples/fact/lin-fang-v-zhao-lei-private-lending.zh-CN.json", "ask": "帮我把这个借款纠纷的来龙去脉，按时间画成图。" },
+  { "id": "procedure-purchase", "type": "procedure", "material": "examples/raw/采购合同-PO-2026-088.md", "reference": "examples/procedure/02-purchase-contract.zh-CN.json", "ask": "帮我把这份采购合同的履行流程画成流程图。" },
+  { "id": "relationship-fangyuan", "type": "relationship", "material": "examples/raw/（2032）示刑终1号-方远案-二审.md", "reference": "examples/relationship/fang-yuan-parties.zh-CN.json", "ask": "帮我画出这个案子里各方当事人之间的关系图。" },
+  { "id": "justification-fangyuan", "type": "justification", "material": "examples/raw/（2032）示刑终1号-方远案-二审.md", "reference": "examples/justification/fang-yuan-defense-excess.zh-CN.json", "ask": "帮我把法院对防卫过当的裁判说理，画成一张说理的图。" },
+  { "id": "justification-corridor", "type": "justification", "material": "examples/raw/（2031）示民终1号-楼道充电劝阻案-二审.md", "reference": "examples/justification/neighbour-corridor-liability.zh-CN.json", "ask": "帮我把二审法院为什么这样判，画成一张说理的图。" }
+]

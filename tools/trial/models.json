@@ -1,0 +1,16 @@
+{
+  "default": "deepseek-flash",
+  "deepseek-flash": {
+    "baseUrl": "https://api.deepseek.com",
+    "model": "deepseek-flash",
+    "keyEnv": null
+  },
+  "deepseek-v4-pro": {
+    "baseUrl": "https://api.deepseek.com",
+    "model": "deepseek-v4-pro",
+    "keyEnv": null
+  },
+  "fake": {
+    "fake": true
+  }
+}
