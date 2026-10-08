@@ -3,6 +3,52 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.11.0
+
+Antu in an application's own window: three entries for a host's code (#152, #153). The fact timeline reads
+better (#151, #154), and a fact diagram whose order contradicts its dates says so (#150). One rule is stricter:
+a `type` that is not a diagram type is now an error (see *Breaking*).
+
+### Added
+- **`@zh-xx/antu/embed`**: `mount(element, spec, options)` draws a diagram inside a host's page, in a shadow root,
+  with its own React inside (the host's framework and React version do not matter). It reads and writes nothing of
+  the host's (window, document title and language; localStorage only with `prefs: 'local'`), and the host's CSS
+  does not reach it. Options `kind`, `kinds`, `theme`, `lang`, `ui` (`header`, `capsule`, `minimap`, `zoom`),
+  `prefs`, `onEvent`. Events: `select` (the item a reader pinned, the array it is in, its sources as written with
+  their `loc`, so a host can open the clause it rests on), `kindchange`, `invalid`. The handle: `ready`, `update`,
+  `setKind`, `setTheme`, `setLang`, `fitView`, `exportPng` (a Blob, the picture the page's export makes) and
+  `destroy`. The contract is in `spec/embed.md`.
+- **`@zh-xx/antu/validate`**: `validate(spec)` → `{ ok, errors, notes }`, `layout`, `kinds`, `versions`: the
+  checks, notes and geometry report of the command line and the MCP server, as data.
+- **`@zh-xx/antu/html`**: `renderHtml(spec, { kind, theme })`, the page `antu render` writes, as a string (Node).
+- The npm package lists these three in `exports`, each one bundled file with its declarations (`.d.ts`).
+- **A note when the order of the slots clearly contradicts the dates** of a fact diagram (#150): a slot whose date
+  lies wholly before the nearest dated slot before it. A note, never an error; nothing is reordered. It found a
+  real swap in the `gym-membership-face-scan` example, fixed with its fictional judgment.
+- **A way of drawing written as the type is named**: `"type": "flow"` says it is a way of drawing a procedure
+  diagram and to write `"type": "procedure"`.
+
+### Changed
+- **`fact/timeline` is version 2** (#155):
+  - Vertical rows are **staggered by default** (#151). A row starts half a row after the one before it unless they
+    share a column, so a long timeline is shorter and its text larger: the Fang Yuan example opens at 10.8 px
+    instead of 7.0 px. A **Stagger** chip turns it off; what a reader sets is remembered per diagram.
+  - A side of several parties is **named once**, and each of its columns is headed by its party (#154).
+- **The modern theme's side 2** is readable as text: `#64748b`, about 4.6:1 against the canvas (#154). A test
+  holds every theme's side colours to at least 4.5:1.
+- The viewer page and a mounted diagram are drawn by the same code (`src/embed/core.jsx`). What a page reads from
+  the window (the preset, the reader's preferences, the language) now comes through one environment; the page
+  behaves as before.
+- The Release gate counts a check that ran again by its latest run (#149).
+
+### Breaking
+- **An unknown `type` is an error**, on every surface (MCP `antu_validate`, the command line, the page, the
+  entries). Before, a `type` that is not one of `fact`, `procedure`, `relationship`, `justification` passed
+  validation with no error and nothing could draw it. *To bring a file over*: write one of the four types; the
+  error names the right one when a way of drawing was written instead. A file that drew before still draws.
+- The npm package now has an `exports` map: only the three entries and `package.json` can be imported. The
+  commands (`antu`, `antu-mcp`, `npx -p @zh-xx/antu …`) are unchanged.
+
 ## 0.10.0
 
 Version management of the types and the diagrams (#131), a trial that measures how weaker models use the skill (#135, #136), and the details it found (#137 to #144). The contract is not touched.

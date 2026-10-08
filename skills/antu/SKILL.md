@@ -9,14 +9,14 @@ description: >-
   contract flow, the parties, or a judgment's reasoning.
 license: AGPL-3.0-or-later
 metadata:
-  version: "0.10.0"
+  version: "0.11.0"
 ---
 
 # Antu: legal diagrams from JSON
 
 You write the JSON; the engine draws it. The result is **one HTML file** that opens in any browser with no install and
-no network, prints, and can be forwarded. Nothing is uploaded anywhere. This skill is Antu **0.10.0**; the pages it
-makes say so: `<meta name="generator" content="antu 0.10.0">`.
+no network, prints, and can be forwarded. Nothing is uploaded anywhere. This skill is Antu **0.11.0**; the pages it
+makes say so: `<meta name="generator" content="antu 0.11.0">`.
 
 **`<skill-dir>`** is the folder that holds this `SKILL.md` (`scripts/`, `references/`, `examples/` and `assets/` are
 beside it). Commands are written with it so that they run from any directory: put the real path in. Keep your own files
@@ -142,7 +142,7 @@ them on**, so do not count on them for what the diagram has to say; tell the use
 
 | Kind | Switches in the bar (on by default unless it says off) |
 | --- | --- |
-| fact | Summary (on), **Parties** (off), **Sources** (off), Grid (off); the views menu at the top left when the data has more than one view. The chronicle has the same three card switches and no grid or views; the time scale has none |
+| fact | Summary (on), **Parties** (off), **Sources** (off), Grid (off), Stagger (vertical only; on: cards in different columns overlap by half a row, so a long timeline is shorter; the time order is read on the axis); the views menu at the top left when the data has more than one view. The chronicle has the same three card switches and no grid or views; the time scale has none |
 | procedure | Conditions, Detail, Main line, Stages (only if the data has stages), Rules (only if it has rules); all on |
 | relationship | one switch per kind of relation (when the data uses more than one kind), Labels, Groups (only if the data has groups); all on. The focus view has the kind switches and Labels, and a "Default centre" button once another party was picked |
 | justification | Labels (only if a link has one; on), Fold issues (only if there are several issues; none folded), Merge repeats (off) |
