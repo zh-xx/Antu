@@ -107,7 +107,7 @@ export const THEMES = {
       body: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
       head: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
     },
-    color: { ink: '#0f172a', ink2: '#475569', ink3: '#64748b', ink4: '#94a3b8', bg: '#fbfcfd', canvas: '#fbfcfd', frame: '#e2e8f0', line: '#e8ebef', chip: '#f1f4f8', side1: '#475569', side2: '#94a3b8', axis: '#94a3b8' },
+    color: { ink: '#0f172a', ink2: '#475569', ink3: '#64748b', ink4: '#94a3b8', bg: '#fbfcfd', canvas: '#fbfcfd', frame: '#e2e8f0', line: '#e8ebef', chip: '#f1f4f8', side1: '#475569', side2: '#64748b', axis: '#94a3b8' },
     radius: { person: 14, company: 8, organization: 8, government: 6, other: 8, pill: 12, group: 12 },
     entity: {
       person: { stroke: '#94a3b8', fill: '#f1f5f9', width: 1 },
