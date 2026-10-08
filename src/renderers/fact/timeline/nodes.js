@@ -68,31 +68,54 @@ export function cellsNode(m) {
   }
 }
 
-/** Column headings: a row above the grid when vertical, a column on the left when horizontal */
+/**
+ * Column headings: a row above the grid when vertical, a column on the left when horizontal.
+ *
+ * A side with one column has one heading, the side's title. A side with several columns (several
+ * parties) names the side **once** and each column by its party: vertical, the side title spans the
+ * side's columns and the party names stand under it, one per column; horizontal, the side title is
+ * on the first lane of the side and every lane carries its party's name. (Writing the side title on
+ * every column made a side of two parties read as two columns of the same name.)
+ */
 export function headerNodes(grid, m) {
-  const side1Count = grid.columns.filter((c) => c.side === SIDE.SIDE1).length
-  const side2Count = grid.columns.filter((c) => c.side === SIDE.SIDE2).length
-
-  return grid.columns.map((col, ci) => {
-    // A row of party names is added only when that side has several columns (several parties)
-    const manyCols =
-      col.side === SIDE.SIDE1 ? side1Count > 1 : col.side === SIDE.SIDE2 ? side2Count > 1 : false
-    return {
-      id: `__head__${col.key}`,
-      type: 'colHeader',
-      position: m.isH ? { x: 0, y: ci * m.laneExtent } : { x: ci * m.laneExtent, y: 0 },
-      data: {
-        width: m.isH ? HEADER_W : m.laneExtent,
-        height: m.isH ? m.laneExtent : null,
-        isH: m.isH,
-        side: col.side,
-        groupIndex: groupIndexOf(col.side),
-        sideTitle: grid.sideLabels[col.side],
-        colTitle: manyCols ? col.actorName : null,
-      },
-      ...DECORATION,
+  const countOf = (side) => grid.columns.filter((c) => c.side === side).length
+  const firstOf = (side) => grid.columns.findIndex((c) => c.side === side)
+  const nodes = []
+  grid.columns.forEach((col, ci) => {
+    const n = countOf(col.side)
+    const many = col.side !== SIDE.AXIS && n > 1
+    const first = ci === firstOf(col.side)
+    const base = { type: 'colHeader', ...DECORATION }
+    const common = { isH: m.isH, side: col.side, groupIndex: groupIndexOf(col.side) }
+    if (!many) {
+      nodes.push({
+        ...base,
+        id: `__head__${col.key}`,
+        position: m.isH ? { x: 0, y: ci * m.laneExtent } : { x: ci * m.laneExtent, y: 0 },
+        data: { ...common, width: m.isH ? HEADER_W : m.laneExtent, height: m.isH ? m.laneExtent : null, sideTitle: grid.sideLabels[col.side], colTitle: null },
+      })
+      return
     }
+    if (m.isH) {
+      nodes.push({
+        ...base,
+        id: `__head__${col.key}`,
+        position: { x: 0, y: ci * m.laneExtent },
+        data: { ...common, width: HEADER_W, height: m.laneExtent, sideTitle: first ? grid.sideLabels[col.side] : null, colTitle: col.actorName },
+      })
+      return
+    }
+    // Vertical: one node for the whole side, written at its first column
+    if (!first) return
+    const cols = grid.columns.slice(ci, ci + n)
+    nodes.push({
+      ...base,
+      id: `__head__${col.key}`,
+      position: { x: ci * m.laneExtent, y: 0 },
+      data: { ...common, width: n * m.laneExtent, height: null, sideTitle: grid.sideLabels[col.side], colTitle: null, actors: cols.map((c) => c.actorName), laneW: m.laneExtent },
+    })
   })
+  return nodes
 }
 
 /**

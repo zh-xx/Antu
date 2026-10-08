@@ -19,6 +19,10 @@ Every meaning is also carried without colour (weight, dash, double line, outline
 print reads the same. The `document` theme draws nothing but greys; `tools/verify` fails if any of the 15 ways of drawing a diagram
 shows a colour in it, and `test/theme-lock.test.mjs` fails if a view or the stylesheet writes a colour of its own.
 
+The colours of the two sides (`side1`, `side2`) are also written as text: column headings, lane names, legends, camps.
+In every theme each of them keeps a contrast of at least 4.5:1 against the canvas (`test/theme-contrast.test.mjs`);
+the modern theme's side 2 is `#64748b` for that reason (it was `#94a3b8`, about 2.5:1).
+
 ## Who chooses
 
 1. `--theme` on `render` / `preview`, or `theme` on `antu_render` / `antu_preview`: the page is fixed to it (a preset).
