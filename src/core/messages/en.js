@@ -463,6 +463,9 @@ export const en = {
     `nodes (${id}): "${label}" has no incoming edge and is not a start, so nothing leads to it: it would float beside the flow. ` +
     'If it is a consequence (a breach, a resignation, a right to terminate), write it as a rule in `rules`; ' +
     'if it belongs to the flow, add the edge that leads to it',
+  'note.dateOrder': ({ at, id, date, beforeAt, beforeId, beforeDate }) =>
+    `${at} ("${id}", ${date}) comes after ${beforeAt} ("${beforeId}", ${beforeDate}) in the slots but its date is wholly earlier. ` +
+    'The order of the slots is kept and nothing is reordered; check which of the two dates is wrong, or whether the slots are in the wrong order',
   'note.viewBlocked': ({ label, reason }) =>
     `view "${label}" does not fit, so it will not appear in the view dropdown: ${reason}`,
   'perr.noEnd': 'no node has `kind: "end"` (a flow needs an end)',
