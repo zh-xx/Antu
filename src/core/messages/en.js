@@ -216,6 +216,8 @@ export const en = {
   'err.specNotObject': 'a spec must be a JSON object',
   'err.envelopeTypeRequired': 'missing required field `type` (the engine uses it to pick a renderer)',
   'err.envelopeTypeString': '`type` must be a string',
+  'err.envelopeTypeUnknown': '`type` is "{type}", which is not a diagram type; expected one of {list}',
+  'err.envelopeTypeIsKind': '`type` is "{type}", which is a way of drawing a {owner} diagram, not a type: write `"type": "{owner}"` (the way it is drawn is chosen on the page, not in the JSON)',
   'err.envelopeTitleString': '`title` must be a string',
   'err.specVersionForm': '`specVersion` must be a whole number from 1 up, got {value}',
   'err.specVersionNewer': '`specVersion` is {value}, newer than this engine knows for "{type}" ({known}): update the engine, or write the file for the older format',

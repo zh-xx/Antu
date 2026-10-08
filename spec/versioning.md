@@ -51,9 +51,17 @@ leak check of `tools/verify/run.mjs`.
 | which data is an error, and which rule reports it | look: colours, fonts, the interface |
 | the names and parameters of the MCP tools (`antu_validate` …) | the wording of hints and messages |
 | the subcommands and options of the command line (once there is one) | the internal structure of the code |
+| the entries for a host's code (`@zh-xx/antu/embed`, `/validate`, `/html`): their functions, options, events and what they return ([embed.md](embed.md)) | the elements and classes inside a mounted diagram's shadow root |
 
 **A rule made stricter is a break; a rule made looser is not.** A file that passed must not fail because
 the engine was updated. (A new *hint* is not a break: a hint never stops a diagram.)
+
+**The entries for a host's code** follow the release number, as the MCP tools do; they have no number of their
+own. A new option, a new event or a new field in an event is an addition (a host must ignore event types and
+fields it does not know); a renamed or removed function, option or field, or a changed meaning, is a break and
+goes under *Breaking* with how to migrate. The kinds and the themes a host may name are those of `versions()`
+and of `spec/theme.md`: a kind that is retired is a break of the diagram (see "The diagrams" below), not of
+the entry.
 
 ## The format generation (`specVersion`)
 

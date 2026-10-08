@@ -17,7 +17,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { usePreset, usePrefs } from '../../../shell/env.js'
 import { useExport } from '../../../shell/useExport.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import EventNode from '../EventNode.jsx'
@@ -28,6 +28,7 @@ import LinkLayerNode from './LinkLayerNode.jsx'
 import CellLayerNode from './CellLayerNode.jsx'
 import { CARD_PAD_X, CARD_PAD_Y, LABEL_FONT, SNIPPET_FONT } from '../cardGeometry.js'
 import { buildFactGraph } from './layout.js'
+import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
 /** Node types used by the timeline. Adding one means registering one line here. */
 const nodeTypes = {
@@ -41,15 +42,14 @@ const nodeTypes = {
 /** Defaults for the optional card fields. Title and time are not listed: they are fixed on the card. */
 const FIELD_DEFAULTS = { sources: false, actors: false, summary: true }
 
-/**
- * External preset: used only by MCP's antu_preview.
- * It has to specify "which orientation, which fields" for a screenshot without
- * polluting the user's own preferences, so it travels through a one-shot global rather than
- * localStorage.
- */
-const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
-
 export default function FactTimeline({ spec }) {
+  // External preset: used only by MCP's antu_preview.
+  // It has to specify "which orientation, which fields" for a screenshot without
+  // polluting the user's own preferences, so it travels through a one-shot global rather than
+  // localStorage.
+  // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
+  const PRESET = usePreset()
+  const prefs = usePrefs()
   // Per-diagram preferences use the **title** as key: it is written in the data, so it exists in
   // development and in the built page alike, and it does not depend on a file name (the built
   // page has no file name at all).
@@ -58,42 +58,42 @@ export default function FactTimeline({ spec }) {
   // Which optional fields the card shows. Only the ones the user actually touched are stored.
   const [fields, setFields] = useState(() => ({
     ...FIELD_DEFAULTS,
-    ...readPrefs().fields,
+    ...prefs.read().fields,
     ...(PRESET?.fields || {}),
   }))
   const toggleField = (key, value) => {
     setFields((f) => ({ ...f, [key]: value }))
-    writePrefs({ fields: { ...readPrefs().fields, [key]: value } })
+    prefs.write({ fields: { ...prefs.read().fields, [key]: value } })
   }
 
   // Underlying grid lines: a global preference
-  const [showGrid, setShowGrid] = useState(() => readPrefs().showGrid === true)
+  const [showGrid, setShowGrid] = useState(() => prefs.read().showGrid === true)
   const toggleGrid = (value) => {
     setShowGrid(value)
-    writePrefs({ showGrid: value })
+    prefs.write({ showGrid: value })
   }
 
   // Staggered rows (vertical only, see rowTopsOf in metrics.js): on by default, and what the reader set is remembered
   // per diagram, like the orientation, so turning it off in one diagram does not change how another opens.
-  const [staggerPrefs, setStaggerPrefs] = useState(() => readPrefs().staggers || {})
+  const [staggerPrefs, setStaggerPrefs] = useState(() => prefs.read().staggers || {})
   const stagger = PRESET?.stagger ?? staggerPrefs[specKey] ?? true
   const toggleStagger = (value) => {
     const map = { ...staggerPrefs, [specKey]: value }
     setStaggerPrefs(map)
-    writePrefs({ staggers: map })
+    prefs.write({ staggers: map })
   }
 
   // Orientation of the time axis. What was set by hand is remembered per diagram; what was not
   // is decided by the slot count: 5 or more slots vertical, 4 or fewer horizontal. A horizontal
   // cell is 316 wide, and one screen minus the heading column fits only about 3.8 slots.
-  const [orientationPrefs, setOrientationPrefs] = useState(() => readPrefs().orientations || {})
+  const [orientationPrefs, setOrientationPrefs] = useState(() => prefs.read().orientations || {})
   const slotCount = Array.isArray(spec?.slots) ? spec.slots.length : 0
   const orientation =
     PRESET?.orientation || orientationPrefs[specKey] || (slotCount >= 5 ? 'vertical' : 'horizontal')
   const toggleOrientation = (next) => {
     const map = { ...orientationPrefs, [specKey]: next }
     setOrientationPrefs(map)
-    writePrefs({ orientations: map })
+    prefs.write({ orientations: map })
   }
 
   // The field switches are an input to layout: they decide how many rows a card takes. Change them
@@ -106,6 +106,7 @@ export default function FactTimeline({ spec }) {
   // Overlay state: hoveredId is the card the mouse passed over, pinnedId is the card clicked open
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
+  useSelectEvent(spec, pinnedId)
 
   // Export: the guard and the failure message live in the shell hook, shared with every renderer
   const { canvasRef, exporting, onExport } = useExport(spec?.title)

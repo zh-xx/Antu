@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { useEnv, usePrefs, usePreset } from '../../../shell/env.js'
 import { useExport } from '../../../shell/useExport.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import ScaleLayerNode from './ScaleLayerNode.jsx'
@@ -18,18 +18,16 @@ import ScaleRunNode from './ScaleRunNode.jsx'
 import ScaleRunListNode from './ScaleRunListNode.jsx'
 import ScaleDock from './ScaleDock.jsx'
 import { buildScaleGraph, PAD_X, PAD_Y, TIME_FONT, TIME_LH, TITLE_FONT, TITLE_LH } from './layout.js'
-
-/** The one-shot preset MCP's antu_preview passes (see the timeline) */
-const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
+import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
 const nodeTypes = { scaleLayer: ScaleLayerNode, scaleCard: ScaleCardNode, scaleRun: ScaleRunNode, scaleRunList: ScaleRunListNode }
 
 /** The titles measured in the page's font, so a card is exactly as tall as its title (see chronicle) */
-function makeMeasure() {
+function makeMeasure(root) {
   if (typeof document === 'undefined') return null
   const ctx = document.createElement('canvas').getContext?.('2d')
   if (!ctx) return null
-  const family = getComputedStyle(document.querySelector('.antu-app') || document.body).fontFamily
+  const family = getComputedStyle(root?.querySelector?.('.antu-app') || document.body).fontFamily
   const font = `600 ${TITLE_FONT}px ${family}`
   const cache = new Map()
   return (text) => {
@@ -44,8 +42,12 @@ function makeMeasure() {
 }
 
 export default function FactScale({ spec }) {
-  const measure = useMemo(() => makeMeasure(), [])
+  const { root } = useEnv()
+  const measure = useMemo(() => makeMeasure(root), [root])
   // A lane per party, offered when a side holds two or more parties; off by default, remembered per diagram
+  // (the preset is MCP's antu_preview's, the prefs the page's or the host's; shell/env.js)
+  const PRESET = usePreset()
+  const prefs = usePrefs()
   const specKey = spec?.title || ''
   const crowded = useMemo(() => {
     const actors = Array.isArray(spec?.actors) ? spec.actors : []
@@ -54,17 +56,18 @@ export default function FactScale({ spec }) {
     for (const a of actors) if (a?.groupId) count.set(a.groupId, (count.get(a.groupId) ?? 0) + 1)
     return [...count.values()].some((n) => n >= 2)
   }, [spec])
-  const [partyPrefs, setPartyPrefs] = useState(() => readPrefs().scaleByParty || {})
+  const [partyPrefs, setPartyPrefs] = useState(() => prefs.read().scaleByParty || {})
   const byParty = crowded && (PRESET?.byParty ?? partyPrefs[specKey] ?? false)
   const toggleByParty = (value) => {
     const map = { ...partyPrefs, [specKey]: value }
     setPartyPrefs(map)
-    writePrefs({ scaleByParty: map })
+    prefs.write({ scaleByParty: map })
   }
   const graph = useMemo(() => buildScaleGraph(spec, {}, { measure, byParty }), [spec, measure, byParty])
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
+  useSelectEvent(spec, pinnedId)
   const { canvasRef, exporting, onExport } = useExport(spec?.title)
   const preview = useMemo(
     () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),

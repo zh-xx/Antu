@@ -97,9 +97,21 @@ The MCP server is the npm package [`@zh-xx/antu`](https://www.npmjs.com/package/
 
 Tools: `antu_schema`, `antu_guide`, `antu_examples`, `antu_validate`, `antu_layout`, `antu_render`, `antu_preview`, `antu_versions`.
 
+## In an Application
+
+The same package has three entries for an application's own code ([spec/embed.md](spec/embed.md)):
+
+```js
+import { mount } from '@zh-xx/antu/embed'          // draw a diagram inside your page, in a shadow root
+import { validate } from '@zh-xx/antu/validate'    // check the JSON your model wrote; each error names its field
+import { renderHtml } from '@zh-xx/antu/html'      // the self-contained page as a string (Node)
+
+const diagram = mount(element, spec, { lang: 'en', onEvent: (e) => console.log(e) })
+```
+
 ## Documentation
 
-- Design documents for people, under [`spec/`](spec/): [architecture](spec/v0-architecture.md), [the source types](spec/source-schema-draft.md), [themes](spec/theme.md), [the MCP server](spec/mcp-server.md), and the diagrams ([fact](spec/fact/), [procedure](spec/procedure/schema-draft.md), [relationship](spec/relationship/schema-draft.md), [justification](spec/justification/schema-draft.md)). The notes for Agents are under [`spec/agent/`](spec/agent/).
+- Design documents for people, under [`spec/`](spec/): [architecture](spec/v0-architecture.md), [the source types](spec/source-schema-draft.md), [themes](spec/theme.md), [the MCP server](spec/mcp-server.md), [embedding in an application](spec/embed.md), and the diagrams ([fact](spec/fact/), [procedure](spec/procedure/schema-draft.md), [relationship](spec/relationship/schema-draft.md), [justification](spec/justification/schema-draft.md)). The notes for Agents are under [`spec/agent/`](spec/agent/).
 - [CHANGELOG.md](CHANGELOG.md) and the versioning rules in [spec/versioning.md](spec/versioning.md).
 - Known problems and requests are tracked as [GitHub issues](https://github.com/zh-xx/Antu/issues). Working rules for contributors are in [CONTRIBUTING.md](CONTRIBUTING.md).
 

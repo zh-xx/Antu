@@ -1,6 +1,6 @@
 {
   "name": "antu",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "license": "AGPL-3.0-or-later",
   "author": "Ji Cheng",
   "private": true,
@@ -11,6 +11,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "build:engine": "vite build --config vite.engine.config.js",
+    "build:embed": "vite build --config vite.embed.config.js",
+    "build:api": "vite build --config vite.api.config.js",
     "build:skill": "node tools/build-skill.mjs",
     "diagram": "node tools/make-html.mjs",
     "mcp": "node tools/mcp/server.mjs",

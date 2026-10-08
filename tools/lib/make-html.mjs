@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url'
 
 import { SPEC_MARKER, escapeForScript, fillViewer } from './fill.mjs'
 import { licenseNotice } from './notices.mjs'
+import { PAGE_FONT } from '../../src/embed/shadowCss.js'
 
 // set by the bundler of the npm package (vite.mcp.config.js); a run from the source has none
 const PACKAGED = typeof __ANTU_PACKAGE__ !== 'undefined'
@@ -127,7 +128,7 @@ export function buildHtml(spec, { js, css, preset } = {}) {
 ${escapeEngineCode(licenseNotice(engineVersion()))}
 </script>
 <style>
-html, body { margin: 0; height: 100%; font-family: system-ui, "Microsoft YaHei", sans-serif; }
+html, body { margin: 0; height: 100%; font-family: ${PAGE_FONT}; }
 #root { height: 100%; }
 ${css}</style>
 </head>
@@ -149,21 +150,26 @@ export function slugify(text) {
 }
 
 /**
- * All in one: make sure the engine is fresh → assemble the HTML → write the file.
- * Without outPath it writes to dist-html/<title>.html.
+ * The self-contained page of a diagram, as a string: the engine made fresh first in the repository, the viewer
+ * template filled in the package. `renderToFile` writes it; `renderHtml` (`@zh-xx/antu/html`) hands it back.
  */
-export function renderToFile(spec, { outPath, preset, force = false, quiet = false } = {}) {
-  let html
+export function pageHtml(spec, { preset, force = false, quiet = false } = {}) {
   if (PACKAGED) {
     // no build tools in the package: the page is the viewer template with the data put in, as the command line
     // in the skill makes it; the title is the one thing the template cannot know, so it is set here
     const title = escapeHtml(spec?.title || 'Antu')
-    html = fillViewer(readFileSync(join(REPO, 'assets/viewer.html'), 'utf8'), spec, { preset }).replace(/<title>[^<]*<\/title>/, () => `<title>${title} · Antu</title>`)
-  } else {
-    ensureEngine({ force, quiet })
-    const engine = readEngine()
-    html = buildHtml(spec, { ...engine, preset })
+    return fillViewer(readFileSync(join(REPO, 'assets/viewer.html'), 'utf8'), spec, { preset }).replace(/<title>[^<]*<\/title>/, () => `<title>${title} · Antu</title>`)
   }
+  ensureEngine({ force, quiet })
+  return buildHtml(spec, { ...readEngine(), preset })
+}
+
+/**
+ * All in one: make sure the engine is fresh → assemble the HTML → write the file.
+ * Without outPath it writes to dist-html/<title>.html.
+ */
+export function renderToFile(spec, { outPath, preset, force = false, quiet = false } = {}) {
+  const html = pageHtml(spec, { preset, force, quiet })
   // in the package there is no repository to write into: the folder the user works in
   const target = resolve(outPath || (PACKAGED ? `${slugify(spec?.title)}.html` : join(REPO, 'dist-html', `${slugify(spec?.title)}.html`)))
   mkdirSync(dirname(target), { recursive: true })

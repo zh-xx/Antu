@@ -26,6 +26,8 @@
 //                    it is not a blank image; padding on all four sides; arrow at the axis end
 //    7. MCP          the bundled client walks all twelve steps
 //    8. screenshot   produce one image for a human to glance at (not machine-judged, but viewable)
+//    9. embed        two diagrams mounted in a host page with hostile CSS (tools/verify/embed.mjs):
+//                    isolation both ways, no globals touched, options, events, the handle
 // ============================================================
 
 import { execFileSync, spawnSync } from 'node:child_process'
@@ -35,10 +37,12 @@ import { tmpdir } from 'node:os'
 
 import { REPO, renderToFile } from '../lib/make-html.mjs'
 import { launchBrowser, findChrome, ITEM_SELECTOR } from '../lib/chrome.mjs'
+import { checkEmbed } from './embed.mjs'
 // The knowledge of every major type must be registered first (plain JS), otherwise
-// validateSpec finds nothing in the table and silently returns "pass". This trap really
+// validateSpec finds nothing in the table. It used to return "pass" then; this trap really
 // happened: after moving files, this line was forgotten, bad data was not stopped, and
-// the verifier itself caught it.
+// the verifier itself caught it. Since issue 152 an unregistered type is an error, so
+// every example would fail instead, loudly.
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
 import { en, zh } from '../../src/core/messages/index.js'
@@ -177,6 +181,8 @@ function checkBuild() {
   for (const [name, args] of [
     ['dev build', ['run', 'build']],
     ['engine build', ['run', 'build:engine']],
+    ['embed build', ['run', 'build:embed']],
+    ['api build', ['run', 'build:api']],
   ]) {
     try {
       execFileSync('npm', args, { cwd: REPO, stdio: 'pipe' })
@@ -385,7 +391,7 @@ function checkData() {
   // one has no leak check. spec/procedure/schema-draft was missed once, found only when
   // procedure was translated.
   const humanDocs = ['spec/fact/schema-draft', 'spec/fact/timeline-rules', 'spec/fact/rendering',
-    'spec/source-schema-draft', 'spec/v0-architecture', 'spec/mcp-server',
+    'spec/source-schema-draft', 'spec/v0-architecture', 'spec/mcp-server', 'spec/embed',
     'spec/react-flow-features', 'spec/procedure/schema-draft', 'spec/relationship/schema-draft',
     'spec/justification/schema-draft']
   const leaked2 = humanDocs.filter((n) => serverSrc.includes(n))
@@ -3109,6 +3115,7 @@ if (!shotOnly && !skipBrowser) {
   await checkSkillPreview()
   await checkUndatedEvent()
   await checkTextSize()
+  await checkEmbed({ ok, bad, eq, truthy, section, launchBrowser, findChrome, OUT, REPO })
   checkMcp()
   // This stretch launched a browser twice (once for the render, once for the MCP preview), and
   // both must be closed cleanly. Identity, not "equal to 0": this machine may already have
