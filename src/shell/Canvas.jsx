@@ -12,7 +12,7 @@
 //  "what a click should do" is the rendering kind's own business; this only forwards them.
 // ============================================================
 
-import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState, useEdgesState } from '@xyflow/react'
 
 import { useLang } from './LangContext.jsx'
@@ -20,6 +20,24 @@ import { useTheme, themeVars } from '../theme/ThemeContext.jsx'
 import { FIT_PADDING, fitWidthZoom, fitZoom } from '../core/canvas.js'
 import { exportPng as runExportPng, renderPng } from './exportPng.js'
 import { useEnv, useUi } from './env.js'
+import { placeDock } from './dockPlace.js'
+
+/** React Flow's minimap width plus its border, until one has been measured */
+const MINIMAP_WIDTH = 202
+
+/**
+ * The capsule's width on one line, whether or not it is wrapped now: its items side by side with their margins
+ * (the separators have some), the gaps between them, its padding and border. (A wrapped bar's own width says
+ * nothing about how wide it would be unwrapped.)
+ */
+function oneLineWidth(bar) {
+  const px = (style, keys) => keys.reduce((s, k) => s + (parseFloat(style[k]) || 0), 0)
+  const cs = getComputedStyle(bar)
+  const items = [...bar.children].filter((c) => getComputedStyle(c).position !== 'absolute')
+  const gap = parseFloat(cs.columnGap) || 0
+  const width = items.reduce((s, c) => s + c.getBoundingClientRect().width + px(getComputedStyle(c), ['marginLeft', 'marginRight']), 0)
+  return Math.ceil(width + gap * Math.max(items.length - 1, 0) + px(cs, ['paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth']))
+}
 
 /** Zoom-in ceiling. It used to be 1:1, on the grounds that "zooming further only
  *  stretches the same pixels": true of the information content, false for
@@ -220,6 +238,42 @@ export default function Canvas({
   const showMinimap = useUi('minimap')
   const showCapsule = useUi('capsule')
 
+  // Where the capsule goes on this width, and whether the minimap gives way to it (shell/dockPlace.js)
+  const [dock, setDock] = useState({ left: null, maxWidth: null, hideMinimap: false })
+  const minimapWidthRef = useRef(MINIMAP_WIDTH)
+  useLayoutEffect(() => {
+    const el = canvasRef.current
+    if (!el || !showCapsule) return undefined
+    const place = () => {
+      const bar = el.querySelector('.antu-dock-capsule .antu-dock-bar')
+      if (!bar || !el.clientWidth) return
+      const box = el.getBoundingClientRect()
+      const zoom = showZoom ? el.querySelector('.react-flow__controls') : null
+      const mini = el.querySelector('.react-flow__minimap')
+      if (mini?.offsetWidth) minimapWidthRef.current = mini.offsetWidth
+      const next = placeDock({
+        width: el.clientWidth,
+        natural: oneLineWidth(bar),
+        zoomRight: zoom ? zoom.getBoundingClientRect().right - box.left : null,
+        minimapWidth: showMinimap ? minimapWidthRef.current : null,
+      })
+      setDock((prev) => (prev.left === next.left && prev.maxWidth === next.maxWidth && prev.hideMinimap === next.hideMinimap ? prev : next))
+    }
+    place()
+    const ro = new ResizeObserver(place)
+    ro.observe(el)
+    const bar = el.querySelector('.antu-dock-capsule .antu-dock-bar')
+    if (bar) ro.observe(bar)
+    return () => ro.disconnect()
+    // Not on `children`: it is a new element on every render (a hover re-renders), and measuring again then
+    // cost some forty style reads each time. The observer already sees the capsule change size when its
+    // content does.
+  }, [showCapsule, showZoom, showMinimap])
+  const dockStyle = dock.left == null
+    ? undefined
+    // (a React Flow panel has a margin of its own; `left` is already measured from the canvas edge)
+    : { left: dock.left, marginLeft: 0, transform: 'none', ...(dock.maxWidth != null ? { '--antu-dock-max': `${dock.maxWidth}px` } : {}) }
+
   // The theme reaches the diagram only: its CSS variables sit on the viewport (the layer the export clones), not on the
   // app root, so the shell round it keeps one look in every theme
   useEffect(() => {
@@ -278,8 +332,12 @@ export default function Canvas({
         {/* The padding must match the initial fit, or clicking the button once makes the zoom jump */}
         {showZoom && <Controls showInteractive={false} onFitView={() => fit(300)} />}
         {/* The display controls float centred below the canvas: the zoom controls are bottom left and the minimap bottom right, so the three do not collide */}
-        {showCapsule && <Panel position="bottom-center">{children}</Panel>}
-        {showMinimap && <MiniMap pannable zoomable nodeColor={miniColor} />}
+        {showCapsule && (
+          <Panel position="bottom-center" className={`antu-dock-capsule${dock.maxWidth != null ? ' is-wrapped' : ''}`} style={dockStyle}>
+            {children}
+          </Panel>
+        )}
+        {showMinimap && !dock.hideMinimap && <MiniMap pannable zoomable nodeColor={miniColor} />}
       </ReactFlow>
     </main>
   )

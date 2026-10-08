@@ -48,6 +48,15 @@
   border: var(--antu-chrome-border, 1px solid rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.07));
   box-shadow: var(--antu-chrome-shadow, 0 4px 18px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.10));
 }
+/* A canvas too narrow for the capsule on one line (shell/dockPlace.js): it wraps within the free strip,
+   centred, with the corners of a card rather than a pill */
+.antu-dock-capsule.is-wrapped .antu-dock-bar {
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 4px;
+  max-width: var(--antu-dock-max);
+  border-radius: var(--antu-chrome-radius, 12px);
+}
 .antu-dock-chip {
   /* inline-flex + 居中：里面的箭头才不会跟着基线往下掉 */
   display: inline-flex;

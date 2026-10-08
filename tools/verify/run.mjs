@@ -2092,6 +2092,65 @@ async function checkDocumentThemeIsGrey() {
 }
 
 // ---------------------------------------------------------------
+// The control capsule, the zoom buttons and the minimap never cover one another (src/shell/dockPlace.js)
+// ---------------------------------------------------------------
+// The capsule was centred whatever the width: below about 1200 px the widest one ran under the minimap and hid
+// the export button, below about 800 px into the zoom buttons and off the canvas. Every kind, at four widths.
+async function checkDockClearance() {
+  section('the capsule clears the minimap and the zoom buttons at every width')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const cases = [
+    ['fact', 'examples/fact/fang-yuan-loan-and-conflict.zh-CN.json'],
+    ['procedure', 'examples/procedure/05-premises-lease.zh-CN.json'],
+    ['relationship', 'examples/relationship/marketplace-parties.zh-CN.json'],
+    ['justification', 'examples/justification/fang-yuan-defense-excess.zh-CN.json'],
+  ]
+  const html = join(OUT, 'dock-clearance.html')
+  const problems = { overlap: [], outside: [], exportHidden: [], wideNotCentred: [], wideNoMinimap: [] }
+  let measured = 0
+  for (const width of [1400, 1024, 800, 560]) {
+    const browser = await launchBrowser({ width, height: 700 })
+    try {
+      for (const [type, file] of cases) {
+        const spec = JSON.parse(readFileSync(join(REPO, file), 'utf8'))
+        for (const kind of layoutKindsOf(type)) {
+          renderToFile(spec, { outPath: html, quiet: true, preset: { kind } })
+          await browser.open(`file://${html}?lang=zh`, { settleMs: 500 })
+          const m = await browser.eval(`(() => {
+            const rect = (s) => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return r.width ? { l: r.left, r: r.right, t: r.top, b: r.bottom } : null }
+            const hit = (a, b) => !!(a && b && a.l < b.r - 0.5 && a.r > b.l + 0.5 && a.t < b.b - 0.5 && a.b > b.t + 0.5)
+            const canvas = rect('.antu-canvas'), cap = rect('.antu-dock-capsule .antu-dock-bar')
+            const mini = rect('.react-flow__minimap'), zoom = rect('.react-flow__controls'), exp = rect('.antu-dock-action')
+            const inside = (x) => !!(x && canvas && x.l >= canvas.l - 0.5 && x.r <= canvas.r + 0.5)
+            return { overlap: hit(cap, mini) || hit(cap, zoom), inside: inside(cap), exportShown: inside(exp) && !hit(exp, mini),
+              centred: !!(cap && canvas) && Math.abs((cap.l + cap.r) / 2 - (canvas.l + canvas.r) / 2) <= 1, minimap: !!mini }
+          })()`)
+          const at = `${type}/${kind} at ${width}px`
+          measured += 1
+          if (m.overlap) problems.overlap.push(at)
+          if (!m.inside) problems.outside.push(at)
+          if (!m.exportShown) problems.exportHidden.push(at)
+          // on a wide canvas nothing has to give: centred, minimap kept
+          if (width === 1400 && !m.centred) problems.wideNotCentred.push(at)
+          if (width === 1400 && !m.minimap) problems.wideNoMinimap.push(at)
+        }
+      }
+    } finally {
+      await browser.close()
+    }
+  }
+  truthy('every kind at every width was measured', measured === 60, `${measured} of 60`)
+  eq('the capsule covers neither the minimap nor the zoom buttons', problems.overlap, [])
+  eq('the capsule stays on the canvas', problems.outside, [])
+  eq('the export button is fully visible', problems.exportHidden, [])
+  eq('on a wide canvas (1400 px) the capsule is centred', problems.wideNotCentred, [])
+  eq('on a wide canvas (1400 px) the minimap is kept', problems.wideNoMinimap, [])
+}
+
+// ---------------------------------------------------------------
 // The minimap shows the whole picture, also when only decoration layers draw it
 // ---------------------------------------------------------------
 async function checkMinimapShowsExtent() {
@@ -3105,6 +3164,7 @@ if (!shotOnly && !skipBrowser) {
   await checkRenderLevelledViews()
   await checkDocumentThemeIsGrey()
   await checkMinimapShowsExtent()
+  await checkDockClearance()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)
   await checkTimelineStagger('examples/fact/fang-yuan-loan-and-conflict.zh-CN.json', 'examples/fact/marketplace-platform-liability.zh-CN.json')

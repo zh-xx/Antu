@@ -269,6 +269,27 @@ export async function checkEmbed(t) {
     eq('embed: after all this the host\'s storage is still empty', await browser.eval('localStorage.length'), 0)
     eq('embed: the host page threw nothing', browser.errors ?? [], [])
 
+    // ---- the host's element narrows and widens again (src/shell/dockPlace.js): the minimap gives way and comes back ----
+    const resized = await browser.eval(`(async () => {
+      const host = document.getElementById('a'), root = ${S('a')}
+      const look = () => {
+        const r = (s) => { const e = root.querySelector(s); if (!e) return null; const x = e.getBoundingClientRect(); return x.width ? x : null }
+        const cap = r('.antu-dock-capsule .antu-dock-bar'), mini = r('.react-flow__minimap'), zoom = r('.react-flow__controls'), box = host.getBoundingClientRect()
+        const hit = (a, b) => !!(a && b && a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5)
+        return { minimap: !!mini, wrapped: !!root.querySelector('.antu-dock-capsule.is-wrapped'), clear: !hit(cap, mini) && !hit(cap, zoom), inside: !!cap && cap.left >= box.left - 0.5 && cap.right <= box.right + 0.5 }
+      }
+      const settle = () => new Promise((r) => setTimeout(r, 300))
+      // (the page's words are English by now, and its capsule is the widest: ~930 px)
+      host.style.width = '520px'; await settle()
+      const narrow = look()
+      host.style.width = '1400px'; await settle()
+      const wide = look()
+      host.style.width = '1000px'
+      return { narrow, wide }
+    })()`, { awaitPromise: true })
+    eq('embed: the host narrows to 520 px: the minimap gives way, the capsule wraps, clear and on the canvas', resized.narrow, { minimap: false, wrapped: true, clear: true, inside: true })
+    eq('embed: and widens to 1400 px: the capsule is on one line again and the minimap comes back', resized.wide, { minimap: true, wrapped: false, clear: true, inside: true })
+
     // ---- destroy, and mount again on the same element ----
     const again = await browser.eval(`(async () => {
       window.__h.a.destroy()
