@@ -868,13 +868,15 @@ async function checkExport(browser, spec) {
   ok('export succeeded', `${shot.width}×${shot.height}  ${EXPORT_SHOT.replace(REPO + '/', '')}`)
 
   // The page is certainly in its default presentation state (a fresh browser profile has no
-  // preferences): only the summary field on, direction by slot count, first view.
+  // preferences): only the summary field on, direction by slot count, first view, rows staggered
+  // (vertical only, spec/fact/rendering.md §8.1).
   const orientation = spec.slots.length >= 5 ? 'vertical' : 'horizontal'
   const graph = buildFactGraph(
     spec,
     { sources: false, actors: false, summary: true },
     viewsOf(spec)[0],
     orientation,
+    { stagger: true },
   )
   eq('size = (content + padding) × 2', [shot.width, shot.height], [
     exportFrame(graph.size.width, graph.size.height).width * 2,
