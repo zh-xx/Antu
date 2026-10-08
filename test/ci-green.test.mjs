@@ -40,3 +40,10 @@ test('several jobs can be left out, so a failed publish of an earlier run does n
   assert.deepEqual(judge(runs, { ignore: ['check', 'publish'] }), [])
   assert.equal(judge(runs, { ignore: 'check' }).length, 1)
 })
+
+test('a check that ran again counts by its latest run: an earlier red one that was replaced stops nothing', () => {
+  const runs = [{ id: 1, ...run('verify') }, { id: 2, ...run('release', 'completed', 'failure') }, { id: 9, ...run('release', 'completed', 'success') }]
+  assert.deepEqual(judge(runs), [])
+  const again = [{ id: 1, ...run('verify') }, { id: 2, ...run('release', 'completed', 'success') }, { id: 9, ...run('release', 'completed', 'failure') }]
+  assert.match(judge(again).join('\n'), /release: failure/)
+})
