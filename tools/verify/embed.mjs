@@ -106,8 +106,14 @@ export async function checkEmbed(t) {
     '/antu-embed.js': { type: 'text/javascript; charset=utf-8', body: bundle },
   })
   const browser = await launchBrowser({ width: 1200, height: 1500 })
-  // Every check reads inside the hosts' shadow roots; `S(id)` is that root
-  const S = (id) => `document.getElementById(${JSON.stringify(id)}).shadowRoot`
+  // Every check reads inside the hosts' shadow roots; `S(id)` is that root. The expressions are fixed text:
+  // no value is spliced into code sent to the page (data the page needs is in its own SPECS)
+  const ROOTS = {
+    a: "document.getElementById('a').shadowRoot",
+    b: "document.getElementById('b').shadowRoot",
+    c: "document.getElementById('c').shadowRoot",
+  }
+  const S = (id) => ROOTS[id]
   try {
     await browser.open(`${origin}/`, { waitFor: 'window.__drawn === true' })
     truthy('embed: both diagrams report ready', await browser.eval('window.__drawn === true'))
@@ -164,9 +170,15 @@ export async function checkEmbed(t) {
     eq('embed: exportPng is refused while the spec is invalid, and works once update gives a valid one', recovered, { refused: true, png: 'image/png', drawn: true })
 
     // ---- select ----
-    const clickNode = (id) => browser.eval(`(() => { const el = ${S('a')}.querySelector('.react-flow__node[data-id=${JSON.stringify(id)}]'); el?.click(); return !!el })()`)
-    const withSource = flow.nodes.find((n) => Array.isArray(n.sourceIds) && n.sourceIds.length)
-    const clicked = await clickNode(withSource.id)
+    // the node is named by its place in the page's own copy of the spec, so its id is never written into the code
+    const at = flow.nodes.findIndex((n) => Array.isArray(n.sourceIds) && n.sourceIds.length)
+    const withSource = flow.nodes[at]
+    const clicked = await browser.eval(`((i) => {
+      const id = window.__api.SPECS.flow.nodes[i].id
+      const el = [...${S('a')}.querySelectorAll('.react-flow__node')].find((n) => n.dataset.id === id)
+      el?.click()
+      return !!el
+    })(${Number(at)})`)
     await wait(200)
     const sel = await browser.eval(`window.__events.a.filter((e) => e.type === 'select').at(-1) ?? null`)
     truthy('embed: a node is there to click', clicked)
