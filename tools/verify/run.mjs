@@ -1217,16 +1217,19 @@ async function checkRender(sampleFile) {
         blocks: kids.filter((e) => e.classList.contains('antu-dock-sep')).length + 1,
         buttons: kids.filter((e) => e.tagName === 'BUTTON').length,
         segItems: kids.filter((e) => e.classList.contains('antu-dock-seg')).reduce((n, s) => n + s.children.length, 0),
+        grid: !!bar.querySelector('[data-chip="grid"]'),
       }
     })()`)
     truthy('measured the dock control blocks', dockShape)
     if (dockShape) {
-      // Six blocks: view · field toggles · orientation · grid · language · export.
+      // Six blocks: view · field toggles · orientation (with Stagger when vertical) · grid · language · export.
+      // The grid block is offered only while the rows are not staggered (spec/fact/rendering.md §8.1), so a
+      // vertical page, staggered by default, has five.
       // The export action is separated off on its own, because it is the only **action** in
       // the dock while everything else is a state toggle.
       // The count is asserted rather than inferred: a resurrected heading switch would add
       // a seventh, and that is exactly what this replaced assertion was meant to catch.
-      eq('the dock has six control blocks', dockShape.blocks, 6)
+      eq(`the dock has ${dockShape.grid ? 'six' : 'five'} control blocks (the grid block ${dockShape.grid ? 'offered' : 'not offered while the rows are staggered'})`, dockShape.blocks, dockShape.grid ? 6 : 5)
       truthy(
         'the dock still carries the controls it should',
         dockShape.buttons >= 5 && dockShape.segItems >= 4,
