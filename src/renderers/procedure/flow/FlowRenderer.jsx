@@ -19,7 +19,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { usePreset, usePrefs } from '../../../shell/env.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import FlowNode from './FlowNode.jsx'
@@ -28,6 +28,7 @@ import ConnectionLayerNode from './ConnectionLayerNode.jsx'
 import StageBoxNode from './StageBoxNode.jsx'
 import FlowDock from './FlowDock.jsx'
 import { buildProcedureGraph } from './layout.js'
+import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
 /** Node types used by the flowchart. Adding one means registering one line here. */
 const nodeTypes = {
@@ -55,10 +56,11 @@ const DECORATION = {
   style: { pointerEvents: 'none' },
 }
 
-/** External preset: used only by MCP's antu_preview (same convention as the timeline) */
-const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
-
 export default function ProcedureFlow({ spec }) {
+  // External preset: used only by MCP's antu_preview (same convention as the timeline)
+  // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
+  const PRESET = usePreset()
+  const prefs = usePrefs()
   const specKey = spec?.title || ''
   const hasStages = Array.isArray(spec?.stages) && spec.stages.length > 0
   const hasRules = Array.isArray(spec?.rules) && spec.rules.length > 0
@@ -66,30 +68,30 @@ export default function ProcedureFlow({ spec }) {
   // The switches are remembered per diagram, like the orientation: what to show is a choice about
   // this data (many diagrams have no stages at all), so turning stages off on one must not turn
   // them off everywhere (issue #22)
-  const [fieldPrefs, setFieldPrefs] = useState(() => readPrefs().flowFieldsByDiagram || {})
+  const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().flowFieldsByDiagram || {})
   const fields = { ...FIELD_DEFAULTS, ...fieldPrefs[specKey], ...(PRESET?.fields || {}) }
   const toggleField = (key, value) => {
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], [key]: value } }
     setFieldPrefs(map)
-    writePrefs({ flowFieldsByDiagram: map })
+    prefs.write({ flowFieldsByDiagram: map })
   }
 
   // Orientation: remembered per diagram, as with the timeline. With nothing chosen a
   // flowchart reads top to bottom (§6.1): the main line runs down the centre of the screen.
-  const [orientationPrefs, setOrientationPrefs] = useState(() => readPrefs().orientations || {})
+  const [orientationPrefs, setOrientationPrefs] = useState(() => prefs.read().orientations || {})
   const orientation = PRESET?.orientation || orientationPrefs[specKey] || 'vertical'
   const toggleOrientation = (next) => {
     const map = { ...orientationPrefs, [specKey]: next }
     setOrientationPrefs(map)
-    writePrefs({ orientations: map })
+    prefs.write({ orientations: map })
   }
 
   // Link style: curved (the default, the reader's choice: it reads softer, like Mermaid) or
   // straight (orthogonal). Both draw the same route. One choice for every diagram, remembered.
-  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || readPrefs().linkStyle || 'curved')
+  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || prefs.read().linkStyle || 'curved')
   const toggleLinkStyle = (next) => {
     setLinkStyle(next)
-    writePrefs({ linkStyle: next })
+    prefs.write({ linkStyle: next })
   }
 
   // Only the switches that move geometry go into layout: detail changes what a node shows,
@@ -108,6 +110,7 @@ export default function ProcedureFlow({ spec }) {
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
+  useSelectEvent(spec, pinnedId)
   const preview = useMemo(
     () => ({
       hoveredId,

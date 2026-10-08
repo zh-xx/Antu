@@ -18,7 +18,8 @@ import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState, useEdge
 import { useLang } from './LangContext.jsx'
 import { useTheme, themeVars } from '../theme/ThemeContext.jsx'
 import { FIT_PADDING, fitWidthZoom, fitZoom } from '../core/canvas.js'
-import { exportPng as runExportPng } from './exportPng.js'
+import { exportPng as runExportPng, renderPng } from './exportPng.js'
+import { useEnv, useUi } from './env.js'
 
 /** Zoom-in ceiling. It used to be 1:1, on the grounds that "zooming further only
  *  stretches the same pixels": true of the information content, false for
@@ -134,11 +135,15 @@ export default function Canvas({
     else rfRef.current.fitView({ padding: FIT_PADDING, duration })
   }
   const firstFitRef = useRef(true)
+  const { drawn } = useEnv()
   useEffect(() => {
     // Wait one frame so React Flow measures the new sizes first
     const id = requestAnimationFrame(() => {
-      fit(firstFitRef.current ? 0 : 300)
+      const first = firstFitRef.current
+      fit(first ? 0 : 300)
       firstFitRef.current = false
+      // the diagram is on the screen and fitted: a host waiting on `ready` may now take its picture
+      if (first) drawn()
     })
     return () => cancelAnimationFrame(id)
   }, [fitKey ?? graph])
@@ -189,6 +194,25 @@ export default function Canvas({
     }),
     [graph],
   )
+
+  // A host that mounted the diagram (src/embed/) asks the canvas for these two; on the viewer page nobody does
+  const { commands } = useEnv()
+  // the latest fit, read when the command comes
+  const fitRef = useRef(fit)
+  fitRef.current = fit
+  useEffect(() => {
+    const offFit = commands.on('fitView', () => fitRef.current(300))
+    const offPng = commands.on('exportPng', ({ pixelRatio } = {}) => renderPng({ rootEl: canvasRef.current, graph, pixelRatio }))
+    return () => {
+      offFit()
+      offPng()
+    }
+  }, [commands, graph])
+
+  // The pieces of the shell a host may turn off (`mount(…, { ui })`); all on for the viewer page
+  const showZoom = useUi('zoom')
+  const showMinimap = useUi('minimap')
+  const showCapsule = useUi('capsule')
 
   // The theme reaches the diagram only: its CSS variables sit on the viewport (the layer the export clones), not on the
   // app root, so the shell round it keeps one look in every theme
@@ -245,10 +269,10 @@ export default function Canvas({
         {/* The shell (dot grid, zoom, minimap, dock) is not themed: only the diagram is; its variables are set on the viewport below */}
         <Background gap={20} color="#e8ebef" />
         {/* The padding must match the initial fit, or clicking the button once makes the zoom jump */}
-        <Controls showInteractive={false} onFitView={() => fit(300)} />
+        {showZoom && <Controls showInteractive={false} onFitView={() => fit(300)} />}
         {/* The display controls float centred below the canvas: the zoom controls are bottom left and the minimap bottom right, so the three do not collide */}
-        <Panel position="bottom-center">{children}</Panel>
-        <MiniMap pannable zoomable nodeColor={miniColor} />
+        {showCapsule && <Panel position="bottom-center">{children}</Panel>}
+        {showMinimap && <MiniMap pannable zoomable nodeColor={miniColor} />}
       </ReactFlow>
     </main>
   )

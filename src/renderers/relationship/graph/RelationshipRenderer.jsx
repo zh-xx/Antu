@@ -23,7 +23,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { usePreset, usePrefs } from '../../../shell/env.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
@@ -33,6 +33,7 @@ import GroupBoxNode from './GroupBoxNode.jsx'
 import RelationshipDock from './RelationshipDock.jsx'
 import { buildRelationshipGraph } from './layout.js'
 import { lookedAt } from './secures.js'
+import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
 /** Node types used by the graph. Adding one means registering one line here. */
 const nodeTypes = {
@@ -55,10 +56,11 @@ const DECORATION = {
   style: { pointerEvents: 'none' },
 }
 
-/** External preset: used only by MCP's antu_preview (same convention as the other renderers) */
-const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
-
 export default function RelationshipGraph({ spec }) {
+  // External preset: used only by MCP's antu_preview (same convention as the other renderers)
+  // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
+  const PRESET = usePreset()
+  const prefs = usePrefs()
   // Namespaced: the flowchart keys its remembered choices by title too, and two diagrams of
   // different types may share a title
   const specKey = `rel:${spec?.title || ''}`
@@ -66,12 +68,12 @@ export default function RelationshipGraph({ spec }) {
   const { t, lang } = useLang()
 
   // What to show is a choice about this data, so it is remembered per diagram (as in the flowchart)
-  const [fieldPrefs, setFieldPrefs] = useState(() => readPrefs().relationshipFieldsByDiagram || {})
+  const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().relationshipFieldsByDiagram || {})
   const fields = { ...FIELD_DEFAULTS, ...fieldPrefs[specKey], ...(PRESET?.fields || {}) }
   const setField = (patch) => {
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], ...patch } }
     setFieldPrefs(map)
-    writePrefs({ relationshipFieldsByDiagram: map })
+    prefs.write({ relationshipFieldsByDiagram: map })
   }
   const toggleKind = (kind) => {
     const hidden = fields.hiddenKinds.includes(kind) ? fields.hiddenKinds.filter((k) => k !== kind) : [...fields.hiddenKinds, kind]
@@ -79,19 +81,19 @@ export default function RelationshipGraph({ spec }) {
   }
 
   // Orientation: remembered per diagram. With nothing chosen a holder stands above what it holds.
-  const [orientationPrefs, setOrientationPrefs] = useState(() => readPrefs().orientations || {})
+  const [orientationPrefs, setOrientationPrefs] = useState(() => prefs.read().orientations || {})
   const orientation = PRESET?.orientation || orientationPrefs[specKey] || 'vertical'
   const toggleOrientation = (next) => {
     const map = { ...orientationPrefs, [specKey]: next }
     setOrientationPrefs(map)
-    writePrefs({ orientations: map })
+    prefs.write({ orientations: map })
   }
 
   // Link style: curved (the default) or straight, one choice for every diagram, remembered
-  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || readPrefs().linkStyle || 'curved')
+  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || prefs.read().linkStyle || 'curved')
   const toggleLinkStyle = (next) => {
     setLinkStyle(next)
-    writePrefs({ linkStyle: next })
+    prefs.write({ linkStyle: next })
   }
 
   // Only the switches that move geometry go into layout: the group boxes turn camps into columns;
@@ -104,6 +106,7 @@ export default function RelationshipGraph({ spec }) {
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
+  useSelectEvent(spec, pinnedId)
   const preview = useMemo(
     () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),
     [hoveredId, pinnedId],

@@ -12,7 +12,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { usePrefs } from '../../../shell/env.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
@@ -21,26 +21,29 @@ import FocusDock from '../focus/FocusDock.jsx'
 import ChainClaimNode from './ChainClaimNode.jsx'
 import ChainLayerNode from './ChainLayerNode.jsx'
 import { buildChainGraph } from './layout.js'
+import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
 const nodeTypes = { rnode: EntityNode, chainClaim: ChainClaimNode, chainLayer: ChainLayerNode }
 
 export default function RelationshipChain({ spec }) {
+  const prefs = usePrefs()
   const specKey = `rel:${spec?.title || ''}`
   const { t, lang } = useLang()
 
   // The labels switch is shared with the graph and the focus view (same key)
-  const [fieldPrefs, setFieldPrefs] = useState(() => readPrefs().relationshipFieldsByDiagram || {})
+  const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().relationshipFieldsByDiagram || {})
   const showLabels = fieldPrefs[specKey]?.labels ?? true
   const setLabels = (v) => {
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], labels: v } }
     setFieldPrefs(map)
-    writePrefs({ relationshipFieldsByDiagram: map })
+    prefs.write({ relationshipFieldsByDiagram: map })
   }
 
   const layout = useMemo(() => buildChainGraph(spec, { t }), [spec, lang])
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
+  useSelectEvent(spec, pinnedId)
   const preview = useMemo(
     () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),
     [hoveredId, pinnedId],

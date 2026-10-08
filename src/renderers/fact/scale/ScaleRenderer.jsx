@@ -9,6 +9,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
+import { useEnv } from '../../../shell/env.js'
 import { useExport } from '../../../shell/useExport.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import ScaleLayerNode from './ScaleLayerNode.jsx'
@@ -17,15 +18,16 @@ import ScaleRunNode from './ScaleRunNode.jsx'
 import ScaleRunListNode from './ScaleRunListNode.jsx'
 import ScaleDock from './ScaleDock.jsx'
 import { buildScaleGraph, PAD_X, PAD_Y, TIME_FONT, TIME_LH, TITLE_FONT, TITLE_LH } from './layout.js'
+import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
 const nodeTypes = { scaleLayer: ScaleLayerNode, scaleCard: ScaleCardNode, scaleRun: ScaleRunNode, scaleRunList: ScaleRunListNode }
 
 /** The titles measured in the page's font, so a card is exactly as tall as its title (see chronicle) */
-function makeMeasure() {
+function makeMeasure(root) {
   if (typeof document === 'undefined') return null
   const ctx = document.createElement('canvas').getContext?.('2d')
   if (!ctx) return null
-  const family = getComputedStyle(document.querySelector('.antu-app') || document.body).fontFamily
+  const family = getComputedStyle(root?.querySelector?.('.antu-app') || document.body).fontFamily
   const font = `600 ${TITLE_FONT}px ${family}`
   const cache = new Map()
   return (text) => {
@@ -40,11 +42,13 @@ function makeMeasure() {
 }
 
 export default function FactScale({ spec }) {
-  const measure = useMemo(() => makeMeasure(), [])
+  const { root } = useEnv()
+  const measure = useMemo(() => makeMeasure(root), [root])
   const graph = useMemo(() => buildScaleGraph(spec, {}, { measure }), [spec, measure])
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
+  useSelectEvent(spec, pinnedId)
   const { canvasRef, exporting, onExport } = useExport(spec?.title)
   const preview = useMemo(
     () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),
