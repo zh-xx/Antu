@@ -10,6 +10,7 @@
 import { validate as problemsOf, notesOf, layoutReport, formatLayoutReport, kindProblem } from '../lib/report.mjs'
 import { versionsReport } from '../lib/versions.mjs'
 import { listKnowledgeTypes, layoutKindsOf } from '../../src/core/registry.js'
+import { normalizeSpec } from '../../src/core/normalize.js'
 
 // set by the bundler; a run from the source reads it where the engine does
 // eslint-disable-next-line no-undef
@@ -38,6 +39,16 @@ export function layout(spec, { kind, orientation } = {}) {
   if (bad) return { ok: false, reason: bad }
   const report = layoutReport(spec, { kind, orientation })
   return report.ok ? { ...report, text: formatLayoutReport(report) } : report
+}
+
+/**
+ * Repair what is inconsistent in the marks of a spec but not in its content, and say what was done
+ * (issue 163). For a procedure: the main line, when the edges marked `main` do not form one chain from the
+ * start to an end. The input is not modified. Call it before `validate` when a model wrote the spec.
+ * @returns {{ spec: unknown, changes: string[] }}
+ */
+export function normalize(spec) {
+  return normalizeSpec(spec)
 }
 
 /** The types and their kinds, the first kind being the one a diagram opens in */

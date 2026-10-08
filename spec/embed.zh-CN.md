@@ -20,8 +20,8 @@
 
 | 导入 | 运行于 | 提供 | 构建 |
 | --- | --- | --- | --- |
-| `@zh-xx/antu/embed` | 浏览器 | `mount`、`validate`、`kindsOf` | `vite.embed.config.js` → `embed/antu-embed.js` |
-| `@zh-xx/antu/validate` | Node 或浏览器 | `validate`、`layout`、`kinds`、`versions` | `vite.api.config.js` → `lib/validate.mjs` |
+| `@zh-xx/antu/embed` | 浏览器 | `mount`、`validate`、`normalize`、`kindsOf` | `vite.embed.config.js` → `embed/antu-embed.js` |
+| `@zh-xx/antu/validate` | Node 或浏览器 | `validate`、`normalize`、`layout`、`kinds`、`versions` | `vite.api.config.js` → `lib/validate.mjs` |
 | `@zh-xx/antu/html` | Node | `renderHtml` | `vite.api.config.js` → `lib/html.mjs` |
 
 每个都是一个 ES 模块，依赖全部打在里面，和命令行、MCP 服务端一样，包本身没有需要安装的依赖。每个都附类型声明
@@ -106,6 +106,7 @@ shadow root 是开放的，正为此。
 | | |
 | --- | --- |
 | `validate(spec)` | `{ ok, errors, notes }`。每条错误开头写明字段：``nodes[2] (n-3): `kind` is "bogus", …``，原样交还给模型修改即可。`notes` 不是错误（只在没有错误时给出） |
+| `normalize(spec)` | `{ spec, changes }`：修正了“标记有误、内容无误”之处的副本，以及做了什么（见下文）。不修改传入的对象 |
 | `layout(spec, { kind, orientation })` | `antu layout` 的几何报告：`{ ok: true, type, kind, text, … }`，或 `{ ok: false, reason, errors? }` |
 | `kinds()` | `{ 类型: [画法, …] }`，第一种是默认画法 |
 | `versions()` | 即 `antu versions --json` 的输出 |
@@ -115,6 +116,20 @@ shadow root 是开放的，正为此。
 `type` 不是四种类型之一时报错（本次改动起；此前会放行，但没有任何渲染器能画它）。最常见的笔误是把画法名写成类型，
 这时错误会指出它属于哪个类型：``\`type\` is "flow", which is a way of drawing a procedure diagram, not a type: write `"type": "procedure"` …``。
 所有入口都如此：MCP 服务端、命令行、页面，以及这里的入口。
+
+### `normalize`
+
+模型写对图的内容，远比写对其中的标记容易。`normalize` 用确定的规则修正标记，并在 `changes` 里逐条写明改了什么
+（智能体读得懂的文字）。应用可以在 `validate` 之前调用它，只把代码判断不了的问题交给模型再改一轮。案图自己不会
+调用它。`@zh-xx/antu/embed` 里也有，是同一个函数。
+
+- **procedure：主线。** 标为 `main` 的边已经是从起点到某个终点的一条链（或一条都没标）时，不做任何改动。否则
+  （一个节点有两条标为主线的出边，或链在中途断开、绕回，例如把自动续期标成了主线），沿一条从起点到正常结束的路
+  重新标出主线：`outcome` 为 `positive` 的 `end`，没有就取任一个 `end`。这条路尽量沿原本已标的边走；路外的标记
+  去掉。到不了任何终点时不做改动，仍由 `validate` 报错。
+- **其他类型：** 暂无（`changes: []`）。
+
+它从不增删节点或边，也不改动上面所说标记以外的任何内容。
 
 ## 5. `@zh-xx/antu/html`
 

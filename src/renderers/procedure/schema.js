@@ -15,6 +15,7 @@
 
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateProcedure, KINDS, OUTCOMES, DOMAINS } from './flow/rules.js'
+import { normalizeProcedure } from './flow/normalize.js'
 import { buildRouteGraph } from './route/layout.js'
 import { buildProcedureGraph } from './flow/layout.js'
 import { fitZoom, textSizeLines } from '../../core/canvas.js'
@@ -273,6 +274,8 @@ export const procedureKnowledge = {
 
   /** Validation: there is only one copy of the rules, in flow/rules.js */
   validate: (spec) => validateProcedure(spec),
+  /** Repair the main-line marks of a copy (flow/normalize.js, core/normalize.js) */
+  normalize: (spec) => normalizeProcedure(spec),
 
   /** The version, status and release of each way of drawing (spec/versioning.md, "The diagrams"); the same names as `layouts` */
   diagrams: {

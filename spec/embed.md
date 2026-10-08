@@ -21,8 +21,8 @@ keeps it (`validate`), and makes the self-contained page on its own server or co
 
 | Import | Runs in | What it gives | Built by |
 | --- | --- | --- | --- |
-| `@zh-xx/antu/embed` | the browser | `mount`, `validate`, `kindsOf` | `vite.embed.config.js` → `embed/antu-embed.js` |
-| `@zh-xx/antu/validate` | Node or the browser | `validate`, `layout`, `kinds`, `versions` | `vite.api.config.js` → `lib/validate.mjs` |
+| `@zh-xx/antu/embed` | the browser | `mount`, `validate`, `normalize`, `kindsOf` | `vite.embed.config.js` → `embed/antu-embed.js` |
+| `@zh-xx/antu/validate` | Node or the browser | `validate`, `normalize`, `layout`, `kinds`, `versions` | `vite.api.config.js` → `lib/validate.mjs` |
 | `@zh-xx/antu/html` | Node | `renderHtml` | `vite.api.config.js` → `lib/html.mjs` |
 
 Each is one ES module with every dependency inside, as the command line and the MCP server are; the package
@@ -114,6 +114,7 @@ The checks, notes and geometry report of the command line and the MCP server (`t
 | | |
 | --- | --- |
 | `validate(spec)` | `{ ok, errors, notes }`. Each error names its field: ``nodes[2] (n-3): `kind` is "bogus", …`` — give them back to the model as they are. `notes` are not errors (given only when there are none) |
+| `normalize(spec)` | `{ spec, changes }`: a copy with what is wrong in the marks but not in the content repaired, and what was done (below). The input is not modified |
 | `layout(spec, { kind, orientation })` | the geometry report of `antu layout`: `{ ok: true, type, kind, text, … }`, or `{ ok: false, reason, errors? }` |
 | `kinds()` | `{ type: [kind, …] }`, the first kind being the one a diagram opens in |
 | `versions()` | what `antu versions --json` prints |
@@ -125,6 +126,23 @@ A `type` that is not one of the four is an error (since this change; it used to 
 it). A way of drawing written as the type, the likeliest slip, says which type it belongs to:
 ``\`type\` is "flow", which is a way of drawing a procedure diagram, not a type: write `"type": "procedure"` …``.
 This holds on every surface: the MCP server, the command line, the page, and these entries.
+
+### `normalize`
+
+A model gets the content of a diagram right far more often than its marks. `normalize` repairs the marks,
+deterministically, and lists each change in `changes` (in words an agent can read), so a host can call it
+before `validate` and spend a round with the model only on what code cannot decide. Nothing in Antu calls it
+by itself. It is in `@zh-xx/antu/embed` as well, the same function.
+
+- **procedure, the main line.** When the edges marked `main` are already one chain from the start to an end
+  (or nothing is marked), nothing changes. Otherwise (two marked edges out of one node, or a chain that breaks
+  or loops back, such as an automatic renewal marked main) the main line is marked again along a path from the
+  start to the normal end: an `end` whose `outcome` is `positive`, else any `end`. The path keeps to the edges
+  that were already marked wherever it can; the marks off it are removed. When no end can be reached, nothing
+  changes, and `validate` reports the problem as before.
+- **The other types:** nothing yet (`changes: []`).
+
+It never adds or removes a node or an edge, and never changes anything but the marks named above.
 
 ## 5. `@zh-xx/antu/html`
 
