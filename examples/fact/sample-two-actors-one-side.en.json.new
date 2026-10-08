@@ -1,0 +1,176 @@
+{
+  "specVersion": 2,
+  "type": "fact",
+  "title": "Sales contract dispute · Two parties on one side (illustrative data)",
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "Huayuan Trading Co.",
+      "role": "Plaintiff",
+      "groupId": "g-1"
+    },
+    {
+      "id": "a-2",
+      "name": "Zhang",
+      "role": "Plaintiff's business manager",
+      "groupId": "g-1"
+    },
+    {
+      "id": "a-3",
+      "name": "Xincheng Building Materials Co.",
+      "role": "Defendant",
+      "groupId": "g-2"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Plaintiff's acts"
+    },
+    {
+      "id": "g-2",
+      "label": "Defendant's acts"
+    },
+    {
+      "id": "g-3",
+      "label": "Joint acts or objective course"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "Sales contract",
+      "loc": {
+        "file": "买卖合同.pdf",
+        "page": 1
+      },
+      "quote": "Party A shall supply one batch of building materials for a price of RMB 860,000; Party B shall pay in full within 30 days after taking delivery."
+    },
+    {
+      "id": "s-2",
+      "type": "evidence",
+      "name": "Delivery notes and receipt record",
+      "loc": {
+        "file": "发货单.pdf",
+        "page": 2
+      },
+      "quote": "On 18 March 2024 the goods were dispatched in two truckloads and were received by Zhang on 20 March, with no objection raised at the time of receipt."
+    },
+    {
+      "id": "s-3",
+      "type": "evidence",
+      "name": "Demand letter and postage receipt",
+      "loc": {
+        "file": "催告函.pdf",
+        "page": 1
+      },
+      "quote": "Xincheng Building Materials Co. is required to pay the price of RMB 860,000 in full within ten days after receiving this letter."
+    }
+  ],
+  "slots": [
+    {
+      "events": [
+        {
+          "id": "ev-1",
+          "date": "2024-03-05",
+          "label": "Huayuan Trading and Xincheng sign the sales contract",
+          "summary": "RMB 860,000, pay in 30 days",
+          "actorIds": [
+            "a-1",
+            "a-3"
+          ],
+          "detail": "It was agreed that Huayuan Trading Co. would supply one batch of building materials for RMB 860,000, and that Xincheng Building Materials Co. would pay in full within 30 days after taking delivery.",
+          "sourceIds": [
+            "s-1"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-2",
+          "date": "2024-03-18",
+          "label": "Huayuan Trading delivers the goods as agreed",
+          "summary": "Two truckloads, freight borne by Party A",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "Huayuan Trading Co. dispatched all the goods in two truckloads, with freight borne by Party A, and handed over the delivery notes with the goods.",
+          "sourceIds": [
+            "s-2"
+          ]
+        },
+        {
+          "id": "ev-3",
+          "date": "2024-03-20",
+          "label": "Zhang receives and checks the goods on site",
+          "summary": "No objection as to quantity or quality",
+          "actorIds": [
+            "a-2"
+          ],
+          "detail": "Zhang, the business manager of Huayuan Trading Co., attended the site, checked the goods and signed for them, raising no objection as to quantity or quality at the time of receipt.",
+          "sourceIds": [
+            "s-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-4",
+          "date": "2024-04-25",
+          "label": "Xincheng fails to pay on time",
+          "summary": "Ten days overdue, nothing paid",
+          "actorIds": [
+            "a-3"
+          ],
+          "detail": "Ten days after the agreed payment deadline expired, Xincheng Building Materials Co. had paid nothing and had raised no objection."
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-5",
+          "date": "2024-05-10",
+          "label": "Huayuan Trading sends a demand letter",
+          "summary": "Payment demanded within ten days",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "Huayuan Trading Co. sent a demand letter by registered post, requiring Xincheng Building Materials Co. to pay the price in full within ten days after receiving it.",
+          "sourceIds": [
+            "s-3"
+          ]
+        },
+        {
+          "id": "ev-6",
+          "date": "2024-05-16",
+          "label": "Xincheng undertakes in writing to pay",
+          "summary": "Promised by month-end, never paid",
+          "actorIds": [
+            "a-3"
+          ],
+          "detail": "Xincheng Building Materials Co. replied undertaking to pay the full price by the end of that month, but still did not perform."
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-7",
+          "date": "2024-06-20",
+          "label": "Huayuan Trading brings proceedings",
+          "summary": "Claims RMB 860,000 plus interest",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "Huayuan Trading Co. brought proceedings before the court, seeking an order that Xincheng Building Materials Co. pay the price of RMB 860,000 together with interest for late payment."
+        }
+      ]
+    }
+  ]
+}

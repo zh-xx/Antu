@@ -182,10 +182,6 @@ export const en = {
   'err.mustBeString': ({ at, field }) => `${at}: \`${field}\` must be a string`,
   'err.duplicateId': ({ at, id }) => `${at}: duplicate id "${id}"`,
   'err.missingRef': ({ at, field, kind, id }) => `${at}: ${field} refers to a non-existent ${kind} "${id}"`,
-  'err.bothSides': ({ at, names }) =>
-    `${at}: ${names} appear on both sides; a party may only be on one side`,
-  'err.badSplitBy': ({ at, value }) =>
-    `${at}: \`splitBy\` must be "actor" or "group", got "${value}"`,
   'err.tooManyGroups': ({ at, max, actual }) =>
     `${at}: at most ${max} groups (the axis has two sides plus the centre), got ${actual}`,
   'err.slotsEmpty': '`slots` must not be empty',
@@ -206,14 +202,22 @@ export const en = {
     `${at}: a side group ("${groupId}") must name exactly one party (currently ${n}); events that involve no particular party belong in the centre group or should omit groupId`,
   'err.multiActorNeedsAxis': ({ at, n, groupId }) =>
     `${at}: an event with ${n} parties belongs on the centre axis, but groupId points at a side group ("${groupId}"); the two contradict each other`,
+  'err.viewsRemoved':
+    '`views` is no longer part of the format (placement rules v1): delete it. A diagram has one placement: with 2 or more parties, write `groupId` on each party (its side); with 1 party, on the events',
+  'err.actorNeedsGroup': ({ at, n }) =>
+    `${at}: the diagram has ${n} parties, so each party says which side it is on: write \`groupId\` with the 1st or the 2nd of \`groups\` (add \`groups\` if there are none)`,
+  'err.actorGroupNotSide': ({ at, groupId }) =>
+    `${at}: \`groupId\` "${groupId}" is the 3rd group, the axis; a party belongs to the 1st or the 2nd group (a side)`,
+  'err.actorGroupOneParty': ({ at }) =>
+    `${at}: a party carries \`groupId\` only when the diagram has 2 or more parties; with one party the groups split the events, so write \`groupId\` on the events`,
+  'err.eventGroupWithParties': ({ at }) =>
+    `${at}: the diagram has 2 or more parties, so the groups belong to the parties and an event is placed by its \`actorIds\`: delete the event's \`groupId\` (one party → that party's side; several or none → the axis)`,
   'err.specNotObject': 'a spec must be a JSON object',
   'err.envelopeTypeRequired': 'missing required field `type` (the engine uses it to pick a renderer)',
   'err.envelopeTypeString': '`type` must be a string',
   'err.envelopeTitleString': '`title` must be a string',
   'err.specVersionForm': '`specVersion` must be a whole number from 1 up, got {value}',
   'err.specVersionNewer': '`specVersion` is {value}, newer than this engine knows for "{type}" ({known}): update the engine, or write the file for the older format',
-  'err.viewsNotArray': '`views` must be an array',
-  'err.splitByDoc': '`splitBy` must be "actor" (split by party) or "group" (split by group)',
   'err.slotNotArray': '`slots` must be an array (one slot = one time point)',
   'err.slotShape': ({ at }) => `${at}: must be an object of the form { events: [ … ] }`,
   'err.eventsNotArray': ({ at }) => `${at}.events must be an array`,
@@ -468,8 +472,6 @@ export const en = {
   'note.dateOrder': ({ at, id, date, beforeAt, beforeId, beforeDate }) =>
     `${at} ("${id}", ${date}) comes after ${beforeAt} ("${beforeId}", ${beforeDate}) in the slots but its date is wholly earlier. ` +
     'The order of the slots is kept and nothing is reordered; check which of the two dates is wrong, or whether the slots are in the wrong order',
-  'note.viewBlocked': ({ label, reason }) =>
-    `view "${label}" does not fit, so it will not appear in the view dropdown: ${reason}`,
   'perr.noEnd': 'no node has `kind: "end"` (a flow needs an end)',
   'perr.deadEnd': ({ id, label }) =>
     `nodes (${id}): "${label}" is a dead end: it is neither end nor note but has no outgoing edge. ` +

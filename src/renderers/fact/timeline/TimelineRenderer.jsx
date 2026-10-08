@@ -2,8 +2,8 @@
 //  src/renderers/fact/timeline/TimelineRenderer.jsx — the timeline
 //
 //  This file owns the "timeline" way of drawing:
-//    1. pick a view that fits, and compute the spec into nodes (timeline/layout.js)
-//    2. hold the presentation state: view, card fields, orientation, underlying grid lines
+//    1. compute the spec into nodes (timeline/layout.js)
+//    2. hold the presentation state: card fields, orientation, underlying grid lines, staggered rows
 //    3. hand the nodes, the overlay state and the control dock to the canvas shell (shell/Canvas.jsx)
 //
 //  It **does not touch React Flow**: viewport, zoom, minimap and size changes all live in the
@@ -28,7 +28,6 @@ import LinkLayerNode from './LinkLayerNode.jsx'
 import CellLayerNode from './CellLayerNode.jsx'
 import { CARD_PAD_X, CARD_PAD_Y, LABEL_FONT, SNIPPET_FONT } from '../cardGeometry.js'
 import { buildFactGraph } from './layout.js'
-import { viewsOf } from './grid.js'
 
 /** Node types used by the timeline. Adding one means registering one line here. */
 const nodeTypes = {
@@ -44,7 +43,7 @@ const FIELD_DEFAULTS = { sources: false, actors: false, summary: true }
 
 /**
  * External preset: used only by MCP's antu_preview.
- * It has to specify "which orientation, which fields, which view" for a screenshot without
+ * It has to specify "which orientation, which fields" for a screenshot without
  * polluting the user's own preferences, so it travels through a one-shot global rather than
  * localStorage.
  */
@@ -84,9 +83,6 @@ export default function FactTimeline({ spec }) {
     writePrefs({ staggers: map })
   }
 
-  // View index. One page holds one data set, so there is no "reset when the diagram changes".
-  const [viewIndex, setViewIndex] = useState(PRESET?.viewIndex ?? 0)
-
   // Orientation of the time axis. What was set by hand is remembered per diagram; what was not
   // is decided by the slot count: 5 or more slots vertical, 4 or fewer horizontal. A horizontal
   // cell is 316 wide, and one screen minus the heading column fits only about 3.8 slots.
@@ -100,43 +96,11 @@ export default function FactTimeline({ spec }) {
     writePrefs({ orientations: map })
   }
 
-  // The view, like the field switches, is an input to layout: the view decides the side split and
-  // which columns exist, the fields decide how many rows a card takes. Change either and the whole
-  // diagram is laid out again and the viewport re-fits.
-  const views = useMemo(() => viewsOf(spec), [spec])
-
-  // Lay out every view once first. **A view that does not fit does not become an option**: an
-  // option that cannot be clicked is noise. Its index in the original list is kept and sent back
-  // on selection, so that filtering cannot shift it.
-  const viewInfos = useMemo(
-    () =>
-      views.map((v, i) => {
-        const g = buildFactGraph(spec, fields, v, orientation)
-        const reason = g.errors.length > 0 ? g.errors[0] : ''
-        if (reason) {
-          // A view that does not fit never appears among the options, so nothing in the interface
-          // shows that it is broken. A warning is printed so that whoever wrote the data (an
-          // agent) can find it. Fixed English, **not in the interface dictionary**: the dictionary
-          // holds user-facing text only, and a string that never reaches the interface would force
-          // both dictionaries to carry an unused Chinese entry (the validator's key-consistency
-          // check exists for exactly this).
-          console.warn(`[antu] view "${v.label}" does not fit; removed from options. Reason: ${reason}`)
-        }
-        return { view: v, index: i, reason }
-      }),
-    [spec, fields, views, orientation],
-  )
-  const usable = useMemo(() => viewInfos.filter((info) => !info.reason), [viewInfos])
-
-  // The selected one must also be one that fits (the first view in the data may not):
-  // fall back to the first usable one, and only when none is usable fall back to the original
-  // so that the problem is visible.
-  const safeIndex =
-    viewInfos[viewIndex] && !viewInfos[viewIndex].reason ? viewIndex : (usable[0]?.index ?? viewIndex)
-  const view = (viewInfos[safeIndex] || viewInfos[0]).view
+  // The field switches are an input to layout: they decide how many rows a card takes. Change them
+  // and the whole diagram is laid out again and the viewport re-fits.
   const graph = useMemo(
-    () => buildFactGraph(spec, fields, view, orientation, { stagger }),
-    [spec, fields, view, orientation, stagger],
+    () => buildFactGraph(spec, fields, undefined, orientation, { stagger }),
+    [spec, fields, orientation, stagger],
   )
 
   // Overlay state: hoveredId is the card the mouse passed over, pinnedId is the card clicked open
@@ -189,10 +153,6 @@ export default function FactTimeline({ spec }) {
           onPaneClick={() => setPinnedId(null)}
         >
           <ControlDock
-            viewOptions={usable}
-            viewCount={viewInfos.length}
-            view={view}
-            onSelectView={setViewIndex}
             fields={fields}
             onToggleField={toggleField}
             orientation={orientation}

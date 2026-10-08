@@ -1,30 +1,17 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "Qian Min v. Sun Hao, right to health · The facts (fictional: charging in a corridor)",
 
   "actors": [
-    { "id": "a-1", "name": "Sun Hao", "role": "Defendant · the one who objected" },
-    { "id": "a-2", "name": "Qian Min", "role": "Plaintiff · the one objected to" }
+    { "id": "a-1", "name": "Sun Hao", "role": "Defendant · the one who objected", "groupId": "g-1" },
+    { "id": "a-2", "name": "Qian Min", "role": "Plaintiff · the one objected to", "groupId": "g-2" }
   ],
 
   "groups": [
     { "id": "g-1", "label": "What Sun Hao did" },
     { "id": "g-2", "label": "What Qian Min did" },
     { "id": "g-3", "label": "Done by both, or the objective course" }
-  ],
-
-  "views": [
-    { "label": "Sides by group", "splitBy": "group" },
-    { "label": "Sun Hao vs Qian Min", "splitBy": "actor",
-      "side1": { "label": "What Sun Hao did", "actors": ["a-1"] },
-      "side2": { "label": "What Qian Min did", "actors": ["a-2"] },
-      "axis": { "label": "Done by both, or the objective course" } },
-    { "label": "Sun Hao only", "splitBy": "actor",
-      "side1": { "label": "What Sun Hao did", "actors": ["a-1"] },
-      "side2": { "actors": [] },
-      "axis": { "label": "The rest" } },
-    { "label": "Time order only", "splitBy": "actor", "side1": { "actors": [] }, "side2": { "actors": [] } }
   ],
 
   "sources": [
@@ -85,7 +72,6 @@
           "id": "ev-2",
           "date": "2030-06-02T20:14:07",
           "label": "Sun Hao enters the corridor and presses the lift button",
-          "groupId": "g-1",
           "actorIds": ["a-1"],
           "detail": "At 20:14:07 Sun Hao entered the ground-floor corridor and pressed the lift's up button",
           "sourceIds": ["s-1"]
@@ -95,7 +81,6 @@
           "date": "2030-06-02T20:14:03",
           "label": "Qian Min charges a battery in the corridor",
           "summary": "Socket on the ground-floor wall",
-          "groupId": "g-2",
           "actorIds": ["a-2"],
           "detail": "Qian Min was charging an e-bike battery from the wall socket in the ground-floor corridor",
           "sourceIds": ["s-1"]
@@ -106,7 +91,6 @@
           "dateEnd": "2030-06-02T20:16:24",
           "label": "The two talk on in the corridor (the objection)",
           "summary": "Under five minutes, no contact",
-          "groupId": "g-3",
           "actorIds": ["a-1", "a-2"],
           "detail": "The two began to talk and kept talking while the lift came and went, with some sharp words; at 20:16:24 they left the corridor. The three videos show they were in contact for under five minutes",
           "sourceIds": ["s-1", "s-3"]
@@ -120,7 +104,6 @@
           "date": "2030-06-02T20:18:40",
           "label": "At the building entrance Qian Min speaks quickly",
           "summary": "Sun Hao stays even",
-          "groupId": "g-3",
           "actorIds": ["a-1", "a-2"],
           "detail": "Qian Min spoke quickly, Sun Hao evenly",
           "sourceIds": ["s-2"]
@@ -133,7 +116,6 @@
           "id": "ev-5",
           "date": "2030-06-02T20:19:06",
           "label": "They walk to the duty room, cable still in Qian Min's hand",
-          "groupId": "g-3",
           "actorIds": ["a-1", "a-2"],
           "detail": "The two walked towards the property duty room; the charging cable was still in Qian Min's hand",
           "sourceIds": ["s-2"]
@@ -147,7 +129,6 @@
           "date": "2030-06-02T20:21",
           "label": "Ambulance called",
           "summary": "Called 20:21, arrived 20:27",
-          "groupId": "g-3",
           "actorIds": [],
           "detail": "The emergency record says: ambulance called at 20:21, crew reached the patient at 20:27. The judgment does not say who made the call",
           "sourceIds": ["s-4", "s-5"]
@@ -163,7 +144,6 @@
           "dateNote": "The video clock reads 20:33:55 to 20:38:56; checked against the emergency record and the interview record, the real time is about 20:23 (the video clock runs about ten minutes fast)",
           "label": "Row at the duty room door, Sun Hao is led away",
           "summary": "Supervisor Zhou Qiang steps in",
-          "groupId": "g-3",
           "actorIds": ["a-1", "a-2"],
           "detail": "The two went on talking at the duty room door; Qian Min's voice kept rising and she stepped towards Sun Hao several times, and property supervisor Zhou Qiang pulled them apart; Zhou Qiang led Sun Hao away and Qian Min was taken into the duty room. The property staff Zhou Qiang and Wu Mei took part in calming them (not in the actors list)",
           "sourceIds": ["s-3"]
@@ -176,7 +156,6 @@
           "id": "ev-8",
           "date": "2030-06-02T20:27",
           "label": "The ambulance crew arrives",
-          "groupId": "g-3",
           "actorIds": [],
           "detail": "The ambulance crew reached the patient",
           "sourceIds": ["s-4"]
@@ -190,7 +169,6 @@
           "date": "2030-06-02",
           "label": "Qian Min has a sudden heart problem and is taken to hospital",
           "summary": "The judgment gives no time of day",
-          "groupId": "g-2",
           "actorIds": ["a-2"],
           "detail": "Qian Min, still upset, had a sudden heart problem and was taken to hospital for treatment (the judgment simplifies the onset and gives no time of day, so date is exact only to the day)",
           "sourceIds": ["s-6"]

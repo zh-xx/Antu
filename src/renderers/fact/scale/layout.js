@@ -24,6 +24,7 @@
 
 import { wrapLineCount, wrapLinesBy } from '../cardGeometry.js'
 import { gapOfMs, parseIso } from '../chronicle/layout.js'
+import { groupOfEvent } from '../timeline/grid.js'
 
 // ---------- geometry ----------
 
@@ -198,10 +199,11 @@ export function tickLabel(t, unit, prevT) {
 
 /** The lanes: one per group (at most three, as validation allows), then "other" if any event has none */
 export function lanesOf(spec, events) {
+  const groupOf = groupOfEvent(spec)
   const groups = (Array.isArray(spec?.groups) ? spec.groups.slice(0, 3) : []).filter((g) => g && g.id)
   const lanes = groups.map((g, i) => ({ key: g.id, label: g.label ?? '', groupIndex: i }))
   const known = new Set(lanes.map((l) => l.key))
-  if (events.some((e) => !known.has(e.groupId))) lanes.push({ key: '__other__', label: null, groupIndex: 2, other: true })
+  if (events.some((e) => !known.has(groupOf(e)))) lanes.push({ key: '__other__', label: null, groupIndex: 2, other: true })
   return lanes
 }
 
@@ -348,8 +350,9 @@ export function buildScaleGraph(spec, _fields = {}, { measure } = {}) {
 
   // 3. Lanes, and the marks in them
   const lanes = lanesOf(spec, flat.map((f) => f.event))
+  const groupOf = groupOfEvent(spec)
   const laneOf = (e) => {
-    const i = lanes.findIndex((l) => l.key === e.groupId)
+    const i = lanes.findIndex((l) => l.key === groupOf(e))
     return i >= 0 ? i : lanes.length - 1
   }
   // Lane heights follow the levels their cards use, so they are known only after placing (step 4)

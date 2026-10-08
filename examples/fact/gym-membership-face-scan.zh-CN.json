@@ -1,5 +1,5 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "韩磊视角 · 会员入场方式变更经过（虚构：健身房刷脸入场，单主体）",
 
@@ -11,11 +11,6 @@
     { "id": "g-1", "label": "正常（按约定履行）" },
     { "id": "g-2", "label": "异常（偏离约定）" },
     { "id": "g-3", "label": "客观经过（不涉及当事人）" }
-  ],
-
-  "views": [
-    { "label": "按履约情况", "splitBy": "group" },
-    { "label": "只看时间先后", "splitBy": "actor", "side1": { "actors": [] }, "side2": { "actors": [] } }
   ],
 
   "sources": [

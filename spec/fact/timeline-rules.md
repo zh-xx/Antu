@@ -1,6 +1,6 @@
-# fact timeline · placement rules v0
+# fact timeline · placement rules v1
 
-> Status: **confirmed** (2026-09, settled point by point by the originator).
+> Status: **confirmed** (2026-10). The rules of v0 (2026-09) stand, except the points listed under "What v1 changed".
 > Scope: the **placement** rules of a fact diagram, that is "where on the diagram an event goes".
 > Relationship: this document supersedes the old rules on groups, parties and order in section 3 of `spec/fact/schema-draft.md`. The definitions of the fields themselves still follow that document (except the slot structure, see §4).
 
@@ -8,6 +8,13 @@
 > When vertical, side 1 is on the **left** and side 2 on the **right**; when horizontal, side 1 is at the **top** and side 2 at the **bottom**.
 > The ASCII diagrams below are drawn **vertical**, so the "top / bottom" that appear in them are the actual positions of side 1 / side 2 when vertical,
 > not specification terminology.
+
+> **What v1 changed.**
+> 1. What the groups split depends on how many parties the diagram has: with 0 or 1 party, the groups split the **acts** and are written on the events; with 2 or more, they split the **parties** (the two camps), are written on the parties, and an event's place follows from its parties (§2).
+> 2. **Views (`views`) are gone.** A diagram has one placement, and the timeline, the time scale and the chronicle all follow it.
+> 3. **Old data is not carried over.** A page made earlier holds its own data and program and still opens as it was; an old JSON given to the new version is refused, with what to change (format generation 2, `spec/fact/changes.md`).
+>
+> Why: in v0 a group said both "what kind of act" and "which side", and an event of two or more parties had to go in the 3rd group. An author who grouped by subject had to put a loan (an act of both sides) in the 3rd group, so it was missing from the "lending and repayment" lane (the Fang Yuan case). Views laid a second placement over the same data, and a view written slightly wrong made the diagram say the wrong thing.
 
 ---
 
@@ -36,15 +43,19 @@ slot 3                                  [event]
 | Object | Controls | Ordered? |
 |---|---|---|
 | `slots` | **Time**. One slot = one time point | Ordered, the order is the sequence |
-| `groups` | **Side**. Decides whether an event leaves the axis and goes to side 1 or side 2 | Ordered, the order is the side |
-| `actors` | **Lane**. Each party takes one column, deciding the distance within one side | Ordered, the order is inside out |
-| `events` | **Content**. Held in slots, positioned by `groupId` / `actorIds` | Unordered, position decided by the two above |
+| `groups` | **Side**. The 1st group side 1, the 2nd side 2, the 3rd the axis | Ordered, the order is the side |
+| `actors` | **Lane**. Each party takes one column, deciding the distance within one side; with 2 or more parties each party also says whether it is in the 1st or the 2nd group | Ordered, the order is inside out |
+| `events` | **Content**. Held in slots; with 0 or 1 party placed by their own `groupId`, with 2 or more by their `actorIds` | Unordered, position decided by the two above |
 
-> A **view** (the same case looked at in several ways) only changes how the two fields above are used; it introduces no new field that decides position.
-> Which column an event falls in is always `groupId` for the side and `actorIds` for the column.
-> The mechanism and how to write it are in the "view mechanism" section of `spec/fact/schema-draft.md`; this document only covers placement under one fixed set of rules.
+> A diagram has one placement; there are no views.
 
-## 2. Side: is the event on the axis or on one of the sides
+## 2. Side: what the groups split depends on how many parties there are
+
+### 2.1 0 or 1 party: the groups split the **acts**
+
+With a single party, "who is on which side" means nothing; the two sides sort its acts by kind (as agreed / departing from the agreement, act / consequence...; the agent chooses from the case).
+
+The group is written on the **event** (`events[].groupId`):
 
 | The event's situation | Where it goes |
 |---|---|
@@ -52,15 +63,37 @@ slot 3                                  [event]
 | The 1st group written | Side 1 |
 | The 2nd group written | Side 2 |
 | The 3rd group written | On the axis (same place as "not written", it only gives this lane a name) |
-| **2 or more** parties involved | On the axis. If `groupId` also points to the 1st/2nd group (a side group), **an error** |
 
-Key points:
+A party carries no `groupId`; written, it is an error.
+
+Example: the gym case has one party, Han Lei; the groups are "normal (performed as agreed) / abnormal (departs from the agreement) / objective course (no party involved)".
+
+### 2.2 2 or more parties: the groups split the **parties**
+
+With two or more parties, the two sides are two camps. The group is written on the **party** (`actors[].groupId`):
+
+- **Every party must write `groupId`, and only the 1st or the 2nd group.** The 3rd group is the axis, not a camp.
+- **An event writes no `groupId`**; written, it is an error. Where an event goes follows from its `actorIds`:
+
+| The event's parties | Where it goes |
+|---|---|
+| 1 | That party's side, in that party's own column |
+| 2 or more, across both sides | On the axis |
+| 2 or more, all on one side | On the axis (no long card across several columns; the card does not change) |
+| none written | On the axis |
+
+- **A third party on neither side** (the police who came, the ambulance crew, the court that served a paper...) is not listed as a party: the name goes in the event's label, the event writes no `actorIds`, and it goes on the axis.
+- With exactly two parties, each group is one party.
+
+Example: the Fang Yuan case. Fang Yuan and Liang → the 1st group, "Fang Yuan and his mother"; the debt collectors → the 2nd group; the 3rd group "negotiations and objective course". Liang and her husband borrow from the collectors → across both sides, on the axis; Liang repays → side 1, in Liang's column.
+
+### 2.3 For both
 
 - **The order of the groups is the order of the sides**: 1st group side 1, 2nd group side 2, 3rd group the axis.
 - **The group limit is 3.** The axis has only two sides plus the middle, three positions, so a 4th group is a data error.
 - **The 3rd group may be written or not.** Its value is giving "on the axis" a name, so that it can be displayed in the column heading; if it is not written, the default rule puts the event in the same place.
 - A group with no events = an empty lane, which does not affect the layout, and the column heading still appears (the vacancy is itself information).
-- **A contradiction is an error**: when an event involves 2 or more parties, `groupId` may only point to the 3rd group (the axis group) or be omitted. If it points to the 1st/2nd group, the validation layer reports an error and points out where the conflict is, and the agent corrects it itself.
+- **The time scale and the chronicle use the same sides**: one lane per group (side 1, side 2, the axis), matching the timeline.
 
 ## 3. Distance: how parties within one side are laid out outwards
 
@@ -98,9 +131,9 @@ Event structure (replacing the former flat `events` array):
   {
     "events": [
       { "id": "ev-2", "date": "2030-06-02T20:14:07", "label": "Sun Hao enters the corridor",
-        "groupId": "g-1", "actorIds": ["a-1"] },
+        "actorIds": ["a-1"] },
       { "id": "ev-1", "date": "2030-06-02T20:14:03", "label": "Qian Min charges a battery in the corridor",
-        "groupId": "g-2", "actorIds": ["a-2"] }
+        "actorIds": ["a-2"] }
     ]
   }
 ]
@@ -108,7 +141,7 @@ Event structure (replacing the former flat `events` array):
 
 ## 5. Two supporting conventions
 
-- **`actorIds` means "whom this event involves", not "who did this".** Optional. An event such as receiving a text message involves the recipient and should be written; one that involves no party at all, such as a gate being shut down or an ambulance arriving, is either left out or put in the 3rd group.
+- **`actorIds` means "whom this event involves", not "who did this".** Optional. An event such as receiving a text message involves the recipient and should be written; one that involves no party at all, such as a gate being shut down or an ambulance arriving, leaves it out and goes on the axis (a diagram of 0 or 1 party may also put it in the 3rd group).
 - **The order of judgement does not depend on `date`.** Sorting and slotting rest entirely on the position in the `slots` array, and `date` is shown on the card only.
 
 ## 6. Complete example: the corridor-charging case (extract)
@@ -126,12 +159,12 @@ Event structure (replacing the former flat `events` array):
 
 ```jsonc
 "actors": [
-  { "id": "a-1", "name": "Sun Hao",   "role": "defendant · dissuader" },
-  { "id": "a-2", "name": "Qian Min", "role": "plaintiff · the one dissuaded" }
+  { "id": "a-1", "name": "Sun Hao",  "role": "defendant · dissuader",       "groupId": "g-1" },
+  { "id": "a-2", "name": "Qian Min", "role": "plaintiff · the one dissuaded", "groupId": "g-2" }
 ],
 "groups": [
-  { "id": "g-1", "label": "Sun Hao's conduct" },        // 1st group → side 1
-  { "id": "g-2", "label": "Qian Min's conduct" },     // 2nd group → side 2
+  { "id": "g-1", "label": "Sun Hao's side" },        // 1st group → side 1
+  { "id": "g-2", "label": "Qian Min's side" },       // 2nd group → side 2
   { "id": "g-3", "label": "joint or objective course" }  // 3rd group → the axis
 ],
 "slots": [
@@ -148,7 +181,7 @@ Event structure (replacing the former flat `events` array):
 |---|---|
 | Drawing `dateEnd` | The text version is done (the card writes "start - end", the overlay gives the duration). No vertical bar across slots: **not done**, slots are equally spaced and real time is not (in the corridor case 4 seconds and 264 seconds take up the same distance on the diagram), drawing length by real duration would deceive |
 | Vertical/horizontal switching | **Done.** Direction is a rendering parameter and the logic does not change with direction; the default is taken from the slot count (5 or more slots vertical, 4 or fewer horizontal) |
-| Dedicated verification for more than three parties | **Verified**: the example with 4 parties and 5 columns has been run through several views |
+| Dedicated verification for more than three parties | **Verified**: the example with 4 parties and 5 columns |
 | Drag editing | The structure has left the road open for it (order via the array, same slot via nesting); the feature is not done |
 | A time scale on the axis | Not drawn. Time is shown on the cards only, avoiding a misleading scale under mixed precision |
 
@@ -156,6 +189,10 @@ Event structure (replacing the former flat `events` array):
 
 | Point of dispute | Conclusion |
 |---|---|
-| An event involves 2 or more parties and a side group is also written | **An error.** A contradiction mostly means the data is wrong; the validation layer points out the conflicting field and the agent corrects it itself |
+| An event involves 2 or more parties and a side group is also written | v0: **an error**. v1: with 2 or more parties an event writes no group, so the contradiction cannot arise |
+| Views (`views`) | **Removed in v1.** One diagram, one placement; a view written slightly wrong made the diagram say the wrong thing, and was hard for a weaker agent |
+| Several parties of one side acting together | **On the axis.** No long card across several columns; the card does not change |
+| A diagram of several parties split by kind of act | **Not supported.** With several parties the sides are the camps; the kind of act goes in the event's label or summary |
+| Old data | **Not carried over.** A page holds its own data and program and is unaffected; an old JSON given to the new version is refused point by point, with what to change (delete `views`, move the groups from the events to the parties) |
 | A slot scale misleads under mixed precision | **No time scale on the axis**, time is shown on the cards only, avoiding the misleading from the root |
 | `groups[].label` and `events[].label` share a name | **Keep as is.** `name` is "what it is called", `label` is "what text is shown here": parties and sources use `name`, groups and events use `label`. Renaming groups to `name` for surface tidiness would sacrifice semantics instead |

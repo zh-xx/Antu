@@ -1,0 +1,234 @@
+{
+  "specVersion": 2,
+  "type": "fact",
+  "title": "Han Lei's side · How the way into the gym changed (fictional: face scan at a gym, one party)",
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "Han Lei",
+      "role": "Plaintiff"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Normal (performed as agreed)"
+    },
+    {
+      "id": "g-2",
+      "label": "Abnormal (departs from the agreement)"
+    },
+    {
+      "id": "g-3",
+      "label": "Objective course (no party involved)"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "One-year membership agreement",
+      "loc": {
+        "file": "Membership agreement",
+        "clause": 2
+      },
+      "quote": "A member enters by showing the membership card and verifying a fingerprint"
+    },
+    {
+      "id": "s-2",
+      "type": "evidence",
+      "name": "Mobile payment bill",
+      "loc": {
+        "file": "Payment bill"
+      },
+      "quote": "On 10 February 2030 Han Lei paid the Example Fitness Club a membership fee of 2,400 yuan by mobile payment"
+    },
+    {
+      "id": "s-3",
+      "type": "evidence",
+      "name": "Member entry record",
+      "loc": {
+        "file": "Entry record"
+      },
+      "quote": "After Han Lei took out the membership the card was used on 10 February, 17 February, 3 March and 18 May 2030, four entries in all"
+    },
+    {
+      "id": "s-4",
+      "type": "evidence",
+      "name": "Text message (12 June 2030)",
+      "loc": {
+        "file": "Text message"
+      },
+      "quote": "The membership system has been upgraded and you can now enter by face scan; members who have not yet activated their face should bring the card to the front desk"
+    },
+    {
+      "id": "s-5",
+      "type": "evidence",
+      "name": "Text message (17 August 2030)",
+      "loc": {
+        "file": "Text message"
+      },
+      "quote": "The club's membership system now admits by face scan and fingerprint verification is cancelled; from today members whose face is not registered cannot enter"
+    },
+    {
+      "id": "s-6",
+      "type": "evidence",
+      "name": "Han Lei's phone video (26 August 2030)",
+      "loc": {
+        "file": "Phone video"
+      },
+      "quote": "The front desk said the fingerprint way no longer works and that without a registered face he could not get in; Han Lei said his family did not agree to face recognition and asked whether he could get his fee back without registering"
+    },
+    {
+      "id": "s-7",
+      "type": "document",
+      "name": "Example Evening News report (4 September 2030)",
+      "loc": {
+        "file": "Example Evening News, e-edition",
+        "page": 2
+      },
+      "quote": "I agree to a fingerprint; I do not agree to a face scan"
+    },
+    {
+      "id": "s-8",
+      "type": "case",
+      "name": "First-instance judgment in this case (fictional)",
+      "loc": {
+        "caseNo": "(2031) Shi Min Chu No. 2",
+        "court": "Example District People's Court, Example City, Example Province"
+      },
+      "meta": {
+        "level": "First instance",
+        "docType": "Judgment"
+      },
+      "quote": "Without discussing it with Han Lei or obtaining his consent, the club sent a message saying that without a registered face he could not enter … this is an express statement that a main obligation of the contract will not be performed"
+    }
+  ],
+  "slots": [
+    {
+      "events": [
+        {
+          "id": "ev-1",
+          "date": "2030-02-10",
+          "label": "Han Lei takes a one-year membership and registers a fingerprint",
+          "summary": "Fee 2,400 yuan, fingerprint taken",
+          "groupId": "g-1",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "Han Lei paid the 2,400 yuan fee by mobile payment, gave his name and ID number and registered a fingerprint; the card is valid to 9 February 2031. The agreement then said: \"A member enters by showing the membership card and verifying a fingerprint\"",
+          "sourceIds": [
+            "s-1",
+            "s-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-2",
+          "date": "2030-05-18",
+          "label": "Han Lei enters normally with the card (4 entries so far)",
+          "summary": "Fingerprint still works, 4 entries",
+          "groupId": "g-1",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "The card was used on 10 February, 17 February, 3 March and 18 May 2030, four entries, and entry by fingerprint still worked then",
+          "sourceIds": [
+            "s-3"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-3",
+          "date": "2030-06-12",
+          "label": "Receives the \"membership system upgraded to face scan\" message",
+          "summary": "Face scan possible, activate at the desk",
+          "groupId": "g-2",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "The Example Fitness Club sent all members a text: the membership system has been upgraded and members can enter by face scan; those who have not activated their face should bring the card to the front desk",
+          "sourceIds": [
+            "s-4"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-4",
+          "date": "2030-07-07",
+          "label": "The club's fingerprint gate is switched off",
+          "summary": "The agreed check is cancelled",
+          "groupId": "g-3",
+          "actorIds": [],
+          "detail": "The Example Fitness Club's fingerprint gate was switched off and the agreed way of checking entry was in fact cancelled. This is a change in equipment and involves no particular party",
+          "sourceIds": [
+            "s-8"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-5",
+          "date": "2030-08-17",
+          "label": "Receives the \"no face scan, no entry\" message",
+          "summary": "Fingerprint check cancelled",
+          "groupId": "g-2",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "The Example Fitness Club texted all members: the membership system now admits by face scan, the fingerprint check is cancelled, and from today members whose face is not registered cannot enter",
+          "sourceIds": [
+            "s-5"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-6",
+          "date": "2030-08-26",
+          "label": "Goes to the club, asks for a refund, gets none",
+          "summary": "Asks for his fee back, no agreement",
+          "groupId": "g-2",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "Han Lei went to the club to check the face-scan rule; the front desk said the fingerprint way no longer worked and that without a registered face he could not get in; Han Lei said his family did not agree to face recognition and asked about a refund, and no agreement was reached; that day Han Lei did not ask to enter and did not register his face",
+          "sourceIds": [
+            "s-6"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-7",
+          "date": "2030-09-04",
+          "label": "States his position to the press",
+          "summary": "\"Fingerprint yes, face no\"",
+          "groupId": "g-2",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "The Example Evening News printed Han Lei's view: \"I agree to a fingerprint; I do not agree to a face scan\". Afterwards Han Lei did not enter with \"card plus ID\"",
+          "sourceIds": [
+            "s-7"
+          ]
+        }
+      ]
+    }
+  ]
+}

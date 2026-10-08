@@ -22,12 +22,12 @@ import { axisNode, cellsNode, headerNodes, linksNode, placeCard } from './nodes.
 /**
  * Turn a validated fact spec into React Flow nodes.
  * edges is always empty; the links from cards to axis dots are carried by a separate "link layer"
- * node.
+ * node. The third argument is unused (every kind is called as (spec, fields, options, orientation);
+ * the timeline had views there, and there are none since placement rules v1).
  */
-export function buildFactGraph(spec, fields = {}, view, orientation = 'vertical', { stagger = false } = {}) {
+export function buildFactGraph(spec, fields = {}, _unused, orientation = 'vertical', { stagger = false } = {}) {
   const isH = orientation === 'horizontal'
-  // The view is an input to layout too: it decides what the sides split by and which columns exist
-  const grid = buildGrid(spec, view)
+  const grid = buildGrid(spec)
   const m = makeMetrics(grid, fields, isH, stagger)
 
   const nodes = [cellsNode(m), ...headerNodes(grid, m)]
@@ -50,8 +50,7 @@ export function buildFactGraph(spec, fields = {}, view, orientation = 'vertical'
   nodes.push(...cards)
 
   return {
-    // Events this view cannot place end up here (for instance several at one time point when
-    // there is no side split). They must be carried out: otherwise events would be dropped
+    // Events that cannot be placed end up here (for instance two in one lane at one time point). They must be carried out: otherwise events would be dropped
     // silently and the interface would show nothing missing.
     errors: grid.errors,
     sideLabels: grid.sideLabels,

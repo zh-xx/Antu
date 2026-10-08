@@ -126,6 +126,18 @@ import { layoutMessage, validationMessage } from '../tools/lib/report.mjs'
 
 const CLI = 'skills/antu/scripts/antu.mjs'
 const run = (...args) => spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' })
+// The committed skill is the last release (rebuilt only in a release pull request), so what it says about today's
+// examples can differ: an example changed for a new generation of a format fails the released checker. Where a test
+// compares the command line with today's sources, it runs a build of them.
+let builtDir = null
+const builtSkill = () => {
+  if (!builtDir) {
+    builtDir = mkdtempSync(join(tmpdir(), 'antu-built-skill-'))
+    execFileSync('node', ['tools/build-skill.mjs', '--out', builtDir], { stdio: 'ignore' })
+  }
+  return builtDir
+}
+const runBuilt = (...args) => spawnSync(process.execPath, [join(builtSkill(), 'scripts', 'antu.mjs'), ...args], { encoding: 'utf8' })
 const EXAMPLE_DIRS = ['examples/agent', 'examples']
 const examples = () =>
   EXAMPLE_DIRS.flatMap((dir) =>
@@ -145,7 +157,7 @@ test('the command line says its version, and has a help', () => {
 test('validate: every example passes, in the same words as the MCP side', () => {
   // the zh-CN copy of each (the en copy has the same structure): a process per file
   for (const file of examples().filter((f) => f.endsWith('.zh-CN.json'))) {
-    const r = run('validate', file)
+    const r = runBuilt('validate', file)
     assert.equal(r.status, 0, `${file}: ${r.stderr}`)
     assert.equal(r.stdout.trim(), validationMessage(JSON.parse(readFileSync(file, 'utf8'))).text.trim(), file)
   }
@@ -172,10 +184,8 @@ test('layout: the same report as the MCP side, for the small examples and a real
   for (const f of ['examples/fact/neighbour-corridor-charging.zh-CN.json', 'examples/procedure/05-premises-lease.zh-CN.json', 'examples/relationship/fang-yuan-parties.zh-CN.json']) {
     if (existsSync(f)) files.push(f)
   }
-  // The committed skill is the last release (rebuilt only in a release pull request), so a change to a layout
-  // between two releases would always differ from it. This compares the report of a build of the current source.
-  const built = mkdtempSync(join(tmpdir(), 'antu-built-skill-'))
-  execFileSync('node', ['tools/build-skill.mjs', '--out', built], { stdio: 'ignore' })
+  // a change to a layout between two releases would always differ from the committed skill: a build of today's sources
+  const built = builtSkill()
   const cli = join(built, 'scripts', 'antu.mjs')
   for (const file of files) {
     const r = spawnSync(process.execPath, [cli, 'layout', file], { encoding: 'utf8' })
@@ -189,9 +199,9 @@ test('layout: the same report as the MCP side, for the small examples and a real
   assert.equal(t.status, 0, t.stderr)
   assert.match(readFileSync(themed, 'utf8'), /"theme":"legal"/)
   assert.equal(spawnSync(process.execPath, [cli, 'render', rel, '--theme', 'neon', '-o', themed], { encoding: 'utf8' }).status, 2)
-  const v = run('layout', 'examples/agent/fact/1-minimal.zh-CN.json', '--orientation', 'vertical')
+  const v = runBuilt('layout', 'examples/agent/fact/1-minimal.zh-CN.json', '--orientation', 'vertical')
   assert.equal(v.status, 0)
-  assert.equal(run('layout', 'examples/agent/fact/1-minimal.zh-CN.json', '--orientation', 'sideways').status, 2)
+  assert.equal(runBuilt('layout', 'examples/agent/fact/1-minimal.zh-CN.json', '--orientation', 'sideways').status, 2)
 })
 
 test('render: the page is the viewer with the data in it, the same as the Python filler makes', (t) => {

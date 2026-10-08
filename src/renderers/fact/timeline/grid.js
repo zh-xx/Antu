@@ -8,8 +8,12 @@
 //  Rules in spec/fact/timeline-rules.md:
 //   - row = slot (index into the slots array)
 //   - column = side × party: each party on side 1, the axis, each party on side 2
-//   - the side is decided by groupId; 2 or more parties land on the axis
+//   - what the groups split depends on how many parties the diagram has:
+//       0 or 1 party   the groups split the events (groupId on the event decides the side)
+//       2 or more      the groups split the parties (groupId on each party); an event goes where
+//                      its parties put it: one party → that party's side and column, else the axis
 //   - distance follows the order of parties within a side
+//   - there are no views: one diagram, one placement
 // ============================================================
 
 import { SUMMARY_MAX, SUMMARY_MAX_EM, textEm } from '../cardGeometry.js'
@@ -21,37 +25,20 @@ export const SIDE = { SIDE1: 'side1', AXIS: 'axis', SIDE2: 'side2' }
 const MAX_GROUPS = 3
 
 /**
- * The built-in default view. Used when the data writes no `views`, and behaves exactly as
- * before views existed: split by group, no filtering by party.
+ * The group an event is drawn under, for the ways of drawing that have one lane or colour per group
+ * (the time scale, the chronicle). With 0 or 1 party it is the event's own `groupId`; with 2 or more,
+ * the groups belong to the parties: one party → that party's group, several or none → the 3rd group
+ * (the axis), or null when there is none. The same rule as the timeline's sides (buildGrid below).
+ * @returns {(event) => string | null}
  */
-const DEFAULT_VIEW = { label: 'all', splitBy: 'group' }
-
-/** Which views this data has. If none is written, one built-in view is given. */
-export function viewsOf(spec) {
-  const list = Array.isArray(spec?.views) ? spec.views.filter(isPlainObject) : []
-  return list.length > 0 ? list : [DEFAULT_VIEW]
-}
-
-/** The list of parties a view declares for one side (deduplicated, order kept, string ids only) */
-function viewActors(view, side) {
-  const a = view?.[side]?.actors
-  if (!Array.isArray(a)) return []
-  return [...new Set(a.filter((x) => typeof x === 'string'))]
-}
-
-/** Side heading of a view: from the view when split by party, from groups when split by group */
-function sideLabelsOf(view, groups) {
-  if (view.splitBy === 'actor') {
-    return {
-      [SIDE.SIDE1]: view?.side1?.label ?? '',
-      [SIDE.SIDE2]: view?.side2?.label ?? '',
-      [SIDE.AXIS]: view?.axis?.label ?? '',
-    }
-  }
-  return {
-    [SIDE.SIDE1]: groups[0]?.label ?? '',
-    [SIDE.SIDE2]: groups[1]?.label ?? '',
-    [SIDE.AXIS]: groups[2]?.label ?? '',
+export function groupOfEvent(spec) {
+  const actors = (Array.isArray(spec?.actors) ? spec.actors : []).filter((a) => isPlainObject(a) && a.id)
+  if (new Set(actors.map((a) => a.id)).size < 2) return (e) => e?.groupId ?? null
+  const groupOf = new Map(actors.map((a) => [a.id, a.groupId]))
+  const axis = (Array.isArray(spec?.groups) ? spec.groups[2]?.id : null) ?? null
+  return (e) => {
+    const ids = Array.isArray(e?.actorIds) ? e.actorIds : []
+    return (ids.length === 1 && groupOf.get(ids[0])) || axis
   }
 }
 
@@ -83,12 +70,7 @@ function isPlainObject(v) {
  *   axisColumnIndex: number, actorById: Map, groupById: Map, groupIndexById: Map, sourceById: Map,
  *   eventCount: number }}
  */
-export function buildGrid(spec, view) {
-  const effectiveView = isPlainObject(view) ? view : viewsOf(spec)[0]
-  const byActor = effectiveView.splitBy === 'actor'
-  const in1 = viewActors(effectiveView, 'side1')
-  const in2 = viewActors(effectiveView, 'side2')
-
+export function buildGrid(spec) {
   const errors = []
   const actors = Array.isArray(spec?.actors) ? spec.actors : []
   const groups = Array.isArray(spec?.groups) ? spec.groups : []
@@ -97,7 +79,7 @@ export function buildGrid(spec, view) {
 
   const empty = {
     errors,
-    view: effectiveView,
+    byActor: false,
     sideLabels: { [SIDE.SIDE1]: '', [SIDE.SIDE2]: '', [SIDE.AXIS]: '' },
     columns: [],
     rows: [],
@@ -108,7 +90,6 @@ export function buildGrid(spec, view) {
     groupIndexById: new Map(),
     sourceById: new Map(),
     eventCount: 0,
-    hiddenEvents: [],
   }
 
   // ---------- party list ----------
@@ -127,40 +108,8 @@ export function buildGrid(spec, view) {
     if (!a.name) errors.push(tEn('err.required', { at: `actors[${i}] (${a.id})`, field: 'name' }))
   })
 
-  // ---------- view list ----------
-  // Only the structure is validated (whether references exist, whether the two sides overlap);
-  // which view is selected does not matter here. Whether an event fits depends on the current
-  // view, and that is judged below.
-  if (spec?.views !== undefined && spec?.views !== null) {
-    if (!Array.isArray(spec.views)) {
-      errors.push(tEn('err.viewsNotArray'))
-    } else {
-      spec.views.forEach((v, vi) => {
-        const vAt = `views[${vi}]`
-        if (!isPlainObject(v)) {
-          errors.push(tEn('err.notObject', { at: vAt }))
-          return
-        }
-        if (!v.label) errors.push(tEn('err.required', { at: vAt, field: 'label' }))
-        if (v.splitBy !== 'actor' && v.splitBy !== 'group') {
-          errors.push(
-            tEn('err.badSplitBy', { at: vAt, value: v.splitBy }),
-          )
-        }
-        if (v.splitBy === 'actor') {
-          const a1 = viewActors(v, 'side1')
-          const a2 = viewActors(v, 'side2')
-          ;[...a1, ...a2].forEach((id) => {
-            if (!actorById.has(id)) errors.push(tEn('err.missingRef', { at: vAt, field: 'side', kind: 'actor', id }))
-          })
-          const both = a1.filter((id) => a2.includes(id))
-          if (both.length > 0) {
-            errors.push(tEn('err.bothSides', { at: vAt, names: both.join(', ') }))
-          }
-        }
-      })
-    }
-  }
+  // ---------- views: gone in placement rules v1 (spec/fact/timeline-rules.md) ----------
+  if (spec?.views !== undefined) errors.push(tEn('err.viewsRemoved'))
 
   // ---------- group list ----------
   const groupById = new Map()
@@ -181,6 +130,36 @@ export function buildGrid(spec, view) {
     groupById.set(g.id, g)
     groupIndexById.set(g.id, i)
     if (!g.label) errors.push(tEn('err.required', { at: `groups[${i}] (${g.id})`, field: 'label' }))
+  })
+
+  // ---------- which side each party is on (2 or more parties) ----------
+  // With two or more parties the groups split the parties: each names its own side, and an event
+  // is placed by its parties. With one party (or none) there is no "who is on which side"; the
+  // groups split the events instead, and a party carries no group.
+  const byActor = actorById.size >= 2
+  const sideOfActor = new Map()
+  actors.forEach((a, i) => {
+    if (!isPlainObject(a) || !a.id) return
+    const at = `actors[${i}] (${a.id})`
+    const has = a.groupId !== undefined && a.groupId !== null && a.groupId !== ''
+    if (!byActor) {
+      if (has) errors.push(tEn('err.actorGroupOneParty', { at }))
+      return
+    }
+    if (!has) {
+      errors.push(tEn('err.actorNeedsGroup', { at, n: actorById.size }))
+      return
+    }
+    if (!groupIndexById.has(a.groupId)) {
+      errors.push(tEn('err.missingRef', { at, field: 'groupId', kind: 'group', id: a.groupId }))
+      return
+    }
+    const gi = groupIndexById.get(a.groupId)
+    if (gi > 1) {
+      errors.push(tEn('err.actorGroupNotSide', { at, groupId: a.groupId }))
+      return
+    }
+    sideOfActor.set(a.id, gi === 0 ? SIDE.SIDE1 : SIDE.SIDE2)
   })
 
   // ---------- source table ----------
@@ -211,8 +190,6 @@ export function buildGrid(spec, view) {
   const seenActorsOnSide = { [SIDE.SIDE1]: new Set(), [SIDE.SIDE2]: new Set() }
   /** Flattened events: { slotIndex, event, side, actorId|null } */
   const flat = []
-  /** Events a view that names parties leaves out: { id, label, actorIds } (reported, not an error) */
-  const hiddenEvents = []
 
   slots.forEach((slot, si) => {
     const at = `slots[${si}]`
@@ -279,7 +256,9 @@ export function buildGrid(spec, view) {
       ids.forEach((id) => {
         if (!actorById.has(id)) errors.push(tEn('err.missingRef', { at: eAt, field: 'actorIds', kind: 'actor', id }))
       })
-      if (e.groupId && !groupIndexById.has(e.groupId)) {
+      const eventGroup = e.groupId !== undefined && e.groupId !== null && e.groupId !== ''
+      if (byActor && eventGroup) errors.push(tEn('err.eventGroupWithParties', { at: eAt }))
+      else if (eventGroup && !groupIndexById.has(e.groupId)) {
         errors.push(tEn('err.missingRef', { at: eAt, field: 'groupId', kind: 'group', id: e.groupId }))
       }
       const srcIds = Array.isArray(e.sourceIds) ? e.sourceIds : []
@@ -288,37 +267,19 @@ export function buildGrid(spec, view) {
       })
 
       // ---------- side ----------
-      // Two ways of looking at it:
-      //   by party (view): whoever did it goes on their side; crossing both sides, or several
-      //     parties on one side acting together, lands on the axis
-      //   by group (data): groupId points at a group and the event goes to that side; 2 or more
-      //     parties land on the axis
-      const gi = e.groupId ? groupIndexById.get(e.groupId) : undefined
+      //   2 or more parties in the diagram: the event's parties decide. One party → that party's
+      //     side; several (across the sides or on one side together) or none → the axis
+      //   0 or 1 party: groupId decides, the 1st group side 1, the 2nd side 2, the 3rd or none the axis
+      const gi = eventGroup ? groupIndexById.get(e.groupId) : undefined
       let side
       let actorId = null
 
       if (byActor) {
-        // When a view declares parties, only events involving them are shown (an event with no
-        // party is an objective fact and is shown as usual).
-        // When both sides of the view are empty ("chronology only") nothing is filtered and
-        // everything lands on the axis.
-        const inScope = [...in1, ...in2]
-        if (
-          inScope.length > 0 &&
-          ids.length > 0 &&
-          !ids.some((id) => inScope.includes(id))
-        ) {
-          hiddenEvents.push({ id: e.id, label: e.label, actorIds: ids })
-          return
-        }
-        if (ids.length === 1 && in1.includes(ids[0])) {
-          side = SIDE.SIDE1
-          actorId = ids[0]
-        } else if (ids.length === 1 && in2.includes(ids[0])) {
-          side = SIDE.SIDE2
+        if (ids.length === 1 && sideOfActor.has(ids[0])) {
+          side = sideOfActor.get(ids[0])
           actorId = ids[0]
         } else {
-        side = SIDE.AXIS // no party, crossing both sides, or several parties on one side acting together
+          side = SIDE.AXIS
         }
       } else if (ids.length >= 2) {
         side = SIDE.AXIS // several parties → the axis automatically
@@ -327,7 +288,7 @@ export function buildGrid(spec, view) {
             tEn('err.multiActorNeedsAxis', { at: eAt, n: ids.length, groupId: e.groupId }),
           )
         }
-      } else if (e.groupId === undefined || e.groupId === null || e.groupId === '') {
+      } else if (!eventGroup) {
         side = SIDE.AXIS // no group written → the axis
       } else if (gi === undefined) {
         return // unknown group, already reported above
@@ -351,15 +312,13 @@ export function buildGrid(spec, view) {
 
   // ---------- build the columns ----------
   // **The order of the columns is always decided by the diagram-level actors list** (earlier
-  // entries sit closer to the axis), in both modes. A view only answers "who is on which side",
-  // never "who is inside and who is outside": one meaning, said in one place.
-  // When split by party, a column with no event is kept (an empty column is itself information:
-  // this party did nothing in this kind of matter); when split by group, the columns are the
-  // parties that appeared on that side.
+  // entries sit closer to the axis). With 2 or more parties every party has a column on its side,
+  // even one with no event (an empty column is itself information: this party did nothing here);
+  // with one party, its column is on each side where it has an event.
   const actorOrder = actors.map((a) => (isPlainObject(a) ? a.id : null)).filter(Boolean)
   const columnsFor = (side) =>
     byActor
-      ? actorOrder.filter((id) => viewActors(effectiveView, side).includes(id))
+      ? actorOrder.filter((id) => sideOfActor.get(id) === side)
       : actorOrder.filter((id) => seenActorsOnSide[side].has(id))
 
   const columns = []
@@ -404,8 +363,12 @@ export function buildGrid(spec, view) {
 
   return {
     errors,
-    view: effectiveView,
-    sideLabels: sideLabelsOf(effectiveView, groups),
+    byActor,
+    sideLabels: {
+      [SIDE.SIDE1]: groups[0]?.label ?? '',
+      [SIDE.SIDE2]: groups[1]?.label ?? '',
+      [SIDE.AXIS]: groups[2]?.label ?? '',
+    },
     columns,
     rows,
     placements,
@@ -415,6 +378,5 @@ export function buildGrid(spec, view) {
     groupIndexById,
     sourceById,
     eventCount,
-    hiddenEvents,
   }
 }

@@ -1,30 +1,18 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "买卖合同纠纷 · 一侧两个主体（示意数据）",
 
   "actors": [
-    { "id": "a-1", "name": "甲贸易公司", "role": "原告" },
-    { "id": "a-2", "name": "张某", "role": "原告业务经办人" },
-    { "id": "a-3", "name": "乙建材公司", "role": "被告" }
+    { "id": "a-1", "name": "甲贸易公司", "role": "原告", "groupId": "g-1" },
+    { "id": "a-2", "name": "张某", "role": "原告业务经办人", "groupId": "g-1" },
+    { "id": "a-3", "name": "乙建材公司", "role": "被告", "groupId": "g-2" }
   ],
 
   "groups": [
     { "id": "g-1", "label": "原告方的行为" },
     { "id": "g-2", "label": "被告方的行为" },
     { "id": "g-3", "label": "双方共同或客观经过" }
-  ],
-
-  "views": [
-    { "label": "原告方 vs 被告方", "splitBy": "actor",
-      "side1": { "label": "原告方的行为", "actors": ["a-1", "a-2"] },
-      "side2": { "label": "被告方的行为", "actors": ["a-3"] },
-      "axis": { "label": "双方共同或客观经过" } },
-    { "label": "只看甲贸易公司", "splitBy": "actor",
-      "side1": { "label": "甲贸易公司", "actors": ["a-1"] },
-      "side2": { "actors": [] },
-      "axis": { "label": "其余经过" } },
-    { "label": "只看时间先后", "splitBy": "actor", "side1": { "actors": [] }, "side2": { "actors": [] } }
   ],
 
   "sources": [
@@ -60,7 +48,6 @@
           "label": "甲贸易公司与乙建材公司签订买卖合同",
           "summary": "货款 86 万元，收货后 30 日内付清",
           "actorIds": ["a-1", "a-3"],
-          "groupId": "g-3",
           "detail": "约定甲贸易公司供应建材一批，货款 86 万元，乙建材公司应于收货后 30 日内付清。",
           "sourceIds": ["s-1"]
         }
@@ -74,7 +61,6 @@
           "label": "甲贸易公司按约发货",
           "summary": "分两车发出，运费由甲方承担",
           "actorIds": ["a-1"],
-          "groupId": "g-1",
           "detail": "甲贸易公司分两车发出全部货物，运费由甲方承担，随车交付发货单。",
           "sourceIds": ["s-2"]
         },
@@ -84,7 +70,6 @@
           "label": "张某现场签收货物",
           "summary": "签收时未提数量或质量异议",
           "actorIds": ["a-2"],
-          "groupId": "g-1",
           "detail": "甲贸易公司业务经办人张某到现场清点并签收，签收时未提出数量或质量异议。",
           "sourceIds": ["s-2"]
         }
@@ -98,7 +83,6 @@
           "label": "乙建材公司未按期付款",
           "summary": "逾期十日，未付任何款项",
           "actorIds": ["a-3"],
-          "groupId": "g-2",
           "detail": "约定付款期限届满后十日，乙建材公司未支付任何款项，亦未提出异议。"
         }
       ]
@@ -111,7 +95,6 @@
           "label": "甲贸易公司发出催告函",
           "summary": "限期十日付清",
           "actorIds": ["a-1"],
-          "groupId": "g-1",
           "detail": "甲贸易公司以挂号信发出催告函，要求乙建材公司于收函后十日内付清货款。",
           "sourceIds": ["s-3"]
         },
@@ -121,7 +104,6 @@
           "label": "乙建材公司书面承诺付款",
           "summary": "承诺月底前付清，其后未履行",
           "actorIds": ["a-3"],
-          "groupId": "g-2",
           "detail": "乙建材公司回函承诺于当月月底前付清全部货款，此后仍未履行。"
         }
       ]
@@ -134,7 +116,6 @@
           "label": "甲贸易公司提起诉讼",
           "summary": "诉请货款 86 万元及逾期利息",
           "actorIds": ["a-1"],
-          "groupId": "g-1",
           "detail": "甲贸易公司向法院提起诉讼，请求判令乙建材公司支付货款 86 万元及逾期付款利息。"
         }
       ]

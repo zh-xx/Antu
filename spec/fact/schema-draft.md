@@ -2,6 +2,8 @@
 
 > Status: **implemented** (status line checked against 0.10.0). The field set has been trimmed per the sponsor's decisions. Field names and constraints may still change in a 0.x release, with a changelog entry (`spec/versioning.md`). Besides the timeline, two more ways of drawing the same JSON are implemented, as first attempts: the chronicle and the time scale (`spec/fact/rendering.md` §9.1 and §9.2).
 
+> **Format generation 2 (placement rules v1, 2026-10).** Views are gone, and with 2 or more parties the groups are written on the parties, not on the events. The placement rules are `spec/fact/timeline-rules.md`; how to bring a generation-1 file over is `spec/fact/changes.md`.
+
 > **This document is for designers.** An agent writing JSON uses a different one:
 > fields come from the MCP tool `antu_schema`, mechanism from `spec/agent/fact/guide.md`.
 > The two do not copy each other; the division of labour is set out in `spec/agent/README.md`.
@@ -19,7 +21,7 @@
 
 ```jsonc
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "Huayuan Trading v. Xincheng Building Materials · Facts"
 }
@@ -33,27 +35,18 @@
   "title": "Huayuan Trading v. Xincheng Building Materials · Facts",
 
   // diagram-level party list (ordered; sets the lane order on the timeline). See "Actor mechanism" in §3
+  // with 2 or more parties, each says its side with groupId (the 1st or the 2nd group)
   "actors": [
-    { "id": "a-1", "name": "Huayuan Trading", "role": "plaintiff" },
-    { "id": "a-2", "name": "Xincheng Building Materials", "role": "defendant" }
+    { "id": "a-1", "name": "Huayuan Trading", "role": "plaintiff", "groupId": "g-1" },
+    { "id": "a-2", "name": "Xincheng Building Materials", "role": "defendant", "groupId": "g-2" }
   ],
 
   // diagram-level group list (ordered; sets the side order). See "Group mechanism" in §3
   // the 1st -> side 1, the 2nd -> side 2, the 3rd -> the axis
   "groups": [
-    { "id": "g-1", "label": "Performance as agreed" },
-    { "id": "g-2", "label": "Deviation from the agreement" },
+    { "id": "g-1", "label": "Lender's side" },
+    { "id": "g-2", "label": "Borrower's side" },
     { "id": "g-3", "label": "Joint acts or objective course" }
-  ],
-
-  // view list: the same case looked at in several ways. See "View mechanism" in §3
-  // which lane an event falls into is decided by groupId (the side) and actorIds (the lane); a view only changes how those two are used
-  "views": [
-    { "label": "Parties side by side", "splitBy": "actor",
-      "side1": { "label": "Huayuan Trading", "actors": ["a-1"] },
-      "side2": { "label": "Xincheng Building Materials", "actors": ["a-2"] },
-      "axis":  { "label": "Joint acts or objective course" } },
-    { "label": "Split by group", "splitBy": "group" }
   ],
 
   // the diagram's own source table (option B: only the sources this diagram references)
@@ -69,7 +62,6 @@
         { "id": "ev-1", "date": "2023-03-10", "label": "The two parties sign the loan contract",
           "summary": "principal CNY 5m; term 12 months",
           "actorIds": ["a-1", "a-2"],   // two parties -> the axis
-          "groupId": "g-3",
           "detail": "The loan was 5,000,000 yuan for a term of 12 months; principal and interest were payable in one sum at maturity.",
           "sourceIds": ["s-1"] }
       ]
@@ -79,7 +71,6 @@
         { "id": "ev-2", "date": "2023-03-12T10:30", "label": "Huayuan Trading disburses the loan",
           "summary": "CNY 5m transferred to the defendant",
           "actorIds": ["a-1"],          // one party -> that party's side
-          "groupId": "g-1",
           "detail": "Huayuan Trading transferred 5,000,000 yuan to Xincheng Building Materials' account by bank transfer; the remark stated that it was a loan.",
           "sourceIds": ["s-1", "s-2"] }
       ]
@@ -90,7 +81,6 @@
           "label": "Xincheng Building Materials repays in instalments",
           "summary": "6 instalments agreed; the first 3 on time",
           "actorIds": ["a-2"],
-          "groupId": "g-1",
           "detail": "The parties separately agreed on repayment in 6 instalments; the first 3, from June to November 2023, were all paid on time.",
           "sourceIds": ["s-2"] }
       ]
@@ -100,7 +90,6 @@
         { "id": "ev-4", "date": "2024-01-15", "label": "Xincheng Building Materials stops repaying",
           "summary": "nothing paid from the 4th instalment on",
           "actorIds": ["a-2"],
-          "groupId": "g-2",
           "detail": "From the 4th instalment on no further payment was made, and it remained unpaid after demand.",
           "sourceIds": ["s-2"] }
       ]
@@ -113,7 +102,7 @@ Points to note:
 
 - **Events live inside time slots** (`slots[].events[]`), not in a flat `events` array. Things that happened at the same instant go into the same slot, and inside the slot they are separated by lane.
 - **The array order is the authoritative order.** `date` serves display and as a reference for sorting. With mixed precision (one event to the second, another only to the day) sorting by date gets it wrong.
-- **Placement is decided by `groupId` together with the number of parties**: one party puts the event on that party's side, two or more put it on the axis. The full rules are in `spec/fact/timeline-rules.md`.
+- **Placement follows the parties**: with 2 or more parties in the diagram, one party puts the event on that party's side, two or more (or none) put it on the axis. With 0 or 1 party the event's own `groupId` picks the side. The full rules are in `spec/fact/timeline-rules.md`.
 - One source can be referenced by several events (`s-1` and `s-2` are each referenced twice); this is the zero-redundancy of "reference, not copy".
 
 > **On many-to-many:** a source is stored once in the **diagram's own `sources` table** and events reference it with `sourceIds`. One event may rest on several sources, and one source may be referenced by several events. Zero redundancy comes from "reference, not copy"; see section 4 of the main design document.
@@ -131,112 +120,16 @@ Points to note:
 
 | Field | Required | Type | Notes |
 |---|---|---|---|
-| `actors` | no | object[] | **party list** (ordered; sets the lane order on the timeline): `{ id, name, role? }`; see "Actor mechanism" below |
+| `actors` | no | object[] | **party list** (ordered; sets the lane order on the timeline): `{ id, name, role?, groupId? }`; see "Actor mechanism" below |
 | `groups` | no | object[] | **group list** (ordered; sets the side order): `{ id, label }`; see "Group mechanism" below |
-| `views` | no | object[] | **view list** (the same case looked at in several ways); see "View mechanism" below. Omit it and only the single "all" view exists |
 | `sources` | no | object[] | the diagram's own source table (option B); see below |
 | `slots` | yes | object[] | the sequence of time slots; array order is chronological order; `date` is display-only and never reorders. Each slot is `{ events: [...] }` |
 
 Each slot is `{ events: [ ... ] }`: events at this time point; must not be empty (an empty time slot carries no meaning).
 
-### View mechanism (settled 2026-09)
+### Views (removed in generation 2)
 
-#### In one sentence
-
-**Where an event falls is decided by two fields: `groupId` fixes the side, `actorIds` fixes the lane.**
-A view is just another way of using those two fields; it introduces no third field to fix position.
-
-```
-Row (time)     = slots index         array order is chronological order
-Column (side)  = two levels
-   ├─ coarse: side   decided by groupId (1st group -> side 1, 2nd group -> side 2, 3rd group / none -> the axis)
-   └─ fine:   lane   decided by actorIds (one party, one lane)
-Exception: an event involving 2 or more parties always lands on the axis
-```
-
-#### The specification fixes the mechanism, not a menu
-
-**Which views there should be, and who is placed against whom, is for the agent to decide after reading the case; the specification does not prescribe it.**
-
-Reason: this **cannot be hard-coded**. The combinations that can arise are very many, and few of them are meaningful:
-
-```
-4 parties: all 1 + single party 4 + pairs 6 + no split 1 = 12 combinations
-of which legally meaningful: about 3 or 4
-```
-
-Three quarters of any exhaustive list is something nobody wants to look at; and "who is opposed to whom" can only be known by reading the case, a machine cannot derive it.
-So the specification writes only the floor (a view rests on those two ids) and leaves the rest to the agent.
-
-#### How to write the data
-
-```jsonc
-"views": [
-  // split by party: each act goes on its actor's side
-  { "label": "Employer vs contractor", "splitBy": "actor",
-    "side1": { "label": "Employer", "actors": ["a-1", "a-2"] },
-    "side2": { "label": "Contractor", "actors": ["a-3", "a-4"] },
-    "axis":  { "label": "Joint acts or objective course" } },
-
-  // split by group: the side is decided by the event's groupId
-  { "label": "Split by group", "splitBy": "group" }
-]
-```
-
-| Field | Job |
-|---|---|
-| `label` | view name, shown in the dropdown |
-| `splitBy` | split the sides by party or by group: `"actor"` uses `actorIds`, `"group"` uses `groupId` |
-| `side1 / side2` | `{ label, actors: [...] }. Required when splitBy=actor`. `side1.actors` / `side2.actors` say **who is on which side**; the union of the two lists is also the **filter scope** |
-| `axis` | `{ label }. Heading of the centre column` |
-
-When `views` is omitted, an "all" view is generated automatically (split by group), behaving exactly as if the field did not exist.
-
-**Both ways of splitting have to stay.** Why `group` is kept: **whether an act counts as a breach is a legal judgment, and it cannot be derived from the parties.**
-The parties only say "who did it"; `groupId` says "what kind of act this is".
-
-#### Placement rules
-
-```
-parties involved in the event (when splitBy = actor)
-  ├─ on one side only     -> that side
-  ├─ spanning both sides  -> the axis
-  └─ several on one side  -> the axis
-
-(when splitBy = group the original rules apply: look at groupId; 2 or more parties -> the axis)
-```
-
-#### The two ids each govern one thing, with no overlap
-
-| Who | Governs |
-|---|---|
-| **the view** | who is on which side (`side1.actors` / `side2.actors`) |
-| **the diagram-level `actors` list** | who is inner and who is outer (**order always follows the diagram-level list**; that order is inner to outer) |
-
-The order in which names are written inside a view does **not** affect inner/outer distance. One meaning is stated in one place only, so that two places never contradict each other.
-
-#### Filtering
-
-With `splitBy: actor` and at least one party in the view, **only events connected with those parties are shown** (an event with no party at all is an objective fact and is shown as usual). So under a "company A only" view an event involving only company B does not appear. **When both sides are empty there is no filtering**, and everything lands on the axis.
-
-#### Known limitation
-
-In a "both sides empty" view (no split), one lane holds only one event; when a single time point has several events they do not fit, and the switcher marks the view as "does not fit" and disables it.
-In real cases several things happening at the same instant is normal, so this view is usable only when every slot holds one event.
-
-#### How far validation goes
-
-**Validation checks structure only, not whether the views are the right choice** (the latter needs the case understood, and that is the agent's job):
-
-- whether the actor ids a view references exist
-- whether the same party appears on both sides
-- whether the events fit under this view
-
-Whether a choice is sensible, validation says nothing about.
-
-#### A different agent may cut the same facts into different views
-
-This is normal: **a view is a judgment, not a fact.** If output is later required to be stable, the constraint belongs in the prompt or in the workflow, not in the schema.
+From 2026-09 to generation 1 a diagram could carry several views (`views`), each a way of splitting the same events into sides. They are gone: a diagram has one placement (`spec/fact/timeline-rules.md` v1), and a `views` field is an error. Why: views laid a second placement over the same data, a view written slightly wrong made the diagram say the wrong thing, and the groups of a view by subject fought with the rule that an act of both parties belongs on the axis.
 
 ### events[] entries
 
@@ -246,7 +139,7 @@ This is normal: **a view is a judgment, not a fact.** If output is later require
 | `date` | no | string (ISO 8601, **precision may be truncated**) | ISO 8601. Go to seconds when known, otherwise stop at the day; **the array order is the authoritative order** (see below). **Optional since 0.4.0 (#50):** an event the material gives no date for is left without one, and its card says the date is unknown; never make one up. `dateEnd` needs a `date` |
 | `label` | yes | string | card title; about 20 characters per line, at most two lines |
 | `actorIds` | no | string[] | parties involved. Two or more puts this event on the centre axis; references the diagram-level `actors` ids (see "Actor mechanism" below) |
-| `groupId` | no | string | which side this event falls on; references a diagram-level `groups` id (one only, mutually exclusive groups); see "Group mechanism" below |
+| `groupId` | no | string | **only in a diagram of 0 or 1 party**: which side this event falls on; references a diagram-level `groups` id (one only, mutually exclusive groups). With 2 or more parties it is an error: the event is placed by its `actorIds`. See "Group mechanism" below |
 | `detail` | no | string | full text revealed when the card is opened |
 | `summary` | no | string | the line under the card title; about 22 characters; see "label / summary / detail" below |
 | `dateEnd` | no | string (ISO 8601) | for a span, the end instant; must not be earlier than date. The card then shows "start - end" and the overlay gives the duration (**no span bar is drawn**, why see §4) |
@@ -301,42 +194,43 @@ Compare the two well-written entries in the same case; they carry information th
 
 ### The three common timeline shapes (examples, not all of them)
 
-**The three below are the most common shapes. They are examples, not a closed menu.** Which views a case should be cut into is for the agent to decide after reading it (why, see "View mechanism"). All three are computed by the same set of placement rules; the data layer has no shape field.
+All three come from the same placement rules; the data layer has no shape field.
 
-| Shape | How the view is declared | Notes |
+| Shape | How it is written | Notes |
 |---|---|---|
-| **single-party timeline** | one side carries one party, the other side is empty (or `splitBy: group` splits by meaning) | reconstruct the facts from one party's standpoint |
-| **two-party timeline** | one party on each side | one party per side, the two opposed |
-| **multi-party timeline** | several parties on each side | several lanes; the two sides may be asymmetric |
+| **single-party timeline** | one party; the groups split its acts by kind, written on the events | reconstruct the facts from one party's standpoint |
+| **two-party timeline** | two parties, one in each side group | one party per side, the two opposed |
+| **multi-party timeline** | several parties, each in the 1st or the 2nd group | several lanes; the two sides may be asymmetric |
 
 **The two sides are called "side 1 / side 2", not "top side / bottom side".** With a vertical axis the two sides are in fact left and right. The top/bottom wording comes from a horizontal layout and stops being right once it is moved onto a vertical axis.
 
 **Direction is decided by the renderer** (`orientation: "horizontal" | "vertical"`); the data layer does not care about direction. Both directions are implemented and are switched by hand in the control dock at the foot of the canvas.
 
-### Group mechanism (settled 2026-09)
+### Group mechanism (settled 2026-09, changed in generation 2)
 
-**Purpose:** to support "events split across two sides" in a **single-party timeline**. The basis of the split is **not fixed** (act/consequence, normal/abnormal, and so on; the agent decides from the case).
+**Purpose:** to name the two sides and the axis. **What a group splits depends on how many parties the diagram has**:
+
+- **0 or 1 party**: the groups split the **acts** of that party (act/consequence, normal/abnormal, and so on; the agent decides from the case). An event references one with `groupId`; an event with none goes on the axis;
+- **2 or more parties**: the groups split the **parties**. Each party references the 1st or the 2nd group with its own `groupId` (required); the events carry none and are placed by their `actorIds`.
+
+Common to both:
 
 - **`groups` is an ordered diagram-level list**: order is the side order (the 1st on the left/top, the 2nd on the right/bottom);
 - **at most 3**: the 1st on the left (top) side, the 2nd on the right (bottom) side, the 3rd on the axis. A 4th is a data error, because the axis has only two sides plus the centre;
-- **an event references it with `groupId`** (one only; the groups are mutually exclusive);
-- **an event with no `groupId`** -> no side (presented on the axis alone);
-- **the classification is entirely free**: the data layer presets no category enum;
-- **why groups sit at diagram level** (rather than an event writing the group name): the order is controllable, the name is written once and cannot be misspelt, the column heading comes straight from it, an empty group can still be represented, and it can be validated (`groupId` must exist in `groups`);
+- **the classification is free**: the data layer presets no category enum;
+- **why groups sit at diagram level** (rather than writing the group name): the order is controllable, the name is written once and cannot be misspelt, the column heading comes straight from it, an empty group can still be represented, and it can be validated (`groupId` must exist in `groups`);
 - symmetric with the `actors` mechanism (a diagram-level list plus references).
 
 | Field | Required | Type | Notes |
 |---|---|---|---|
-| `id` | yes | string | events reference it via groupId |
-| `label` | yes | string | column heading, e.g. "performance as agreed" |
+| `id` | yes | string | parties (2 or more) or events (one party) reference it via groupId |
+| `label` | yes | string | column heading, e.g. "lender's side" (parties) or "performance as agreed" (one party's acts) |
 
 ### Actor rules for a single-party timeline (settled 2026-09)
 
-- **a single-party view puts one party on one side and leaves the other side empty** (or switches to `splitBy: group` to split by meaning; both are fine, see "View mechanism");
+- **one party in `actors`**; the groups split its acts (see "Group mechanism");
 - other people appear in the `label` / `detail` text and are **not referenceable entities**;
-- `actorIds` falls back to marking whether the event is an act of the view's party (yes -> reference it; no -> omit it);
-- **the view is no longer implied by "there is only one element in `actors`"** but is stated outright by `views`.
-  An earlier decision was "no perspective field, one set of data per view"; in 2026-09 this changed to one set of data carrying several views, because copying the same facts into several files means that one missed copy makes the set contradict itself.
+- `actorIds` marks whether the event is an act of that party (yes -> reference it; no -> omit it).
 
 ### Actor mechanism (settled 2026-09)
 
@@ -349,20 +243,22 @@ Compare the two well-written entries in the same case; they carry information th
   | `actorIds` | Where it is drawn |
   |---|---|
   | 1 | that party's lane |
-  | 2 or more | **the centre** (on the axis, spanning lanes) |
+  | 2 or more | **the centre** (on the axis) |
   | empty / omitted | the centre |
 
 - **whether an event is an interaction is implied by the number in `actorIds`**: no `type: "interaction"` field is needed;
 - **suggested granularity:** list only the **main parties that need their own lane** (4 or fewer is suggested); secondary participants (property staff, paramedics and so on) go into `label`/`detail` and not into the list, so that lanes do not multiply;
 - **the same party must be named consistently** (the agent's responsibility);
 - **directed acts (who did what to whom) are not expressed for now**: `actorIds` is an unordered set, and direction such as "Sun Hao dissuaded Qian Min" is written in `label`/`detail`. If arrows are needed later, an optional `from`/`to` can be added; it is not designed in advance;
-- **no identity system beyond referencing the actor table's ids**: a fact diagram is a timeline narrative, and `actors` is only a layout basis and a display label.
+- **no identity system beyond referencing the actor table's ids**: a fact diagram is a timeline narrative, and `actors` is only a layout basis and a display label;
+- **with 2 or more parties, each party writes `groupId`** (the 1st or the 2nd group): the side it is on. A third party on neither side is not listed as a party.
 
 | Field | Required | Type | Notes |
 |---|---|---|---|
 | `id` | yes | string | unique within the diagram; events reference it via actorIds |
 | `name` | yes | string | display name, e.g. "Huayuan Trading" |
 | `role` | no | string | procedural standing, e.g. "plaintiff" |
+| `groupId` | with 2 or more parties | string | the party's side: the 1st or the 2nd group. Not written in a diagram of one party |
 
 ### Order mechanism (settled 2026-09, closing issue 1)
 
@@ -412,17 +308,17 @@ Compare the two well-written entries in the same case; they carry information th
 
 **The data layer does not care about direction, and it has no "what shape am I" field.** The shape is decided at render time by two things:
 
-1. **the view** (`views`): which decides the basis of the split, and who is on which side;
+1. **the parties and the groups**: with 2 or more parties, who is on which side; with one, how its acts are split;
 2. **the direction** (`orientation`): which decides whether time runs downwards (vertical) or to the right (horizontal).
 
 The four common shapes are just different values of those two, and **there is no `layout` field** (the early draft's `layout: "single-actor" | "dual-actor" | "multi-actor"` is abandoned):
 
 | Shape | How it arises |
 |---|---|
-| single-party timeline | the view has one party on one side and the other side empty; or `groups` splits by meaning |
-| two-party timeline | the view has one party on each side |
-| multi-party timeline | the view has several parties on each side (the two sides may be asymmetric) |
-| no split | both sides of the view are empty and every event lands on the axis |
+| single-party timeline | one party; `groups` split its acts by meaning |
+| two-party timeline | two parties, one in each side group |
+| multi-party timeline | several parties in each side group (the two sides may be asymmetric) |
+| no split | one party (or none) and no `groups`: every event lands on the axis |
 
 Other conventions:
 
@@ -436,8 +332,7 @@ Other conventions:
 1. **`dateEnd`**: settled, kept (spans are common in litigation and the examples verify it).
 2. **Approximate / calibrated time**: settled, `approx` + `dateNote` (see §3).
 3. **Actor mechanism**: settled: an ordered diagram-level `actors` list, events referencing it with `actorIds`, and 2 or more parties putting the event on the axis (see §3).
-4. **Views**: settled: the specification fixes only the mechanism (where an event falls is always `groupId` for the side and `actorIds` for the lane) and **lists no view menu**; which views a case is cut into is for the agent to decide after reading it (see "View mechanism" in §3).
-   An earlier decision was "no perspective field, one set of data per view"; this has changed to one set of data carrying several views.
+4. **Views**: removed in generation 2 (2026-10): one diagram, one placement (see "Views" in §3).
 
 > All the main design decisions for the fact schema are settled, and it can be treated as **final v1** (subject to further testing against real cases).
 

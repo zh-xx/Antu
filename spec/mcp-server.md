@@ -43,7 +43,7 @@ looks good.** The preview covers that gap.
 **Three: run locally rather than over the network wherever possible.**
 
 Validation and geometry are **plain JS** and need no browser: given a JSON they work out
-how large the content is, which orientation to use, and which views do not fit. The
+how large the content is, which orientation to use, and whether it fits. The
 preview reuses **the browser already installed on the machine** (how it is located is
 in §4); no headless browser is bundled. The whole server makes no network requests.
 
@@ -61,11 +61,11 @@ than an empty table (an empty table reads as "this type exists, it is just empty
 
 | Tool | What it does | Size | Needs a browser |
 |---|---|---|---|
-| `antu_schema` | Field table: what is required, of what type, one line of explanation | 2858 characters ≈ 1.9k tokens | no |
-| `antu_guide` | One page of mechanism notes: where an event is drawn, how views change, the "one event per cell" limit | 4042 characters ≈ 2.6k tokens | no |
+| `antu_schema` | Field table: what is required, of what type, one line of explanation | 3410 characters ≈ 2.2k tokens | no |
+| `antu_guide` | One page of mechanism notes: where an event is drawn (the sides from the parties, or from the groups with one party), the "one event per cell" limit | 6329 characters ≈ 4.1k tokens | no |
 | `antu_examples` | Lists examples (by default the six small ones in `examples/agent/fact/`); pass `file` to fetch any one | about 1 KB each | no |
-| `antu_validate` | Validates, reporting each problem (with field path and event id); when it passes, notes each view that does not fit (not an error, but that view is left out of the view dropdown) | — | no |
-| `antu_layout` | Computes the geometry: content size, fit zoom, suggested orientation, whether each view fits. For a procedure the suggested orientation is always the one the diagram opens with (vertical), and which orientation fits a screen better is reported apart | — | no |
+| `antu_validate` | Validates, reporting each problem (with field path and event id); when it passes, adds its notes (for a fact diagram, slots whose dates contradict their order) | — | no |
+| `antu_layout` | Computes the geometry: content size, fit zoom, suggested orientation, whether it fits (a fact diagram: columns per side). For a procedure the suggested orientation is always the one the diagram opens with (vertical), and which orientation fits a screen better is reported apart | — | no |
 | `antu_render` | Produces the self-contained HTML | — | no |
 | `antu_preview` | Returns a PNG screenshot | one image | **yes** |
 | `antu_versions` | Which diagram types and which ways of drawing (`kind`) there are, with the version and status of each and the generation of each type's JSON format; optional `type`. The same list as `antu versions` on the command line and `spec/versions.md` | a few lines | no |
@@ -236,7 +236,6 @@ Measured (corridor-charging case):
 ```
 validation passes
 vertical 948×901, fit zoom 0.849; horizontal 2362×345, 0.605; vertical suggested
-4 views, of which "Chronological only" does not fit (two events in one slot fall in the same lane)
 HTML produced: 419 KB
 preview: 9 cards, 1400×820, about 2.4 seconds
 ```

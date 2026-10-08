@@ -1,0 +1,129 @@
+{
+  "specVersion": 2,
+  "type": "fact",
+  "title": "Equity transfer dispute · Two parties · Three time points (illustrative data)",
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "Transferor",
+      "role": "Former shareholder",
+      "groupId": "g-1"
+    },
+    {
+      "id": "a-2",
+      "name": "Transferee",
+      "role": "New shareholder",
+      "groupId": "g-2"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Transferor's acts"
+    },
+    {
+      "id": "g-2",
+      "label": "Transferee's acts"
+    },
+    {
+      "id": "g-3",
+      "label": "Joint acts or objective course"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "Equity transfer agreement",
+      "loc": {
+        "file": "股权转让协议.pdf",
+        "page": 2
+      },
+      "quote": "The transferee shall pay the first instalment of RMB 3m within ten days after the agreement takes effect; the transferor shall cooperate in completing the change of registration after receiving payment."
+    },
+    {
+      "id": "s-2",
+      "type": "evidence",
+      "name": "Bank payment receipt",
+      "loc": {
+        "file": "付款凭证.pdf",
+        "page": 1
+      },
+      "quote": "On 15 March 2024 RMB 3m was paid, with a remark stating it was the first instalment of the equity transfer price."
+    },
+    {
+      "id": "s-3",
+      "type": "document",
+      "name": "Business registration materials",
+      "loc": {
+        "file": "工商登记材料.pdf",
+        "page": 4
+      },
+      "quote": "As at the time of suit the transferee had not been registered as a shareholder; the change of registration was never made."
+    }
+  ],
+  "slots": [
+    {
+      "events": [
+        {
+          "id": "ev-1",
+          "date": "2024-03-05",
+          "label": "Transferor and transferee sign the equity transfer agreement",
+          "summary": "Transfer 30% equity, price RMB 9m",
+          "actorIds": [
+            "a-1",
+            "a-2"
+          ],
+          "detail": "It was agreed that the transferor would transfer 30% of the equity held by it to the transferee for RMB 9m, payable in three instalments.",
+          "sourceIds": [
+            "s-1"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-2",
+          "date": "2024-03-15",
+          "label": "Transferee pays the first instalment",
+          "summary": "RMB 3m paid, purpose stated",
+          "actorIds": [
+            "a-2"
+          ],
+          "detail": "The transferee paid the first instalment of RMB 3m as agreed, and the transfer remark stated that it was the first instalment of the equity transfer price.",
+          "sourceIds": [
+            "s-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-3",
+          "date": "2024-04-20",
+          "label": "Transferor fails to cooperate with the registration change",
+          "summary": "Two demands made, still not done",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "After receiving payment the transferor did not cooperate, as agreed, in completing the change of business registration, and had still not done so after two demands from the transferee.",
+          "sourceIds": [
+            "s-3"
+          ]
+        },
+        {
+          "id": "ev-4",
+          "date": "2024-05-10",
+          "label": "Transferee stops paying later instalments",
+          "summary": "Refuses to pay, change not registered",
+          "actorIds": [
+            "a-2"
+          ],
+          "detail": "The transferee stopped paying the second instalment on the ground that the change of business registration had not been made."
+        }
+      ]
+    }
+  ]
+}

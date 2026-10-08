@@ -298,8 +298,10 @@ async function flowchart() {
   const relf = JSON.parse(read(`${REPO}examples/relationship/fang-yuan-parties.zh-CN.json`))
   const text = read(`${REPO}examples/raw/（2032）示刑终1号-方远案-二审.md`)
   const lines = text.split('\n')
-  const view = fact.views[0]
-  // Antu's vertical timeline for this view: one column per party (side one mirrored, so its first party is next
+  // The two sides as the data names them (format generation 2: each party carries its side's group)
+  const sideOf = (gi) => ({ label: fact.groups[gi]?.label ?? '', actors: fact.actors.filter((a) => a.groupId === fact.groups[gi]?.id).map((a) => a.id) })
+  const view = { side1: sideOf(0), side2: sideOf(1), axis: { label: fact.groups[2]?.label ?? '' } }
+  // Antu's vertical timeline: one column per party (side one mirrored, so its first party is next
   // to the axis), the axis between the sides; an event of one party sits in that party's column, an event of
   // both sides (or of nobody) on the axis
   const actorName = Object.fromEntries(fact.actors.map((a) => [a.id, a.name]))

@@ -22,6 +22,7 @@
 //    - card height comes from the text it holds (wrapLineCount), so no text is cut off
 // ============================================================
 
+import { groupOfEvent } from '../timeline/grid.js'
 import { ACTOR_FONT, ACTOR_TAG_PAD, textWidth, wrapLineCount, wrapLinesBy } from '../cardGeometry.js'
 
 /** Horizontal geometry. The time column ends at WHEN_W, its text right-aligned against the spine. */
@@ -224,14 +225,14 @@ export function chronicleItems(spec) {
 export const GROUP_SHAPES = ['circle', 'square', 'diamond']
 export function groupShapeOf(spec, event) {
   const groups = Array.isArray(spec?.groups) ? spec.groups : []
-  const i = groups.findIndex((g) => g?.id === event?.groupId)
+  const i = groups.findIndex((g) => g?.id === groupOfEvent(spec)(event))
   return i < 0 ? 'none' : GROUP_SHAPES[Math.min(i, 2)]
 }
 
 /** Colour index of an event: its group's place in `groups` (0, 1, 2), or 2 (neutral grey) without one */
 export function groupIndexOf(spec, event) {
   const groups = Array.isArray(spec?.groups) ? spec.groups : []
-  const i = groups.findIndex((g) => g?.id === event?.groupId)
+  const i = groups.findIndex((g) => g?.id === groupOfEvent(spec)(event))
   return i >= 0 && i < 3 ? i : 2
 }
 

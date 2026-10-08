@@ -30,8 +30,8 @@ export function validate(spec) {
 }
 
 /**
- * What validation does not call an error but the author should see (for fact: a view that does
- * not fit, so it will be left out of the view dropdown). Each type supplies its own (knowledge.notes).
+ * What validation does not call an error but the author should see (for fact: a slot whose date is
+ * wholly earlier than the one before). Each type supplies its own (knowledge.notes).
  */
 export function notesOf(spec) {
   try {
@@ -46,7 +46,7 @@ export function notesOf(spec) {
  * This is the main basis on which an agent judges whether the diagram will be too wide
  * or too empty.
  *
- * What is counted belongs to the type (time slots and views for a fact diagram; nodes,
+ * What is counted belongs to the type (time slots and columns for a fact diagram; nodes,
  * layers and rules for a procedure), so the report itself comes from the type's knowledge
  * (renderers/<type>/schema.js); this only dispatches. It used to count fact's slots for
  * every type, and a procedure came back as "0 events / 0 time slots".
@@ -88,7 +88,7 @@ export function formatLayoutReport(r) {
 export function validationMessage(spec) {
   const errors = validate(spec)
   if (errors.length === 0) {
-    // Not errors, but not silence either: e.g. a view that does not fit is left out of the view dropdown
+    // Not errors, but not silence either: e.g. slots whose dates contradict their order
     const notes = notesOf(spec)
     const head = 'Validation passed.'
     return { ok: true, text: notes.length ? `${head}\n\n${notes.length} note(s), not errors:\n${notes.map((n) => `  - ${n}`).join('\n')}` : head }

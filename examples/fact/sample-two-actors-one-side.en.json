@@ -1,30 +1,18 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "Sales contract dispute · Two parties on one side (illustrative data)",
 
   "actors": [
-    { "id": "a-1", "name": "Huayuan Trading Co.", "role": "Plaintiff" },
-    { "id": "a-2", "name": "Zhang", "role": "Plaintiff's business manager" },
-    { "id": "a-3", "name": "Xincheng Building Materials Co.", "role": "Defendant" }
+    { "id": "a-1", "name": "Huayuan Trading Co.", "role": "Plaintiff", "groupId": "g-1" },
+    { "id": "a-2", "name": "Zhang", "role": "Plaintiff's business manager", "groupId": "g-1" },
+    { "id": "a-3", "name": "Xincheng Building Materials Co.", "role": "Defendant", "groupId": "g-2" }
   ],
 
   "groups": [
     { "id": "g-1", "label": "Plaintiff's acts" },
     { "id": "g-2", "label": "Defendant's acts" },
     { "id": "g-3", "label": "Joint acts or objective course" }
-  ],
-
-  "views": [
-    { "label": "Plaintiff vs Defendant", "splitBy": "actor",
-      "side1": { "label": "Plaintiff's acts", "actors": ["a-1", "a-2"] },
-      "side2": { "label": "Defendant's acts", "actors": ["a-3"] },
-      "axis": { "label": "Joint acts or objective course" } },
-    { "label": "Huayuan Trading only", "splitBy": "actor",
-      "side1": { "label": "Huayuan Trading Co.", "actors": ["a-1"] },
-      "side2": { "actors": [] },
-      "axis": { "label": "Remaining course" } },
-    { "label": "Chronological only", "splitBy": "actor", "side1": { "actors": [] }, "side2": { "actors": [] } }
   ],
 
   "sources": [
@@ -60,7 +48,6 @@
           "label": "Huayuan Trading and Xincheng sign the sales contract",
           "summary": "RMB 860,000, pay in 30 days",
           "actorIds": ["a-1", "a-3"],
-          "groupId": "g-3",
           "detail": "It was agreed that Huayuan Trading Co. would supply one batch of building materials for RMB 860,000, and that Xincheng Building Materials Co. would pay in full within 30 days after taking delivery.",
           "sourceIds": ["s-1"]
         }
@@ -74,7 +61,6 @@
           "label": "Huayuan Trading delivers the goods as agreed",
           "summary": "Two truckloads, freight borne by Party A",
           "actorIds": ["a-1"],
-          "groupId": "g-1",
           "detail": "Huayuan Trading Co. dispatched all the goods in two truckloads, with freight borne by Party A, and handed over the delivery notes with the goods.",
           "sourceIds": ["s-2"]
         },
@@ -84,7 +70,6 @@
           "label": "Zhang receives and checks the goods on site",
           "summary": "No objection as to quantity or quality",
           "actorIds": ["a-2"],
-          "groupId": "g-1",
           "detail": "Zhang, the business manager of Huayuan Trading Co., attended the site, checked the goods and signed for them, raising no objection as to quantity or quality at the time of receipt.",
           "sourceIds": ["s-2"]
         }
@@ -98,7 +83,6 @@
           "label": "Xincheng fails to pay on time",
           "summary": "Ten days overdue, nothing paid",
           "actorIds": ["a-3"],
-          "groupId": "g-2",
           "detail": "Ten days after the agreed payment deadline expired, Xincheng Building Materials Co. had paid nothing and had raised no objection."
         }
       ]
@@ -111,7 +95,6 @@
           "label": "Huayuan Trading sends a demand letter",
           "summary": "Payment demanded within ten days",
           "actorIds": ["a-1"],
-          "groupId": "g-1",
           "detail": "Huayuan Trading Co. sent a demand letter by registered post, requiring Xincheng Building Materials Co. to pay the price in full within ten days after receiving it.",
           "sourceIds": ["s-3"]
         },
@@ -121,7 +104,6 @@
           "label": "Xincheng undertakes in writing to pay",
           "summary": "Promised by month-end, never paid",
           "actorIds": ["a-3"],
-          "groupId": "g-2",
           "detail": "Xincheng Building Materials Co. replied undertaking to pay the full price by the end of that month, but still did not perform."
         }
       ]
@@ -134,7 +116,6 @@
           "label": "Huayuan Trading brings proceedings",
           "summary": "Claims RMB 860,000 plus interest",
           "actorIds": ["a-1"],
-          "groupId": "g-1",
           "detail": "Huayuan Trading Co. brought proceedings before the court, seeking an order that Xincheng Building Materials Co. pay the price of RMB 860,000 together with interest for late payment."
         }
       ]

@@ -40,7 +40,11 @@ const CLI = 'scripts/antu.mjs'
  * releases (`checkSkill({ strict: false })`, the unit test) lets it be missing, the release workflow's check
  * (`--check`) does not. The release pull request empties this list.
  */
-export const ADDED_SINCE_RELEASE = []
+const skillExamples = (type, names) => names.flatMap((n) => ['en', 'zh-CN'].map((lang) => `examples/${type}/${n}.${lang}.json`))
+export const ADDED_SINCE_RELEASE = skillExamples('fact', ['3-sides', '4-one-side-several'])
+
+/** The other way round: files the sources dropped after the last release, still in the folder until it is rebuilt. Emptied by the release pull request too. */
+export const REMOVED_SINCE_RELEASE = skillExamples('fact', ['3-groups', '4-views'])
 
 /** The licence notes of the skill: what an agent may say when asked, written from the same text as the pages and the notices */
 export function licenseNotes() {
@@ -142,7 +146,10 @@ export function checkSkill({ strict = true } = {}) {
     }
   }
   walk(SKILL_DIR)
-  for (const path of have) if (!want.has(path) && path !== VIEWER && path !== CLI) problems.push(`not part of a build: ${path}`)
+  for (const path of have) {
+    if (want.has(path) || path === VIEWER || path === CLI) continue
+    if (strict || !REMOVED_SINCE_RELEASE.includes(path)) problems.push(`not part of a build: ${path}`)
+  }
 
   // The viewer is 2 MB and changes with every source change, so it is not compared byte for byte: it must be
   // a viewer template of this version.

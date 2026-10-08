@@ -1,0 +1,158 @@
+{
+  "specVersion": 2,
+  "type": "fact",
+  "title": "Equipment supply and installation dispute · Four parties · Four time points (illustrative data)",
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "Buyer",
+      "role": "Purchaser",
+      "groupId": "g-1"
+    },
+    {
+      "id": "a-2",
+      "name": "Supervisor",
+      "role": "Engaged by the buyer",
+      "groupId": "g-1"
+    },
+    {
+      "id": "a-3",
+      "name": "Supplier",
+      "role": "Seller",
+      "groupId": "g-2"
+    },
+    {
+      "id": "a-4",
+      "name": "Installer",
+      "role": "Engaged by the supplier",
+      "groupId": "g-2"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Buyer's side"
+    },
+    {
+      "id": "g-2",
+      "label": "Supplier's side"
+    },
+    {
+      "id": "g-3",
+      "label": "Joint acts or objective course"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "contract",
+      "name": "Equipment supply contract",
+      "loc": {
+        "file": "Supply contract.pdf",
+        "page": 1
+      },
+      "quote": "The equipment shall be delivered to site and installed and commissioned by 30 June 2024."
+    },
+    {
+      "id": "s-2",
+      "type": "document",
+      "name": "Supervisor's inspection record",
+      "loc": {
+        "file": "Supervision record.pdf",
+        "page": 3
+      },
+      "quote": "Unpacking inspection found the nameplate parameters inconsistent with the contract annex; this was recorded on the spot and the supplier was notified."
+    },
+    {
+      "id": "s-3",
+      "type": "evidence",
+      "name": "Acceptance minutes",
+      "loc": {
+        "file": "Acceptance minutes.pdf",
+        "page": 1
+      },
+      "quote": "Because the parameters did not match, acceptance failed and the supplier was required to replace the equipment within fifteen days."
+    }
+  ],
+  "slots": [
+    {
+      "events": [
+        {
+          "id": "ev-1",
+          "date": "2024-05-08",
+          "label": "Buyer and supplier sign the equipment supply contract",
+          "summary": "CNY 4.2m, incl. commissioning",
+          "actorIds": [
+            "a-1",
+            "a-3"
+          ],
+          "detail": "The contract price for the equipment was CNY 4.2 million (including transport, installation and commissioning), and the supplier was to deliver to site and complete commissioning by 30 June.",
+          "sourceIds": [
+            "s-1"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-2",
+          "date": "2024-06-20",
+          "label": "Supplier delivers the equipment to site",
+          "summary": "Ten days ahead of schedule",
+          "actorIds": [
+            "a-3"
+          ],
+          "detail": "The supplier delivered all the equipment to site and completed handover, ten days earlier than the agreed date."
+        },
+        {
+          "id": "ev-3",
+          "date": "2024-06-21",
+          "label": "Supervisor inspects the unpacked equipment",
+          "summary": "Nameplate parameters do not match",
+          "actorIds": [
+            "a-2"
+          ],
+          "detail": "On unpacking inspection the supervisor found that the nameplate parameters of two units were inconsistent with the contract annex, recorded this on the spot and notified the supplier.",
+          "sourceIds": [
+            "s-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-4",
+          "date": "2024-06-28",
+          "label": "Installer completes installation and commissioning",
+          "summary": "Installed, but not energised",
+          "actorIds": [
+            "a-4"
+          ],
+          "detail": "The installer completed the mechanical installation and pipework connections; because of the parameter issue, no energised trial run was carried out."
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-5",
+          "date": "2024-07-05",
+          "label": "Joint acceptance by all four parties fails",
+          "summary": "Replacement required in 15 days",
+          "actorIds": [
+            "a-1",
+            "a-2",
+            "a-3",
+            "a-4"
+          ],
+          "detail": "The buyer, supervisor, supplier and installer carried out acceptance jointly; it failed because the parameters did not match, and the supplier was required to replace the equipment within fifteen days.",
+          "sourceIds": [
+            "s-3"
+          ]
+        }
+      ]
+    }
+  ]
+}

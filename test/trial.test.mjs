@@ -90,7 +90,8 @@ test('the command line gets a clean environment: a variable of this process does
 test('the stand-in model writes the reference, checks it and makes the page', async () => {
   const { root, work, tools } = sandbox()
   try {
-    const referenceText = readFileSync('examples/fact/neighbour-corridor-charging.zh-CN.json', 'utf8')
+    // the skill here is the committed one (the last release); a procedure example is checked by it the same way today
+    const referenceText = readFileSync('examples/procedure/05-premises-lease.zh-CN.json', 'utf8')
     const r = await runAgent({ provider: makeFake({ referenceText }), system: 's', user: 'u', tools, maxTurns: 8 })
     assert.equal(r.stopped, 'done')
     assert.ok(existsSync(join(work, 'spec.json')) && existsSync(join(work, 'diagram.html')))

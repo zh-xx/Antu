@@ -1,85 +1,17 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "Equipment supply and installation dispute · Four parties · Four time points (illustrative data)",
   "actors": [
-    {
-      "id": "a-1",
-      "name": "Buyer",
-      "role": "Purchaser"
-    },
-    {
-      "id": "a-2",
-      "name": "Supervisor",
-      "role": "Engaged by the buyer"
-    },
-    {
-      "id": "a-3",
-      "name": "Supplier",
-      "role": "Seller"
-    },
-    {
-      "id": "a-4",
-      "name": "Installer",
-      "role": "Engaged by the supplier"
-    }
+    { "id": "a-1", "name": "Buyer", "role": "Purchaser", "groupId": "g-1" },
+    { "id": "a-2", "name": "Supervisor", "role": "Engaged by the buyer", "groupId": "g-1" },
+    { "id": "a-3", "name": "Supplier", "role": "Seller", "groupId": "g-2" },
+    { "id": "a-4", "name": "Installer", "role": "Engaged by the supplier", "groupId": "g-2" }
   ],
   "groups": [
-    {
-      "id": "g-1",
-      "label": "Buyer's side"
-    },
-    {
-      "id": "g-2",
-      "label": "Supplier's side"
-    },
-    {
-      "id": "g-3",
-      "label": "Joint acts or objective course"
-    }
-  ],
-  "views": [
-    {
-      "label": "Buyer vs supplier",
-      "splitBy": "actor",
-      "side1": {
-        "label": "Buyer's side",
-        "actors": [
-          "a-1",
-          "a-2"
-        ]
-      },
-      "side2": {
-        "label": "Supplier's side",
-        "actors": [
-          "a-3",
-          "a-4"
-        ]
-      },
-      "axis": {
-        "label": "Joint acts or objective course"
-      }
-    },
-    {
-      "label": "Buyer only",
-      "splitBy": "actor",
-      "side1": {
-        "label": "Buyer",
-        "actors": [
-          "a-1"
-        ]
-      },
-      "side2": {
-        "actors": []
-      },
-      "axis": {
-        "label": "Remaining course"
-      }
-    },
-    {
-      "label": "Split by group",
-      "splitBy": "group"
-    }
+    { "id": "g-1", "label": "Buyer's side" },
+    { "id": "g-2", "label": "Supplier's side" },
+    { "id": "g-3", "label": "Joint acts or objective course" }
   ],
   "sources": [
     {
@@ -125,7 +57,6 @@
             "a-1",
             "a-3"
           ],
-          "groupId": "g-3",
           "detail": "The contract price for the equipment was CNY 4.2 million (including transport, installation and commissioning), and the supplier was to deliver to site and complete commissioning by 30 June.",
           "sourceIds": [
             "s-1"
@@ -143,7 +74,6 @@
           "actorIds": [
             "a-3"
           ],
-          "groupId": "g-2",
           "detail": "The supplier delivered all the equipment to site and completed handover, ten days earlier than the agreed date."
         },
         {
@@ -154,7 +84,6 @@
           "actorIds": [
             "a-2"
           ],
-          "groupId": "g-1",
           "detail": "On unpacking inspection the supervisor found that the nameplate parameters of two units were inconsistent with the contract annex, recorded this on the spot and notified the supplier.",
           "sourceIds": [
             "s-2"
@@ -172,7 +101,6 @@
           "actorIds": [
             "a-4"
           ],
-          "groupId": "g-2",
           "detail": "The installer completed the mechanical installation and pipework connections; because of the parameter issue, no energised trial run was carried out."
         }
       ]
@@ -190,7 +118,6 @@
             "a-3",
             "a-4"
           ],
-          "groupId": "g-3",
           "detail": "The buyer, supervisor, supplier and installer carried out acceptance jointly; it failed because the parameters did not match, and the supplier was required to replace the equipment within fifteen days.",
           "sourceIds": [
             "s-3"

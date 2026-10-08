@@ -4,9 +4,9 @@ Written by `node tools/gen/versions.mjs` from the registry (`diagrams` in `src/r
 
 | Type | Format generation | Diagram | Version | Status | Since | Opens in |
 | --- | --- | --- | --- | --- | --- | --- |
-| `fact` | 1 | `fact/timeline` | 2 | experimental | 0.2.0 | yes (default) |
-|  |  | `fact/chronicle` | 1 | experimental | 0.7.0 |  |
-|  |  | `fact/scale` | 1 | experimental | 0.7.0 |  |
+| `fact` | 2 | `fact/timeline` | 3 | experimental | 0.2.0 | yes (default) |
+|  |  | `fact/chronicle` | 2 | experimental | 0.7.0 |  |
+|  |  | `fact/scale` | 2 | experimental | 0.7.0 |  |
 | `procedure` | 1 | `procedure/flow` | 1 | experimental | 0.2.0 | yes (default) |
 |  |  | `procedure/route` | 1 | experimental | 0.7.0 |  |
 | `relationship` | 1 | `relationship/graph` | 1 | experimental | 0.2.0 | yes (default) |

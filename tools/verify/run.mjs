@@ -51,7 +51,6 @@ import { listKnowledgeTypes, layoutOf, layoutKindsOf } from '../../src/core/regi
 import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.js'
 import { DEFAULT_THEME, themeOf } from '../../src/theme/themes.js'
 import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
-import { viewsOf } from '../../src/renderers/fact/timeline/grid.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
 import * as CHR from '../../src/renderers/fact/chronicle/layout.js'
 import { buildChronicleGraph } from '../../src/renderers/fact/chronicle/layout.js'
@@ -248,9 +247,8 @@ function checkData() {
     }
   }
   truthy('examples found', files.length > 0)
-  if (files.length === 0) return { files, sample: null, combos: 0, views: 0 }
+  if (files.length === 0) return { files, sample: null, combos: 0 }
 
-  let views = 0
   let combos = 0
   let blocked = 0
   for (const f of files) {
@@ -260,22 +258,17 @@ function checkData() {
       bad(`example ${f} validation`, errs[0])
       continue
     }
-    // Ask the registry for this type's layout, never hard-wire fact. Two reasons: procedure has
-    // no views, and its layout takes the same four arguments with the view simply unused.
-    // Hard-wiring fact here is how this loop used to count every procedure example as
-    // "does not fit (expected)" without anyone noticing: viewsOf handed it a fact "all" view and
-    // the fact grid ran on a spec with no slots, so it reported an error and moved on.
+    // Ask the registry for this type's layout, never hard-wire fact: hard-wiring it is how this loop
+    // once counted every procedure example as "does not fit (expected)" without anyone noticing.
     const layout = layoutOf(spec.type, layoutKindsOf(spec.type)[0])
     if (!layout) {
       bad(`example ${f}: no layout registered`, `type=${spec.type}`)
       continue
     }
-    const units = spec.type === 'fact' ? viewsOf(spec) : [undefined]
     const fields = spec.type === 'fact' ? { summary: true } : {}
-    for (const view of units) {
-      views += 1
+    {
       for (const o of ['vertical', 'horizontal']) {
-        const g = layout(spec, fields, view, o)
+        const g = layout(spec, fields, undefined, o)
         combos += 1
         if (g.errors.length) {
           blocked += 1
@@ -291,8 +284,8 @@ function checkData() {
   }
   ok(`all ${files.length} examples pass validation`)
   ok(
-    `${views} views × 2 directions = ${combos} combinations all lay out`,
-    blocked ? `${blocked} of them do not fit (expected)` : '',
+    `${files.length} examples × 2 directions = ${combos} combinations all lay out`,
+    blocked ? `${blocked} of them do not fit` : '',
   )
 
   // The agent examples are "data that runs", not documentation: schema changes make them fail.
@@ -345,7 +338,7 @@ function checkData() {
   // make every pair look drifted.
   const structureOf = (spec) =>
     JSON.stringify({
-      actors: (spec.actors ?? []).map((a) => a.id),
+      actors: (spec.actors ?? []).map((a) => [a.id, a.groupId ?? '']),
       stages: (spec.stages ?? []).map((s) => s.id),
       sources: (spec.sources ?? []).map((s) => [s.id, s.type]),
       nodes: (spec.nodes ?? []).map((n) => [
@@ -357,11 +350,6 @@ function checkData() {
         (n.sourceIds ?? []).join(','),
       ]),
       edges: (spec.edges ?? []).map((e) => [e.from, e.to, e.main ? 1 : 0]),
-      views: (spec.views ?? []).map((v) => [
-        v.splitBy,
-        (v.side1?.actors ?? []).join(','),
-        (v.side2?.actors ?? []).join(','),
-      ]),
       slots: (spec.slots ?? []).map((s) =>
         (s.events ?? []).map((e) => [
           e.id,
@@ -440,8 +428,8 @@ function checkData() {
   truthy('the geometry report can be computed', lay.ok === true, lay.ok ? '' : String(lay.reason))
   const layText = lay.ok ? formatLayoutReport(lay) : ''
   truthy(
-    'the geometry report carries the fit zoom, the suggested orientation and the view count',
-    layText.includes('fit zoom') && layText.includes('Suggested orientation') && layText.includes('view(s)'),
+    'the geometry report carries the fit zoom, the suggested orientation and the columns per side',
+    layText.includes('fit zoom') && layText.includes('Suggested orientation') && layText.includes('Columns: side1'),
     layText.split('\n').filter((l) => l.trim()).slice(0, 3).join(' / '),
   )
 
@@ -621,7 +609,7 @@ function checkData() {
 
   const justificationSample = 'examples/justification/fang-yuan-defense-excess.zh-CN.json'
   truthy('the justification render sample exists', existsSync(join(REPO, justificationSample)))
-  return { files, sample, procedureSample, relationshipSample, justificationSample, combos, views }
+  return { files, sample, procedureSample, relationshipSample, justificationSample, combos }
 }
 
 // ---------------------------------------------------------------
@@ -868,13 +856,13 @@ async function checkExport(browser, spec) {
   ok('export succeeded', `${shot.width}×${shot.height}  ${EXPORT_SHOT.replace(REPO + '/', '')}`)
 
   // The page is certainly in its default presentation state (a fresh browser profile has no
-  // preferences): only the summary field on, direction by slot count, first view, rows staggered
+  // preferences): only the summary field on, direction by slot count, rows staggered
   // (vertical only, spec/fact/rendering.md §8.1).
   const orientation = spec.slots.length >= 5 ? 'vertical' : 'horizontal'
   const graph = buildFactGraph(
     spec,
     { sources: false, actors: false, summary: true },
-    viewsOf(spec)[0],
+    undefined,
     orientation,
     { stagger: true },
   )
@@ -1224,14 +1212,14 @@ async function checkRender(sampleFile) {
     })()`)
     truthy('measured the dock control blocks', dockShape)
     if (dockShape) {
-      // Six blocks: view · field toggles · orientation (with Stagger when vertical) · grid · language · export.
+      // Five blocks: field toggles · orientation (with Stagger when vertical) · grid · language · export.
       // The grid block is offered only while the rows are not staggered (spec/fact/rendering.md §8.1), so a
-      // vertical page, staggered by default, has five.
+      // vertical page, staggered by default, has four. (There is no view menu: placement rules v1 have no views.)
       // The export action is separated off on its own, because it is the only **action** in
       // the dock while everything else is a state toggle.
       // The count is asserted rather than inferred: a resurrected heading switch would add
-      // a seventh, and that is exactly what this replaced assertion was meant to catch.
-      eq(`the dock has ${dockShape.grid ? 'six' : 'five'} control blocks (the grid block ${dockShape.grid ? 'offered' : 'not offered while the rows are staggered'})`, dockShape.blocks, dockShape.grid ? 6 : 5)
+      // one more, and that is exactly what this replaced assertion was meant to catch.
+      eq(`the dock has ${dockShape.grid ? 'five' : 'four'} control blocks (the grid block ${dockShape.grid ? 'offered' : 'not offered while the rows are staggered'})`, dockShape.blocks, dockShape.grid ? 5 : 4)
       truthy(
         'the dock still carries the controls it should',
         dockShape.buttons >= 5 && dockShape.segItems >= 4,

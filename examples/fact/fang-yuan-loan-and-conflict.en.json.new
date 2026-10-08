@@ -1,0 +1,295 @@
+{
+  "specVersion": 2,
+  "type": "fact",
+  "title": "Yuhuan case · Lending, debt collection and the conflict",
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "Fang Yuan",
+      "role": "Defendant",
+      "groupId": "g-1"
+    },
+    {
+      "id": "a-2",
+      "name": "Liang (Fang Yuan's mother)",
+      "role": "operator of Yuanhua Company",
+      "groupId": "g-1"
+    },
+    {
+      "id": "a-3",
+      "name": "Debt collectors",
+      "role": "Zhong, Zheng and others",
+      "groupId": "g-2"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-1",
+      "label": "Fang Yuan and his mother"
+    },
+    {
+      "id": "g-2",
+      "label": "Debt collectors"
+    },
+    {
+      "id": "g-3",
+      "label": "Negotiations and objective course"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "case",
+      "name": "Fictional Case A: Fang Yuan, intentional injury",
+      "loc": {
+        "caseNo": "(2017) Lu Xing Zhong No. 151",
+        "court": "Example Higher People's Court"
+      },
+      "quote": "An ongoing unlawful deprivation of personal liberty is an \"unlawful infringement\" under Model Provision A(1), against which justifiable defence may be exercised."
+    },
+    {
+      "id": "s-2",
+      "type": "document",
+      "name": "Loan contract (RMB 800,000)",
+      "loc": {
+        "file": "Loan contract"
+      },
+      "quote": "On 28 July 2030 Liang and her husband Fang 1 borrowed RMB 800,000 from Zhong and Zheng, orally agreeing on 6% monthly interest."
+    },
+    {
+      "id": "s-3",
+      "type": "document",
+      "name": "House sale contract (RMB 200,000 security)",
+      "loc": {
+        "file": "House sale contract"
+      },
+      "quote": "The other RMB 200,000 was arranged through a house sale contract using a flat in Fang 1's name as security; the parties agreed that on default the flat would be transferred to Zheng."
+    },
+    {
+      "id": "s-4",
+      "type": "evidence",
+      "name": "Body-camera footage and on-site surveillance",
+      "loc": {
+        "file": "Body-camera footage"
+      },
+      "quote": "Liang identified Jiang as having slapped Fang Yuan; Jiang and the others denied it and called it an economic dispute; the officers warned both sides not to use force; Fang Yuan tried to leave and was stopped by the debt collectors."
+    },
+    {
+      "id": "s-5",
+      "type": "evidence",
+      "name": "Post-mortem examination opinion",
+      "loc": {
+        "file": "Post-mortem examination opinion"
+      },
+      "quote": "Jiang died of haemorrhagic shock caused by laceration of the proper hepatic artery and trauma to the right lobe of the liver following an abdominal injury."
+    }
+  ],
+  "slots": [
+    {
+      "events": [
+        {
+          "id": "ev-1",
+          "date": "2030-07-28",
+          "label": "Liang and her husband borrow RMB 800,000 from Zhong and Zheng",
+          "summary": "6% monthly interest agreed orally",
+          "actorIds": [
+            "a-2",
+            "a-3"
+          ],
+          "detail": "The parties orally agreed on 6% monthly interest; this loan became the origin of the later debt dispute.",
+          "sourceIds": [
+            "s-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-2",
+          "date": "2031-10-20",
+          "label": "Liang repays RMB 1.2 million in total",
+          "summary": "several earlier late repayments",
+          "actorIds": [
+            "a-2"
+          ],
+          "detail": "During the repayment period, because Liang was late, Zhong and Zheng directed others to press for repayment by camping in the Yuanhua Company bicycle shed and setting up a cooking stove in front of the office building.",
+          "sourceIds": [
+            "s-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-3",
+          "date": "2031-11-01",
+          "label": "Liang and her husband borrow a further RMB 280,000",
+          "summary": "RMB 200,000 of it secured on a flat",
+          "actorIds": [
+            "a-2",
+            "a-3"
+          ],
+          "detail": "RMB 80,000 at 6% monthly interest agreed orally; the other RMB 200,000 through a house sale contract using a flat in Fang 1's name as security, to be transferred to Zheng on default.",
+          "sourceIds": [
+            "s-3"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-4",
+          "date": "2032-01-06",
+          "label": "Liang repays a further RMB 240,000",
+          "summary": "parties dispute the payment",
+          "actorIds": [
+            "a-2"
+          ],
+          "detail": "Zhong and Zheng considered the payment to be interest on the first RMB 800,000, while Liang and her husband considered it repayment of the second loan; after that they made no further repayment and did not transfer the flat.",
+          "sourceIds": [
+            "s-2",
+            "s-3"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-5",
+          "date": "2032-04-01",
+          "label": "Zheng and others change the locks and move in",
+          "summary": "police called; mediation fails",
+          "actorIds": [
+            "a-3"
+          ],
+          "detail": "Zheng produced the house sale contract, and the officers left after mediating.",
+          "sourceIds": [
+            "s-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-6",
+          "date": "2032-04-13T11:00",
+          "label": "Zheng and others remove belongings; Zhong pushes Liang to the ground",
+          "summary": "belongings moved to the gate",
+          "actorIds": [
+            "a-3"
+          ],
+          "detail": "When the officers responded, Zhong said it was a house sale dispute and was told to settle it by negotiation or litigation; after they left, Zhong berated Liang and pushed her to the ground and stood on her arm. That afternoon Zheng and others moved the contents of the flat to the gate of Yuanhua Company.",
+          "sourceIds": [
+            "s-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-7",
+          "date": "2032-04-13T21:00",
+          "label": "the parties reach an oral agreement",
+          "summary": "transfer, then RMB 250k to settle",
+          "actorIds": [
+            "a-2",
+            "a-3"
+          ],
+          "detail": "Through others' mediation Fang 1 reached an oral agreement with Zhong: the flat would be transferred to Zheng the next day, and after a further RMB 250,000 was paid the principal and interest would be settled in full.",
+          "sourceIds": [
+            "s-2"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-8",
+          "date": "2032-04-14T16:00",
+          "label": "Zheng gathers a group at Yuanhua Company to press for repayment",
+          "summary": "barbecue outside, pressing repayment",
+          "actorIds": [
+            "a-3"
+          ],
+          "detail": "Because Fang 1 and Liang did not complete the transfer, Zheng gathered Kong and others at Yuanhua Company to press for repayment, shouting in front of the office building, watching inside the finance office and outside the canteen, and barbecuing and drinking outside the lobby while urging Liang to repay.",
+          "sourceIds": [
+            "s-4"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-9",
+          "date": "2032-04-14T21:53",
+          "label": "Jiang and others enter the reception room, insult and expose themselves",
+          "summary": "Fang Yuan slapped, hair pulled",
+          "actorIds": [
+            "a-3"
+          ],
+          "detail": "Jiang abused Liang, Fang Yuan and their family in obscene language, flicked a cigarette butt onto the front of Liang's clothing, pulled down his trousers to expose himself and turned his body towards Liang and the others; he then took off Fang Yuan's shoe and made Liang smell it, slapped Fang Yuan's face, while other debt collectors pulled Fang Yuan's hair and pressed his shoulders down to stop him rising.",
+          "sourceIds": [
+            "s-4"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-10",
+          "date": "2032-04-14T22:17",
+          "label": "officers reach the reception room then leave to find the caller",
+          "summary": "both sides warned not to fight",
+          "actorIds": [],
+          "detail": "Officer Zhu and an auxiliary officer reached the reception room to establish the facts; Liang and Fang Yuan identified Jiang as having beaten Fang Yuan, while Jiang and the others denied it and said they were collecting a debt; after warning both sides not to fight, the officer took the auxiliary officer into the yard to look for the caller.",
+          "sourceIds": [
+            "s-4"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-11",
+          "date": "2032-04-14T22:26",
+          "label": "Fang Yuan stabs four debt collectors",
+          "summary": "one dead, two badly hurt",
+          "actorIds": [
+            "a-1"
+          ],
+          "detail": "Fang Yuan and Liang tried to leave with the officers and were blocked; Jiang and the others seized Fang Yuan's neck and pushed and dragged him to the south-east corner; Fang Yuan warned them with a single-edged knife with a 15.3 cm blade, Jiang taunted him and closed in, and Fang Yuan stabbed Jiang once in the abdomen and stabbed Cheng, Yan and Guo once each.",
+          "sourceIds": [
+            "s-4"
+          ]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-12",
+          "date": "2032-04-15T02:18",
+          "label": "Jiang dies despite resuscitation",
+          "summary": "cause of death: haemorrhagic shock",
+          "actorIds": [
+            "a-3"
+          ],
+          "detail": "Jiang was taken to Example County People's Hospital and died at 02:18 the next day despite resuscitation; Yan and Meng suffered second-degree serious injuries and Cheng a second-degree minor injury.",
+          "sourceIds": [
+            "s-5"
+          ]
+        }
+      ]
+    }
+  ]
+}
