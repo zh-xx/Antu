@@ -274,7 +274,7 @@ Distance along the axis is real time, so the density of events is itself the inf
 | Titles in at most two lines, measured with the real font | Text never leaves its card; the full text is in the overlay |
 | A date coarser than its whole segment (a day on a scale of minutes) is a hollow mark at its place in data order, with words: "that day (time unknown)", "that month (day unknown)", "that year (month unknown)" | Cut to the segment, a band read as lasting exactly that long (the corridor case: a day-only event drawn as twelve minutes). The maintainer chose the hollow mark with words over a bare hollow mark and a fading band |
 | A span whose time does not fit one line breaks after the dash, and its card is one line taller | "2030-06-02 20:14:16 - 20:16…" hid the end; a level of cards has room for two title lines and two time lines |
-| The lane-name column is as wide as its longest name (132 to 196 px), measured with the real font | A fixed 132 px wrapped "双方共同或客观经过" onto two lines |
+| The lane-name column is as wide as its longest name (132 to 196 px), estimated the same way on the page and in Node so the reported size is the drawn size | A fixed 132 px wrapped "双方共同或客观经过" onto two lines |
 | A lane with no event keeps its name and line but is 34 px tall | That a side did nothing on its own is information; a full-height empty lane only pushed the rest apart (placement rules v1 put every act of both sides on the axis, so this is common) |
 
 ## 10. Exporting an image

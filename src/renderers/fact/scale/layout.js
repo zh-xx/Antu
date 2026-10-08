@@ -374,8 +374,9 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     // A segment of one instant has no scale to speak of: it is named by its day
     return { index: k, from, to, count: events.length, unit: to > from ? unitOf(to - from) : 'day' }
   })
-  // The label column: as wide as the longest lane name (measured with the page's font when there is one), within bounds
-  const nameW = (text) => (measure ? measure(text, 'title') * (LANE_FONT / TITLE_FONT) : textWidth(text, LANE_FONT) * 1.06)
+  // The label column: as wide as the longest lane name, within bounds. Estimated the same way on the page and in Node
+  // (not measured on the page), so the size the reports and the export check compute is the size the page draws
+  const nameW = (text) => textWidth(text, LANE_FONT) * 1.06
   const laneNames = lanesOf(spec, flat.map((f) => f.event), { byParty }).flatMap((l) => [l.label || '', l.side || ''])
   const labelW = Math.round(Math.min(LABEL_W_MAX, Math.max(LABEL_W, ...laneNames.map((n) => nameW(n) + LANE_NAME_PAD))))
   let x = labelW
