@@ -76,12 +76,12 @@ export default function FactTimeline({ spec }) {
 
   // Staggered rows (vertical only, see rowTopsOf in metrics.js): on by default, and what the reader set is remembered
   // per diagram, like the orientation, so turning it off in one diagram does not change how another opens.
-  const [staggerPrefs, setStaggerPrefs] = useState(() => readPrefs().staggers || {})
+  const [staggerPrefs, setStaggerPrefs] = useState(() => prefs.read().staggers || {})
   const stagger = PRESET?.stagger ?? staggerPrefs[specKey] ?? true
   const toggleStagger = (value) => {
     const map = { ...staggerPrefs, [specKey]: value }
     setStaggerPrefs(map)
-    writePrefs({ staggers: map })
+    prefs.write({ staggers: map })
   }
 
   // View index. One page holds one data set, so there is no "reset when the diagram changes".
