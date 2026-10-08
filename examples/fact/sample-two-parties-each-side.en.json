@@ -1,36 +1,19 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "Construction contract dispute · Two parties on each side (illustrative data)",
 
   "actors": [
-    { "id": "a-1", "name": "Owner", "role": "Employer" },
-    { "id": "a-2", "name": "Supervisor", "role": "Engaged by the employer" },
-    { "id": "a-3", "name": "General contractor", "role": "Contractor" },
-    { "id": "a-4", "name": "Subcontractor", "role": "Subcontracted by the general contractor" }
+    { "id": "a-1", "name": "Owner", "role": "Employer", "groupId": "g-1" },
+    { "id": "a-2", "name": "Supervisor", "role": "Engaged by the employer", "groupId": "g-1" },
+    { "id": "a-3", "name": "General contractor", "role": "Contractor", "groupId": "g-2" },
+    { "id": "a-4", "name": "Subcontractor", "role": "Subcontracted by the general contractor", "groupId": "g-2" }
   ],
 
   "groups": [
-    { "id": "g-1", "label": "Employer's acts" },
-    { "id": "g-2", "label": "Contractor's acts" },
+    { "id": "g-1", "label": "Employer" },
+    { "id": "g-2", "label": "Contractor" },
     { "id": "g-3", "label": "Joint acts or objective course" }
-  ],
-
-  "views": [
-    { "label": "Employer vs Contractor", "splitBy": "actor",
-      "side1": { "label": "Employer", "actors": ["a-1", "a-2"] },
-      "side2": { "label": "Contractor", "actors": ["a-3", "a-4"] },
-      "axis": { "label": "Joint acts or objective course" } },
-    { "label": "Split by group", "splitBy": "group" },
-    { "label": "Owner vs General contractor", "splitBy": "actor",
-      "side1": { "label": "Owner", "actors": ["a-1"] },
-      "side2": { "label": "General contractor", "actors": ["a-3"] },
-      "axis": { "label": "Remaining course" } },
-    { "label": "Owner only", "splitBy": "actor",
-      "side1": { "label": "Owner", "actors": ["a-1"] },
-      "side2": { "actors": [] },
-      "axis": { "label": "Remaining course" } },
-    { "label": "Chronological only", "splitBy": "actor", "side1": { "actors": [] }, "side2": { "actors": [] } }
   ],
 
   "sources": [
@@ -66,7 +49,6 @@
           "label": "Owner and general contractor sign the construction contract",
           "summary": "180 calendar days, quality 'qualified'",
           "actorIds": ["a-1", "a-3"],
-          "groupId": "g-3",
           "detail": "The construction period was agreed at 180 calendar days, the quality standard at 'qualified', and the price was to be paid in three instalments by progress.",
           "sourceIds": ["s-1"]
         }
@@ -80,7 +62,6 @@
           "label": "Owner issues the notice to commence work",
           "summary": "Start date set at 15 April",
           "actorIds": ["a-1"],
-          "groupId": "g-1",
           "detail": "The owner notified the general contractor in writing, designating 15 April 2024 as the commencement date."
         },
         {
@@ -89,7 +70,6 @@
           "label": "Supervisor enters the site",
           "summary": "Same-day entry, supervision begins",
           "actorIds": ["a-2"],
-          "groupId": "g-1",
           "detail": "The supervisor entered the site the same day and began on-site supervision of key processes, issuing a supervision log."
         }
       ]
@@ -102,7 +82,6 @@
           "label": "Subcontractor enters the site to work",
           "summary": "Waterproofing works, approval granted",
           "actorIds": ["a-4"],
-          "groupId": "g-2",
           "detail": "The general contractor subcontracted the waterproofing works to the subcontractor, which entered the site to work; its qualifications had been submitted and approved."
         }
       ]
@@ -115,7 +94,6 @@
           "label": "Supervisor finds a quality problem on inspection",
           "summary": "Localised honeycombing on roof slab",
           "actorIds": ["a-2"],
-          "groupId": "g-1",
           "detail": "On inspection the supervisor found localised honeycombing and pitting on the second-floor roof slab, and issued a supervisor's notice requiring rectification.",
           "sourceIds": ["s-2"]
         },
@@ -125,7 +103,6 @@
           "label": "General contractor suspends work on that part",
           "summary": "Roof slab work halted",
           "actorIds": ["a-3"],
-          "groupId": "g-2",
           "detail": "The general contractor suspended work on the second-floor roof slab, pending resumption once the rectification plan was settled."
         }
       ]
@@ -138,7 +115,6 @@
           "label": "The three parties agree a rectification plan",
           "summary": "Subcontractor to cut out and redo",
           "actorIds": ["a-1", "a-3", "a-4"],
-          "groupId": "g-3",
           "detail": "The owner, the general contractor and the subcontractor jointly confirmed a rectification plan: the subcontractor was to cut out and redo the work, which would be accepted to the original standard."
         }
       ]
@@ -151,7 +127,6 @@
           "label": "Subcontractor completes rectification",
           "summary": "Cut out and redone, re-inspection sought",
           "actorIds": ["a-4"],
-          "groupId": "g-2",
           "detail": "The subcontractor completed the cut-out and redo, and requested re-inspection by the supervisor."
         },
         {
@@ -160,7 +135,6 @@
           "label": "Supervisor's re-inspection is satisfactory",
           "summary": "Written clearance issued",
           "actorIds": ["a-2"],
-          "groupId": "g-1",
           "detail": "The supervisor's re-inspection was satisfactory and it issued a written opinion allowing the works to proceed to completion acceptance.",
           "sourceIds": ["s-3"]
         }
@@ -174,7 +148,6 @@
           "label": "General contractor applies for completion acceptance",
           "summary": "Passed 30 September; payment overdue",
           "actorIds": ["a-3"],
-          "groupId": "g-2",
           "detail": "The general contractor submitted an application for completion acceptance; the works passed acceptance on 30 September 2024, but the construction price was not paid on time."
         }
       ]

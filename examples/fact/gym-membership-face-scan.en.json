@@ -1,5 +1,5 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "Han Lei's side · How the way into the gym changed (fictional: face scan at a gym, one party)",
 
@@ -11,11 +11,6 @@
     { "id": "g-1", "label": "Normal (performed as agreed)" },
     { "id": "g-2", "label": "Abnormal (departs from the agreement)" },
     { "id": "g-3", "label": "Objective course (no party involved)" }
-  ],
-
-  "views": [
-    { "label": "By performance", "splitBy": "group" },
-    { "label": "Time order only", "splitBy": "actor", "side1": { "actors": [] }, "side2": { "actors": [] } }
   ],
 
   "sources": [

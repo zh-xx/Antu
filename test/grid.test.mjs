@@ -41,8 +41,11 @@ test('missing required fields: the error carries the field path and the event id
 test('dangling references: actorIds / groupId / sourceIds must all be reported', () => {
   const a = base(); a.slots[0].events[0].actorIds = ['no-such-actor']
   assert.ok(some(errorsOf(a), /no-such-actor/))
-  const g = base(); g.slots[1].events[0].groupId = 'no-such-group'
+  const g = base(); g.actors[0].groupId = 'no-such-group'
   assert.ok(some(errorsOf(g), /no-such-group/))
+  const gym = () => JSON.parse(readFileSync('examples/fact/gym-membership-face-scan.zh-CN.json', 'utf8'))
+  const e = gym(); e.slots[0].events[0].groupId = 'no-such-group'
+  assert.ok(some(errorsOf(e), /no-such-group/), 'with one party the group is on the event, and checked there')
   const s = base(); s.slots[0].events[0].sourceIds = ['no-such-source']
   assert.ok(some(errorsOf(s), /no-such-source/))
 })
@@ -117,22 +120,56 @@ test('validation is layout: a grid is still returned on error so the caller can 
   assert.ok(Array.isArray(g.columns))
 })
 
-test('a view that does not fit is not an error but is named (#25)', () => {
-  // The corridor-charging case has a view whose events collide in one lane. By design such a view is left out of
-  // the view dropdown rather than rejected, so validation passes. But "passed" used to be all an
-  // author heard, and a view that could never be drawn went unseen.
-  const spec = base()
-  assert.deepEqual(validateSpec(spec), [], 'a view that does not fit must not turn into an error')
-  const notes = notesOf(spec)
-  assert.equal(notes.length, 1, `expected the one view that does not fit, got ${JSON.stringify(notes)}`)
-  assert.match(notes[0], /view "[^"]+" does not fit/)
-  assert.match(notes[0], /will not appear in the view dropdown/)
-  assert.match(notes[0], /slots\[0\]/, 'the reason from the layout is carried along')
+// ---- placement rules v1: what the groups split depends on how many parties there are ----
+
+test('2 or more parties: each party names its side, and an event goes where its parties put it', () => {
+  const g = buildGrid(base())
+  assert.equal(g.byActor, true)
+  const sideOf = (id) => g.columns[g.placements.get(id).col].side
+  for (const slot of base().slots) {
+    for (const e of slot.events) {
+      const ids = e.actorIds ?? []
+      const want = ids.length === 1 ? (ids[0] === 'a-1' ? 'side1' : 'side2') : 'axis'
+      assert.equal(sideOf(e.id), want, `${e.id} (${ids.join(', ') || 'no party'})`)
+    }
+  }
 })
 
-test('notes: nothing to say for data whose views all fit, and for types without notes (#25)', () => {
-  const small = JSON.parse(readFileSync('examples/agent/fact/4-views.en.json', 'utf8'))
-  assert.deepEqual(notesOf(small), [], 'the small agent examples are written so that every view fits')
+test('2 or more parties: a party without a side, a party on the axis group, and a group on an event are errors', () => {
+  const a = base(); delete a.actors[1].groupId
+  assert.ok(some(errorsOf(a), /actors\[1\] \(a-2\).*write `groupId`/))
+  const b = base(); b.actors[0].groupId = 'g-3'
+  assert.ok(some(errorsOf(b), /3rd group, the axis/))
+  const c = base(); c.slots[0].events[0].groupId = 'g-1'
+  assert.ok(some(errorsOf(c), /delete the event's `groupId`/))
+})
+
+test('2 or more parties acting together on one side land on the axis, not on the side', () => {
+  const spec = JSON.parse(readFileSync('examples/agent/fact/4-one-side-several.en.json', 'utf8'))
+  const g = buildGrid(spec)
+  assert.deepEqual(g.errors, [])
+  assert.equal(g.columns[g.placements.get('ev-4').col].side, 'axis')
+  assert.equal(g.columns[g.placements.get('ev-3').col].side, 'side1')
+})
+
+test('one party: the groups split the events, and a party carries no group', () => {
+  const gym = () => JSON.parse(readFileSync('examples/fact/gym-membership-face-scan.zh-CN.json', 'utf8'))
+  const g = buildGrid(gym())
+  assert.equal(g.byActor, false)
+  assert.deepEqual(g.errors, [])
+  const bad = gym(); bad.actors[0].groupId = 'g-1'
+  assert.ok(some(errorsOf(bad), /only when the diagram has 2 or more parties/))
+})
+
+test('views are gone: a file that still has them is told to delete them', () => {
+  const spec = base()
+  spec.views = [{ label: 'x', splitBy: 'group' }]
+  assert.ok(some(errorsOf(spec), /`views` is no longer part of the format/))
+})
+
+test('notes: nothing to say for the examples, and for types without notes', () => {
+  const small = JSON.parse(readFileSync('examples/agent/fact/3-sides.en.json', 'utf8'))
+  assert.deepEqual(notesOf(small), [])
   assert.deepEqual(notesOf({ type: 'procedure', title: 'x', nodes: [], edges: [] }), [])
   assert.deepEqual(notesOf(null), [])
 })

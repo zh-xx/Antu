@@ -1,63 +1,16 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "Yuhuan case · Lending, debt collection and the conflict",
   "actors": [
-    {
-      "id": "a-1",
-      "name": "Fang Yuan",
-      "role": "Defendant"
-    },
-    {
-      "id": "a-2",
-      "name": "Liang (Fang Yuan's mother)",
-      "role": "operator of Yuanhua Company"
-    },
-    {
-      "id": "a-3",
-      "name": "Debt collectors",
-      "role": "Zhong, Zheng and others"
-    }
+    { "id": "a-1", "name": "Fang Yuan", "role": "Defendant", "groupId": "g-1" },
+    { "id": "a-2", "name": "Liang (Fang Yuan's mother)", "role": "operator of Yuanhua Company", "groupId": "g-1" },
+    { "id": "a-3", "name": "Debt collectors", "role": "Zhong, Zheng and others", "groupId": "g-2" }
   ],
   "groups": [
-    {
-      "id": "g-1",
-      "label": "Lending and repayment"
-    },
-    {
-      "id": "g-2",
-      "label": "Debt collection and conflict"
-    },
-    {
-      "id": "g-3",
-      "label": "Negotiations and objective course"
-    }
-  ],
-  "views": [
-    {
-      "label": "Fang Yuan and his mother vs debt collectors",
-      "splitBy": "actor",
-      "side1": {
-        "label": "Fang Yuan and his mother",
-        "actors": [
-          "a-1",
-          "a-2"
-        ]
-      },
-      "side2": {
-        "label": "Debt collectors",
-        "actors": [
-          "a-3"
-        ]
-      },
-      "axis": {
-        "label": "Negotiations and objective course"
-      }
-    },
-    {
-      "label": "Split by group",
-      "splitBy": "group"
-    }
+    { "id": "g-1", "label": "Fang Yuan and his mother" },
+    { "id": "g-2", "label": "Debt collectors" },
+    { "id": "g-3", "label": "Negotiations and objective course" }
   ],
   "sources": [
     {
@@ -119,7 +72,6 @@
             "a-2",
             "a-3"
           ],
-          "groupId": "g-3",
           "detail": "The parties orally agreed on 6% monthly interest; this loan became the origin of the later debt dispute.",
           "sourceIds": [
             "s-2"
@@ -137,7 +89,6 @@
           "actorIds": [
             "a-2"
           ],
-          "groupId": "g-1",
           "detail": "During the repayment period, because Liang was late, Zhong and Zheng directed others to press for repayment by camping in the Yuanhua Company bicycle shed and setting up a cooking stove in front of the office building.",
           "sourceIds": [
             "s-2"
@@ -156,7 +107,6 @@
             "a-2",
             "a-3"
           ],
-          "groupId": "g-3",
           "detail": "RMB 80,000 at 6% monthly interest agreed orally; the other RMB 200,000 through a house sale contract using a flat in Fang 1's name as security, to be transferred to Zheng on default.",
           "sourceIds": [
             "s-3"
@@ -174,7 +124,6 @@
           "actorIds": [
             "a-2"
           ],
-          "groupId": "g-1",
           "detail": "Zhong and Zheng considered the payment to be interest on the first RMB 800,000, while Liang and her husband considered it repayment of the second loan; after that they made no further repayment and did not transfer the flat.",
           "sourceIds": [
             "s-2",
@@ -193,7 +142,6 @@
           "actorIds": [
             "a-3"
           ],
-          "groupId": "g-2",
           "detail": "Zheng produced the house sale contract, and the officers left after mediating.",
           "sourceIds": [
             "s-2"
@@ -211,7 +159,6 @@
           "actorIds": [
             "a-3"
           ],
-          "groupId": "g-2",
           "detail": "When the officers responded, Zhong said it was a house sale dispute and was told to settle it by negotiation or litigation; after they left, Zhong berated Liang and pushed her to the ground and stood on her arm. That afternoon Zheng and others moved the contents of the flat to the gate of Yuanhua Company.",
           "sourceIds": [
             "s-2"
@@ -230,7 +177,6 @@
             "a-2",
             "a-3"
           ],
-          "groupId": "g-3",
           "detail": "Through others' mediation Fang 1 reached an oral agreement with Zhong: the flat would be transferred to Zheng the next day, and after a further RMB 250,000 was paid the principal and interest would be settled in full.",
           "sourceIds": [
             "s-2"
@@ -248,7 +194,6 @@
           "actorIds": [
             "a-3"
           ],
-          "groupId": "g-2",
           "detail": "Because Fang 1 and Liang did not complete the transfer, Zheng gathered Kong and others at Yuanhua Company to press for repayment, shouting in front of the office building, watching inside the finance office and outside the canteen, and barbecuing and drinking outside the lobby while urging Liang to repay.",
           "sourceIds": [
             "s-4"
@@ -266,7 +211,6 @@
           "actorIds": [
             "a-3"
           ],
-          "groupId": "g-2",
           "detail": "Jiang abused Liang, Fang Yuan and their family in obscene language, flicked a cigarette butt onto the front of Liang's clothing, pulled down his trousers to expose himself and turned his body towards Liang and the others; he then took off Fang Yuan's shoe and made Liang smell it, slapped Fang Yuan's face, while other debt collectors pulled Fang Yuan's hair and pressed his shoulders down to stop him rising.",
           "sourceIds": [
             "s-4"
@@ -282,7 +226,6 @@
           "label": "officers reach the reception room then leave to find the caller",
           "summary": "both sides warned not to fight",
           "actorIds": [],
-          "groupId": "g-3",
           "detail": "Officer Zhu and an auxiliary officer reached the reception room to establish the facts; Liang and Fang Yuan identified Jiang as having beaten Fang Yuan, while Jiang and the others denied it and said they were collecting a debt; after warning both sides not to fight, the officer took the auxiliary officer into the yard to look for the caller.",
           "sourceIds": [
             "s-4"
@@ -300,7 +243,6 @@
           "actorIds": [
             "a-1"
           ],
-          "groupId": "g-2",
           "detail": "Fang Yuan and Liang tried to leave with the officers and were blocked; Jiang and the others seized Fang Yuan's neck and pushed and dragged him to the south-east corner; Fang Yuan warned them with a single-edged knife with a 15.3 cm blade, Jiang taunted him and closed in, and Fang Yuan stabbed Jiang once in the abdomen and stabbed Cheng, Yan and Guo once each.",
           "sourceIds": [
             "s-4"
@@ -318,7 +260,6 @@
           "actorIds": [
             "a-3"
           ],
-          "groupId": "g-2",
           "detail": "Jiang was taken to Example County People's Hospital and died at 02:18 the next day despite resuscitation; Yan and Meng suffered second-degree serious injuries and Cheng a second-degree minor injury.",
           "sourceIds": [
             "s-5"

@@ -1,85 +1,17 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "Construction contract dispute · Payment and settlement timeline (illustrative data)",
   "actors": [
-    {
-      "id": "a-1",
-      "name": "Employer",
-      "role": "Party awarding the works"
-    },
-    {
-      "id": "a-2",
-      "name": "Supervisor",
-      "role": "Engaged by the employer"
-    },
-    {
-      "id": "a-3",
-      "name": "General contractor",
-      "role": "Party taking the works"
-    },
-    {
-      "id": "a-4",
-      "name": "Subcontractor",
-      "role": "Engaged by the general contractor"
-    }
+    { "id": "a-1", "name": "Employer", "role": "Party awarding the works", "groupId": "g-1" },
+    { "id": "a-2", "name": "Supervisor", "role": "Engaged by the employer", "groupId": "g-1" },
+    { "id": "a-3", "name": "General contractor", "role": "Party taking the works", "groupId": "g-2" },
+    { "id": "a-4", "name": "Subcontractor", "role": "Engaged by the general contractor", "groupId": "g-2" }
   ],
   "groups": [
-    {
-      "id": "g-1",
-      "label": "Employer's acts"
-    },
-    {
-      "id": "g-2",
-      "label": "Contractor's acts"
-    },
-    {
-      "id": "g-3",
-      "label": "Joint acts or objective course"
-    }
-  ],
-  "views": [
-    {
-      "label": "Employer vs contractor",
-      "splitBy": "actor",
-      "side1": {
-        "label": "Employer's side",
-        "actors": [
-          "a-1",
-          "a-2"
-        ]
-      },
-      "side2": {
-        "label": "Contractor's side",
-        "actors": [
-          "a-3",
-          "a-4"
-        ]
-      },
-      "axis": {
-        "label": "Joint acts or objective course"
-      }
-    },
-    {
-      "label": "Employer only",
-      "splitBy": "actor",
-      "side1": {
-        "label": "Employer",
-        "actors": [
-          "a-1"
-        ]
-      },
-      "side2": {
-        "actors": []
-      },
-      "axis": {
-        "label": "Remaining course"
-      }
-    },
-    {
-      "label": "Split by group",
-      "splitBy": "group"
-    }
+    { "id": "g-1", "label": "Employer's side" },
+    { "id": "g-2", "label": "Contractor's side" },
+    { "id": "g-3", "label": "Joint acts or objective course" }
   ],
   "sources": [
     {
@@ -124,7 +56,6 @@
           "actorIds": [
             "a-1"
           ],
-          "groupId": "g-1",
           "detail": "The employer paid the advance on the tenth day after the commencement notice was issued, being 30% of the contract price.",
           "sourceIds": [
             "s-1"
@@ -142,7 +73,6 @@
           "actorIds": [
             "a-3"
           ],
-          "groupId": "g-2",
           "detail": "The general contractor submitted the first progress payment claim for the measuring period agreed in the contract.",
           "sourceIds": [
             "s-1"
@@ -160,7 +90,6 @@
           "actorIds": [
             "a-2"
           ],
-          "groupId": "g-1",
           "detail": "The supervisor checked the measured result, found the claimed amount consistent with it, and issued an opinion approving payment.",
           "sourceIds": [
             "s-2"
@@ -178,7 +107,6 @@
           "actorIds": [
             "a-1"
           ],
-          "groupId": "g-1",
           "detail": "The employer paid the first progress payment as agreed after receiving the supervisor's review opinion."
         }
       ]
@@ -193,7 +121,6 @@
           "actorIds": [
             "a-4"
           ],
-          "groupId": "g-2",
           "detail": "The subcontractor forwarded its second progress payment claim to the employer through the general contractor."
         }
       ]
@@ -208,7 +135,6 @@
           "actorIds": [
             "a-1"
           ],
-          "groupId": "g-1",
           "detail": "On the ground that the quality rectification was not yet complete, the employer suspended further progress payments, to be settled together once re-inspection passes.",
           "sourceIds": [
             "s-3"

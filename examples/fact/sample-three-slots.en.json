@@ -1,25 +1,17 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "Equity transfer dispute · Two parties · Three time points (illustrative data)",
 
   "actors": [
-    { "id": "a-1", "name": "Transferor", "role": "Former shareholder" },
-    { "id": "a-2", "name": "Transferee", "role": "New shareholder" }
+    { "id": "a-1", "name": "Transferor", "role": "Former shareholder", "groupId": "g-1" },
+    { "id": "a-2", "name": "Transferee", "role": "New shareholder", "groupId": "g-2" }
   ],
 
   "groups": [
     { "id": "g-1", "label": "Transferor's acts" },
     { "id": "g-2", "label": "Transferee's acts" },
     { "id": "g-3", "label": "Joint acts or objective course" }
-  ],
-
-  "views": [
-    { "label": "Split by group", "splitBy": "group" },
-    { "label": "Transferor vs Transferee", "splitBy": "actor",
-      "side1": { "label": "Transferor's acts", "actors": ["a-1"] },
-      "side2": { "label": "Transferee's acts", "actors": ["a-2"] },
-      "axis":  { "label": "Joint acts or objective course" } }
   ],
 
   "sources": [
@@ -55,7 +47,6 @@
           "label": "Transferor and transferee sign the equity transfer agreement",
           "summary": "Transfer 30% equity, price RMB 9m",
           "actorIds": ["a-1", "a-2"],
-          "groupId": "g-3",
           "detail": "It was agreed that the transferor would transfer 30% of the equity held by it to the transferee for RMB 9m, payable in three instalments.",
           "sourceIds": ["s-1"]
         }
@@ -69,7 +60,6 @@
           "label": "Transferee pays the first instalment",
           "summary": "RMB 3m paid, purpose stated",
           "actorIds": ["a-2"],
-          "groupId": "g-2",
           "detail": "The transferee paid the first instalment of RMB 3m as agreed, and the transfer remark stated that it was the first instalment of the equity transfer price.",
           "sourceIds": ["s-2"]
         }
@@ -83,7 +73,6 @@
           "label": "Transferor fails to cooperate with the registration change",
           "summary": "Two demands made, still not done",
           "actorIds": ["a-1"],
-          "groupId": "g-1",
           "detail": "After receiving payment the transferor did not cooperate, as agreed, in completing the change of business registration, and had still not done so after two demands from the transferee.",
           "sourceIds": ["s-3"]
         },
@@ -93,7 +82,6 @@
           "label": "Transferee stops paying later instalments",
           "summary": "Refuses to pay, change not registered",
           "actorIds": ["a-2"],
-          "groupId": "g-2",
           "detail": "The transferee stopped paying the second instalment on the ground that the change of business registration had not been made."
         }
       ]

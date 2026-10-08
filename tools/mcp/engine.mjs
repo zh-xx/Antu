@@ -3,7 +3,7 @@
 //
 //  Key fact: **validation and layout are pure JS and need no browser**.
 //  So without a screenshot an agent can still ask: does the JSON pass, how large is
-//  the content, which orientation should be used, how many views do not fit. The only
+//  the content, which orientation should be used, whether it fits. The only
 //  thing that truly needs a browser is that last look at whether it is good-looking.
 //
 //  This layer only does "given JSON, return facts"; it never generates JSON —

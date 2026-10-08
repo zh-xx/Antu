@@ -70,7 +70,6 @@
 /* 开关打开时的底色要比分段控件的轨道更深一档，
    否则"这个开关是开的"和"这一段被选中"看着像同一种东西。
    三层色阶：胶囊底最浅、分段轨道居中、打开的开关最深。 */
-.antu-dock-chip.is-open,
 .antu-dock-chip.is-on {
   background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.12);
   color: var(--antu-text);
@@ -113,7 +112,6 @@
 /* 焦点圈全胶囊统一。只给动作按钮画的话，键盘走到开关上会掉进浏览器的
    默认圈（另一套样子），而默认圈里那个蓝跟"第 1 侧"的蓝还会撞。 */
 .antu-dock-chip:focus-visible,
-.antu-dock-opt:focus-visible,
 .antu-dock-seg-item:focus-visible,
 .antu-dock-action:focus-visible {
   outline: 2px solid var(--antu-text);
@@ -136,53 +134,6 @@
   margin: 0 8px;
   background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.12);
 }
-/* 箭头用两条边旋转出来，比用字符好对齐：字符坐在基线上，天生偏下。
-   两条边拼出的角默认朝右下，转 225 度就朝上（菜单是在上方弹出的）。 */
-.antu-dock-caret {
-  width: 5px;
-  height: 5px;
-  margin-left: 6px;
-  border-right: 1.4px solid currentColor;
-  border-bottom: 1.4px solid currentColor;
-  transform: rotate(225deg);
-  opacity: 0.5;
-}
-
-/* 视角的选项列表（选项名长、最多五个，摆不进胶囊） */
-.antu-dock-pop {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  min-width: 168px;
-  max-width: 320px;
-  padding: 6px;
-  border-radius: var(--antu-chrome-radius, 18px);
-  background: var(--antu-chrome-bg-pop, rgba(255, 255, 255, 0.88));
-  -webkit-backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
-  backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
-  border: var(--antu-chrome-border, 1px solid rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.07));
-  box-shadow: var(--antu-chrome-shadow, 0 10px 30px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.14));
-}
-.antu-dock-opt {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--antu-text-2);
-  font-family: inherit;
-  font-size: 12.5px;
-  text-align: left;
-  cursor: pointer;
-}
-.antu-dock-opt:hover:not(:disabled) { background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.05); }
-.antu-dock-opt.is-on { color: var(--antu-text); font-weight: 600; }
-.antu-dock-opt:disabled { color: var(--antu-text-4); cursor: not-allowed; }
-.antu-dock-tick { width: 12px; flex: none; color: var(--antu-text-2); }
-
 /* 分段控件：一条浅灰轨道，选中的那个是白底凸起 */
 .antu-dock-seg {
   display: flex;

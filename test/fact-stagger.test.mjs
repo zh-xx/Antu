@@ -1,6 +1,6 @@
 // The timeline's Stagger switch (vertical only, on by default in the page; the layout draws it only when asked): a row may start half a row after the one before it
 // when the two have no column in common. Cards never overlap, no link runs under a card, no axis dot sits under a
-// card, and the dots on the axis keep the order of the slots. Checked on every fact example, in every view.
+// card, and the dots on the axis keep the order of the slots. Checked on every fact example.
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -8,7 +8,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 
 import { buildFactGraph } from '../src/renderers/fact/timeline/layout.js'
 import { rowTopsOf } from '../src/renderers/fact/timeline/metrics.js'
-import { buildGrid, viewsOf } from '../src/renderers/fact/timeline/grid.js'
+import { buildGrid } from '../src/renderers/fact/timeline/grid.js'
 import { layoutReport, formatLayoutReport } from '../tools/lib/report.mjs'
 
 const examples = readdirSync('examples/fact')
@@ -21,10 +21,10 @@ const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h 
 
 test('off, the rows are where they always were: one row each', () => {
   for (const [, spec] of examples) {
-    const grid = buildGrid(spec, viewsOf(spec)[0])
+    const grid = buildGrid(spec)
     assert.deepEqual(rowTopsOf(grid, false), grid.rows.map((_, i) => i))
-    const a = buildFactGraph(spec, FIELDS, viewsOf(spec)[0], 'vertical')
-    const b = buildFactGraph(spec, FIELDS, viewsOf(spec)[0], 'vertical', { stagger: false })
+    const a = buildFactGraph(spec, FIELDS, undefined, 'vertical')
+    const b = buildFactGraph(spec, FIELDS, undefined, 'vertical', { stagger: false })
     assert.deepEqual(b.size, a.size)
     assert.equal(a.staggered, false)
   }
@@ -32,8 +32,8 @@ test('off, the rows are where they always were: one row each', () => {
 
 test('horizontal ignores it', () => {
   for (const [, spec] of examples) {
-    const a = buildFactGraph(spec, FIELDS, viewsOf(spec)[0], 'horizontal')
-    const b = buildFactGraph(spec, FIELDS, viewsOf(spec)[0], 'horizontal', { stagger: true })
+    const a = buildFactGraph(spec, FIELDS, undefined, 'horizontal')
+    const b = buildFactGraph(spec, FIELDS, undefined, 'horizontal', { stagger: true })
     assert.deepEqual(b.size, a.size)
     assert.equal(b.staggered, false)
   }
@@ -41,8 +41,8 @@ test('horizontal ignores it', () => {
 
 test('rows go down by at least half a row, and rows sharing a column stay a whole row apart', () => {
   for (const [f, spec] of examples) {
-    for (const view of viewsOf(spec)) {
-      const grid = buildGrid(spec, view)
+    {
+      const grid = buildGrid(spec)
       if (grid.errors.length) continue
       const tops = rowTopsOf(grid, true)
       const cols = grid.rows.map((row) => new Set([...row.cells.keys()]))
@@ -56,10 +56,10 @@ test('rows go down by at least half a row, and rows sharing a column stay a whol
   }
 })
 
-test('on every example and view: no card overlaps another, no link runs under a card, no dot sits under one', () => {
+test('on every example: no card overlaps another, no link runs under a card, no dot sits under one', () => {
   for (const [f, spec] of examples) {
-    for (const view of viewsOf(spec)) {
-      const g = buildFactGraph(spec, FIELDS, view, 'vertical', { stagger: true })
+    {
+      const g = buildFactGraph(spec, FIELDS, undefined, 'vertical', { stagger: true })
       if (g.errors.length) continue
       const cards = boxes(g)
       for (let i = 0; i < cards.length; i++) for (let j = i + 1; j < cards.length; j++) assert.ok(!overlap(cards[i], cards[j]), `${f}: ${cards[i].id} overlaps ${cards[j].id}`)
@@ -85,8 +85,8 @@ test('on every example and view: no card overlaps another, no link runs under a 
 
 test('it makes a long timeline shorter: the Fang Yuan example opens with larger text', () => {
   const spec = JSON.parse(readFileSync('examples/fact/fang-yuan-loan-and-conflict.zh-CN.json', 'utf8'))
-  const a = buildFactGraph(spec, FIELDS, viewsOf(spec)[0], 'vertical')
-  const b = buildFactGraph(spec, FIELDS, viewsOf(spec)[0], 'vertical', { stagger: true })
+  const a = buildFactGraph(spec, FIELDS, undefined, 'vertical')
+  const b = buildFactGraph(spec, FIELDS, undefined, 'vertical', { stagger: true })
   assert.ok(b.size.height < a.size.height * 0.7, `${b.size.height} vs ${a.size.height}`)
 })
 

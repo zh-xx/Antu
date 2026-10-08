@@ -45,7 +45,7 @@ Draw one fact specification as a **fixed grid**: rows are time, columns are lane
 - **Direction switch**: vertical time runs downwards, horizontal time runs to the right, switched in the control dock at the bottom of the canvas. **Direction only changes the pixel mapping, not one line of data**:
   which column an event falls in is always "slot index × lane index", horizontal and vertical merely hang those two on different axes.
   When horizontal, the header moves from above the grid to its left; links turn from horizontal lines into vertical lines; the detail overlay pops out sideways; the direction of the time arrow turns with it.
-- **View switch**: the same data can be looked at in several ways (who is on which side, split by party or by kind). The switcher is in the control dock at the bottom of the canvas; switching re-lays out the whole diagram and re-fits the viewport. **A view that does not fit does not appear among the options** (an option that cannot be clicked is noise); a warning is printed to the console instead, so that whoever wrote the data can find it. The mechanism is in the "view mechanism" section of `spec/fact/schema-draft.md`.
+- **No view switch** (removed with placement rules v1, format generation 2): a diagram has one placement, the one `spec/fact/timeline-rules.md` gives. With 2 or more parties the sides are the parties' camps; with one, its acts split by kind.
 - **Column heading**: only the group name of this column (for example "performance as agreed"), **never a positional description such as "side N / axis"**,
   the position is obvious from the picture and writing it out only takes up room. Font size 14px. When that side has several columns (several parties), the side's name is written **once**, over all its columns (vertical) or on its first lane (horizontal), and each column is headed by its party's name (13px); writing the side's name on every column made one side of two parties read as two columns of the same name.
 - **By default a card holds two things**: title on top, time below. Three further switches can be turned on as needed: whether sources are shown, party tags, and one summary line.
@@ -66,7 +66,7 @@ Draw one fact specification as a **fixed grid**: rows are time, columns are lane
 - **There is no side column, the canvas fills the whole window**, everything else is an overlay on the canvas, four of them in total:
   - **Top left: the label card**. What this diagram is (the JSON `title`), its type, its rendering kind, its size and its time span.
     It has a fixed width (so the arrows of the picker do not move when a title or a way of drawing changes) and holds the **theme switch** (absent when the page is fixed to a theme). It is not part of the picture: the shell (this card, the dock, zoom, minimap) looks the same in every theme. It is only a sign, not clickable; the **rendering kind switcher** is on that same row (see §9).
-  - **Bottom centre: the control dock**. The switches for "how to look at it": view, card fields, direction, staggered rows (§8.1), underlying grid lines;
+  - **Bottom centre: the control dock**. The switches for "how to look at it": card fields, direction, staggered rows (§8.1), underlying grid lines;
     separated off at the far right by a divider is the only **action** in the dock, export image (see §10).
     Why the four kinds of control take four different shapes is in §4.2.
   - **Bottom left: zoom controls**, **bottom right: minimap** (both from React Flow).
@@ -86,7 +86,7 @@ Draw one fact specification as a **fixed grid**: rows are time, columns are lane
 ### 4.2 The shapes of the controls in the control dock
 
 One dock is packed with four kinds of control (menu, switch, segmented, action), divided into five blocks
-(view / card fields / direction / grid lines / export). Making them distinguishable at a glance rests on four things, and the order cannot be swapped:
+(card fields / direction / grid lines / export). Making them distinguishable at a glance rests on four things, and the order cannot be swapped:
 
 1. **The shape follows "how many options, do they exclude each other", not importance.** Long option names and at most five of them → collect them into a menu
    (one button showing the current value); few and independent → put them all out as separate switches; two that exclude each other → a segmented control.
@@ -155,18 +155,18 @@ with no need to keep the two ends in step. The styles no longer write a second c
 |---|---|
 | Drawing `dateEnd` | The text version is done (the card writes start and end, the overlay gives the duration). **No vertical bar across slots**: slots are equally spaced and real time is not, drawing length by real duration would deceive |
 | Drag editing | The structure has already left the road open for it (order via the array, same slot via nesting); React Flow has snap-to-grid built in, which matches these cells naturally |
-| Several events in one cell | Two events at the same time point in the same lane is an error. This is the basic assumption of the grid model (one cell, one event), the data author has to split the time point themselves. **The cost is that the "no side split" kind of view is unusable on most data** (see below) |
+| Several events in one cell | Two events at the same time point in the same lane is an error. This is the basic assumption of the grid model (one cell, one event), the data author has to split the time point themselves. A diagram with no sides (one party and no groups) can hold one event per time point only |
 
 ## 7.1 Two items already settled (previously listed under "not done")
 
 | Item | Conclusion |
 |---|---|
 | The default for direction | **Settled: by slot count. 5 or more slots vertical, 4 or fewer horizontal** (rationale in §8). Diagrams where it was set by hand remember that; where it was not set, this rule applies |
-| Verifying more than three parties | **Verified**: the construction document has 4 parties and 5 columns and has been run through several views; all 46 view × direction combinations lay out |
+| Verifying more than three parties | **Verified**: the construction document has 4 parties and 5 columns; every example lays out in both directions |
 
 ## 8. How direction is chosen (measured data, for fixing the default)
 
-Content size in the two directions (same data, same view):
+Content size in the two directions (same data):
 
 ```
 Vertical:   width = column count × 316            height = 96 + time point count × row height
@@ -190,7 +190,7 @@ Where 5 comes from: a horizontal cell is 316 wide, and one screen minus the left
 (The finer comparison below is for looking at the exceptions. The crossover: when column count > time point count horizontal is better, otherwise vertical is better.) The reason is plain: horizontal turns the "time point" dimension into a cell 316 wide,
 so the more time points the wider horizontal becomes; the more columns the wider vertical becomes. Whichever brings the content closer to the screen aspect ratio is better.
 
-The five existing examples have 15 views in total, and **all of them are "many time points, few columns", so vertical is better for all of them (horizontal is 27% to 39% worse)**.
+At the time, the five examples had 15 views (views were removed later), and **all of them are "many time points, few columns", so vertical is better for all of them (horizontal is 27% to 39% worse)**.
 To see a case where horizontal wins you need data with "many parties, few time points" (for example three parties each doing one thing on the same day).
 
 ### 8.1 Staggered rows (a switch, vertical only, on by default)
@@ -200,8 +200,8 @@ and the text gets small (the Fang Yuan example opened at 7.0 px). Vertical timel
 **staggered rows**, and the **Stagger** chip in the dock (after the direction, shown only when vertical) turns it off:
 
 - a row starts **half a row** after the one before it, but **a whole row** after any earlier row that has a card in one of
-  its columns (`rowTopsOf` in `src/renderers/fact/timeline/metrics.js`). A column is one party in a view split by party,
-  one group in a view split by group;
+  its columns (`rowTopsOf` in `src/renderers/fact/timeline/metrics.js`). A column is one party when the diagram has
+  several, one group when it has one;
 - links need no room of their own: rows are at least half a row apart and a card stands in its cell with a gap above and
   below, so a link (at the middle of its row) runs through the gap between the cards of a neighbouring column, and an axis
   dot never sits under a card on the axis of another row;
@@ -228,7 +228,7 @@ In the interface it sits on **the same row as the label card at the top left**, 
 | Where it sits | Reason |
 |---|---|
 | The label card at the top left | It answers "in which way is this data looked at", the topmost question on this page |
-| The bottom control dock | That is where the presentation parameters **internal to a sub-type** live (view, direction, fields, grid lines), the two are not the same kind.<br>The only **action** in the dock is "export image", see §10 |
+| The bottom control dock | That is where the presentation parameters **internal to a sub-type** live (direction, fields, staggered rows, grid lines), the two are not the same kind.<br>The only **action** in the dock is "export image", see §10 |
 
 Two conventions:
 
@@ -247,7 +247,7 @@ on the right. Code: `src/renderers/fact/chronicle/`.
 | Decision | Reason |
 |---|---|
 | Order is the slot order; inside a slot, by date when every event has one | The slots array is the chronology (timeline-rules.md); a slot's events are written in any order |
-| No views, sides, lanes or orientation | One column has nothing that can fail to fit, so the hard constraint holds without exceptions |
+| No sides, lanes or orientation | One column has nothing that can fail to fit, so the hard constraint holds without exceptions |
 | The card shows the whole title and summary; its height comes from its text | A chronicle is read, not scanned; nothing is clamped. The page measures the text with the real font, Node estimates it (with a safety margin) for the reports |
 | No coloured bar on the card's edge; the group colour is on the dot and the tag | The maintainer's call on the mock-ups |
 | Between two time points a pill says how much time passed, at the precision of the dates | "+24 min", "12 days later", "1 yr 3 mo later"; a day-only date never yields hours |
@@ -281,7 +281,7 @@ The button is at the far right of the bottom dock; one click downloads directly,
 
 | Item | Conclusion | Reason |
 |---|---|---|
-| Export range | **The whole diagram**, not cropped to the current viewport; it follows the current view, direction and field switches | Whatever the user can see they can screenshot themselves. The value of the export is "the **complete version** of this diagram that is on screen" |
+| Export range | **The whole diagram**, not cropped to the current viewport; it follows the current direction and field switches | Whatever the user can see they can screenshot themselves. The value of the export is "the **complete version** of this diagram that is on screen" |
 | Heading | **Not included**, the diagram itself is always all that is exported | See 10.2 |
 | Resolution | **Fixed at 2×** | 2× is clear enough at A4 width; this project does not add a switch to an option that is only used once in a while |
 | Background | **White, opaque** | When an image is pasted into a legal document, a transparent background goes wrong on a dark background |

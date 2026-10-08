@@ -1,18 +1,15 @@
 {
   "type": "fact",
-  "specVersion": 1,
+  "specVersion": 2,
   "title": "Minimal: two parties, three time slots",
   "actors": [
-    {
-      "id": "a-1",
-      "name": "Party A",
-      "role": "plaintiff"
-    },
-    {
-      "id": "a-2",
-      "name": "Party B",
-      "role": "defendant"
-    }
+    { "id": "a-1", "name": "Party A", "role": "plaintiff", "groupId": "g-1" },
+    { "id": "a-2", "name": "Party B", "role": "defendant", "groupId": "g-2" }
+  ],
+  "groups": [
+    { "id": "g-1", "label": "Party A" },
+    { "id": "g-2", "label": "Party B" },
+    { "id": "g-3", "label": "Joint acts or objective course" }
   ],
   "slots": [
     {

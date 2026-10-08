@@ -167,7 +167,7 @@ a zip for clients that import a local package (WorkBuddy).
 
 - **It is generated, never edited**: `npm run build:skill` writes it from `spec/agent/`, each kind's field
   table, `examples/agent/`, `package.json`'s version, and the two authored files in `tools/skill/`.
-  A file that a change adds to the skill's sources is listed in `ADDED_SINCE_RELEASE` (`tools/build-skill.mjs`): the unit test lets it be missing from the folder until the release, the release workflow's check does not, and the release pull request empties the list.
+  A file that a change adds to the skill's sources is listed in `ADDED_SINCE_RELEASE` (`tools/build-skill.mjs`), and one it drops in `REMOVED_SINCE_RELEASE`: the unit test lets the folder lack the one and keep the other until the release, the release workflow's check does not, and the release pull request empties both lists.
 - **It is the state of the last release.** It is rebuilt in the release pull request, not in every change, so
   someone who installs it from the repository never gets guides that are newer than the viewer beside them.
   Between releases it lags `main` on purpose. A test keeps it complete and stamped with the version in

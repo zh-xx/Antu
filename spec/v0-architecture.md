@@ -69,7 +69,7 @@ It must never be the case that "only one sub-type can draw this data". That is t
 once a swimlane renderer is added, **every existing fact JSON can be viewed as a swimlane straight away, with not one character of the data changed**.
 Conversely, whoever writes a sub-type renderer may not assume that some particular data "happens to suit" their way of drawing.
 
-**Which sub-type to use is chosen while looking at the diagram.** Like the view and the orientation, it is a switch in the rendering layer, not something in the data. Therefore:
+**Which sub-type to use is chosen while looking at the diagram.** Like the orientation, it is a switch in the rendering layer, not something in the data. Therefore:
 
 - the question is not "what sub-type is this JSON" but "which way of drawing is this JSON using right now";
 - sub-types of the same top-level type are **side by side**; none of them is "primary" at the data level. There is only a default value (the first one in registration order).
@@ -78,14 +78,14 @@ Conversely, whoever writes a sub-type renderer may not assume that some particul
 
 **Difference from the earlier wording.** Earlier this read "no type tree: a different presentation mode is a rendering parameter, the same renderer with a changed way of drawing".
 Under the current rule, sub-types are **renderers standing side by side**, not one renderer with different parameters.
-A "rendering parameter" is something **inside** a sub-type, such as the view, the orientation and the card fields inside the timeline; those do not even swap the renderer.
+A "rendering parameter" is something **inside** a sub-type, such as the orientation and the card fields inside the timeline; those do not even swap the renderer.
 
 ### Differences fall into three classes, each belonging to its own layer
 
 | Source of the difference | Example | Which layer it belongs to |
 |---|---|---|
 | **A different sub-type (way of drawing)** | fact: timeline / swimlane | **Rendering layer**, renderers side by side over the same schema. Not reflected in the data layer |
-| **Presentation parameters inside a sub-type** | timeline: vertical / horizontal, which view, which fields the card shows | **Rendering parameters**, the same renderer with different parameters. Not reflected in the data layer |
+| **Presentation parameters inside a sub-type** | timeline: vertical / horizontal, which fields the card shows | **Rendering parameters**, the same renderer with different parameters. Not reflected in the data layer |
 | **Different domain semantics** | relationship types: contract / equity / guarantee / agency | **Controlled enum** plus dedicated optional fields, written into the schema |
 
 Two key distinctions:

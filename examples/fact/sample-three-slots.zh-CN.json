@@ -1,25 +1,17 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "股权转让纠纷 · 两个主体 · 三个时间点（示意数据）",
 
   "actors": [
-    { "id": "a-1", "name": "转让方", "role": "原股东" },
-    { "id": "a-2", "name": "受让方", "role": "新股东" }
+    { "id": "a-1", "name": "转让方", "role": "原股东", "groupId": "g-1" },
+    { "id": "a-2", "name": "受让方", "role": "新股东", "groupId": "g-2" }
   ],
 
   "groups": [
     { "id": "g-1", "label": "转让方的行为" },
     { "id": "g-2", "label": "受让方的行为" },
     { "id": "g-3", "label": "双方共同或客观经过" }
-  ],
-
-  "views": [
-    { "label": "按分组分侧", "splitBy": "group" },
-    { "label": "转让方 vs 受让方", "splitBy": "actor",
-      "side1": { "label": "转让方的行为", "actors": ["a-1"] },
-      "side2": { "label": "受让方的行为", "actors": ["a-2"] },
-      "axis":  { "label": "双方共同或客观经过" } }
   ],
 
   "sources": [
@@ -55,7 +47,6 @@
           "label": "转让方与受让方签订股权转让协议",
           "summary": "转让 30% 股权，作价 900 万元",
           "actorIds": ["a-1", "a-2"],
-          "groupId": "g-3",
           "detail": "约定转让方将其持有的 30% 股权作价 900 万元转让给受让方，分三期支付。",
           "sourceIds": ["s-1"]
         }
@@ -69,7 +60,6 @@
           "label": "受让方支付首期款",
           "summary": "支付 300 万元，附言明确性质",
           "actorIds": ["a-2"],
-          "groupId": "g-2",
           "detail": "受让方按约支付首期款 300 万元，转账附言载明为股权转让首期款。",
           "sourceIds": ["s-2"]
         }
@@ -83,7 +73,6 @@
           "label": "转让方未按约配合办理工商变更",
           "summary": "两次催告后仍未办理",
           "actorIds": ["a-1"],
-          "groupId": "g-1",
           "detail": "转让方在收款后未按约配合办理工商变更登记，经受让方两次催告仍未办理。",
           "sourceIds": ["s-3"]
         },
@@ -93,7 +82,6 @@
           "label": "受让方停止支付后续款项",
           "summary": "以未办理变更为由拒付",
           "actorIds": ["a-2"],
-          "groupId": "g-2",
           "detail": "受让方以工商变更未办理为由，停止支付第二期款项。"
         }
       ]

@@ -176,8 +176,9 @@ server.registerTool(
   {
     title: 'Mechanism notes',
     description:
-      'One page on how the data becomes the picture. fact: slots set the row, groupId sets the side, actorIds set the lane, ' +
-      'how views are switched, and that "one event per cell" limit with its three ways out. procedure: nodes, edges and ' +
+      'One page on how the data becomes the picture. fact: slots set the row; with two or more parties each party\'s groupId ' +
+      'sets its side and an event\'s actorIds place it, with one party the event\'s groupId sets the side; and the ' +
+      '"one event per cell" limit with its three ways out. procedure: nodes, edges and ' +
       'rules, what the main line is, and when a clause is a rule rather than a branch. Read it once before writing JSON ' +
       'and it saves a few rounds of validation. The field list is antu_schema, real examples to copy from are antu_examples.\n' +
       'Types built so far: fact and procedure. Omit type and you get fact.',
@@ -202,7 +203,7 @@ server.registerTool(
     title: 'Validate JSON',
     description:
       'Check whether an Antu JSON is valid. Returns each problem (with its field path and event id, e.g. slots[0].events[1] (ev-2)). ' +
-      'When it passes it may still add notes: for a fact diagram, each view that does not fit (it is not an error, but that view will not be offered). ' +
+      'When it passes it may still add notes (for a fact diagram: a slot whose date is wholly earlier than the one before). ' +
       '**Run this right after writing the JSON; do not render first.** It is pure computation, needs no browser, and is fast.',
     inputSchema: { spec: specArg },
   },
@@ -224,9 +225,9 @@ server.registerTool(
     title: 'Work out the geometry',
     description:
       'Without rendering, work out the layout first: how large the content is, how far it is scaled down to fit, ' +
-      'and whether vertical or horizontal suits it. For a fact diagram also whether each view fits (how many events, ' +
-      'how many columns); for a procedure the layers, the widest layer, the loops and the rules. ' +
-      'Use it to answer "will this diagram be too wide" or "does this view not fit", far faster than a screenshot.',
+      'and whether vertical or horizontal suits it. For a fact diagram also how many events and ' +
+      'columns per side; for a procedure the layers, the widest layer, the loops and the rules. ' +
+      'Use it to answer "will this diagram be too wide", far faster than a screenshot.',
     inputSchema: {
       spec: specArg,
       orientation: z.enum(['vertical', 'horizontal']).optional().describe('omit it and the slot-count rule suggests one'),
@@ -286,14 +287,13 @@ server.registerTool(
       summary: z.boolean().optional().describe('whether to show the summary, true by default'),
       actors: z.boolean().optional().describe('whether to show the party labels, false by default'),
       sources: z.boolean().optional().describe('whether to show the source markers, false by default'),
-      view: z.number().int().optional().describe('which view to render, 0 by default (the first)'),
       kind: kindArg,
       theme: themeArg,
       width: z.number().int().optional().describe('screenshot width, 1600 by default'),
       height: z.number().int().optional().describe('screenshot height, 900 by default'),
     },
   },
-  async ({ spec, orientation, summary = true, actors = false, sources = false, view = 0, width = 1600, height = 900, kind, theme }) => {
+  async ({ spec, orientation, summary = true, actors = false, sources = false, width = 1600, height = 900, kind, theme }) => {
     const errors = validate(spec)
     if (errors.length > 0) {
       return FAIL(`Validation failed; fix these before previewing:\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`)
@@ -310,7 +310,7 @@ server.registerTool(
     const dir = mkdtempSync(join(tmpdir(), 'antu-shot-'))
     const html = join(dir, 'preview.html')
     try {
-      renderHtml(spec, { outPath: html, preset: { orientation, fields: { summary, actors, sources }, viewIndex: view, kind, theme } })
+      renderHtml(spec, { outPath: html, preset: { orientation, fields: { summary, actors, sources }, kind, theme } })
       const shot = await screenshot(html, { width, height })
       const kb = Math.round(shot.data.length * 0.75 / 1024)
       return {

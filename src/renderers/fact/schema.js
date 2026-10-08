@@ -15,13 +15,12 @@
 
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { dateOrderNotes } from './dateOrder.js'
-import { buildGrid, viewsOf } from './timeline/grid.js'
+import { buildGrid } from './timeline/grid.js'
 import { buildFactGraph } from './timeline/layout.js'
 import { buildChronicleGraph, TITLE_FONT as CHRONICLE_TITLE_FONT } from './chronicle/layout.js'
 import { buildScaleGraph, TITLE_FONT as SCALE_TITLE_FONT } from './scale/layout.js'
 import { fitWidthZoom, fitZoom, textSizeLines } from '../../core/canvas.js'
 import { LABEL_FONT } from './cardGeometry.js'
-import { tEn } from '../../core/i18n.js'
 
 /**
  * Field metadata: **the agent-facing reference is generated from here**, not copied by hand
@@ -31,20 +30,8 @@ import { tEn } from '../../core/i18n.js'
  * req = required; ty = type; note = one-line explanation an agent can act on. Only **field-level**
  * rules are listed; cross-field rules are reported by the validator at run time (see spec/agent/fact/guide.md).
  */
-/** The numbers and the names of the events a view leaves out, for the layout report */
-function hiddenNote(view, grid) {
-  const names = [...new Set(grid.hiddenEvents.flatMap((h) => h.actorIds))].map((id) => `${id} ${grid.actorById.get(id)?.name ?? ''}`.trim())
-  return {
-    label: view.label,
-    drawn: grid.eventCount,
-    total: grid.eventCount + grid.hiddenEvents.length,
-    parties: names.join(', '),
-    ids: grid.hiddenEvents.map((h) => h.id).join(', '),
-  }
-}
-
 /** The generation of this type's JSON format (core/specVersion.js, spec/versioning.md): +1 on a breaking change */
-export const FACT_SPEC_VERSION = 1
+export const FACT_SPEC_VERSION = 2
 
 export const FACT_FIELDS = {
   envelope: [
@@ -56,11 +43,13 @@ export const FACT_FIELDS = {
     { name: 'id', req: 'yes', ty: 'string', note: 'unique within the diagram; events reference it via actorIds' },
     { name: 'name', req: 'yes', ty: 'string', note: 'display name, e.g. "Huayuan Trading"' },
     { name: 'role', req: 'no', ty: 'string', note: 'procedural standing, e.g. "plaintiff"' },
+    { name: 'groupId', req: '*', ty: 'string', note: 'the side this party is on: the 1st or the 2nd group. Required with 2 or more parties; not written with one' },
   ],
   groups: [
-    { name: 'id', req: 'yes', ty: 'string', note: 'events reference it via groupId' },
-    { name: 'label', req: 'yes', ty: 'string', note: 'column heading, e.g. "performance as agreed"' },
+    { name: 'id', req: 'yes', ty: 'string', note: 'parties (2 or more) or events (one party) reference it via groupId' },
+    { name: 'label', req: 'yes', ty: 'string', note: 'column heading, e.g. "Sun Hao\'s side" (parties) or "performance as agreed" (one party\'s acts)' },
     { name: '', req: '', ty: '', note: 'at most 3: the 1st on the left (top) side, the 2nd on the right (bottom) side, the 3rd on the axis' },
+    { name: '', req: '', ty: '', note: '2 or more parties: the groups split the parties. 0 or 1 party: they split the events by kind of act' },
   ],
   sources: [
     { name: 'id', req: 'yes', ty: 'string', note: 'events reference it via sourceIds' },
@@ -82,16 +71,9 @@ export const FACT_FIELDS = {
     { name: 'dateNote', req: 'no', ty: 'string', note: 'why the time is not exact, and how it was derived' },
     { name: 'summary', req: 'no', ty: 'string', note: 'the line under the card title; about 22 characters' },
     { name: 'detail', req: 'no', ty: 'string', note: 'full text revealed when the card is opened' },
-    { name: 'actorIds', req: 'no', ty: 'string[]', note: 'parties involved. Two or more puts this event on the centre axis' },
-    { name: 'groupId', req: 'no', ty: 'string', note: 'which side this event falls on' },
+    { name: 'actorIds', req: 'no', ty: 'string[]', note: 'parties involved. One: that party\'s side and column. Two or more, or none: the centre axis' },
+    { name: 'groupId', req: '*', ty: 'string', note: 'only when the diagram has 0 or 1 party: which side this event falls on. With 2 or more parties, leave it out' },
     { name: 'sourceIds', req: 'no', ty: 'string[]', note: 'which materials it rests on' },
-  ],
-  views: [
-    { name: 'label', req: 'yes', ty: 'string', note: 'view name, shown in the dropdown' },
-    { name: 'splitBy', req: 'yes', ty: '"actor" | "group"', note: 'split the sides by party or by group' },
-    { name: 'side1 / side2', req: 'no', ty: 'object', note: '{ label, actors: [...] }. Required when splitBy=actor' },
-    { name: 'axis', req: 'no', ty: 'object', note: '{ label }. Heading of the centre column' },
-    { name: '', req: '', ty: '', note: 'views may be omitted; the engine then provides a single "all" view' },
   ],
 }
 
@@ -113,14 +95,15 @@ export function describeFactSchema() {
     }
     lines.push('')
   }
-  lines.push('Cross-field rules (dangling references, a span running backwards, one party on')
-  lines.push('both sides at once, two events in the same lane of one time slot) are not listed')
+  lines.push('"*": required or not depending on the number of parties, as the note says.')
+  lines.push('Cross-field rules (dangling references, a span running backwards, a party without a')
+  lines.push('side, two events in the same lane of one time slot) are not listed')
   lines.push('above: call antu_validate after writing. It reports each problem with its field path.')
   return lines.join('\n')
 }
 
 /**
- * The chronicle's geometry report: one column, so there are no views to fit and no orientation
+ * The chronicle's geometry report: one column, so there is no orientation
  * to choose. It opens fitted to its width and the reader scrolls, so the text size is the width-fit
  * size; how much scrolling that takes is reported as "screens".
  */
@@ -147,7 +130,7 @@ function chronicleReport(spec, layout, { fields, canvas }) {
 
 function formatChronicleReport(r) {
   const lines = []
-  lines.push(`Kind: chronicle (every event in one column, in slot order; views and orientation do not apply)`)
+  lines.push(`Kind: chronicle (every event in one column, in slot order; orientation does not apply)`)
   lines.push(`Data: ${r.counts.events} events / ${r.counts.slots} time slots / ${r.counts.actors} parties / ${r.counts.sources} sources`)
   lines.push(`Content ${r.size.width}×${r.size.height}; it opens fitted to its width, about ${r.screens} screen(s) tall`)
   lines.push(`Gaps written between time points: ${r.gaps.short} short, ${r.gaps.long} of 30 days or more (marked)`)
@@ -175,7 +158,7 @@ function scaleReport(spec, layout, { canvas }) {
 
 function formatScaleReport(r) {
   const lines = []
-  lines.push('Kind: scale (distance on the axis is real time; views and orientation do not apply)')
+  lines.push('Kind: scale (distance on the axis is real time; orientation does not apply)')
   lines.push(`Data: ${r.counts.events} events / ${r.counts.actors} parties / ${r.counts.sources} sources`)
   lines.push(`Content ${r.size.width}×${r.size.height}`)
   lines.push(
@@ -216,18 +199,8 @@ export const factKnowledge = {
    */
   validate: (spec) => buildGrid(spec).errors,
 
-  /**
-   * What validation cannot call an error: a view that does not fit. `validate` checks the data
-   * once (through the first view), and a view whose events collide in a lane is by design left out
-   * of the view dropdown rather than rejected, so it is not an error. But it must not go unseen
-   * either: with only the errors, a data set whose second view could never be drawn came back as
-   * "passed". Every view is laid out here and the ones that do not fit are named.
-   */
+  /** What validation cannot call an error: the slot order against the dates (a note, never a reorder; see dateOrder.js) */
   notes: (spec) => [
-    ...viewsOf(spec)
-      .map((view) => ({ label: view.label, reason: buildGrid(spec, view).errors[0] }))
-      .filter((v) => v.reason)
-      .map((v) => tEn('note.viewBlocked', v)),
     // The slot order against the dates: a note, never an error, and never a reorder (see dateOrder.js)
     ...dateOrderNotes(spec),
   ],
@@ -258,32 +231,24 @@ export const factKnowledge = {
   },
 
   /**
-   * The geometry report for MCP's antu_layout (compute only, no rendering): per view, how
+   * The geometry report for MCP's antu_layout (compute only, no rendering): how
    * many events and columns and whether it fits; per orientation, the content size and the
    * fit zoom. It lives with the type because every quantity in it is a fact concept.
    */
   report: (spec, layout, { orientation, fields = { summary: true }, kind, canvas }) => {
     if (kind === 'chronicle') return chronicleReport(spec, layout, { fields, canvas })
     if (kind === 'scale') return scaleReport(spec, layout, { canvas })
-    const views = viewsOf(spec)
-    const rows = views.map((view, i) => {
-      const graph = layout(spec, fields, view, orientation ?? 'vertical')
-      const grid = buildGrid(spec, view)
-      const cols = { side1: 0, axis: 0, side2: 0 }
-      grid.columns.forEach((c) => {
-        cols[c.side] += 1
-      })
-      return {
-        index: i,
-        label: view.label,
-        events: graph.eventCount ?? grid.eventCount ?? 0,
-        hidden: grid.hiddenEvents.length > 0 ? hiddenNote(view, grid) : null,
-        slots: grid.rows.length,
-        columns: cols,
-        blocked: graph.errors.length > 0,
-        blockReason: graph.errors[0] ?? null,
-      }
+    const graph = layout(spec, fields, undefined, orientation ?? 'vertical')
+    const grid = buildGrid(spec)
+    const columns = { side1: 0, axis: 0, side2: 0 }
+    grid.columns.forEach((c) => {
+      columns[c.side] += 1
     })
+    const placement = {
+      events: graph.eventCount ?? grid.eventCount ?? 0,
+      columns,
+      blocked: graph.errors.length > 0 ? graph.errors[0] : null,
+    }
     // Both orientations, as the page opens them (the same slot-count rule the renderer uses by default). Vertical is
     // measured with the rows staggered, the page's default (spec/fact/rendering.md §8.1), so "as it opens" is what the
     // reader sees on a fresh page; the size with the switch off is kept beside it.
@@ -305,7 +270,6 @@ export const factKnowledge = {
         other: { name: others, fit: byOrientation[others].fit },
       },
       unstaggered,
-      views,
       counts: {
         slots: slotCount,
         events: (spec.slots ?? []).reduce((n, s) => n + (s?.events?.length || 0), 0),
@@ -314,8 +278,7 @@ export const factKnowledge = {
       },
       byOrientation,
       suggestedOrientation: slotCount >= 5 ? 'vertical' : 'horizontal',
-      blockedViews: rows.filter((r) => r.blocked).map((r) => ({ label: r.label, reason: r.blockReason })),
-      rows,
+      placement,
     }
   },
 
@@ -340,19 +303,12 @@ export const factKnowledge = {
         : `Suggested orientation: horizontal (by the slot-count rule, ${r.counts.slots} slots < 5)`,
     )
     lines.push(...textSizeLines(r.text, 'splitting the timeline into periods, one diagram each'))
-    lines.push(`${r.views.length} view(s):`)
-    for (const row of r.rows) {
-      const c = row.columns
-      const mark = row.blocked ? `does not fit (${row.blockReason})` : 'fits'
-      const drawn = row.hidden ? `${row.hidden.drawn} of ${row.hidden.total} events drawn` : `${row.events} events`
-      lines.push(`  ${row.index}. ${row.label}: side1 ${c.side1} / axis ${c.axis} / side2 ${c.side2}, ${drawn} -> ${mark}`)
-      if (row.hidden) lines.push(`     left out: events ${row.hidden.ids}, of ${row.hidden.parties}: the view names parties on its sides and these are on neither. If they should be drawn, put the party on a side, or leave both side lists empty to show every event.`)
-    }
-    if (r.blockedViews.length > 0) {
-      lines.push('')
-      lines.push(`Note: ${r.blockedViews.length} view(s) do not fit and will not appear in the view dropdown.`)
+    const p = r.placement
+    lines.push(`Columns: side1 ${p.columns.side1} / axis ${p.columns.axis} / side2 ${p.columns.side2}, ${p.events} events`)
+    if (p.blocked) {
+      lines.push(`Does not fit: ${p.blocked}`)
       lines.push('Common cause: two or more events of one time slot fall in the same lane (the grid is one event per cell).')
-      lines.push('How to fix: split that time slot into two finer time points, or change the groups / parties so the events land in different lanes.')
+      lines.push('How to fix: split that time slot into two finer time points, or check the parties of the events so they land in different lanes.')
     }
     return lines.join('\n')
   },
@@ -362,21 +318,19 @@ export const factKnowledge = {
     const slots = Array.isArray(spec.slots) ? spec.slots : []
     const events = slots.reduce((n, s) => n + (s?.events?.length || 0), 0)
     const actors = spec.actors?.length ?? 0
-    const views = viewsOf(spec).map((v) => v.label)
     return {
       events,
       slots: slots.length,
       actors,
-      views,
-      line: `${events} events / ${slots.length} time slots / ${actors} parties\n    views: ${views.join(', ')}`,
+      line: `${events} events / ${slots.length} time slots / ${actors} parties`,
     }
   },
 
   /** The version, status and release of each way of drawing (spec/versioning.md, "The diagrams"); the same names as `layouts` */
   diagrams: {
-    timeline: { version: 2, status: 'experimental', since: '0.2.0' },
-    chronicle: { version: 1, status: 'experimental', since: '0.7.0' },
-    scale: { version: 1, status: 'experimental', since: '0.7.0' },
+    timeline: { version: 3, status: 'experimental', since: '0.2.0' },
+    chronicle: { version: 2, status: 'experimental', since: '0.7.0' },
+    scale: { version: 2, status: 'experimental', since: '0.7.0' },
   },
 
   /** Which ways of drawing a fact diagram exist. The first is the default. */

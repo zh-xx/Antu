@@ -1,31 +1,19 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "设备采购与安装纠纷 · 四方 · 四个时间点（示意数据）",
 
   "actors": [
-    { "id": "a-1", "name": "采购方", "role": "买方" },
-    { "id": "a-2", "name": "监理方", "role": "受采购方委托" },
-    { "id": "a-3", "name": "供货方", "role": "卖方" },
-    { "id": "a-4", "name": "安装方", "role": "受供货方委托" }
+    { "id": "a-1", "name": "采购方", "role": "买方", "groupId": "g-1" },
+    { "id": "a-2", "name": "监理方", "role": "受采购方委托", "groupId": "g-1" },
+    { "id": "a-3", "name": "供货方", "role": "卖方", "groupId": "g-2" },
+    { "id": "a-4", "name": "安装方", "role": "受供货方委托", "groupId": "g-2" }
   ],
 
   "groups": [
     { "id": "g-1", "label": "采购方一侧" },
     { "id": "g-2", "label": "供货方一侧" },
     { "id": "g-3", "label": "双方共同或客观经过" }
-  ],
-
-  "views": [
-    { "label": "采购方 vs 供货方", "splitBy": "actor",
-      "side1": { "label": "采购方一侧", "actors": ["a-1", "a-2"] },
-      "side2": { "label": "供货方一侧", "actors": ["a-3", "a-4"] },
-      "axis":  { "label": "双方共同或客观经过" } },
-    { "label": "只看采购方", "splitBy": "actor",
-      "side1": { "label": "采购方", "actors": ["a-1"] },
-      "side2": { "actors": [] },
-      "axis":  { "label": "其余经过" } },
-    { "label": "按分组分侧", "splitBy": "group" }
   ],
 
   "sources": [
@@ -61,7 +49,6 @@
           "label": "采购方与供货方签订设备采购合同",
           "summary": "价款 420 万元，含安装调试",
           "actorIds": ["a-1", "a-3"],
-          "groupId": "g-3",
           "detail": "约定设备价款 420 万元（含运输与安装调试），供货方应于 6 月 30 日前运抵并完成调试。",
           "sourceIds": ["s-1"]
         }
@@ -75,7 +62,6 @@
           "label": "供货方将设备运抵现场",
           "summary": "较约定提前十天到场",
           "actorIds": ["a-3"],
-          "groupId": "g-2",
           "detail": "供货方将全部设备运抵现场并办理交接，较约定日期提前十天。"
         },
         {
@@ -84,7 +70,6 @@
           "label": "监理方开箱查验",
           "summary": "发现铭牌参数与合同不符",
           "actorIds": ["a-2"],
-          "groupId": "g-1",
           "detail": "监理方开箱查验，发现两台设备的铭牌参数与合同附件约定不一致，当场记录并通知供货方。",
           "sourceIds": ["s-2"]
         }
@@ -98,7 +83,6 @@
           "label": "安装方完成安装调试",
           "summary": "安装完成，但未通电试运行",
           "actorIds": ["a-4"],
-          "groupId": "g-2",
           "detail": "安装方完成机械安装与管线连接，因参数问题未进行通电试运行。"
         }
       ]
@@ -111,7 +95,6 @@
           "label": "四方共同验收未通过",
           "summary": "要求十五日内更换",
           "actorIds": ["a-1", "a-2", "a-3", "a-4"],
-          "groupId": "g-3",
           "detail": "采购方、监理方、供货方、安装方共同验收，因参数不符未通过，要求供货方于十五日内更换。",
           "sourceIds": ["s-3"]
         }

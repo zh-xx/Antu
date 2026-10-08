@@ -19,59 +19,60 @@ scale changes). `date`, `dateEnd` and their precision matter more there: a day-o
 drawn as the whole day. The same JSON draws in all three; `kind: "chronicle"` or
 `kind: "scale"` on `layout`, `preview` and `render` shows it.
 
-## Where an event is drawn is decided by three things
+## Where an event is drawn
+
+Down the page is time: the order of the `slots` array (earlier in the array = earlier in time;
+`date` is display-only and never reorders anything). Across the page are three places: **side 1,
+the axis, side 2** (left, middle, right when vertical). The `groups` list names them: the 1st group
+is side 1, the 2nd is side 2, the 3rd (optional) is the axis.
+
+**What the groups split depends on how many parties the diagram has.** Count `actors` first.
+
+### Two or more parties: the groups split the parties
+
+Each party says which side it is on, with `groupId` on the **party**: the 1st or the 2nd group,
+never the 3rd. Events carry **no** `groupId`; an event goes where its `actorIds` put it:
 
 ```
-Row (time)   the order of the slots array. Earlier in the array = earlier in time.
-             date is display-only: it never orders or reorders anything.
-
-Column (side) groupId decides which side:
-              the 1st group  -> side 1 (left when vertical)
-              the 2nd group  -> side 2 (right when vertical)
-              the 3rd group or none -> the axis (the middle column)
-
-Column (lane) actorIds decides the lane:
-              exactly 1 party -> that party's lane
-              2 or more, or none -> the axis
+actorIds            where
+one party           that party's side, in that party's column
+several, or none    the axis (both sides together, several of one side together,
+                    or an objective fact)
 ```
 
-**An event with several parties lands on the axis.** That is a hard rule: it means
-"both sides did this" or "this happened objectively", and belongs to neither side.
+See `3-sides` and `4-one-side-several`.
 
-So list in `actorIds` **the party who did it**: "A pays B" is A's act (one party, A's lane); "A and B sign a
+So list in `actorIds` **the party who did it**: "A pays B" is A's act (one party, A's side); "A and B sign a
 contract" is both's (two parties, the axis). Name the other party in the label or the summary, not in `actorIds`,
 unless both acted.
 
-## What a view is
+**Someone on neither side** (the police who came, the ambulance, the court that served a paper) is not a party:
+write the name in the label and leave `actorIds` out. The event goes on the axis.
 
-The same data can be looked at in several ways. A view only changes how the two
-rules above are applied. It **never changes the data**:
+Several parties on one side each get their own column, the earlier in `actors` the closer to the axis.
 
-```json
-{ "label": "parties side by side", "splitBy": "actor",
-  "side1": { "label": "Huayuan Trading", "actors": ["a-1"] },
-  "side2": { "label": "Xincheng Building Materials", "actors": ["a-2"] } }
-```
+### One party (or none): the groups split the events
 
-- `splitBy: "actor"`: split by party; `side1` / `side2` say who is on which side;
-- `splitBy: "group"`: split by group; no need to name parties;
-- `views` may be omitted; the engine then provides a single "all" view.
+With a single party there is no "who is on which side", so the two sides sort its acts by kind
+(performed as agreed / departed from it, act / consequence...; choose from the case). The group goes on
+the **event**: the 1st group side 1, the 2nd side 2, the 3rd or none the axis. The party carries no
+`groupId`.
+
+There are no views: a `views` field is an error. The chronicle and the time scale use the same three
+places, one lane (or colour) per group.
 
 ## One limit: one event per cell
 
 **A time point holds at most one event per lane.** Two events in the same lane of the
-same slot means that view cannot be drawn, and it disappears from the interface options
-(an option that cannot be clicked is noise). `validate` checks the data once and does not call
-this an error, since a data set may keep a view that does not fit on purpose; it does list each such
-view as a note after "Validation passed", so it never goes unseen. `layout` reports the same views.
+same slot is an error: `validate` reports it with the slot and the two event ids.
 
 Three ways to fix it, most common first:
 
 1. **Split the time point.** If two things happened at 9:24, one at 9:24:03 and one at
    9:24:16, make two slots and give each its exact time.
-2. **Add actorIds.** If the two events belong to different parties, add `actorIds` and
+2. **Check actorIds.** If the two events belong to different parties, name the party who did each, and
    they fall into different lanes.
-3. **Add groupId.** If they are of different kinds, add `groupId` and they fall on
+3. **Add groupId** (one party only). If they are of different kinds, add `groupId` and they fall on
    different sides.
 
 After splitting, check again that each slot holds exactly one event.
@@ -80,9 +81,8 @@ After splitting, check again that each slot holds exactly one event.
 
 ```
 validate    reports each problem, with the field path and the event id
-            (e.g. slots[0].events[1] (ev-2)); when it passes, notes any view that
-            does not fit (not an error, but that view will not be offered)
-layout      no rendering: how large, which orientation, which views do not fit
+            (e.g. slots[0].events[1] (ev-2))
+layout      no rendering: how large, which orientation, how many columns per side
 preview     take a screenshot and look: are cards cramped, is the text small,
             is there too much empty space
 render      produce the self-contained HTML
@@ -117,10 +117,10 @@ diagram looks good. Always run `preview` and look before delivering.
 
 Each adds one idea (`<name>.zh-CN.json`, `<name>.en.json`):
 
-- `1-minimal`: two parties, no `groups` (every card on the axis)
-- `2-single-actor`: one party
-- `3-groups`: `groupId` picks the side
-- `4-views`: the same data, two views
+- `1-minimal`: two parties, each on its side
+- `2-single-actor`: one party, its acts split by kind (`groupId` on the events)
+- `3-sides`: two parties: `groupId` on the parties, none on the events
+- `4-one-side-several`: two parties on one side, and an act of both on the axis
 - `5-duration`: spans and approximate times
 - `6-sources`: facts traced to sources
 - `7-undated`: no `date`

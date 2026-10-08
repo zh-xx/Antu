@@ -1,26 +1,17 @@
 {
-  "specVersion": 1,
+  "specVersion": 2,
   "type": "fact",
   "title": "Lin Fang v. Zhao Lei, private lending (fictional) · Loans and default",
 
   "actors": [
-    { "id": "a-1", "name": "Lin Fang", "role": "Plaintiff (lender)" },
-    { "id": "a-2", "name": "Zhao Lei", "role": "Defendant (borrower)" }
+    { "id": "a-1", "name": "Lin Fang", "role": "Plaintiff (lender)", "groupId": "g-1" },
+    { "id": "a-2", "name": "Zhao Lei", "role": "Defendant (borrower)", "groupId": "g-2" }
   ],
 
   "groups": [
-    { "id": "g-1", "label": "Loan disbursement" },
-    { "id": "g-2", "label": "Due but unpaid" }
-  ],
-
-  "views": [
-    {
-      "label": "Lender vs borrower",
-      "splitBy": "actor",
-      "side1": { "label": "Lin Fang (lender)", "actors": ["a-1"] },
-      "side2": { "label": "Zhao Lei (borrower)", "actors": ["a-2"] }
-    },
-    { "label": "Split by group", "splitBy": "group" }
+    { "id": "g-1", "label": "Lin Fang (lender)" },
+    { "id": "g-2", "label": "Zhao Lei (borrower)" },
+    { "id": "g-3", "label": "Joint acts" }
   ],
 
   "sources": [
@@ -70,7 +61,6 @@
           "label": "Lin Fang transfers 40,000 yuan; Zhao Lei gives a note",
           "summary": "Repayment due by 4 Aprember",
           "actorIds": ["a-1", "a-2"],
-          "groupId": "g-1",
           "detail": "Lin Fang delivered RMB 40,000 by bank transfer; Zhao Lei issued a promissory note stating the amount, the term and the repayment date.",
           "sourceIds": ["s-1", "s-3"]
         }
@@ -84,7 +74,6 @@
           "label": "Zhao Lei borrows another 40,000 yuan via a non-party",
           "summary": "Repayment due by 14 Aprember",
           "actorIds": ["a-1", "a-2"],
-          "groupId": "g-1",
           "detail": "Because Zhao Lei said his bank card could not be used for the time being, Lin Fang, as instructed, transferred the money to Xu Ying (Lin Fang's daughter), a person not party to the case; Xu Ying then passed it to Zhao Lei by Alipay, WeChat and cash, and Zhao Lei issued a second promissory note.",
           "sourceIds": ["s-2", "s-4"]
         }
@@ -98,7 +87,6 @@
           "label": "First 40,000 yuan falls due, unpaid",
           "summary": "No principal repaid at maturity",
           "actorIds": ["a-2"],
-          "groupId": "g-2",
           "detail": "When the loan fell due Zhao Lei did not repay as agreed; neither loan's principal has been repaid.",
           "sourceIds": ["s-1", "s-5"]
         }
@@ -112,7 +100,6 @@
           "label": "Second 40,000 yuan falls due, unpaid",
           "summary": "Unpaid principal totals 80,000 yuan",
           "actorIds": ["a-2"],
-          "groupId": "g-2",
           "detail": "The second loan was likewise not repaid at maturity; the court ordered Zhao Lei to pay overdue interest on each principal from its own maturity date at the LPR.",
           "sourceIds": ["s-2", "s-5"]
         }
