@@ -49,6 +49,8 @@ export const zh = {
   'dock.vertical': '竖向',
   'dock.horizontal': '横向',
   'dock.grid': '格线',
+  'dock.stagger': '交错',
+  'dock.staggerHint': '让轴两侧的卡片上下交错，图更短、字更大',
   'dock.exportImage': '导出图片',
   'dock.exporting': '正在导出…',
   'dock.exportTitle': '将整张图导出为 PNG（2 倍分辨率）',

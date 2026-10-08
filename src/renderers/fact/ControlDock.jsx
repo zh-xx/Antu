@@ -45,6 +45,9 @@ export default function ControlDock({
   onToggleOrientation,
   showGrid = false,
   onToggleGrid,
+  /** Staggered rows: vertical only, so the chip is shown only then; off by default */
+  stagger = false,
+  onToggleStagger,
   exporting = false,
   onExport,
 }) {
@@ -113,14 +116,28 @@ export default function ControlDock({
         {/* Segmented control: only two options, putting both out saves one click compared with a menu */}
         <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} />
 
+        {onToggleStagger && orientation === 'vertical' && (
+          <button
+            className={`antu-dock-chip${stagger ? ' is-on' : ''}`}
+            aria-pressed={stagger}
+            title={t('dock.staggerHint')}
+            onClick={() => onToggleStagger(!stagger)}
+          >
+            {t('dock.stagger')}
+          </button>
+        )}
+
         <span className="antu-dock-sep" />
 
-        <button
-          className={`antu-dock-chip${showGrid ? ' is-on' : ''}`}
-          onClick={() => onToggleGrid(!showGrid)}
-        >
-          {t('dock.grid')}
-        </button>
+        {/* The grid lines assume rows of one height, so they are not offered while the rows are staggered */}
+        {!(stagger && orientation === 'vertical') && (
+          <button
+            className={`antu-dock-chip${showGrid ? ' is-on' : ''}`}
+            onClick={() => onToggleGrid(!showGrid)}
+          >
+            {t('dock.grid')}
+          </button>
+        )}
 
         <span className="antu-dock-sep" />
 

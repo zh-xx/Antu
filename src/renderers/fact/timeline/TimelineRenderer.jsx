@@ -74,6 +74,14 @@ export default function FactTimeline({ spec }) {
     writePrefs({ showGrid: value })
   }
 
+  // Staggered rows (vertical only): a global preference, off by default. A row with cards on one side
+  // may start half a row after the one before it when that one is on the other side of the axis.
+  const [stagger, setStagger] = useState(() => PRESET?.stagger ?? readPrefs().stagger === true)
+  const toggleStagger = (value) => {
+    setStagger(value)
+    writePrefs({ stagger: value })
+  }
+
   // View index. One page holds one data set, so there is no "reset when the diagram changes".
   const [viewIndex, setViewIndex] = useState(PRESET?.viewIndex ?? 0)
 
@@ -125,8 +133,8 @@ export default function FactTimeline({ spec }) {
     viewInfos[viewIndex] && !viewInfos[viewIndex].reason ? viewIndex : (usable[0]?.index ?? viewIndex)
   const view = (viewInfos[safeIndex] || viewInfos[0]).view
   const graph = useMemo(
-    () => buildFactGraph(spec, fields, view, orientation),
-    [spec, fields, view, orientation],
+    () => buildFactGraph(spec, fields, view, orientation, { stagger }),
+    [spec, fields, view, orientation, stagger],
   )
 
   // Overlay state: hoveredId is the card the mouse passed over, pinnedId is the card clicked open
@@ -155,7 +163,8 @@ export default function FactTimeline({ spec }) {
           ref={canvasRef}
           graph={graph}
           nodeTypes={nodeTypes}
-          showGrid={showGrid}
+          // The grid lines assume rows of one height; staggered rows have none to show
+          showGrid={showGrid && !graph.staggered}
           // Card padding and summary font size come from cardGeometry.js alone, and the styles take
           // them through CSS variables. Otherwise "card width / font size" and "the summary
           // character limit" would each have their own copy, and changing one would silently throw
@@ -188,6 +197,8 @@ export default function FactTimeline({ spec }) {
             onToggleOrientation={toggleOrientation}
             showGrid={showGrid}
             onToggleGrid={toggleGrid}
+            stagger={stagger}
+            onToggleStagger={toggleStagger}
             exporting={exporting}
             onExport={onExport}
           />
