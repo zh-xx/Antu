@@ -76,6 +76,11 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
           if (m.undated) {
             return <circle key={m.id} cx={m.x} cy={m.y} r={5} fill={c0.bg} stroke={GROUP_COLOURS[2]} strokeWidth={1.5} strokeDasharray="2 2" />
           }
+          // a date coarser than the scale (a day on a scale of minutes): hollow, in the group's colour
+          if (m.coarse) {
+            if (m.groupIndex === 1) return <rect key={m.id} x={m.x - 5} y={m.y - 5} width={10} height={10} rx={2} fill={c0.bg} stroke={c} strokeWidth={1.8} />
+            return <circle key={m.id} cx={m.x} cy={m.y} r={5} fill={c0.bg} stroke={c} strokeWidth={1.8} />
+          }
           // Side 2 is a square, side 1 a circle: the sides differ without colour (the lanes are named too)
           if (m.groupIndex === 1) return <rect key={m.id} x={m.x - 5} y={m.y - 5} width={10} height={10} rx={2} fill={c} stroke={c0.bg} strokeWidth={2} />
           return <circle key={m.id} cx={m.x} cy={m.y} r={5.5} fill={c} stroke={c0.bg} strokeWidth={2} />

@@ -407,10 +407,13 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     const at = kind === 'bar' ? x0 : xOf(f.time.t)
     // A period narrower than this scale can show (a day on a scale of months) is drawn as a dot:
     // at this scale a dot claims no more precision than the date has
-    const shown = kind === 'band' && x1 - x0 < 8 ? 'dot' : kind
+    // A period that runs past its segment (a day on a scale of minutes) is coarser than the scale: cut to the segment
+    // it would read as lasting exactly that long, so it is a hollow dot at its place in data order instead
+    const coarse = kind === 'band' && (f.time.from < segments[k].from || f.time.to > segments[k].to)
+    const shown = kind === 'band' && (coarse || x1 - x0 < 8) ? 'dot' : kind
     if (shown === 'dot') x0 = x1 = at
     else if (x1 - x0 < 6) x1 = x0 + 6
-    return { id: f.event.id, order, lane: laneOf(f.event), kind: shown, x: at, x0, x1, undated: Boolean(f.time.undated), event: f.event }
+    return { id: f.event.id, order, lane: laneOf(f.event), kind: shown, x: at, x0, x1, undated: Boolean(f.time.undated), coarse, event: f.event }
   })
   // Same moment in one lane: the dots stack upwards
   const seen = new Map()
@@ -514,7 +517,7 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
         lanes: lanes.map((l, li) => ({ ...l, top: laneTop(li), lineY: lineY(li) })),
         segments,
         ticks,
-        marks: marks.map((m) => ({ id: m.id, kind: m.kind, x: m.x, x0: m.x0, x1: m.x1, y: lineY(m.lane) - m.stack * SAME_TIME_STEP, undated: m.undated, approx: Boolean(m.event.approx), groupIndex: lanes[m.lane].groupIndex })),
+        marks: marks.map((m) => ({ id: m.id, kind: m.kind, x: m.x, x0: m.x0, x1: m.x1, y: lineY(m.lane) - m.stack * SAME_TIME_STEP, undated: m.undated, coarse: m.coarse, approx: Boolean(m.event.approx), groupIndex: lanes[m.lane].groupIndex })),
         leaders: cards.map((c) => ({ x: Math.min(Math.max(c.anchor, c.x + 8), c.x + c.w - 8), y0: c.y + c.h, y1: lineY(c.lane) - 6, run: Boolean(c.run) })),
         brackets: gathered.map((g) => ({ x0: g.span[0], x1: g.span[1], y: lineY(g.lane) + 9, run: g.run })),
       },
