@@ -9,23 +9,24 @@
 
 import { useState } from 'react'
 
-import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { usePreset, usePrefs } from '../../../shell/env.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import LevelledView from '../LevelledView.jsx'
 import { buildPathGraph } from './layout.js'
 
-/** External preset (antu_preview, the skill's preview): `from` and `to` name the two ends */
-const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
-
 export default function RelationshipPath({ spec }) {
+  // External preset (antu_preview, the skill's preview): `from` and `to` name the two ends
+  // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
+  const PRESET = usePreset()
+  const prefs = usePrefs()
   const specKey = `rel:${spec?.title || ''}`
   const { t } = useLang()
-  const [ends, setEnds] = useState(() => readPrefs().relationshipPaths?.[specKey] || {})
+  const [ends, setEnds] = useState(() => prefs.read().relationshipPaths?.[specKey] || {})
   const asked = { from: PRESET?.from ?? ends.from, to: PRESET?.to ?? ends.to }
   const setEnd = (patch) => {
     const next = { ...ends, ...patch }
     setEnds(next)
-    writePrefs({ relationshipPaths: { ...(readPrefs().relationshipPaths || {}), [specKey]: next } })
+    prefs.write({ relationshipPaths: { ...(prefs.read().relationshipPaths || {}), [specKey]: next } })
   }
   const pick = (layoutValue, key) => (
     <select className="antu-dock-chip antu-pt-end" value={layoutValue} onChange={(e) => setEnd({ [key]: e.target.value })} title={t(`rel.path.${key}`)} aria-label={t(`rel.path.${key}`)}>

@@ -26,6 +26,8 @@
 //                    it is not a blank image; padding on all four sides; arrow at the axis end
 //    7. MCP          the bundled client walks all twelve steps
 //    8. screenshot   produce one image for a human to glance at (not machine-judged, but viewable)
+//    9. embed        two diagrams mounted in a host page with hostile CSS (tools/verify/embed.mjs):
+//                    isolation both ways, no globals touched, options, events, the handle
 // ============================================================
 
 import { execFileSync, spawnSync } from 'node:child_process'
@@ -35,10 +37,12 @@ import { tmpdir } from 'node:os'
 
 import { REPO, renderToFile } from '../lib/make-html.mjs'
 import { launchBrowser, findChrome, ITEM_SELECTOR } from '../lib/chrome.mjs'
+import { checkEmbed } from './embed.mjs'
 // The knowledge of every major type must be registered first (plain JS), otherwise
-// validateSpec finds nothing in the table and silently returns "pass". This trap really
+// validateSpec finds nothing in the table. It used to return "pass" then; this trap really
 // happened: after moving files, this line was forgotten, bad data was not stopped, and
-// the verifier itself caught it.
+// the verifier itself caught it. Since issue 152 an unregistered type is an error, so
+// every example would fail instead, loudly.
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
 import { en, zh } from '../../src/core/messages/index.js'
@@ -52,6 +56,7 @@ import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.
 import { DEFAULT_THEME, themeOf } from '../../src/theme/themes.js'
 import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
+import { groupOfEvent } from '../../src/renderers/fact/timeline/grid.js'
 import * as CHR from '../../src/renderers/fact/chronicle/layout.js'
 import { buildChronicleGraph } from '../../src/renderers/fact/chronicle/layout.js'
 import { buildScaleGraph } from '../../src/renderers/fact/scale/layout.js'
@@ -176,6 +181,8 @@ function checkBuild() {
   for (const [name, args] of [
     ['dev build', ['run', 'build']],
     ['engine build', ['run', 'build:engine']],
+    ['embed build', ['run', 'build:embed']],
+    ['api build', ['run', 'build:api']],
   ]) {
     try {
       execFileSync('npm', args, { cwd: REPO, stdio: 'pipe' })
@@ -384,7 +391,7 @@ function checkData() {
   // one has no leak check. spec/procedure/schema-draft was missed once, found only when
   // procedure was translated.
   const humanDocs = ['spec/fact/schema-draft', 'spec/fact/timeline-rules', 'spec/fact/rendering',
-    'spec/source-schema-draft', 'spec/v0-architecture', 'spec/mcp-server',
+    'spec/source-schema-draft', 'spec/v0-architecture', 'spec/mcp-server', 'spec/embed',
     'spec/react-flow-features', 'spec/procedure/schema-draft', 'spec/relationship/schema-draft',
     'spec/justification/schema-draft']
   const leaked2 = humanDocs.filter((n) => serverSrc.includes(n))
@@ -2207,7 +2214,7 @@ async function checkKindSwitching(sampleFile) {
       eq('switch: the legend has one button per group', await browser.eval(`document.querySelectorAll('.antu-chr-legend-item').length`), groupIds.length)
       eq('switch: the marks in the legend are circle, square, diamond in turn', await browser.eval(`[...document.querySelectorAll('.antu-chr-legend-item .antu-chr-mark')].map((m) => m.className.replace('antu-chr-mark s-', ''))`), ['circle', 'square', 'diamond'].slice(0, groupIds.length))
       eq('switch: no card carries a group tag', await browser.eval(`document.querySelectorAll('.antu-chr-card .antu-chr-group').length`), 0)
-      const inGroup = (spec.slots ?? []).flatMap((sl) => sl.events).filter((e) => e.groupId === groupIds[0]).length
+      const inGroup = (spec.slots ?? []).flatMap((sl) => sl.events).filter((e) => groupOfEvent(spec)(e) === groupIds[0]).length
       const total = (spec.slots ?? []).flatMap((sl) => sl.events).length
       await browser.eval(`document.querySelector('.antu-chr-legend-item').click()`)
       await settle(300)
@@ -2678,7 +2685,8 @@ async function checkRenderRelationship(sampleFile) {
  * against it (a copy of a fact is a node on the page, so the page has more nodes than the data).
  */
 /**
- * The skill's viewer page (skills/antu/), filled in with the skill's own Python script and with its Node command
+ * The skill's viewer page, as this commit builds it (the committed skills/antu/ is the last release, and an example
+ * changed for a new generation of a format fails it), filled in with the skill's own Python script and with its Node command
  * line, for each kind: it shows
  * the diagram, names the tab after the diagram (issue #47: the title used to come only from the Node way of
  * making the page), and says which engine it is. Skipped without python3 (the test/skill.test.mjs checks the
@@ -2697,10 +2705,12 @@ async function checkSkillPage() {
   const browser = await launchBrowser({ width: 1400, height: 900 })
   try {
     const version = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version
+    const skill = join(OUT, 'skill-for-the-page')
+    execFileSync(process.execPath, [join(REPO, 'tools/build-skill.mjs'), '--out', skill], { stdio: 'ignore' })
     // the two ways the skill has of making the page: the Python script, and the Node command line
     const makers = {
-      python: (src, out) => spawnSync('python3', [join(REPO, 'skills/antu/scripts/make_html.py'), src, '-o', out]),
-      node: (src, out) => spawnSync(process.execPath, [join(REPO, 'skills/antu/scripts/antu.mjs'), 'render', src, '-o', out], { env: { ...process.env, ANTU_NO_UPDATE_NOTIFIER: '1' } }),
+      python: (src, out) => spawnSync('python3', [join(skill, 'scripts/make_html.py'), src, '-o', out]),
+      node: (src, out) => spawnSync(process.execPath, [join(skill, 'scripts/antu.mjs'), 'render', src, '-o', out], { env: { ...process.env, ANTU_NO_UPDATE_NOTIFIER: '1' } }),
     }
     for (const type of ['fact', 'procedure', 'relationship', 'justification']) {
       const file = join(REPO, 'examples/agent', type, `1-minimal.zh-CN.json`)
@@ -3084,6 +3094,7 @@ if (!shotOnly && !skipBrowser) {
   await checkSkillPreview()
   await checkUndatedEvent()
   await checkTextSize()
+  await checkEmbed({ ok, bad, eq, truthy, section, launchBrowser, findChrome, OUT, REPO })
   checkMcp()
   // This stretch launched a browser twice (once for the render, once for the MCP preview), and
   // both must be closed cleanly. Identity, not "equal to 0": this machine may already have

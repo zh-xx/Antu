@@ -7,9 +7,22 @@
 //  validation only, then dispatches by looking the type up.
 // ============================================================
 
-import { validatorOf, knowledgeOf } from './registry.js'
+import { validatorOf, knowledgeOf, listKnowledgeTypes, layoutKindsOf } from './registry.js'
 import { checkSpecVersion } from './specVersion.js'
 import { tEn } from './i18n.js'
+
+/**
+ * A `type` no type is registered under. It used to pass with no error (there was no validator to run), so a
+ * spec that can never be drawn was "valid": a page then said "no renderer", and a mounted diagram never got
+ * drawn and never failed either (issue 152). The likeliest slip is a way of drawing written as the type
+ * (`"type": "flow"`), so that one names the type it belongs to.
+ */
+function unknownType(type) {
+  const types = listKnowledgeTypes().map((t) => t.type)
+  const owner = types.find((t) => layoutKindsOf(t).includes(type))
+  if (owner) return tEn('err.envelopeTypeIsKind', { type, owner })
+  return tEn('err.envelopeTypeUnknown', { type, list: types.join(' / ') || '(none registered)' })
+}
 
 /** Validate the envelope layer: shared by all diagram types */
 function validateEnvelope(spec) {
@@ -22,7 +35,8 @@ function validateEnvelope(spec) {
   if (spec.title !== undefined && typeof spec.title !== 'string') {
     errors.push(tEn('err.envelopeTitleString'))
   }
-  if (typeof spec.type === 'string') {
+  if (typeof spec.type === 'string' && spec.type) {
+    if (!knowledgeOf(spec.type)) return [...errors, unknownType(spec.type)]
     const bad = checkSpecVersion(spec, knowledgeOf(spec.type)?.specVersion)
     if (bad) errors.push(tEn(bad.key, bad.params))
   }

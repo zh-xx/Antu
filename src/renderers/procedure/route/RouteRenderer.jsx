@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { usePrefs } from '../../../shell/env.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch } from '../../../shell/DockParts.jsx'
@@ -24,14 +24,15 @@ const nodeTypes = { routeLayer: RouteLayerNode }
 const OPEN_MIN_ZOOM = 0.8
 
 export default function ProcedureRoute({ spec }) {
+  const prefs = usePrefs()
   const specKey = `proc:${spec?.title || ''}`
   const { t, lang } = useLang()
-  const [fieldPrefs, setFieldPrefs] = useState(() => readPrefs().procedureRouteFieldsByDiagram || {})
+  const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().procedureRouteFieldsByDiagram || {})
   const showLabels = fieldPrefs[specKey]?.labels ?? true
   const setLabels = (v) => {
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], labels: v } }
     setFieldPrefs(map)
-    writePrefs({ procedureRouteFieldsByDiagram: map })
+    prefs.write({ procedureRouteFieldsByDiagram: map })
   }
   const layout = useMemo(() => buildRouteGraph(spec, { t }), [spec, lang])
   const graph = useMemo(() => ({ nodes: layout.nodes.map((n) => ({ ...n, data: { ...n.data, showLabels } })), edges: [], size: layout.size }), [layout, showLabels])

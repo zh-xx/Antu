@@ -15,40 +15,41 @@
 // ============================================================
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import {
-  detectLang,
-  initialLang,
-  normalizeLang,
-  writeStoredLang,
-  translate,
-} from '../core/i18n.js'
+import { detectLang, normalizeLang, translate } from '../core/i18n.js'
 import { ariaLabelConfig } from '../core/labels.js'
+import { useEnv } from './env.js'
 
 const LangContext = createContext(null)
 
 /** Interface language + lookup function + number formatting. Every user-facing string comes from here. */
 export function LangProvider({ children, lang: forcedLang }) {
   // A forced language (a test or an embed) beats the URL, which beats storage, which
-  // beats detecting from the browser. See core/i18n.js.
+  // beats detecting from the browser. See core/i18n.js. Where it is stored is the
+  // environment's business (shell/env.js): the viewer's own key, or the host's store.
+  const env = useEnv()
   const [lang, setLangState] = useState(
-    () => (forcedLang ? normalizeLang(forcedLang) : null) ?? initialLang() ?? detectLang(),
+    () => (forcedLang ? normalizeLang(forcedLang) : null) ?? env.lang.read() ?? detectLang(),
   )
 
   // Keep the document language in step with the interface language.
   // The self-contained HTML ships with lang="en" (English is the default), but the code
   // that reads the title is not the UI: a correct lang attribute matters for screen
   // readers and font fallback, so it must follow whatever the user picked.
+  // A mounted diagram is not the document: its host's language is the host's (issue 152).
   useEffect(() => {
-    if (typeof document === 'undefined') return
+    if (typeof document === 'undefined' || env.embedded) return
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'
     document.documentElement.dataset.antuLang = lang
-  }, [lang])
+  }, [lang, env.embedded])
 
-  const setLang = useCallback((next) => {
-    const normalized = normalizeLang(next)
-    setLangState(normalized)
-    writeStoredLang(normalized)
-  }, [])
+  const setLang = useCallback(
+    (next) => {
+      const normalized = normalizeLang(next)
+      setLangState(normalized)
+      env.lang.write(normalized)
+    },
+    [env.lang],
+  )
 
   const value = useMemo(() => {
     const t = (key, vars) => translate(lang, key, vars)

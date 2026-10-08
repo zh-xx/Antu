@@ -1,36 +1,19 @@
-import { createRoot } from 'react-dom/client'
-import App from './App.jsx'
-import { LangProvider } from './shell/LangContext.jsx'
-import { ThemeProvider } from './theme/ThemeContext.jsx'
 import './styles.css'
 
 // First register "knowledge" (plain JS): how each type is validated and which
 // kinds it has.
 // Then register "components": the React renderer for each kind.
 // Adding a type = adding one line in renderers/index.js;
-// adding a kind = adding one line in the corresponding register.js.
-import './renderers/index.js'
-import './renderers/fact/timeline/register.js'
-import './renderers/fact/chronicle/register.js'
-import './renderers/fact/scale/register.js'
-import './renderers/procedure/flow/register.js'
-import './renderers/procedure/route/register.js'
-import './renderers/relationship/graph/register.js'
-import './renderers/relationship/focus/register.js'
-import './renderers/relationship/chain/register.js'
-import './renderers/relationship/matrix/register.js'
-import './renderers/relationship/equity/register.js'
-import './renderers/relationship/authority/register.js'
-import './renderers/relationship/related/register.js'
-import './renderers/relationship/path/register.js'
-import './renderers/relationship/summary/register.js'
-import './renderers/justification/tree/register.js'
+// adding a kind = adding one line in renderers/components.js (and its register.js).
+import './renderers/components.js'
 
+import { renderDiagram } from './embed/core.jsx'
+import { standaloneEnv } from './shell/env.js'
+
+// The viewer page: one diagram that fills the window, its data inlined into the page (window.__ANTU_SPEC__).
+// It goes through the same core as a host's `mount` (src/embed/), with the window as its environment: the
+// preset, the reader's localStorage, the document's title and language (shell/env.js).
 // The language is resolved once at the outermost layer and passed down (see shell/LangContext.jsx).
-createRoot(document.getElementById('root')).render(
-  <LangProvider>
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>
-  </LangProvider>,
-)
+renderDiagram(document.getElementById('root'), { env: standaloneEnv() }).draw({
+  spec: typeof window !== 'undefined' ? window.__ANTU_SPEC__ : undefined,
+})
