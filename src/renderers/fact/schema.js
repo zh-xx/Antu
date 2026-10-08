@@ -14,6 +14,7 @@
 // ============================================================
 
 import { specVersionFieldRow } from '../../core/specVersion.js'
+import { dateOrderNotes } from './dateOrder.js'
 import { buildGrid, viewsOf } from './timeline/grid.js'
 import { buildFactGraph } from './timeline/layout.js'
 import { buildChronicleGraph, TITLE_FONT as CHRONICLE_TITLE_FONT } from './chronicle/layout.js'
@@ -222,11 +223,14 @@ export const factKnowledge = {
    * either: with only the errors, a data set whose second view could never be drawn came back as
    * "passed". Every view is laid out here and the ones that do not fit are named.
    */
-  notes: (spec) =>
-    viewsOf(spec)
+  notes: (spec) => [
+    ...viewsOf(spec)
       .map((view) => ({ label: view.label, reason: buildGrid(spec, view).errors[0] }))
       .filter((v) => v.reason)
       .map((v) => tEn('note.viewBlocked', v)),
+    // The slot order against the dates: a note, never an error, and never a reorder (see dateOrder.js)
+    ...dateOrderNotes(spec),
+  ],
 
   /**
    * The label card's third line: size and time span (the type is already in the line above).

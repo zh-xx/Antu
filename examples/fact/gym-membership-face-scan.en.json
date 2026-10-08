@@ -96,20 +96,6 @@
     {
       "events": [
         {
-          "id": "ev-3",
-          "date": "2030-06-12",
-          "label": "Receives the \"membership system upgraded to face scan\" message",
-          "summary": "Face scan possible, activate at the desk",
-          "groupId": "g-2",
-          "actorIds": ["a-1"],
-          "detail": "The Example Fitness Club sent all members a text: the membership system has been upgraded and members can enter by face scan; those who have not activated their face should bring the card to the front desk",
-          "sourceIds": ["s-4"]
-        }
-      ]
-    },
-    {
-      "events": [
-        {
           "id": "ev-2",
           "date": "2030-05-18",
           "label": "Han Lei enters normally with the card (4 entries so far)",
@@ -118,6 +104,20 @@
           "actorIds": ["a-1"],
           "detail": "The card was used on 10 February, 17 February, 3 March and 18 May 2030, four entries, and entry by fingerprint still worked then",
           "sourceIds": ["s-3"]
+        }
+      ]
+    },
+    {
+      "events": [
+        {
+          "id": "ev-3",
+          "date": "2030-06-12",
+          "label": "Receives the \"membership system upgraded to face scan\" message",
+          "summary": "Face scan possible, activate at the desk",
+          "groupId": "g-2",
+          "actorIds": ["a-1"],
+          "detail": "The Example Fitness Club sent all members a text: the membership system has been upgraded and members can enter by face scan; those who have not activated their face should bring the card to the front desk",
+          "sourceIds": ["s-4"]
         }
       ]
     },
