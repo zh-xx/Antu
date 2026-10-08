@@ -142,7 +142,7 @@ them on**, so do not count on them for what the diagram has to say; tell the use
 
 | Kind | Switches in the bar (on by default unless it says off) |
 | --- | --- |
-| fact | Summary (on), **Parties** (off), **Sources** (off), Grid (off), Stagger (vertical only; on: cards in different columns overlap by half a row, so a long timeline is shorter; the time order is read on the axis); there is no views menu. The chronicle has the same three card switches and no grid; the time scale has none |
+| fact | Summary (on), **Parties** (off), **Sources** (off), Grid (off), Stagger (vertical only; on: cards in different columns overlap by half a row, so a long timeline is shorter; the time order is read on the axis); there is no views menu. The chronicle has the same three card switches and no grid; the time scale has **Lane per party** (off; offered only when a side holds two or more parties) |
 | procedure | Conditions, Detail, Main line, Stages (only if the data has stages), Rules (only if it has rules); all on |
 | relationship | one switch per kind of relation (when the data uses more than one kind), Labels, Groups (only if the data has groups); all on. The focus view has the kind switches and Labels, and a "Default centre" button once another party was picked |
 | justification | Labels (only if a link has one; on), Fold issues (only if there are several issues; none folded), Merge repeats (off) |

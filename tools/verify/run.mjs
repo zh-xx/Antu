@@ -1575,6 +1575,27 @@ async function checkRenderScale(sampleFile) {
       if (name === 'dense case') truthy('dense case: the burst is gathered', g.gathered.length > 0)
     }
 
+    // The "lane per party" switch: offered only when a side holds two or more parties, off by default; switched on,
+    // the page draws the lanes and cards the layout gives for it
+    {
+      const html = join(OUT, 'render-scale.html')
+      const fy = JSON.parse(readFileSync(join(REPO, 'examples/fact/fang-yuan-loan-and-conflict.zh-CN.json'), 'utf8'))
+      renderToFile(fy, { outPath: html, quiet: true, preset: { kind: 'scale' } })
+      await browser.open(`file://${html}?lang=en`, { waitFor: `document.querySelectorAll('.antu-sc-card').length` })
+      const lanesNow = () => browser.eval(`document.querySelectorAll('.antu-sc-lane').length`)
+      truthy('lane per party: the switch is offered when a side holds two parties', await browser.eval(`!!document.querySelector('[data-chip="byParty"]')`))
+      eq('lane per party: off by default, one lane per group', await lanesNow(), buildScaleGraph(fy, {}).nodes.find((n) => n.type === 'scaleLayer').data.lanes.length)
+      await browser.eval(`document.querySelector('[data-chip="byParty"]').click()`)
+      await new Promise((r) => setTimeout(r, 400))
+      const on = buildScaleGraph(fy, {}, { byParty: true })
+      eq('lane per party: switched on, a lane per party of the split side', await lanesNow(), on.nodes.find((n) => n.type === 'scaleLayer').data.lanes.length)
+      eq('lane per party: switched on, the cards the layout places', await browser.eval(`document.querySelectorAll('.antu-sc-card').length`), on.cards.length)
+      const corridor = JSON.parse(readFileSync(join(REPO, 'examples/fact/neighbour-corridor-charging.zh-CN.json'), 'utf8'))
+      renderToFile(corridor, { outPath: html, quiet: true, preset: { kind: 'scale' } })
+      await browser.open(`file://${html}?lang=en`, { waitFor: `document.querySelectorAll('.antu-sc-card').length` })
+      truthy('lane per party: not offered when each side holds one party', !(await browser.eval(`!!document.querySelector('[data-chip="byParty"]')`)))
+    }
+
     const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
     const html = join(OUT, 'render-scale.html')
     renderToFile(spec, { outPath: html, quiet: true, preset: { kind: 'scale' } })

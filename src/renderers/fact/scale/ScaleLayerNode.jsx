@@ -25,14 +25,17 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
   const { width, lanesH, axisY, lanes, segments, ticks, marks, leaders, brackets } = data
   const height = axisY + 44
   const colour = (i) => GROUP_COLOURS[i] ?? GROUP_COLOURS[2]
+  // The bands alternate by group, not by lane: with a lane per party, the lanes of one side share a band
+  const block = []
+  lanes.forEach((l, i) => block.push(i === 0 ? 0 : block[i - 1] + (l.groupIndex !== lanes[i - 1].groupIndex ? 1 : 0)))
 
   return (
     <div className="antu-sc-layer" style={{ width, height }}>
       <svg width={width} height={height} className="antu-sc-svg" aria-hidden="true">
-        {/* lanes: a light band each, alternating, and the line the marks sit on */}
+        {/* lanes: a light band per group, alternating, and the line the marks sit on */}
         {lanes.map((l, i) => (
           <g key={l.key}>
-            {i % 2 === 1 && <rect x={0} y={l.top} width={width} height={l.lineY - l.top + 14} fill={c0.chip} fillOpacity={0.6} />}
+            {block[i] % 2 === 1 && <rect x={0} y={l.top} width={width} height={l.lineY - l.top + 14} fill={c0.chip} fillOpacity={0.6} />}
             <line x1={LABEL_W} x2={width} y1={l.lineY} y2={l.lineY} stroke={LINE} strokeWidth={2} />
           </g>
         ))}
@@ -104,7 +107,10 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
       {lanes.map((l) => (
         <div key={l.key} className={`antu-sc-lane g${l.groupIndex}`} style={{ bottom: `calc(100% - ${l.lineY + 8}px)`, width: LABEL_W - 20 }}>
           <i />
-          <span>{l.other ? (lanes.length > 1 ? t('scale.other') : t('scale.events')) : l.label}</span>
+          <span>
+            {l.side ? <em className="antu-sc-lane-side">{l.side}</em> : null}
+            {l.other ? (lanes.length > 1 ? t('scale.other') : t('scale.events')) : l.label}
+          </span>
         </div>
       ))}
 

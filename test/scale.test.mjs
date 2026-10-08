@@ -21,6 +21,7 @@ import {
   MAX_BREAKS,
   buildScaleGraph,
   findBreaks,
+  lanesOf,
   placeLane,
   ticksOf,
   timeOf,
@@ -184,4 +185,37 @@ test('every scale message exists in both languages', () => {
     assert.ok(translate(lang, 'scale.run', { n: 3 }).includes('3'))
     assert.ok(translate(lang, 'scale.runListed', { n: 3 }).includes('3'))
   }
+})
+
+// ---- a lane per party (the dock switch, off by default) ----
+
+test('lane per party: a side of two or more parties is split, a side of one keeps its lane, the axis stays', () => {
+  const spec = load('fang-yuan-loan-and-conflict.zh-CN.json')
+  const events = spec.slots.flatMap((s) => s.events)
+  assert.deepEqual(lanesOf(spec, events).map((l) => l.key), ['g-1', 'g-2', 'g-3'], 'off: one lane per group')
+  const on = lanesOf(spec, events, { byParty: true })
+  assert.deepEqual(on.map((l) => l.key), ['actor:a-1', 'actor:a-2', 'g-2', 'g-3'])
+  assert.deepEqual(on.slice(0, 2).map((l) => [l.label, l.side, l.groupIndex]), [['方远', '方远母子', 0], ['梁某（方远之母）', '方远母子', 0]])
+})
+
+test('lane per party: an event of one party is in its own lane, one of several on the axis; nothing is lost or overlaps', () => {
+  for (const f of files) {
+    const spec = load(f)
+    const g = buildScaleGraph(spec, {}, { byParty: true })
+    const ids = spec.slots.flatMap((s) => s.events.map((e) => e.id))
+    assert.deepEqual([...g.cards.flatMap((c) => c.ids)].sort(), [...ids].sort(), `${f}: every event on one card`)
+    for (let i = 0; i < g.cards.length; i++) for (let j = i + 1; j < g.cards.length; j++) assert.ok(!intersects(g.cards[i], g.cards[j]), `${f}: no overlap`)
+  }
+  const spec = load('fang-yuan-loan-and-conflict.zh-CN.json')
+  const g = buildScaleGraph(spec, {}, { byParty: true })
+  const lanes = g.nodes.find((n) => n.type === 'scaleLayer').data.lanes
+  const laneOfCard = (id) => lanes[g.cards.find((c) => c.ids.includes(id)).lane]?.key
+  assert.equal(laneOfCard('ev-11'), 'actor:a-1', 'Fang Yuan alone: his lane')
+  assert.equal(laneOfCard('ev-2'), 'actor:a-2', 'Liang alone: her lane')
+  assert.equal(laneOfCard('ev-1'), 'g-3', 'both sides: the axis')
+})
+
+test('lane per party changes nothing where no side holds two parties', () => {
+  const spec = load('neighbour-corridor-charging.zh-CN.json')
+  assert.deepEqual(buildScaleGraph(spec, {}, { byParty: true }).size, buildScaleGraph(spec, {}).size)
 })

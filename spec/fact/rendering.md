@@ -264,6 +264,7 @@ Distance along the axis is real time, so the density of events is itself the inf
 | Decision | Reason |
 |---|---|
 | One lane per group (side 1, side 2, the axis group), "other" for events with none | The group colours of the timeline carry over |
+| A dock switch "Lane per party", offered only when a side holds two or more parties, off by default and remembered per diagram: that side gets a lane per party, each named by the party with the side's name above it; the lanes of one side share a band | A side of several parties read as one lane hid who did what. An event of one party goes in that party's lane, one of several on the axis, the same rule as the timeline's columns. A side of one party keeps its one lane |
 | A time of day is a dot, a `dateEnd` a bar; a date to the day, month or year is a band over the whole period | A dot would claim a precision the date does not have. Where a period is narrower than the scale can show (a day on a scale of months), a dot claims no more than the date |
 | A period's or an undated event's point comes from its exact neighbours in data order | So "that day" written after the evening's events stays after them; undated events get a hollow dot and a dashed card |
 | The axis breaks where the scale changes, at most twice: a gap of 2 days or more and 20 times the typical gap beside it (counting only smaller gaps) | Months of run-up and one evening fit one picture; an evening is never cut |

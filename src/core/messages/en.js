@@ -52,6 +52,7 @@ export const en = {
   'dock.horizontal': 'Horizontal',
   'dock.grid': 'Grid',
   'dock.stagger': 'Stagger',
+  'dock.byParty': 'Lane per party',
   'dock.staggerHint': 'Let cards in different columns overlap by half a row, so the diagram is shorter and its text larger',
   'dock.exportImage': 'Export image',
   'dock.exporting': 'Exporting…',
