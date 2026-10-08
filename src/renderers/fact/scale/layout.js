@@ -407,9 +407,11 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     const at = kind === 'bar' ? x0 : xOf(f.time.t)
     // A period narrower than this scale can show (a day on a scale of months) is drawn as a dot:
     // at this scale a dot claims no more precision than the date has
-    // A period that runs past its segment (a day on a scale of minutes) is coarser than the scale: cut to the segment
-    // it would read as lasting exactly that long, so it is a hollow dot at its place in data order instead
-    const coarse = kind === 'band' && (f.time.from < segments[k].from || f.time.to > segments[k].to)
+    // A period longer than its whole segment (a day on a scale of minutes) is coarser than the scale: cut to the
+    // segment it would read as lasting exactly that long, so it is a hollow mark at its place in data order instead,
+    // with words saying what the date leaves open
+    const seg = segments[k]
+    const coarse = kind === 'band' && seg.to > seg.from && f.time.to - f.time.from > seg.to - seg.from
     const shown = kind === 'band' && (coarse || x1 - x0 < 8) ? 'dot' : kind
     if (shown === 'dot') x0 = x1 = at
     else if (x1 - x0 < 6) x1 = x0 + 6

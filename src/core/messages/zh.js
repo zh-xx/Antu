@@ -147,6 +147,9 @@ export const zh = {
   'scale.other': '其他',
   'scale.events': '事件',
   'scale.undated': '日期不详 · 按顺序放置',
+  'scale.coarse.day': '当日（时刻不详）',
+  'scale.coarse.month': '当月（日期不详）',
+  'scale.coarse.year': '当年（月份不详）',
   'scale.run': ({ n }) => `${n} 个事件`,
   'scale.runListed': ({ n }) => `时间相近的 ${n} 个事件，列示如下：`,
 

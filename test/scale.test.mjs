@@ -160,7 +160,11 @@ test('a day-only event written after the evening stays after it; an undated one 
   assert.ok(x('a') < x('u') && x('u') < x('b'), 'the undated event between its neighbours')
   assert.ok(x('day') > x('b'), 'the day-only event after the evening it was written after')
   assert.equal(layer.data.marks.find((m) => m.id === 'u').undated, true)
-  assert.equal(layer.data.marks.find((m) => m.id === 'day').kind, 'band', 'on a scale of minutes the day is a band')
+  // a day is longer than this whole scale of minutes: cut to it, a band would read as lasting exactly that long
+  const day = layer.data.marks.find((m) => m.id === 'day')
+  assert.equal(day.kind, 'dot', 'on a scale of minutes the day is a mark, not a band')
+  assert.equal(day.coarse, true, 'marked as coarser than the scale (hollow, with "that day")')
+  assert.equal(day.prec, 'day')
   assert.equal(g.undated, 1)
 })
 
@@ -218,4 +222,19 @@ test('lane per party: an event of one party is in its own lane, one of several o
 test('lane per party changes nothing where no side holds two parties', () => {
   const spec = load('neighbour-corridor-charging.zh-CN.json')
   assert.deepEqual(buildScaleGraph(spec, {}, { byParty: true }).size, buildScaleGraph(spec, {}).size)
+})
+
+test('a date that fits its scale is not coarse: a month on a scale of months is a band, a day there a dot', () => {
+  const spec = {
+    type: 'fact',
+    title: 'months',
+    slots: [
+      { events: [{ id: 'a', date: '2024-01-10', label: 'a' }] },
+      { events: [{ id: 'm', date: '2024-05', label: 'May' }] },
+      { events: [{ id: 'b', date: '2024-09-20', label: 'b' }] },
+    ],
+  }
+  const marks = buildScaleGraph(spec, {}).nodes.find((n) => n.type === 'scaleLayer').data.marks
+  assert.equal(marks.find((m) => m.id === 'm').kind, 'band')
+  assert.ok(marks.every((m) => !m.coarse), 'nothing is coarser than this scale')
 })

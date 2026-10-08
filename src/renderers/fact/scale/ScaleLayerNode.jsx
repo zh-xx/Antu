@@ -77,38 +77,22 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
             return <circle key={m.id} cx={m.x} cy={m.y} r={5} fill={c0.bg} stroke={GROUP_COLOURS[2]} strokeWidth={1.5} strokeDasharray="2 2" />
           }
           // a date coarser than the scale (a day on a scale of minutes): hollow, in the group's colour
-          const mock = typeof window !== 'undefined' ? window.__ANTU_PRESET__?.coarseStyle : null
-          if (m.coarse && mock === 'fade') {
-            const id = `fade-${m.id}`
-            return (
-              <g key={m.id}>
-                <defs>
-                  <linearGradient id={id} x1="0" x2="1" y1="0" y2="0">
-                    <stop offset="0" stopColor={c} stopOpacity="0" />
-                    <stop offset="0.5" stopColor={c} stopOpacity="0.35" />
-                    <stop offset="1" stopColor={c} stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <rect x={m.x - 70} y={m.y - 6} width={140} height={12} rx={6} fill={`url(#${id})`} />
-                <circle cx={m.x} cy={m.y} r={3} fill={c} />
-              </g>
-            )
-          }
-          if (m.coarse && mock === 'label') {
-            const word = { day: '当日', month: '当月', year: '当年' }[m.prec] ?? ''
-            const mark = m.groupIndex === 1
-              ? <rect x={m.x - 5} y={m.y - 5} width={10} height={10} rx={2} fill={c0.bg} stroke={c} strokeWidth={1.8} />
-              : <circle cx={m.x} cy={m.y} r={5} fill={c0.bg} stroke={c} strokeWidth={1.8} />
-            return (
-              <g key={m.id}>
-                {mark}
-                <text x={m.x + 10} y={m.y + 4} fontSize={11} fill={c}>{word}（时刻不详）</text>
-              </g>
-            )
-          }
           if (m.coarse) {
-            if (m.groupIndex === 1) return <rect key={m.id} x={m.x - 5} y={m.y - 5} width={10} height={10} rx={2} fill={c0.bg} stroke={c} strokeWidth={1.8} />
-            return <circle key={m.id} cx={m.x} cy={m.y} r={5} fill={c0.bg} stroke={c} strokeWidth={1.8} />
+            // The words say what the date leaves open; on the right of the mark, or on its left near the end of the line
+            const words = t(`scale.coarse.${m.prec}`)
+            const left = m.x + 130 > width
+            return (
+              <g key={m.id}>
+                {m.groupIndex === 1 ? (
+                  <rect x={m.x - 5} y={m.y - 5} width={10} height={10} rx={2} fill={c0.bg} stroke={c} strokeWidth={1.8} />
+                ) : (
+                  <circle cx={m.x} cy={m.y} r={5} fill={c0.bg} stroke={c} strokeWidth={1.8} />
+                )}
+                <text x={left ? m.x - 10 : m.x + 10} y={m.y + 4} textAnchor={left ? 'end' : 'start'} fontSize={11} fill={c}>
+                  {words}
+                </text>
+              </g>
+            )
           }
           // Side 2 is a square, side 1 a circle: the sides differ without colour (the lanes are named too)
           if (m.groupIndex === 1) return <rect key={m.id} x={m.x - 5} y={m.y - 5} width={10} height={10} rx={2} fill={c} stroke={c0.bg} strokeWidth={2} />
