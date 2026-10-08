@@ -57,8 +57,8 @@ await diagram.ready
 
 | 选项 | 默认 | |
 | --- | --- | --- |
-| `kind` | 该类型的第一种 | 打开时的画法，读者另选之前一直用它 |
-| `kinds` | 该类型的全部 | 读者可选的画法；只给一种就等于锁定。列表里一种都不属于该类型时，不作限制 |
+| `kind` | 该类型的第一种 | 打开时的画法，读者另选之前一直用它。不是该 spec 类型的画法时，`mount` 抛错并指明字段，与 `renderHtml`、`setKind` 的拒绝一致 |
+| `kinds` | 该类型的全部 | 读者可选的画法；只给一种就等于锁定。其中有不属于该类型的画法，或 `kind` 不在列表里，`mount` 抛错。（`update` 换成另一类型的 spec 后，不属于它的 `kind`、`kinds` 不再生效，图以它的第一种画法打开） |
 | `theme` | `document` | 打开时的主题：`document`、`modern`、`legal`（`spec/theme.md`）。读者仍可切换，除非去掉了标签卡 |
 | `lang` | 浏览器的 | `zh` 或 `en`：页面自身文字的语言。案件内容不翻译 |
 | `ui` | 全部 `true` | `{ header, capsule, minimap, zoom }`：去掉页面上的哪些部件（左上角标签卡、底部控制胶囊、缩略图、缩放按钮） |
@@ -107,6 +107,10 @@ await diagram.ready
 | `versions()` | 即 `antu versions --json` 的输出 |
 
 错误是字符串，与案图其他地方一致：字段路径在每条的开头，由该类型自己的校验器写出。
+
+`type` 不是四种类型之一时报错（本次改动起；此前会放行，但没有任何渲染器能画它）。最常见的笔误是把画法名写成类型，
+这时错误会指出它属于哪个类型：``\`type\` is "flow", which is a way of drawing a procedure diagram, not a type: write `"type": "procedure"` …``。
+所有入口都如此：MCP 服务端、命令行、页面，以及这里的入口。
 
 ## 5. `@zh-xx/antu/html`
 

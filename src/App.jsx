@@ -114,6 +114,9 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
     setErrors(errs)
     setSpec(errs.length ? null : given)
     if (errs.length) emit({ type: 'invalid', errors: [...errs] })
+    // Valid, and still nothing can draw it (knowledge registered without a component): the page says so below,
+    // and a host must hear it too, or its `ready` would wait for a drawing that never comes
+    else if (listKinds(given.type).length === 0) emit({ type: 'invalid', errors: [`no renderer is registered for type "${given.type}"`] })
   }, [given])
 
   // The per-diagram preference is keyed by **title**: the title is written in the
@@ -127,7 +130,8 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
   // from the registry which kinds the type has.
   // A manually chosen one is remembered per diagram; with none chosen, use the
   // first (the default kind).
-  // A host may narrow the choice; a list that names none of the type's kinds narrows nothing.
+  // A host may narrow the choice. `mount` refuses names that are not this type's kinds; a list that names none
+  // of them can only come from `update` to a spec of another type, and then it narrows nothing.
   const kinds = useMemo(() => {
     const all = spec ? listKinds(spec.type) : []
     const some = Array.isArray(allowed) ? all.filter((k) => allowed.includes(k.kind)) : all

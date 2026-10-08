@@ -151,6 +151,16 @@ test('@zh-xx/antu/html: the page render writes, refused where render refuses', (
   assert.throws(() => renderHtml(spec, { theme: 'neon' }), /theme/)
 })
 
+test('a way of drawing written as the type is refused by every entry, alike (review of #153)', () => {
+  const asKind = { type: 'flow', title: 'kind as type' }
+  const v = validate(asKind)
+  assert.equal(v.ok, false)
+  assert.match(v.errors[0], /write `"type": "procedure"`/)
+  assert.equal(layout(asKind).ok, false)
+  assert.throws(() => renderHtml(asKind), (e) => e.errors?.[0] === v.errors[0])
+  assert.match(validate({ type: 'nope' }).errors[0], /not a diagram type; expected one of fact \/ procedure \/ relationship \/ justification/)
+})
+
 /** The functions a module exports, read from its text (the embed entry imports JSX and a stylesheet, which Node cannot) */
 const exportedNames = (text) =>
   [...text.matchAll(/^export (?:async )?function (\w+)/gm), ...text.matchAll(/^export \{ ([\w, ]+) \}/gm)].flatMap((m) => m[1].split(',').map((s) => s.trim())).sort()

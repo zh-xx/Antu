@@ -17,6 +17,7 @@ import { buildGrid } from '../src/renderers/fact/timeline/grid.js'
 // dedicated test below guards it.
 import '../src/renderers/index.js'
 import { validateSpec } from '../src/core/validate.js'
+import { listKnowledgeTypes, layoutKindsOf } from '../src/core/registry.js'
 import { notesOf } from '../tools/mcp/engine.mjs'
 
 const base = () => JSON.parse(readFileSync('examples/fact/neighbour-corridor-charging.zh-CN.json', 'utf8'))
@@ -90,8 +91,21 @@ test('envelope: a missing type is reported', () => {
   assert.ok(validateSpec(spec).length > 0)
 })
 
-test('a type with no registered knowledge is not validated (an unknown type name, so empty)', () => {
-  assert.deepEqual(validateSpec({ type: 'no-such-type', title: '还没做' }), [])
+// An unknown type used to pass with no error, so a spec that can never be drawn was "valid" (issue 152)
+test('a type with no registered knowledge is an error that lists the types', () => {
+  const errors = validateSpec({ type: 'no-such-type', title: '还没做' })
+  assert.equal(errors.length, 1)
+  assert.match(errors[0], /"no-such-type", which is not a diagram type; expected one of fact \/ procedure \/ relationship \/ justification/)
+})
+
+test('a way of drawing written as the type is an error that names its type', () => {
+  for (const { type } of listKnowledgeTypes()) {
+    for (const kind of layoutKindsOf(type)) {
+      const errors = validateSpec({ type: kind, title: 'x' })
+      assert.equal(errors.length, 1, `type: "${kind}"`)
+      assert.ok(errors[0].includes(`write \`"type": "${type}"\``), `type: "${kind}" → ${errors[0]}`)
+    }
+  }
 })
 
 test('validation is layout: a grid is still returned on error so the caller can show the problem', () => {

@@ -160,6 +160,34 @@ export async function checkEmbed(t) {
     truthy('embed: an invalid spec refuses `ready` with its problems', Array.isArray(invalid) && invalid.length > 0, JSON.stringify(invalid)?.slice(0, 120))
     eq('embed: and the host hears `invalid` with the same problems', await browser.eval(`window.__events.c.filter((e) => e.type === 'invalid').map((e) => e.errors)`), [invalid])
     eq('embed: and draws no diagram', await browser.eval(`${S('c')}.querySelectorAll('.react-flow').length`), 0)
+
+    // ---- a type that is a way of drawing, and kinds that are not the type's (review of #153) ----
+    const wrong = await browser.eval(`(async () => {
+      const host = document.createElement('div')
+      host.style.height = '300px'
+      document.body.append(host)
+      const events = []
+      const h = window.__api.mount(host, { type: 'flow', title: 'kind as type' }, { onEvent: (e) => events.push(e.type) })
+      const timeout = new Promise((r) => setTimeout(() => r('still waiting after 5 s'), 5000))
+      const settled = await Promise.race([h.ready.then(() => 'resolved', (e) => (e.errors ?? []).join(' ')), timeout])
+      h.destroy()
+      const refuse = (spec, options) => { try { window.__api.mount(host, spec, options); return 'mounted' } catch (e) { return e.message } }
+      const flow = window.__api.SPECS.flow
+      const out = {
+        settled, events,
+        kind: refuse(flow, { kind: 'matrix' }),
+        kinds: refuse(flow, { kinds: ['flow', 'nope'] }),
+        notIn: refuse(flow, { kind: 'route', kinds: ['flow'] }),
+        left: host.shadowRoot.childElementCount,
+      }
+      host.remove()
+      return out
+    })()`, { awaitPromise: true })
+    truthy('embed: a way of drawing written as the type refuses ready at once, naming the type', wrong.settled.includes('"type": "procedure"'), wrong.settled)
+    eq('embed: and the host hears invalid', wrong.events, ['invalid'])
+    eq('embed: a kind that is not the type\'s makes mount throw, naming the field', [wrong.kind, wrong.kinds, wrong.notIn].map((m) => m.split(':')[1]?.trim().split(' ')[0]), ['options.kind', 'options.kinds', 'options.kind'])
+    truthy('embed: and says which kinds there are', wrong.kind.includes('flow, route'), wrong.kind)
+    eq('embed: a refused mount leaves nothing on the element', wrong.left, 0)
     const recovered = await browser.eval(`(async () => {
       const c = window.__h.c
       const refused = await c.exportPng().then(() => false, (e) => Array.isArray(e.errors) && e.errors.length > 0)

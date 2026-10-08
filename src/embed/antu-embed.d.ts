@@ -43,9 +43,9 @@ export interface AntuPrefsStore {
 }
 
 export interface MountOptions {
-  /** The kind it opens in, until the reader picks another */
+  /** The kind it opens in, until the reader picks another. Not a kind of the spec's type: `mount` throws. */
   kind?: string
-  /** The kinds the reader may pick from; one fixes the kind. A list naming none of the type's kinds narrows nothing. */
+  /** The kinds the reader may pick from; one fixes the kind. A name that is not a kind of the type: `mount` throws. */
   kinds?: string[]
   /** The theme it opens in (the reader can still switch, unless the label card is left out) */
   theme?: AntuTheme
@@ -74,7 +74,7 @@ export interface AntuHandle {
   destroy(): void
 }
 
-/** Draw `spec` inside `element` (in a shadow root; the element needs a height). Throws if one is already mounted there. */
+/** Draw `spec` inside `element` (in a shadow root; the element needs a height). Throws if one is already mounted there, or if `kind`/`kinds` name a way of drawing the spec's type does not have. */
 export function mount(element: HTMLElement, spec: AntuSpec, options?: MountOptions): AntuHandle
 
 /** Check a spec the way the diagram checks it before drawing; each error names its field */

@@ -63,8 +63,8 @@ The element needs a size: the diagram fills it (`height: 100%` of it), and fits 
 
 | Option | Default | |
 | --- | --- | --- |
-| `kind` | the type's first | the kind it opens in, until the reader picks another |
-| `kinds` | all of the type's | the kinds the reader may pick from; one fixes the kind. A list naming none of the type's kinds narrows nothing |
+| `kind` | the type's first | the kind it opens in, until the reader picks another. A name that is not a kind of the spec's type makes `mount` throw, naming the field, as `renderHtml` and `setKind` refuse it |
+| `kinds` | all of the type's | the kinds the reader may pick from; one fixes the kind. A name in it that is not a kind of the type, or a `kind` not in it, makes `mount` throw. (After `update` to a spec of another type, a `kind` and `kinds` that are not its own are let go, and it opens in its first kind) |
 | `theme` | `document` | the theme it opens in: `document`, `modern`, `legal` (`spec/theme.md`). The reader can still switch, unless the label card is left out |
 | `lang` | the browser's | `zh` or `en`: the language of the page's own words. The case is never translated |
 | `ui` | all `true` | `{ header, capsule, minimap, zoom }`: pieces of the page's chrome to leave out (the label card at the top left, the control capsule at the bottom, the minimap, the zoom buttons) |
@@ -116,6 +116,11 @@ The checks, notes and geometry report of the command line and the MCP server (`t
 
 The errors are strings, as everywhere else in Antu: the field path is the first part of each, written by the
 type's own validator.
+
+A `type` that is not one of the four is an error (since this change; it used to pass, and nothing could draw
+it). A way of drawing written as the type, the likeliest slip, says which type it belongs to:
+``\`type\` is "flow", which is a way of drawing a procedure diagram, not a type: write `"type": "procedure"` …``.
+This holds on every surface: the MCP server, the command line, the page, and these entries.
 
 ## 5. `@zh-xx/antu/html`
 

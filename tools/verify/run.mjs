@@ -39,9 +39,10 @@ import { REPO, renderToFile } from '../lib/make-html.mjs'
 import { launchBrowser, findChrome, ITEM_SELECTOR } from '../lib/chrome.mjs'
 import { checkEmbed } from './embed.mjs'
 // The knowledge of every major type must be registered first (plain JS), otherwise
-// validateSpec finds nothing in the table and silently returns "pass". This trap really
+// validateSpec finds nothing in the table. It used to return "pass" then; this trap really
 // happened: after moving files, this line was forgotten, bad data was not stopped, and
-// the verifier itself caught it.
+// the verifier itself caught it. Since issue 152 an unregistered type is an error, so
+// every example would fail instead, loudly.
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
 import { en, zh } from '../../src/core/messages/index.js'

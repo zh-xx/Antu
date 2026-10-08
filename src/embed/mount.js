@@ -29,6 +29,26 @@ const shadowCss = () => (sheet ??= toShadowCss(css))
 const MOUNTED = 'antu-embed-root'
 
 /**
+ * What is wrong with `kind` and `kinds` for this spec ('' when nothing is): a name that is not a way of drawing
+ * this type is refused, as `renderHtml` and `setKind` refuse it, rather than quietly drawn as another (issue 152).
+ * A spec whose type is not known is left to the validation, which reports it as `invalid`.
+ */
+function kindOptionProblem(spec, { kind, kinds }) {
+  const type = spec && typeof spec === 'object' ? spec.type : undefined
+  const known = listKinds(type).map((k) => k.kind)
+  if (!known.length) return ''
+  const not = (name) => `"${name}" is not a kind of ${type}: ${known.join(', ')}`
+  if (kind !== undefined && kind !== null && !known.includes(kind)) return `options.kind ${not(kind)}`
+  if (kinds !== undefined) {
+    if (!Array.isArray(kinds) || kinds.length === 0) return 'options.kinds must be a non-empty array of kinds'
+    const bad = kinds.find((k) => !known.includes(k))
+    if (bad !== undefined) return `options.kinds: ${not(bad)}`
+    if (kind != null && !kinds.includes(kind)) return `options.kind "${kind}" is not in options.kinds (${kinds.join(', ')})`
+  }
+  return ''
+}
+
+/**
  * @param {HTMLElement} el   the host's element; the diagram fills it, so it needs a height
  * @param {object} spec      the Antu JSON
  * @param {object} [options]
@@ -45,6 +65,9 @@ const MOUNTED = 'antu-embed-root'
  */
 export function mount(el, spec, options = {}) {
   if (!el || typeof el.attachShadow !== 'function') throw new TypeError('antu mount: the first argument must be an element')
+  // checked before anything is put on the element, so a refused mount leaves nothing behind
+  const optionProblem = kindOptionProblem(spec, options)
+  if (optionProblem) throw new Error(`antu mount: ${optionProblem}`)
   const shadow = el.shadowRoot ?? el.attachShadow({ mode: 'open' })
   if (shadow.querySelector(`.${MOUNTED}`)) throw new Error('antu mount: a diagram is already mounted on this element; destroy it first')
 
