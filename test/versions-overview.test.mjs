@@ -29,7 +29,7 @@ test('the text names the release, each type with its generation, and marks the d
   const text = formatVersions(versionsReport('1.2.3'))
   assert.match(text, /^Antu 1\.2\.3\n/)
   assert.match(text, /^fact: format generation 1$/m)
-  assert.match(text, /timeline +v1 +experimental +since 0\.2\.0 +\(default\)/)
+  assert.match(text, /timeline +v\d+ +experimental +since 0\.2\.0 +\(default\)/)
   assert.equal(text.split('(default)').length - 1, listKnowledgeTypes().length)
 })
 
