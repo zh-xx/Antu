@@ -130,18 +130,21 @@ export default function ControlDock({
 
         <span className="antu-dock-sep" />
 
-        {/* The grid lines assume rows of one height, so they are not offered while the rows are staggered */}
+        {/* The grid lines assume rows of one height, so they are not offered while the rows are staggered
+            (the chip and its separator go together, so two separators never meet) */}
         {!(stagger && orientation === 'vertical') && (
-          <button
-            className={`antu-dock-chip${showGrid ? ' is-on' : ''}`}
-            data-chip="grid"
-            onClick={() => onToggleGrid(!showGrid)}
-          >
-            {t('dock.grid')}
-          </button>
-        )}
+          <>
+            <button
+              className={`antu-dock-chip${showGrid ? ' is-on' : ''}`}
+              data-chip="grid"
+              onClick={() => onToggleGrid(!showGrid)}
+            >
+              {t('dock.grid')}
+            </button>
 
-        <span className="antu-dock-sep" />
+            <span className="antu-dock-sep" />
+          </>
+        )}
 
         {/* Language affects interface text only, never data: the case content on the diagram
             comes with the JSON. So switching language reloads no data and changes no geometry. */}
