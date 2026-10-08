@@ -44,6 +44,10 @@ await diagram.ready
 
 元素要有尺寸：图撑满它（它的 `height: 100%`），尺寸变了会重新适配。
 
+画出来的内容在元素的 **shadow root** 里，不在它的子元素中：`el.children`、`el.querySelectorAll(…)` 什么都找不到，
+看上去像"没画出来"。宿主的测试要到 `el.shadowRoot` 里找（`el.shadowRoot.querySelectorAll('.react-flow__node')`），
+shadow root 是开放的，正为此。
+
 ### 承诺
 
 - **自带 React。** React 不是 peer 依赖：宿主用什么框架、什么版本的 React 都无所谓（代价是体积，见下）。

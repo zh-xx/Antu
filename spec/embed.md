@@ -46,6 +46,10 @@ await diagram.ready
 
 The element needs a size: the diagram fills it (`height: 100%` of it), and fits itself again when it changes.
 
+What is drawn lives in the element's **shadow root**, not among its children: `el.children` and
+`el.querySelectorAll(…)` find nothing, which reads as "nothing was drawn". A host's tests look in
+`el.shadowRoot` (`el.shadowRoot.querySelectorAll('.react-flow__node')`); the root is open for that.
+
 ### What it promises
 
 - **Its own React inside.** React is not a peer dependency: the host's framework and React version do not
