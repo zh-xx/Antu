@@ -9,7 +9,7 @@
 
 import { memo } from 'react'
 import { useLang } from '../../../shell/LangContext.jsx'
-import { LABEL_W, BREAK_W } from './layout.js'
+import { BREAK_W } from './layout.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 export const runMark = (n) => (n <= 20 ? String.fromCodePoint(0x2460 + n - 1) : `(${n})`)
@@ -22,7 +22,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
   const GROUP_COLOURS = [c0.side1, c0.side2, c0.axis]
   const LINE = c0.line
   const INK = c0.ink3
-  const { width, lanesH, axisY, lanes, segments, ticks, marks, leaders, brackets } = data
+  const { width, labelW, lanesH, axisY, lanes, segments, ticks, marks, leaders, brackets } = data
   const height = axisY + 44
   const colour = (i) => GROUP_COLOURS[i] ?? GROUP_COLOURS[2]
   // The bands alternate by group, not by lane: with a lane per party, the lanes of one side share a band
@@ -36,7 +36,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
         {lanes.map((l, i) => (
           <g key={l.key}>
             {block[i] % 2 === 1 && <rect x={0} y={l.top} width={width} height={l.lineY - l.top + 14} fill={c0.chip} fillOpacity={0.6} />}
-            <line x1={LABEL_W} x2={width} y1={l.lineY} y2={l.lineY} stroke={LINE} strokeWidth={2} />
+            <line x1={labelW} x2={width} y1={l.lineY} y2={l.lineY} stroke={LINE} strokeWidth={2} />
           </g>
         ))}
 
@@ -110,7 +110,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
         ))}
 
         {/* the time axis */}
-        <line x1={LABEL_W} x2={width} y1={axisY} y2={axisY} stroke={c0.axis} strokeWidth={1.5} />
+        <line x1={labelW} x2={width} y1={axisY} y2={axisY} stroke={c0.axis} strokeWidth={1.5} />
         {ticks.map((k, i) => (
           <g key={`t${i}`}>
             <line x1={k.x} x2={k.x} y1={axisY} y2={axisY + 5} stroke={c0.axis} />
@@ -123,7 +123,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
 
       {/* lane labels, on the left */}
       {lanes.map((l) => (
-        <div key={l.key} className={`antu-sc-lane g${l.groupIndex}`} style={{ bottom: `calc(100% - ${l.lineY + 8}px)`, width: LABEL_W - 20 }}>
+        <div key={l.key} className={`antu-sc-lane g${l.groupIndex}`} style={{ bottom: `calc(100% - ${l.lineY + 8}px)`, width: labelW - 20 }}>
           <i />
           <span>
             {l.side ? <em className="antu-sc-lane-side">{l.side}</em> : null}

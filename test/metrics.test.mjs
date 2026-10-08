@@ -105,3 +105,17 @@ test('the width rule does not let a genuinely over-wide English summary through'
   const tooWide = 'x'.repeat(100)
   assert.ok(textEm(tooWide) > SUMMARY_MAX_EM)
 })
+
+test('a column with no event is thin; the cards stay in full-size columns (placement rules v1 leave a party with nothing of its own)', async () => {
+  const { EMPTY_LANE_W, EMPTY_LANE_H } = await import('../src/renderers/fact/timeline/metrics.js')
+  const spec = JSON.parse(readFileSync('examples/fact/lin-fang-v-zhao-lei-private-lending.zh-CN.json', 'utf8'))
+  const g = buildGrid(spec)
+  const i = g.columns.findIndex((c) => c.actorName === '林芳')
+  for (const isH of [false, true]) {
+    const m = makeMetrics(g, { summary: true }, isH)
+    assert.equal(m.lanes[i].size, isH ? EMPTY_LANE_H : EMPTY_LANE_W)
+    const full = m.lanes.filter((_, k) => k !== i && k !== g.axisColumnIndex)
+    for (const l of full) assert.equal(l.size, m.laneExtent)
+    assert.equal(isH ? m.contentH : m.contentW, m.lanes.reduce((n, l) => n + l.size, 0))
+  }
+})

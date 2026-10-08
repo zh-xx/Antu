@@ -10,7 +10,7 @@
 import { memo } from 'react'
 
 const ColumnHeaderNode = memo(function ColumnHeaderNode({ data }) {
-  const { width, height, isH, groupIndex, sideTitle, colTitle, actors, laneW } = data
+  const { width, height, isH, groupIndex, sideTitle, colTitle, actors, laneWs = [] } = data
 
   return (
     <div
@@ -21,7 +21,7 @@ const ColumnHeaderNode = memo(function ColumnHeaderNode({ data }) {
       {actors && (
         <div className="antu-colhead-actors">
           {actors.map((name, i) => (
-            <div key={i} className="antu-colhead-actor" style={{ width: laneW }}>
+            <div key={i} className="antu-colhead-actor" style={{ width: laneWs[i] }}>
               {name}
             </div>
           ))}

@@ -328,9 +328,9 @@ export const factKnowledge = {
 
   /** The version, status and release of each way of drawing (spec/versioning.md, "The diagrams"); the same names as `layouts` */
   diagrams: {
-    timeline: { version: 3, status: 'experimental', since: '0.2.0' },
+    timeline: { version: 4, status: 'experimental', since: '0.2.0' },
     chronicle: { version: 2, status: 'experimental', since: '0.7.0' },
-    scale: { version: 2, status: 'experimental', since: '0.7.0' },
+    scale: { version: 3, status: 'experimental', since: '0.7.0' },
   },
 
   /** Which ways of drawing a fact diagram exist. The first is the default. */

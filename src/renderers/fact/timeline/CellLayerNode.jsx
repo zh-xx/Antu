@@ -21,7 +21,7 @@ import { useStore } from '@xyflow/react'
 const PAD_COLS = 1
 
 const CellLayerNode = memo(function CellLayerNode({ data }) {
-  const { cols, rows, cellW, cellH, originX, originY, isH } = data
+  const { rows, cellW, cellH, originX, originY, isH, lanes = [] } = data
 
   const zoom = useStore((s) => s.transform[2]) || 1
   const k = 1 / zoom // reverse compensation factor
@@ -30,40 +30,47 @@ const CellLayerNode = memo(function CellLayerNode({ data }) {
   const SCREEN_STROKE = 0.8
   const stroke = SCREEN_STROKE * k
 
-  // Two extra lanes along the lane axis, showing the margin of the coordinate system.
-  // When vertical a lane is a column (one more on each side); when horizontal a lane is a row
-  // (one more above and below).
-  const totalLanes = cols + PAD_COLS * 2
-  const width = isH ? originX + rows * cellW : totalLanes * cellW
-  const height = isH ? totalLanes * cellH : originY + rows * cellH
+  // The lanes as laid out (an empty one is thin), plus one full lane on each side showing the margin of the coordinate
+  // system. When vertical a lane is a column; when horizontal a lane is a row.
+  const full = isH ? cellH : cellW
+  const pad = PAD_COLS * full
+  const bands = [
+    ...Array.from({ length: PAD_COLS }, (_, i) => ({ start: i * full, size: full })),
+    ...lanes.map((l) => ({ start: pad + l.start, size: l.size })),
+  ]
+  const end = pad + (lanes.length ? lanes[lanes.length - 1].start + lanes[lanes.length - 1].size : 0)
+  for (let i = 0; i < PAD_COLS; i += 1) bands.push({ start: end + i * full, size: full })
+  const across = end + PAD_COLS * full
+  const width = isH ? originX + rows * cellW : across
+  const height = isH ? across : originY + rows * cellH
 
   const rects = []
   for (let r = 0; r < rows; r += 1) {
-    for (let c = 0; c < totalLanes; c += 1) {
+    bands.forEach((b, c) => {
       // Vertical: slots run vertically and lanes horizontally; horizontal: the two are swapped
-      const x = (isH ? originX + r * cellW : c * cellW) + stroke / 2
-      const y = (isH ? c * cellH : originY + r * cellH) + stroke / 2
+      const x = (isH ? originX + r * cellW : b.start) + stroke / 2
+      const y = (isH ? b.start : originY + r * cellH) + stroke / 2
       rects.push(
         <rect
           key={`${r}-${c}`}
           className="antu-cell"
           x={x}
           y={y}
-          width={cellW - stroke}
-          height={cellH - stroke}
+          width={(isH ? cellW : b.size) - stroke}
+          height={(isH ? b.size : cellH) - stroke}
           strokeWidth={stroke}
           strokeDasharray={`${11 * k} ${7 * k}`}
         />,
       )
-    }
+    })
   }
 
   return (
     <svg
       className="antu-cells"
       style={{
-        left: isH ? 0 : -PAD_COLS * cellW,
-        top: isH ? -PAD_COLS * cellH : 0,
+        left: isH ? 0 : -pad,
+        top: isH ? -pad : 0,
         width,
         height,
       }}

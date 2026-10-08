@@ -48,6 +48,7 @@ Draw one fact specification as a **fixed grid**: rows are time, columns are lane
 - **No view switch** (removed with placement rules v1, format generation 2): a diagram has one placement, the one `spec/fact/timeline-rules.md` gives. With 2 or more parties the sides are the parties' camps; with one, its acts split by kind.
 - **Column heading**: only the group name of this column (for example "performance as agreed"), **never a positional description such as "side N / axis"**,
   the position is obvious from the picture and writing it out only takes up room. Font size 14px. When that side has several columns (several parties), the side's name is written **once**, over all its columns (vertical) or on its first lane (horizontal), and each column is headed by its party's name (13px); writing the side's name on every column made one side of two parties read as two columns of the same name.
+- **A column with no event is thin** (104 px wide vertical, 52 px tall horizontal): it keeps its heading, so "this party did nothing on its own" still reads, without pushing the other columns apart. Placement rules v1 put every act of several parties on the axis, so a party with only joint acts has an empty column (the lender in the Lin Fang case).
 - **By default a card holds two things**: title on top, time below. Three further switches can be turned on as needed: whether sources are shown, party tags, and one summary line.
   Card height is computed from "which fields are on" and "how many lines the title and the party tags each take", so turning a field off does not leave an empty block in the card.
 - **Detail**: right beside the card, in two levels. Hovering reveals the `detail` summary (3 lines) and the **source names**;
@@ -271,6 +272,10 @@ Distance along the axis is real time, so the density of events is itself the inf
 | Each segment is as wide as its number of events needs; inside it the position is exact | Evenly spread events never crowd |
 | Cards stack up to three levels; a run that still does not fit is gathered into one card, nearest neighbours first, and written out in full under the diagram | No two cards ever overlap (tested on every example and a dense case), and an exported picture hides nothing |
 | Titles in at most two lines, measured with the real font | Text never leaves its card; the full text is in the overlay |
+| A date coarser than its whole segment (a day on a scale of minutes) is a hollow mark at its place in data order, with words: "that day (time unknown)", "that month (day unknown)", "that year (month unknown)" | Cut to the segment, a band read as lasting exactly that long (the corridor case: a day-only event drawn as twelve minutes). The maintainer chose the hollow mark with words over a bare hollow mark and a fading band |
+| A span whose time does not fit one line breaks after the dash, and its card is one line taller | "2030-06-02 20:14:16 - 20:16…" hid the end; a level of cards has room for two title lines and two time lines |
+| The lane-name column is as wide as its longest name (132 to 196 px), measured with the real font | A fixed 132 px wrapped "双方共同或客观经过" onto two lines |
+| A lane with no event keeps its name and line but is 34 px tall | That a side did nothing on its own is information; a full-height empty lane only pushed the rest apart (placement rules v1 put every act of both sides on the axis, so this is common) |
 
 ## 10. Exporting an image
 
