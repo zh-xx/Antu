@@ -197,13 +197,36 @@ export function tickLabel(t, unit, prevT) {
 
 // ---------- lanes ----------
 
-/** The lanes: one per group (at most three, as validation allows), then "other" if any event has none */
-export function lanesOf(spec, events) {
+/** The key of the lane an event is drawn in: its group's id, or with `byParty` its one party's own lane */
+export function laneKeyOf(spec, { byParty = false } = {}) {
   const groupOf = groupOfEvent(spec)
+  const sideGroups = new Set((Array.isArray(spec?.groups) ? spec.groups.slice(0, 2) : []).map((g) => g?.id))
+  const actorGroup = new Map((Array.isArray(spec?.actors) ? spec.actors : []).filter((a) => a?.id).map((a) => [a.id, a.groupId]))
+  return (e) => {
+    const g = groupOf(e)
+    const ids = Array.isArray(e?.actorIds) ? e.actorIds : []
+    // a party's own lane only for an event of one party on a side (the same rule as the timeline's columns)
+    if (byParty && ids.length === 1 && sideGroups.has(g) && actorGroup.get(ids[0]) === g) return `actor:${ids[0]}`
+    return g
+  }
+}
+
+/**
+ * The lanes: one per group (at most three, as validation allows), then "other" if any event has none.
+ * With `byParty` (2 or more parties), a side group gives one lane per party in it instead, in the order of `actors`.
+ */
+export function lanesOf(spec, events, { byParty = false } = {}) {
+  const keyOf = laneKeyOf(spec, { byParty })
   const groups = (Array.isArray(spec?.groups) ? spec.groups.slice(0, 3) : []).filter((g) => g && g.id)
-  const lanes = groups.map((g, i) => ({ key: g.id, label: g.label ?? '', groupIndex: i }))
+  const actors = (Array.isArray(spec?.actors) ? spec.actors : []).filter((a) => a?.id)
+  const perParty = byParty && actors.length >= 2
+  const lanes = groups.flatMap((g, i) => {
+    const members = perParty && i < 2 ? actors.filter((a) => a.groupId === g.id) : []
+    if (!members.length) return [{ key: g.id, label: g.label ?? '', groupIndex: i }]
+    return members.map((a, k) => ({ key: `actor:${a.id}`, label: a.name ?? '', side: k === 0 ? g.label ?? '' : null, groupIndex: i }))
+  })
   const known = new Set(lanes.map((l) => l.key))
-  if (events.some((e) => !known.has(groupOf(e)))) lanes.push({ key: '__other__', label: null, groupIndex: 2, other: true })
+  if (events.some((e) => !known.has(keyOf(e)))) lanes.push({ key: '__other__', label: null, groupIndex: 2, other: true })
   return lanes
 }
 
@@ -263,7 +286,7 @@ function tryLevels(units, levels, width, gap) {
  * Turn a fact spec into React Flow nodes for the time scale.
  * Called as (spec, fields, options) like the chronicle; options: { measure(text, 'title') => px }.
  */
-export function buildScaleGraph(spec, _fields = {}, { measure } = {}) {
+export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false } = {}) {
   const actorById = new Map((spec?.actors || []).filter(Boolean).map((a) => [a.id, a]))
   const sourceById = new Map((spec?.sources || []).filter(Boolean).map((s) => [s.id, s]))
   const flat = []
@@ -349,10 +372,10 @@ export function buildScaleGraph(spec, _fields = {}, { measure } = {}) {
   const clampSeg = (t, k) => Math.min(Math.max(t, segments[k].from), segments[k].to)
 
   // 3. Lanes, and the marks in them
-  const lanes = lanesOf(spec, flat.map((f) => f.event))
-  const groupOf = groupOfEvent(spec)
+  const lanes = lanesOf(spec, flat.map((f) => f.event), { byParty })
+  const keyOf = laneKeyOf(spec, { byParty })
   const laneOf = (e) => {
-    const i = lanes.findIndex((l) => l.key === groupOf(e))
+    const i = lanes.findIndex((l) => l.key === keyOf(e))
     return i >= 0 ? i : lanes.length - 1
   }
   // Lane heights follow the levels their cards use, so they are known only after placing (step 4)

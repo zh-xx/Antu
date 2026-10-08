@@ -9,6 +9,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
+import { readPrefs, writePrefs } from '../../../shell/prefs.js'
 import { useExport } from '../../../shell/useExport.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import ScaleLayerNode from './ScaleLayerNode.jsx'
@@ -17,6 +18,9 @@ import ScaleRunNode from './ScaleRunNode.jsx'
 import ScaleRunListNode from './ScaleRunListNode.jsx'
 import ScaleDock from './ScaleDock.jsx'
 import { buildScaleGraph, PAD_X, PAD_Y, TIME_FONT, TIME_LH, TITLE_FONT, TITLE_LH } from './layout.js'
+
+/** The one-shot preset MCP's antu_preview passes (see the timeline) */
+const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
 
 const nodeTypes = { scaleLayer: ScaleLayerNode, scaleCard: ScaleCardNode, scaleRun: ScaleRunNode, scaleRunList: ScaleRunListNode }
 
@@ -41,7 +45,23 @@ function makeMeasure() {
 
 export default function FactScale({ spec }) {
   const measure = useMemo(() => makeMeasure(), [])
-  const graph = useMemo(() => buildScaleGraph(spec, {}, { measure }), [spec, measure])
+  // A lane per party, offered when a side holds two or more parties; off by default, remembered per diagram
+  const specKey = spec?.title || ''
+  const crowded = useMemo(() => {
+    const actors = Array.isArray(spec?.actors) ? spec.actors : []
+    if (actors.length < 2) return false
+    const count = new Map()
+    for (const a of actors) if (a?.groupId) count.set(a.groupId, (count.get(a.groupId) ?? 0) + 1)
+    return [...count.values()].some((n) => n >= 2)
+  }, [spec])
+  const [partyPrefs, setPartyPrefs] = useState(() => readPrefs().scaleByParty || {})
+  const byParty = crowded && (PRESET?.byParty ?? partyPrefs[specKey] ?? false)
+  const toggleByParty = (value) => {
+    const map = { ...partyPrefs, [specKey]: value }
+    setPartyPrefs(map)
+    writePrefs({ scaleByParty: map })
+  }
+  const graph = useMemo(() => buildScaleGraph(spec, {}, { measure, byParty }), [spec, measure, byParty])
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
@@ -76,7 +96,7 @@ export default function FactScale({ spec }) {
           }}
           onPaneClick={() => setPinnedId(null)}
         >
-          <ScaleDock exporting={exporting} onExport={onExport} />
+          <ScaleDock byParty={byParty} onToggleByParty={crowded ? toggleByParty : null} exporting={exporting} onExport={onExport} />
         </Canvas>
       </PreviewContext.Provider>
     </div>

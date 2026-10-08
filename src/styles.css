@@ -1332,6 +1332,7 @@
   line-height: 16px;
 }
 .antu-sc-lane span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+.antu-sc-lane-side { display: block; font-style: normal; font-size: 0.82em; font-weight: 400; opacity: 0.8; }
 .antu-sc-lane i { flex: none; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: currentColor; }
 .antu-sc-lane.g0 { color: var(--antu-side1); }
 .antu-sc-lane.g1 { color: var(--antu-side2); }

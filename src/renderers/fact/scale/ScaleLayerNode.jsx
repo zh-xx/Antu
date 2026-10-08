@@ -104,7 +104,10 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
       {lanes.map((l) => (
         <div key={l.key} className={`antu-sc-lane g${l.groupIndex}`} style={{ bottom: `calc(100% - ${l.lineY + 8}px)`, width: LABEL_W - 20 }}>
           <i />
-          <span>{l.other ? (lanes.length > 1 ? t('scale.other') : t('scale.events')) : l.label}</span>
+          <span>
+            {l.side ? <em className="antu-sc-lane-side">{l.side}</em> : null}
+            {l.other ? (lanes.length > 1 ? t('scale.other') : t('scale.events')) : l.label}
+          </span>
         </div>
       ))}
 
