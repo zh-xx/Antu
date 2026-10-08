@@ -24,11 +24,11 @@ import { axisNode, cellsNode, headerNodes, linksNode, placeCard } from './nodes.
  * edges is always empty; the links from cards to axis dots are carried by a separate "link layer"
  * node.
  */
-export function buildFactGraph(spec, fields = {}, view, orientation = 'vertical') {
+export function buildFactGraph(spec, fields = {}, view, orientation = 'vertical', { stagger = false } = {}) {
   const isH = orientation === 'horizontal'
   // The view is an input to layout too: it decides what the sides split by and which columns exist
   const grid = buildGrid(spec, view)
-  const m = makeMetrics(grid, fields, isH)
+  const m = makeMetrics(grid, fields, isH, stagger)
 
   const nodes = [cellsNode(m), ...headerNodes(grid, m)]
 
@@ -59,6 +59,7 @@ export function buildFactGraph(spec, fields = {}, view, orientation = 'vertical'
     edges: [],
     grid,
     layout: 'grid',
+    staggered: m.staggered,
     size: { width: m.contentW, height: m.contentH },
   }
 }

@@ -868,13 +868,15 @@ async function checkExport(browser, spec) {
   ok('export succeeded', `${shot.width}×${shot.height}  ${EXPORT_SHOT.replace(REPO + '/', '')}`)
 
   // The page is certainly in its default presentation state (a fresh browser profile has no
-  // preferences): only the summary field on, direction by slot count, first view.
+  // preferences): only the summary field on, direction by slot count, first view, rows staggered
+  // (vertical only, spec/fact/rendering.md §8.1).
   const orientation = spec.slots.length >= 5 ? 'vertical' : 'horizontal'
   const graph = buildFactGraph(
     spec,
     { sources: false, actors: false, summary: true },
     viewsOf(spec)[0],
     orientation,
+    { stagger: true },
   )
   eq('size = (content + padding) × 2', [shot.width, shot.height], [
     exportFrame(graph.size.width, graph.size.height).width * 2,
@@ -1217,16 +1219,19 @@ async function checkRender(sampleFile) {
         blocks: kids.filter((e) => e.classList.contains('antu-dock-sep')).length + 1,
         buttons: kids.filter((e) => e.tagName === 'BUTTON').length,
         segItems: kids.filter((e) => e.classList.contains('antu-dock-seg')).reduce((n, s) => n + s.children.length, 0),
+        grid: !!bar.querySelector('[data-chip="grid"]'),
       }
     })()`)
     truthy('measured the dock control blocks', dockShape)
     if (dockShape) {
-      // Six blocks: view · field toggles · orientation · grid · language · export.
+      // Six blocks: view · field toggles · orientation (with Stagger when vertical) · grid · language · export.
+      // The grid block is offered only while the rows are not staggered (spec/fact/rendering.md §8.1), so a
+      // vertical page, staggered by default, has five.
       // The export action is separated off on its own, because it is the only **action** in
       // the dock while everything else is a state toggle.
       // The count is asserted rather than inferred: a resurrected heading switch would add
       // a seventh, and that is exactly what this replaced assertion was meant to catch.
-      eq('the dock has six control blocks', dockShape.blocks, 6)
+      eq(`the dock has ${dockShape.grid ? 'six' : 'five'} control blocks (the grid block ${dockShape.grid ? 'offered' : 'not offered while the rows are staggered'})`, dockShape.blocks, dockShape.grid ? 6 : 5)
       truthy(
         'the dock still carries the controls it should',
         dockShape.buttons >= 5 && dockShape.segItems >= 4,
@@ -2256,6 +2261,59 @@ async function checkKindSwitching(sampleFile) {
   }
 }
 
+/**
+ * The timeline's Stagger switch (vertical only, on by default, remembered per diagram): the chip is there and on, the
+ * rows overlap where they have no column in common (no card overlaps another), a click turns it off and brings the grid
+ * chip back, the choice is remembered for that diagram, and another diagram still opens with it on.
+ */
+async function checkTimelineStagger(sampleFile, otherFile) {
+  section('render: the timeline\'s Stagger switch')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const html = join(OUT, 'render-stagger.html')
+  const other = join(OUT, 'render-stagger-other.html')
+  renderToFile(JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8')), { outPath: html, quiet: true })
+  renderToFile(JSON.parse(readFileSync(join(REPO, otherFile), 'utf8')), { outPath: other, quiet: true })
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  const settle = (ms = 700) => new Promise((r) => setTimeout(r, ms))
+  // Fixed code only: the chips are found by their data-chip attribute, not by a text put into the code
+  const state = () =>
+    browser.eval(`(() => {
+      const chip = document.querySelector('.antu-dock-bar [data-chip="stagger"]')
+      const rects = [...document.querySelectorAll('.react-flow__node-card')].map((n) => n.getBoundingClientRect())
+      let overlaps = 0
+      for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i], b = rects[j]
+        if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) overlaps++
+      }
+      return { chip: !!chip, on: !!chip && chip.classList.contains('is-on'), grid: !!document.querySelector('.antu-dock-bar [data-chip="grid"]'), cards: rects.length, cardH: rects[0]?.height ?? 0, overlaps }
+    })()`)
+  const click = () => browser.eval(`document.querySelector('.antu-dock-bar [data-chip="stagger"]').click()`, { userGesture: true })
+  try {
+    await browser.open(`file://${html}?lang=en`)
+    await settle()
+    const on = await state()
+    truthy('stagger: the chip is in the bar of a vertical timeline, and on by default', on.chip && on.on && !on.grid)
+    eq('stagger: no card overlaps another', on.overlaps, 0)
+    await click()
+    await settle()
+    const off = await state()
+    truthy('stagger: a click turns it off and the grid chip is back', !off.on && off.grid)
+    eq('stagger: every card is still drawn', off.cards, on.cards)
+    truthy(`stagger: staggered, the cards are drawn larger (${off.cardH.toFixed(0)} -> ${on.cardH.toFixed(0)} px high)`, on.cardH > off.cardH * 1.3)
+    await browser.open(`file://${html}?lang=en`)
+    await settle()
+    truthy('stagger: turned off, it is remembered for this diagram', !(await state()).on)
+    await browser.open(`file://${other}?lang=en`)
+    await settle()
+    truthy('stagger: another diagram still opens with it on (the choice is per diagram)', (await state()).on)
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderProcedure(sampleFile) {
   section('render: procedure flowchart')
   if (!findChrome()) {
@@ -3030,6 +3088,7 @@ if (!shotOnly && !skipBrowser) {
   await checkMinimapShowsExtent()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)
+  await checkTimelineStagger('examples/fact/fang-yuan-loan-and-conflict.zh-CN.json', 'examples/fact/marketplace-platform-liability.zh-CN.json')
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)

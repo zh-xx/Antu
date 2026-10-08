@@ -74,6 +74,16 @@ export default function FactTimeline({ spec }) {
     writePrefs({ showGrid: value })
   }
 
+  // Staggered rows (vertical only, see rowTopsOf in metrics.js): on by default, and what the reader set is remembered
+  // per diagram, like the orientation, so turning it off in one diagram does not change how another opens.
+  const [staggerPrefs, setStaggerPrefs] = useState(() => readPrefs().staggers || {})
+  const stagger = PRESET?.stagger ?? staggerPrefs[specKey] ?? true
+  const toggleStagger = (value) => {
+    const map = { ...staggerPrefs, [specKey]: value }
+    setStaggerPrefs(map)
+    writePrefs({ staggers: map })
+  }
+
   // View index. One page holds one data set, so there is no "reset when the diagram changes".
   const [viewIndex, setViewIndex] = useState(PRESET?.viewIndex ?? 0)
 
@@ -125,8 +135,8 @@ export default function FactTimeline({ spec }) {
     viewInfos[viewIndex] && !viewInfos[viewIndex].reason ? viewIndex : (usable[0]?.index ?? viewIndex)
   const view = (viewInfos[safeIndex] || viewInfos[0]).view
   const graph = useMemo(
-    () => buildFactGraph(spec, fields, view, orientation),
-    [spec, fields, view, orientation],
+    () => buildFactGraph(spec, fields, view, orientation, { stagger }),
+    [spec, fields, view, orientation, stagger],
   )
 
   // Overlay state: hoveredId is the card the mouse passed over, pinnedId is the card clicked open
@@ -155,7 +165,8 @@ export default function FactTimeline({ spec }) {
           ref={canvasRef}
           graph={graph}
           nodeTypes={nodeTypes}
-          showGrid={showGrid}
+          // The grid lines assume rows of one height; staggered rows have none to show
+          showGrid={showGrid && !graph.staggered}
           // Card padding and summary font size come from cardGeometry.js alone, and the styles take
           // them through CSS variables. Otherwise "card width / font size" and "the summary
           // character limit" would each have their own copy, and changing one would silently throw
@@ -188,6 +199,8 @@ export default function FactTimeline({ spec }) {
             onToggleOrientation={toggleOrientation}
             showGrid={showGrid}
             onToggleGrid={toggleGrid}
+            stagger={stagger}
+            onToggleStagger={toggleStagger}
             exporting={exporting}
             onExport={onExport}
           />

@@ -103,7 +103,7 @@ export function headerNodes(grid, m) {
 export function axisNode(grid, m) {
   // Axis dots are laid along the time axis; the position is an offset from the node's origin (top when vertical, left when horizontal)
   const dotOffsets = grid.rows.map(
-    (r) => r.index * m.slotExtent + m.slotExtent / 2 - DOT_SIZE / 2,
+    (r) => m.rowTops[r.index] * m.slotExtent + m.slotExtent / 2 - DOT_SIZE / 2,
   )
   return {
     id: '__axis__',
@@ -111,7 +111,7 @@ export function axisNode(grid, m) {
     position: m.isH
       ? { x: m.originX, y: m.axisCenter - 1 }
       : { x: m.axisCenter - 1, y: m.originY },
-    data: { isH: m.isH, length: m.rowCount * m.slotExtent, dotSize: DOT_SIZE, dotOffsets },
+    data: { isH: m.isH, length: m.timeSpan, dotSize: DOT_SIZE, dotOffsets },
     ...DECORATION,
   }
 }

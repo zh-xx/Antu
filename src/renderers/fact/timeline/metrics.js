@@ -100,13 +100,55 @@ export function actorLinesOf(grid, fields) {
 }
 
 /**
+ * Which columns a row has cards in, for the staggered layout. Only a shared column stops two rows
+ * from coming closer than a whole row: in a view split by party a column is one party, in a view
+ * split by group it is one group. Links need no room of their own: rows are always at least half a
+ * row apart, and a card stands in its cell with a gap above and below, so a link (at the middle of
+ * its row) always runs through the gap between the cards of a neighbouring column, and an axis dot
+ * never sits under a card on the axis.
+ */
+export function footprintOf(row, grid) {
+  const taken = new Set()
+  row.cells.forEach((_, key) => {
+    const col = grid.columns.findIndex((c) => c.key === key)
+    if (col >= 0) taken.add(col)
+  })
+  return taken
+}
+
+/** How far down a row may start after the one before it, at least, in the staggered layout (in cell heights) */
+export const STAGGER_STEP = 0.5
+
+/**
+ * The top of each row, in cell heights from the first. Without stagger it is the row number. With
+ * stagger, a row starts half a row after the one before it, but no closer than a whole row to any
+ * earlier row that has a card in one of its columns: cards never overlap, and no link runs under a
+ * card (see footprintOf). Every row is still below the one before it, so the order of the dots on the
+ * axis is the order of the slots.
+ */
+export function rowTopsOf(grid, stagger) {
+  if (!stagger) return grid.rows.map((_, i) => i)
+  const prints = grid.rows.map((row) => footprintOf(row, grid))
+  const tops = []
+  prints.forEach((print, i) => {
+    let top = i === 0 ? 0 : tops[i - 1] + STAGGER_STEP
+    for (let j = 0; j < i; j++) {
+      if ([...print].some((k) => prints[j].has(k))) top = Math.max(top, tops[j] + 1)
+    }
+    tops.push(top)
+  })
+  return tops
+}
+
+/**
  * Turn the grid into pixels. What comes back is enough to build the nodes.
  *
  * @param grid    the grid computed by timeline/grid.js
  * @param fields  which fields are on (affects card height and therefore cell height)
  * @param isH     horizontal or not (time runs along the horizontal axis)
+ * @param stagger vertical only: rows with no column in common may overlap by half (off unless asked: the page asks for it by default, see TimelineRenderer.jsx)
  */
-export function makeMetrics(grid, fields, isH) {
+export function makeMetrics(grid, fields, isH, stagger = false) {
   const colCount = grid.columns.length
   const rowCount = grid.rows.length
 
@@ -132,18 +174,23 @@ export function makeMetrics(grid, fields, isH) {
   const cellBoxW = isH ? slotExtent : laneExtent
   const cellBoxH = isH ? laneExtent : slotExtent
 
+  // Where each slot starts along the time axis, in slot extents (the row number, unless staggered)
+  const staggered = stagger && !isH
+  const rowTops = rowTopsOf(grid, staggered)
+  const timeSpan = rowCount === 0 ? 0 : (rowTops[rowCount - 1] + 1) * slotExtent
+
   // Where the top-left corner of a cell is. Slots run along the time axis, lanes along the lane axis.
   const cellAt = (slotIndex, laneIndex) =>
     isH
-      ? { x: originX + slotIndex * slotExtent, y: laneIndex * laneExtent }
-      : { x: laneIndex * laneExtent, y: originY + slotIndex * slotExtent }
+      ? { x: originX + rowTops[slotIndex] * slotExtent, y: laneIndex * laneExtent }
+      : { x: laneIndex * laneExtent, y: originY + rowTops[slotIndex] * slotExtent }
 
   // Centre line of the lane the axis sits in (measured along the lane axis)
   const axisCenter = grid.axisColumnIndex * laneExtent + laneExtent / 2
 
   // The content size must count the arrow in (see ARROW_EXTENT)
-  const contentW = isH ? originX + rowCount * slotExtent + ARROW_EXTENT : colCount * laneExtent
-  const contentH = isH ? colCount * laneExtent : originY + rowCount * slotExtent + ARROW_EXTENT
+  const contentW = isH ? originX + timeSpan + ARROW_EXTENT : colCount * laneExtent
+  const contentH = isH ? colCount * laneExtent : originY + timeSpan + ARROW_EXTENT
 
   return {
     isH,
@@ -160,6 +207,9 @@ export function makeMetrics(grid, fields, isH) {
     cellBoxW,
     cellBoxH,
     cellAt,
+    rowTops,
+    timeSpan,
+    staggered,
     axisCenter,
     contentW,
     contentH,
