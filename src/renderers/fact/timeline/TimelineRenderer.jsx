@@ -74,8 +74,8 @@ export default function FactTimeline({ spec }) {
     writePrefs({ showGrid: value })
   }
 
-  // Staggered rows (vertical only): a global preference, off by default. A row with cards on one side
-  // may start half a row after the one before it when that one is on the other side of the axis.
+  // Staggered rows (vertical only): a global preference, off by default. A row may start half a row
+  // after the one before it when the two have no column in common (see rowTopsOf in metrics.js).
   const [stagger, setStagger] = useState(() => PRESET?.stagger ?? readPrefs().stagger === true)
   const toggleStagger = (value) => {
     setStagger(value)

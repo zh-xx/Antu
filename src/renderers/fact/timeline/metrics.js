@@ -100,27 +100,18 @@ export function actorLinesOf(grid, fields) {
 }
 
 /**
- * What a row takes up across the lanes, for the staggered layout: the columns of its cards and the
- * columns its links run through on the way to the axis. The axis column is split in two halves,
- * because a link from the left ends at the axis dot from the left and one from the right from the
- * right, so a left row and a right row never meet there; a card on the axis takes both halves.
+ * Which columns a row has cards in, for the staggered layout. Only a shared column stops two rows
+ * from coming closer than a whole row: in a view split by party a column is one party, in a view
+ * split by group it is one group. Links need no room of their own: rows are always at least half a
+ * row apart, and a card stands in its cell with a gap above and below, so a link (at the middle of
+ * its row) always runs through the gap between the cards of a neighbouring column, and an axis dot
+ * never sits under a card on the axis.
  */
 export function footprintOf(row, grid) {
-  const axis = grid.axisColumnIndex
   const taken = new Set()
   row.cells.forEach((_, key) => {
     const col = grid.columns.findIndex((c) => c.key === key)
-    if (col < 0) return
-    if (col === axis) {
-      taken.add('axis-l')
-      taken.add('axis-r')
-    } else if (col < axis) {
-      for (let c = col; c < axis; c++) taken.add(c)
-      taken.add('axis-l')
-    } else {
-      for (let c = axis + 1; c <= col; c++) taken.add(c)
-      taken.add('axis-r')
-    }
+    if (col >= 0) taken.add(col)
   })
   return taken
 }
@@ -131,9 +122,9 @@ export const STAGGER_STEP = 0.5
 /**
  * The top of each row, in cell heights from the first. Without stagger it is the row number. With
  * stagger, a row starts half a row after the one before it, but no closer than a whole row to any
- * earlier row whose footprint it shares: cards never overlap, and no link runs under a card. Only
- * rows on opposite sides of the axis come closer than a row, so the order of the dots on the axis
- * is still the order of the slots.
+ * earlier row that has a card in one of its columns: cards never overlap, and no link runs under a
+ * card (see footprintOf). Every row is still below the one before it, so the order of the dots on the
+ * axis is the order of the slots.
  */
 export function rowTopsOf(grid, stagger) {
   if (!stagger) return grid.rows.map((_, i) => i)
@@ -155,7 +146,7 @@ export function rowTopsOf(grid, stagger) {
  * @param grid    the grid computed by timeline/grid.js
  * @param fields  which fields are on (affects card height and therefore cell height)
  * @param isH     horizontal or not (time runs along the horizontal axis)
- * @param stagger vertical only: rows on opposite sides of the axis may overlap by half (off by default)
+ * @param stagger vertical only: rows with no column in common may overlap by half (off by default)
  */
 export function makeMetrics(grid, fields, isH, stagger = false) {
   const colCount = grid.columns.length
