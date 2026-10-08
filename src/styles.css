@@ -322,7 +322,12 @@
   padding: 0 12px 0 0;
 }
 .antu-colhead-side { font-size: 14px; font-weight: 700; color: var(--antu-text-2); line-height: 1.4; }
-.antu-colhead-actor { font-size: 12px; color: var(--antu-text-3); margin-top: 3px; }
+/* A side of several parties: the side title once, then one party name per column, as each column's heading */
+.antu-colhead-actor { font-size: 13px; font-weight: 600; color: var(--antu-text-2); margin-top: 4px; line-height: 1.35; }
+.antu-colhead.is-span { padding: 8px 0; }
+.antu-colhead.is-span .antu-colhead-side { padding: 0 16px 4px; margin: 0 16px; border-bottom: 1px solid var(--antu-line); }
+.antu-colhead-actors { display: flex; }
+.antu-colhead-actors .antu-colhead-actor { box-sizing: border-box; padding: 0 16px; }
 .antu-colhead.g0 .antu-colhead-side { color: var(--antu-side1); }
 .antu-colhead.g1 .antu-colhead-side { color: var(--antu-side2); }
 .antu-colhead.g2 .antu-colhead-side { color: var(--antu-text-3); }
