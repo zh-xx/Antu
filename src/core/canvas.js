@@ -84,5 +84,9 @@ export function textSizeLines(t, split) {
     const folded = t.folded >= 1 ? `full size (${t.font} px)` : `${px(textPx(t.font, t.folded))} px`
     lines.push(`With every issue folded the text is ${folded}: the reader can fold issues ("Fold issues" in the bar) instead of your splitting it.`)
   }
+  if (t.staggered !== undefined && best < TEXT_OK_PX) {
+    const staggered = t.staggered >= 1 ? `full size (${t.font} px)` : `${px(textPx(t.font, t.staggered))} px`
+    lines.push(`With rows staggered (vertical) the text is ${staggered}: the reader can turn on "Stagger" in the bar (off by default). Tell the user, if it helps.`)
+  }
   return lines
 }

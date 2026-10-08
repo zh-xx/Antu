@@ -2256,6 +2256,62 @@ async function checkKindSwitching(sampleFile) {
   }
 }
 
+/**
+ * The timeline's Stagger switch (vertical only, off by default): the chip is there and off, a click makes the rows
+ * overlap where they have no column in common (the cards are drawn larger, none overlaps another), the grid chip is
+ * not offered while it is on, and the choice is remembered.
+ */
+async function checkTimelineStagger(sampleFile) {
+  section('render: the timeline\'s Stagger switch')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
+  const html = join(OUT, 'render-stagger.html')
+  renderToFile(spec, { outPath: html, quiet: true })
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  const settle = (ms = 700) => new Promise((r) => setTimeout(r, ms))
+  const label = translate('en', 'dock.stagger')
+  const gridLabel = translate('en', 'dock.grid')
+  const state = () =>
+    browser.eval(`(() => {
+      const chips = [...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')]
+      const chip = chips.find((b) => b.textContent === ${JSON.stringify(label)})
+      const rects = [...document.querySelectorAll('.react-flow__node-card')].map((n) => n.getBoundingClientRect())
+      let overlaps = 0
+      for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+        const a = rects[i], b = rects[j]
+        if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) overlaps++
+      }
+      return { chip: !!chip, on: !!chip && chip.classList.contains('is-on'), grid: chips.some((b) => b.textContent === ${JSON.stringify(gridLabel)}), cards: rects.length, cardH: rects[0]?.height ?? 0, overlaps }
+    })()`)
+  const click = () =>
+    browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].find((b) => b.textContent === ${JSON.stringify(label)}).click()`, { userGesture: true })
+  try {
+    await browser.open(`file://${html}?lang=en`)
+    await settle()
+    const off = await state()
+    truthy('stagger: the chip is in the bar of a vertical timeline, and off', off.chip && !off.on && off.grid)
+    await click()
+    await settle()
+    const on = await state()
+    truthy('stagger: a click turns it on and the grid chip is not offered', on.on && !on.grid)
+    eq('stagger: every card is still drawn', on.cards, off.cards)
+    eq('stagger: no card overlaps another', on.overlaps, 0)
+    truthy(`stagger: the cards are drawn larger (${off.cardH.toFixed(0)} -> ${on.cardH.toFixed(0)} px high)`, on.cardH > off.cardH * 1.3)
+    await browser.open(`file://${html}?lang=en`)
+    await settle()
+    truthy('stagger: it is remembered when the page is opened again', (await state()).on)
+    await click()
+    await settle()
+    const back = await state()
+    truthy('stagger: a second click turns it off and the grid chip is back', !back.on && back.grid && back.cardH === off.cardH)
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderProcedure(sampleFile) {
   section('render: procedure flowchart')
   if (!findChrome()) {
@@ -3030,6 +3086,7 @@ if (!shotOnly && !skipBrowser) {
   await checkMinimapShowsExtent()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)
+  await checkTimelineStagger('examples/fact/fang-yuan-loan-and-conflict.zh-CN.json')
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)

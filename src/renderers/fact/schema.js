@@ -293,8 +293,19 @@ export const factKnowledge = {
     const slotCount = Array.isArray(spec.slots) ? spec.slots.length : 0
     const opens = orientation ?? (slotCount >= 5 ? 'vertical' : 'horizontal')
     const others = opens === 'vertical' ? 'horizontal' : 'vertical'
+    // The Stagger switch of the page (vertical only, off by default): said only when it makes the text larger
+    const staggeredGraph = layout(spec, fields, undefined, 'vertical', { stagger: true })
+    const staggered = { size: staggeredGraph.size, fit: Number(fitZoom(staggeredGraph.size, canvas).toFixed(3)) }
+    const staggerHelps = staggered.fit > byOrientation.vertical.fit
     return {
-      text: { font: LABEL_FONT, canvas, open: { name: opens, fit: byOrientation[opens].fit }, other: { name: others, fit: byOrientation[others].fit } },
+      text: {
+        font: LABEL_FONT,
+        canvas,
+        open: { name: opens, fit: byOrientation[opens].fit },
+        other: { name: others, fit: byOrientation[others].fit },
+        ...(staggerHelps ? { staggered: staggered.fit } : {}),
+      },
+      staggered,
       views,
       counts: {
         slots: slotCount,
