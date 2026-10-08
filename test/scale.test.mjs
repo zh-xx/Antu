@@ -267,3 +267,22 @@ test('a lane with no event keeps its name and line but is thin', () => {
   assert.equal(empty.length, 1)
   assert.equal(empty[0].lineY - empty[0].top, EMPTY_LANE_H)
 })
+
+test('an undated event after day-only dates does not open a segment of its own', () => {
+  // a DeepSeek trial of the lending case: the judgment has no date and comes last; it used to be placed an hour after
+  // the last due date, and that hour opened a segment drawn by the minute (crowded ticks, the due date marked "that day")
+  const spec = {
+    type: 'fact',
+    title: 'lending',
+    slots: [
+      { events: [{ id: 'a', date: '2030-03-04', label: 'lent' }] },
+      { events: [{ id: 'b', date: '2030-03-14', label: 'lent again' }] },
+      { events: [{ id: 'c', date: '2030-04-04', label: 'due' }] },
+      { events: [{ id: 'd', date: '2030-04-14', label: 'due' }] },
+      { events: [{ id: 'j', label: 'judgment' }] },
+    ],
+  }
+  const g = buildScaleGraph(spec, {})
+  assert.deepEqual(g.segments.map((s) => s.unit), ['day'])
+  assert.ok(g.nodes.find((n) => n.type === 'scaleLayer').data.marks.every((m) => !m.coarse))
+})
