@@ -4,7 +4,8 @@
 //  The third way of drawing a fact diagram. Distance along the axis is real time, so how densely
 //  the events lie is itself the information ("months of default, then everything in one evening").
 //
-//    lanes     one horizontal line per group (side 1, side 2, the axis group), plus "other" for
+//    lanes     one horizontal line per group (side 1, side 2, the axis group), or with the "lane per party"
+//              switch one per party of a side that holds two or more; plus "other" for
 //              events with no group; labelled on the left
 //    marks     a dot at the event's time; a bar from date to dateEnd; a light band over the whole
 //              month or year when the date is given only to the month or the year (never a dot:
@@ -197,33 +198,47 @@ export function tickLabel(t, unit, prevT) {
 
 // ---------- lanes ----------
 
+/**
+ * The side groups a lane per party splits: with `byParty` and 2 or more parties, each of the first two groups
+ * that holds two or more of them (a group of one party keeps its one lane, named once). Group id → its parties.
+ */
+function splitGroupsOf(spec, byParty) {
+  const split = new Map()
+  const actors = (Array.isArray(spec?.actors) ? spec.actors : []).filter((a) => a?.id)
+  if (!byParty || actors.length < 2) return split
+  for (const g of Array.isArray(spec?.groups) ? spec.groups.slice(0, 2) : []) {
+    const members = actors.filter((a) => g?.id && a.groupId === g.id)
+    if (members.length >= 2) split.set(g.id, members)
+  }
+  return split
+}
+
 /** The key of the lane an event is drawn in: its group's id, or with `byParty` its one party's own lane */
 export function laneKeyOf(spec, { byParty = false } = {}) {
   const groupOf = groupOfEvent(spec)
-  const sideGroups = new Set((Array.isArray(spec?.groups) ? spec.groups.slice(0, 2) : []).map((g) => g?.id))
-  const actorGroup = new Map((Array.isArray(spec?.actors) ? spec.actors : []).filter((a) => a?.id).map((a) => [a.id, a.groupId]))
+  const split = splitGroupsOf(spec, byParty)
   return (e) => {
     const g = groupOf(e)
     const ids = Array.isArray(e?.actorIds) ? e.actorIds : []
-    // a party's own lane only for an event of one party on a side (the same rule as the timeline's columns)
-    if (byParty && ids.length === 1 && sideGroups.has(g) && actorGroup.get(ids[0]) === g) return `actor:${ids[0]}`
+    // a party's own lane only for an event of one party (the same rule as the timeline's columns)
+    if (ids.length === 1 && split.get(g)?.some((a) => a.id === ids[0])) return `actor:${ids[0]}`
     return g
   }
 }
 
 /**
  * The lanes: one per group (at most three, as validation allows), then "other" if any event has none.
- * With `byParty` (2 or more parties), a side group gives one lane per party in it instead, in the order of `actors`.
+ * With `byParty`, a side group of two or more parties gives one lane per party instead, in the order of `actors`,
+ * each named by the party with the group's name above it.
  */
 export function lanesOf(spec, events, { byParty = false } = {}) {
   const keyOf = laneKeyOf(spec, { byParty })
+  const split = splitGroupsOf(spec, byParty)
   const groups = (Array.isArray(spec?.groups) ? spec.groups.slice(0, 3) : []).filter((g) => g && g.id)
-  const actors = (Array.isArray(spec?.actors) ? spec.actors : []).filter((a) => a?.id)
-  const perParty = byParty && actors.length >= 2
   const lanes = groups.flatMap((g, i) => {
-    const members = perParty && i < 2 ? actors.filter((a) => a.groupId === g.id) : []
-    if (!members.length) return [{ key: g.id, label: g.label ?? '', groupIndex: i }]
-    return members.map((a, k) => ({ key: `actor:${a.id}`, label: a.name ?? '', side: k === 0 ? g.label ?? '' : null, groupIndex: i }))
+    const members = split.get(g.id)
+    if (!members) return [{ key: g.id, label: g.label ?? '', groupIndex: i }]
+    return members.map((a) => ({ key: `actor:${a.id}`, label: a.name ?? '', side: g.label ?? '', groupIndex: i }))
   })
   const known = new Set(lanes.map((l) => l.key))
   if (events.some((e) => !known.has(keyOf(e)))) lanes.push({ key: '__other__', label: null, groupIndex: 2, other: true })
