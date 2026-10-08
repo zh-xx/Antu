@@ -154,6 +154,9 @@ export const en = {
   'scale.other': 'Other',
   'scale.events': 'Events',
   'scale.undated': 'date unknown · placed by order',
+  'scale.coarse.day': 'that day (time unknown)',
+  'scale.coarse.month': 'that month (day unknown)',
+  'scale.coarse.year': 'that year (month unknown)',
   'scale.run': ({ n }) => `${n} events`,
   'scale.runListed': ({ n }) => `${n} events too close to show one by one:`,
 

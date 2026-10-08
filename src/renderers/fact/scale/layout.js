@@ -23,14 +23,19 @@
 //  example. Pure JS: Node computes the same geometry for antu_layout.
 // ============================================================
 
-import { wrapLineCount, wrapLinesBy } from '../cardGeometry.js'
+import { textWidth, wrapLineCount, wrapLinesBy } from '../cardGeometry.js'
+import { formatTimeText } from '../dateText.js'
 import { gapOfMs, parseIso } from '../chronicle/layout.js'
 import { groupOfEvent } from '../timeline/grid.js'
 
 // ---------- geometry ----------
 
-/** The lane label column on the left */
+/** The lane label column on the left: as wide as its longest name needs, between these two (beyond, the name wraps) */
 export const LABEL_W = 132
+export const LABEL_W_MAX = 196
+/** The lane names: 12px, bold; the dot and the gaps beside the name take this much */
+const LANE_FONT = 12
+const LANE_NAME_PAD = 40
 /** Card size: two title lines at most, then the time */
 export const CARD_W = 196
 export const PAD_X = 10
@@ -43,12 +48,15 @@ export const MAX_TITLE_LINES = 2
 export const CARD_INNER_W = CARD_W - PAD_X * 2
 /** Generous widths for Node's estimate (see chronicle/layout.js TITLE_SCALE); the page measures exactly */
 const TITLE_SCALE = { latin: 1.2, cjk: 1.06 }
-/** Height of a card with 1 or 2 title lines */
-export const cardHeightOf = (titleLines) => PAD_Y * 2 + TITLE_LH * titleLines + 2 + TIME_LH
+/** Height of a card with 1 or 2 title lines and 1 or 2 time lines (a span too long for one line goes on two) */
+export const cardHeightOf = (titleLines, timeLines = 1) => PAD_Y * 2 + TITLE_LH * titleLines + 2 + TIME_LH * timeLines
+/** How many lines a card's time takes: a span ("start - end") that does not fit on one line breaks after the dash. Judged on the
+ *  English text (its "approx." is the longer prefix), with digits at about 0.62 em */
+export const timeLinesOf = (event) => (event?.dateEnd && textWidth(formatTimeText(event, 'en'), TIME_FONT) * 1.05 > CARD_INNER_W ? 2 : 1)
 /** Stacking: a lane holds this many levels of cards above its line */
 export const LEVELS = 3
 const LEVEL_GAP = 10
-export const LEVEL_H = cardHeightOf(MAX_TITLE_LINES) + LEVEL_GAP
+export const LEVEL_H = cardHeightOf(MAX_TITLE_LINES, 2) + LEVEL_GAP
 /** Horizontal room kept between two cards on one level */
 const CARD_GAP = 10
 /** Below the lowest card, down to the lane line (the leader line runs here) */
@@ -57,6 +65,8 @@ const LANE_FOOT = 22
 const LANE_TOP = 12
 /** A lane is as tall as the levels its cards use (one at least) */
 export const laneHeightOf = (levelsUsed) => LANE_TOP + Math.max(1, levelsUsed) * LEVEL_H + LANE_FOOT
+/** A lane with no event keeps its name and its line (that a side did nothing on its own is itself information) but no room for cards */
+export const EMPTY_LANE_H = 34
 /** Each event asks for this much axis width in its segment; a segment is never narrower than SEG_MIN */
 export const PER_EVENT_W = 116
 export const SEG_MIN = 170
@@ -100,7 +110,7 @@ export function timeOf(event) {
   const e = parseIso(event?.dateEnd)
   if (e && endOf(e) > from) return { from, to: endOf(e), kind: 'bar', exact: true }
   if (p.prec === 'time') return { from, to: from, kind: 'dot', exact: true }
-  return { from, to: endOf(p), kind: 'band', exact: false }
+  return { from, to: endOf(p), kind: 'band', exact: false, prec: p.prec }
 }
 
 const median = (xs) => {
@@ -364,7 +374,12 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     // A segment of one instant has no scale to speak of: it is named by its day
     return { index: k, from, to, count: events.length, unit: to > from ? unitOf(to - from) : 'day' }
   })
-  let x = LABEL_W
+  // The label column: as wide as the longest lane name, within bounds. Estimated the same way on the page and in Node
+  // (not measured on the page), so the size the reports and the export check compute is the size the page draws
+  const nameW = (text) => textWidth(text, LANE_FONT) * 1.06
+  const laneNames = lanesOf(spec, flat.map((f) => f.event), { byParty }).flatMap((l) => [l.label || '', l.side || ''])
+  const labelW = Math.round(Math.min(LABEL_W_MAX, Math.max(LABEL_W, ...laneNames.map((n) => nameW(n) + LANE_NAME_PAD))))
+  let x = labelW
   segments.forEach((s, k) => {
     if (k > 0) {
       const gapMs = s.from - segments[k - 1].to
@@ -407,10 +422,15 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     const at = kind === 'bar' ? x0 : xOf(f.time.t)
     // A period narrower than this scale can show (a day on a scale of months) is drawn as a dot:
     // at this scale a dot claims no more precision than the date has
-    const shown = kind === 'band' && x1 - x0 < 8 ? 'dot' : kind
+    // A period longer than its whole segment (a day on a scale of minutes) is coarser than the scale: cut to the
+    // segment it would read as lasting exactly that long, so it is a hollow mark at its place in data order instead,
+    // with words saying what the date leaves open
+    const seg = segments[k]
+    const coarse = kind === 'band' && seg.to > seg.from && f.time.to - f.time.from > seg.to - seg.from
+    const shown = kind === 'band' && (coarse || x1 - x0 < 8) ? 'dot' : kind
     if (shown === 'dot') x0 = x1 = at
     else if (x1 - x0 < 6) x1 = x0 + 6
-    return { id: f.event.id, order, lane: laneOf(f.event), kind: shown, x: at, x0, x1, undated: Boolean(f.time.undated), event: f.event }
+    return { id: f.event.id, order, lane: laneOf(f.event), kind: shown, x: at, x0, x1, undated: Boolean(f.time.undated), coarse, prec: f.time.prec, event: f.event }
   })
   // Same moment in one lane: the dots stack upwards
   const seen = new Map()
@@ -432,13 +452,13 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     const inLane = marks.filter((m) => m.lane === li).sort((a, b) => a.x - b.x || a.order - b.order)
     // A card is centred over its mark, but kept inside the diagram right of the lane labels; the
     // placement works on that kept centre, so keeping it inside can never push it onto a neighbour
-    const keep = (cx) => Math.min(Math.max(cx, LABEL_W + 4 + CARD_W / 2), width - CARD_W / 2)
+    const keep = (cx) => Math.min(Math.max(cx, labelW + 4 + CARD_W / 2), width - CARD_W / 2)
     return placeLane(inLane.map((m) => ({ id: m.id, x: keep(m.x) })))
   })
   let top = 0
   placed.forEach((units, li) => {
     laneTops[li] = top
-    laneHs[li] = laneHeightOf(Math.max(0, ...units.map((u) => u.level)) + 1)
+    laneHs[li] = units.length ? laneHeightOf(Math.max(0, ...units.map((u) => u.level)) + 1) : EMPTY_LANE_H
     top += laneHs[li]
   })
   placed.forEach((units, li) => {
@@ -451,7 +471,8 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
       const members = u.ids.map((id) => marks.find((m) => m.id === id)).sort((a, b) => a.order - b.order)
       const isRun = members.length > 1
       const titleLines = isRun ? 1 : lineCount(members[0].event.label || '')
-      const h = cardHeightOf(titleLines)
+      const timeLines = isRun || members[0].undated ? 1 : timeLinesOf(members[0].event)
+      const h = cardHeightOf(titleLines, timeLines)
       const bottom = lineY(li) - LANE_FOOT - u.level * LEVEL_H
       const card = {
         id: isRun ? `__run__${gathered.length + 1}` : members[0].id,
@@ -462,6 +483,7 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
         w: CARD_W,
         h,
         titleLines,
+        timeLines,
         anchor: anchorOf(u),
         members,
       }
@@ -509,12 +531,13 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
       style: { pointerEvents: 'none' },
       data: {
         width,
+        labelW,
         lanesH,
         axisY,
         lanes: lanes.map((l, li) => ({ ...l, top: laneTop(li), lineY: lineY(li) })),
         segments,
         ticks,
-        marks: marks.map((m) => ({ id: m.id, kind: m.kind, x: m.x, x0: m.x0, x1: m.x1, y: lineY(m.lane) - m.stack * SAME_TIME_STEP, undated: m.undated, approx: Boolean(m.event.approx), groupIndex: lanes[m.lane].groupIndex })),
+        marks: marks.map((m) => ({ id: m.id, kind: m.kind, x: m.x, x0: m.x0, x1: m.x1, y: lineY(m.lane) - m.stack * SAME_TIME_STEP, undated: m.undated, coarse: m.coarse, prec: m.prec, approx: Boolean(m.event.approx), groupIndex: lanes[m.lane].groupIndex })),
         leaders: cards.map((c) => ({ x: Math.min(Math.max(c.anchor, c.x + 8), c.x + c.w - 8), y0: c.y + c.h, y1: lineY(c.lane) - 6, run: Boolean(c.run) })),
         brackets: gathered.map((g) => ({ x0: g.span[0], x1: g.span[1], y: lineY(g.lane) + 9, run: g.run })),
       },
@@ -536,6 +559,7 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
             undated: c.members[0].undated,
             groupIndex: groupIndexOfEvent(c.members[0].event),
             titleLines: c.titleLines,
+            timeLines: c.timeLines,
             cardH: c.h,
             actorNames: (Array.isArray(c.members[0].event.actorIds) ? c.members[0].event.actorIds : []).map((id) => actorById.get(id)?.name || id),
             sources: (Array.isArray(c.members[0].event.sourceIds) ? c.members[0].event.sourceIds : []).map((id) => sourceById.get(id)).filter(Boolean),
@@ -546,14 +570,14 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     nodes.push({
       id: '__runs__',
       type: 'scaleRunList',
-      position: { x: LABEL_W, y: lanesH + AXIS_H + LIST_TOP },
+      position: { x: labelW, y: lanesH + AXIS_H + LIST_TOP },
       width: 1,
       height: 1,
       draggable: false,
       selectable: false,
       connectable: false,
       focusable: false,
-      data: { runs: gathered.map((g) => ({ run: g.run, events: g.members.map((m) => m.event) })), width: width - LABEL_W, lh: LIST_LH },
+      data: { runs: gathered.map((g) => ({ run: g.run, events: g.members.map((m) => m.event) })), width: width - labelW, lh: LIST_LH },
     })
   }
 
@@ -567,6 +591,7 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     gathered: gathered.map((g) => ({ run: g.run, ids: g.members.map((m) => m.id) })),
     cards: cards.map((c) => ({ id: c.id, lane: c.lane, level: c.level, x: c.x, y: c.y, w: c.w, h: c.h, ids: c.members.map((m) => m.id) })),
     undated: marks.filter((m) => m.undated).length,
+    labelW,
     size: { width, height },
   }
 }

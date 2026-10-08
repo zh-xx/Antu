@@ -17,11 +17,13 @@ import { readFileSync, readdirSync } from 'node:fs'
 import {
   BREAK_FLOOR_MS,
   CARD_W,
-  LABEL_W,
   MAX_BREAKS,
   buildScaleGraph,
   findBreaks,
   lanesOf,
+  EMPTY_LANE_H,
+  LABEL_W,
+  LABEL_W_MAX,
   placeLane,
   ticksOf,
   timeOf,
@@ -50,7 +52,7 @@ function assertSound(spec, label) {
     }
   }
   for (const c of g.cards) {
-    assert.ok(c.x >= LABEL_W && c.x + c.w <= g.size.width, `${label}: ${c.id} inside the diagram, right of the labels`)
+    assert.ok(c.x >= g.labelW && c.x + c.w <= g.size.width, `${label}: ${c.id} inside the diagram, right of the labels`)
     assert.ok(c.y >= 0, `${label}: ${c.id} not above the top`)
   }
   assert.ok(g.segments.length <= MAX_BREAKS + 1, `${label}: at most ${MAX_BREAKS} breaks`)
@@ -160,7 +162,11 @@ test('a day-only event written after the evening stays after it; an undated one 
   assert.ok(x('a') < x('u') && x('u') < x('b'), 'the undated event between its neighbours')
   assert.ok(x('day') > x('b'), 'the day-only event after the evening it was written after')
   assert.equal(layer.data.marks.find((m) => m.id === 'u').undated, true)
-  assert.equal(layer.data.marks.find((m) => m.id === 'day').kind, 'band', 'on a scale of minutes the day is a band')
+  // a day is longer than this whole scale of minutes: cut to it, a band would read as lasting exactly that long
+  const day = layer.data.marks.find((m) => m.id === 'day')
+  assert.equal(day.kind, 'dot', 'on a scale of minutes the day is a mark, not a band')
+  assert.equal(day.coarse, true, 'marked as coarser than the scale (hollow, with "that day")')
+  assert.equal(day.prec, 'day')
   assert.equal(g.undated, 1)
 })
 
@@ -218,4 +224,46 @@ test('lane per party: an event of one party is in its own lane, one of several o
 test('lane per party changes nothing where no side holds two parties', () => {
   const spec = load('neighbour-corridor-charging.zh-CN.json')
   assert.deepEqual(buildScaleGraph(spec, {}, { byParty: true }).size, buildScaleGraph(spec, {}).size)
+})
+
+test('a date that fits its scale is not coarse: a month on a scale of months is a band, a day there a dot', () => {
+  const spec = {
+    type: 'fact',
+    title: 'months',
+    slots: [
+      { events: [{ id: 'a', date: '2024-01-10', label: 'a' }] },
+      { events: [{ id: 'm', date: '2024-05', label: 'May' }] },
+      { events: [{ id: 'b', date: '2024-09-20', label: 'b' }] },
+    ],
+  }
+  const marks = buildScaleGraph(spec, {}).nodes.find((n) => n.type === 'scaleLayer').data.marks
+  assert.equal(marks.find((m) => m.id === 'm').kind, 'band')
+  assert.ok(marks.every((m) => !m.coarse), 'nothing is coarser than this scale')
+})
+
+// ---- the time on two lines, the label column, empty lanes ----
+
+test('a span too long for one line puts its time on two lines, and the card is a line taller', () => {
+  const spec = load('neighbour-corridor-charging.zh-CN.json')
+  const g = buildScaleGraph(spec, {})
+  const card = g.nodes.find((n) => n.id === 'ev-3' || (n.data?.event?.dateEnd && n.type === 'scaleCard'))
+  assert.equal(card.data.timeLines, 2, 'a "start - end" span of seconds does not fit one line')
+  const one = g.nodes.find((n) => n.type === 'scaleCard' && !n.data.event.dateEnd && n.data.titleLines === card.data.titleLines)
+  if (one) assert.ok(card.height > one.height, 'the second time line has its room')
+})
+
+test('the label column is as wide as the longest lane name, within bounds', () => {
+  const corridor = buildScaleGraph(load('neighbour-corridor-charging.zh-CN.json'), {})
+  assert.ok(corridor.labelW > LABEL_W, '"双方共同或客观经过" needs more than the narrow column')
+  assert.ok(corridor.labelW <= LABEL_W_MAX)
+  const short = buildScaleGraph({ type: 'fact', title: 's', groups: [{ id: 'g-1', label: 'A' }], slots: [{ events: [{ id: 'e', date: '2024-01-01', label: 'x', groupId: 'g-1' }] }] }, {})
+  assert.equal(short.labelW, LABEL_W, 'short names keep the narrow column')
+})
+
+test('a lane with no event keeps its name and line but is thin', () => {
+  const g = buildScaleGraph(load('sample-construction-payment.zh-CN.json'), {})
+  const lanes = g.nodes.find((n) => n.type === 'scaleLayer').data.lanes
+  const empty = lanes.filter((l, i) => !g.cards.some((c) => c.lane === i))
+  assert.equal(empty.length, 1)
+  assert.equal(empty[0].lineY - empty[0].top, EMPTY_LANE_H)
 })

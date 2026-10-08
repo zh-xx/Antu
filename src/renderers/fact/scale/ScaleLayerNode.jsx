@@ -9,7 +9,7 @@
 
 import { memo } from 'react'
 import { useLang } from '../../../shell/LangContext.jsx'
-import { LABEL_W, BREAK_W } from './layout.js'
+import { BREAK_W } from './layout.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 export const runMark = (n) => (n <= 20 ? String.fromCodePoint(0x2460 + n - 1) : `(${n})`)
@@ -22,7 +22,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
   const GROUP_COLOURS = [c0.side1, c0.side2, c0.axis]
   const LINE = c0.line
   const INK = c0.ink3
-  const { width, lanesH, axisY, lanes, segments, ticks, marks, leaders, brackets } = data
+  const { width, labelW, lanesH, axisY, lanes, segments, ticks, marks, leaders, brackets } = data
   const height = axisY + 44
   const colour = (i) => GROUP_COLOURS[i] ?? GROUP_COLOURS[2]
   // The bands alternate by group, not by lane: with a lane per party, the lanes of one side share a band
@@ -36,7 +36,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
         {lanes.map((l, i) => (
           <g key={l.key}>
             {block[i] % 2 === 1 && <rect x={0} y={l.top} width={width} height={l.lineY - l.top + 14} fill={c0.chip} fillOpacity={0.6} />}
-            <line x1={LABEL_W} x2={width} y1={l.lineY} y2={l.lineY} stroke={LINE} strokeWidth={2} />
+            <line x1={labelW} x2={width} y1={l.lineY} y2={l.lineY} stroke={LINE} strokeWidth={2} />
           </g>
         ))}
 
@@ -76,6 +76,24 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
           if (m.undated) {
             return <circle key={m.id} cx={m.x} cy={m.y} r={5} fill={c0.bg} stroke={GROUP_COLOURS[2]} strokeWidth={1.5} strokeDasharray="2 2" />
           }
+          // a date coarser than the scale (a day on a scale of minutes): hollow, in the group's colour
+          if (m.coarse) {
+            // The words say what the date leaves open; on the right of the mark, or on its left near the end of the line
+            const words = t(`scale.coarse.${m.prec}`)
+            const left = m.x + 130 > width
+            return (
+              <g key={m.id}>
+                {m.groupIndex === 1 ? (
+                  <rect x={m.x - 5} y={m.y - 5} width={10} height={10} rx={2} fill={c0.bg} stroke={c} strokeWidth={1.8} />
+                ) : (
+                  <circle cx={m.x} cy={m.y} r={5} fill={c0.bg} stroke={c} strokeWidth={1.8} />
+                )}
+                <text x={left ? m.x - 10 : m.x + 10} y={m.y + 4} textAnchor={left ? 'end' : 'start'} fontSize={11} fill={c}>
+                  {words}
+                </text>
+              </g>
+            )
+          }
           // Side 2 is a square, side 1 a circle: the sides differ without colour (the lanes are named too)
           if (m.groupIndex === 1) return <rect key={m.id} x={m.x - 5} y={m.y - 5} width={10} height={10} rx={2} fill={c} stroke={c0.bg} strokeWidth={2} />
           return <circle key={m.id} cx={m.x} cy={m.y} r={5.5} fill={c} stroke={c0.bg} strokeWidth={2} />
@@ -92,7 +110,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
         ))}
 
         {/* the time axis */}
-        <line x1={LABEL_W} x2={width} y1={axisY} y2={axisY} stroke={c0.axis} strokeWidth={1.5} />
+        <line x1={labelW} x2={width} y1={axisY} y2={axisY} stroke={c0.axis} strokeWidth={1.5} />
         {ticks.map((k, i) => (
           <g key={`t${i}`}>
             <line x1={k.x} x2={k.x} y1={axisY} y2={axisY + 5} stroke={c0.axis} />
@@ -105,7 +123,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
 
       {/* lane labels, on the left */}
       {lanes.map((l) => (
-        <div key={l.key} className={`antu-sc-lane g${l.groupIndex}`} style={{ bottom: `calc(100% - ${l.lineY + 8}px)`, width: LABEL_W - 20 }}>
+        <div key={l.key} className={`antu-sc-lane g${l.groupIndex}`} style={{ bottom: `calc(100% - ${l.lineY + 8}px)`, width: labelW - 20 }}>
           <i />
           <span>
             {l.side ? <em className="antu-sc-lane-side">{l.side}</em> : null}

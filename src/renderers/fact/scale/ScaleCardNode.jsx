@@ -9,11 +9,11 @@
 import { memo, useContext } from 'react'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useLang } from '../../../shell/LangContext.jsx'
-import { formatTimeText } from '../dateText.js'
+import { formatDate, formatEnd, formatTimeText } from '../dateText.js'
 import EventPreview from '../EventPreview.jsx'
 
 const ScaleCardNode = memo(function ScaleCardNode({ data }) {
-  const { event, undated, titleLines, cardH, actorNames = [], sources = [] } = data
+  const { event, undated, titleLines, timeLines = 1, cardH, actorNames = [], sources = [] } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
   const isPinned = pinnedId === event.id
@@ -38,7 +38,15 @@ const ScaleCardNode = memo(function ScaleCardNode({ data }) {
       <div className="antu-sc-title" style={{ WebkitLineClamp: titleLines, lineClamp: titleLines }}>
         {event.label}
       </div>
-      <div className="antu-sc-time">{undated ? t('scale.undated') : formatTimeText(event, lang)}</div>
+      {/* a span too long for one line breaks after the dash (the layout counted the lines) */}
+      {timeLines === 2 && !undated ? (
+        <>
+          <div className="antu-sc-time">{formatDate(event.date, event.approx, lang)} -</div>
+          <div className="antu-sc-time">{formatEnd(event.date, event.dateEnd, lang)}</div>
+        </>
+      ) : (
+        <div className="antu-sc-time">{undated ? t('scale.undated') : formatTimeText(event, lang)}</div>
+      )}
       {open && (
         <EventPreview event={event} actorNames={actorNames} sources={sources} isPinned={isPinned} showPreview={showPreview} placement="below" onClose={unpin} />
       )}

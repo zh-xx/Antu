@@ -37,6 +37,11 @@ export const CELL_GAP = 28
 export const HEADER_H = 96
 export const HEADER_W = 150
 
+/** A column (lane) with no event keeps its heading but not the room for cards: that a party did nothing on its own is
+ *  itself information, an empty full-size column only pushes the rest apart. Vertical: its width; horizontal: its height */
+export const EMPTY_LANE_W = 104
+export const EMPTY_LANE_H = 52
+
 /** Axis dot diameter */
 export const DOT_SIZE = 10
 
@@ -166,6 +171,17 @@ export function makeMetrics(grid, fields, isH, stagger = false) {
   const slotExtent = isH ? CELL_W : cellH
   const laneExtent = isH ? cellH : CELL_W
 
+  // Each lane's start and size along the lane axis: a lane with no event is thin (EMPTY_LANE_W / _H)
+  const used = new Set()
+  grid.rows.forEach((row) => row.cells.forEach((_, key) => used.add(key)))
+  const lanes = []
+  let laneEnd = 0
+  grid.columns.forEach((c) => {
+    const size = used.has(c.key) ? laneExtent : isH ? EMPTY_LANE_H : EMPTY_LANE_W
+    lanes.push({ start: laneEnd, size })
+    laneEnd += size
+  })
+
   // Grid origin: the header area is reserved at the top when vertical, on the left when horizontal
   const originX = isH ? HEADER_W : 0
   const originY = isH ? 0 : HEADER_H
@@ -182,15 +198,16 @@ export function makeMetrics(grid, fields, isH, stagger = false) {
   // Where the top-left corner of a cell is. Slots run along the time axis, lanes along the lane axis.
   const cellAt = (slotIndex, laneIndex) =>
     isH
-      ? { x: originX + rowTops[slotIndex] * slotExtent, y: laneIndex * laneExtent }
-      : { x: laneIndex * laneExtent, y: originY + rowTops[slotIndex] * slotExtent }
+      ? { x: originX + rowTops[slotIndex] * slotExtent, y: lanes[laneIndex].start }
+      : { x: lanes[laneIndex].start, y: originY + rowTops[slotIndex] * slotExtent }
 
   // Centre line of the lane the axis sits in (measured along the lane axis)
-  const axisCenter = grid.axisColumnIndex * laneExtent + laneExtent / 2
+  const axisLane = lanes[grid.axisColumnIndex] ?? { start: 0, size: laneExtent }
+  const axisCenter = axisLane.start + axisLane.size / 2
 
   // The content size must count the arrow in (see ARROW_EXTENT)
-  const contentW = isH ? originX + timeSpan + ARROW_EXTENT : colCount * laneExtent
-  const contentH = isH ? colCount * laneExtent : originY + timeSpan + ARROW_EXTENT
+  const contentW = isH ? originX + timeSpan + ARROW_EXTENT : laneEnd
+  const contentH = isH ? laneEnd : originY + timeSpan + ARROW_EXTENT
 
   return {
     isH,
@@ -202,6 +219,7 @@ export function makeMetrics(grid, fields, isH, stagger = false) {
     cellH,
     slotExtent,
     laneExtent,
+    lanes,
     originX,
     originY,
     cellBoxW,

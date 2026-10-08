@@ -60,6 +60,7 @@ export function cellsNode(m) {
       rows: m.rowCount,
       cellW: m.cellBoxW,
       cellH: m.cellBoxH,
+      lanes: m.lanes,
       originX: m.originX,
       originY: m.originY,
       isH: m.isH,
@@ -91,8 +92,8 @@ export function headerNodes(grid, m) {
       nodes.push({
         ...base,
         id: `__head__${col.key}`,
-        position: m.isH ? { x: 0, y: ci * m.laneExtent } : { x: ci * m.laneExtent, y: 0 },
-        data: { ...common, width: m.isH ? HEADER_W : m.laneExtent, height: m.isH ? m.laneExtent : null, sideTitle: grid.sideLabels[col.side], colTitle: null },
+        position: m.isH ? { x: 0, y: m.lanes[ci].start } : { x: m.lanes[ci].start, y: 0 },
+        data: { ...common, width: m.isH ? HEADER_W : m.lanes[ci].size, height: m.isH ? m.lanes[ci].size : null, sideTitle: grid.sideLabels[col.side], colTitle: null },
       })
       return
     }
@@ -100,8 +101,8 @@ export function headerNodes(grid, m) {
       nodes.push({
         ...base,
         id: `__head__${col.key}`,
-        position: { x: 0, y: ci * m.laneExtent },
-        data: { ...common, width: HEADER_W, height: m.laneExtent, sideTitle: first ? grid.sideLabels[col.side] : null, colTitle: col.actorName },
+        position: { x: 0, y: m.lanes[ci].start },
+        data: { ...common, width: HEADER_W, height: m.lanes[ci].size, sideTitle: first ? grid.sideLabels[col.side] : null, colTitle: col.actorName },
       })
       return
     }
@@ -111,8 +112,16 @@ export function headerNodes(grid, m) {
     nodes.push({
       ...base,
       id: `__head__${col.key}`,
-      position: { x: ci * m.laneExtent, y: 0 },
-      data: { ...common, width: n * m.laneExtent, height: null, sideTitle: grid.sideLabels[col.side], colTitle: null, actors: cols.map((c) => c.actorName), laneW: m.laneExtent },
+      position: { x: m.lanes[ci].start, y: 0 },
+      data: {
+        ...common,
+        width: m.lanes.slice(ci, ci + n).reduce((w, l) => w + l.size, 0),
+        height: null,
+        sideTitle: grid.sideLabels[col.side],
+        colTitle: null,
+        actors: cols.map((c) => c.actorName),
+        laneWs: m.lanes.slice(ci, ci + n).map((l) => l.size),
+      },
     })
   })
   return nodes
