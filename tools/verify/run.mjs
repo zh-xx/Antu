@@ -52,6 +52,7 @@ import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.
 import { DEFAULT_THEME, themeOf } from '../../src/theme/themes.js'
 import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
+import { groupOfEvent } from '../../src/renderers/fact/timeline/grid.js'
 import * as CHR from '../../src/renderers/fact/chronicle/layout.js'
 import { buildChronicleGraph } from '../../src/renderers/fact/chronicle/layout.js'
 import { buildScaleGraph } from '../../src/renderers/fact/scale/layout.js'
@@ -2228,7 +2229,7 @@ async function checkKindSwitching(sampleFile) {
       eq('switch: the legend has one button per group', await browser.eval(`document.querySelectorAll('.antu-chr-legend-item').length`), groupIds.length)
       eq('switch: the marks in the legend are circle, square, diamond in turn', await browser.eval(`[...document.querySelectorAll('.antu-chr-legend-item .antu-chr-mark')].map((m) => m.className.replace('antu-chr-mark s-', ''))`), ['circle', 'square', 'diamond'].slice(0, groupIds.length))
       eq('switch: no card carries a group tag', await browser.eval(`document.querySelectorAll('.antu-chr-card .antu-chr-group').length`), 0)
-      const inGroup = (spec.slots ?? []).flatMap((sl) => sl.events).filter((e) => e.groupId === groupIds[0]).length
+      const inGroup = (spec.slots ?? []).flatMap((sl) => sl.events).filter((e) => groupOfEvent(spec)(e) === groupIds[0]).length
       const total = (spec.slots ?? []).flatMap((sl) => sl.events).length
       await browser.eval(`document.querySelector('.antu-chr-legend-item').click()`)
       await settle(300)
@@ -2699,7 +2700,8 @@ async function checkRenderRelationship(sampleFile) {
  * against it (a copy of a fact is a node on the page, so the page has more nodes than the data).
  */
 /**
- * The skill's viewer page (skills/antu/), filled in with the skill's own Python script and with its Node command
+ * The skill's viewer page, as this commit builds it (the committed skills/antu/ is the last release, and an example
+ * changed for a new generation of a format fails it), filled in with the skill's own Python script and with its Node command
  * line, for each kind: it shows
  * the diagram, names the tab after the diagram (issue #47: the title used to come only from the Node way of
  * making the page), and says which engine it is. Skipped without python3 (the test/skill.test.mjs checks the
@@ -2718,10 +2720,12 @@ async function checkSkillPage() {
   const browser = await launchBrowser({ width: 1400, height: 900 })
   try {
     const version = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version
+    const skill = join(OUT, 'skill-for-the-page')
+    execFileSync(process.execPath, [join(REPO, 'tools/build-skill.mjs'), '--out', skill], { stdio: 'ignore' })
     // the two ways the skill has of making the page: the Python script, and the Node command line
     const makers = {
-      python: (src, out) => spawnSync('python3', [join(REPO, 'skills/antu/scripts/make_html.py'), src, '-o', out]),
-      node: (src, out) => spawnSync(process.execPath, [join(REPO, 'skills/antu/scripts/antu.mjs'), 'render', src, '-o', out], { env: { ...process.env, ANTU_NO_UPDATE_NOTIFIER: '1' } }),
+      python: (src, out) => spawnSync('python3', [join(skill, 'scripts/make_html.py'), src, '-o', out]),
+      node: (src, out) => spawnSync(process.execPath, [join(skill, 'scripts/antu.mjs'), 'render', src, '-o', out], { env: { ...process.env, ANTU_NO_UPDATE_NOTIFIER: '1' } }),
     }
     for (const type of ['fact', 'procedure', 'relationship', 'justification']) {
       const file = join(REPO, 'examples/agent', type, `1-minimal.zh-CN.json`)
