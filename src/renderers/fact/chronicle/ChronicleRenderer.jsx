@@ -12,7 +12,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { useEnv, usePreset, usePrefs } from '../../../shell/env.js'
 import { useExport } from '../../../shell/useExport.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import EntryNode from './EntryNode.jsx'
@@ -20,6 +20,7 @@ import SpineNode from './SpineNode.jsx'
 import LegendNode from './LegendNode.jsx'
 import ChronicleDock from './ChronicleDock.jsx'
 import { buildChronicleGraph, PAD_X, PAD_Y, SUMMARY_FONT, SUMMARY_LH, TAG_FONT, TAG_LH, TITLE_FONT, TITLE_LH, WHEN_LH } from './layout.js'
+import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
 const nodeTypes = { entry: EntryNode, spine: SpineNode, legend: LegendNode }
 
@@ -27,12 +28,13 @@ const nodeTypes = { entry: EntryNode, spine: SpineNode, legend: LegendNode }
  * Measure text with the font the page really draws in, so each card is exactly as tall as its
  * text: an estimate has to err long to be safe, and that leaves a blank line in some cards.
  * Canvas measureText shapes text the way layout does; null where there is no canvas.
+ * `root` is where this diagram's elements are (shell/env.js): the document, or a mounted diagram's shadow root.
  */
-function makeMeasure() {
+function makeMeasure(root) {
   if (typeof document === 'undefined') return null
   const ctx = document.createElement('canvas').getContext?.('2d')
   if (!ctx) return null
-  const family = getComputedStyle(document.querySelector('.antu-app') || document.body).fontFamily
+  const family = getComputedStyle(root?.querySelector?.('.antu-app') || document.body).fontFamily
   const fonts = { title: `600 ${TITLE_FONT}px ${family}`, summary: `${SUMMARY_FONT}px ${family}` }
   const cache = new Map()
   return (text, kind) => {
@@ -50,21 +52,23 @@ function makeMeasure() {
 /** The same defaults and the same stored switches as the timeline: one set of card fields per reader */
 const FIELD_DEFAULTS = { sources: false, actors: false, summary: true }
 
-/** External preset for screenshots (antu_preview, the skill's preview); see the timeline renderer */
-const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
-
 export default function FactChronicle({ spec }) {
+  // External preset for screenshots (antu_preview, the skill's preview); see the timeline renderer
+  // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
+  const PRESET = usePreset()
+  const prefs = usePrefs()
   const [fields, setFields] = useState(() => ({
     ...FIELD_DEFAULTS,
-    ...readPrefs().fields,
+    ...prefs.read().fields,
     ...(PRESET?.fields || {}),
   }))
   const toggleField = (key, value) => {
     setFields((f) => ({ ...f, [key]: value }))
-    writePrefs({ fields: { ...readPrefs().fields, [key]: value } })
+    prefs.write({ fields: { ...prefs.read().fields, [key]: value } })
   }
 
-  const measure = useMemo(() => makeMeasure(), [])
+  const { root } = useEnv()
+  const measure = useMemo(() => makeMeasure(root), [root])
   const layout = useMemo(() => buildChronicleGraph(spec, fields, { measure }), [spec, fields, measure])
 
   // One group lit at a time (the legend's buttons): its cards and marks stay, the others are faded
@@ -85,6 +89,7 @@ export default function FactChronicle({ spec }) {
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
+  useSelectEvent(spec, pinnedId)
   const { canvasRef, exporting, onExport } = useExport(spec?.title)
   const preview = useMemo(
     () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),

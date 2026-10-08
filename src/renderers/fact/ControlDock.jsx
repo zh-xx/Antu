@@ -22,6 +22,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch, DockSegmented } from '../../shell/DockParts.jsx'
+import { isInside } from '../../shell/env.js'
 
 /** Optional card fields (title and time are always shown and not listed here). Message keys are stored and resolved per language on use. */
 const OPTIONAL_FIELDS = ['sources', 'actors', 'summary']
@@ -61,7 +62,7 @@ export default function ControlDock({
   useEffect(() => {
     if (!open) return undefined
     const onDown = (e) => {
-      if (!rootRef.current?.contains(e.target)) setOpen(false)
+      if (!isInside(rootRef.current, e)) setOpen(false)
     }
     document.addEventListener('pointerdown', onDown, true)
     return () => document.removeEventListener('pointerdown', onDown, true)

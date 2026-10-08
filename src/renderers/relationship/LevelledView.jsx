@@ -12,26 +12,28 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../shell/Canvas.jsx'
-import { readPrefs, writePrefs } from '../../shell/prefs.js'
+import { usePrefs } from '../../shell/env.js'
 import { PreviewContext } from '../../shell/previewContext.js'
 import { useExport } from '../../shell/useExport.js'
 import { useLang } from '../../shell/LangContext.jsx'
 import EntityNode from './graph/EntityNode.jsx'
 import FocusDock from './focus/FocusDock.jsx'
 import LineLayerNode from './LineLayerNode.jsx'
+import { useSelectEvent } from '../../shell/useSelectEvent.js'
 
 const nodeTypes = { rnode: EntityNode, lineLayer: LineLayerNode }
 
 export default function LevelledView({ spec, build, className, options = {}, onParty = null, dockExtra = null, fitWidth = true, decorate = null }) {
+  const prefs = usePrefs()
   const specKey = `rel:${spec?.title || ''}`
   const { t, lang } = useLang()
 
-  const [fieldPrefs, setFieldPrefs] = useState(() => readPrefs().relationshipFieldsByDiagram || {})
+  const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().relationshipFieldsByDiagram || {})
   const showLabels = fieldPrefs[specKey]?.labels ?? true
   const setLabels = (v) => {
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], labels: v } }
     setFieldPrefs(map)
-    writePrefs({ relationshipFieldsByDiagram: map })
+    prefs.write({ relationshipFieldsByDiagram: map })
   }
 
   const optionsKey = JSON.stringify(options)
@@ -39,6 +41,7 @@ export default function LevelledView({ spec, build, className, options = {}, onP
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
+  useSelectEvent(spec, pinnedId)
   const preview = useMemo(
     () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),
     [hoveredId, pinnedId],

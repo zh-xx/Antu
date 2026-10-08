@@ -27,21 +27,23 @@ import { useLang } from './LangContext.jsx'
 import KindIcon from './KindIcon.jsx'
 import { useTheme, THEME_IDS } from '../theme/ThemeContext.jsx'
 import { themeOf } from '../theme/themes.js'
-import { readPrefs, writePrefs } from './prefs.js'
+import { isInside, useEnv } from './env.js'
 
 export default function DiagramHeader({ title, typeLabel, info = [], kinds = [], kind, onSelectKind }) {
   const { t } = useLang()
   const { id: themeId, setTheme, forced: themeForced } = useTheme()
+  const env = useEnv()
+  const { prefs } = env
 
   // With only one rendering kind there is nothing to pick
   const multi = kinds.length > 1
   const [open, setOpen] = useState(false)
-  const [folded, setFolded] = useState(() => readPrefs().headerFolded === true)
+  const [folded, setFolded] = useState(() => prefs.read().headerFolded === true)
   const toggleFold = () => {
     const next = !folded
     setFolded(next)
     setOpen(false)
-    writePrefs({ headerFolded: next })
+    prefs.write({ headerFolded: next })
   }
   const rootRef = useRef(null)
   const index = Math.max(0, kinds.findIndex((k) => k.kind === kind))
@@ -51,7 +53,7 @@ export default function DiagramHeader({ title, typeLabel, info = [], kinds = [],
   useEffect(() => {
     if (!open) return undefined
     const onDown = (e) => {
-      if (!rootRef.current?.contains(e.target)) setOpen(false)
+      if (!isInside(rootRef.current, e)) setOpen(false)
     }
     const onKey = (e) => {
       if (e.key === 'Escape') setOpen(false)
@@ -64,13 +66,16 @@ export default function DiagramHeader({ title, typeLabel, info = [], kinds = [],
     }
   }, [open])
 
-  // Left and right step through the kinds, unless the reader is typing or a control wants the key
+  // Left and right step through the kinds, unless the reader is typing or a control wants the key.
+  // A mounted diagram shares the window with its host: it takes the keys only while the focus is inside it.
   useEffect(() => {
     if (!multi) return undefined
     const onKey = (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
       if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
-      const el = e.target
+      if (env.embedded && !isInside(env.root, e)) return
+      // inside a shadow root the event's target is the host; the first entry of its path is the element itself
+      const el = (typeof e.composedPath === 'function' && e.composedPath()[0]) || e.target
       if (el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.closest('.react-flow__node'))) return
       e.preventDefault()
       step(e.key === 'ArrowRight' ? 1 : -1)

@@ -4,7 +4,7 @@
 //  A plain-JS list: it registers "knowledge" only (the field table, how to
 //  validate, which kinds exist) and touches no component.
 //  Two entry points import it, each on its own:
-//    browser  src/main.jsx
+//    browser  src/renderers/components.js (the viewer page and a mounted diagram)
 //    Node     tools/mcp/engine.mjs
 //
 //  Components are another branch, registered by each renderers/<type>/register.js

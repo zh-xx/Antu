@@ -15,7 +15,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { usePreset, usePrefs } from '../../../shell/env.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
@@ -25,6 +25,7 @@ import { lookedAt } from '../graph/secures.js'
 import FocusDock from './FocusDock.jsx'
 import FocusNoteNode from './FocusNoteNode.jsx'
 import { buildFocusGraph } from './layout.js'
+import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
 const nodeTypes = { rnode: EntityNode, rlinks: ConnectionLayerNode, rfocusNote: FocusNoteNode }
 
@@ -33,20 +34,21 @@ const FIELD_DEFAULTS = { labels: true, hiddenKinds: [] }
 
 const DECORATION = { width: 1, height: 1, draggable: false, selectable: false, connectable: false, focusable: false, style: { pointerEvents: 'none' } }
 
-/** External preset (antu_preview, the skill's preview): `centre` names the party in the middle */
-const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
-
 export default function RelationshipFocus({ spec }) {
+  // External preset (antu_preview, the skill's preview): `centre` names the party in the middle
+  // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
+  const PRESET = usePreset()
+  const prefs = usePrefs()
   // The same key as the graph's: which kinds are hidden and whether labels show carry over between the two
   const specKey = `rel:${spec?.title || ''}`
   const { t, lang } = useLang()
 
-  const [fieldPrefs, setFieldPrefs] = useState(() => readPrefs().relationshipFieldsByDiagram || {})
+  const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().relationshipFieldsByDiagram || {})
   const fields = { ...FIELD_DEFAULTS, ...fieldPrefs[specKey], ...(PRESET?.fields || {}) }
   const setField = (patch) => {
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], ...patch } }
     setFieldPrefs(map)
-    writePrefs({ relationshipFieldsByDiagram: map })
+    prefs.write({ relationshipFieldsByDiagram: map })
   }
   const toggleKind = (kind) => {
     const hidden = fields.hiddenKinds.includes(kind) ? fields.hiddenKinds.filter((k) => k !== kind) : [...fields.hiddenKinds, kind]
@@ -54,20 +56,21 @@ export default function RelationshipFocus({ spec }) {
   }
 
   // The centre, per diagram. An id the data no longer has means the default.
-  const [centres, setCentres] = useState(() => readPrefs().relationshipCentres || {})
+  const [centres, setCentres] = useState(() => prefs.read().relationshipCentres || {})
   const chosen = PRESET?.centre ?? centres[specKey]
   const setCentre = (id) => {
     const map = { ...centres }
     if (id === null) delete map[specKey]
     else map[specKey] = id
     setCentres(map)
-    writePrefs({ relationshipCentres: map })
+    prefs.write({ relationshipCentres: map })
   }
 
   const layout = useMemo(() => buildFocusGraph(spec, { centre: chosen, t }), [spec, chosen, lang])
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
+  useSelectEvent(spec, pinnedId)
   const preview = useMemo(
     () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),
     [hoveredId, pinnedId],

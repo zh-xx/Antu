@@ -8,26 +8,27 @@
 
 import { useState } from 'react'
 
-import { readPrefs, writePrefs } from '../../../shell/prefs.js'
+import { usePreset, usePrefs } from '../../../shell/env.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import LevelledView from '../LevelledView.jsx'
 import { buildRelatedGraph } from './layout.js'
 
-/** External preset (antu_preview, the skill's preview): `centre` names the party */
-const PRESET = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
-
 export default function RelationshipRelated({ spec }) {
+  // External preset (antu_preview, the skill's preview): `centre` names the party
+  // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
+  const PRESET = usePreset()
+  const prefs = usePrefs()
   const specKey = `rel:${spec?.title || ''}`
   const { t } = useLang()
   // The centre is shared with the focus view: picking one party there picks it here
-  const [centres, setCentres] = useState(() => readPrefs().relationshipCentres || {})
+  const [centres, setCentres] = useState(() => prefs.read().relationshipCentres || {})
   const chosen = PRESET?.centre ?? centres[specKey]
   const setCentre = (id) => {
     const map = { ...centres }
     if (id === '') delete map[specKey]
     else map[specKey] = id
     setCentres(map)
-    writePrefs({ relationshipCentres: map })
+    prefs.write({ relationshipCentres: map })
   }
   return (
     <LevelledView

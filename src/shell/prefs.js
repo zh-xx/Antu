@@ -9,6 +9,9 @@
 //  Key rule: write only the items passed in; never write the whole set of defaults
 //  on entry. Once written, that record overrides the defaults in code, and later
 //  changes to a default take effect for nobody.
+//
+//  Components do not call these directly: they ask `usePrefs()` (shell/env.js), which is this localStorage
+//  store on the viewer page and the host's choice in a mounted diagram (issue 152).
 // ============================================================
 
 /** The storage key. Only here. */
@@ -30,5 +33,19 @@ export function writePrefs(patch) {
     window.localStorage.setItem(PREFS_KEY, JSON.stringify({ ...readPrefs(), ...patch }))
   } catch {
     /* writing fails in private mode; ignoring it is enough */
+  }
+}
+
+/** The viewer page's store: localStorage, under PREFS_KEY */
+export const localPrefs = { read: readPrefs, write: writePrefs }
+
+/** A store that keeps the preferences while the diagram is mounted and writes nothing anywhere */
+export function memoryPrefs() {
+  let held = {}
+  return {
+    read: () => held,
+    write: (patch) => {
+      held = { ...held, ...patch }
+    },
   }
 }

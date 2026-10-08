@@ -13,7 +13,8 @@
 //    2. Draw that content onto a larger white canvas: EXPORT_PAD on all four sides.
 //       The margin is something "outside the diagram", so it is not achieved by moving
 //       the clone around (§10.5).
-//  Then it is written out as a download.
+//  Then it is written out as a download (`exportPng`), or handed to a host that mounted the diagram
+//  (`renderPng`, the image only: what it does with it is the host's business; issue 152).
 //
 //  **Only the diagram itself is exported, without the heading.** The label card at the
 //  top left is an on-screen overlay and does not go into the image; there used to be a
@@ -106,7 +107,7 @@ function toPngBlob(canvas) {
 }
 
 /**
- * Export the current diagram.
+ * Export the current diagram as a download.
  * @param rootEl  the canvas shell element (.antu-canvas)
  * @param graph   the current graph; its size frames the content
  * @param title   used for the file name
@@ -116,6 +117,17 @@ function toPngBlob(canvas) {
  * enter the image; the old "heading" switch for the user to choose is gone.
  */
 export async function exportPng({ rootEl, graph, title }) {
+  const { blob, width, height } = await renderPng({ rootEl, graph })
+  download(blob, fileNameOf(title))
+  return { width, height }
+}
+
+/**
+ * The PNG of the current diagram, without saving it: the same picture the download holds.
+ * @param pixelRatio  device pixels per design pixel (2 by default, spec §10.1)
+ * @returns {Promise<{blob: Blob, width: number, height: number}>} the size in device pixels
+ */
+export async function renderPng({ rootEl, graph, pixelRatio = PIXEL_RATIO }) {
   const viewportEl = rootEl?.querySelector('.react-flow__viewport')
   if (!viewportEl) throw new Error('canvas content layer not found; cannot export')
 
@@ -137,7 +149,7 @@ export async function exportPng({ rootEl, graph, title }) {
     const content = await toCanvas(viewportEl, {
       width: contentW,
       height: contentH,
-      pixelRatio: PIXEL_RATIO,
+      pixelRatio,
       backgroundColor: '#ffffff',
       style: {
         width: `${contentW}px`,
@@ -150,17 +162,17 @@ export async function exportPng({ rootEl, graph, title }) {
     // background matches the content's own, so the margin is "the edge of the white
     // paper", not a border stroke.
     const out = document.createElement('canvas')
-    out.width = frame.width * PIXEL_RATIO
-    out.height = frame.height * PIXEL_RATIO
+    // rounded: a host may ask for a ratio such as 1.5, and a canvas has whole pixels
+    out.width = Math.round(frame.width * pixelRatio)
+    out.height = Math.round(frame.height * pixelRatio)
     const ctx = out.getContext('2d')
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, out.width, out.height)
     // Round the offset: a non-integer offset resamples the whole image and blurs the text
-    ctx.drawImage(content, frame.offsetX * PIXEL_RATIO, frame.offsetY * PIXEL_RATIO)
+    ctx.drawImage(content, Math.round(frame.offsetX * pixelRatio), Math.round(frame.offsetY * pixelRatio))
 
     const blob = await toPngBlob(out)
-    download(blob, fileNameOf(title))
-    return { width: out.width, height: out.height }
+    return { blob, width: out.width, height: out.height }
   } finally {
     appEl.classList.remove(EXPORT_CLASS)
   }
