@@ -146,7 +146,7 @@ export function rowTopsOf(grid, stagger) {
  * @param grid    the grid computed by timeline/grid.js
  * @param fields  which fields are on (affects card height and therefore cell height)
  * @param isH     horizontal or not (time runs along the horizontal axis)
- * @param stagger vertical only: rows with no column in common may overlap by half (off by default)
+ * @param stagger vertical only: rows with no column in common may overlap by half (off unless asked: the page asks for it by default, see TimelineRenderer.jsx)
  */
 export function makeMetrics(grid, fields, isH, stagger = false) {
   const colCount = grid.columns.length

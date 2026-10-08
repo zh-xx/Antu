@@ -193,11 +193,11 @@ so the more time points the wider horizontal becomes; the more columns the wider
 The five existing examples have 15 views in total, and **all of them are "many time points, few columns", so vertical is better for all of them (horizontal is 27% to 39% worse)**.
 To see a case where horizontal wins you need data with "many parties, few time points" (for example three parties each doing one thing on the same day).
 
-### 8.1 Staggered rows (a switch, vertical only, off by default)
+### 8.1 Staggered rows (a switch, vertical only, on by default)
 
-A long timeline is tall: every slot takes a whole row, even when the row has a card in one column only, so the fit zoom
-falls and the text gets small (the Fang Yuan example opens at 7.0 px). The **Stagger** chip in the dock (after the
-direction, shown only when vertical) lets rows overlap:
+A long timeline is tall: with every slot on a whole row, even a row with a card in one column only, the fit zoom falls
+and the text gets small (the Fang Yuan example opened at 7.0 px). Vertical timelines are therefore drawn with
+**staggered rows**, and the **Stagger** chip in the dock (after the direction, shown only when vertical) turns it off:
 
 - a row starts **half a row** after the one before it, but **a whole row** after any earlier row that has a card in one of
   its columns (`rowTopsOf` in `src/renderers/fact/timeline/metrics.js`). A column is one party in a view split by party,
@@ -205,14 +205,17 @@ direction, shown only when vertical) lets rows overlap:
 - links need no room of their own: rows are at least half a row apart and a card stands in its cell with a gap above and
   below, so a link (at the middle of its row) runs through the gap between the cards of a neighbouring column, and an axis
   dot never sits under a card on the axis of another row;
-- every row is below the one before it, so **the order of the dots on the axis is the order of the slots**. Cards beside
-  each other may belong to different times: the time order is read on the axis, not from how high a card stands. This is
-  why it is off by default.
+- every row is below the one before it, so **the order of the dots on the axis is the order of the slots**; cards of one
+  slot stay level. Cards beside each other may belong to different times: the time order is read on the axis, not from
+  how high a card stands.
 
-It is a reader's switch, remembered like the grid lines (`stagger` in the preferences). The grid lines assume rows of one
-height, so the grid chip is not offered while it is on. Horizontal ignores it. `layout` says what the text size would be
-with it on, when that is larger ("With rows staggered (vertical) the text is …"). Measured on the examples (1600 × 900):
-Fang Yuan 7.0 → 10.8 px, the marketplace case 9.2 → 13.0 px, the gym 11.5 → 13.0 px, the corridor 11.5 → 12.3 px.
+On by default (the maintainer's ruling, 2026-10): it only ever makes a vertical timeline shorter or leaves it as it is.
+What a reader sets is **remembered per diagram** (`staggers` in the preferences, keyed by title, like the orientation), so
+turning it off in one diagram does not change how another opens. The grid lines assume rows of one height, so the grid
+chip is offered only while it is off. Horizontal ignores it. `layout` reports the vertical size staggered, as the page
+opens, and the size with the switch off beside it; the text size and the advice to split are judged on the staggered size.
+Measured on the examples (1600 × 900, off → on): Fang Yuan 7.0 → 10.8 px, the marketplace case 9.2 → 13.0 px, the gym
+11.5 → 13.0 px, the corridor 11.5 → 12.3 px.
 
 ## 9. The rendering kind (sub-type) switcher
 

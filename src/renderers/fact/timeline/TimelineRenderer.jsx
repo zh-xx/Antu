@@ -74,12 +74,14 @@ export default function FactTimeline({ spec }) {
     writePrefs({ showGrid: value })
   }
 
-  // Staggered rows (vertical only): a global preference, off by default. A row may start half a row
-  // after the one before it when the two have no column in common (see rowTopsOf in metrics.js).
-  const [stagger, setStagger] = useState(() => PRESET?.stagger ?? readPrefs().stagger === true)
+  // Staggered rows (vertical only, see rowTopsOf in metrics.js): on by default, and what the reader set is remembered
+  // per diagram, like the orientation, so turning it off in one diagram does not change how another opens.
+  const [staggerPrefs, setStaggerPrefs] = useState(() => readPrefs().staggers || {})
+  const stagger = PRESET?.stagger ?? staggerPrefs[specKey] ?? true
   const toggleStagger = (value) => {
-    setStagger(value)
-    writePrefs({ stagger: value })
+    const map = { ...staggerPrefs, [specKey]: value }
+    setStaggerPrefs(map)
+    writePrefs({ staggers: map })
   }
 
   // View index. One page holds one data set, so there is no "reset when the diagram changes".

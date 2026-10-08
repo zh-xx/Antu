@@ -61,12 +61,11 @@ test('every kind reports it, with its own body font, in the geometry report and 
   }
 })
 
-test('the real cases that are too small say so, the fact diagram too (it used to say nothing)', () => {
-  const tooSmall = [
-    'examples/fact/fang-yuan-loan-and-conflict.zh-CN.json',
-    'examples/procedure/05-premises-lease.zh-CN.json',
-  ]
+test('the real cases that are too small say so, the fact diagram too (it used to say nothing; it is small now, not too small)', () => {
+  const tooSmall = ['examples/procedure/05-premises-lease.zh-CN.json']
   for (const file of tooSmall) assert.match(layoutMessage(spec(file)).text, /too small to read without zooming in/, file)
+  // the Fang Yuan timeline opens staggered (spec/fact/rendering.md §8.1): small, no longer too small, and still told to split
+  assert.match(layoutMessage(spec('examples/fact/fang-yuan-loan-and-conflict.zh-CN.json')).text, /the text is small \(under 11 px\).*Splitting the timeline into periods/)
   // a justification of several issues that would be too small opens with its issues folded, and says so instead
   for (const file of ['examples/justification/fang-yuan-defense-excess.zh-CN.json', 'examples/justification/neighbour-corridor-liability.zh-CN.json']) {
     const text = layoutMessage(spec(file)).text

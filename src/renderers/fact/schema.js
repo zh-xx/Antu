@@ -284,28 +284,27 @@ export const factKnowledge = {
         blockReason: graph.errors[0] ?? null,
       }
     })
-    // Both orientations, to advise one (the same slot-count rule the renderer uses by default)
+    // Both orientations, as the page opens them (the same slot-count rule the renderer uses by default). Vertical is
+    // measured with the rows staggered, the page's default (spec/fact/rendering.md §8.1), so "as it opens" is what the
+    // reader sees on a fresh page; the size with the switch off is kept beside it.
     const byOrientation = {}
     for (const o of ['vertical', 'horizontal']) {
-      const g = layout(spec, fields, undefined, o)
+      const g = layout(spec, fields, undefined, o, { stagger: true })
       byOrientation[o] = { size: g.size, fit: Number(fitZoom(g.size, canvas).toFixed(3)) }
     }
+    const flat = layout(spec, fields, undefined, 'vertical', { stagger: false })
+    const unstaggered = { size: flat.size, fit: Number(fitZoom(flat.size, canvas).toFixed(3)) }
     const slotCount = Array.isArray(spec.slots) ? spec.slots.length : 0
     const opens = orientation ?? (slotCount >= 5 ? 'vertical' : 'horizontal')
     const others = opens === 'vertical' ? 'horizontal' : 'vertical'
-    // The Stagger switch of the page (vertical only, off by default): said only when it makes the text larger
-    const staggeredGraph = layout(spec, fields, undefined, 'vertical', { stagger: true })
-    const staggered = { size: staggeredGraph.size, fit: Number(fitZoom(staggeredGraph.size, canvas).toFixed(3)) }
-    const staggerHelps = staggered.fit > byOrientation.vertical.fit
     return {
       text: {
         font: LABEL_FONT,
         canvas,
         open: { name: opens, fit: byOrientation[opens].fit },
         other: { name: others, fit: byOrientation[others].fit },
-        ...(staggerHelps ? { staggered: staggered.fit } : {}),
       },
-      staggered,
+      unstaggered,
       views,
       counts: {
         slots: slotCount,
@@ -328,7 +327,12 @@ export const factKnowledge = {
     lines.push(`Data: ${r.counts.events} events / ${r.counts.slots} time slots / ${r.counts.actors} parties / ${r.counts.sources} sources`)
     const v = r.byOrientation.vertical
     const h = r.byOrientation.horizontal
-    lines.push(`Vertical: content ${v.size.width}×${v.size.height}, fit zoom ${v.fit}`)
+    const flat = r.unstaggered
+    const staggerNote =
+      flat && (flat.size.height !== v.size.height || flat.size.width !== v.size.width)
+        ? ` (rows staggered, the page's default; with "Stagger" off ${flat.size.width}×${flat.size.height}, fit zoom ${flat.fit})`
+        : ''
+    lines.push(`Vertical: content ${v.size.width}×${v.size.height}, fit zoom ${v.fit}${staggerNote}`)
     lines.push(`Horizontal: content ${h.size.width}×${h.size.height}, fit zoom ${h.fit}`)
     lines.push(
       r.suggestedOrientation === 'vertical'

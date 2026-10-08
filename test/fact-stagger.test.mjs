@@ -1,4 +1,4 @@
-// The timeline's Stagger switch (vertical only, off by default): a row may start half a row after the one before it
+// The timeline's Stagger switch (vertical only, on by default in the page; the layout draws it only when asked): a row may start half a row after the one before it
 // when the two have no column in common. Cards never overlap, no link runs under a card, no axis dot sits under a
 // card, and the dots on the axis keep the order of the slots. Checked on every fact example, in every view.
 
@@ -90,9 +90,17 @@ test('it makes a long timeline shorter: the Fang Yuan example opens with larger 
   assert.ok(b.size.height < a.size.height * 0.7, `${b.size.height} vs ${a.size.height}`)
 })
 
-test('layout tells the agent about the switch when it makes the text larger, and only then', () => {
+test('layout reports the vertical size as the page opens it, staggered, with the size unstaggered beside it', () => {
   const long = JSON.parse(readFileSync('examples/fact/fang-yuan-loan-and-conflict.zh-CN.json', 'utf8'))
-  assert.match(formatLayoutReport(layoutReport(long)), /With rows staggered \(vertical\) the text is \d+\.\d px: the reader can turn on "Stagger"/)
-  const short = JSON.parse(readFileSync('examples/fact/lin-fang-v-zhao-lei-private-lending.zh-CN.json', 'utf8'))
+  const r = layoutReport(long)
+  const staggered = buildFactGraph(long, FIELDS, undefined, 'vertical', { stagger: true })
+  const flat = buildFactGraph(long, FIELDS, undefined, 'vertical')
+  assert.deepEqual(r.byOrientation.vertical.size, staggered.size)
+  assert.deepEqual(r.unstaggered.size, flat.size)
+  const text = formatLayoutReport(r)
+  assert.match(text, /10\.8 px as it opens \(vertical\)/)
+  assert.match(text, /rows staggered, the page's default; with "Stagger" off 1264×1482/)
+  // a timeline the switch does not change says nothing about it
+  const short = JSON.parse(readFileSync('examples/fact/sample-no-groups.zh-CN.json', 'utf8'))
   assert.doesNotMatch(formatLayoutReport(layoutReport(short)), /Stagger/)
 })

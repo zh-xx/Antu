@@ -45,7 +45,7 @@ export default function ControlDock({
   onToggleOrientation,
   showGrid = false,
   onToggleGrid,
-  /** Staggered rows: vertical only, so the chip is shown only then; off by default */
+  /** Staggered rows: vertical only, so the chip is shown only then; on by default */
   stagger = false,
   onToggleStagger,
   exporting = false,
@@ -119,6 +119,7 @@ export default function ControlDock({
         {onToggleStagger && orientation === 'vertical' && (
           <button
             className={`antu-dock-chip${stagger ? ' is-on' : ''}`}
+            data-chip="stagger"
             aria-pressed={stagger}
             title={t('dock.staggerHint')}
             onClick={() => onToggleStagger(!stagger)}
@@ -133,6 +134,7 @@ export default function ControlDock({
         {!(stagger && orientation === 'vertical') && (
           <button
             className={`antu-dock-chip${showGrid ? ' is-on' : ''}`}
+            data-chip="grid"
             onClick={() => onToggleGrid(!showGrid)}
           >
             {t('dock.grid')}

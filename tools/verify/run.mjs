@@ -2257,56 +2257,53 @@ async function checkKindSwitching(sampleFile) {
 }
 
 /**
- * The timeline's Stagger switch (vertical only, off by default): the chip is there and off, a click makes the rows
- * overlap where they have no column in common (the cards are drawn larger, none overlaps another), the grid chip is
- * not offered while it is on, and the choice is remembered.
+ * The timeline's Stagger switch (vertical only, on by default, remembered per diagram): the chip is there and on, the
+ * rows overlap where they have no column in common (no card overlaps another), a click turns it off and brings the grid
+ * chip back, the choice is remembered for that diagram, and another diagram still opens with it on.
  */
-async function checkTimelineStagger(sampleFile) {
+async function checkTimelineStagger(sampleFile, otherFile) {
   section('render: the timeline\'s Stagger switch')
   if (!findChrome()) {
     bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
     return
   }
-  const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
   const html = join(OUT, 'render-stagger.html')
-  renderToFile(spec, { outPath: html, quiet: true })
+  const other = join(OUT, 'render-stagger-other.html')
+  renderToFile(JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8')), { outPath: html, quiet: true })
+  renderToFile(JSON.parse(readFileSync(join(REPO, otherFile), 'utf8')), { outPath: other, quiet: true })
   const browser = await launchBrowser({ width: 1600, height: 900 })
   const settle = (ms = 700) => new Promise((r) => setTimeout(r, ms))
-  const label = translate('en', 'dock.stagger')
-  const gridLabel = translate('en', 'dock.grid')
+  // Fixed code only: the chips are found by their data-chip attribute, not by a text put into the code
   const state = () =>
     browser.eval(`(() => {
-      const chips = [...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')]
-      const chip = chips.find((b) => b.textContent === ${JSON.stringify(label)})
+      const chip = document.querySelector('.antu-dock-bar [data-chip="stagger"]')
       const rects = [...document.querySelectorAll('.react-flow__node-card')].map((n) => n.getBoundingClientRect())
       let overlaps = 0
       for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
         const a = rects[i], b = rects[j]
         if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) overlaps++
       }
-      return { chip: !!chip, on: !!chip && chip.classList.contains('is-on'), grid: chips.some((b) => b.textContent === ${JSON.stringify(gridLabel)}), cards: rects.length, cardH: rects[0]?.height ?? 0, overlaps }
+      return { chip: !!chip, on: !!chip && chip.classList.contains('is-on'), grid: !!document.querySelector('.antu-dock-bar [data-chip="grid"]'), cards: rects.length, cardH: rects[0]?.height ?? 0, overlaps }
     })()`)
-  const click = () =>
-    browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].find((b) => b.textContent === ${JSON.stringify(label)}).click()`, { userGesture: true })
+  const click = () => browser.eval(`document.querySelector('.antu-dock-bar [data-chip="stagger"]').click()`, { userGesture: true })
   try {
     await browser.open(`file://${html}?lang=en`)
     await settle()
-    const off = await state()
-    truthy('stagger: the chip is in the bar of a vertical timeline, and off', off.chip && !off.on && off.grid)
+    const on = await state()
+    truthy('stagger: the chip is in the bar of a vertical timeline, and on by default', on.chip && on.on && !on.grid)
+    eq('stagger: no card overlaps another', on.overlaps, 0)
     await click()
     await settle()
-    const on = await state()
-    truthy('stagger: a click turns it on and the grid chip is not offered', on.on && !on.grid)
-    eq('stagger: every card is still drawn', on.cards, off.cards)
-    eq('stagger: no card overlaps another', on.overlaps, 0)
-    truthy(`stagger: the cards are drawn larger (${off.cardH.toFixed(0)} -> ${on.cardH.toFixed(0)} px high)`, on.cardH > off.cardH * 1.3)
+    const off = await state()
+    truthy('stagger: a click turns it off and the grid chip is back', !off.on && off.grid)
+    eq('stagger: every card is still drawn', off.cards, on.cards)
+    truthy(`stagger: staggered, the cards are drawn larger (${off.cardH.toFixed(0)} -> ${on.cardH.toFixed(0)} px high)`, on.cardH > off.cardH * 1.3)
     await browser.open(`file://${html}?lang=en`)
     await settle()
-    truthy('stagger: it is remembered when the page is opened again', (await state()).on)
-    await click()
+    truthy('stagger: turned off, it is remembered for this diagram', !(await state()).on)
+    await browser.open(`file://${other}?lang=en`)
     await settle()
-    const back = await state()
-    truthy('stagger: a second click turns it off and the grid chip is back', !back.on && back.grid && back.cardH === off.cardH)
+    truthy('stagger: another diagram still opens with it on (the choice is per diagram)', (await state()).on)
   } finally {
     await browser.close()
   }
@@ -3086,7 +3083,7 @@ if (!shotOnly && !skipBrowser) {
   await checkMinimapShowsExtent()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)
-  await checkTimelineStagger('examples/fact/fang-yuan-loan-and-conflict.zh-CN.json')
+  await checkTimelineStagger('examples/fact/fang-yuan-loan-and-conflict.zh-CN.json', 'examples/fact/marketplace-platform-liability.zh-CN.json')
   if (data.procedureSample) await checkRenderProcedure(data.procedureSample)
   if (data.relationshipSample) await checkRenderRelationship(data.relationshipSample)
   if (data.justificationSample) await checkRenderJustification(data.justificationSample)
