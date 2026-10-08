@@ -24,6 +24,7 @@
 
 import { groupOfEvent } from '../timeline/grid.js'
 import { ACTOR_FONT, ACTOR_TAG_PAD, textWidth, wrapLineCount, wrapLinesBy } from '../cardGeometry.js'
+import { whenLines } from '../dateText.js'
 
 /** Horizontal geometry. The time column ends at WHEN_W, its text right-aligned against the spine. */
 export const WHEN_W = 150
@@ -209,7 +210,9 @@ export function chronicleItems(spec) {
       }
       const day = typeof event.date === 'string' && event.date.length >= 10 ? event.date.slice(0, 10) : null
       const above = items.at(-1)?.event
-      const sameDay = Boolean(day && above && typeof above.date === 'string' && above.date.slice(0, 10) === day && !event.approx && !above.approx)
+      // The date is left out under an event of the same day. Not when this event is approximate: its "approx." is
+      // written on the date line. An approximate event above does not matter: its day is written, and this one's is known.
+      const sameDay = Boolean(day && above && typeof above.date === 'string' && above.date.slice(0, 10) === day && !event.approx)
       items.push({ event, slotIndex, first, gap, spacing, sameDay })
     })
     // A slot with an undated event cannot anchor the next gap
@@ -262,12 +265,13 @@ export function tagLinesOf(event, spec, fields, actorById) {
 }
 
 /** Card height, from the lines its text takes */
-export function cardHeightOf({ titleLines, summaryLines, tagLines }) {
+export function cardHeightOf({ titleLines, summaryLines, tagLines, whenLineCount = 3 }) {
   let h = PAD_Y * 2 + TITLE_LH * Math.max(1, titleLines)
   if (summaryLines) h += BLOCK_GAP + SUMMARY_LH * summaryLines
   if (tagLines) h += TAGS_GAP + TAG_LH * tagLines
-  // The time column holds up to three lines (date, time, end); the card is never shorter than it
-  return Math.max(h, PAD_Y + WHEN_LH * 3)
+  // The card is never shorter than its own time column (date, time, end: one to three lines). It used to reserve
+  // three lines for every card, which left a card with a title only half empty.
+  return Math.max(h, PAD_Y + WHEN_LH * whenLineCount)
 }
 
 /**
@@ -318,7 +322,7 @@ export function buildChronicleGraph(spec, fields = {}, { measure } = {}) {
     }
     const { title: titleLines, summary: summaryLines } = textLinesOf(event, fields, typeof measure === 'function' ? measure : null)
     const tagLines = tagLinesOf(event, spec, fields, actorById)
-    const h = cardHeightOf({ titleLines, summaryLines, tagLines })
+    const h = cardHeightOf({ titleLines, summaryLines, tagLines, whenLineCount: whenLines(event, 'en', item.sameDay).length })
     const groupIndex = groupIndexOf(spec, event)
     const actorNames = (Array.isArray(event.actorIds) ? event.actorIds : []).map((id) => actorById.get(id)?.name || id)
     const sources = (Array.isArray(event.sourceIds) ? event.sourceIds : []).map((id) => sourceById.get(id)).filter(Boolean)
