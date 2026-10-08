@@ -104,9 +104,15 @@ export default function Canvas({
   // layers are declared 1×1 (see fact/timeline/nodes.js), so their real extent — a group box wider than
   // its nodes — never reached fitView's bounds and was cut off (issue #42). graph.size is also what
   // fitZoom and the pan limits use, so the three now agree.
+  // Whether fit() has placed the picture yet. The first attempt is made one frame after mount, which can come before
+  // React Flow hands over its instance (onInit); fit() then did nothing, and the page stayed at React Flow's default
+  // viewport, only centred by the pan limits (a long chronicle opened at its very top, with no margin). onInit runs the
+  // first fit when that happened.
+  const fittedRef = useRef(false)
   const fit = (duration = 300) => {
     const { width, height } = graph.size
     if (!rfRef.current) return
+    fittedRef.current = true
     // A diagram read top to bottom (fitWidth) opens at the zoom that fits its width (never above
     // 1:1), scrolled to the top; one shorter than the screen is centred instead.
     const el = canvasRef.current
@@ -252,6 +258,7 @@ export default function Canvas({
         translateExtent={translateExtent}
         onInit={(inst) => {
           rfRef.current = inst
+          if (!fittedRef.current) requestAnimationFrame(() => fit(0))
         }}
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
