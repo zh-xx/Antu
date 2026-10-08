@@ -265,7 +265,10 @@ export default function Canvas({
     const bar = el.querySelector('.antu-dock-capsule .antu-dock-bar')
     if (bar) ro.observe(bar)
     return () => ro.disconnect()
-  }, [showCapsule, showZoom, showMinimap, children])
+    // Not on `children`: it is a new element on every render (a hover re-renders), and measuring again then
+    // cost some forty style reads each time. The observer already sees the capsule change size when its
+    // content does.
+  }, [showCapsule, showZoom, showMinimap])
   const dockStyle = dock.left == null
     ? undefined
     // (a React Flow panel has a margin of its own; `left` is already measured from the canvas edge)
