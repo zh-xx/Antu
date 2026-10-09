@@ -1,7 +1,7 @@
 // ============================================================
 //  src/renderers/relationship/LevelledView.jsx — the page of a levelled relationship view (shared)
 //
-//  The equity tree, the authority chart, the relation path and the camp summary are all a pure layout
+//  The equity tree, the authority chart and the relation path are all a pure layout
 //  (one `build(spec, options)` returning party boxes and one line layer) drawn by the graph's own party
 //  box and LineLayerNode. This holds what they share: the labels switch (remembered together with the
 //  graph's), the hover and pin of a party's overlay, fit to width or not, the dock and the export.

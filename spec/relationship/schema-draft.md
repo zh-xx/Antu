@@ -1,6 +1,6 @@
 # relationship · Schema draft v0
 
-> Status: **implemented** (status line checked against 0.12.0; the sponsor accepted the draft as good enough for now, 2026-09; not final). Implemented and released: validation, layout, the renderer, the dock, the examples for agents; the type is in the skill. Items marked **⚠ proposal** are proposals that stand until the sponsor changes them; §7 lists the open questions and what the schema does for each in the meantime. Nine sub-types (ways of drawing the same JSON) are implemented, none of them confirmed: `graph` (§6.1) and eight more as first attempts (§6.4 to §6.11: focus, chain, matrix, equity, authority, related, path, summary).
+> Status: **implemented** (status line checked against 0.12.0; the sponsor accepted the draft as good enough for now, 2026-09; not final). Implemented and released: validation, layout, the renderer, the dock, the examples for agents; the type is in the skill. Items marked **⚠ proposal** are proposals that stand until the sponsor changes them; §7 lists the open questions and what the schema does for each in the meantime. Seven sub-types (ways of drawing the same JSON) are implemented, none of them confirmed: `graph` (§6.1) and six more as first attempts (§6.4 and §6.6 to §6.10: focus, matrix, equity, authority, related, path). Two more, `chain` (§6.5) and `summary` (§6.11), were drawn and then removed at the maintainer's request.
 > Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (different domain semantics → controlled enum, no new top-level type). The shape follows `spec/procedure/schema-draft.md`.
 > Scope: relationship = **who stands in what relation to whom, at one point in time**. What happened over time → `fact`; the path of a procedure → `procedure`; norms + facts → a conclusion → `justification`.
 
@@ -236,18 +236,9 @@ One party in the middle, the parties tied to it around it, those tied to them fu
 - Entity boxes, label boxes, relation paint, the overlay, "what it secures" and the kind chips are the graph's, so the two kinds cannot disagree. No orientation, link style or group boxes: they do not apply.
 - A "relations: []" is not valid JSON (validation requires at least one), so the centre always has something; an entity nothing relates to is an island of one.
 
-### 6.5 The third sub-type, `chain` (issue #89)
+### 6.5 `chain` (issue #89): removed
 
-> Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added: the view reads `debt` and `guarantee` relations and `secures`, and the one inference it makes (below) is made when drawing.
-
-One block per claim, its guarantors beside it, what stands behind each guarantor beyond: "this loan, how many layers of security, who stands last". Code: `src/renderers/relationship/chain/`.
-
-- **Claims** are the `debt` relations, and a `contract` that a guarantee names with `secures` (a contract alone is not a claim). Each block shows the label with the amount as written, the two parties and the counts.
-- **Guarantors** are the `guarantee` relations that name the claim. One that names none is tied **only when that is plain**: its creditor (the guarantee's `to`) is the creditor of exactly one claim and the guarantor is not that claim's debtor. It is then drawn with a dotted link and "inferred" on its label. Otherwise it goes in a bucket "Guarantees not tied to a claim" with the reason (no claim of that creditor / several, naming them / the guarantor owes the claim), and a line saying that writing `secures` ties it.
-- **Behind a guarantor**: a `contract` between the guarantor and the claim's debtor, or a guarantee from the debtor to the guarantor that names no claim (a counter-guarantee). Where there is none nothing is drawn behind the guarantor; the claim's card says how many guarantors and counter-guarantees it has, and "No security" for a claim nobody guarantees: absence is information, said in words.
-- **Everything else** (equity, employment, a contract that is not a claim...) is listed under the blocks, so every relation is on the page once.
-- A case with no claims says so and lists every relation. A guarantee of a guarantee, joint debtors and sums of amounts cannot be said in the data, so the view does not claim to show them; amounts are shown as written, never added up.
-- Party boxes, the overlay and the labels switch are the graph's; no orientation, link style or kind chips (they do not apply).
+The guarantee chain (one block per claim, its guarantors beside it) was removed at the maintainer's request after review. `secures` stays: validation checks it and the graph ties a guarantee to the claim it names (§4.4).
 
 ### 6.6 The fourth sub-type, `matrix` (issue #91)
 
@@ -302,14 +293,9 @@ How two parties are tied: the shortest chains of relations from A to B, **one ch
 - **Look** (settled with the maintainer after the first attempt drew every chain in one tangle of overlapping lines): each row has the two ends (dark boxes) and the parties between, every line straight and level, its label on it, the row's step count above it. A party that two chains pass stands in the same column in both rows, so the rows read as one picture; the ends and the shared parties repeat from row to row instead of being joined by lines. One ink; the kind of a relation is in its label. A line's arrowhead is where the relation itself runs, so one that runs against the reading has it at the left end.
 - Under the picture: the parties and relations on no drawn chain (the rows already are the list of the chains). Parties off the chains are not drawn (not faded): the picture shows only the answer.
 
-### 6.11 The ninth sub-type, `summary` (issue #93)
+### 6.11 `summary` (issue #93): removed
 
-> Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added.
-
-Each camp (`groups`) as one block listing its members (the first 8; the rest in a list under the picture), the parties of no camp as single boxes, and one line between two blocks whose label counts the relations between them by kind ("Claim 1 · Guarantee 2"). Code: `src/renderers/relationship/summary/`.
-
-- Levels left to right: a line runs from the side most of its relations run from. It has an arrowhead only when every relation between the two runs that way. A block's foot counts the relations inside it.
-- Every relation is written out under the picture, those between blocks first, then those inside a camp. With no `groups`, every party is its own box and the view looks like the graph (the report says so).
+The camp summary (each camp as one block, one line between two blocks) was removed at the maintainer's request after review. Camps are drawn by the graph (§6.1).
 
 ---
 

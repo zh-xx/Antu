@@ -1444,39 +1444,6 @@
 .antu-rf .antu-rn { cursor: pointer; }
 .antu-rf-note { font-size: 12px; font-weight: 600; color: var(--antu-text-3); white-space: nowrap; line-height: 24px; }
 
-/* ---------- relationship guarantee chain (relationship/chain) ----------
-   Heights come from chain/layout.js (it estimates the lines), the text wraps inside the boxes it gave. */
-.antu-ch-layer { position: relative; }
-.antu-ch-svg { position: absolute; left: 0; top: 0; overflow: visible; }
-.antu-ch-head { position: absolute; font-size: 13px; font-weight: 700; line-height: 20px; color: var(--antu-text-3); white-space: nowrap; }
-.antu-ch-claim {
-  box-sizing: border-box;
-  padding: 18px;
-  background: var(--antu-bg, #fff);
-  border: 2px solid var(--antu-text);
-  border-radius: 6px;
-  color: var(--antu-text);
-  font-size: 12.5px;
-  line-height: 19px;
-  overflow-wrap: anywhere;
-}
-.antu-ch-claim-title { margin-bottom: 8px; font-size: 16px; line-height: 22px; font-weight: 700; color: var(--antu-text); }
-.antu-ch-claim-side span { color: var(--antu-text-3); }
-.antu-ch-claim-tail { margin-top: 10px; color: var(--antu-text-3); }
-/* the label under a box: plain text, as left as the box */
-.antu-ch-chip {
-  position: absolute;
-  box-sizing: border-box;
-  width: max-content;
-  font-size: 11.5px;
-  line-height: 16px;
-  color: var(--antu-text-3);
-  overflow-wrap: anywhere;
-}
-.antu-ch-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
-.antu-ch-text-sub { color: var(--antu-text-3); }
-.antu-ch-text.is-note { font-size: 11.5px; line-height: 16px; color: var(--antu-text-3); }
-
 /* ===== relation matrix (issue #91) ===== */
 .antu-mx-layer { position: relative; }
 .antu-mx-svg { position: absolute; left: 0; top: 0; overflow: visible; }
@@ -1516,9 +1483,6 @@
 .antu-ln-text-sub { color: var(--antu-text-3); }
 .antu-ln-text.is-row { font-size: 12px; font-weight: 700; color: var(--antu-text-3); }
 .antu-ln-text.is-note { color: var(--antu-text-3); font-style: italic; }
-.antu-ln-block { position: absolute; box-sizing: border-box; padding: 14px 18px; font-size: 13px; line-height: 22px; color: var(--antu-text); overflow: hidden; overflow-wrap: anywhere; }
-.antu-ln-block-title { font-size: 14px; font-weight: 700; line-height: 22px; margin-bottom: 6px; }
-.antu-ln-block-foot { margin-top: 8px; font-size: 12px; line-height: 18px; color: var(--antu-text-3); }
 
 /* related-party list (issue #93): the table's cells, over the line layer's grid */
 .antu-ln-cell { position: absolute; box-sizing: border-box; padding: 8px 10px; font-size: 13px; line-height: 19px; color: var(--antu-text); overflow: hidden; overflow-wrap: anywhere; }

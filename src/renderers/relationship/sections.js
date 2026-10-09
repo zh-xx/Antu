@@ -1,7 +1,7 @@
 // ============================================================
 //  src/renderers/relationship/sections.js — the lists under a levelled picture (shared)
 //
-//  The equity tree, the authority chart, the relation path and the camp summary each draw only part of
+//  The equity tree, the authority chart and the relation path each draw only part of
 //  the data and list the rest under the picture, so that every relation (and every party) is on the page
 //  once. This writes those lists into the line layer (LineLayerNode): a framed section with a title and
 //  rows of text, or the dashed empty box that says there is nothing to draw. Pure JS.

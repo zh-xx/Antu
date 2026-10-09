@@ -105,15 +105,13 @@ try {
       const rel = join(work, 'antu/examples/relationship/1-minimal.zh-CN.json')
       const f = run('layout', rel, '--kind', 'focus')
       check('relationship: layout --kind focus reports the focus view', f.status === 0 && /^Kind: focus/m.test(f.stdout), f.stderr.trim() || f.stdout.trim())
-      const ch = run('layout', rel, '--kind', 'chain')
-      check('relationship: layout --kind chain reports the guarantee chain', ch.status === 0 && /^Kind: chain/m.test(ch.stdout), ch.stderr.trim() || ch.stdout.trim())
       if (run('--help').stdout.includes('matrix')) {
         const mx = run('layout', rel, '--kind', 'matrix')
         check('relationship: layout --kind matrix reports the matrix', mx.status === 0 && /^Kind: matrix/m.test(mx.stdout), mx.stderr.trim() || mx.stdout.trim())
         const eqt = run('layout', rel, '--kind', 'equity')
         check('relationship: layout --kind equity reports the equity tree', eqt.status === 0 && /^Kind: equity/m.test(eqt.stdout), eqt.stderr.trim() || eqt.stdout.trim())
         if (run('--help').stdout.includes('authority')) {
-          for (const kind of ['authority', 'related', 'path', 'summary']) {
+          for (const kind of ['authority', 'related', 'path']) {
             const r = run('layout', rel, '--kind', kind)
             check(`relationship: layout --kind ${kind} reports it`, r.status === 0 && new RegExp(`^Kind: ${kind}`, 'm').test(r.stdout), r.stderr.trim() || r.stdout.trim())
           }
@@ -127,7 +125,7 @@ try {
         check('an unknown procedure kind is named, exit code 2', wrongProc.status === 2 && /flow, route/.test(wrongProc.stderr), `${wrongProc.status} ${wrongProc.stderr.trim()}`)
       }
       const wrongRel = run('layout', rel, '--kind', 'scale')
-      check('a fact kind on a relationship is named, exit code 2', wrongRel.status === 2 && /graph, focus, chain, matrix, equity, authority, related, path, summary/.test(wrongRel.stderr), `${wrongRel.status} ${wrongRel.stderr.trim()}`)
+      check('a fact kind on a relationship is named, exit code 2', wrongRel.status === 2 && /graph, focus, matrix, equity, authority, related, path/.test(wrongRel.stderr), `${wrongRel.status} ${wrongRel.stderr.trim()}`)
     }
     // The time scale, where this command line has it
     if (run('--help').stdout.includes('scale')) {

@@ -18,7 +18,7 @@ import { en, zh } from '../../src/core/messages/index.js'
 
 /** The ways of each type in the order of the README, and the case each is drawn from */
 export const SITE = [
-  { type: 'relationship', file: 'marketplace-parties', kinds: ['graph', 'focus', 'chain', 'matrix', 'equity', 'authority', 'related', 'path', 'summary'] },
+  { type: 'relationship', file: 'marketplace-parties', kinds: ['graph', 'focus', 'matrix', 'equity', 'authority', 'related', 'path'] },
   { type: 'fact', file: 'neighbour-corridor-charging', kinds: ['timeline', 'chronicle', 'scale'] },
   { type: 'procedure', file: '05-premises-lease', kinds: ['flow', 'route'] },
   { type: 'justification', file: 'fang-yuan-defense-excess', kinds: ['tree'] },

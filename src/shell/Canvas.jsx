@@ -385,7 +385,7 @@ export default function Canvas({
         onNodeMouseLeave={onNodeMouseLeave}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
-        // A diagram whose content is mostly decoration layers (fitSelf: the relation path, the camp summary) is
+        // A diagram whose content is mostly decoration layers (fitSelf: the relation path) is
         // fitted to graph.size by fit() alone, not to the boxes React Flow can measure.
         // A width-fitted diagram is placed by fit() alone: React Flow's own initial fit runs once the nodes are
         // measured, which can come after fit() and would shrink a long column back to the whole

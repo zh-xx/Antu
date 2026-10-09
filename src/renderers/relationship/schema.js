@@ -13,13 +13,11 @@ import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateRelationship, hintsOfRelationship, ENTITY_KINDS, RELATION_KINDS } from './graph/rules.js'
 import { buildRelationshipGraph } from './graph/layout.js'
 import { buildFocusGraph } from './focus/layout.js'
-import { buildChainGraph } from './chain/layout.js'
 import { buildMatrixGraph } from './matrix/layout.js'
 import { buildEquityGraph } from './equity/layout.js'
 import { buildAuthorityGraph } from './authority/layout.js'
 import { buildRelatedGraph } from './related/layout.js'
 import { buildPathGraph } from './path/layout.js'
-import { buildSummaryGraph } from './summary/layout.js'
 import { fitZoom, textSizeLines } from '../../core/canvas.js'
 import { ENTITY_FONT } from './graph/metrics.js'
 
@@ -134,48 +132,6 @@ function formatFocusReport(r) {
   return lines.join('\n')
 }
 
-/**
- * The guarantee chain's geometry report: no orientation to choose; what is worth saying is how many claims
- * there are, how well each is secured, what was tied by inference, and what could not be tied.
- */
-function chainReport(spec, layout, { canvas }) {
-  const g = layout(spec, {})
-  // It opens fitted to its width, so the text is at full size unless the diagram is wider than the screen
-  const fit = Number(fitZoom({ width: g.size.width, height: 1 }, { width: canvas.width, height: canvas.height * 1e6 }).toFixed(3))
-  return {
-    text: { font: ENTITY_FONT, canvas, open: { name: 'fitted to width', fit }, other: { name: 'fitted to width', fit } },
-    counts: { entities: g.stats.entities, relations: g.stats.relations, groups: g.stats.groups, kinds: g.stats.kinds, sources: spec.sources?.length ?? 0 },
-    size: g.size,
-    claims: g.claims,
-    guarantors: g.guarantors,
-    inferred: g.inferred,
-    counters: g.counters,
-    unsecured: g.unsecured,
-    bucket: g.bucket,
-    other: g.other,
-    hints: g.hints,
-  }
-}
-
-function formatChainReport(r) {
-  const c = r.counts
-  const lines = [
-    'Kind: chain (one block per claim; orientation does not apply)',
-    `Data: ${c.entities} entities / ${c.relations} relations / ${c.groups} groups / ${c.sources} sources`,
-    `Content ${r.size.width}×${r.size.height}; it opens fitted to its width`,
-  ]
-  if (!r.claims) lines.push('No claims (debt relations) in this data: the view says so and lists every relation under it; the graph suits this case better.')
-  else {
-    lines.push(`${r.claims} claim(s): ${r.guarantors} guarantor(s), ${r.counters} counter-guarantee(s), ${r.unsecured} with no security`)
-    if (r.inferred) lines.push(`${r.inferred} guarantee(s) tied to their claim by inference (no secures written; it is the only claim of that creditor). Write secures to make it exact.`)
-  }
-  if (r.bucket) lines.push(`${r.bucket} guarantee(s) tied to no claim (shown apart, with the reason): write secures on them to tie them`)
-  if (r.other) lines.push(`${r.other} other relation(s) listed under the claims`)
-  lines.push(...textSizeLines(r.text, 'splitting the diagram by group'))
-  if (r.hints.length) lines.push('', `${r.hints.length} hint(s):`, ...r.hints.map((x) => `  - ${x}`))
-  return lines.join('\n')
-}
-
 /** The matrix's geometry report: no orientation to choose; how full the table is is what is worth saying */
 function matrixReport(spec, layout, { canvas }) {
   const g = layout(spec, {})
@@ -256,7 +212,7 @@ function formatEquityReport(r) {
 function viewReport(kind, facts) {
   return function report(spec, layout, { canvas }) {
     const g = layout(spec, {})
-    const wide = kind === 'path' || kind === 'summary'
+    const wide = kind === 'path'
     const fit = Number(fitZoom(wide ? g.size : { width: g.size.width, height: 1 }, wide ? canvas : { width: canvas.width, height: canvas.height * 1e6 }).toFixed(3))
     return {
       text: { font: ENTITY_FONT, canvas, open: { name: wide ? 'whole picture' : 'fitted to width', fit }, other: { name: wide ? 'whole picture' : 'fitted to width', fit } },
@@ -293,12 +249,6 @@ const pathReport = viewReport('path', (g) => {
   return out
 })
 
-const summaryReport = viewReport('summary', (g) => {
-  const out = [`${g.blocks} camp block(s), ${g.singles} party box(es) of no camp, ${g.lines} line(s) between them (${g.betweenRelations} relation(s)); ${g.insideRelations} relation(s) inside a camp`]
-  if (!g.blocks) out.push('No groups in this data: every party is its own box, which looks like the graph; give the parties groupId to get camps.')
-  return out
-})
-
 function formatViewReport(name, desc) {
   return (r) => {
     const c = r.counts
@@ -316,7 +266,6 @@ function formatViewReport(name, desc) {
 const formatAuthority = formatViewReport('authority', 'control, employment and agency as an organisation chart')
 const formatRelated = formatViewReport('related', 'one party and everyone tied to it, as a table')
 const formatPath = formatViewReport('path', 'the shortest chains of relations between two parties')
-const formatSummary = formatViewReport('summary', 'each camp as one block')
 
 export const relationshipKnowledge = {
   specVersion: RELATIONSHIP_SPEC_VERSION,
@@ -339,13 +288,11 @@ export const relationshipKnowledge = {
    */
   report: (spec, layout, { canvas, kind }) => {
     if (kind === 'focus') return focusReport(spec, layout, { canvas })
-    if (kind === 'chain') return chainReport(spec, layout, { canvas })
     if (kind === 'matrix') return matrixReport(spec, layout, { canvas })
     if (kind === 'equity') return equityReport(spec, layout, { canvas })
     if (kind === 'authority') return authorityReport(spec, layout, { canvas })
     if (kind === 'related') return relatedReport(spec, layout, { canvas })
     if (kind === 'path') return pathReport(spec, layout, { canvas })
-    if (kind === 'summary') return summaryReport(spec, layout, { canvas })
     const byOrientation = {}
     let g
     for (const o of ['vertical', 'horizontal']) {
@@ -376,13 +323,11 @@ export const relationshipKnowledge = {
   /** The geometry report as the short text the tool returns to an agent */
   formatReport: (r) => {
     if (r.kind === 'focus') return formatFocusReport(r)
-    if (r.kind === 'chain') return formatChainReport(r)
     if (r.kind === 'matrix') return formatMatrixReport(r)
     if (r.kind === 'equity') return formatEquityReport(r)
     if (r.kind === 'authority') return formatAuthority(r)
     if (r.kind === 'related') return formatRelated(r)
     if (r.kind === 'path') return formatPath(r)
-    if (r.kind === 'summary') return formatSummary(r)
     const c = r.counts
     const v = r.byOrientation.vertical
     const h = r.byOrientation.horizontal
@@ -427,25 +372,21 @@ export const relationshipKnowledge = {
   diagrams: {
     graph: { version: 2, status: 'experimental', since: '0.2.0' },
     focus: { version: 2, status: 'experimental', since: '0.7.0' },
-    chain: { version: 1, status: 'experimental', since: '0.7.0' },
     matrix: { version: 1, status: 'experimental', since: '0.7.0' },
     equity: { version: 1, status: 'experimental', since: '0.7.0' },
     authority: { version: 1, status: 'experimental', since: '0.7.0' },
     related: { version: 1, status: 'experimental', since: '0.7.0' },
     path: { version: 2, status: 'experimental', since: '0.7.0' },
-    summary: { version: 1, status: 'experimental', since: '0.7.0' },
   },
 
   /** Which ways of drawing a relationship diagram exist. The first is the default. */
   layouts: {
     graph: buildRelationshipGraph,
     focus: buildFocusGraph,
-    chain: buildChainGraph,
     matrix: buildMatrixGraph,
     equity: buildEquityGraph,
     authority: buildAuthorityGraph,
     related: buildRelatedGraph,
     path: buildPathGraph,
-    summary: buildSummaryGraph,
   },
 }

@@ -3,7 +3,7 @@
 //
 //  Bands, the grid, the heads, and the chips in the cells. One decoration layer (1×1 to React Flow, drawn
 //  at full size inside); paint is given as SVG attributes so the exported picture keeps it. The chips'
-//  text is HTML laid over the SVG, as in the guarantee chain.
+//  text is HTML laid over the SVG.
 // ============================================================
 
 import { memo } from 'react'

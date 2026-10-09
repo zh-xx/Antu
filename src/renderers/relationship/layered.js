@@ -1,7 +1,7 @@
 // ============================================================
 //  src/renderers/relationship/layered.js — boxes in levels, lines between levels (shared)
 //
-//  The equity tree, the authority chart, the relation path and the camp summary all put boxes in levels
+//  The equity tree, the authority chart and the relation path all put boxes in levels
 //  (a holder above what it holds, a controller above the controlled, the start of a chain before its
 //  end, the creditor's camp before the debtor's) and draw a line for each relation between them. This is
 //  that one drawing, so the four cannot come to differ.

@@ -52,7 +52,7 @@ function assertSound(s, label) {
 
 test('the equity tree is a registered relationship kind, after the matrix', () => {
   registerKnowledge('relationship', relationshipKnowledge)
-  assert.deepEqual(layoutKindsOf('relationship').slice(0, 5), ['graph', 'focus', 'chain', 'matrix', 'equity'])
+  assert.deepEqual(layoutKindsOf('relationship').slice(0, 4), ['graph', 'focus', 'matrix', 'equity'])
 })
 
 for (const f of files) {

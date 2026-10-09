@@ -1,14 +1,14 @@
 // ============================================================
-//  test/views93.test.mjs — the four relationship views of issue #93 (pure functions):
-//  authority chart, related-party list, relation path, camp summary
+//  test/views93.test.mjs — the relationship views of issue #93 (pure functions):
+//  authority chart, related-party list, relation path
 //
 //  What must hold:
 //    1. every relation of every relationship example is on the page: a line or a row of the list under it
-//       (authority, path, summary), or a row of the table or the list of the rest (related)
-//    2. boxes (and blocks) do not overlap and stay inside the content
+//       (authority, path), or a row of the table or the list of the rest (related)
+//    2. boxes do not overlap and stay inside the content
 //    3. each view says what it chose: levels of authority, the chains found (shortest first, a party once
-//       per chain, direction ignored), the lines between camps (one per pair)
-//    4. any valid JSON draws: no authority, no chain, no groups, a centre with no relation
+//       per chain, direction ignored)
+//    4. any valid JSON draws: no authority, no chain, a centre with no relation
 // ============================================================
 
 import { test } from 'node:test'
@@ -18,7 +18,6 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { buildAuthorityGraph, classifyAuthority } from '../src/renderers/relationship/authority/layout.js'
 import { buildRelatedGraph, relatedRows, centreOf } from '../src/renderers/relationship/related/layout.js'
 import { buildPathGraph, findChains, defaultEnds, endsOf, columnsOf, MAX_CHAINS } from '../src/renderers/relationship/path/layout.js'
-import { buildSummaryGraph, summaryUnits, summaryLines } from '../src/renderers/relationship/summary/layout.js'
 import { layeredGraph } from '../src/renderers/relationship/layered.js'
 import { relationshipKnowledge } from '../src/renderers/relationship/schema.js'
 import { registerKnowledge, layoutKindsOf } from '../src/core/registry.js'
@@ -49,9 +48,9 @@ function assertBoxes(g, label) {
   }
 }
 
-test('the four views are registered relationship kinds, after the equity tree', () => {
+test('the views are registered relationship kinds, after the equity tree', () => {
   registerKnowledge('relationship', relationshipKnowledge)
-  assert.deepEqual(layoutKindsOf('relationship').slice(0, 9), ['graph', 'focus', 'chain', 'matrix', 'equity', 'authority', 'related', 'path', 'summary'])
+  assert.deepEqual(layoutKindsOf('relationship').slice(0, 7), ['graph', 'focus', 'matrix', 'equity', 'authority', 'related', 'path'])
 })
 
 for (const f of files) {
@@ -90,15 +89,6 @@ for (const f of files) {
       c.rels.forEach((r, i) => assert.ok((r.from === c.nodes[i] && r.to === c.nodes[i + 1]) || (r.to === c.nodes[i] && r.from === c.nodes[i + 1]), 'each hop is a relation between the two'))
     }
     for (let i = 1; i < chains.length; i++) assert.ok(chains[i].rels.length >= chains[i - 1].rels.length, 'shortest first')
-    assertBoxes(g, f)
-  })
-  test(`${f}: camp summary, every relation between blocks or inside one`, () => {
-    const s = load(f)
-    const g = buildSummaryGraph(s, {})
-    assert.deepEqual(g.errors, [])
-    assert.equal(g.betweenRelations + g.insideRelations, s.relations.length)
-    const units = summaryUnits(s)
-    assert.equal(units.reduce((n, u) => n + u.members.length, 0), s.entities.length, 'every party in a block or alone')
     assertBoxes(g, f)
   })
 }
@@ -195,32 +185,9 @@ test('path: the default ends are the two furthest apart, and a bad pick falls ba
   assert.deepEqual(endsOf(s, { from: 'zz', to: 'a' }), { from: 'a', to: 'c' })
 })
 
-test('summary: one line for a pair of blocks, run from the side most relations run from', () => {
-  const s = spec(
-    [entity('a1', { groupId: 'g1' }), entity('a2', { groupId: 'g1' }), entity('b1', { groupId: 'g2' }), entity('s')],
-    [rel('r1', 'a1', 'b1', 'debt'), rel('r2', 'a2', 'b1', 'guarantee'), rel('r3', 'b1', 'a1', 'contract'), rel('r4', 'a1', 'a2', 'equity'), rel('r5', 's', 'b1', 'other')],
-    { groups: [{ id: 'g1', label: 'One' }, { id: 'g2', label: 'Two' }] },
-  )
-  const units = summaryUnits(s)
-  assert.deepEqual(units.map((u) => u.id), ['g:g1', 'g:g2', 's'])
-  const { between, inside } = summaryLines(s, units)
-  assert.equal(between.length, 2)
-  const pair = between.find((b) => b.rels.length === 3)
-  assert.equal(pair.a, 'g:g1', 'two of the three run from One')
-  assert.equal(inside.get('g:g1').length, 1)
-  const g = buildSummaryGraph(s, {})
-  assert.deepEqual([g.blocks, g.singles, g.lines, g.betweenRelations, g.insideRelations], [2, 1, 2, 4, 1])
-  const pill = g.nodes.find((n) => n.type === 'lineLayer').data.pills.find((p) => /Debts/.test(p.text))
-  assert.match(pill.text, /Contracts 1/)
-  // No groups: every party alone
-  const flat = buildSummaryGraph(spec([entity('a'), entity('b')], [rel('r1', 'a', 'b', 'contract')]), {})
-  assert.equal(flat.blocks, 0)
-  assert.equal(flat.singles, 2)
-})
-
-test('the four reports name what each view chose', () => {
+test('the three reports name what each view chose', () => {
   const s = load('sample-group-guarantee.en.json')
-  for (const [kind, pattern] of [['authority', /^Kind: authority/m], ['related', /^Kind: related/m], ['path', /^Kind: path/m], ['summary', /camp block/]]) {
+  for (const [kind, pattern] of [['authority', /^Kind: authority/m], ['related', /^Kind: related/m], ['path', /^Kind: path/m]]) {
     const r = layoutReport(s, { kind })
     assert.equal(r.ok, true, kind)
     assert.match(formatLayoutReport(r), pattern, kind)

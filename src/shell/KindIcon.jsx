@@ -95,16 +95,6 @@ const SKETCH = {
       <circle cx="64" cy="39" r="4" fill={TINT} />
     </>
   ),
-  chain: (
-    <>
-      <rect x="3" y="14" width="22" height="20" rx="2" strokeWidth="2" fill="var(--antu-bg, #fff)" />
-      <path d="M25 24h6M31 12v24M31 12h6M31 36h6" />
-      <rect x="37" y="6" width="16" height="12" rx="2" fill={TINT} />
-      <rect x="37" y="30" width="16" height="12" rx="2" fill={TINT} />
-      <path d="M53 12h8" />
-      <rect x="61" y="6" width="16" height="12" rx="2" fill={TINT} />
-    </>
-  ),
   matrix: (
     <>
       <rect x="14" y="4" width="52" height="40" fill="var(--antu-bg, #fff)" />
@@ -152,14 +142,6 @@ const SKETCH = {
       <circle cx="35" cy="24" r="5" fill={TINT} />
       <circle cx="35" cy="8" r="3.5" strokeDasharray="2 2" />
       <circle cx="50" cy="40" r="3.5" strokeDasharray="2 2" />
-    </>
-  ),
-  summary: (
-    <>
-      <rect x="3" y="6" width="28" height="36" rx="4" fill={TINT} />
-      <rect x="49" y="6" width="28" height="36" rx="4" fill={TINT} />
-      <path d="M31 24h18" strokeWidth="2" />
-      <path d="M8 14h18M8 22h14M8 30h16M54 14h18M54 22h12M54 30h16" strokeDasharray="1 3" />
     </>
   ),
   // justification
