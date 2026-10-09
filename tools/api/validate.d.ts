@@ -24,6 +24,15 @@ export interface VersionsReport {
 
 export function validate(spec: unknown): ValidateResult
 export function layout(spec: unknown, options?: { kind?: string; orientation?: 'vertical' | 'horizontal' }): LayoutResult
+export interface NormalizeResult {
+  /** A repaired copy; the input is not modified */
+  spec: unknown
+  /** What was changed, in words an agent can read; empty when nothing was */
+  changes: string[]
+}
+
+/** Repair what is inconsistent in the marks of a spec but not in its content (a procedure's main line). Call it before `validate` */
+export function normalize(spec: unknown): NormalizeResult
 /** Each type and its kinds, the first kind being the one a diagram opens in */
 export function kinds(): Record<string, string[]>
 export function versions(): VersionsReport

@@ -10,6 +10,7 @@
 import '../renderers/components.js'
 import { validateSpec } from '../core/validate.js'
 import { listKinds } from '../core/registry.js'
+import { normalizeSpec } from '../core/normalize.js'
 
 export { mount } from './mount.js'
 
@@ -20,6 +21,15 @@ export { mount } from './mount.js'
 export function validate(spec) {
   const errors = validateSpec(spec)
   return { ok: errors.length === 0, errors: [...errors] }
+}
+
+/**
+ * Repair what is inconsistent in the marks of a spec but not in its content (a procedure's main line), and
+ * say what was done. The input is not modified. The same as `normalize` in `@zh-xx/antu/validate`.
+ * @returns {{ spec: unknown, changes: string[] }}
+ */
+export function normalize(spec) {
+  return normalizeSpec(spec)
 }
 
 /** The kinds a type can be drawn in, the first being the one it opens in */

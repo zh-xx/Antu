@@ -100,7 +100,7 @@ const FACT_AGENT_SAMPLE = join(REPO, 'examples/agent/fact/1-minimal.en.json')
  * Declared up here on purpose: the main flow below calls checkMessages() before this point in
  * file order, and a `const` further down would still be in its temporal dead zone.
  */
-const FIXED_ENGLISH_PREFIXES = ['err.', 'perr.', 'phint.']
+const FIXED_ENGLISH_PREFIXES = ['err.', 'perr.', 'phint.', 'norm.']
 
 // ---------------------------------------------------------------
 // Minimal assertions and reporting

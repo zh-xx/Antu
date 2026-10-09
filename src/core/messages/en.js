@@ -493,6 +493,10 @@ export const en = {
   'perr.mainBroken': ({ id }) =>
     `the main line breaks at node "${id}": the edges marked main do not reach any end. ` +
     'Either add the missing main edge, or repair the chain',
+  'norm.mainRemarked': ({ problem, from, to }) =>
+    `the main line was marked again, starting at "${from}" and ending at "${to}", keeping to the edges already marked where it could. It was: ${problem}`,
+  'norm.mainSet': ({ at }) => `${at}: marked main`,
+  'norm.mainCleared': ({ at }) => `${at}: no longer marked main`,
   'perr.rulesNotArray': '`rules` must be an array',
   'perr.duplicateRuleId': ({ at, id }) => `${at}: id "${id}" is already used by another rule or node`,
   'perr.ruleWhen': ({ at }) =>

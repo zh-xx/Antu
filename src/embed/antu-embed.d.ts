@@ -80,5 +80,8 @@ export function mount(element: HTMLElement, spec: AntuSpec, options?: MountOptio
 /** Check a spec the way the diagram checks it before drawing; each error names its field */
 export function validate(spec: unknown): { ok: boolean; errors: string[] }
 
+/** Repair what is inconsistent in the marks of a spec but not in its content (a procedure's main line); the input is not modified, `changes` says what was done */
+export function normalize(spec: unknown): { spec: unknown; changes: string[] }
+
 /** The kinds a type can be drawn in, the first being the one it opens in */
 export function kindsOf(type: string): string[]
