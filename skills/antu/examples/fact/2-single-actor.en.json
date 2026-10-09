@@ -1,39 +1,13 @@
 {
   "type": "fact",
-  "specVersion": 1,
+  "specVersion": 2,
   "title": "Single actor: one party, two sides by nature",
   "actors": [
-    {
-      "id": "a-1",
-      "name": "Guo",
-      "role": "plaintiff"
-    }
+    { "id": "a-1", "name": "Guo", "role": "plaintiff" }
   ],
   "groups": [
-    {
-      "id": "g-1",
-      "label": "Normal (performance as agreed)"
-    },
-    {
-      "id": "g-2",
-      "label": "Abnormal (deviation from the agreement)"
-    }
-  ],
-  "views": [
-    {
-      "label": "By performance",
-      "splitBy": "group"
-    },
-    {
-      "label": "Chronological only",
-      "splitBy": "actor",
-      "side1": {
-        "actors": []
-      },
-      "side2": {
-        "actors": []
-      }
-    }
+    { "id": "g-1", "label": "Normal (performance as agreed)" },
+    { "id": "g-2", "label": "Abnormal (deviation from the agreement)" }
   ],
   "slots": [
     {

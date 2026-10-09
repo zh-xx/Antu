@@ -9,14 +9,14 @@ description: >-
   contract flow, the parties, or a judgment's reasoning.
 license: AGPL-3.0-or-later
 metadata:
-  version: "0.11.0"
+  version: "0.12.0"
 ---
 
 # Antu: legal diagrams from JSON
 
 You write the JSON; the engine draws it. The result is **one HTML file** that opens in any browser with no install and
-no network, prints, and can be forwarded. Nothing is uploaded anywhere. This skill is Antu **0.11.0**; the pages it
-makes say so: `<meta name="generator" content="antu 0.11.0">`.
+no network, prints, and can be forwarded. Nothing is uploaded anywhere. This skill is Antu **0.12.0**; the pages it
+makes say so: `<meta name="generator" content="antu 0.12.0">`.
 
 **`<skill-dir>`** is the folder that holds this `SKILL.md` (`scripts/`, `references/`, `examples/` and `assets/` are
 beside it). Commands are written with it so that they run from any directory: put the real path in. Keep your own files
@@ -40,12 +40,12 @@ numbers, an org chart of a firm), say that Antu does not draw it.
    required, and what it means.
 2. Open one example of that kind in `examples/<kind>/` and follow its shape: `1-minimal` is the smallest, the others
    each add one idea.
-   **Fact diagram with two or more parties**: `1-minimal` is not enough. It has no `groups`, so every card stands on
-   the middle axis and the page does not show who did what. To put each party on its own side, give the diagram
-   `groups` (one per party or side, each event carrying its `groupId`: see `3-groups`) or `views` that split by party
-   (see `4-views`); an act of both goes on the axis.
+   **Fact diagram**: count the parties first. With two or more, each party carries `groupId` (its side, the 1st or
+   the 2nd group) and the events carry none: an event goes to its party's side, and one of several parties goes on
+   the axis (see `3-sides`, `4-one-side-several`). With one party, the groups sort its acts and go on the events
+   (see `2-single-actor`). There are no `views`.
 3. Write the file in the **user's language** (the examples come in `.zh-CN.json` and `.en.json`).
-4. Put `"specVersion": 1` in the envelope, next to `"type"`.
+4. Put `"specVersion"` in the envelope, next to `"type"`, with the generation the field table gives (`now N`).
 
 **What goes in the diagram comes from the user's material, not from you.**
 - Do not invent a date, a time, an article number, a version of a statute, a case number or a name. If the material
@@ -76,7 +76,7 @@ node <skill-dir>/scripts/antu.mjs preview spec.json -o shot.png
 
 - `validate` prints each problem with its field path (exit code 1 when there are any) or "Validation passed". Fix the
   JSON and run it again until it passes.
-- `layout` says how big the picture is, which orientation suits it and, for a fact diagram, which views do not fit. Run it
+- `layout` says how big the picture is, which orientation suits it and, for a fact diagram, how many columns each side has. Run it
   before `render`.
 - `render` checks the data first, refuses a diagram that has problems, and writes the page. Keep the JSON next to the
   HTML (same name, `.json`): the JSON is the source and can be edited and made again; the HTML is the product.
@@ -142,7 +142,7 @@ them on**, so do not count on them for what the diagram has to say; tell the use
 
 | Kind | Switches in the bar (on by default unless it says off) |
 | --- | --- |
-| fact | Summary (on), **Parties** (off), **Sources** (off), Grid (off), Stagger (vertical only; on: cards in different columns overlap by half a row, so a long timeline is shorter; the time order is read on the axis); the views menu at the top left when the data has more than one view. The chronicle has the same three card switches and no grid or views; the time scale has none |
+| fact | Summary (on), **Parties** (off), **Sources** (off), Grid (off), Stagger (vertical only; on: cards in different columns overlap by half a row, so a long timeline is shorter; the time order is read on the axis); there is no views menu. The chronicle has the same three card switches and no grid; the time scale has **Lane per party** (off; offered only when a side holds two or more parties) |
 | procedure | Conditions, Detail, Main line, Stages (only if the data has stages), Rules (only if it has rules); all on |
 | relationship | one switch per kind of relation (when the data uses more than one kind), Labels, Groups (only if the data has groups); all on. The focus view has the kind switches and Labels, and a "Default centre" button once another party was picked |
 | justification | Labels (only if a link has one; on), Fold issues (only if there are several issues; none folded), Merge repeats (off) |

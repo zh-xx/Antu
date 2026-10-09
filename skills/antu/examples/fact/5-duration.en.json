@@ -1,27 +1,50 @@
 {
   "type": "fact",
-  "specVersion": 1,
+  "specVersion": 2,
   "title": "Time: spans, approximations, and why they are recorded this way",
-  "actors": [{ "id": "a-1", "name": "Sun" }],
+  "actors": [
+    { "id": "a-1", "name": "Sun" }
+  ],
   "slots": [
     {
       "events": [
-        { "id": "ev-1", "date": "2030-06-02T20:14:16", "dateEnd": "2030-06-02T20:16:24",
+        {
+          "id": "ev-1",
+          "date": "2030-06-02T20:14:16",
+          "dateEnd": "2030-06-02T20:16:24",
           "label": "The two keep talking in the corridor",
-          "summary": "Talk only, under 5 min", "actorIds": ["a-1"] }
+          "summary": "Talk only, under 5 min",
+          "actorIds": [
+            "a-1"
+          ]
+        }
       ]
     },
     {
       "events": [
-        { "id": "ev-2", "date": "2030-06-02T20:23", "approx": true,
+        {
+          "id": "ev-2",
+          "date": "2030-06-02T20:23",
+          "approx": true,
           "dateNote": "Not captured on surveillance; inferred from the parties' accounts",
-          "label": "Argument at the property duty room door", "actorIds": ["a-1"] }
+          "label": "Argument at the property duty room door",
+          "actorIds": [
+            "a-1"
+          ]
+        }
       ]
     },
     {
       "events": [
-        { "id": "ev-3", "date": "2030-06-02", "label": "Qian has a sudden heart problem",
-          "detail": "The judgment gives no exact time; it is recorded only to the day", "actorIds": ["a-1"] }
+        {
+          "id": "ev-3",
+          "date": "2030-06-02",
+          "label": "Qian has a sudden heart problem",
+          "detail": "The judgment gives no exact time; it is recorded only to the day",
+          "actorIds": [
+            "a-1"
+          ]
+        }
       ]
     }
   ]

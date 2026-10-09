@@ -1,0 +1,44 @@
+{
+  "type": "fact",
+  "specVersion": 2,
+  "title": "Several parties on one side: one column each, a joint act on the axis",
+  "actors": [
+    { "id": "a-1", "name": "Huayuan Trading", "role": "plaintiff", "groupId": "g-1" },
+    { "id": "a-2", "name": "Li", "role": "agent for the lender", "groupId": "g-1" },
+    { "id": "a-3", "name": "Xincheng Building Materials", "role": "defendant", "groupId": "g-2" }
+  ],
+  "groups": [
+    { "id": "g-1", "label": "Lender's side" },
+    { "id": "g-2", "label": "Borrower's side" },
+    { "id": "g-3", "label": "Joint acts or objective course" }
+  ],
+  "slots": [
+    {
+      "events": [
+        { "id": "ev-1", "date": "2023-03-10", "label": "The loan contract is signed",
+          "actorIds": ["a-1", "a-3"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-2", "date": "2023-03-12", "label": "Huayuan Trading disburses the loan",
+          "actorIds": ["a-1"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-3", "date": "2024-03-15", "label": "Li sends a payment demand",
+          "actorIds": ["a-2"] }
+      ]
+    },
+    {
+      "events": [
+        { "id": "ev-4", "date": "2024-03-20", "label": "Huayuan Trading and Li call on the borrower together",
+          "summary": "same side, together: on the axis",
+          "actorIds": ["a-1", "a-2"] },
+        { "id": "ev-5", "date": "2024-03-20", "label": "Xincheng Building Materials has not repaid",
+          "actorIds": ["a-3"] }
+      ]
+    }
+  ]
+}
