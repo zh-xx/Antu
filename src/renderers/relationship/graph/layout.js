@@ -55,6 +55,10 @@ import {
   labelBox,
 } from './metrics.js'
 
+/** Two links running side by side keep at least this far apart; the side ports of a box spread to allow it */
+const PARALLEL_MIN = 15
+const SIDE_SPREAD = 16
+
 /** Every order of a short list */
 export function permutations(list) {
   if (list.length <= 1) return [list]
@@ -625,6 +629,10 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         portCost: portCostFor(a, b),
         crossCost: CROSS_COST,
         sidePorts: true,
+        // Links side by side at least this far apart (the review on PR 171: 11 px read as one line); the side ports of a low
+        // box spread to match
+        sideSpread: SIDE_SPREAD,
+        parallelGap: PARALLEL_MIN,
       })
     const points = (stacked ? route(['top', 'bottom']) : null) ?? route(undefined) ?? fallbackRoute(a, b)
     const c = { index: i, points, labelAt: null, labelSize: { width: labels[i].frame.width, height: labels[i].frame.height } }

@@ -71,10 +71,12 @@ const emOf = (text, factor) => {
 
 /**
  * What crossing another link costs the router, in pixels of length. The flowchart's is 1400: a detour
- * always beats a crossing. Here links run across the picture between camps, so a crossing is worth a
- * bend or so and not a trip round the whole diagram (seen on the first horizontal screenshot).
+ * always beats a crossing. It was 450 here (a bend or so), so a link would not go right round the
+ * picture; once links no longer share a stretch and keep 15 px apart, that let a loan cross a family
+ * line rather than take one more bend. About two bends now: a short detour beats a crossing, a trip
+ * round the whole picture does not.
  */
-export const CROSS_COST = 450
+export const CROSS_COST = 1300
 
 /** Past this many entities the diagram is reported with a hint (it is not an error) */
 export const SCALE_HINT_ENTITIES = 25

@@ -272,3 +272,18 @@ test('two relations on one pair run apart all the way, whichever way each runs; 
     )
   }
 })
+
+test('two relations on one pair are drawn at least 18 px apart (review on PR 171: 12 px)', () => {
+  for (const f of readdirSync('examples/relationship').filter((x) => x.endsWith('.json'))) {
+    const g = buildFocusGraph(JSON.parse(readFileSync('examples/relationship/' + f, 'utf8')))
+    g.connections.forEach((c, i) =>
+      g.connections.slice(i + 1).forEach((d) => {
+        if ([c.from, c.to].sort().join() !== [d.from, d.to].sort().join() || c.points.length !== 2 || d.points.length !== 2) return
+        const [a, b] = c.points
+        const p = d.points[0]
+        const dist = Math.abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / Math.hypot(b[0] - a[0], b[1] - a[1])
+        assert.ok(dist >= 18, `${f}: "${c.label}" and "${d.label}" ${dist.toFixed(1)} px apart`)
+      }),
+    )
+  }
+})

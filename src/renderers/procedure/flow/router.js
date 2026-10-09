@@ -46,7 +46,7 @@ const hitsRect = (x0, y0, x1, y1, r, m) =>
   Math.max(x0, x1) > r.x - m && Math.min(x0, x1) < r.x + r.w + m && Math.max(y0, y1) > r.y - m && Math.min(y0, y1) < r.y + r.h + m
 
 /** The ports of a node box: [x, y, side, offCentre] */
-function portsOf(r, diamond, sidePorts = false) {
+function portsOf(r, diamond, sidePorts = false, sideSpread = 0) {
   const cx = r.x + r.w / 2
   const cy = r.y + r.h / 2
   const list = [
@@ -62,8 +62,11 @@ function portsOf(r, diamond, sidePorts = false) {
     // A diagram whose links leave and arrive on the sides as much as top and bottom asks for a
     // quarter port there too: with one port a side takes one link, and the next one has to go round
     if (sidePorts) {
-      for (const f of [0.25, 0.75]) {
-        list.push([r.x, r.y + r.h * f, 'left', true], [r.x + r.w, r.y + r.h * f, 'right', true])
+      // `sideSpread`: the two side ports at least this far from the middle (kept clear of the corners), not only a
+      // quarter of the way: on a low box a quarter is 12 px, and two links side by side read as one
+      const off = sideSpread ? Math.min(Math.max(sideSpread, r.h / 4), r.h / 2 - 8) : r.h / 4
+      for (const d of [-off, off]) {
+        list.push([r.x, r.y + r.h / 2 + d, 'left', true], [r.x + r.w, r.y + r.h / 2 + d, 'right', true])
       }
     }
   }
@@ -167,6 +170,8 @@ class Heap {
  * @param {{x,y,w,h}} [p.bounds]  keep the whole route inside this rectangle (a link inside one stage)
  * @param {number[][]} [p.taken]  more points no route may start or end at (ends of links left out of `routes`)
  * @param {boolean} [p.sidePorts]  also offer a quarter port on each side (left and right), not only top and bottom
+ * @param {number} [p.sideSpread]  with sidePorts, put the two side ports this far from the middle of the side (px)
+ * @param {number} [p.parallelGap]  how far apart two links running side by side must be (default PARALLEL_GAP)
  * @param {number} [p.crossCost]  what crossing another link costs, in pixels of length (default: more than two bends)
  * @returns {number[][] | null}  the polyline, first point on the source, last on the target
  */
@@ -176,6 +181,7 @@ export function routeLink(p) {
   // What crossing another link costs. The flowchart keeps it high (a detour always beats a crossing);
   // a diagram with links across the whole picture may lower it, so a link does not go right round
   const crossCost = p.crossCost ?? CROSS
+  const gap = p.parallelGap ?? PARALLEL_GAP
   // A port another link already leaves or arrives at is taken: two links out of one point read
   // as one link that forks (links allowed to merge, `share`, may use it)
   const taken = [
@@ -183,8 +189,8 @@ export function routeLink(p) {
     ...(p.taken ?? []),
   ]
   const free = ([x, y]) => !taken.some(([tx, ty]) => Math.abs(tx - x) < 1 && Math.abs(ty - y) < 1)
-  const outPorts = portsOf(from, p.fromDiamond, p.sidePorts).filter(([x, y, s]) => (!p.outSides || p.outSides.includes(s)) && free([x, y]))
-  const inPorts = portsOf(to, p.toDiamond, p.sidePorts).filter(([x, y, s]) => (!p.inSides || p.inSides.includes(s)) && free([x, y]))
+  const outPorts = portsOf(from, p.fromDiamond, p.sidePorts, p.sideSpread).filter(([x, y, s]) => (!p.outSides || p.outSides.includes(s)) && free([x, y]))
+  const inPorts = portsOf(to, p.toDiamond, p.sidePorts, p.sideSpread).filter(([x, y, s]) => (!p.inSides || p.inSides.includes(s)) && free([x, y]))
 
   // Obstacles: nodes with clearance, the two ends without (the route starts on their edge)
   const isEnd = (r) => r === from || r === to || (r.x === from.x && r.y === from.y) || (r.x === to.x && r.y === to.y)
@@ -216,8 +222,8 @@ export function routeLink(p) {
   // Beside existing links, so a new one can run parallel at the right distance
   for (const rt of routes) {
     for (const [x, y] of rt.points) {
-      xsSet.add(x - PARALLEL_GAP - 1).add(x + PARALLEL_GAP + 1)
-      ysSet.add(y - PARALLEL_GAP - 1).add(y + PARALLEL_GAP + 1)
+      xsSet.add(x - gap - 1).add(x + gap + 1)
+      ysSet.add(y - gap - 1).add(y + gap + 1)
     }
   }
   const sortNum = (s) => [...s].map((v) => Math.round(v * 2) / 2).sort((a, b) => a - b).filter((v, i, a) => i === 0 || v !== a[i - 1])
@@ -255,14 +261,14 @@ export function routeLink(p) {
     if (Math.abs(y0 - y1) < 0.5) {
       const a = Math.min(x0, x1)
       const b = Math.max(x0, x1)
-      if (hSegs.some((s) => !s.share && Math.abs(s.y - y0) < PARALLEL_GAP && Math.min(b, s.b) - Math.max(a, s.a) > 0.5)) return null
+      if (hSegs.some((s) => !s.share && Math.abs(s.y - y0) < gap && Math.min(b, s.b) - Math.max(a, s.a) > 0.5)) return null
       // Half-open along the step ([a, b)): a crossing that falls exactly on a grid point is
       // counted once, by the step that starts there, not by neither
       return vSegs.filter((s) => !s.share && s.x >= a - 0.01 && s.x < b - 0.01 && y0 > s.a + 0.5 && y0 < s.b - 0.5).length
     }
     const a = Math.min(y0, y1)
     const b = Math.max(y0, y1)
-    if (vSegs.some((s) => !s.share && Math.abs(s.x - x0) < PARALLEL_GAP && Math.min(b, s.b) - Math.max(a, s.a) > 0.5)) return null
+    if (vSegs.some((s) => !s.share && Math.abs(s.x - x0) < gap && Math.min(b, s.b) - Math.max(a, s.a) > 0.5)) return null
     return hSegs.filter((s) => !s.share && s.y >= a - 0.01 && s.y < b - 0.01 && x0 > s.a + 0.5 && x0 < s.b - 0.5).length
   }
 

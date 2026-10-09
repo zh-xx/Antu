@@ -31,14 +31,14 @@ import { makePartyData } from '../partyData.js'
 import { tEn } from '../../../core/i18n.js'
 
 /** The rings are ellipses, wider than tall (a screen is) */
-export const ASPECT = 1.5
+export const ASPECT = 1.7
 /** Clear space kept between two boxes, and around a box for a line to pass */
 const BOX_GAP = 14
 const LINE_CLEAR = 4
 /** Between two rings, over the boxes' own sizes: room for the arcs that go round the inner ring */
-const RING_GAP = 100
+const RING_GAP = 70
 /** The first ring's distance from the centre, over the boxes' own sizes */
-const FIRST_GAP = 90
+const FIRST_GAP = 60
 /** A camp's name over its parties' boxes */
 export const CAMP_TAG_H = 18
 /** Islands: the gap between two, and the gap between the picture and the islands' caption */
@@ -46,7 +46,7 @@ const ISLAND_GAP = 56
 const ISLAND_ROW_GAP = 64
 export const NOTE_H = 24
 /** Parallel relations between one pair of parties are drawn this far apart */
-const PARALLEL_STEP = 14
+const PARALLEL_STEP = 24
 
 const rectOf = (p) => ({ x: p.x, y: p.y, w: p.w, h: p.h })
 const centreOf = (r) => [r.x + r.w / 2, r.y + r.h / 2]

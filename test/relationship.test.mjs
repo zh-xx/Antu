@@ -11,7 +11,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import fs, { readFileSync } from 'node:fs'
 
 import '../src/renderers/index.js'
 import { validateSpec } from '../src/core/validate.js'
@@ -548,5 +548,28 @@ test('the borrower is not hidden behind her husband: both loans run straight to 
   for (const c of g.connections) {
     const r = { x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height }
     assert.ok(!titles.some((t) => ov(r, t)), `"${c.label}" on a camp's title`)
+  }
+})
+
+test('two links running side by side keep at least 15 px apart (review on PR 171: 11 px read as one line)', () => {
+  const { readdirSync } = fs
+  const segs = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
+  const gap = ([a, b], [c, d]) => {
+    const h1 = Math.abs(a[1] - b[1]) < 0.5
+    if (h1 !== Math.abs(c[1] - d[1]) < 0.5) return Infinity
+    const [k, i] = h1 ? [1, 0] : [0, 1]
+    const ov = Math.min(Math.max(a[i], b[i]), Math.max(c[i], d[i])) - Math.max(Math.min(a[i], b[i]), Math.min(c[i], d[i]))
+    return ov > 4 ? Math.abs(a[k] - c[k]) : Infinity
+  }
+  const dir = 'examples/relationship/'
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+    for (const o of ['vertical', 'horizontal']) {
+      const g = buildRelationshipGraph(JSON.parse(readFileSync(dir + f, 'utf8')), {}, undefined, o)
+      g.connections.forEach((c, i) =>
+        g.connections.slice(i + 1).forEach((d) => {
+          for (const s of segs(c.points)) for (const t of segs(d.points)) assert.ok(gap(s, t) >= 15, `${f} ${o}: "${c.label}" and "${d.label}" ${gap(s, t)} px apart`)
+        }),
+      )
+    }
   }
 })
