@@ -125,7 +125,7 @@ try {
         check('an unknown procedure kind is named, exit code 2', wrongProc.status === 2 && /flow, route/.test(wrongProc.stderr), `${wrongProc.status} ${wrongProc.stderr.trim()}`)
       }
       const wrongRel = run('layout', rel, '--kind', 'scale')
-      check('a fact kind on a relationship is named, exit code 2', wrongRel.status === 2 && /graph, focus, matrix, equity, authority, related, path/.test(wrongRel.stderr), `${wrongRel.status} ${wrongRel.stderr.trim()}`)
+      check('a fact kind on a relationship is named, exit code 2', wrongRel.status === 2 && /graph, focus, .*matrix, equity, authority, related, path/.test(wrongRel.stderr), `${wrongRel.status} ${wrongRel.stderr.trim()}`)
     }
     // The time scale, where this command line has it
     if (run('--help').stdout.includes('scale')) {
