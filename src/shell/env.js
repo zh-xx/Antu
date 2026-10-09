@@ -38,12 +38,36 @@ function commandBus() {
         if (handlers.get(name) === fn) handlers.delete(name)
       }
     },
+    /** Whether something answers `name` now */
+    has(name) {
+      return handlers.has(name)
+    },
     /** Run `name` and return what it returns; undefined when it was held */
     run(name, ...args) {
       const fn = handlers.get(name)
       if (fn) return fn(...args)
       held.set(name, args)
       return undefined
+    },
+  }
+}
+
+/**
+ * The items a host marked (`highlight`, issue 164): kept here rather than in the canvas, so the marks stay on
+ * through `update`, a change of kind or theme, until the host changes them. Read with useSyncExternalStore.
+ */
+function markStore() {
+  let ids = []
+  const listeners = new Set()
+  return {
+    get: () => ids,
+    set(next) {
+      ids = next
+      listeners.forEach((fn) => fn())
+    },
+    subscribe(fn) {
+      listeners.add(fn)
+      return () => listeners.delete(fn)
     },
   }
 }
@@ -58,6 +82,9 @@ export function standaloneEnv({ preset } = {}) {
     lang: { read: initialLang, write: writeStoredLang },
     emit: noop,
     commands: commandBus(),
+    highlight: markStore(),
+    /** How the diagram opens, ahead of the reader's stored choices (`mount(…, { initial })`); nothing on the page */
+    initial: {},
     /** Called by the canvas once the diagram has been drawn and fitted (a host's `ready`) */
     drawn: noop,
     /** Where the diagram's elements are looked up (the whole document on the viewer page) */
@@ -72,8 +99,9 @@ export function standaloneEnv({ preset } = {}) {
  * @param emit    the host's onEvent
  * @param root    the shadow root (or element) the diagram is drawn in
  * @param ui      which pieces of the page's own chrome show
+ * @param initial how it opens, ahead of the stored choices: { headerFolded? }
  */
-export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = null, ui = {} } = {}) {
+export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = null, ui = {}, initial = {} } = {}) {
   const store = prefs === 'local' ? localPrefs : prefs && typeof prefs === 'object' ? prefs : memoryPrefs()
   return {
     embedded: true,
@@ -83,6 +111,8 @@ export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = 
     lang: { read: () => store.read().lang ?? null, write: (lang) => store.write({ lang }) },
     emit,
     commands: commandBus(),
+    highlight: markStore(),
+    initial,
     drawn,
     root,
     ui,
@@ -90,6 +120,9 @@ export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = 
 }
 
 export const EnvContext = createContext(standaloneEnv())
+
+/** The spec now drawn (App provides it), so the canvas can find the nodes of an item a host names */
+export const ShownSpecContext = createContext(null)
 
 export const useEnv = () => useContext(EnvContext)
 

@@ -30,7 +30,7 @@ import { getRenderer, knowledgeOf, listKinds, listTypes } from './core/registry.
 import { GRAPH_TYPE_KEYS } from './core/labels.js'
 import { useLang } from './shell/LangContext.jsx'
 import DiagramHeader from './shell/DiagramHeader.jsx'
-import { useEnv, useUi } from './shell/env.js'
+import { ShownSpecContext, useEnv, useUi } from './shell/env.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
 import { useTheme } from './theme/ThemeContext.jsx'
 
@@ -196,7 +196,9 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
 
       {ready ? (
         <ErrorBoundary lang={lang}>
-          <Renderer spec={spec} />
+          <ShownSpecContext.Provider value={spec}>
+            <Renderer spec={spec} />
+          </ShownSpecContext.Provider>
         </ErrorBoundary>
       ) : (
         <FallbackInfo

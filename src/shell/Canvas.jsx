@@ -12,14 +12,15 @@
 //  "what a click should do" is the rendering kind's own business; this only forwards them.
 // ============================================================
 
-import { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useContext, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState, useEdgesState } from '@xyflow/react'
 
 import { useLang } from './LangContext.jsx'
 import { useTheme, themeVars } from '../theme/ThemeContext.jsx'
 import { FIT_PADDING, fitWidthZoom, fitZoom } from '../core/canvas.js'
-import { exportPng as runExportPng, renderPng } from './exportPng.js'
-import { useEnv, useUi } from './env.js'
+import { EXPORT_CLASS, exportPng as runExportPng, renderPng } from './exportPng.js'
+import { ShownSpecContext, useEnv, useUi } from './env.js'
+import { nodesOfItem, pinTargetOf } from '../core/items.js'
 import { placeDock } from './dockPlace.js'
 
 /** React Flow's minimap width plus its border, until one has been measured */
@@ -65,6 +66,10 @@ const miniGhost = ({ width, height }) => ({
   style: { pointerEvents: 'none', visibility: 'hidden' },
 })
 const miniColor = (node) => (node.id === MINI_GHOST_ID ? '#eef1f5' : '#cbd5e1')
+
+/** The element an item's node stands at: a canvas node, or a row of the flowchart's rule table (`rule:<id>`) */
+const selectorOf = (id) =>
+  id.startsWith('rule:') ? `[data-pin-id="${CSS.escape(id)}"]` : `.react-flow__node[data-id="${CSS.escape(id)}"]`
 
 export default function Canvas({
   ref,
@@ -160,6 +165,8 @@ export default function Canvas({
   }
   const firstFitRef = useRef(true)
   const { drawn } = useEnv()
+  // whether the first fit has run: a host's select and focus wait for it (held by the command bus till then)
+  const [placed, setPlaced] = useState(false)
   useEffect(() => {
     // Wait one frame so React Flow measures the new sizes first
     const id = requestAnimationFrame(() => {
@@ -167,7 +174,10 @@ export default function Canvas({
       fit(first ? 0 : 300)
       firstFitRef.current = false
       // the diagram is on the screen and fitted: a host waiting on `ready` may now take its picture
-      if (first) drawn()
+      if (first) {
+        drawn()
+        setPlaced(true)
+      }
     })
     return () => cancelAnimationFrame(id)
   }, [fitKey ?? graph])
@@ -233,6 +243,62 @@ export default function Canvas({
     }
   }, [commands, graph])
 
+  // A host names items of its spec (issue 164): `select` pins the card of one as a click would, `focus` brings it
+  // into view, `highlight` rings them. An item is found among the canvas nodes the way `select` events name them
+  // back (core/items.js); a rule of the flowchart is a row of its table, found by its `data-pin-id`.
+  const shownSpec = useContext(ShownSpecContext)
+  const { highlight } = useEnv()
+  const latestRef = useRef(null)
+  latestRef.current = { spec: shownSpec, graph, minZoom }
+  useEffect(() => {
+    if (!placed) return undefined
+    const elementOf = (id) => canvasRef.current?.querySelector(selectorOf(id))
+    const markSelected = (target) =>
+      setNodes((prev) => prev.map((n) => (!!n.selected === (n.id === target) ? n : { ...n, selected: n.id === target })))
+    const offSelect = commands.on('select', (id) => {
+      // a kind no reader can pin anything in (the route map) has nobody to answer
+      if (!commands.has('pin')) return false
+      if (id === null) {
+        commands.run('pin', null)
+        markSelected(null)
+        return true
+      }
+      const { spec, graph: g } = latestRef.current
+      const target = pinTargetOf(spec, g.nodes, id)
+      if (!target || !elementOf(target)) return false
+      commands.run('pin', target)
+      markSelected(target)
+      return true
+    })
+    const offFocus = commands.on('focus', (id) => {
+      const { spec, graph: g, minZoom: floor } = latestRef.current
+      const el = nodesOfItem(spec, g.nodes, id).map(elementOf).find(Boolean)
+      const rf = rfRef.current
+      const box = canvasRef.current?.getBoundingClientRect()
+      if (!el || !rf || !box?.width) return false
+      const rect = el.getBoundingClientRect()
+      const zoom = rf.getZoom()
+      const centre = rf.screenToFlowPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+      // the zoom stays, unless the item would not fit in the window at it
+      const fits = Math.min((box.width * 0.9 * zoom) / rect.width, (box.height * 0.9 * zoom) / rect.height)
+      rf.setCenter(centre.x, centre.y, { zoom: Math.max(Math.min(zoom, fits), floor), duration: 300 })
+      return true
+    })
+    return () => {
+      offSelect()
+      offFocus()
+    }
+  }, [placed, commands, setNodes])
+  const marked = useSyncExternalStore(highlight.subscribe, highlight.get)
+  // the ring is the theme's own colour, and an export (which marks the app with EXPORT_CLASS) leaves it out
+  const markCss = useMemo(() => {
+    const selectors = marked
+      .flatMap((id) => nodesOfItem(shownSpec, graph.nodes, id))
+      .map(selectorOf)
+    if (!selectors.length) return ''
+    return `.antu-app:not(.${EXPORT_CLASS}) :is(${selectors.join(', ')}) { outline: 3px solid var(--antu-side1); outline-offset: 4px; }`
+  }, [marked, shownSpec, graph])
+
   // The pieces of the shell a host may turn off (`mount(…, { ui })`); all on for the viewer page
   const showZoom = useUi('zoom')
   const showMinimap = useUi('minimap')
@@ -288,6 +354,7 @@ export default function Canvas({
       ref={canvasRef}
       style={style}
     >
+      {markCss && <style>{markCss}</style>}
       <ReactFlow
         nodes={nodes}
         edges={edges}

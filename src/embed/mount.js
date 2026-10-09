@@ -16,6 +16,7 @@
 import { listKinds } from '../core/registry.js'
 import { isTheme } from '../theme/themes.js'
 import { normalizeLang } from '../core/i18n.js'
+import { itemOf } from '../core/items.js'
 import { embeddedEnv } from '../shell/env.js'
 import { renderDiagram } from './core.jsx'
 import { toShadowCss } from './shadowCss.js'
@@ -48,6 +49,23 @@ function kindOptionProblem(spec, { kind, kinds }) {
   return ''
 }
 
+/** What can be asked of how a diagram opens (`initial`), each with the test of its value */
+const INITIAL = { headerFolded: (v) => typeof v === 'boolean' }
+
+/** What is wrong with `initial` ('' when nothing is): an unknown key or a wrong value is refused, not ignored (issue 165) */
+function initialProblem(initial) {
+  if (initial === undefined) return ''
+  if (!initial || typeof initial !== 'object' || Array.isArray(initial)) return 'options.initial must be an object'
+  for (const [key, value] of Object.entries(initial)) {
+    if (!INITIAL[key]) return `options.initial.${key} is not an option: ${Object.keys(INITIAL).join(', ')}`
+    if (value !== undefined && !INITIAL[key](value)) return `options.initial.${key} must be a boolean`
+  }
+  return ''
+}
+
+/** Whether `id` is the id of an item of `spec` (a select or focus sent before the diagram is drawn is answered so) */
+const isItem = (spec, id) => itemOf(spec, id)?.item.id === id
+
 /**
  * @param {HTMLElement} el   the host's element; the diagram fills it, so it needs a height
  * @param {object} spec      the Antu JSON
@@ -61,12 +79,13 @@ function kindOptionProblem(spec, { kind, kinds }) {
  * @param {'none'|'local'|{read(): object, write(patch: object): void}} [options.prefs]
  *                                      where the reader's choices are kept: 'none' (default) while mounted
  *                                      only, 'local' in the viewer page's localStorage key, or the host's store
+ * @param {{headerFolded?: boolean}} [options.initial]  how it opens, ahead of the reader's stored choices
  * @param {(event: object) => void} [options.onEvent]   select, kindchange, invalid (spec/embed.md)
  */
 export function mount(el, spec, options = {}) {
   if (!el || typeof el.attachShadow !== 'function') throw new TypeError('antu mount: the first argument must be an element')
   // checked before anything is put on the element, so a refused mount leaves nothing behind
-  const optionProblem = kindOptionProblem(spec, options)
+  const optionProblem = kindOptionProblem(spec, options) || initialProblem(options.initial)
   if (optionProblem) throw new Error(`antu mount: ${optionProblem}`)
   const shadow = el.shadowRoot ?? el.attachShadow({ mode: 'open' })
   if (shadow.querySelector(`.${MOUNTED}`)) throw new Error('antu mount: a diagram is already mounted on this element; destroy it first')
@@ -118,6 +137,7 @@ export function mount(el, spec, options = {}) {
     prefs: options.prefs ?? 'none',
     root: shadow,
     ui: { ...(options.ui || {}) },
+    initial: { ...(options.initial || {}) },
     emit: (event) => {
       if (event?.type === 'invalid') {
         drawnNow = false
@@ -188,6 +208,30 @@ export function mount(el, spec, options = {}) {
       if (lang !== 'zh' && lang !== 'en') return false
       env.commands.run('setLang', lang)
       return true
+    },
+    /**
+     * Pin the card of the item `id` of the spec, as if the reader had clicked it (the host hears `select`);
+     * `null` unpins. False when no card of that item is drawn in this kind.
+     */
+    select(id) {
+      alive('select')
+      if (id !== null && typeof id !== 'string') return false
+      const done = env.commands.run('select', id)
+      // held until the diagram is drawn: answered from the spec
+      return done === undefined ? id === null || isItem(current.spec, id) : done
+    },
+    /** Move the view to the item `id`, keeping the zoom unless it would not show it; false when it is not drawn */
+    focus(id) {
+      alive('focus')
+      if (typeof id !== 'string') return false
+      const done = env.commands.run('focus', id)
+      return done === undefined ? isItem(current.spec, id) : done
+    },
+    /** Ring these items in the theme's colour until called again; `[]` clears. Ids that name no item are passed over */
+    highlight(ids) {
+      alive('highlight')
+      if (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string')) throw new TypeError('antu highlight: ids must be an array of strings')
+      env.highlight.set([...new Set(ids)])
     },
     /** Fit the whole diagram into view again */
     fitView() {

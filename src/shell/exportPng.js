@@ -48,7 +48,7 @@ const PIXEL_RATIO = 2
 export const EXPORT_PAD = 24
 
 /** The class added to the shell during export; the styles use it to hide the overlays that would enter the image */
-const EXPORT_CLASS = 'is-exporting'
+export const EXPORT_CLASS = 'is-exporting'
 
 /**
  * Content size + margin = output size, and where in the output the content should be drawn.

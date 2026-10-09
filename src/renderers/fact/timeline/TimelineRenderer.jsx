@@ -106,7 +106,7 @@ export default function FactTimeline({ spec }) {
   // Overlay state: hoveredId is the card the mouse passed over, pinnedId is the card clicked open
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
-  useSelectEvent(spec, pinnedId)
+  useSelectEvent(spec, pinnedId, setPinnedId)
 
   // Export: the guard and the failure message live in the shell hook, shared with every renderer
   const { canvasRef, exporting, onExport } = useExport(spec?.title)

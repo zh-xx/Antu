@@ -67,6 +67,7 @@ shadow root 是开放的，正为此。
 | `lang` | 浏览器的 | `zh` 或 `en`：页面自身文字的语言。案件内容不翻译 |
 | `ui` | 全部 `true` | `{ header, capsule, minimap, zoom }`：去掉页面上的哪些部件（左上角标签卡、底部控制胶囊、缩略图、缩放按钮） |
 | `prefs` | `'none'` | 读者的选择（画法、字段、方向……）存在哪：`'none'` 只在挂载期间保留；`'local'` 存进 viewer 页面的 `localStorage` 键（`antu.prefs`）；或宿主自己的存储 `{ read(): object, write(patch) }` |
+| `initial` | 无 | 打开时的样子，先于读者保存的选择：`{ headerFolded }`（标签卡折叠成一行，或展开）。打开时它压过保存的选择，与 `theme` 相同；之后读者仍可改，改动按 `prefs` 保存。键不在其中、或值不是布尔值，`mount` 抛错 |
 | `onEvent` | 无 | `(event) => void`；处理函数抛错只会打印在控制台，不影响图 |
 
 ### 句柄
@@ -77,11 +78,18 @@ shadow root 是开放的，正为此。
 | `update(spec)` | 在原处画另一份 spec；读者的选择按标题保存，与 viewer 页面相同 |
 | `setKind(kind)` | 不是该类型（或 `kinds`）的画法时返回 `false` |
 | `setTheme(theme)`、`setLang(lang)` | 值不存在时返回 `false` |
+| `select(id)` | 钉住 spec 中条目 `id` 的卡片，如同读者点了它：宿主照常收到 `select`。`select(null)` 取消钉住。该画法里没有画出这个条目的卡片（或该画法不能钉住任何东西，如路线图）时返回 `false` |
+| `focus(id)` | 把视野移到条目 `id` 居中，缩放不变，除非在这个缩放下它放不进窗口。该画法里没有画出它时返回 `false` |
+| `highlight(ids)` | 用主题的颜色给这些条目加一圈标记；`highlight([])` 清除。标记在 `update`、切换画法或主题后仍在，直到再次调用；不影响钉住和读者的悬停，也不进 `exportPng`。不对应任何条目的 id 略过 |
 | `fitView()` | 重新把整张图适配进视野 |
 | `exportPng({ pixelRatio })` | `Promise<Blob>`：与页面自带导出相同的 PNG（不含标签卡，四周白边，默认每设计像素 2 个设备像素），不保存到任何地方。会等当前挂载的 spec 画好；spec 不合法时拒绝（问题在 `errors`） |
 | `destroy()` | 把图拿掉；元素可以再次挂载。在已挂载的元素上再 `mount` 会抛错 |
 
-`mount` 之后、图画好之前的调用会被保留，画好后执行。
+`mount` 之后、图画好之前的调用会被保留，画好后执行（这时 `select`、`focus` 按 spec 作答：有这个 id 的条目即为 `true`）。
+
+`select`、`focus`、`highlight` 接收 spec 里的 id，即 `select` 事件报告的那些 id。它们在画布上的找法与事件反向一致：
+流程图的规则是规则表里的一行；一个视图里画了多次的条目（关系路径、论证树里的副本）任一副本都算；`focus` 移到第一个，
+`highlight` 全部标出。
 
 ### 事件
 

@@ -57,6 +57,7 @@ const RuleTableNode = memo(function RuleTableNode({ data }) {
             return (
               <div
                 key={id}
+                data-pin-id={id}
                 className={`antu-rtable-row${lit ? ' is-lit' : ''}`}
                 style={{ gridTemplateColumns: cols, height: row.h }}
                 role="button"
