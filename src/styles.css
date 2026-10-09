@@ -1075,7 +1075,9 @@
 .antu-rn:focus-visible .antu-rn-shape { stroke: var(--antu-side1); stroke-width: 2; }
 .antu-rn.is-end .antu-rn-label {
   font-family: var(--antu-font-head, inherit); color: var(--antu-bg, #fff); }
-.antu-rn.is-end .antu-rn-role { color: var(--antu-text-4); }
+/* The role on a dark box: the box's own light ink, a little softer (the theme's grey text-4 is dark in the
+   document theme and could not be read on the dark fill) */
+.antu-rn.is-end .antu-rn-role { color: var(--antu-bg, #fff); opacity: .82; }
 .antu-rn-body { position: relative; flex: none; text-align: center; pointer-events: none; }
 /* 字号行高必须与 relationship/graph/metrics.js 一致（名字 14/20，角色 12/16） */
 .antu-rn-label {

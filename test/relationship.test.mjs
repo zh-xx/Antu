@@ -11,6 +11,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 import '../src/renderers/index.js'
 import { validateSpec } from '../src/core/validate.js'
@@ -502,5 +503,50 @@ test('the real cases stand with (almost) no crossing when the picture runs down 
     )
     // the marketplace case had six; one line into a crowded side of the group sample is left
     assert.ok(n <= (f.startsWith('marketplace') ? 0 : 1), `${f}: ${n} crossings`)
+  }
+})
+
+test('no two links share a stretch; two loans on one pair are two lines, their labels apart', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs')
+  const segs = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
+  // Two axis-aligned segments on one line that overlap for more than a pixel
+  const share = ([a, b], [c, d]) => {
+    const h1 = Math.abs(a[1] - b[1]) < 0.5
+    const h2 = Math.abs(c[1] - d[1]) < 0.5
+    if (h1 !== h2) return false
+    const [k, i] = h1 ? [1, 0] : [0, 1]
+    if (Math.abs(a[k] - c[k]) > 0.5) return false
+    return Math.min(Math.max(a[i], b[i]), Math.max(c[i], d[i])) - Math.max(Math.min(a[i], b[i]), Math.min(c[i], d[i])) > 1
+  }
+  const ov = (a, b) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 1 && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 1
+  const rect = (c) => ({ x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height })
+  const dir = 'examples/relationship/'
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+    for (const o of ['vertical', 'horizontal']) {
+      const g = buildRelationshipGraph(JSON.parse(readFileSync(dir + f, 'utf8')), {}, undefined, o)
+      g.connections.forEach((c, i) =>
+        g.connections.slice(i + 1).forEach((d) => {
+          assert.ok(!segs(c.points).some((s) => segs(d.points).some((t) => share(s, t))), `${f} ${o}: "${c.label}" and "${d.label}" share a stretch`)
+          // two relations on one pair: their labels never stand on each other
+          if ([c.from, c.to].sort().join() === [d.from, d.to].sort().join()) assert.ok(!ov(rect(c), rect(d)), `${f} ${o}: "${c.label}" on "${d.label}"`)
+        }),
+      )
+    }
+  }
+})
+
+test('the borrower is not hidden behind her husband: both loans run straight to her (Fang Yuan, vertical)', () => {
+  const spec = JSON.parse(readFileSync('examples/relationship/fang-yuan-parties.zh-CN.json', 'utf8'))
+  const g = buildRelationshipGraph(spec)
+  for (const id of ['r-1', 'r-2']) {
+    const c = g.connections.find((x) => x.relationId === id)
+    assert.equal(c.points.length, 2, `${c.label}: one straight line`)
+  }
+  // and no label sits on a camp's title
+  const titles = g.groupBoxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: 32 }))
+  const ov = (a, b) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 1 && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 1
+  for (const c of g.connections) {
+    const r = { x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height }
+    assert.ok(!titles.some((t) => ov(r, t)), `"${c.label}" on a camp's title`)
   }
 })

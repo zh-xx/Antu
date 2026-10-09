@@ -60,7 +60,7 @@ export const RELATIONSHIP_FIELDS = {
       name: 'kind',
       req: 'yes',
       ty: 'string',
-      note: `${RELATION_KINDS.join(' / ')}. equity: holder -> held. debt: creditor -> debtor. guarantee: guarantor -> creditor. control/employment/agency: the controlling / employing / authorising side first`,
+      note: `${RELATION_KINDS.join(' / ')}. equity: holder -> held. debt: creditor -> debtor. guarantee: guarantor -> creditor. control/employment/agency: the controlling / employing / authorising side first. A tie that stands, never an act (a blow, an insult): acts go in a fact diagram`,
     },
     { name: 'label', req: 'no', ty: 'string', note: 'a short phrase on the line; omit it and the engine writes one from the kind ("Holds 60%")' },
     { name: 'detail', req: 'no', ty: 'string', note: 'terms, dates; the full text in the popover' },
@@ -425,14 +425,14 @@ export const relationshipKnowledge = {
 
   /** The version, status and release of each way of drawing (spec/versioning.md, "The diagrams"); the same names as `layouts` */
   diagrams: {
-    graph: { version: 1, status: 'experimental', since: '0.2.0' },
-    focus: { version: 1, status: 'experimental', since: '0.7.0' },
+    graph: { version: 2, status: 'experimental', since: '0.2.0' },
+    focus: { version: 2, status: 'experimental', since: '0.7.0' },
     chain: { version: 1, status: 'experimental', since: '0.7.0' },
     matrix: { version: 1, status: 'experimental', since: '0.7.0' },
     equity: { version: 1, status: 'experimental', since: '0.7.0' },
     authority: { version: 1, status: 'experimental', since: '0.7.0' },
     related: { version: 1, status: 'experimental', since: '0.7.0' },
-    path: { version: 1, status: 'experimental', since: '0.7.0' },
+    path: { version: 2, status: 'experimental', since: '0.7.0' },
     summary: { version: 1, status: 'experimental', since: '0.7.0' },
   },
 

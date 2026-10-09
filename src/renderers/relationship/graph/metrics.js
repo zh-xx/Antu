@@ -80,7 +80,8 @@ export const CROSS_COST = 450
 export const SCALE_HINT_ENTITIES = 25
 
 /** The box a relation's label needs: width capped, text wrapped into lines */
-export function labelBox(text) {
+export function labelBox(text, wrapInto) {
+  if (wrapInto > 1) return labelBoxIn(text, wrapInto)
   const textW = emOf(text, LABEL_FACTOR) * LABEL_FONT
   const width = Math.min(LABEL_MAX_W, Math.ceil(textW + LABEL_PAD_X * 2))
   const lines = Math.max(1, Math.ceil(textW / (LABEL_MAX_W - LABEL_PAD_X * 2) - 1e-9))
@@ -104,4 +105,16 @@ export function sizeOf(entity) {
   const lines = Math.min(ENTITY_MAX_LINES, Math.max(1, Math.ceil(labelW / textW - 1e-9)))
   const textH = lines * ENTITY_LINE + (role ? ROLE_LINE + 2 : 0)
   return { w, h: nodeHeight(textH + ENTITY_PAD_Y), textW }
+}
+
+/**
+ * The same label wrapped into about `k` lines: narrower and taller, for a spot where the one-line box finds
+ * no room (two lines side by side, closer than a label is long). One character of slack on each line, as
+ * the browser breaks a line at a whole character and the estimate is not exact.
+ */
+function labelBoxIn(text, k) {
+  const textW = emOf(text, LABEL_FACTOR) * LABEL_FONT
+  const inner = Math.min(LABEL_MAX_W - LABEL_PAD_X * 2, textW / k + LABEL_FONT)
+  const lines = Math.max(1, Math.ceil(textW / inner - 1e-9))
+  return { width: Math.ceil(inner + LABEL_PAD_X * 2), height: lines * LABEL_LINE + 2 }
 }

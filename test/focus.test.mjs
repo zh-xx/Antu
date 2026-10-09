@@ -242,3 +242,33 @@ test('every focus message exists in both languages', () => {
     }
   }
 })
+
+test('ring 1: two parties related to each other stand side by side, so their line is straight (Fang Yuan)', () => {
+  const spec = JSON.parse(readFileSync('examples/relationship/fang-yuan-parties.zh-CN.json', 'utf8'))
+  const g = buildFocusGraph(spec)
+  // the company and its employee, the husband and the lenders: drawn round the rings, they went round the whole picture
+  for (const id of ['r-3', 'r-7']) {
+    const c = g.connections.find((x) => x.relationId === id)
+    assert.equal(c.points.length, 2, `${c.label}: straight`)
+  }
+})
+
+test('two relations on one pair run apart all the way, whichever way each runs; labels never on each other', () => {
+  const ov = (a, b) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 1 && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 1
+  const dir = 'examples/relationship/'
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+    const g = buildFocusGraph(JSON.parse(readFileSync(dir + f, 'utf8')))
+    const rect = (c) => ({ x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height })
+    g.connections.forEach((c, i) =>
+      g.connections.slice(i + 1).forEach((d) => {
+        assert.ok(!ov(rect(c), rect(d)), `${f}: "${c.label}" on "${d.label}"`)
+        if ([c.from, c.to].sort().join() !== [d.from, d.to].sort().join() || c.points.length !== 2 || d.points.length !== 2) return
+        // both ends apart (the far end used to fall back on the middle, and the arrows met)
+        const ends = (x) => [x.points[0], x.points[1]].sort((p, q) => p[0] - q[0] || p[1] - q[1])
+        const [a0, a1] = ends(c)
+        const [b0, b1] = ends(d)
+        assert.ok(Math.hypot(a0[0] - b0[0], a0[1] - b0[1]) > 6 && Math.hypot(a1[0] - b1[0], a1[1] - b1[1]) > 6, `${f}: "${c.label}" and "${d.label}" meet`)
+      }),
+    )
+  }
+})
