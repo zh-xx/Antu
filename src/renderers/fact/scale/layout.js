@@ -25,6 +25,7 @@
 
 import { textWidth, wrapLineCount, wrapLinesBy } from '../cardGeometry.js'
 import { formatTimeText } from '../dateText.js'
+import { translate } from '../../../core/i18n.js'
 import { gapOfMs, parseIso } from '../chronicle/layout.js'
 import { groupOfEvent } from '../timeline/grid.js'
 
@@ -355,8 +356,12 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     f.time = { t, from: t, to: t, kind: 'dot', undated: true }
   })
 
-  // 2. Segments: break the axis where the scale changes
-  const times = [...new Set(flat.map((f) => f.time.t))].sort((a, b) => a - b)
+  // 2. Segments: break the axis where the scale changes. Only dated events decide where: an undated one is placed a
+  //    made-up step from its neighbour, and that step must not open a segment of its own (a day-only case cut into a
+  //    segment of one hour, drawn by the minute, its ticks crowding, its last day marked coarser than the scale)
+  const all = [...new Set(flat.map((f) => f.time.t))].sort((a, b) => a - b)
+  const dated = [...new Set(flat.filter((f) => !f.time.undated).map((f) => f.time.t))].sort((a, b) => a - b)
+  const times = dated.length ? dated : all
   const breaks = findBreaks(times)
   const bounds = []
   let start = 0
@@ -365,6 +370,9 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     start = i + 1
   }
   bounds.push([times[start], times[times.length - 1]])
+  // the undated ones before the first or after the last dated time widen the end segments to take them in
+  bounds[0][0] = Math.min(bounds[0][0], all[0])
+  bounds[bounds.length - 1][1] = Math.max(bounds[bounds.length - 1][1], all[all.length - 1])
   const segOf = (t) => {
     const k = bounds.findIndex(([, to]) => t <= to)
     return k < 0 ? bounds.length - 1 : k
@@ -471,7 +479,12 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
       const members = u.ids.map((id) => marks.find((m) => m.id === id)).sort((a, b) => a.order - b.order)
       const isRun = members.length > 1
       const titleLines = isRun ? 1 : lineCount(members[0].event.label || '')
-      const timeLines = isRun || members[0].undated ? 1 : timeLinesOf(members[0].event)
+      // an undated card says so ("date unknown · placed by order"), which may not fit one line either
+      const timeLines = isRun
+        ? 1
+        : members[0].undated
+          ? textWidth(translate('en', 'scale.undated'), TIME_FONT) * 1.05 > CARD_INNER_W ? 2 : 1
+          : timeLinesOf(members[0].event)
       const h = cardHeightOf(titleLines, timeLines)
       const bottom = lineY(li) - LANE_FOOT - u.level * LEVEL_H
       const card = {

@@ -45,7 +45,7 @@ const ScaleCardNode = memo(function ScaleCardNode({ data }) {
           <div className="antu-sc-time">{formatEnd(event.date, event.dateEnd, lang)}</div>
         </>
       ) : (
-        <div className="antu-sc-time">{undated ? t('scale.undated') : formatTimeText(event, lang)}</div>
+        <div className={`antu-sc-time${timeLines === 2 ? ' is-wrap' : ''}`}>{undated ? t('scale.undated') : formatTimeText(event, lang)}</div>
       )}
       {open && (
         <EventPreview event={event} actorNames={actorNames} sources={sources} isPinned={isPinned} showPreview={showPreview} placement="below" onClose={unpin} />

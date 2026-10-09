@@ -1405,6 +1405,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.antu-sc-time.is-wrap { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .antu-sc .antu-preview { width: 300px; }
 .antu-sc-run-row { display: flex; gap: 8px; font-size: 12px; line-height: 18px; color: var(--antu-text-2); }
 .antu-sc-run-time { flex: none; color: var(--antu-text-3); font-variant-numeric: tabular-nums; }
