@@ -2026,7 +2026,8 @@ async function checkDockClearance() {
       await browser.close()
     }
   }
-  truthy('every kind at every width was measured', measured === 60, `${measured} of 60`)
+  const expected = 4 * cases.reduce((n, [type]) => n + layoutKindsOf(type).length, 0)
+  truthy('every kind at every width was measured', measured === expected, `${measured} of ${expected}`)
   eq('the capsule covers neither the minimap nor the zoom buttons', problems.overlap, [])
   eq('the capsule stays on the canvas', problems.outside, [])
   eq('the export button is fully visible', problems.exportHidden, [])
