@@ -84,6 +84,7 @@ With two or more parties, the two sides are two camps. The group is written on t
 
 - **A third party on neither side** (the police who came, the ambulance crew, the court that served a paper...) is not listed as a party: the name goes in the event's label, the event writes no `actorIds`, and it goes on the axis.
 - With exactly two parties, each group is one party.
+- **A party has a column only where it has a card of its own** (issue 172). A party who only acts with others, or that no event names, has none; a side left with no party's card stands as one thin lane under its title. `validate` notes a party that no event names.
 
 Example: the Fang Yuan case. Fang Yuan and Liang → the 1st group, "Fang Yuan and his mother"; the debt collectors → the 2nd group; the 3rd group "negotiations and objective course". Liang and her husband borrow from the collectors → across both sides, on the axis; Liang repays → side 1, in Liang's column.
 

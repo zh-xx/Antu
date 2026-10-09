@@ -286,3 +286,16 @@ test('an undated event after day-only dates does not open a segment of its own',
   assert.deepEqual(g.segments.map((s) => s.unit), ['day'])
   assert.ok(g.nodes.find((n) => n.type === 'scaleLayer').data.marks.every((m) => !m.coarse))
 })
+
+test('lane per party: a party with no card of its own has no lane; a side left with none keeps its lane (issue 172)', () => {
+  const spec = JSON.parse(readFileSync('examples/fact/sample-four-parties-four-slots.zh-CN.json', 'utf8'))
+  const events = spec.slots.flatMap((s) => s.events)
+  const keys = lanesOf(spec, events, { byParty: true }).map((l) => l.key)
+  // 采购方 (a-1) only acts together with others
+  assert.ok(!keys.includes('actor:a-1'))
+  assert.ok(keys.includes('actor:a-2') && keys.includes('actor:a-3') && keys.includes('actor:a-4'))
+  // no party of a side with a card of its own: the side's one lane stands
+  const joint = { ...spec, slots: spec.slots.map((s) => ({ events: s.events.map((e) => ({ ...e, actorIds: e.actorIds?.length === 1 && ['a-1', 'a-2'].includes(e.actorIds[0]) ? ['a-1', 'a-3'] : e.actorIds })) })) }
+  const lanes = lanesOf(joint, joint.slots.flatMap((s) => s.events), { byParty: true })
+  assert.ok(lanes.some((l) => l.key === 'g-1'), JSON.stringify(lanes.map((l) => l.key)))
+})

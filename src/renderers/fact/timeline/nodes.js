@@ -84,7 +84,7 @@ export function headerNodes(grid, m) {
   const nodes = []
   grid.columns.forEach((col, ci) => {
     const n = countOf(col.side)
-    const many = col.side !== SIDE.AXIS && n > 1
+    const many = col.side !== SIDE.AXIS && (n > 1 || col.named)
     const first = ci === firstOf(col.side)
     const base = { type: 'colHeader', ...DECORATION }
     const common = { isH: m.isH, side: col.side, groupIndex: groupIndexOf(col.side) }

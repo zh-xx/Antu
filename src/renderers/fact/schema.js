@@ -15,6 +15,7 @@
 
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { dateOrderNotes } from './dateOrder.js'
+import { partyNotes } from './partyNotes.js'
 import { buildGrid } from './timeline/grid.js'
 import { buildFactGraph } from './timeline/layout.js'
 import { buildChronicleGraph, TITLE_FONT as CHRONICLE_TITLE_FONT } from './chronicle/layout.js'
@@ -203,6 +204,7 @@ export const factKnowledge = {
   notes: (spec) => [
     // The slot order against the dates: a note, never an error, and never a reorder (see dateOrder.js)
     ...dateOrderNotes(spec),
+    ...partyNotes(spec),
   ],
 
   /**
@@ -328,9 +330,9 @@ export const factKnowledge = {
 
   /** The version, status and release of each way of drawing (spec/versioning.md, "The diagrams"); the same names as `layouts` */
   diagrams: {
-    timeline: { version: 4, status: 'experimental', since: '0.2.0' },
+    timeline: { version: 5, status: 'experimental', since: '0.2.0' },
     chronicle: { version: 2, status: 'experimental', since: '0.7.0' },
-    scale: { version: 3, status: 'experimental', since: '0.7.0' },
+    scale: { version: 4, status: 'experimental', since: '0.7.0' },
   },
 
   /** Which ways of drawing a fact diagram exist. The first is the default. */
