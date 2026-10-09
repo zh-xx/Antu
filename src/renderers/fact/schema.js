@@ -15,6 +15,7 @@
 
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { dateOrderNotes } from './dateOrder.js'
+import { partyNotes } from './partyNotes.js'
 import { buildGrid } from './timeline/grid.js'
 import { buildFactGraph } from './timeline/layout.js'
 import { buildChronicleGraph, TITLE_FONT as CHRONICLE_TITLE_FONT } from './chronicle/layout.js'
@@ -203,6 +204,7 @@ export const factKnowledge = {
   notes: (spec) => [
     // The slot order against the dates: a note, never an error, and never a reorder (see dateOrder.js)
     ...dateOrderNotes(spec),
+    ...partyNotes(spec),
   ],
 
   /**
