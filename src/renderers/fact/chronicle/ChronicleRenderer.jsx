@@ -89,7 +89,7 @@ export default function FactChronicle({ spec }) {
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
-  useSelectEvent(spec, pinnedId)
+  useSelectEvent(spec, pinnedId, setPinnedId)
   const { canvasRef, exporting, onExport } = useExport(spec?.title)
   const preview = useMemo(
     () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),

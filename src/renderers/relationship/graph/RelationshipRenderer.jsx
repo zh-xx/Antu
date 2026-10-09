@@ -106,7 +106,7 @@ export default function RelationshipGraph({ spec }) {
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
-  useSelectEvent(spec, pinnedId)
+  useSelectEvent(spec, pinnedId, setPinnedId)
   const preview = useMemo(
     () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),
     [hoveredId, pinnedId],

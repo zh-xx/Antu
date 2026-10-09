@@ -55,6 +55,8 @@ export interface MountOptions {
   ui?: { header?: boolean; capsule?: boolean; minimap?: boolean; zoom?: boolean }
   /** Where the reader's choices are kept: 'none' (default) while mounted only, 'local' in the viewer page's localStorage key, or the host's store */
   prefs?: 'none' | 'local' | AntuPrefsStore
+  /** How it opens, ahead of the reader's stored choices (the reader can still change it). An unknown key or a wrong value: `mount` throws. */
+  initial?: { headerFolded?: boolean }
   onEvent?: (event: AntuEvent) => void
 }
 
@@ -67,6 +69,12 @@ export interface AntuHandle {
   setKind(kind: string): boolean
   setTheme(theme: AntuTheme): boolean
   setLang(lang: AntuLang): boolean
+  /** Pin the card of the item `id`, as a reader's click would (a `select` event follows); `null` unpins. False when no card of it is drawn in this kind. */
+  select(id: string | null): boolean
+  /** Move the view to the item `id`, keeping the zoom unless it would not show it. False when it is not drawn in this kind. */
+  focus(id: string): boolean
+  /** Ring these items in the theme's colour until called again; `[]` clears. Ids that name no item are passed over. */
+  highlight(ids: string[]): void
   fitView(): void
   /** The PNG the page's own export makes (no label card, a white margin), not saved anywhere. Waits until the spec now mounted is drawn; rejects (with `errors`) while it is not valid. */
   exportPng(options?: { pixelRatio?: number }): Promise<Blob>

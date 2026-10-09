@@ -73,6 +73,7 @@ What is drawn lives in the element's **shadow root**, not among its children: `e
 | `lang` | the browser's | `zh` or `en`: the language of the page's own words. The case is never translated |
 | `ui` | all `true` | `{ header, capsule, minimap, zoom }`: pieces of the page's chrome to leave out (the label card at the top left, the control capsule at the bottom, the minimap, the zoom buttons) |
 | `prefs` | `'none'` | where the reader's choices (kind, fields, orientation …) are kept: `'none'` while mounted only; `'local'` in the viewer page's `localStorage` key (`antu.prefs`); or the host's store `{ read(): object, write(patch) }` |
+| `initial` | none | how it opens, ahead of the reader's stored choices: `{ headerFolded }` (the label card folded to one line, or unfolded). It wins over a stored choice when the diagram opens, as `theme` does; after that the reader can change it and the choice is kept as `prefs` says. A key that is not one of these, or a value that is not a boolean, makes `mount` throw |
 | `onEvent` | none | `(event) => void`; a handler that throws is reported on the console and does not stop the diagram |
 
 ### The handle
@@ -83,11 +84,20 @@ What is drawn lives in the element's **shadow root**, not among its children: `e
 | `update(spec)` | draw another spec in the same place; the reader's choices are kept per title, as on the viewer page |
 | `setKind(kind)` | `false` when it is not a kind of the type (or not in `kinds`) |
 | `setTheme(theme)`, `setLang(lang)` | `false` when it is not one |
+| `select(id)` | pin the card of the item `id` of the spec, as if the reader had clicked it: the host hears `select` as usual. `select(null)` unpins. `false` when no card of that item is drawn in this kind (or the kind pins nothing, as the route map) |
+| `focus(id)` | move the view to centre the item `id`, keeping the zoom unless the item would not fit in the window at it. `false` when it is not drawn in this kind |
+| `highlight(ids)` | ring these items in the theme's colour; `highlight([])` clears. The ring stays through `update` and a change of kind or theme until it is called again, leaves pinning and the reader's hover alone, and is not in `exportPng`. Ids that name no item are passed over |
 | `fitView()` | fit the whole diagram into view again |
 | `exportPng({ pixelRatio })` | a `Promise<Blob>`: the PNG the page's own export makes (no label card, a white margin, 2 device pixels per design pixel by default), not saved anywhere. Waits until the spec now mounted is drawn; refused (with `errors`) while it is not valid |
 | `destroy()` | take the diagram off; the element can be mounted again. A second `mount` on a mounted element throws |
 
-A call made right after `mount`, before the diagram is drawn, is kept and carried out when it is.
+A call made right after `mount`, before the diagram is drawn, is kept and carried out when it is (`select` and
+`focus` then answer from the spec: `true` when it has an item of that id).
+
+`select`, `focus` and `highlight` take the ids of the spec, the same ids `select` events report. They are found
+on the canvas the way those events name them back: a rule of the flowchart is a row of its rule table, and an
+item a view draws more than once (a relation path, a copy in the justification tree) is found by any of its
+copies; `focus` goes to the first, `highlight` rings them all.
 
 ### Events
 

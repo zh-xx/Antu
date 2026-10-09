@@ -9,7 +9,7 @@ import { join } from 'node:path'
 
 import '../src/renderers/index.js'
 import { layoutOf, layoutKindsOf, listKnowledgeTypes } from '../src/core/registry.js'
-import { itemOf, selectEvent, sourcesOf } from '../src/core/items.js'
+import { itemOf, selectEvent, sourcesOf, PINNABLE_TYPES as PINNABLE } from '../src/core/items.js'
 import { HOST_RULES, PAGE_FONT, toShadowCss } from '../src/embed/shadowCss.js'
 import { embeddedEnv, isInside, standaloneEnv } from '../src/shell/env.js'
 import { localPrefs } from '../src/shell/prefs.js'
@@ -25,8 +25,6 @@ const examples = (type) =>
     return readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => [join(dir, f), json(join(dir, f))])
   })
 
-/** The node types a reader can pin (each renderer's onNodeClick) */
-const PINNABLE = new Set(['pnode', 'card', 'entry', 'scaleCard', 'rnode', 'jnode'])
 
 test('every card a reader can pin, in every kind of every example, is one item of the JSON', () => {
   let checked = 0

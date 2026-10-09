@@ -10,6 +10,7 @@
 //    options     kind, kinds, theme, lang, ui
 //    events      select (with the item's sources), kindchange, invalid
 //    handle      ready, update, setKind/setTheme/setLang, exportPng, destroy and mounting again
+//    asking      select, focus and highlight by the spec's ids; initial.headerFolded
 //    the window  keys and outside clicks: the diagram answers its own and leaves the host's alone
 // ============================================================
 
@@ -221,6 +222,81 @@ export async function checkEmbed(t) {
       const rule = await browser.eval(`window.__events.a.filter((e) => e.type === 'select').at(-1) ?? null`)
       eq('embed: a row of the rule table is told as a rule', rule && [rule.collection, flow.rules.some((r) => r.id === rule.id)], ['rules', true])
     } else bad('embed: the flowchart example has no rules to click')
+
+    // ---- what the host asks for: select, focus, highlight (issue 164), initial (issue 165) ----
+    // on a diagram of its own, so the counts of the checks above and below stay as they are
+    const ruleAt = Array.isArray(flow.rules) && flow.rules.length ? 0 : -1
+    const asked = await browser.eval(`(async (at, ruleAt) => {
+      const pause = (ms) => new Promise((r) => setTimeout(r, ms))
+      const host = document.createElement('div')
+      host.style.cssText = 'width: 1000px; height: 640px'
+      document.body.append(host)
+      const flow = window.__api.SPECS.flow
+      const id = flow.nodes[at].id, last = flow.nodes[flow.nodes.length - 1].id, rule = ruleAt < 0 ? null : flow.rules[ruleAt].id
+      const events = []
+      const refuse = (initial) => { try { window.__api.mount(host, flow, { initial }).destroy(); return 'mounted' } catch (e) { return e.message } }
+      const refused = [refuse({ folded: true }), refuse({ headerFolded: 'yes' }), refuse([])]
+      // the host's store says unfolded; initial says folded and wins
+      const h = window.__api.mount(host, flow, { initial: { headerFolded: true }, prefs: { read: () => ({ headerFolded: false }), write: () => {} }, onEvent: (e) => events.push(e) })
+      const early = h.select(id)
+      await h.ready
+      await pause(300)
+      const root = host.shadowRoot
+      const nodeEl = (x) => [...root.querySelectorAll('.react-flow__node')].find((n) => n.dataset.id === x)
+      const ruleEl = (x) => [...root.querySelectorAll('.antu-rtable-row')].find((n) => n.dataset.pinId === 'rule:' + x)
+      const ring = (el) => (el ? getComputedStyle(el).outlineStyle : 'missing')
+      const lastSelect = () => events.filter((e) => e.type === 'select').at(-1)?.id
+      const out = { refused, early, folded: !!root.querySelector('.antu-header-card.is-folded') }
+      out.earlyPinned = [lastSelect() === id, nodeEl(id)?.querySelector('.antu-pn')?.getAttribute('aria-expanded')]
+      out.unknown = h.select('no such item')
+      out.unpin = [h.select(null), (await pause(200), lastSelect())]
+      if (rule) {
+        out.rule = [h.select(rule), (await pause(200), events.filter((e) => e.type === 'select').at(-1)?.collection), ruleEl(rule)?.getAttribute('aria-expanded')]
+        h.select(null)
+      }
+      // focus: the item ends up in the middle of the host
+      const box = host.getBoundingClientRect()
+      out.focus = h.focus(last)
+      await pause(600)
+      const r = nodeEl(last).getBoundingClientRect()
+      out.centred = Math.abs(r.left + r.width / 2 - (box.left + box.width / 2)) < 30 && Math.abs(r.top + r.height / 2 - (box.top + box.height / 2)) < 30
+      out.focusUnknown = h.focus('no such item')
+      // highlight: a ring on these and on nothing else, through a change of theme, until cleared; never in the export
+      const bytes = async () => new Uint8Array(await (await h.exportPng({ pixelRatio: 1 })).arrayBuffer()).join(',')
+      const plain = await bytes()
+      h.highlight(rule ? [id, rule, 'no such item'] : [id, 'no such item'])
+      await pause(200)
+      out.ring = [ring(nodeEl(id)), rule ? ring(ruleEl(rule)) : 'solid', ring(nodeEl(last))]
+      out.exportSame = (await bytes()) === plain
+      h.setTheme('legal')
+      await pause(300)
+      out.ringAfterTheme = ring(nodeEl(id))
+      out.ringColour = getComputedStyle(nodeEl(id)).outlineColor !== 'rgb(0, 0, 255)'
+      h.highlight([])
+      await pause(200)
+      out.cleared = ring(nodeEl(id))
+      out.badIds = (() => { try { h.highlight('x'); return 'accepted' } catch (e) { return e.name } })()
+      // a kind no reader can pin anything in
+      h.setKind('route')
+      await pause(600)
+      out.routeSelect = h.select(id)
+      h.destroy()
+      host.remove()
+      return out
+    })(${Number(at)}, ${Number(ruleAt)})`, { awaitPromise: true })
+    truthy('embed: initial refuses an unknown key, a value that is not a boolean, and a non-object', asked.refused.every((m) => m.includes('options.initial')), asked.refused.join(' | '))
+    truthy('embed: initial.headerFolded opens the label card folded, over the stored choice', asked.folded)
+    eq('embed: select before the diagram is drawn is kept, answered from the spec, then pins the card', [asked.early, ...asked.earlyPinned], [true, true, 'true'])
+    eq('embed: select refuses an id that names no item', asked.unknown, false)
+    eq('embed: select(null) unpins, and the host hears it', asked.unpin, [true, null])
+    if (ruleAt >= 0) eq('embed: select pins a rule\'s row of the table', asked.rule, [true, 'rules', 'true'])
+    eq('embed: focus brings the item to the middle of the view', [asked.focus, asked.centred], [true, true])
+    eq('embed: focus refuses an id that names no item', asked.focusUnknown, false)
+    eq('embed: highlight rings the items named (a node and a rule row) and nothing else', asked.ring, ['solid', 'solid', 'none'])
+    eq('embed: the ring stays through a change of theme, in the diagram\'s colour, until highlight([])', [asked.ringAfterTheme, asked.ringColour, asked.cleared], ['solid', true, 'none'])
+    eq('embed: the ring is not in exportPng', asked.exportSame, true)
+    eq('embed: highlight refuses what is not an array of ids', asked.badIds, 'TypeError')
+    eq('embed: in a kind that pins nothing (the route map) select says false', asked.routeSelect, false)
 
     // ---- the window is shared: keys and outside clicks ----
     const kindsBefore = await browser.eval(`window.__events.a.filter((e) => e.type === 'kindchange').length`)

@@ -78,3 +78,34 @@ export function selectEvent(spec, nodeId) {
     sources: sourcesOf(spec, item),
   }
 }
+
+/** The node types a reader can pin: each renderer's onNodeClick pins these and no other */
+export const PINNABLE_TYPES = new Set(['pnode', 'card', 'entry', 'scaleCard', 'rnode', 'jnode'])
+
+/**
+ * The other way round from `itemOf` (issue 164): the canvas nodes that stand for the item `id` of the spec,
+ * every copy of it, in the order of `nodes`. A rule of the flowchart is a row of its table, not a node: it is
+ * `rule:<id>` when the spec has that rule (whether a table draws it is the caller's to check).
+ * @param {Array<{id: string, type?: string}>} nodes  the canvas nodes
+ * @returns {string[]}
+ */
+export function nodesOfItem(spec, nodes, id) {
+  if (id == null) return []
+  const target = itemOf(spec, String(id))
+  if (!target || target.item.id !== String(id)) return []
+  const out = (nodes ?? []).filter((n) => itemOf(spec, n.id)?.item === target.item).map((n) => n.id)
+  if (target.collection === 'rules') out.push(`rule:${target.item.id}`)
+  return out
+}
+
+/**
+ * Which of those a reader could pin: the node the host's `select` pins, as if the reader had clicked it. A rule
+ * row first (it is the rule itself), then the first card of a type a reader can pin; null when there is none.
+ */
+export function pinTargetOf(spec, nodes, id) {
+  const ids = nodesOfItem(spec, nodes, id)
+  const rule = ids.find((x) => x.startsWith('rule:'))
+  if (rule) return rule
+  const types = new Map((nodes ?? []).map((n) => [n.id, n.type]))
+  return ids.find((x) => PINNABLE_TYPES.has(types.get(x))) ?? null
+}

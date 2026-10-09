@@ -38,7 +38,10 @@ export default function DiagramHeader({ title, typeLabel, info = [], kinds = [],
   // With only one rendering kind there is nothing to pick
   const multi = kinds.length > 1
   const [open, setOpen] = useState(false)
-  const [folded, setFolded] = useState(() => prefs.read().headerFolded === true)
+  // a host's `initial.headerFolded` wins over the stored choice when the diagram opens (issue 165)
+  const [folded, setFolded] = useState(() =>
+    typeof env.initial?.headerFolded === 'boolean' ? env.initial.headerFolded : prefs.read().headerFolded === true,
+  )
   const toggleFold = () => {
     const next = !folded
     setFolded(next)
