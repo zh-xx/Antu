@@ -78,12 +78,13 @@ With two or more parties, the two sides are two camps. The group is written on t
 | The event's parties | Where it goes |
 |---|---|
 | 1 | That party's side, in that party's own column |
-| 2 or more, across both sides | On the axis |
-| 2 or more, all on one side | On the axis (no long card across several columns; the card does not change) |
+| 2 or more, across both sides | On the axis; the card names them |
+| 2 or more, all on one side | On the axis (no long card across several columns); the card names them |
 | none written | On the axis |
 
 - **A third party on neither side** (the police who came, the ambulance crew, the court that served a paper...) is not listed as a party: the name goes in the event's label, the event writes no `actorIds`, and it goes on the axis.
 - With exactly two parties, each group is one party.
+- **A card on the axis that names two or more parties says who** (issue #172), whatever the parties switch says: the names stand on the time's line, right of the time, in small grey text, cut short with an ellipsis when long (the overlay lists them all). No card grows. A party who only ever acts with others has an empty column; this is how the reader still sees what it took part in. A party that no event names at all is a validation note.
 
 Example: the Fang Yuan case. Fang Yuan and Liang → the 1st group, "Fang Yuan and his mother"; the debt collectors → the 2nd group; the 3rd group "negotiations and objective course". Liang and her husband borrow from the collectors → across both sides, on the axis; Liang repays → side 1, in Liang's column.
 
@@ -191,7 +192,7 @@ Event structure (replacing the former flat `events` array):
 |---|---|
 | An event involves 2 or more parties and a side group is also written | v0: **an error**. v1: with 2 or more parties an event writes no group, so the contradiction cannot arise |
 | Views (`views`) | **Removed in v1.** One diagram, one placement; a view written slightly wrong made the diagram say the wrong thing, and was hard for a weaker agent |
-| Several parties of one side acting together | **On the axis.** No long card across several columns; the card does not change |
+| Several parties of one side acting together | **On the axis.** No long card across several columns; the card names them (issue #172) |
 | A diagram of several parties split by kind of act | **Not supported.** With several parties the sides are the camps; the kind of act goes in the event's label or summary |
 | Old data | **Not carried over.** A page holds its own data and program and is unaffected; an old JSON given to the new version is refused point by point, with what to change (delete `views`, move the groups from the events to the parties) |
 | A slot scale misleads under mixed precision | **No time scale on the axis**, time is shown on the cards only, avoiding the misleading from the root |

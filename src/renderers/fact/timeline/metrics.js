@@ -105,6 +105,16 @@ export function actorLinesOf(grid, fields) {
 }
 
 /**
+ * A card on the axis that names two or more parties says who, whatever the parties switch says (issue
+ * 172). An act of several parties goes to the axis, so a party who only ever acts with others has an
+ * empty column; the names on the card are how the reader sees that party took part. They stand on the
+ * time's line, right of the time, in small grey text cut short with an ellipsis when long (the overlay
+ * lists them all), so no card grows: every card of a diagram is one height, and a row of its own would
+ * have grown every card.
+ */
+export const isJointCard = (event, side) => side === SIDE.AXIS && (Array.isArray(event.actorIds) ? event.actorIds.length : 0) >= 2
+
+/**
  * Which columns a row has cards in, for the staggered layout. Only a shared column stops two rows
  * from coming closer than a whole row: in a view split by party a column is one party, in a view
  * split by group it is one group. Links need no room of their own: rows are always at least half a

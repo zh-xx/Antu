@@ -104,3 +104,18 @@ test('layout reports the vertical size as the page opens it, staggered, with the
   const short = JSON.parse(readFileSync('examples/fact/sample-no-groups.zh-CN.json', 'utf8'))
   assert.doesNotMatch(formatLayoutReport(layoutReport(short)), /Stagger/)
 })
+
+test('an act of several parties on the axis names them on its card; no card grows (issue #172)', () => {
+  const spec = JSON.parse(readFileSync('examples/fact/sample-four-parties-four-slots.zh-CN.json', 'utf8'))
+  for (const orientation of ['vertical', 'horizontal']) {
+    const g = buildFactGraph(spec, { summary: true }, undefined, orientation)
+    const cards = g.nodes.filter((n) => n.type === 'card')
+    const joint = cards.filter((n) => n.data.joint).map((n) => n.data.event.id).sort()
+    // the contract (buyer and supplier) and the joint acceptance (all four); one party's own acts are not joint
+    const several = cards.filter((n) => (n.data.event.actorIds ?? []).length >= 2).map((n) => n.data.event.id).sort()
+    assert.deepEqual(joint, several, orientation)
+    assert.ok(joint.length >= 2, orientation)
+    const plain = buildFactGraph({ ...spec, slots: spec.slots.map((s) => ({ events: s.events.map((e) => ({ ...e, actorIds: e.actorIds?.slice(0, 1) })) })) }, { summary: true }, undefined, orientation)
+    assert.equal(cards[0].data.cardH, plain.nodes.find((n) => n.type === 'card').data.cardH, `${orientation}: same card height`)
+  }
+})

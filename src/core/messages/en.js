@@ -64,6 +64,7 @@ export const en = {
   'dock.langZh': '中文',
 
   // ---------- card and source overlay (EventNode.jsx) ----------
+  'card.whoSep': ', ',
   'card.sources': ({ n }) => `${n} source${n === 1 ? '' : 's'}`,
   'card.sourcesUnlisted': 'No sources listed',
   'card.sourcesList': ({ n, names }) => `${n} source${n === 1 ? '' : 's'}: ${names}`,
@@ -475,6 +476,9 @@ export const en = {
     `nodes (${id}): "${label}" has no incoming edge and is not a start, so nothing leads to it: it would float beside the flow. ` +
     'If it is a consequence (a breach, a resignation, a right to terminate), write it as a rule in `rules`; ' +
     'if it belongs to the flow, add the edge that leads to it',
+  'note.partyNoEvent': ({ at, id, name }) =>
+    `${at} (${id}): no event names "${name}" in its actorIds, so it is on no card (and its column, with two or more parties, is drawn empty). ` +
+    'Name it in the actorIds of the events it took part in, or leave it out of actors if it did nothing in this diagram',
   'note.dateOrder': ({ at, id, date, beforeAt, beforeId, beforeDate }) =>
     `${at} ("${id}", ${date}) comes after ${beforeAt} ("${beforeId}", ${beforeDate}) in the slots but its date is wholly earlier. ` +
     'The order of the slots is kept and nothing is reordered; check which of the two dates is wrong, or whether the slots are in the wrong order',

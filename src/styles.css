@@ -464,6 +464,18 @@
   text-overflow: ellipsis;
 }
 .antu-card-actors { display: flex; flex-wrap: wrap; gap: 4px; }
+/* The parties of a joint card on the axis, beside the time: the time keeps its width, the names give way
+   and end in an ellipsis (the overlay lists them all) */
+.antu-card-who {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--antu-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* 底部一行：左边时间，右边来源的有无 */
 .antu-card-foot {

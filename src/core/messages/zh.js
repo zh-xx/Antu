@@ -86,6 +86,7 @@ export const zh = {
   'flow.previewHint': '点击节点查看全文',
 
   // ---------- card and source overlay (EventNode.jsx) ----------
+  'card.whoSep': '、',
   'card.sources': ({ n }) => `来源 ${n} 个`,
   'card.sourcesUnlisted': '未列来源',
   'card.sourcesList': ({ n, names }) => `来源 ${n} 个：${names}`,

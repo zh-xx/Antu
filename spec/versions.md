@@ -4,7 +4,7 @@ Written by `node tools/gen/versions.mjs` from the registry (`diagrams` in `src/r
 
 | Type | Format generation | Diagram | Version | Status | Since | Opens in |
 | --- | --- | --- | --- | --- | --- | --- |
-| `fact` | 2 | `fact/timeline` | 4 | experimental | 0.2.0 | yes (default) |
+| `fact` | 2 | `fact/timeline` | 5 | experimental | 0.2.0 | yes (default) |
 |  |  | `fact/chronicle` | 2 | experimental | 0.7.0 |  |
 |  |  | `fact/scale` | 3 | experimental | 0.7.0 |  |
 | `procedure` | 1 | `procedure/flow` | 1 | experimental | 0.2.0 | yes (default) |

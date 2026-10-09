@@ -72,3 +72,17 @@ test('the examples of the fact type say nothing about the order of their dates',
     assert.deepEqual(dateNotes(s), [], f)
   }
 })
+
+test('a party that no event names is a note, not an error (issue #172)', async () => {
+  const { partyNotes } = await import('../src/renderers/fact/partyNotes.js')
+  const spec = {
+    actors: [{ id: 'a-1', name: '甲' }, { id: 'a-2', name: '乙' }, { id: 'a-3', name: '丙' }],
+    slots: [{ events: [{ id: 'ev-1', label: 'x', actorIds: ['a-1', 'a-2'] }] }, { events: [{ id: 'ev-2', label: 'y' }] }],
+  }
+  const notes = partyNotes(spec)
+  assert.equal(notes.length, 1)
+  assert.match(notes[0], /actors\[2\] \(a-3\).*"丙"/)
+  // named together with others is enough: the axis card names it
+  spec.slots[1].events[0].actorIds = ['a-1', 'a-2', 'a-3']
+  assert.deepEqual(partyNotes(spec), [])
+})

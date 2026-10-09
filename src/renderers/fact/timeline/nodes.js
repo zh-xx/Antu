@@ -10,7 +10,7 @@
 
 import { SIDE } from './grid.js'
 import { CARD_W } from '../cardGeometry.js'
-import { DOT_SIZE, HEADER_W, groupIndexOf } from './metrics.js'
+import { DOT_SIZE, HEADER_W, groupIndexOf, isJointCard } from './metrics.js'
 
 /** Attributes shared by decoration nodes: not draggable, not selectable, not connectable, not focusable */
 const DECORATION = {
@@ -206,6 +206,8 @@ export function placeCard(event, colIndex, rowIndex, grid, m, fields) {
       cardH: m.cardH,
       labelLines: m.labelLines,
       fields,
+      // An act of several parties on the axis says who did it, beside the time (issue 172)
+      joint: isJointCard(event, grid.columns[colIndex].side),
       isH: m.isH,
     },
   }

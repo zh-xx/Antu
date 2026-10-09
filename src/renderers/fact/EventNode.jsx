@@ -19,7 +19,7 @@ import { formatTimeText } from './dateText.js'
 import EventPreview from './EventPreview.jsx'
 
 const EventNode = memo(function EventNode({ data }) {
-  const { event, actorNames, sources, groupIndex, row, cardW, cardH, labelLines, fields = {}, isH } = data
+  const { event, actorNames, sources, groupIndex, row, cardW, cardH, labelLines, fields = {}, isH, joint = false } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
 
@@ -76,6 +76,13 @@ const EventNode = memo(function EventNode({ data }) {
         <span className={`antu-card-time${event.date ? '' : ' is-unknown'}`} title={event.dateNote || ''}>
           {formatTimeText(event, lang)}
         </span>
+        {/* An act of several parties on the axis: who, beside the time, cut short when long (issue 172).
+            With the parties switch on they are on their own row already. */}
+        {joint && !fields.actors && (
+          <span className="antu-card-who" title={actorNames.join(t('card.whoSep'))}>
+            {actorNames.join(t('card.whoSep'))}
+          </span>
+        )}
         {fields.sources && (
           <span className={`antu-card-src${sources.length ? '' : ' is-none'}`}>
             <i className="antu-src-dot" />

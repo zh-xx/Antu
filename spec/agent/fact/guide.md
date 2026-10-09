@@ -40,7 +40,8 @@ several, or none    the axis (both sides together, several of one side together,
                     or an objective fact)
 ```
 
-See `3-sides` and `4-one-side-several`.
+See `3-sides` and `4-one-side-several`. A card on the axis that names two or more parties says who, so an act
+of several parties needs no extra event per party. A party that no event names is a note from `validate`.
 
 So list in `actorIds` **the party who did it**: "A pays B" is A's act (one party, A's side); "A and B sign a
 contract" is both's (two parties, the axis). Name the other party in the label or the summary, not in `actorIds`,
