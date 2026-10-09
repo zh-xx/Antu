@@ -3,6 +3,30 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.12.1
+
+A fact diagram no longer draws a party's column with nothing in it (#172, #174). Nothing breaks a file or a tool call.
+
+### Changed
+- **Fact timeline: a party has a column only where it has a card of its own** (`fact/timeline` version 5). Placement
+  rules v1 put every act of several parties on the axis. Two kinds of party used to keep an empty column, its heading
+  drawn over nothing:
+  - a party who only acts together with others, such as the lender in the Lin Fang case;
+  - a party that no event names.
+
+  Now:
+  - such a party has no column;
+  - a side of two or more parties still names the party over its column when only one is left;
+  - with two or more parties, a side where no party has a card of its own stands as one thin lane under its title,
+    so the two camps keep their places;
+  - a diagram with 0 or 1 party is unchanged.
+- **Fact time scale, "Lane per party"**: the same rule; a party with no card of its own has no lane (`fact/scale`
+  version 4).
+
+### Added
+- **A validation note for a party that no event names** in its `actorIds`: it is on no card and has no column. A note,
+  not an error.
+
 ## 0.12.0
 
 The fact diagram has one placement, chosen by how many parties it has: format generation 2 (#158). Its time scale and
