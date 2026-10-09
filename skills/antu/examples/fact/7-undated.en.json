@@ -1,10 +1,10 @@
 {
   "type": "fact",
-  "specVersion": 1,
+  "specVersion": 2,
   "title": "An event with no date: leave date out, the card says the date is unknown",
   "actors": [
-    { "id": "a-1", "name": "Huayuan Trading", "role": "lender" },
-    { "id": "a-2", "name": "Xincheng Building Materials", "role": "borrower" }
+    { "id": "a-1", "name": "Huayuan Trading", "role": "lender", "groupId": "g-1" },
+    { "id": "a-2", "name": "Xincheng Building Materials", "role": "borrower", "groupId": "g-2" }
   ],
   "groups": [
     { "id": "g-1", "label": "Huayuan Trading" },
@@ -13,21 +13,38 @@
   "slots": [
     {
       "events": [
-        { "id": "ev-1", "date": "2024-03-11", "label": "The repayment date passes, no repayment",
-          "actorIds": ["a-2"], "groupId": "g-2" }
+        {
+          "id": "ev-1",
+          "date": "2024-03-11",
+          "label": "The repayment date passes, no repayment",
+          "actorIds": [
+            "a-2"
+          ]
+        }
       ]
     },
     {
       "events": [
-        { "id": "ev-2", "date": "2024-04-02", "label": "A demand letter is sent",
-          "actorIds": ["a-1"], "groupId": "g-1" }
+        {
+          "id": "ev-2",
+          "date": "2024-04-02",
+          "label": "A demand letter is sent",
+          "actorIds": [
+            "a-1"
+          ]
+        }
       ]
     },
     {
       "events": [
-        { "id": "ev-3", "label": "No reply ever followed",
+        {
+          "id": "ev-3",
+          "label": "No reply ever followed",
           "summary": "The material gives no date",
-          "actorIds": ["a-2"], "groupId": "g-2" }
+          "actorIds": [
+            "a-2"
+          ]
+        }
       ]
     }
   ]

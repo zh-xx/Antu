@@ -246,9 +246,11 @@ export function lanesOf(spec, events, { byParty = false } = {}) {
   const keyOf = laneKeyOf(spec, { byParty })
   const split = splitGroupsOf(spec, byParty)
   const groups = (Array.isArray(spec?.groups) ? spec.groups.slice(0, 3) : []).filter((g) => g && g.id)
+  // A party with no card of its own has no lane (issue 172, as the timeline's columns); a side left with none keeps its one lane
+  const own = new Set(events.map(keyOf))
   const lanes = groups.flatMap((g, i) => {
-    const members = split.get(g.id)
-    if (!members) return [{ key: g.id, label: g.label ?? '', groupIndex: i }]
+    const members = split.get(g.id)?.filter((a) => own.has(`actor:${a.id}`))
+    if (!members?.length) return [{ key: g.id, label: g.label ?? '', groupIndex: i }]
     return members.map((a) => ({ key: `actor:${a.id}`, label: a.name ?? '', side: g.label ?? '', groupIndex: i }))
   })
   const known = new Set(lanes.map((l) => l.key))

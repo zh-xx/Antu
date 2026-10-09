@@ -3,6 +3,70 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.12.0
+
+The fact diagram has one placement, chosen by how many parties it has: format generation 2 (#158). Its time scale and
+timeline read better (#159, #162, #168). A host that embeds Antu can now steer the diagram and repair what a model
+marks wrong (#167, #169). The control capsule no longer covers the minimap on a narrow canvas (#160). One change
+breaks a file: a fact diagram of generation 1 has to change (see *Breaking*).
+
+### Added
+- **`normalize(spec)`** in `@zh-xx/antu/validate` and `@zh-xx/antu/embed` (#163, #167). It returns `{ spec, changes }`,
+  a repaired copy and what was done; the input is not modified. For a procedure it repairs the main line:
+  - It acts when the edges marked `main` do not form one chain from the start to an end. Examples are two marked
+    edges out of one decision, or an automatic renewal marked main so the line loops back.
+  - It marks the main line again from the start to the positive end, keeping to the edges already marked where it
+    can.
+  - A spec with nothing wrong, or with no reachable end, is left as it is.
+  - Nothing in Antu calls it by itself; a host calls it before `validate`.
+- **The handle of `mount` takes the ids of the spec** (#164, #169):
+  - `select(id)` pins an item's card as a click would, and the host hears `select`. `select(null)` unpins.
+  - `focus(id)` brings the item to the middle of the view.
+  - `highlight(ids)` rings items in the theme's colour until changed. The ring is not in `exportPng`.
+  - A rule is found as its row of the table, and an item drawn more than once by any copy.
+- **`mount` option `initial: { headerFolded }`** (#165, #169): the label card opens folded (or not), ahead of the
+  reader's stored choice. An unknown key or a wrong value makes `mount` throw.
+- **Time scale: a "Lane per party" switch** (#159). It is offered when a side holds two or more parties. Each party
+  then gets its own lane, named by the party under the side's name.
+
+### Changed
+- **Fact placement rules v1** (#158; `spec/fact/timeline-rules.md`).
+  - With two or more parties, the groups split the parties: each party names its side with `groupId`, and an event is
+    placed by its `actorIds` (one party: that party's side; several or none: the axis).
+  - With one party or none, the groups still split the events, as before.
+  - The timeline, the chronicle and the time scale follow the same sides.
+  - The view menu is gone.
+- **Fact diagram versions:** `fact/timeline` 4, `fact/chronicle` 2, `fact/scale` 3 (#158, #162).
+- **Time scale** (#162, #168):
+  - A date coarser than the scale (a day on a scale of minutes) is a hollow mark with words such as "that day (time
+    unknown)". It used to be a band that read as lasting the whole segment.
+  - A span whose "start - end" does not fit on one line breaks after the dash.
+  - The lane-name column is as wide as its longest name.
+  - An empty lane stays, thin.
+  - An undated event no longer opens a segment of its own, and its "date unknown" line may wrap.
+- **Timeline:** a column with no event is thin and keeps its heading (#162).
+- **The control capsule clears the minimap and the zoom buttons at every width** (#160). In order, until it fits:
+  - it sits centred when it fits;
+  - else it moves into the strip between them;
+  - else the minimap gives way;
+  - else it wraps.
+- **Chronicle** (#156):
+  - It opens fitted. The first fit could run too early, which also affected the route map, the relation path and the
+    camp summary.
+  - A card is only as tall as its date column needs.
+  - An exact event on the day of an approximate one above it shows the time only.
+
+### Breaking
+- **Fact format generation 2** (#158; `spec/fact/changes.md`). A fact file of generation 1 that used `views`, or put
+  `groupId` on events while naming two or more parties, is now an error. Each error says what to change. *To bring a
+  file over*:
+  - delete `views`;
+  - with two or more parties, give each party a `groupId` (the 1st or the 2nd group, taken from the view's `side1` /
+    `side2`), and delete `groupId` from the events;
+  - write `"specVersion": 2`.
+
+  A file with one party, or none, is unchanged.
+
 ## 0.11.0
 
 Antu in an application's own window: three entries for a host's code (#152, #153). The fact timeline reads

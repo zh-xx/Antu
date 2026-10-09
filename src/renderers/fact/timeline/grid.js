@@ -312,29 +312,29 @@ export function buildGrid(spec) {
 
   // ---------- build the columns ----------
   // **The order of the columns is always decided by the diagram-level actors list** (earlier
-  // entries sit closer to the axis). With 2 or more parties every party has a column on its side,
-  // even one with no event (an empty column is itself information: this party did nothing here);
-  // with one party, its column is on each side where it has an event.
+  // entries sit closer to the axis). A party has a column only on a side where it has a card of its
+  // own (issue 172): with 2 or more parties, a party who only acts with others, or whom no event
+  // names, used to keep an empty column, its heading drawn over nothing. With 2 or more parties a
+  // side where no party has a card of its own still stands, as one thin lane under the side's title,
+  // so the two camps keep their places; with one party a side it has no card on is not drawn.
   const actorOrder = actors.map((a) => (isPlainObject(a) ? a.id : null)).filter(Boolean)
-  const columnsFor = (side) =>
-    byActor
-      ? actorOrder.filter((id) => sideOfActor.get(id) === side)
-      : actorOrder.filter((id) => seenActorsOnSide[side].has(id))
+  const columnsFor = (side) => actorOrder.filter((id) => seenActorsOnSide[side].has(id))
+  const sideColumns = (side) => {
+    const ids = columnsFor(side)
+    // A side of two or more parties names the party over each column, even when only one of them is left
+    const named = byActor && actorOrder.filter((id) => sideOfActor.get(id) === side).length > 1
+    if (ids.length || !byActor) return ids.map((actorId) => ({ key: `${side}:${actorId}`, side, actorId, actorName: actorById.get(actorId)?.name, named }))
+    return [{ key: side, side, actorId: null }]
+  }
 
   const columns = []
   // Side 1 is laid out to the left of the axis: the earlier a party is in the list the closer it
   // sits to the axis, and columns are laid out left to right, so this has to be reversed for the
   // column next to the axis to end up rightmost.
-  columnsFor(SIDE.SIDE1)
-    .reverse()
-    .forEach((actorId) => {
-      columns.push({ key: `${SIDE.SIDE1}:${actorId}`, side: SIDE.SIDE1, actorId, actorName: actorById.get(actorId)?.name })
-    })
+  columns.push(...sideColumns(SIDE.SIDE1).reverse())
   const axisColumnIndex = columns.length
   columns.push({ key: SIDE.AXIS, side: SIDE.AXIS })
-  columnsFor(SIDE.SIDE2).forEach((actorId) => {
-    columns.push({ key: `${SIDE.SIDE2}:${actorId}`, side: SIDE.SIDE2, actorId, actorName: actorById.get(actorId)?.name })
-  })
+  columns.push(...sideColumns(SIDE.SIDE2))
 
   const colIndexByKey = new Map(columns.map((c, i) => [c.key, i]))
 

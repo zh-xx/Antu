@@ -106,11 +106,15 @@ test('the width rule does not let a genuinely over-wide English summary through'
   assert.ok(textEm(tooWide) > SUMMARY_MAX_EM)
 })
 
-test('a column with no event is thin; the cards stay in full-size columns (placement rules v1 leave a party with nothing of its own)', async () => {
+test('a party with no card of its own has no column; a side left with none is one thin lane (issue 172)', async () => {
   const { EMPTY_LANE_W, EMPTY_LANE_H } = await import('../src/renderers/fact/timeline/metrics.js')
   const spec = JSON.parse(readFileSync('examples/fact/lin-fang-v-zhao-lei-private-lending.zh-CN.json', 'utf8'))
   const g = buildGrid(spec)
-  const i = g.columns.findIndex((c) => c.actorName === '林芳')
+  // 林芳 only acts together with 赵磊: no column of hers; her side stands as one lane with no party
+  assert.equal(g.columns.findIndex((c) => c.actorName === '林芳'), -1)
+  const i = g.columns.findIndex((c) => c.side === 'side1')
+  assert.equal(g.columns.filter((c) => c.side === 'side1').length, 1)
+  assert.equal(g.columns[i].actorId, null)
   for (const isH of [false, true]) {
     const m = makeMetrics(g, { summary: true }, isH)
     assert.equal(m.lanes[i].size, isH ? EMPTY_LANE_H : EMPTY_LANE_W)

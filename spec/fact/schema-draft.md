@@ -1,6 +1,6 @@
 # fact · Schema draft v0
 
-> Status: **implemented** (status line checked against 0.11.0). The field set has been trimmed per the sponsor's decisions. Field names and constraints may still change in a 0.x release, with a changelog entry (`spec/versioning.md`). Besides the timeline, two more ways of drawing the same JSON are implemented, as first attempts: the chronicle and the time scale (`spec/fact/rendering.md` §9.1 and §9.2).
+> Status: **implemented** (status line checked against 0.12.0). The field set has been trimmed per the sponsor's decisions. Field names and constraints may still change in a 0.x release, with a changelog entry (`spec/versioning.md`). Besides the timeline, two more ways of drawing the same JSON are implemented, as first attempts: the chronicle and the time scale (`spec/fact/rendering.md` §9.1 and §9.2).
 
 > **Format generation 2 (placement rules v1, 2026-10).** Views are gone, and with 2 or more parties the groups are written on the parties, not on the events. The placement rules are `spec/fact/timeline-rules.md`; how to bring a generation-1 file over is `spec/fact/changes.md`.
 

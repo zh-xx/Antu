@@ -55,11 +55,13 @@ test('SKILL.md commands name the skill folder, so they run from any directory (#
   // and the command line does run from elsewhere: tools/verify/skill-cli.mjs runs it with another directory as cwd
 })
 
-test('SKILL.md tells an agent that a fact diagram of two parties needs groups or views (#49)', () => {
+test('SKILL.md tells an agent that in a fact diagram of two or more parties each party names its side (#49, placement rules v1)', () => {
   const text = readFileSync('skills/antu/SKILL.md', 'utf8')
-  assert.match(text, /two or more parties/)
-  assert.match(text, /groups/)
-  assert.match(text, /3-groups/)
+  assert.match(text, /count the parties first/)
+  assert.match(text, /each party carries `groupId`/)
+  assert.match(text, /3-sides/)
+  assert.doesNotMatch(text, /3-groups|4-views/, 'the old example names are gone')
+  assert.match(text, /There are no `views`/)
 })
 
 test('SKILL.md says what the page bar switches and that some are off by default, and what to do when layout says the text is small (#49 C, F)', () => {
