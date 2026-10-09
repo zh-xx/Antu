@@ -1,6 +1,6 @@
 # fact（事实图）· Schema 草案 v0
 
-> 状态：**已实现**（状态行对照 0.11.0 检查过）。字段已按发起人决策精简。字段名/约束在 0.x 阶段仍可能改，改时写进 CHANGELOG（`spec/versioning.md`）。除时间图外，同一份 JSON 还有两种画法已实现（都是第一版）：大事记和比例时间轴（`spec/fact/rendering.md` §9.1、§9.2）。
+> 状态：**已实现**（状态行对照 0.12.0 检查过）。字段已按发起人决策精简。字段名/约束在 0.x 阶段仍可能改，改时写进 CHANGELOG（`spec/versioning.md`）。除时间图外，同一份 JSON 还有两种画法已实现（都是第一版）：大事记和比例时间轴（`spec/fact/rendering.md` §9.1、§9.2）。
 
 > **格式第 2 代（排布规则 v1，2026-10）。** 取消视角；2 个及以上主体时，分组写在主体上，不写在事件上。排布规则见 `spec/fact/timeline-rules.zh-CN.md`；第 1 代文件怎么改见 `spec/fact/changes.md`。
 
