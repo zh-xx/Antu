@@ -318,12 +318,12 @@ export const zh = {
   //
   // One prefix per major type: err. (fact field rules), perr. (procedure errors), phint. (procedure hints),
   // note. (what validation passes but the author should see, e.g. a view that does not fit),
-  // rerr. / rhint. (relationship errors and hints).
+  // rerr. / rhint. (relationship errors and hints), norm. (what `normalize` changed, issue 163).
   // Validation error keys for a new major type get their own prefix, and **that prefix must be added here too**,
   // or the key-consistency check reports "zh is missing a key", which is exactly its job.
   ...Object.fromEntries(
     Object.keys(en)
-      .filter((k) => k.startsWith('err.') || k.startsWith('perr.') || k.startsWith('phint.') || k.startsWith('note.') || k.startsWith('rerr.') || k.startsWith('rhint.') || k.startsWith('jerr.') || k.startsWith('jhint.'))
+      .filter((k) => k.startsWith('err.') || k.startsWith('perr.') || k.startsWith('phint.') || k.startsWith('note.') || k.startsWith('rerr.') || k.startsWith('rhint.') || k.startsWith('jerr.') || k.startsWith('jhint.') || k.startsWith('norm.'))
       .map((k) => [k, en[k]]),
   ),
 }
