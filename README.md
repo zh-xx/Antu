@@ -68,7 +68,7 @@ The engine does not write JSON, and the Agent does not draw. The model puts info
 
 ## Agent Integration
 
-The reference material for an Agent, for the fact diagram, is a field table of about 3.4k characters and a mechanism note of about 6.3k characters.
+The reference material for an Agent, for the fact diagram, is a field table of about 3.4k characters and a mechanism note of about 6.5k characters.
 
 ### Skill
 
