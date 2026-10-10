@@ -167,7 +167,7 @@ export const zh = {
   'graphKind.focus': '聚焦图',
   'graphKind.matrix': '关系矩阵',
   'graphKind.equity': '股权图',
-  'rel.matrix.corner': '行 → 列',
+  'rel.matrix.note': '每一格：行里的一方对列里的一方。',
   'rel.matrix.ungrouped': '未归阵营',
   'rel.equity.noShare': '比例未写明',
   'rel.equity.cross': '交叉持股',

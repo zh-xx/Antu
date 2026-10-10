@@ -331,7 +331,7 @@ export const en = {
   'graphKind.focus': 'Focus view',
   'graphKind.matrix': 'Relation matrix',
   'graphKind.equity': 'Equity tree',
-  'rel.matrix.corner': 'Row → column',
+  'rel.matrix.note': 'Each cell reads from the party in the row to the party in the column.',
   'rel.matrix.ungrouped': 'No camp',
   'rel.equity.noShare': 'not stated',
   'rel.equity.cross': 'cross-holding',
