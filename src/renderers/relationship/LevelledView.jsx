@@ -23,7 +23,7 @@ import { useSelectEvent } from '../../shell/useSelectEvent.js'
 
 const nodeTypes = { rnode: EntityNode, lineLayer: LineLayerNode }
 
-export default function LevelledView({ spec, build, className, options = {}, onParty = null, dockExtra = null, fitWidth = true, decorate = null }) {
+export default function LevelledView({ spec, build, className, options = {}, onParty = null, dockExtra = null, fitWidth = true, decorate = null, fitMaxZoom = 0 }) {
   const prefs = usePrefs()
   const specKey = `rel:${spec?.title || ''}`
   const { t, lang } = useLang()
@@ -66,6 +66,7 @@ export default function LevelledView({ spec, build, className, options = {}, onP
           fitKey={layout}
           fitWidth={fitWidth}
           fitSelf={!fitWidth}
+          fitMaxZoom={fitMaxZoom}
           nodeTypes={nodeTypes}
           onNodeMouseEnter={(_, n) => {
             if (n.type === 'rnode') setHoveredId(n.id)

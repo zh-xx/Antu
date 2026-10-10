@@ -33,7 +33,7 @@ const SEARCH_CAP = 5000
 const MIN_CONTENT_W = 760
 const MIN_BOX_W = 150
 /** Between two columns at the least; wider when a label has to sit on the line */
-const MIN_GAP = 110
+const MIN_GAP = 140
 const PILL_MARGIN = 14
 /** How far a bent line runs from its box before it turns, and the step between lines that turn side by side */
 const TURN = 16
@@ -283,7 +283,7 @@ export function buildPathGraph(spec, fields = {}) {
   const PORT_STEP = Math.max(6, Math.min(14, (rowH - 16) / 3))
   const portIndex = (m, id, hop) => ({ i: m.get(id).indexOf(hop), n: m.get(id).length })
   const portY = (id, i, n) => rowY(rowOf.get(id)) + rowH / 2 + (i - (n - 1) / 2) * PORT_STEP
-  const ROW_STEP = rowH + 64
+  const ROW_STEP = rowH + 88
   const rowY = (r) => PAD + CARD_CLEAR + r * ROW_STEP
 
   // Which side of the gap a bent line turns in: next to its first box, unless the row it would run along

@@ -14,6 +14,9 @@ import { useLang } from '../../../shell/LangContext.jsx'
 import LevelledView from '../LevelledView.jsx'
 import { buildPathGraph } from './layout.js'
 
+/** The path opens no larger than this (the review of PR 171: it filled the whole screen with no room to breathe) */
+const OPEN_MAX_ZOOM = 1
+
 export default function RelationshipPath({ spec }) {
   // External preset (antu_preview, the skill's preview): `from` and `to` name the two ends
   // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
@@ -44,6 +47,7 @@ export default function RelationshipPath({ spec }) {
       className="antu-pt"
       options={asked}
       fitWidth={false}
+      fitMaxZoom={OPEN_MAX_ZOOM}
       dockExtra={(layout) => (
         <>
           {pick(layout.from, 'from')}
