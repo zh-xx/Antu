@@ -22,6 +22,7 @@ import {
   defaultCentre,
   segmentHitsRect,
 } from '../src/renderers/relationship/focus/layout.js'
+import { buildRelationshipGraph } from '../src/renderers/relationship/graph/layout.js'
 import { relationshipKnowledge } from '../src/renderers/relationship/schema.js'
 import { registerKnowledge, layoutKindsOf } from '../src/core/registry.js'
 import { translate } from '../src/core/i18n.js'
@@ -294,4 +295,71 @@ test('two relations on one pair are drawn at least 18 px apart (review on PR 171
       }),
     )
   }
+})
+
+// ---- the review of PR 171, second round: a four-party case (a loan, a joint guarantee, an entrusted-guarantee
+// contract, recourse after paying, a counter-guarantee) in which two relations run between one pair ----
+const rel1 = () =>
+  spec(
+    [entity('e-1', { label: '临沂大润', groupId: 'g-2' }), entity('e-2', { label: '中国农业银行', groupId: 'g-1' }), entity('e-3', { label: '袁冠华', groupId: 'g-2', kind: 'person' }), entity('e-4', { label: '郁友娜', groupId: 'g-2', kind: 'person' })],
+    [
+      relation('r-1', 'e-2', 'e-1', { kind: 'debt', label: '分期债务' }),
+      relation('r-2', 'e-3', 'e-2', { kind: 'guarantee', label: '连带保证' }),
+      relation('r-3', 'e-3', 'e-1', { kind: 'contract', label: '委托担保合同' }),
+      relation('r-4', 'e-3', 'e-1', { kind: 'debt', label: '代偿后追偿' }),
+      relation('r-5', 'e-4', 'e-3', { kind: 'guarantee', label: '反担保' }),
+    ],
+    { groups: [{ id: 'g-1', label: '债权人' }, { id: 'g-2', label: '债务人与担保人' }] },
+  )
+const crossesRect = ([p, q], r) => {
+  let t0 = 0
+  let t1 = 1
+  const dx = q[0] - p[0]
+  const dy = q[1] - p[1]
+  for (const [pp, qq] of [[-dx, p[0] - r.x], [dx, r.x + r.w - p[0]], [-dy, p[1] - r.y], [dy, r.y + r.h - p[1]]]) {
+    if (pp === 0) {
+      if (qq < 0) return false
+    } else {
+      const t = qq / pp
+      if (pp < 0) {
+        if (t > t1) return false
+        if (t > t0) t0 = t
+      } else {
+        if (t < t0) return false
+        if (t < t1) t1 = t
+      }
+    }
+  }
+  return true
+}
+const labelsOnOtherLines = (g) => {
+  const out = []
+  for (const c of g.connections) {
+    const r = { x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height }
+    for (const o of g.connections) if (o !== c && o.points.slice(1).some((q, i) => crossesRect([o.points[i], q], r))) out.push(`${c.label} over ${o.label}`)
+  }
+  return out
+}
+
+test('focus: from every party, no line goes round the whole picture and no label stands on another relation\'s line', () => {
+  const s = rel1()
+  for (const e of s.entities) {
+    const g = buildFocusGraph(s, { centre: e.id })
+    const longest = Math.max(...g.connections.map((c) => c.points.slice(1).reduce((n, q, i) => n + Math.hypot(q[0] - c.points[i][0], q[1] - c.points[i][1]), 0)))
+    assert.ok(longest < 800, `${e.label}: the longest line is ${Math.round(longest)} px`)
+    assert.deepEqual(labelsOnOtherLines(g), [], e.label)
+  }
+})
+
+test('graph: on the same case, in all four states, no label stands on another relation\'s line, and two of the lines are straight when the camps are off', () => {
+  const s = rel1()
+  for (const groups of [true, false]) {
+    for (const orientation of ['vertical', 'horizontal']) {
+      const g = buildRelationshipGraph(s, { groups }, undefined, orientation)
+      assert.deepEqual(labelsOnOtherLines(g), [], `groups ${groups}, ${orientation}`)
+    }
+  }
+  const g = buildRelationshipGraph(s, { groups: false }, undefined, 'vertical')
+  const straight = g.connections.filter((c) => c.points.length === 2).map((c) => c.label)
+  assert.ok(straight.includes('分期债务') && straight.includes('连带保证'), `straight: ${straight.join(', ')}`)
 })
