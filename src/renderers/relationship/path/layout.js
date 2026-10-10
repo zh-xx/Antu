@@ -418,17 +418,9 @@ export function buildPathGraph(spec, fields = {}) {
   }
 
   const sections = sectionWriter(layer, contentW, y)
-  const sep = t('rel.equity.sep')
   if (!chains.length) sections.empty(t('rel.path.noChain', { a: nameOf(ends.from), b: nameOf(ends.to) }), t('rel.path.noChainHint'))
   const off = entities.filter((e) => !drawn.has(e.id))
   const offRels = relations.filter((r) => !drawnRels.has(r.id))
-  if (off.length) sections.section(t('rel.path.off', { n: off.length }), [{ main: off.map((e) => e.label).join(sep) }])
-  if (offRels.length) {
-    sections.section(
-      t('rel.path.offRels', { n: offRels.length }),
-      offRels.map((r) => ({ main: `${textOf(r)}${t('rel.equity.colon')}${nameOf(r.from)} → ${nameOf(r.to)}` })),
-    )
-  }
   const height = Math.ceil(sections.y() - SECTION_GAP + PAD)
   layer.height = height
   nodes.unshift({

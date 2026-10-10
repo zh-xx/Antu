@@ -128,8 +128,6 @@ export function buildEquityGraph(spec, fields = {}) {
   if (entities.length > SCALE_HINT_ENTITIES) hints.push(tEn('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
   const entityById = new Map(entities.map((e) => [e.id, e]))
   const party = makePartyData(spec, t)
-  const textIndex = new Map(relations.map((r, i) => [r.id, i]))
-  const textOf = (r) => party.labelTexts[textIndex.get(r.id)]
   const parts = classifyEquity(spec, fields.company)
   const nameOf = (id) => entityById.get(id).label
 
@@ -186,23 +184,6 @@ export function buildEquityGraph(spec, fields = {}) {
     )
     if (indirect.length > shown.length) items.push({ main: t('rel.equity.moreRows', { n: indirect.length - shown.length }), tone: 'note' })
     section(t('rel.equity.indirect', { n: indirect.length }), items)
-  }
-
-  // ── parties with no equity relation ──
-  if (parts.apart.length && parts.ids.length) {
-    section(t(parts.company ? 'rel.equity.outside' : 'rel.equity.apart', { n: parts.apart.length }), [{ main: parts.apart.map((e) => e.label).join(t('rel.equity.sep')) }])
-  }
-
-  // ── every other relation, as a list ──
-  if (parts.rest.length) {
-    section(
-      t(parts.company ? 'rel.equity.otherScoped' : 'rel.equity.other', { n: parts.rest.length }),
-      parts.rest.map((r) => ({ main: `${textOf(r)}${t('rel.equity.colon')}${nameOf(r.from)} → ${nameOf(r.to)}` })),
-    )
-  }
-  // With no equity at all the parties are listed too, so none is missing from the page
-  if (parts.apart.length && !parts.ids.length) {
-    section(t('rel.equity.apart', { n: parts.apart.length }), [{ main: parts.apart.map((e) => e.label).join(t('rel.equity.sep')) }])
   }
 
   const height = Math.ceil(sections.y() - SECTION_GAP + PAD)

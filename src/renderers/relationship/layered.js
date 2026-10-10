@@ -207,9 +207,6 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
     const wp = waypointsOf.get(e.key) ?? []
     return wp.length ? acrossOf(waypoint.get(wp.at(-1))) : acrossOf(farSide(boxes.get(e.from)))
   }
-  // Where lines come into a box: straight below the box each comes from when that is within the box's width
-  // (so the box wide enough to hold its parents has only straight drops), else at the nearest end; lines that
-  // would land too close are moved apart
   // Lines that gather into one box from the level above (two parties or more) share one trunk: each comes
   // straight down from its party to a common bar, and one line goes from the middle of the box straight up to it
   const gathers = new Map()
@@ -219,23 +216,14 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
   }
   const gathered = new Set([...gathers.values()].flat().map((e) => e.key))
   const entry = new Map()
-  const ENTRY_INSET = 12
-  const ENTRY_GAP = 14
   for (const id of ids) {
     const b = boxes.get(id)
     const span = horizontal ? b.h : b.w
     const origin = horizontal ? b.y : b.x
     for (const e of gathers.get(id) ?? []) entry.set(e.key, origin + span / 2)
+    // The other lines come in side by side across the box, in the order they come from; one line comes in at the middle
     const into = edges.filter((e) => !back.has(e.key) && e.to === id && !gathered.has(e.key)).sort((p, q) => startOf(p) - startOf(q))
-    const lo = origin + Math.min(ENTRY_INSET, span / 2)
-    const hi = origin + span - Math.min(ENTRY_INSET, span / 2)
-    const at = into.map((e) => Math.min(hi, Math.max(lo, startOf(e))))
-    for (let i = 1; i < at.length; i++) at[i] = Math.max(at[i], at[i - 1] + ENTRY_GAP)
-    const over = at.length ? at.at(-1) - hi : 0
-    if (over > 0) {
-      for (let i = at.length - 1; i >= 0; i--) at[i] = Math.min(at[i] - (i === at.length - 1 ? over : 0), i === at.length - 1 ? hi : at[i + 1] - ENTRY_GAP)
-    }
-    into.forEach((e, i) => entry.set(e.key, at[i]))
+    into.forEach((e, i) => entry.set(e.key, origin + (span * (i + 1)) / (into.length + 1)))
   }
   // A line between two levels leaves its box straight on, turns across at a height of its own in the gap,
   // and comes straight into the next box: squared, like a tree. Lines of one gap whose turns would run along

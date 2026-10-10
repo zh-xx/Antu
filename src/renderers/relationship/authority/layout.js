@@ -98,13 +98,6 @@ export function buildAuthorityGraph(spec, fields = {}) {
       parts.above.map((r) => ({ main: `${textOf(r)}${t('rel.equity.colon')}${nameOf(r.from)} → ${nameOf(r.to)}` })),
     )
   }
-  if (parts.apart.length) sections.section(t(parts.company ? 'rel.authority.outside' : 'rel.authority.apart', { n: parts.apart.length }), [{ main: parts.apart.map((e) => e.label).join(t('rel.equity.sep')) }])
-  if (parts.rest.length) {
-    sections.section(
-      t(parts.company ? 'rel.authority.otherScoped' : 'rel.authority.other', { n: parts.rest.length }),
-      parts.rest.map((r) => ({ main: `${textOf(r)}${t('rel.equity.colon')}${nameOf(r.from)} → ${nameOf(r.to)}` })),
-    )
-  }
   const height = Math.ceil(sections.y() - SECTION_GAP + PAD)
   layer.height = height
   nodes.unshift({

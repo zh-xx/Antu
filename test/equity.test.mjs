@@ -123,13 +123,13 @@ test('a cross-holding is drawn once, upward and dashed', () => {
   assertSound(ring, 'ring')
 })
 
-test('no equity at all: an explicit empty state, and the rest still listed', () => {
+test('no equity at all: an explicit empty state', () => {
   const s = spec([entity('a'), entity('b')], [rel('r1', 'a', 'b', 'contract')])
   const g = assertSound(s, 'none')
   const layer = g.nodes[0].data
   assert.equal(layer.empties.length, 1)
   assert.equal(g.equityLines, 0)
-  assert.ok(layer.frames.length >= 2, 'the parties and the other relations are listed')
+  assert.equal(layer.frames.length, 0, 'no lists of what the picture leaves out')
 })
 
 test('the share is written without trailing noise', () => {

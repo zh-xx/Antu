@@ -141,14 +141,6 @@ export function buildRelatedGraph(spec, fields = {}) {
 
   const sections = sectionWriter(layer, tableW, y + SECTION_GAP)
   if (!rows.length) sections.empty(t('rel.related.none', { name: nameOf(centre) }), t('rel.related.noneHint'))
-  if (none.length && rows.length) sections.section(t('rel.related.apart', { n: none.length }), [{ main: none.map((e) => e.label).join(sep) }])
-  if (none.length && !rows.length) sections.section(t('rel.related.apart', { n: none.length }), [{ main: none.map((e) => e.label).join(sep) }])
-  if (rest.length) {
-    sections.section(
-      t('rel.related.rest', { n: rest.length }),
-      rest.map((r) => ({ main: `${textOf(r)}${t('rel.equity.colon')}${nameOf(r.from)} → ${nameOf(r.to)}` })),
-    )
-  }
   const height = Math.ceil(sections.y() - SECTION_GAP + PAD)
   layer.height = height
 
