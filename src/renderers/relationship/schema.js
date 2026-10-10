@@ -372,10 +372,10 @@ export const relationshipKnowledge = {
   diagrams: {
     graph: { version: 2, status: 'experimental', since: '0.2.0' },
     focus: { version: 2, status: 'experimental', since: '0.7.0' },
-    matrix: { version: 1, status: 'experimental', since: '0.7.0' },
-    equity: { version: 1, status: 'experimental', since: '0.7.0' },
-    authority: { version: 1, status: 'experimental', since: '0.7.0' },
-    related: { version: 1, status: 'experimental', since: '0.7.0' },
+    matrix: { version: 2, status: 'experimental', since: '0.7.0' },
+    equity: { version: 2, status: 'experimental', since: '0.7.0' },
+    authority: { version: 2, status: 'experimental', since: '0.7.0' },
+    related: { version: 2, status: 'experimental', since: '0.7.0' },
     path: { version: 2, status: 'experimental', since: '0.7.0' },
   },
 
