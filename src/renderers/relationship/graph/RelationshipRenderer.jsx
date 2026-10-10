@@ -23,7 +23,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { usePreset, usePrefs } from '../../../shell/env.js'
+import { useEnv, usePreset, usePrefs } from '../../../shell/env.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
@@ -107,9 +107,21 @@ export default function RelationshipGraph({ spec }) {
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
   useSelectEvent(spec, pinnedId, setPinnedId)
+  // The pinned card can hand its party to the focus view: it is remembered as the centre, then the kind is switched
+  const { commands } = useEnv()
   const preview = useMemo(
-    () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),
-    [hoveredId, pinnedId],
+    () => ({
+      hoveredId,
+      pinnedId,
+      pin: (id) => setPinnedId(id),
+      unpin: () => setPinnedId(null),
+      focusOn: (id) => {
+        prefs.write({ relationshipCentres: { ...(prefs.read().relationshipCentres || {}), [specKey]: id } })
+        setPinnedId(null)
+        commands.run('setKind', 'focus')
+      },
+    }),
+    [hoveredId, pinnedId, specKey, prefs, commands],
   )
   // The entity being looked at (pinned, else hovered): the relations that touch it stay, the rest fade
   const litEntity = pinnedId ?? hoveredId

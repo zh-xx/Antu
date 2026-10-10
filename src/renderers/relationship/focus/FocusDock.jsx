@@ -2,7 +2,8 @@
 //  src/renderers/relationship/focus/FocusDock.jsx — the focus view's control capsule
 //
 //  The graph's dock without what does not apply (no orientation, no link style, no group boxes), plus
-//  the one control this kind adds: back to the default centre, shown only when another party was
+//  the controls this kind adds: a box to pick the centre from the list of parties (clicking a party does
+//  the same), and back to the default centre, shown only when another party was
 //  picked (a switch that can change nothing is noise). Kind chips and labels are shared with the
 //  graph and remembered together with it.
 // ============================================================
@@ -11,7 +12,7 @@ import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch } from '../../../shell/DockParts.jsx'
 import { RELATION_KINDS } from '../graph/rules.js'
 
-export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, showLabels = true, onToggleLabels, isDefaultCentre = true, onResetCentre, exporting = false, onExport, extra = null }) {
+export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, showLabels = true, onToggleLabels, parties = [], centre = null, onPickCentre, isDefaultCentre = true, onResetCentre, exporting = false, onExport, extra = null }) {
   const { t } = useLang()
   const used = RELATION_KINDS.filter((k) => kinds[k] > 0)
   return (
@@ -34,6 +35,15 @@ export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, 
           {t('rel.labels')}
         </button>
         {extra}
+        {parties.length > 1 && onPickCentre && (
+          <select className="antu-dock-chip antu-pt-end" value={centre ?? ''} onChange={(e) => onPickCentre(e.target.value)} title={t('rel.focus.centre')} aria-label={t('rel.focus.centre')}>
+            {parties.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        )}
         {!isDefaultCentre && (
           <button className="antu-dock-chip antu-rf-reset" onClick={onResetCentre} title={t('rel.focus.resetTitle')}>
             {t('rel.focus.reset')}

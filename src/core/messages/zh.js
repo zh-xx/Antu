@@ -224,6 +224,8 @@ export const zh = {
   'proc.route.notFollowedHint': '下挂的分支只沿第一条出路画下去；框里的其他出路没有画。流程图里全部都有。',
   'proc.route.rules': ({ n }) => `这里没有画出的规则（${n}）`,
   'proc.route.rulesHint': '路线图画的是步骤；规则（如果……会怎样）在流程图里，画在图下面的表中。',
+  'rel.focus.open': '以这一方为中心看聚焦图',
+  'rel.focus.centre': '中心',
   'rel.focus.hint': '点击，把这一方放到中间',
   'rel.focus.apart': '与中心没有关系相连',
   'rel.focus.reset': '默认中心',

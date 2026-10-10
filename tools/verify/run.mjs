@@ -1704,6 +1704,12 @@ async function checkRenderFocus() {
     await browser.eval(`document.querySelector('.antu-rf-reset').click()`, { userGesture: true })
     await settle(900)
     eq('focus: the default centre comes back', await centreName(), spec.entities.find((e) => e.id === first.defaultCentre).label)
+    // The box in the dock picks the centre from the list of parties
+    await browser.eval(`(() => { const sel = document.querySelector('.antu-dock select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'e-1'); sel.dispatchEvent(new Event('change', { bubbles: true })) })()`, { userGesture: true })
+    await settle(900)
+    eq('focus: the box in the dock puts the picked party in the middle', await centreName(), other.label)
+    await browser.eval(`document.querySelector('.antu-rf-reset').click()`, { userGesture: true })
+    await settle(900)
     // A kind switched off: its lines go, nothing moves
     const pos = () => browser.eval(`[...document.querySelectorAll('.react-flow__node-rnode')].map((n) => n.style.transform).sort().join('|')`)
     const before = await pos()
@@ -1724,6 +1730,17 @@ async function checkRenderFocus() {
         writeFileSync(join(OUT, 'export-focus.png'), shot.buf)
       }
     }
+    // From the graph: the pinned card hands its party to the focus view, which opens centred on it
+    const graphHtml = join(OUT, 'render-focus-jump.html')
+    renderToFile(spec, { outPath: graphHtml, quiet: true, preset: {} })
+    await browser.open(`file://${graphHtml}?lang=zh`)
+    await browser.eval(`document.querySelector('.react-flow__node[data-id="e-1"] .antu-rn').click()`, { userGesture: true })
+    await settle(500)
+    eq('graph: a pinned party offers to centre the focus view on it', await browser.eval(`!!document.querySelector('.antu-rn-focus')`), true)
+    await browser.eval(`document.querySelector('.antu-rn-focus').click()`, { userGesture: true })
+    await settle(900)
+    truthy('graph: the kind is now the focus view', (await browser.eval(`document.querySelector('.antu-header')?.textContent || ''`)).includes(translate('zh', 'graphKind.focus')))
+    eq('graph: and it is centred on that party', await centreName(), other.label)
   } finally {
     await browser.close()
   }

@@ -388,6 +388,8 @@ export const en = {
   'proc.route.notFollowedHint': 'A hanging branch follows the first way on; the other ways out of its boxes are not drawn. The flowchart shows them all.',
   'proc.route.rules': ({ n }) => `Rules not shown here (${n})`,
   'proc.route.rulesHint': 'The route map draws the steps; the rules (what happens if …) are in the flowchart, in the table under it.',
+  'rel.focus.open': 'Centre the focus view on this party',
+  'rel.focus.centre': 'Centre',
   'rel.focus.hint': 'Click to put this party in the middle',
   'rel.focus.apart': 'Not connected to the centre',
   'rel.focus.reset': 'Default centre',

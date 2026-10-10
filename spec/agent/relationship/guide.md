@@ -21,7 +21,7 @@ puts the parties down and across and names the relations in each cell: for "is t
 relation between A and B". The **equity tree** draws the `equity` relations in levels with the `share` on each
 line, so **write `share` on every equity relation**. The **authority chart** draws `control`, `employment` and `agency` as an organisation chart; the **related-party
 list** is a table of one party's relations (to paste into a brief); the **path** draws the shortest chains between
-two parties. The same JSON draws in all seven;
+two parties in one picture, one start and one end. The same JSON draws in all seven;
 `kind: "focus"`, `"matrix"`, `"equity"`, `"authority"`, `"related"` or `"path"` on `layout`, `preview` and `render` shows it.
 
 ## Three things, three places

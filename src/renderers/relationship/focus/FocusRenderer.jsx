@@ -134,6 +134,12 @@ export default function RelationshipFocus({ spec }) {
             onToggleKind={toggleKind}
             showLabels={fields.labels}
             onToggleLabels={(v) => setField({ labels: v })}
+            parties={spec.entities}
+            centre={layout.centre}
+            onPickCentre={(id) => {
+              setPinnedId(null)
+              setCentre(id === layout.defaultCentre ? null : id)
+            }}
             isDefaultCentre={layout.centre === layout.defaultCentre}
             onResetCentre={() => setCentre(null)}
             exporting={exporting}

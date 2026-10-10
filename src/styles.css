@@ -1108,6 +1108,8 @@
 .antu-rn .antu-preview.left { left: auto; }
 /* 浮层里"这个当事方和谁有什么关系" */
 .antu-rn-relations { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+.antu-rn-focus { display: inline-block; margin: 8px 0 4px; padding: 3px 10px; font: inherit; font-size: 12px; line-height: 18px; color: var(--antu-text); background: var(--antu-bg, #fff); border: 1px solid var(--antu-text-3); border-radius: var(--antu-pill-radius, 6px); cursor: pointer; }
+.antu-rn-focus:hover { border-color: var(--antu-text); }
 .antu-rn-relation { display: flex; gap: 6px; align-items: baseline; font-size: 12px; line-height: 16px; color: var(--antu-text-2); }
 .antu-rn-relation-arrow { flex: none; width: 14px; text-align: center; color: var(--antu-text-3); }
 .antu-rn-relation-other { flex: none; font-weight: 600; color: var(--antu-text); }
