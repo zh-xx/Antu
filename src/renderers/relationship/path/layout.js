@@ -285,6 +285,13 @@ export function buildPathGraph(spec, fields = {}) {
     pairs.get(key).push(h)
   }
   for (const list of pairs.values()) {
+    // The tallest labels (the ones that wrap) take the top and the bottom line, so the middle one stays one line
+    if (list.length > 2) {
+      const tall = [...list].sort((u, v) => pillH(textOf(v.r)) - pillH(textOf(u.r)))
+      const ends = tall.slice(0, 2)
+      const mid = list.filter((h) => !ends.includes(h))
+      list.splice(0, list.length, ends[0], ...mid, ends[1])
+    }
     list.forEach((h, i) => {
       h.y = rowY(row.get(h.s)) + rowH / 2 + (i - (list.length - 1) / 2) * PORT_STEP
       h.slotOf = list
@@ -395,7 +402,13 @@ export function buildPathGraph(spec, fields = {}) {
       const before = h.slotOf.slice(0, h.slotOf.indexOf(h)).reduce((n, o) => n + o.pw + 2 * PILL_MARGIN, 0)
       link.d = `M ${x1} ${h.y} L ${x2} ${h.y}`
       layer.links.push(link)
-      layer.pills.push({ ...pill, x: x1 + (x2 - x1 - total) / 2 + before + PILL_MARGIN + h.pw / 2, y: h.y })
+      // A label of more than one line is taller than the gap between parallel lines: the top one's hangs up from
+      // its line and the bottom one's down from its line, so neither covers the line next to it
+      const at = h.slotOf.indexOf(h)
+      const tall = pillH(textOf(h.r)) > 22
+      const lean = pillH(textOf(h.r)) / 2 - 3
+      const shift = h.slotOf.length < 2 || !tall ? 0 : at === 0 ? -lean : at === h.slotOf.length - 1 ? lean : 0
+      layer.pills.push({ ...pill, x: x1 + (x2 - x1 - total) / 2 + before + PILL_MARGIN + h.pw / 2, y: h.y + shift })
     } else if (h.type === 'col') {
       const x = xc(pos.get(h.s))
       const y1 = rowY(row.get(h.s)) + rowH

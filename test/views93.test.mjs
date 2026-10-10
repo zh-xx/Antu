@@ -17,7 +17,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 
 import { buildAuthorityGraph, classifyAuthority } from '../src/renderers/relationship/authority/layout.js'
 import { buildRelatedGraph, relatedRows, centreOf } from '../src/renderers/relationship/related/layout.js'
-import { buildPathGraph, findChains, defaultEnds, endsOf, placeChains, MAX_CHAINS } from '../src/renderers/relationship/path/layout.js'
+import { buildPathGraph, findChains, defaultEnds, endsOf, placeChains, pillW, pillH, MAX_CHAINS } from '../src/renderers/relationship/path/layout.js'
 import { layeredGraph } from '../src/renderers/relationship/layered.js'
 import { relationshipKnowledge } from '../src/renderers/relationship/schema.js'
 import { registerKnowledge, layoutKindsOf } from '../src/core/registry.js'
@@ -302,4 +302,31 @@ test('authority: several parties tied to one company gather on one bar, symmetri
   const pw = (t) => Math.min(220, 20 + [...t].reduce((n, ch) => n + (/[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 12.5 : 7.4), 0))
   const r = layer.pills.map((p) => ({ x: p.x - pw(p.text) / 2, y: p.y - 11, w: pw(p.text), h: 22 }))
   for (let i = 0; i < r.length; i++) for (let j = i + 1; j < r.length; j++) assert.ok(!(r[i].x < r[j].x + r[j].w && r[j].x < r[i].x + r[i].w && r[i].y < r[j].y + r[j].h && r[j].y < r[i].y + r[i].h), `labels ${i} and ${j} overlap`)
+})
+
+test('path: parallel lines between two parties, a label that wraps covers none of the other lines', () => {
+  const s = spec(
+    [entity('a', { role: '角色' }), entity('b', { role: '角色' })],
+    [
+      rel('r1', 'a', 'b', 'employment', { label: '副总经理兼首席技术官（2031 年任）' }),
+      rel('r2', 'b', 'a', 'equity', { label: '股东', share: 15 }),
+      rel('r3', 'a', 'b', 'contract', { label: '技术服务合同（含保密与竞业限制条款）' }),
+    ],
+  )
+  const g = buildPathGraph(s, { from: 'a', to: 'b' })
+  const layer = g.nodes.find((n) => n.type === 'lineLayer').data
+  assert.equal(layer.links.length, 3)
+  const segs = layer.links.map((l) => {
+    const pts = [...l.d.matchAll(/[ML] ([\d.-]+) ([\d.-]+)/g)].map((m) => [+m[1], +m[2]])
+    return pts.slice(1).map((q, i) => [pts[i], q])
+  })
+  layer.pills.forEach((p, i) => {
+    const w = pillW(p.text)
+    const h = pillH(p.text)
+    const r = { x: p.x - w / 2 + 3, y: p.y - h / 2 + 2, w: w - 6, h: h - 4 }
+    segs.forEach((ss, k) => {
+      if (k === i) return
+      for (const [a, b] of ss) assert.ok(!(Math.max(a[0], b[0]) > r.x && Math.min(a[0], b[0]) < r.x + r.w && Math.max(a[1], b[1]) > r.y && Math.min(a[1], b[1]) < r.y + r.h), `the label of line ${i} covers line ${k}`)
+    })
+  })
 })
