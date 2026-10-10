@@ -25,6 +25,7 @@
 import { validateRelationship, hintsOfRelationship } from '../graph/rules.js'
 import { classifyLayers, layeredGraph, bezierAt, pathOf } from '../layered.js'
 import { sectionWriter, SECTION_GAP } from '../sections.js'
+import { reachScope, companyOf, hasSeveral } from '../scope.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
 import { tEn } from '../../../core/i18n.js'
@@ -48,18 +49,27 @@ export const shareText = (share) => `${Number(Number(share).toFixed(2))}%`
  *   level:     Map id -> level (0 = held by no one),
  *   roots:     ids of the ultimate holders (no incoming line except a back line),
  *   rest:      relations that are not equity,
- *   apart:     entities with no equity relation,
+ *   apart:     entities not in the picture (no equity relation, or outside the chosen company's picture),
+ *   company:   the party whose picture it is, null for all of it,
+ *   companies: the parties in the whole tree, which the reader may pick from,
  * }
  */
-export function classifyEquity(spec) {
-  const edges = spec.relations.filter((r) => r.kind === 'equity').map((r) => ({ key: r.id, rel: r, from: r.from, to: r.to, back: false }))
-  const rest = spec.relations.filter((r) => r.kind !== 'equity')
+export function classifyEquity(spec, asked) {
+  const all = spec.relations.filter((r) => r.kind === 'equity').map((r) => ({ key: r.id, rel: r, from: r.from, to: r.to, back: false }))
+  const inAll = new Set(all.flatMap((e) => [e.from, e.to]))
+  const treeIds = spec.entities.map((e) => e.id).filter((id) => inAll.has(id))
+  // One party's picture (relationship/scope.js): it, everyone above it, everyone below it
+  const company = companyOf(asked, treeIds, all)
+  const scope = company ? reachScope(all, company) : null
+  const edges = scope ? all.filter((e) => scope.has(e.from) && scope.has(e.to)) : all
+  const drawn = new Set(edges.map((e) => e.key))
+  const rest = spec.relations.filter((r) => !drawn.has(r.id))
   const inTree = new Set(edges.flatMap((e) => [e.from, e.to]))
   const ids = spec.entities.map((e) => e.id).filter((id) => inTree.has(id))
   const apart = spec.entities.filter((e) => !inTree.has(e.id))
   const { back, level, roots } = classifyLayers(ids, edges)
   for (const e of edges) e.back = back.has(e.key)
-  return { edges, ids, level, roots, rest, apart }
+  return { edges, ids, level, roots, rest, apart, company, several: hasSeveral(treeIds, all), companies: treeIds }
 }
 
 /**
@@ -115,7 +125,7 @@ export function buildEquityGraph(spec, fields = {}) {
   const party = makePartyData(spec, t)
   const textIndex = new Map(relations.map((r, i) => [r.id, i]))
   const textOf = (r) => party.labelTexts[textIndex.get(r.id)]
-  const parts = classifyEquity(spec)
+  const parts = classifyEquity(spec, fields.company)
   const nameOf = (id) => entityById.get(id).label
 
   // ── the drawing: levels top to bottom, lines round the boxes (relationship/layered.js) ──
@@ -167,13 +177,13 @@ export function buildEquityGraph(spec, fields = {}) {
 
   // ── parties with no equity relation ──
   if (parts.apart.length && parts.edges.length) {
-    section(t('rel.equity.apart', { n: parts.apart.length }), [{ main: parts.apart.map((e) => e.label).join(t('rel.equity.sep')) }])
+    section(t(parts.company ? 'rel.equity.outside' : 'rel.equity.apart', { n: parts.apart.length }), [{ main: parts.apart.map((e) => e.label).join(t('rel.equity.sep')) }])
   }
 
   // ── every other relation, as a list ──
   if (parts.rest.length) {
     section(
-      t('rel.equity.other', { n: parts.rest.length }),
+      t(parts.company ? 'rel.equity.otherScoped' : 'rel.equity.other', { n: parts.rest.length }),
       parts.rest.map((r) => ({ main: `${textOf(r)}${t('rel.equity.colon')}${nameOf(r.from)} → ${nameOf(r.to)}` })),
     )
   }
@@ -216,6 +226,9 @@ export function buildEquityGraph(spec, fields = {}) {
     indirect: indirect.length,
     apart: parts.apart.length,
     other: parts.rest.length,
+    company: parts.company,
+    several: parts.several,
+    companies: parts.companies.map((id) => ({ id, label: entityById.get(id).label })),
     size: { width: Math.ceil(layer.width), height },
     stats: { entities: entities.length, relations: relations.length, groups: spec.groups?.length ?? 0, kinds },
   }

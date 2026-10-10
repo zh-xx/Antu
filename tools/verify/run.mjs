@@ -2153,6 +2153,33 @@ async function checkRenderLevelledViews() {
         }
       }
     }
+    // Several separate structures: a box in the dock picks the company, and the picture holds only its own parties
+    const pair = (id, ids) => ids.map((n) => ({ id: `${id}${n}`, kind: n % 2 ? 'person' : 'company', label: `${id}${n}` }))
+    const two = {
+      type: 'relationship',
+      specVersion: 1,
+      title: 'Two structures',
+      entities: [...pair('p', [1, 2, 3]), ...pair('q', [1, 2, 3])],
+      relations: [
+        { id: 'a1', from: 'p1', to: 'p2', kind: 'equity', share: 60 },
+        { id: 'a2', from: 'p2', to: 'p3', kind: 'equity', share: 100 },
+        { id: 'b1', from: 'q1', to: 'q2', kind: 'equity', share: 70 },
+        { id: 'b2', from: 'q2', to: 'q3', kind: 'equity', share: 100 },
+      ],
+    }
+    const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms))
+    const html = join(OUT, 'render-company.html')
+    renderToFile(two, { outPath: html, quiet: true, preset: { kind: 'equity' } })
+    await browser.open(`file://${html}?lang=en`)
+    const names = () => browser.eval(`[...document.querySelectorAll('.antu-rn .antu-rn-label')].map((n) => n.textContent).sort().join(',')`)
+    eq('equity: a box in the dock offers the companies', await browser.eval(`!!document.querySelector('.antu-co-pick')`), true)
+    eq('equity: it opens on the first of two equal structures', await names(), 'p1,p2,p3')
+    await browser.eval(`(() => { const sel = document.querySelector('.antu-co-pick'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'q2'); sel.dispatchEvent(new Event('change', { bubbles: true })) })()`, { userGesture: true })
+    await settle(800)
+    eq('equity: picking another company draws that one', await names(), 'q1,q2,q3')
+    await browser.eval(`(() => { const sel = document.querySelector('.antu-co-pick'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, '*'); sel.dispatchEvent(new Event('change', { bubbles: true })) })()`, { userGesture: true })
+    await settle(800)
+    eq('equity: "All" draws both', await names(), 'p1,p2,p3,q1,q2,q3')
   } finally {
     await browser.close()
   }

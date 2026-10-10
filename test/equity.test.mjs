@@ -144,3 +144,40 @@ test('the report names what the data leaves unsaid, by kind', () => {
   assert.equal(r.noShare, 1)
   assert.match(formatLayoutReport(r), /no share written/)
 })
+
+test('several separate structures: the busiest party opens, any party can be picked, "all" keeps everything', () => {
+  // two holders of A, A holds B (one structure); X holds Y (another)
+  const s = spec(
+    [entity('h1'), entity('h2'), entity('a'), entity('b'), entity('x'), entity('y')],
+    [holds('r1', 'h1', 'a', 60), holds('r2', 'h2', 'a', 40), holds('r3', 'a', 'b', 100), holds('r4', 'x', 'y', 100)],
+  )
+  // Nothing asked: the structure with most lines, opened on its busiest party (a: three lines)
+  const opened = classifyEquity(s)
+  assert.equal(opened.company, 'a')
+  assert.deepEqual(opened.ids.sort(), ['a', 'b', 'h1', 'h2'])
+  assert.deepEqual(opened.rest.map((r) => r.id), ['r4'], 'the line outside the picture is listed, not dropped')
+  assert.deepEqual(opened.apart.map((e) => e.id).sort(), ['x', 'y'])
+  // Everyone above and below the party picked, and nothing else
+  const b = classifyEquity(s, 'b')
+  assert.deepEqual(b.ids.sort(), ['a', 'b', 'h1', 'h2'])
+  const y = classifyEquity(s, 'y')
+  assert.deepEqual(y.ids.sort(), ['x', 'y'])
+  assert.equal(y.edges.length + y.rest.length, s.relations.length)
+  // "All" draws every line, as before
+  const all = classifyEquity(s, '*')
+  assert.equal(all.company, null)
+  assert.equal(all.edges.length, 4)
+  // The page says which party it is and lists the parties to pick from
+  const g = buildEquityGraph(s, { company: 'y' })
+  assert.equal(g.company, 'y')
+  assert.deepEqual(g.companies.map((c) => c.id), ['h1', 'h2', 'a', 'b', 'x', 'y'])
+  assert.equal(g.treeParties, 2)
+  assertSound(s, 'several structures')
+})
+
+test('one structure opens on all of it, and a party the data does not have falls back to the default', () => {
+  const s = spec([entity('h'), entity('a'), entity('b')], [holds('r1', 'h', 'a', 100), holds('r2', 'a', 'b', 100)])
+  assert.equal(classifyEquity(s).company, null)
+  assert.equal(classifyEquity(s, 'nobody').company, null)
+  assert.equal(classifyEquity(s).edges.length, 2)
+})

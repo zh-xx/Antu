@@ -242,3 +242,23 @@ test('path: one picture, each party and each relation once, no two lines sharing
     for (let i = 1; i < row.length; i++) assert.ok(row[i] > row[i - 1], 'strictly to the right')
   }
 })
+
+test('authority: with several separate structures one party\'s picture opens, and any other can be picked', () => {
+  const s = spec(
+    [entity('a'), entity('b'), entity('c'), entity('d'), entity('e')],
+    [rel('r1', 'a', 'b', 'control'), rel('r2', 'b', 'c', 'employment'), rel('r3', 'b', 'e', 'agency'), rel('r4', 'd', 'e', 'control')],
+  )
+  // b has three lines, but it is the structure a-b-c-e-d: one structure, so everything opens
+  assert.equal(classifyAuthority(s).company, null)
+  const two = spec([entity('a'), entity('b'), entity('x'), entity('y'), entity('z')], [rel('r1', 'a', 'b', 'control'), rel('r2', 'x', 'y', 'employment'), rel('r3', 'x', 'z', 'employment')])
+  const opened = classifyAuthority(two)
+  assert.equal(opened.company, 'x', 'the busiest party of the several structures')
+  assert.deepEqual(opened.ids.sort(), ['x', 'y', 'z'])
+  assert.deepEqual(opened.rest.map((r) => r.id), ['r1'])
+  const other = classifyAuthority(two, 'b')
+  assert.deepEqual(other.ids.sort(), ['a', 'b'])
+  assert.equal(classifyAuthority(two, '*').edges.length, 3)
+  const g = buildAuthorityGraph(two, { company: 'a' })
+  assert.equal(g.company, 'a')
+  assert.equal(g.chartParties, 2)
+})
