@@ -178,6 +178,42 @@ export function spreadAngles(desired, halves, R, gap = BOX_GAP) {
   return out
 }
 
+/** How far from the direction they stand in, two parties of ring 1 that are tied to each other stand apart (radians) */
+const TRIANGLE = 0.62
+
+/**
+ * The angles of the parties of ring 1 when some of them are tied to one another: round the centre in an order that
+ * puts tied parties on neighbouring places (the places are even round the circle, or, for just two, a short way
+ * either side of one direction so that the centre and the two make a triangle). The camps' old sides (the first
+ * group left, the second right, the rest above and below) are what is kept when two orders are as good.
+ * @returns number[] | null  null: nothing is tied (or there are too many to try every order), keep the camps' places
+ */
+function relatedRing(members, related, campOf) {
+  const n = members.length
+  if (n < 2 || !related.length || n > 7) return null
+  const prefer = (id) => (campOf(id) === 'a' ? Math.PI : campOf(id) === 'b' ? 0 : -Math.PI / 2)
+  const gap = (x, y) => {
+    const d = Math.abs(x - y) % (Math.PI * 2)
+    return Math.min(d, Math.PI * 2 - d)
+  }
+  const step = (Math.PI * 2) / n
+  // Where the places are: for two, either side of the direction their camps favour; for more, even, turned a
+  // half place or not
+  const layouts =
+    n === 2
+      ? [Math.PI, 0].map((base) => [base - TRIANGLE, base + TRIANGLE])
+      : [0, step / 2].map((turn) => Array.from({ length: n }, (_, i) => turn + i * step))
+  let best = null
+  for (const places of layouts) {
+    for (const order of permutations(members)) {
+      const at = new Map(order.map((id, i) => [id, places[i]]))
+      const cost = related.reduce((sum, r) => sum + gap(at.get(r.from), at.get(r.to)), 0) + 0.04 * members.reduce((sum, id) => sum + gap(at.get(id), prefer(id)), 0)
+      if (!best || cost < best.cost - 1e-9) best = { cost, at }
+    }
+  }
+  return members.map((id) => best.at.get(id))
+}
+
 /**
  * Lay out one connected group around `centre`, in a frame whose origin is the centre's middle.
  * @returns { boxes: Map id -> {x,y,w,h,ring,angle}, rings: id[][], radii: number[], halves: number[] }
@@ -275,6 +311,11 @@ export function placeRings(entities, relations, centre, sizes, campOf, labelWOf 
         }
       }
       angles = members.map((id) => byId.get(id))
+      // Parties of this ring tied to one another stand next to one another, whichever camps they are in: a camp
+      // sent one to each side of the centre, so the three of them (the centre and two that are tied to each other
+      // and to it) lay on one line when they should have made a triangle. The camps only break a tie now.
+      const around = relatedRing(members, inRing, campOf)
+      if (around) angles = around
     } else {
       angles = members.map((id) => {
         const parents = next.get(id).filter((p) => ring.get(p) === k - 1).map((p) => boxes.get(p).angle)

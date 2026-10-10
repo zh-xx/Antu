@@ -135,17 +135,6 @@ test('a chain of parties straight up or down is turned towards a side, so a wide
   assert.ok(g.size.width / g.size.height >= 1.4, `${g.size.width} x ${g.size.height}`)
 })
 
-test('the first group stands on the left of the centre, the second on the right', () => {
-  const s = load('sample-group-guarantee.zh-CN.json')
-  const g = assertSound(s, 'camps')
-  const cx = (n) => n.position.x + n.data.w / 2
-  const centre = g.nodes.find((n) => n.data.centre)
-  const left = g.nodes.filter((n) => n.data.ring === 1 && n.data.entity.groupId === 'g-1')
-  const right = g.nodes.filter((n) => n.data.ring === 1 && n.data.entity.groupId === 'g-2')
-  assert.ok(left.length && left.every((n) => cx(n) < cx(centre)), 'the first group on the left')
-  assert.ok(right.length && right.every((n) => cx(n) > cx(centre)), 'the second group on the right')
-})
-
 test('a party carries its camp name, toned by its place', () => {
   const g = buildFocusGraph(load('sample-group-guarantee.zh-CN.json'), {})
   const tone = Object.fromEntries(g.nodes.map((n) => [n.id, n.data.camp?.tone ?? null]))
@@ -187,22 +176,43 @@ test('any valid JSON draws: no relations, one party, parallel relations, a big s
   assertSound(web, 'two rings of a web, centre on the edge', 'p25')
 })
 
-test('a relation between two parties on opposite sides goes round, not through the middle', () => {
-  // The centre c is tied to a (first group, left) and b (second group, right); a and b are tied to each other
+test('ring 1: the centre and two parties tied to each other and to it make a triangle, not a line', () => {
+  // The centre c is tied to a (first group) and b (second group); a and b are tied to each other. The camps used to send
+  // a to the left and b to the right, the three on one line with c between: the line a-b had to go round
   const s = spec(
     [entity('c'), entity('a', { groupId: 'g1' }), entity('b', { groupId: 'g2' })],
     [relation('r1', 'c', 'a'), relation('r2', 'c', 'b'), relation('r3', 'a', 'b', { kind: 'debt' })],
     { groups: [{ id: 'g1', label: 'Left' }, { id: 'g2', label: 'Right' }] },
   )
-  const g = assertSound(s, 'opposite', 'c')
-  const through = g.connections.find((x) => x.relationId === 'r3')
-  assert.ok(through.points.length > 2, 'drawn as a curve round the ring, not straight across the centre')
-  assert.match(through.d, /^M [\d.-]+ [\d.-]+ C /, 'as a smooth curve')
-  assert.equal(through.faint, true, 'faint: it does not touch the centre')
+  const g = assertSound(s, 'triangle', 'c')
+  const at = (id) => {
+    const n = g.nodes.find((x) => x.id === id)
+    return [n.position.x + n.data.w / 2, n.position.y + n.data.h / 2]
+  }
+  const [c, a, b] = ['c', 'a', 'b'].map(at)
+  const area = Math.abs((a[0] - c[0]) * (b[1] - c[1]) - (a[1] - c[1]) * (b[0] - c[0])) / 2
+  assert.ok(area > 8000, `the three do not lie on one line (the triangle is ${Math.round(area)} px²)`)
+  const between = g.connections.find((x) => x.relationId === 'r3')
+  assert.equal(between.points.length, 2, 'the line between the two tied parties is straight')
+  assert.equal(between.faint, true, 'faint: it does not touch the centre')
   assert.equal(g.connections.find((x) => x.relationId === 'r1').faint, false)
   assert.equal(g.connections.find((x) => x.relationId === 'r1').points.length, 2, 'a relation of the centre is straight')
 })
 
+test('ring 1: parties not tied to one another keep their camps\' sides, and a line that would pass through a party bends round it', () => {
+  const s = spec(
+    [entity('c'), entity('a1', { groupId: 'g1' }), entity('a2', { groupId: 'g1' }), entity('b1', { groupId: 'g2' }), entity('b2', { groupId: 'g2' })],
+    ['a1', 'a2', 'b1', 'b2'].map((id, i) => relation(`r${i}`, 'c', id)),
+    { groups: [{ id: 'g1', label: 'Left' }, { id: 'g2', label: 'Right' }] },
+  )
+  const g = assertSound(s, 'camps', 'c')
+  const cx = (id) => {
+    const n = g.nodes.find((x) => x.id === id)
+    return n.position.x + n.data.w / 2
+  }
+  assert.ok(cx('a1') < cx('c') && cx('a2') < cx('c'), 'the first group on the left')
+  assert.ok(cx('b1') > cx('c') && cx('b2') > cx('c'), 'the second group on the right')
+})
 test('the layout is the same every time', () => {
   const s = load('marketplace-parties.zh-CN.json')
   assert.deepEqual(buildFocusGraph(s, {}), buildFocusGraph(s, {}))
