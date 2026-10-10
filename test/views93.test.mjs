@@ -194,7 +194,7 @@ test('the three reports name what each view chose', () => {
   }
 })
 
-test('path: one chain to a row, every line level, a shared party in the same column', () => {
+test('path: one picture, each party and each relation once, no two lines sharing a stretch', () => {
   const s = spec(
     [entity('a'), entity('b'), entity('c'), entity('d'), entity('e')],
     [rel('r1', 'a', 'b', 'contract'), rel('r2', 'b', 'e', 'contract'), rel('r3', 'b', 'c', 'contract'), rel('r4', 'c', 'e', 'contract'), rel('r5', 'a', 'd', 'contract'), rel('r6', 'd', 'e', 'contract')],
@@ -202,20 +202,39 @@ test('path: one chain to a row, every line level, a shared party in the same col
   const g = buildPathGraph(s, { from: 'a', to: 'e' })
   assert.equal(g.chains, 3)
   const layer = g.nodes.find((n) => n.type === 'lineLayer').data
-  // Every line is horizontal: its path has one y
-  for (const l of layer.links) {
-    const ys = [...l.d.matchAll(/[ML] [\d.]+ ([\d.]+)/g)].map((m) => m[1])
-    assert.equal(new Set(ys).size, 1, `a level line: ${l.d}`)
-  }
-  // One row per chain; the two ends in every row, dark
   const boxes = g.nodes.filter((n) => n.type === 'rnode')
-  assert.equal(boxes.filter((n) => n.data.end).length, 6)
-  assert.equal(new Set(boxes.map((n) => n.position.y)).size, 3, 'three rows')
-  // b is passed by two chains and stands in one column in both
-  const bx = boxes.filter((n) => n.id.startsWith('b@')).map((n) => n.position.x)
-  assert.equal(new Set(bx).size, 1)
-  // Rows do not overlap, whatever the labels
-  assertBoxes(g, 'rows')
+  // One start and one end, every other party once
+  assert.equal(new Set(boxes.map((n) => n.id)).size, boxes.length)
+  assert.equal(boxes.length, 5)
+  assert.deepEqual(boxes.filter((n) => n.data.end).map((n) => n.id).sort(), ['a', 'e'])
+  const col = (id) => boxes.find((n) => n.id === id).position.x
+  assert.equal(col('a') < col('b') && col('b') < col('e'), true, 'read left to right')
+  // One line and one label for each relation
+  assert.equal(layer.links.length, 6)
+  assert.equal(layer.pills.length, 6)
+  assert.equal(new Set(layer.pills.map((p) => p.relId)).size, 6)
+  // The two shortest chains (2 steps) are heavy; the lines only the 3-step chain has are thin
+  const widthOf = (relId) => layer.links[layer.pills.findIndex((p) => p.relId === relId)].width
+  for (const id of ['r1', 'r2', 'r5', 'r6']) assert.ok(widthOf(id) > 2, `${id} is heavy`)
+  for (const id of ['r3', 'r4']) assert.ok(widthOf(id) < 2, `${id} is thin`)
+  // No two lines run along the same stretch
+  const segs = layer.links.map((l) => {
+    const pts = [...l.d.matchAll(/[ML] ([\d.]+) ([\d.]+)/g)].map((m) => [+m[1], +m[2]])
+    return pts.slice(1).map((q, i) => [pts[i], q])
+  })
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      for (const [p, q] of segs[i]) {
+        for (const [u, v] of segs[j]) {
+          const sameY = p[1] === q[1] && u[1] === v[1] && p[1] === u[1]
+          const sameX = p[0] === q[0] && u[0] === v[0] && p[0] === u[0]
+          if (sameY) assert.ok(Math.min(Math.max(p[0], q[0]), Math.max(u[0], v[0])) - Math.max(Math.min(p[0], q[0]), Math.min(u[0], v[0])) <= 0.5, `lines ${i} and ${j} share a horizontal stretch`)
+          if (sameX) assert.ok(Math.min(Math.max(p[1], q[1]), Math.max(u[1], v[1])) - Math.max(Math.min(p[1], q[1]), Math.min(u[1], v[1])) <= 0.5, `lines ${i} and ${j} share a vertical stretch`)
+        }
+      }
+    }
+  }
+  assertBoxes(g, 'path')
   // columnsOf: the ends first and last, the rest in order
   const chains = findChains(s, 'a', 'e').chains
   for (const row of columnsOf(chains)) {

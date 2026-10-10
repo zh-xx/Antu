@@ -286,12 +286,12 @@ A table centred on one party (the one with most relations by default; the reader
 
 > Status of this section: **implemented, a first attempt** (not confirmed). No JSON field was added.
 
-How two parties are tied: the shortest chains of relations from A to B, **one chain to a row**, left to right, each row read as a sentence. Code: `src/renderers/relationship/path/`.
+How two parties are tied: the shortest chains of relations from A to B, **drawn as one picture with one start and one end**, left to right. Code: `src/renderers/relationship/path/`.
 
 - Direction is ignored when looking for a chain (a holder and what it holds are tied); each line keeps its own arrowhead. A chain passes a party at most once. At most 3 chains are drawn, shortest first (ties in written order), the shortest drawn heavier; how many more there are is said under the picture. Chains more than 3 steps longer than the shortest are not looked for, and the search stops after 5000 chains (the count then says "at least").
 - It opens on the two parties furthest apart, so it is never empty; the two ends are chosen in the dock (remembered per diagram). If A and B are not tied, it says so.
-- **Look** (settled with the maintainer after the first attempt drew every chain in one tangle of overlapping lines): each row has the two ends (dark boxes) and the parties between, every line straight and level, its label on it, the row's step count above it. A party that two chains pass stands in the same column in both rows, so the rows read as one picture; the ends and the shared parties repeat from row to row instead of being joined by lines. One ink; the kind of a relation is in its label. A line's arrowhead is where the relation itself runs, so one that runs against the reading has it at the left end.
-- Under the picture: the parties and relations on no drawn chain (the rows already are the list of the chains). Parties off the chains are not drawn (not faded): the picture shows only the answer.
+- **Look** (settled with the maintainer after review of the first attempt, which drew one row per chain and repeated the two ends in every row): the start and the end (dark boxes) stand once, and so does every party on a drawn chain, so the chains read as one picture. The shortest chain runs along the top row and its lines are heavy; a party only a longer chain passes stands on a row below, with thin lines. Every line leaves and enters a box at its own height and no two share a stretch; its label sits on it, side by side with the others of the same gap. One ink; the kind of a relation is in its label. A line's arrowhead is where the relation itself runs. A line that runs against the reading, or between two parties in one column, goes out of the top or bottom of a box and round.
+- Under the picture: the parties and relations on no drawn chain (the picture already is the list of the chains). Parties off the chains are not drawn (not faded): the picture shows only the answer.
 
 ### 6.11 `summary` (issue #93): removed
 

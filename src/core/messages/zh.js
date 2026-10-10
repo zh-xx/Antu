@@ -209,6 +209,8 @@ export const zh = {
   'rel.path.noChain': ({ a, b }) => `没有任何关系链把「${a}」和「${b}」连起来`,
   'rel.path.noChainHint': '请选两个有关系相连的当事人，或切换到关系图。',
   'rel.path.steps': ({ n }) => `${n} 步`,
+  'rel.path.legend': ({ n }) => `粗线是最短的一条（${n} 步），细线是另外几条经过的地方。`,
+  'rel.path.legendOne': ({ n }) => `最短的一条：${n} 步。`,
   'rel.path.chains': ({ n }) => `画出的关系链（${n}）`,
   'rel.path.more': ({ n, atLeast }) => `另有${atLeast ? '至少 ' : ' '}${n} 条关系链没有画；只画最短的几条。`,
   'rel.path.off': ({ n }) => `不在已画关系链上的当事人（${n}）`,

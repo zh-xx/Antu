@@ -373,6 +373,8 @@ export const en = {
   'rel.path.noChain': ({ a, b }) => `No chain of relations ties ${a} and ${b}`,
   'rel.path.noChainHint': 'Pick two parties that are connected, or switch to the relationship graph.',
   'rel.path.steps': ({ n }) => `${n} step${n === 1 ? '' : 's'}`,
+  'rel.path.legend': ({ n }) => `Heavy line: the shortest chain (${n} step${n === 1 ? '' : 's'}). Thin lines: the other chains drawn.`,
+  'rel.path.legendOne': ({ n }) => `The shortest chain: ${n} step${n === 1 ? '' : 's'}.`,
   'rel.path.chains': ({ n }) => `Chains drawn (${n})`,
   'rel.path.more': ({ n, atLeast }) => `${atLeast ? 'At least ' : ''}${n} more chain${n === 1 ? '' : 's'} not drawn; only the shortest are.`,
   'rel.path.off': ({ n }) => `Not on a drawn chain (${n})`,
