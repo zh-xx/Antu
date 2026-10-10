@@ -38,7 +38,10 @@ const PILL_MARGIN = 14
 const CARD_CLEAR = 108
 
 /** How wide a label's pill is (CJK wider than Latin; the page's pill has 9px of padding each side and wraps at 220) */
-export const pillW = (text) => Math.min(220, 20 + [...text].reduce((n, ch) => n + (/[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 12.5 : 7.4), 0))
+const rawPillW = (text) => 20 + [...text].reduce((n, ch) => n + (/[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 12.5 : 7.4), 0)
+export const pillW = (text) => Math.min(220, rawPillW(text))
+/** How tall a label's pill is: one line is 22, and each further line (a label wider than 220 wraps) is 18 more */
+export const pillH = (text) => 22 + 18 * (Math.max(1, Math.ceil(rawPillW(text) / 220 - 1e-9)) - 1)
 
 /**
  * Where each party stands, as a half-column (`pos`, even for the shortest chain, so its parties are every
@@ -320,14 +323,13 @@ export function buildPathGraph(spec, fields = {}) {
     if (!exits.has(key)) exits.set(key, [])
     exits.get(key).push(h)
   }
-  const PORT_V = 26
   for (const list of exits.values()) {
     list.sort((u, v) => Math.abs(v.y - rowY(row.get(v.s))) - Math.abs(u.y - rowY(row.get(u.s))))
-    // Far enough apart that no label sits on the line next to it
-    let at = 14
+    // Spread over the width of the box (never past its edge), the one with the longest way to go nearest the middle
+    const reach = boxW / 2 - 14
     list.forEach((h, i) => {
-      if (i) at += Math.max(PORT_V, Math.max(h.pw, list[i - 1].pw) / 2 + 8)
-      h.exitAt = (h.toRight ? 1 : -1) * at
+      const at = list.length === 1 ? 14 : 14 + (i * (reach - 14)) / (list.length - 1)
+      h.exitAt = (h.toRight ? 1 : -1) * Math.min(at, reach)
       h.exitRank = i
     })
   }
@@ -379,6 +381,7 @@ export function buildPathGraph(spec, fields = {}) {
     })
   }
   const bottom = chains.length ? rowY(maxRow) + rowH : PAD + CARD_CLEAR
+  const bends = []
   for (const h of hops) {
     drawnRels.add(h.r.id)
     const arrow = !isDirected(h.r) ? 'none' : h.r.from === h.s ? 'end' : 'start'
@@ -407,8 +410,53 @@ export function buildPathGraph(spec, fields = {}) {
       const xe = xc(pos.get(h.e)) + (h.toRight ? -boxW / 2 : boxW / 2)
       link.d = `M ${px} ${y0} L ${px} ${h.y} L ${xe} ${h.y}`
       layer.links.push(link)
-      layer.pills.push({ ...pill, x: px, y: y0 + h.dir * (30 + PORT_V * h.exitRank) })
+      const placed = { ...pill, x: px, y: y0 + h.dir * 30 }
+      layer.pills.push(placed)
+      bends.push({ pill: placed, link: layer.links.length - 1, h, px, y0, xe })
     }
+  }
+  // The labels of lines that turn: each at the spot (down the line out of the box, or along the turn) where it
+  // covers no other label, no box and as few other lines as possible
+  const polyline = (d) => {
+    const pts = [...d.matchAll(/[ML] ([\d.-]+) ([\d.-]+)/g)].map((m) => [+m[1], +m[2]])
+    return pts.slice(1).map((q, i) => [pts[i], q])
+  }
+  const cover = (r, [a, b]) => Math.max(a[0], b[0]) > r.x && Math.min(a[0], b[0]) < r.x + r.w && Math.max(a[1], b[1]) > r.y && Math.min(a[1], b[1]) < r.y + r.h
+  const rectOf = (pl, w) => ({ x: pl.x - w / 2, y: pl.y - pillH(pl.text) / 2, w, h: pillH(pl.text) })
+  const linePieces = layer.links.map((l) => polyline(l.d))
+  const taken = layer.pills.filter((pl) => !bends.some((b) => b.pill === pl)).map((pl) => rectOf(pl, pillW(pl.text)))
+  const boxRects = nodes.filter((n) => n.type === 'rnode').map((n) => ({ x: n.position.x, y: n.position.y, w: boxW, h: rowH }))
+  for (const b of bends) {
+    const w = pillW(b.pill.text)
+    const { px, y0, xe, h } = b
+    const spots = []
+    for (const f of [0.5, 0.25, 0.75, 0.38, 0.62]) {
+      const lo = y0 + h.dir * 20
+      const hi = h.y - h.dir * 16
+      if ((hi - lo) * h.dir >= 0) spots.push([px, lo + (hi - lo) * f])
+    }
+    // Or slid along the line's width: a wide label may hang to one side of its line (the line still runs through it)
+    const slide = w / 2 - 14
+    for (const f of [0.5, 0.25, 0.75]) {
+      const lo = y0 + h.dir * 20
+      const hi = h.y - h.dir * 16
+      if ((hi - lo) * h.dir >= 0 && slide > 8) for (const dx of [slide, -slide]) spots.push([px + dx, lo + (hi - lo) * f])
+    }
+    if (Math.abs(xe - px) >= w + 12) spots.push([(px + xe) / 2, h.y])
+    if (!spots.length) spots.push([px, y0 + h.dir * 30])
+    let best = null
+    for (const [x, yy] of spots) {
+      const r = rectOf({ x, y: yy, text: b.pill.text }, w)
+      const bad = taken.some((o) => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h) || boxRects.some((o) => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h)
+      const inner = { x: r.x + 3, y: r.y + 2, w: r.w - 6, h: r.h - 4 }
+      const crossing = linePieces.reduce((n, segs, i) => (i === b.link ? n : n + segs.filter((sg) => cover(inner, sg)).length), 0)
+      const score = (bad ? 1000 : 0) + crossing
+      if (!best || score < best.score) best = { score, x, y: yy }
+      if (score === 0) break
+    }
+    b.pill.x = best.x
+    b.pill.y = best.y
+    taken.push(rectOf(b.pill, w))
   }
   let y = chains.length ? bottom + SECTION_GAP : PAD + CARD_CLEAR
   const more = found.total - chains.length

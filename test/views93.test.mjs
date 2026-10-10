@@ -76,6 +76,14 @@ for (const f of files) {
     assert.equal(table.rows.length, rows.reduce((n, r) => n + r.rels.length, 0), 'a line for each relation')
     for (const r of table.rows) assert.ok(r.y + r.h <= table.bottom, 'a row inside the table')
   })
+  test(`${f}: relation path, every line starts and ends on a box`, () => {
+    const g = buildPathGraph(load(f), {})
+    const boxes = g.nodes.filter((n) => n.type === 'rnode').map((n) => ({ x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }))
+    for (const l of g.nodes.find((n) => n.type === 'lineLayer').data.links) {
+      const pts = [...l.d.matchAll(/[ML] ([\d.-]+) ([\d.-]+)/g)].map((m) => [+m[1], +m[2]])
+      for (const p of [pts[0], pts.at(-1)]) assert.ok(boxes.some((b) => p[0] >= b.x - 0.5 && p[0] <= b.x + b.w + 0.5 && p[1] >= b.y - 0.5 && p[1] <= b.y + b.h + 0.5), `${f}: a line ends at (${p}), off every box`)
+    }
+  })
   test(`${f}: relation path, chains tie the two ends`, () => {
     const s = load(f)
     const g = buildPathGraph(s, {})
