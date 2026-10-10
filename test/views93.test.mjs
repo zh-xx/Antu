@@ -350,3 +350,19 @@ test('authority and equity: parallel relations from one party into a gathering b
   const odd2 = spec([entity('~a'), entity('b')], [rel('r1', '~a', 'b', 'equity', { share: 10 })])
   assert.equal(buildEquityGraph(odd2, {}).nodes.filter((n) => n.type === 'rnode').length, 2)
 })
+
+test('path: two parallel lines with a wrapped label go round, and the corridor is no longer than the labels need', () => {
+  const s = spec(
+    [entity('a', { role: '角色' }), entity('b', { role: '角色' })],
+    [
+      rel('r1', 'a', 'b', 'contract', { label: '流动资金借款（2,000 万元，年利率 4.35%，期限十二个月）' }),
+      rel('r2', 'b', 'a', 'equity', { label: '股东', share: 15 }),
+    ],
+  )
+  const g = buildPathGraph(s, { from: 'a', to: 'b' })
+  const layer = g.nodes.find((n) => n.type === 'lineLayer').data
+  const boxes = g.nodes.filter((n) => n.type === 'rnode')
+  assert.equal(layer.links.filter((l) => /^M [\d.-]+ [\d.-]+ L [\d.-]+ [\d.-]+ L [\d.-]+ [\d.-]+ L/.test(l.d)).length, 1, 'one goes round')
+  const gap = boxes[1].position.x - (boxes[0].position.x + boxes[0].data.w)
+  assert.ok(gap < 260, `the gap is short (${gap})`)
+})

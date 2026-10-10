@@ -244,6 +244,9 @@ export function buildPathGraph(spec, fields = {}) {
   const rowY = (r) => PAD + CARD_CLEAR + (r - minRow) * ROW_STEP
   const ROUND_CLEAR = 26
   const ROUND_STEP = 32
+  // How far into a box the stubs of a line that goes round stand from its edge: well in, so the line is no
+  // longer than the labels need and the gap between the boxes stays short
+  const roundIn = (level) => Math.min(boxW / 2 - 16, 50 + 14 * (level - 1))
   const PORT_STEP = Math.max(6, Math.min(14, (rowH - 16) / 3))
 
   // The hops of every chain, once each (a relation two chains share is one line); heavy when a shortest chain has it
@@ -288,13 +291,25 @@ export function buildPathGraph(spec, fields = {}) {
     // Three lines or more between the same two parties are too close side by side: one (the one with the
     // shortest label) stays straight, the others go round, alternately over and under the row, each in a
     // corridor of its own with its label on it
-    if (list.length >= 3) {
+    // (Two lines go round too when a label wraps: it is taller than the gap between them.)
+    if (list.length >= 3 || (list.length === 2 && list.some((h) => pillH(textOf(h.r)) > 22))) {
       const byLabel = [...list].sort((u, v) => u.pw - v.pw)
       byLabel.slice(1).forEach((h, k) => {
         h.type = 'round'
         h.side = k % 2 === 0 ? -1 : 1
         h.level = Math.floor(k / 2) + 1
+        h.ph = pillH(textOf(h.r))
       })
+      // Each corridor clear of the one inside it by both labels' heights
+      for (const side of [-1, 1]) {
+        let off = 0
+        let prev = 0
+        for (const h of byLabel.filter((x) => x.type === 'round' && x.side === side).sort((u, v) => u.level - v.level)) {
+          off = prev ? off + Math.max(ROUND_STEP, (prev + h.ph) / 2 + 8) : Math.max(ROUND_CLEAR, h.ph / 2 + 8)
+          h.off = off
+          prev = h.ph
+        }
+      }
       list.splice(0, list.length, byLabel[0])
     }
     list.forEach((h, i) => {
@@ -359,7 +374,7 @@ export function buildPathGraph(spec, fields = {}) {
     }
   }
   // A line that goes round has its label on the stretch over (or under) the gap: the gap is as wide as that label
-  for (const h of hops.filter((x) => x.type === 'round')) need.push({ a: pos.get(h.s), b: pos.get(h.e), w: boxW + h.pw - 44 + 2 * PILL_MARGIN })
+  for (const h of hops.filter((x) => x.type === 'round')) need.push({ a: pos.get(h.s), b: pos.get(h.e), w: boxW + h.pw - 2 * roundIn(h.level) + 2 * PILL_MARGIN })
   for (const h of hops.filter((x) => x.type === 'bend')) {
     const [p, q] = [pos.get(h.s), pos.get(h.e)]
     need.push({ a: Math.min(p, q), b: Math.max(p, q), w: boxW / 2 + 56 + Math.abs(h.exitAt) })
@@ -394,7 +409,7 @@ export function buildPathGraph(spec, fields = {}) {
       data: { ...party.dataOf(entityById.get(id), { layer: 0, hintKey: 'rel.previewHint', vertical: false, end: endId(id) }), w: boxW, h: rowH, textW: boxW - 28 },
     })
   }
-  const belowDepth = Math.max(0, ...hops.filter((x) => x.type === 'round' && x.side > 0).map((x) => ROUND_CLEAR + ROUND_STEP * x.level))
+  const belowDepth = Math.max(0, ...hops.filter((x) => x.type === 'round' && x.side > 0).map((x) => x.off + x.ph / 2))
   const bottom = chains.length ? rowY(maxRow) + rowH + belowDepth : PAD + CARD_CLEAR
   const bends = []
   for (const h of hops) {
@@ -420,9 +435,9 @@ export function buildPathGraph(spec, fields = {}) {
     } else if (h.type === 'round') {
       const r = row.get(h.s)
       const edgeY = h.side < 0 ? rowY(r) : rowY(r) + rowH
-      const cy = edgeY + h.side * (ROUND_CLEAR + ROUND_STEP * (h.level - 1))
-      const xs = xc(pos.get(h.s)) + boxW / 2 - 22 - 14 * (h.level - 1)
-      const xe = xc(pos.get(h.e)) - boxW / 2 + 22 + 14 * (h.level - 1)
+      const cy = edgeY + h.side * h.off
+      const xs = xc(pos.get(h.s)) + boxW / 2 - roundIn(h.level)
+      const xe = xc(pos.get(h.e)) - boxW / 2 + roundIn(h.level)
       link.d = `M ${xs} ${edgeY} L ${xs} ${cy} L ${xe} ${cy} L ${xe} ${edgeY}`
       layer.links.push(link)
       layer.pills.push({ ...pill, x: (xs + xe) / 2, y: cy })
