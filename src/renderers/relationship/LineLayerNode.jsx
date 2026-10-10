@@ -88,7 +88,7 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
           r.cells.map((c, i) => (
             <div key={`${r.id}:${i}`} className={`antu-ln-cell${c.bold ? ' is-first' : ''}`} data-row={r.id} style={{ left: c.x, top: c.y ?? r.y, width: c.w, height: c.h ?? r.h }}>
               {c.lines.map((l, j) => (
-                <div key={j} className={i === 0 && j > 0 ? 'antu-ln-cell-sub' : undefined}>
+                <div key={j} className={(i === 0 || c.sub) && j > 0 ? 'antu-ln-cell-sub' : undefined}>
                   {l}
                 </div>
               ))}
@@ -107,7 +107,7 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
           </span>
         ))}
       {texts.map((x, i) => (
-        <div key={`t${i}`} className={`antu-ln-text${x.tone === 'note' ? ' is-note' : x.tone === 'row' ? ' is-row' : ''}`} style={{ left: x.x, top: x.y, width: x.w }}>
+        <div key={`t${i}`} className={`antu-ln-text${x.tone === 'note' ? ' is-note' : x.tone === 'row' ? ' is-row' : x.tone === 'title' ? ' is-title' : ''}`} style={{ left: x.x, top: x.y, width: x.w }}>
           <div>{x.main}</div>
           {x.sub && <div className="antu-ln-text-sub">{x.sub}</div>}
         </div>

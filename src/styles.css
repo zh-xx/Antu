@@ -1483,6 +1483,8 @@
 .antu-ln-pill.is-back { border-style: dashed; }
 .antu-ln-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
 .antu-ln-text-sub { color: var(--antu-text-3); }
+.antu-ln-text.is-title { text-align: center; font-size: 20px; line-height: 28px; font-weight: 700; }
+.antu-ln-text.is-title .antu-ln-text-sub { margin-top: 2px; font-size: 13px; line-height: 19px; font-weight: 400; }
 .antu-ln-text.is-row { font-size: 12px; font-weight: 700; color: var(--antu-text-3); }
 .antu-ln-text.is-note { color: var(--antu-text-3); font-style: italic; }
 
