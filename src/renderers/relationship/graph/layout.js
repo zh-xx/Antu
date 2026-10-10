@@ -40,6 +40,8 @@ import { routeLink } from '../../procedure/flow/router.js'
 import { toReal } from '../../procedure/flow/columns.js'
 import { textEm } from '../../fact/cardGeometry.js'
 import { tEn } from '../../../core/i18n.js'
+import { labelOf } from './labelOf.js'
+import { makePartyData } from '../partyData.js'
 import {
   PAD,
   LAYER_GAP,
@@ -50,10 +52,17 @@ import {
   GROUP_PAD,
   GROUP_TITLE_FONT,
   SCALE_HINT_ENTITIES,
+  SCALE_HINT_RELATIONS,
   CROSS_COST,
   sizeOf,
   labelBox,
 } from './metrics.js'
+
+/** Two links running side by side keep at least this far apart; the side ports of a box spread to allow it */
+const PARALLEL_MIN = 15
+const SIDE_SPREAD = 16
+
+export { labelOf }
 
 /** Every order of a short list */
 export function permutations(list) {
@@ -80,15 +89,6 @@ function shuffled(list, rand) {
 }
 
 const emptyStats = () => ({ entities: 0, relations: 0, groups: 0, layers: 0, widest: 0, kinds: {} })
-
-/**
- * The text a relation shows on its line: the one the author wrote, otherwise a default from its
- * kind and dedicated fields, in the interface language (`t`).
- */
-export function labelOf(relation, t = tEn) {
-  if (typeof relation.label === 'string' && relation.label.trim()) return relation.label
-  return t(`rel.auto.${relation.kind}`, { share: relation.share, amount: relation.amount })
-}
 
 /**
  * The box of a group's title, in the frame: where a link must not run. The title strip runs along
@@ -122,6 +122,8 @@ export function portCostFor(a, b) {
   return { out: { bottom: 200, top: 200, left: 0, right: 0 }, in: { top: 200, bottom: 200, left: 0, right: 0 } }
 }
 
+/** A step sideways up to this wide between two boxes that overlap becomes one straight line (the review of PR 171: two of rel1's five lines) */
+const STRAIGHT_JOG = 60
 export const segsOf = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
 const overlaps = (a, b, m) => a.x < b.x + b.w + m && b.x < a.x + a.w + m && a.y < b.y + b.h + m && b.y < a.y + a.h + m
 const segHits = ([p, q], r, m) =>
@@ -133,19 +135,37 @@ const segHits = ([p, q], r, m) =>
  * several relations run through one corridor, and it kept landing on some other relation's line; on
  * its own line a label can only be read as that line's. Every long enough segment is tried at a few
  * places along it, and the spot that covers least of anything else wins: entities worst, then other
- * labels and titles, then other lines; the middle of the longest segment on a tie.
+ * labels and titles, then other lines; the middle of the longest segment on a tie. Where the line
+ * itself is hemmed in by another relation of the pair, the label may stand touching it instead, on
+ * the side away from the neighbour, which beats covering the neighbour's line too.
  */
 // Places tried along a segment, the middle first: a crowded corridor needs more than a few to find a free one
 const FRACTIONS = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82, 0.1, 0.9, 0.02, 0.98]
 export function placeOnLine(points, size, nodeRects, blocks, links, borders) {
+  const spots = spotsOnLine(points, size, nodeRects, blocks, links, borders)
+  if (spots.length) {
+    let best = spots[0]
+    for (const sp of spots) if (sp.bad < best.bad - 1e-9 || (Math.abs(sp.bad - best.bad) < 1e-9 && sp.len > best.len)) best = sp
+    return { x: best.x, y: best.y, bad: best.bad }
+  }
+  // No segment long enough: the middle of the longest one
+  const { width: w, height: h } = size
+  const [p, q] = segsOf(points).sort((a, b) => Math.abs(b[1][0] - b[0][0]) + Math.abs(b[1][1] - b[0][1]) - (Math.abs(a[1][0] - a[0][0]) + Math.abs(a[1][1] - a[0][1])))[0]
+  return { x: Math.max(PAD / 2, (p[0] + q[0]) / 2 - w / 2), y: Math.max(PAD / 2, (p[1] + q[1]) / 2 - h / 2), bad: Infinity }
+}
+
+/** Every spot placeOnLine weighs, with what it covers (`bad`) and the length of its segment */
+export function spotsOnLine(points, size, nodeRects, blocks, links, borders) {
   const { width: w, height: h } = size
   const badness = (r) =>
-    (r.x < PAD / 2 || r.y < PAD / 2 ? 100 : 0) +
+    // Off the canvas only: a route over the top of the picture runs in the margin, and its label with it
+    // (held to PAD / 2, the label of a loan over the top went down onto a camp's title instead)
+    (r.x < 0 || r.y < 0 ? 100 : 0) +
     nodeRects.filter((n) => overlaps(r, n, 2)).length * 50 +
     blocks.filter((b) => overlaps(r, b, 2)).length * 20 +
     links.filter((c) => segsOf(c.points).some((s) => segHits(s, r, 2))).length * 10 +
     borders.filter((s) => segHits(s, r, 2)).length * 3
-  let best = null
+  const spots = []
   for (const [p, q] of segsOf(points)) {
     const horizontal = Math.abs(p[1] - q[1]) < 0.5
     const len = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1])
@@ -160,14 +180,17 @@ export function placeOnLine(points, size, nodeRects, blocks, links, borders) {
       const cx = horizontal ? p[0] + dir * t : p[0]
       const cy = horizontal ? p[1] : p[1] + dir * t
       const r = { x: cx - w / 2, y: cy - h / 2, w, h }
-      const bad = badness(r) + Math.abs(f - 0.5) * 2
-      if (!best || bad < best.bad - 1e-9 || (Math.abs(bad - best.bad) < 1e-9 && len > best.len)) best = { bad, len, x: r.x, y: r.y }
+      spots.push({ bad: badness(r) + Math.abs(f - 0.5) * 2, len, x: r.x, y: r.y })
+      // Just beside its own line, touching it, on either side. Two relations of one pair run 15 px apart, and a
+      // label on one of them covers the other whatever the spot along it; beside its own line it covers neither.
+      // It costs a little, so a label that covers nothing else stays on its line.
+      for (const side of [1, -1]) {
+        const b = horizontal ? { x: r.x, y: r.y + side * (h / 2 + 2), w, h } : { x: r.x + side * (w / 2 + 2), y: r.y, w, h }
+        spots.push({ bad: badness(b) + Math.abs(f - 0.5) * 2 + 4, len, x: b.x, y: b.y })
+      }
     }
   }
-  if (best) return { x: best.x, y: best.y }
-  // No segment long enough: the middle of the longest one
-  const [p, q] = segsOf(points).sort((a, b) => Math.abs(b[1][0] - b[0][0]) + Math.abs(b[1][1] - b[0][1]) - (Math.abs(a[1][0] - a[0][0]) + Math.abs(a[1][1] - a[0][1])))[0]
-  return { x: Math.max(PAD / 2, (p[0] + q[0]) / 2 - w / 2), y: Math.max(PAD / 2, (p[1] + q[1]) / 2 - h / 2) }
+  return spots
 }
 
 /** Only if the router finds nothing (it should not): out of the side, across, into the side */
@@ -217,12 +240,14 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   const t = typeof fields?.t === 'function' ? fields.t : tEn
   const entities = spec.entities
   const relations = spec.relations
-  const groupById = new Map((spec.groups ?? []).map((g) => [g.id, g]))
   const presentGroups = (spec.groups ?? []).filter((g) => entities.some((e) => e.groupId === g.id))
   const showGroups = fields?.groups !== false && presentGroups.length > 0
 
   if (entities.length > SCALE_HINT_ENTITIES) {
     hints.push(tEn('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
+  }
+  if (relations.length > SCALE_HINT_RELATIONS) {
+    hints.push(tEn('rhint.tooManyRelations', { n: relations.length, limit: SCALE_HINT_RELATIONS }))
   }
 
   // ── the camps, in the order they stand ──
@@ -338,7 +363,24 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         lines.push({ ends: [e.id], p: [x, y], q: [pull > 0 ? x + far : x - far, y] })
       }
       const side = (a, b, d) => Math.sign((b[0] - a[0]) * (d[1] - a[1]) - (b[1] - a[1]) * (d[0] - a[0]))
+      // A party standing in the way of another's links out of the camp: the husband level with the borrower,
+      // between her and the lenders, sent both loans round him. Each link out that is blocked counts once.
+      // Only when the picture runs down: transposed, the parties are wide across the links' way and the
+      // links pass beside the one in between (counted there, the horizontal picture of that case got worse).
       let n = 0
+      const boxOf = new Map(laidOne.children.map((m) => [m.id, m]))
+      for (const e of vertical ? members : []) {
+        const pull = pullOf(e, ci)
+        if (pull === 0) continue
+        const out = relations.filter((r) => (r.from === e.id || r.to === e.id) && campIndexOf.get(r.from === e.id ? r.to : r.from) !== ci).length
+        const [x, y] = c.get(e.id)
+        const blocked = members.some((o) => {
+          if (o.id === e.id) return false
+          const b = boxOf.get(o.id)
+          return y > b.y && y < b.y + b.height && (pull > 0 ? b.x > x : b.x + b.width < x)
+        })
+        if (blocked) n += out
+      }
       lines.forEach((u, k) =>
         lines.slice(k + 1).forEach((v) => {
           if (u.ends.some((id) => v.ends.includes(id))) return
@@ -482,13 +524,19 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   // ── the channel after each camp: wide enough for the widest label of a link across it ──
   // A label stands on its own line, and a link between neighbouring camps has only the channel to stand
   // in: a fixed channel let a long English label run over the entity at its end ("Passed on CNY 40,000").
+  // Two relations on one pair (two loans) run side by side, closer than a label is tall: their labels
+  // must stand one after the other, so the channel holds them all.
   const gapAfter = camps.map((_, ci) => {
-    let need = CAMP_GAP
+    const byPair = new Map()
     relations.forEach((r, i) => {
       const [m, n] = [campIndexOf.get(r.from), campIndexOf.get(r.to)].sort((u, v) => u - v)
-      if (m <= ci && n > ci) need = Math.max(need, labels[i].frame.width + 2 * LABEL_MARGIN)
+      if (!(m <= ci && n > ci)) return
+      const pair = [r.from, r.to].sort().join('\u0000')
+      const was = byPair.get(pair) ?? { w: 0, k: 0 }
+      byPair.set(pair, { w: was.w + labels[i].frame.width + LABEL_MARGIN, k: was.k + 1 })
     })
-    return need
+    // A label keeps clear of the ends of its line (placeOnLine), so labels side by side want a margin more
+    return Math.max(CAMP_GAP, ...[...byPair.values()].map(({ w, k }) => w + LABEL_MARGIN * (k > 1 ? 3 : 1)))
   })
 
   // ── set everything down: camps left to right, the whole picture moved so its top is at PAD ──
@@ -547,7 +595,24 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     const b = placed.get(r.to)
     return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
   }
-  const order = relations.map((r, i) => i).sort((a, b) => dist(relations[a]) - dist(relations[b]) || a - b)
+  // Before that, two or more relations of one kind on one pair, the same way (two loans): they used to be
+  // drawn as one line, and now each takes a port of its own first, side by side, and a link that would
+  // cut between them goes out of another side instead
+  const pairOf = (r) => [r.kind, r.from, r.to].join('\u0000')
+  const onPair = new Map()
+  for (const r of relations) onPair.set(pairOf(r), (onPair.get(pairOf(r)) ?? 0) + 1)
+  // Then the ones that can run straight (the two ends level, or one above the other), so a straight line
+  // is not pushed off its port by one that bends anyway
+  const straight = (r) => {
+    const a = placed.get(r.from)
+    const b = placed.get(r.to)
+    const meet = (p, q, m, n) => Math.min(p + q, m + n) - Math.max(p, m) > 0
+    return meet(a.y, a.h, b.y, b.h) || meet(a.x, a.w, b.x, b.w)
+  }
+  const level = (r) => (onPair.get(pairOf(r)) > 1 ? 0 : straight(r) ? 1 : 2)
+  const order = relations
+    .map((r, i) => i)
+    .sort((a, b) => level(relations[a]) - level(relations[b]) || dist(relations[a]) - dist(relations[b]) || a - b)
   const drawn = new Array(relations.length)
   const done = []
   for (const i of order) {
@@ -566,16 +631,17 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         blocks: titles,
         outSides: sides,
         inSides: sides,
-        // Links of one kind into the same party (three regulators each penalising the company) may run
-        // along each other and share the port into it: one trunk, not three loops round the picture
-        routes: done.map((c) => {
-          const o = relations[c.index]
-          return { points: c.points, share: o.kind === relations[i].kind && o.to === relations[i].to }
-        }),
+        // No two links share a stretch: a label on a shared trunk could be read as either line's, and two
+        // relations on one pair drawn on one route showed as one line
+        routes: done.map((c) => ({ points: c.points, share: false })),
         borders,
         portCost: portCostFor(a, b),
         crossCost: CROSS_COST,
         sidePorts: true,
+        // Links side by side at least this far apart (the review on PR 171: 11 px read as one line); the side ports of a low
+        // box spread to match
+        sideSpread: SIDE_SPREAD,
+        parallelGap: PARALLEL_MIN,
       })
     const points = (stacked ? route(['top', 'bottom']) : null) ?? route(undefined) ?? fallbackRoute(a, b)
     const c = { index: i, points, labelAt: null, labelSize: { width: labels[i].frame.width, height: labels[i].frame.height } }
@@ -584,15 +650,70 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   }
   // a link that steps sideways by a few px between two boxes of different sizes becomes one straight line
   drawn.forEach((c) => {
-    c.points = straightenJog(c.points, placed.get(relations[c.index].from), placed.get(relations[c.index].to))
+    c.points = straightenJog(c.points, placed.get(relations[c.index].from), placed.get(relations[c.index].to), STRAIGHT_JOG)
   })
+  // A label in about `k` lines (1: as wide as it needs), in the frame
+  const sizeIn = (c, k) => {
+    const b = labelBox(labels[c.index].text, k)
+    return vertical ? b : { width: b.height, height: b.width }
+  }
+  const place = (c, k, blocks) => {
+    const size = sizeIn(c, k)
+    const at = placeOnLine(c.points, size, nodeRects, blocks, drawn.filter((o) => o !== c), borders)
+    // Each line more is a little worse: a label wraps only to find room
+    return { at: { x: at.x, y: at.y }, size, bad: at.bad + (k - 1) }
+  }
   const placedLabels = []
   for (const i of order) {
     const c = drawn[i]
     // Every other line is in the way of this label; the lines of the relations it belongs to are not special
-    const others = drawn.filter((o) => o !== c)
-    c.labelAt = placeOnLine(c.points, c.labelSize, nodeRects, [...titles, ...placedLabels.map(labelRect)], others, borders)
+    const p = place(c, 1, [...titles, ...placedLabels.map(labelRect)])
+    c.labelAt = p.at
+    c.labelBad = p.bad
     placedLabels.push(c)
+  }
+  // A label that still covers another relation's line (two lines side by side with a long label between) is tried
+  // in two and three lines: narrower, it can stand clear of the neighbour (beside its own line, or on it)
+  for (const c of placedLabels) {
+    if (c.labelBad < 10) continue
+    const rest = [...titles, ...placedLabels.filter((o) => o !== c).map(labelRect)]
+    let best = null
+    for (const k of [2, 3]) {
+      const p = place(c, k, rest)
+      if (!best || p.bad < best.bad) best = p
+    }
+    if (best && best.bad < c.labelBad - 3) {
+      c.labelAt = best.at
+      c.labelSize = best.size
+      c.labelBad = best.bad
+    }
+  }
+  // Two labels on each other: two lines side by side, closer than a label is long, each with a long label.
+  // The two are placed again together, each in one, two or three lines, and the pair that covers least wins.
+  const onEach = (a, b) => overlaps(labelRect(a), labelRect(b), 0)
+  for (const a of placedLabels) {
+    for (const b of placedLabels) {
+      if (a === b || !onEach(a, b)) continue
+      const rest = [...titles, ...placedLabels.filter((o) => o !== a && o !== b).map(labelRect)]
+      // a at each of its spots (not only its best: alone it takes the middle, where b needs to be), b at its best
+      let best = null
+      for (const ka of [1, 2, 3]) {
+        const size = sizeIn(a, ka)
+        for (const sp of spotsOnLine(a.points, size, nodeRects, rest, drawn.filter((o) => o !== a), borders)) {
+          const pa = { at: { x: sp.x, y: sp.y }, size, bad: sp.bad + (ka - 1) }
+          const ra = { x: sp.x, y: sp.y, w: size.width, h: size.height }
+          for (const kb of [1, 2, 3]) {
+            const pb = place(b, kb, [...rest, ra])
+            if (!best || pa.bad + pb.bad < best.bad - 1e-9) best = { bad: pa.bad + pb.bad, pa, pb }
+          }
+        }
+      }
+      if (!best) continue
+      a.labelAt = best.pa.at
+      a.labelSize = best.pa.size
+      b.labelAt = best.pb.at
+      b.labelSize = best.pb.size
+    }
   }
 
   // ── out of the frame, transposed when the picture runs left to right ──
@@ -630,47 +751,11 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   // Layers are the shared rows: a level is a level, whichever camp its entities are in
   const perLayer = Array.from({ length: levelCount }, (_, i) => entities.filter((e) => levelOf.get(e.id) === i).length)
 
-  const sourceById = new Map((spec.sources ?? []).map((s) => [s.id, s]))
-  const degree = new Map(entities.map((e) => [e.id, 0]))
-  for (const r of relations) {
-    degree.set(r.from, degree.get(r.from) + 1)
-    degree.set(r.to, degree.get(r.to) + 1)
-  }
-  // What each party is related to, for its overlay: the other end and the text on the line
-  const nameOf = new Map(entities.map((e) => [e.id, e.label]))
-  const relationsOf = (id) =>
-    relations
-      .map((r, i) => ({ r, i }))
-      .filter(({ r }) => r.from === id || r.to === id)
-      .map(({ r, i }) => ({
-        id: r.id,
-        kind: r.kind,
-        directed: isDirected(r),
-        out: r.from === id,
-        other: nameOf.get(r.from === id ? r.to : r.from),
-        text: labels[i].text,
-      }))
+  // The data of a party's box is the one every kind of relationship diagram builds (partyData.js); here the size is the placed one
+  const party = makePartyData(spec, t)
   const rfNodes = entities.map((e) => {
     const p = real.placed.get(e.id)
-    return {
-      id: e.id,
-      type: 'rnode',
-      position: { x: p.x, y: p.y },
-      data: {
-        entity: e,
-        w: p.w,
-        h: p.h,
-        // the width of the text column the size was computed for; the entity draws its text in it
-        textW: sizeOf(e).textW,
-        groupLabel: groupById.get(e.groupId)?.label ?? '',
-        sources: (e.sourceIds ?? []).map((id) => sourceById.get(id)).filter(Boolean),
-        sourceCount: (e.sourceIds ?? []).filter((id) => sourceById.has(id)).length,
-        relationCount: degree.get(e.id),
-        relations: relationsOf(e.id),
-        layer: levelOf.get(e.id),
-        vertical,
-      },
-    }
+    return { id: e.id, type: 'rnode', position: { x: p.x, y: p.y }, data: party.dataOf(e, { w: p.w, h: p.h, layer: levelOf.get(e.id), vertical }) }
   })
 
   const kinds = {}

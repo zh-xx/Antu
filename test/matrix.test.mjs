@@ -26,9 +26,9 @@ const entity = (id, extra = {}) => ({ id, kind: 'person', label: `Party ${id}`, 
 const rel = (id, from, to, kind, extra = {}) => ({ id, from, to, kind, ...extra })
 const spec = (entities, relations, extra = {}) => ({ type: 'relationship', specVersion: 1, title: 't', entities, relations, ...extra })
 
-test('the matrix is a registered relationship kind, after the chain', () => {
+test('the matrix is a registered relationship kind, after the focus view', () => {
   registerKnowledge('relationship', relationshipKnowledge)
-  assert.deepEqual(layoutKindsOf('relationship').slice(0, 4), ['graph', 'focus', 'chain', 'matrix'])
+  assert.deepEqual(layoutKindsOf('relationship').slice(0, 3), ['graph', 'focus', 'matrix'])
 })
 
 for (const f of files) {

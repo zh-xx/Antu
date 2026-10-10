@@ -157,7 +157,7 @@ fact 的 JSON          ← schema 规定到这一层为止，没有"我是什么
 ```
 JSON (信封) ──> [校验门卫] ──> 按大类路由 ──> 注册表（大类 × 子类）
                                               ├─ relationship
-                                              │    └─ graph, focus, chain, matrix, equity, authority, related, path, summary   ← 已做
+                                              │    └─ graph, focus, matrix, equity, authority, related, path   ← 已做
                                               ├─ fact
                                               │    └─ timeline, chronicle, scale   ← 已做
                                               ├─ procedure

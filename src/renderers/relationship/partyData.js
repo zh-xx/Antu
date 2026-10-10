@@ -8,7 +8,7 @@
 // ============================================================
 
 import { isDirected } from './graph/rules.js'
-import { labelOf } from './graph/layout.js'
+import { labelOf } from './graph/labelOf.js'
 import { sizeOf } from './graph/metrics.js'
 import { tEn } from '../../core/i18n.js'
 

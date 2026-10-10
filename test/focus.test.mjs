@@ -22,6 +22,7 @@ import {
   defaultCentre,
   segmentHitsRect,
 } from '../src/renderers/relationship/focus/layout.js'
+import { buildRelationshipGraph } from '../src/renderers/relationship/graph/layout.js'
 import { relationshipKnowledge } from '../src/renderers/relationship/schema.js'
 import { registerKnowledge, layoutKindsOf } from '../src/core/registry.js'
 import { translate } from '../src/core/i18n.js'
@@ -126,15 +127,12 @@ test('the centre is flagged and in the middle of its own ring', () => {
   }
 })
 
-test('the first group stands on the left of the centre, the second on the right', () => {
-  const s = load('sample-group-guarantee.zh-CN.json')
-  const g = assertSound(s, 'camps')
-  const cx = (n) => n.position.x + n.data.w / 2
-  const centre = g.nodes.find((n) => n.data.centre)
-  const left = g.nodes.filter((n) => n.data.ring === 1 && n.data.entity.groupId === 'g-1')
-  const right = g.nodes.filter((n) => n.data.ring === 1 && n.data.entity.groupId === 'g-2')
-  assert.ok(left.length && left.every((n) => cx(n) < cx(centre)), 'the first group on the left')
-  assert.ok(right.length && right.every((n) => cx(n) > cx(centre)), 'the second group on the right')
+test('a chain of parties straight up or down is turned towards a side, so a wide screen is used', () => {
+  // The market case has a party two steps out behind one that stands above the centre: it used to stand straight above
+  // that one, so the picture was nearly square (1026 x 926); turned towards the side it is wider than tall
+  const s = JSON.parse(readFileSync('examples/relationship/marketplace-parties.zh-CN.json', 'utf8'))
+  const g = buildFocusGraph(s, {})
+  assert.ok(g.size.width / g.size.height >= 1.4, `${g.size.width} x ${g.size.height}`)
 })
 
 test('a party carries its camp name, toned by its place', () => {
@@ -178,22 +176,43 @@ test('any valid JSON draws: no relations, one party, parallel relations, a big s
   assertSound(web, 'two rings of a web, centre on the edge', 'p25')
 })
 
-test('a relation between two parties on opposite sides goes round, not through the middle', () => {
-  // The centre c is tied to a (first group, left) and b (second group, right); a and b are tied to each other
+test('ring 1: the centre and two parties tied to each other and to it make a triangle, not a line', () => {
+  // The centre c is tied to a (first group) and b (second group); a and b are tied to each other. The camps used to send
+  // a to the left and b to the right, the three on one line with c between: the line a-b had to go round
   const s = spec(
     [entity('c'), entity('a', { groupId: 'g1' }), entity('b', { groupId: 'g2' })],
     [relation('r1', 'c', 'a'), relation('r2', 'c', 'b'), relation('r3', 'a', 'b', { kind: 'debt' })],
     { groups: [{ id: 'g1', label: 'Left' }, { id: 'g2', label: 'Right' }] },
   )
-  const g = assertSound(s, 'opposite', 'c')
-  const through = g.connections.find((x) => x.relationId === 'r3')
-  assert.ok(through.points.length > 2, 'drawn as a curve round the ring, not straight across the centre')
-  assert.match(through.d, /^M [\d.-]+ [\d.-]+ C /, 'as a smooth curve')
-  assert.equal(through.faint, true, 'faint: it does not touch the centre')
+  const g = assertSound(s, 'triangle', 'c')
+  const at = (id) => {
+    const n = g.nodes.find((x) => x.id === id)
+    return [n.position.x + n.data.w / 2, n.position.y + n.data.h / 2]
+  }
+  const [c, a, b] = ['c', 'a', 'b'].map(at)
+  const area = Math.abs((a[0] - c[0]) * (b[1] - c[1]) - (a[1] - c[1]) * (b[0] - c[0])) / 2
+  assert.ok(area > 8000, `the three do not lie on one line (the triangle is ${Math.round(area)} px²)`)
+  const between = g.connections.find((x) => x.relationId === 'r3')
+  assert.equal(between.points.length, 2, 'the line between the two tied parties is straight')
+  assert.equal(between.faint, true, 'faint: it does not touch the centre')
   assert.equal(g.connections.find((x) => x.relationId === 'r1').faint, false)
   assert.equal(g.connections.find((x) => x.relationId === 'r1').points.length, 2, 'a relation of the centre is straight')
 })
 
+test('ring 1: parties not tied to one another keep their camps\' sides, and a line that would pass through a party bends round it', () => {
+  const s = spec(
+    [entity('c'), entity('a1', { groupId: 'g1' }), entity('a2', { groupId: 'g1' }), entity('b1', { groupId: 'g2' }), entity('b2', { groupId: 'g2' })],
+    ['a1', 'a2', 'b1', 'b2'].map((id, i) => relation(`r${i}`, 'c', id)),
+    { groups: [{ id: 'g1', label: 'Left' }, { id: 'g2', label: 'Right' }] },
+  )
+  const g = assertSound(s, 'camps', 'c')
+  const cx = (id) => {
+    const n = g.nodes.find((x) => x.id === id)
+    return n.position.x + n.data.w / 2
+  }
+  assert.ok(cx('a1') < cx('c') && cx('a2') < cx('c'), 'the first group on the left')
+  assert.ok(cx('b1') > cx('c') && cx('b2') > cx('c'), 'the second group on the right')
+})
 test('the layout is the same every time', () => {
   const s = load('marketplace-parties.zh-CN.json')
   assert.deepEqual(buildFocusGraph(s, {}), buildFocusGraph(s, {}))
@@ -241,4 +260,116 @@ test('every focus message exists in both languages', () => {
       assert.ok(text && !text.startsWith('rel.') && !text.startsWith('graphKind.'), `${lang} ${key}`)
     }
   }
+})
+
+test('ring 1: two parties related to each other stand side by side, so their line is straight (Fang Yuan)', () => {
+  const spec = JSON.parse(readFileSync('examples/relationship/fang-yuan-parties.zh-CN.json', 'utf8'))
+  const g = buildFocusGraph(spec)
+  // the company and its employee, the husband and the lenders: drawn round the rings, they went round the whole picture
+  for (const id of ['r-3', 'r-7']) {
+    const c = g.connections.find((x) => x.relationId === id)
+    assert.equal(c.points.length, 2, `${c.label}: straight`)
+  }
+})
+
+test('two relations on one pair run apart all the way, whichever way each runs; labels never on each other', () => {
+  const ov = (a, b) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 1 && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 1
+  const dir = 'examples/relationship/'
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+    const g = buildFocusGraph(JSON.parse(readFileSync(dir + f, 'utf8')))
+    const rect = (c) => ({ x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height })
+    g.connections.forEach((c, i) =>
+      g.connections.slice(i + 1).forEach((d) => {
+        assert.ok(!ov(rect(c), rect(d)), `${f}: "${c.label}" on "${d.label}"`)
+        if ([c.from, c.to].sort().join() !== [d.from, d.to].sort().join() || c.points.length !== 2 || d.points.length !== 2) return
+        // both ends apart (the far end used to fall back on the middle, and the arrows met)
+        const ends = (x) => [x.points[0], x.points[1]].sort((p, q) => p[0] - q[0] || p[1] - q[1])
+        const [a0, a1] = ends(c)
+        const [b0, b1] = ends(d)
+        assert.ok(Math.hypot(a0[0] - b0[0], a0[1] - b0[1]) > 6 && Math.hypot(a1[0] - b1[0], a1[1] - b1[1]) > 6, `${f}: "${c.label}" and "${d.label}" meet`)
+      }),
+    )
+  }
+})
+
+test('two relations on one pair are drawn at least 18 px apart (review on PR 171: 12 px)', () => {
+  for (const f of readdirSync('examples/relationship').filter((x) => x.endsWith('.json'))) {
+    const g = buildFocusGraph(JSON.parse(readFileSync('examples/relationship/' + f, 'utf8')))
+    g.connections.forEach((c, i) =>
+      g.connections.slice(i + 1).forEach((d) => {
+        if ([c.from, c.to].sort().join() !== [d.from, d.to].sort().join() || c.points.length !== 2 || d.points.length !== 2) return
+        const [a, b] = c.points
+        const p = d.points[0]
+        const dist = Math.abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / Math.hypot(b[0] - a[0], b[1] - a[1])
+        assert.ok(dist >= 18, `${f}: "${c.label}" and "${d.label}" ${dist.toFixed(1)} px apart`)
+      }),
+    )
+  }
+})
+
+// ---- the review of PR 171, second round: a four-party case (a loan, a joint guarantee, an entrusted-guarantee
+// contract, recourse after paying, a counter-guarantee) in which two relations run between one pair ----
+const rel1 = () =>
+  spec(
+    [entity('e-1', { label: '临沂大润', groupId: 'g-2' }), entity('e-2', { label: '中国农业银行', groupId: 'g-1' }), entity('e-3', { label: '袁冠华', groupId: 'g-2', kind: 'person' }), entity('e-4', { label: '郁友娜', groupId: 'g-2', kind: 'person' })],
+    [
+      relation('r-1', 'e-2', 'e-1', { kind: 'debt', label: '分期债务' }),
+      relation('r-2', 'e-3', 'e-2', { kind: 'guarantee', label: '连带保证' }),
+      relation('r-3', 'e-3', 'e-1', { kind: 'contract', label: '委托担保合同' }),
+      relation('r-4', 'e-3', 'e-1', { kind: 'debt', label: '代偿后追偿' }),
+      relation('r-5', 'e-4', 'e-3', { kind: 'guarantee', label: '反担保' }),
+    ],
+    { groups: [{ id: 'g-1', label: '债权人' }, { id: 'g-2', label: '债务人与担保人' }] },
+  )
+const crossesRect = ([p, q], r) => {
+  let t0 = 0
+  let t1 = 1
+  const dx = q[0] - p[0]
+  const dy = q[1] - p[1]
+  for (const [pp, qq] of [[-dx, p[0] - r.x], [dx, r.x + r.w - p[0]], [-dy, p[1] - r.y], [dy, r.y + r.h - p[1]]]) {
+    if (pp === 0) {
+      if (qq < 0) return false
+    } else {
+      const t = qq / pp
+      if (pp < 0) {
+        if (t > t1) return false
+        if (t > t0) t0 = t
+      } else {
+        if (t < t0) return false
+        if (t < t1) t1 = t
+      }
+    }
+  }
+  return true
+}
+const labelsOnOtherLines = (g) => {
+  const out = []
+  for (const c of g.connections) {
+    const r = { x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height }
+    for (const o of g.connections) if (o !== c && o.points.slice(1).some((q, i) => crossesRect([o.points[i], q], r))) out.push(`${c.label} over ${o.label}`)
+  }
+  return out
+}
+
+test('focus: from every party, no line goes round the whole picture and no label stands on another relation\'s line', () => {
+  const s = rel1()
+  for (const e of s.entities) {
+    const g = buildFocusGraph(s, { centre: e.id })
+    const longest = Math.max(...g.connections.map((c) => c.points.slice(1).reduce((n, q, i) => n + Math.hypot(q[0] - c.points[i][0], q[1] - c.points[i][1]), 0)))
+    assert.ok(longest < 800, `${e.label}: the longest line is ${Math.round(longest)} px`)
+    assert.deepEqual(labelsOnOtherLines(g), [], e.label)
+  }
+})
+
+test('graph: on the same case, in all four states, no label stands on another relation\'s line, and two of the lines are straight when the camps are off', () => {
+  const s = rel1()
+  for (const groups of [true, false]) {
+    for (const orientation of ['vertical', 'horizontal']) {
+      const g = buildRelationshipGraph(s, { groups }, undefined, orientation)
+      assert.deepEqual(labelsOnOtherLines(g), [], `groups ${groups}, ${orientation}`)
+    }
+  }
+  const g = buildRelationshipGraph(s, { groups: false }, undefined, 'vertical')
+  const straight = g.connections.filter((c) => c.points.length === 2).map((c) => c.label)
+  assert.ok(straight.includes('分期债务') && straight.includes('连带保证'), `straight: ${straight.join(', ')}`)
 })

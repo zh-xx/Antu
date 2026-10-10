@@ -48,7 +48,7 @@ function Outline({ kind, w, h, theme, end = false }) {
 
 const EntityNode = memo(function EntityNode({ id, data }) {
   const { entity, w, h, textW, lit = false, dim = false, groupLabel, sources, relations, vertical, layer, centre = false, end = false, camp = null, hintKey = 'rel.previewHint' } = data
-  const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
+  const { hoveredId, pinnedId, pin, unpin, focusOn } = useContext(PreviewContext)
   const { t, lang } = useLang()
   const { theme } = useTheme()
 
@@ -115,6 +115,18 @@ const EntityNode = memo(function EntityNode({ id, data }) {
               <div className="antu-preview-title">{entity.label}</div>
               {entity.role && <div className="antu-preview-sub">{entity.role}</div>}
             </>
+          )}
+
+          {isPinned && focusOn && (
+            <button
+              className="antu-dock-chip antu-rn-focus"
+              onClick={(e) => {
+                e.stopPropagation()
+                focusOn(id)
+              }}
+            >
+              {t('rel.focus.open')}
+            </button>
           )}
 
           {entity.detail && <div className="antu-preview-text">{entity.detail}</div>}

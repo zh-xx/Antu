@@ -71,16 +71,21 @@ const emOf = (text, factor) => {
 
 /**
  * What crossing another link costs the router, in pixels of length. The flowchart's is 1400: a detour
- * always beats a crossing. Here links run across the picture between camps, so a crossing is worth a
- * bend or so and not a trip round the whole diagram (seen on the first horizontal screenshot).
+ * always beats a crossing. It was 450 here (a bend or so), so a link would not go right round the
+ * picture; once links no longer share a stretch and keep 15 px apart, that let a loan cross a family
+ * line rather than take one more bend. About two bends now: a short detour beats a crossing, a trip
+ * round the whole picture does not.
  */
-export const CROSS_COST = 450
+export const CROSS_COST = 1300
 
 /** Past this many entities the diagram is reported with a hint (it is not an error) */
 export const SCALE_HINT_ENTITIES = 25
+/** The graph routes every relation round the others, and the time grows faster than the count: 40 relations take a few seconds, 60 about fifteen */
+export const SCALE_HINT_RELATIONS = 40
 
 /** The box a relation's label needs: width capped, text wrapped into lines */
-export function labelBox(text) {
+export function labelBox(text, wrapInto) {
+  if (wrapInto > 1) return labelBoxIn(text, wrapInto)
   const textW = emOf(text, LABEL_FACTOR) * LABEL_FONT
   const width = Math.min(LABEL_MAX_W, Math.ceil(textW + LABEL_PAD_X * 2))
   const lines = Math.max(1, Math.ceil(textW / (LABEL_MAX_W - LABEL_PAD_X * 2) - 1e-9))
@@ -105,3 +110,18 @@ export function sizeOf(entity) {
   const textH = lines * ENTITY_LINE + (role ? ROLE_LINE + 2 : 0)
   return { w, h: nodeHeight(textH + ENTITY_PAD_Y), textW }
 }
+
+/**
+ * The same label wrapped into about `k` lines: narrower and taller, for a spot where the one-line box finds
+ * no room (two lines side by side, closer than a label is long). One character of slack on each line, as
+ * the browser breaks a line at a whole character and the estimate is not exact.
+ */
+function labelBoxIn(text, k) {
+  const textW = emOf(text, LABEL_FACTOR) * LABEL_FONT
+  const inner = Math.min(LABEL_MAX_W - LABEL_PAD_X * 2, textW / k + LABEL_FONT)
+  const lines = Math.max(1, Math.ceil(textW / inner - 1e-9))
+  return { width: Math.ceil(inner + LABEL_PAD_X * 2), height: lines * LABEL_LINE + 2 }
+}
+
+/** The most a relationship graph or focus view opens enlarged: a 14 px name is then at most about 18 px on the screen */
+export const OPEN_MAX_ZOOM = 1.25

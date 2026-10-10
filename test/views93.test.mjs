@@ -1,14 +1,14 @@
 // ============================================================
-//  test/views93.test.mjs — the four relationship views of issue #93 (pure functions):
-//  authority chart, related-party list, relation path, camp summary
+//  test/views93.test.mjs — the relationship views of issue #93 (pure functions):
+//  authority chart, related-party list, relation path
 //
 //  What must hold:
 //    1. every relation of every relationship example is on the page: a line or a row of the list under it
-//       (authority, path, summary), or a row of the table or the list of the rest (related)
-//    2. boxes (and blocks) do not overlap and stay inside the content
+//       (authority, path), or a row of the table or the list of the rest (related)
+//    2. boxes do not overlap and stay inside the content
 //    3. each view says what it chose: levels of authority, the chains found (shortest first, a party once
-//       per chain, direction ignored), the lines between camps (one per pair)
-//    4. any valid JSON draws: no authority, no chain, no groups, a centre with no relation
+//       per chain, direction ignored)
+//    4. any valid JSON draws: no authority, no chain, a centre with no relation
 // ============================================================
 
 import { test } from 'node:test'
@@ -16,9 +16,9 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 
 import { buildAuthorityGraph, classifyAuthority } from '../src/renderers/relationship/authority/layout.js'
+import { buildEquityGraph } from '../src/renderers/relationship/equity/layout.js'
 import { buildRelatedGraph, relatedRows, centreOf } from '../src/renderers/relationship/related/layout.js'
-import { buildPathGraph, findChains, defaultEnds, endsOf, columnsOf, MAX_CHAINS } from '../src/renderers/relationship/path/layout.js'
-import { buildSummaryGraph, summaryUnits, summaryLines } from '../src/renderers/relationship/summary/layout.js'
+import { buildPathGraph, findChains, defaultEnds, endsOf, placeChains, pillW, pillH, MAX_CHAINS } from '../src/renderers/relationship/path/layout.js'
 import { layeredGraph } from '../src/renderers/relationship/layered.js'
 import { relationshipKnowledge } from '../src/renderers/relationship/schema.js'
 import { registerKnowledge, layoutKindsOf } from '../src/core/registry.js'
@@ -49,9 +49,9 @@ function assertBoxes(g, label) {
   }
 }
 
-test('the four views are registered relationship kinds, after the equity tree', () => {
+test('the views are registered relationship kinds, after the equity tree', () => {
   registerKnowledge('relationship', relationshipKnowledge)
-  assert.deepEqual(layoutKindsOf('relationship').slice(0, 9), ['graph', 'focus', 'chain', 'matrix', 'equity', 'authority', 'related', 'path', 'summary'])
+  assert.deepEqual(layoutKindsOf('relationship').slice(0, 7), ['graph', 'focus', 'matrix', 'equity', 'authority', 'related', 'path'])
 })
 
 for (const f of files) {
@@ -60,7 +60,7 @@ for (const f of files) {
     const g = buildAuthorityGraph(s, {})
     assert.deepEqual(g.errors, [])
     const p = classifyAuthority(s)
-    assert.equal(p.edges.length + p.rest.length, s.relations.length)
+    assert.equal(p.edges.length + p.above.length + p.rest.length, s.relations.length)
     assert.equal(g.nodes.find((n) => n.type === 'lineLayer').data.links.length, p.edges.length)
     assertBoxes(g, f)
   })
@@ -77,6 +77,14 @@ for (const f of files) {
     assert.equal(table.rows.length, rows.reduce((n, r) => n + r.rels.length, 0), 'a line for each relation')
     for (const r of table.rows) assert.ok(r.y + r.h <= table.bottom, 'a row inside the table')
   })
+  test(`${f}: relation path, every line starts and ends on a box`, () => {
+    const g = buildPathGraph(load(f), {})
+    const boxes = g.nodes.filter((n) => n.type === 'rnode').map((n) => ({ x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }))
+    for (const l of g.nodes.find((n) => n.type === 'lineLayer').data.links) {
+      const pts = [...l.d.matchAll(/[ML] ([\d.-]+) ([\d.-]+)/g)].map((m) => [+m[1], +m[2]])
+      for (const p of [pts[0], pts.at(-1)]) assert.ok(boxes.some((b) => p[0] >= b.x - 0.5 && p[0] <= b.x + b.w + 0.5 && p[1] >= b.y - 0.5 && p[1] <= b.y + b.h + 0.5), `${f}: a line ends at (${p}), off every box`)
+    }
+  })
   test(`${f}: relation path, chains tie the two ends`, () => {
     const s = load(f)
     const g = buildPathGraph(s, {})
@@ -90,15 +98,6 @@ for (const f of files) {
       c.rels.forEach((r, i) => assert.ok((r.from === c.nodes[i] && r.to === c.nodes[i + 1]) || (r.to === c.nodes[i] && r.from === c.nodes[i + 1]), 'each hop is a relation between the two'))
     }
     for (let i = 1; i < chains.length; i++) assert.ok(chains[i].rels.length >= chains[i - 1].rels.length, 'shortest first')
-    assertBoxes(g, f)
-  })
-  test(`${f}: camp summary, every relation between blocks or inside one`, () => {
-    const s = load(f)
-    const g = buildSummaryGraph(s, {})
-    assert.deepEqual(g.errors, [])
-    assert.equal(g.betweenRelations + g.insideRelations, s.relations.length)
-    const units = summaryUnits(s)
-    assert.equal(units.reduce((n, u) => n + u.members.length, 0), s.entities.length, 'every party in a block or alone')
     assertBoxes(g, f)
   })
 }
@@ -195,39 +194,16 @@ test('path: the default ends are the two furthest apart, and a bad pick falls ba
   assert.deepEqual(endsOf(s, { from: 'zz', to: 'a' }), { from: 'a', to: 'c' })
 })
 
-test('summary: one line for a pair of blocks, run from the side most relations run from', () => {
-  const s = spec(
-    [entity('a1', { groupId: 'g1' }), entity('a2', { groupId: 'g1' }), entity('b1', { groupId: 'g2' }), entity('s')],
-    [rel('r1', 'a1', 'b1', 'debt'), rel('r2', 'a2', 'b1', 'guarantee'), rel('r3', 'b1', 'a1', 'contract'), rel('r4', 'a1', 'a2', 'equity'), rel('r5', 's', 'b1', 'other')],
-    { groups: [{ id: 'g1', label: 'One' }, { id: 'g2', label: 'Two' }] },
-  )
-  const units = summaryUnits(s)
-  assert.deepEqual(units.map((u) => u.id), ['g:g1', 'g:g2', 's'])
-  const { between, inside } = summaryLines(s, units)
-  assert.equal(between.length, 2)
-  const pair = between.find((b) => b.rels.length === 3)
-  assert.equal(pair.a, 'g:g1', 'two of the three run from One')
-  assert.equal(inside.get('g:g1').length, 1)
-  const g = buildSummaryGraph(s, {})
-  assert.deepEqual([g.blocks, g.singles, g.lines, g.betweenRelations, g.insideRelations], [2, 1, 2, 4, 1])
-  const pill = g.nodes.find((n) => n.type === 'lineLayer').data.pills.find((p) => /Debts/.test(p.text))
-  assert.match(pill.text, /Contracts 1/)
-  // No groups: every party alone
-  const flat = buildSummaryGraph(spec([entity('a'), entity('b')], [rel('r1', 'a', 'b', 'contract')]), {})
-  assert.equal(flat.blocks, 0)
-  assert.equal(flat.singles, 2)
-})
-
-test('the four reports name what each view chose', () => {
+test('the three reports name what each view chose', () => {
   const s = load('sample-group-guarantee.en.json')
-  for (const [kind, pattern] of [['authority', /^Kind: authority/m], ['related', /^Kind: related/m], ['path', /^Kind: path/m], ['summary', /camp block/]]) {
+  for (const [kind, pattern] of [['authority', /^Kind: authority/m], ['related', /^Kind: related/m], ['path', /^Kind: path/m]]) {
     const r = layoutReport(s, { kind })
     assert.equal(r.ok, true, kind)
     assert.match(formatLayoutReport(r), pattern, kind)
   }
 })
 
-test('path: one chain to a row, every line level, a shared party in the same column', () => {
+test('path: one picture, each party and each relation once, no two lines sharing a stretch', () => {
   const s = spec(
     [entity('a'), entity('b'), entity('c'), entity('d'), entity('e')],
     [rel('r1', 'a', 'b', 'contract'), rel('r2', 'b', 'e', 'contract'), rel('r3', 'b', 'c', 'contract'), rel('r4', 'c', 'e', 'contract'), rel('r5', 'a', 'd', 'contract'), rel('r6', 'd', 'e', 'contract')],
@@ -235,24 +211,142 @@ test('path: one chain to a row, every line level, a shared party in the same col
   const g = buildPathGraph(s, { from: 'a', to: 'e' })
   assert.equal(g.chains, 3)
   const layer = g.nodes.find((n) => n.type === 'lineLayer').data
-  // Every line is horizontal: its path has one y
-  for (const l of layer.links) {
-    const ys = [...l.d.matchAll(/[ML] [\d.]+ ([\d.]+)/g)].map((m) => m[1])
-    assert.equal(new Set(ys).size, 1, `a level line: ${l.d}`)
-  }
-  // One row per chain; the two ends in every row, dark
   const boxes = g.nodes.filter((n) => n.type === 'rnode')
-  assert.equal(boxes.filter((n) => n.data.end).length, 6)
-  assert.equal(new Set(boxes.map((n) => n.position.y)).size, 3, 'three rows')
-  // b is passed by two chains and stands in one column in both
-  const bx = boxes.filter((n) => n.id.startsWith('b@')).map((n) => n.position.x)
-  assert.equal(new Set(bx).size, 1)
-  // Rows do not overlap, whatever the labels
-  assertBoxes(g, 'rows')
-  // columnsOf: the ends first and last, the rest in order
-  const chains = findChains(s, 'a', 'e').chains
-  for (const row of columnsOf(chains)) {
-    assert.equal(row[0], 0)
-    for (let i = 1; i < row.length; i++) assert.ok(row[i] > row[i - 1], 'strictly to the right')
+  // One start and one end, every other party once
+  assert.equal(new Set(boxes.map((n) => n.id)).size, boxes.length)
+  assert.equal(boxes.length, 5)
+  assert.deepEqual(boxes.filter((n) => n.data.end).map((n) => n.id).sort(), ['a', 'e'])
+  const col = (id) => boxes.find((n) => n.id === id).position.x
+  assert.equal(col('a') < col('b') && col('b') < col('e'), true, 'read left to right')
+  // One line and one label for each relation
+  assert.equal(layer.links.length, 6)
+  assert.equal(layer.pills.length, 6)
+  assert.equal(new Set(layer.pills.map((p) => p.relId)).size, 6)
+  // The two shortest chains (2 steps) are heavy; the lines only the 3-step chain has are thin
+  const widthOf = (relId) => layer.links[layer.pills.findIndex((p) => p.relId === relId)].width
+  for (const id of ['r1', 'r2', 'r5', 'r6']) assert.ok(widthOf(id) > 2, `${id} is heavy`)
+  for (const id of ['r3', 'r4']) assert.ok(widthOf(id) < 2, `${id} is thin`)
+  // No two lines run along the same stretch
+  const segs = layer.links.map((l) => {
+    const pts = [...l.d.matchAll(/[ML] ([\d.]+) ([\d.]+)/g)].map((m) => [+m[1], +m[2]])
+    return pts.slice(1).map((q, i) => [pts[i], q])
+  })
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      for (const [p, q] of segs[i]) {
+        for (const [u, v] of segs[j]) {
+          const sameY = p[1] === q[1] && u[1] === v[1] && p[1] === u[1]
+          const sameX = p[0] === q[0] && u[0] === v[0] && p[0] === u[0]
+          if (sameY) assert.ok(Math.min(Math.max(p[0], q[0]), Math.max(u[0], v[0])) - Math.max(Math.min(p[0], q[0]), Math.min(u[0], v[0])) <= 0.5, `lines ${i} and ${j} share a horizontal stretch`)
+          if (sameX) assert.ok(Math.min(Math.max(p[1], q[1]), Math.max(u[1], v[1])) - Math.max(Math.min(p[1], q[1]), Math.min(u[1], v[1])) <= 0.5, `lines ${i} and ${j} share a vertical stretch`)
+        }
+      }
+    }
   }
+  assertBoxes(g, 'path')
+  // placeChains: the shortest chain is the main line, in order and on row 0; the parties only a longer chain
+  // passes stand above or below it, one side each time, and no two boxes on a row are closer than a column
+  const { pos, row } = placeChains(findChains(s, 'a', 'e').chains)
+  const main = findChains(s, 'a', 'e').chains[0].nodes
+  main.forEach((id, i) => {
+    assert.equal(row.get(id), 0)
+    if (i) assert.ok(pos.get(id) > pos.get(main[i - 1]), 'in order')
+  })
+  assert.equal(row.get('d') < 0 !== row.get('c') < 0, true, 'the second longer chain goes to the other side')
+  for (const x of pos.keys()) for (const y of pos.keys()) if (x < y && row.get(x) === row.get(y)) assert.ok(Math.abs(pos.get(x) - pos.get(y)) >= 2, 'a column apart on one row')
+  // A diamond: two parties of one hop apart on the main line, a third off the line at the middle, not a long row
+  const ys = boxes.map((n) => n.position.y)
+  assert.ok(Math.max(...ys) > Math.min(...ys), 'more than one row')
+})
+
+test('authority: with several separate structures one party\'s picture opens, and any other can be picked', () => {
+  const s = spec(
+    [entity('a'), entity('b'), entity('c'), entity('d'), entity('e')],
+    [rel('r1', 'a', 'b', 'control'), rel('r2', 'b', 'c', 'employment'), rel('r3', 'b', 'e', 'agency'), rel('r4', 'd', 'e', 'control')],
+  )
+  // b has three lines, but it is the structure a-b-c-e-d: one structure, so everything opens
+  assert.equal(classifyAuthority(s).company, null)
+  const two = spec([entity('a'), entity('b'), entity('x'), entity('y'), entity('z')], [rel('r1', 'a', 'b', 'control'), rel('r2', 'x', 'y', 'employment'), rel('r3', 'x', 'z', 'employment')])
+  const opened = classifyAuthority(two)
+  assert.equal(opened.company, 'x', 'the busiest party of the several structures')
+  assert.deepEqual(opened.ids.sort(), ['x', 'y', 'z'])
+  assert.deepEqual(opened.rest.map((r) => r.id), ['r1'])
+  const other = classifyAuthority(two, 'b')
+  assert.deepEqual(other.ids.sort(), ['a', 'b'], 'nothing below it: the ones above it are drawn')
+  assert.deepEqual(other.above, [])
+  const top = classifyAuthority(two, 'x')
+  assert.deepEqual(top.ids.sort(), ['x', 'y', 'z'])
+  assert.equal(classifyAuthority(two, '*').edges.length, 3)
+  const g = buildAuthorityGraph(two, { company: 'a' })
+  assert.equal(g.company, 'a')
+  assert.equal(g.chartParties, 2)
+})
+
+test('authority: several parties tied to one company gather on one bar, symmetric about it, and no label covers another', () => {
+  const s = spec(
+    [entity('a', { label: 'Aa' }), entity('b', { label: 'A much longer name than the others' }), entity('c'), entity('co')],
+    [rel('r1', 'a', 'co', 'employment', { label: '法定代表人、执行董事长' }), rel('r2', 'b', 'co', 'employment', { label: '总经理' }), rel('r3', 'c', 'co', 'employment', { label: '监事' })],
+  )
+  const g = buildAuthorityGraph(s, {})
+  const layer = g.nodes.find((n) => n.type === 'lineLayer').data
+  const mid = (id) => {
+    const n = g.nodes.find((x) => x.id === id)
+    return n.position.x + n.data.w / 2
+  }
+  // The parties stand equally far apart, and the company is in the middle of them
+  assert.ok(Math.abs(mid('b') - mid('a') - (mid('c') - mid('b'))) < 1, 'equal spacing whatever the names')
+  assert.ok(Math.abs(mid('co') - (mid('a') + mid('c')) / 2) < 1, 'the company is in the middle of its parties')
+  // One line comes down into the company, at its middle; the bar is one stretch
+  const ends = new Set(layer.links.map((l) => l.d.trim().split(' ').slice(-2).join(' ')))
+  assert.equal(ends.size, 1, 'every line ends at the same point')
+  assert.ok(Math.abs(Number([...ends][0].split(' ')[0]) - mid('co')) < 1, 'at the middle of the company')
+  const pw = (t) => Math.min(220, 20 + [...t].reduce((n, ch) => n + (/[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 12.5 : 7.4), 0))
+  const r = layer.pills.map((p) => ({ x: p.x - pw(p.text) / 2, y: p.y - 11, w: pw(p.text), h: 22 }))
+  for (let i = 0; i < r.length; i++) for (let j = i + 1; j < r.length; j++) assert.ok(!(r[i].x < r[j].x + r[j].w && r[j].x < r[i].x + r[i].w && r[i].y < r[j].y + r[j].h && r[j].y < r[i].y + r[i].h), `labels ${i} and ${j} overlap`)
+})
+
+test('path: parallel lines between two parties, a label that wraps covers none of the other lines', () => {
+  const s = spec(
+    [entity('a', { role: '角色' }), entity('b', { role: '角色' })],
+    [
+      rel('r1', 'a', 'b', 'employment', { label: '副总经理兼首席技术官（2031 年任）' }),
+      rel('r2', 'b', 'a', 'equity', { label: '股东', share: 15 }),
+      rel('r3', 'a', 'b', 'contract', { label: '技术服务合同（含保密与竞业限制条款）' }),
+    ],
+  )
+  const g = buildPathGraph(s, { from: 'a', to: 'b' })
+  const layer = g.nodes.find((n) => n.type === 'lineLayer').data
+  assert.equal(layer.links.length, 3)
+  const segs = layer.links.map((l) => {
+    const pts = [...l.d.matchAll(/[ML] ([\d.-]+) ([\d.-]+)/g)].map((m) => [+m[1], +m[2]])
+    return pts.slice(1).map((q, i) => [pts[i], q])
+  })
+  layer.pills.forEach((p, i) => {
+    const w = pillW(p.text)
+    const h = pillH(p.text)
+    const r = { x: p.x - w / 2 + 3, y: p.y - h / 2 + 2, w: w - 6, h: h - 4 }
+    segs.forEach((ss, k) => {
+      if (k === i) return
+      for (const [a, b] of ss) assert.ok(!(Math.max(a[0], b[0]) > r.x && Math.min(a[0], b[0]) < r.x + r.w && Math.max(a[1], b[1]) > r.y && Math.min(a[1], b[1]) < r.y + r.h), `the label of line ${i} covers line ${k}`)
+    })
+  })
+})
+
+test('authority and equity: parallel relations from one party into a gathering box are two lines, and ids starting with ~ draw', () => {
+  const s = spec(
+    [entity('a'), entity('b'), entity('c')],
+    [rel('r1', 'a', 'c', 'control', { label: '控制' }), rel('r2', 'a', 'c', 'employment', { label: '任职' }), rel('r3', 'b', 'c', 'agency', { label: '代理' })],
+  )
+  const layer = buildAuthorityGraph(s, {}).nodes.find((n) => n.type === 'lineLayer').data
+  assert.equal(new Set(layer.links.map((l) => l.d)).size, 3, 'no two relations drawn as the same line')
+  const firstStretch = layer.links.slice(0, 2).map((l) => l.d.match(/M ([\d.-]+) /)[1])
+  assert.notEqual(firstStretch[0], firstStretch[1], 'the two relations of one pair leave their party side by side')
+  // An id that looks like a waypoint of the old naming
+  const odd = spec(
+    [entity('~a'), entity('b'), entity('~r1~1')],
+    [rel('r1', '~a', 'b', 'control'), rel('r2', 'b', '~r1~1', 'control'), rel('r3', '~a', '~r1~1', 'control')],
+  )
+  assert.equal(buildAuthorityGraph(odd, {}).nodes.filter((n) => n.type === 'rnode').length, 3)
+  const odd2 = spec([entity('~a'), entity('b')], [rel('r1', '~a', 'b', 'equity', { share: 10 })])
+  assert.equal(buildEquityGraph(odd2, {}).nodes.filter((n) => n.type === 'rnode').length, 2)
 })

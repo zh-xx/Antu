@@ -37,6 +37,21 @@ const BW_RELATION = {
   agency: { width: LINE.strong, dash: '1 4', round: true },
   other: { width: LINE.hair, dash: '3 3' },
 }
+/**
+ * The document theme's lines: thinner and grey, so a box (black, heavier) reads before the line that joins it.
+ * Each kind keeps its own width ratio and dash, so the nine still differ; the kinds are told apart as before.
+ */
+const DOC_RELATION = {
+  equity: { width: 0.85 },
+  control: { width: 1.9 },
+  contract: { width: 0.85, dash: '5 3' },
+  debt: { width: 1.3, dash: '5 2 1.5 2' },
+  guarantee: { width: 0.85, dash: '4 3' },
+  kinship: { width: 3.2, double: true },
+  employment: { width: 0.85, dash: DASH.dotted },
+  agency: { width: 1.3, dash: '1 4', round: true },
+  other: { width: 0.6, dash: '3 3' },
+}
 const withInk = (table, ink) => Object.fromEntries(Object.entries(table).map(([k, v]) => [k, { ...v, stroke: ink }]))
 
 
@@ -70,17 +85,19 @@ export const THEMES = {
       head: '"SimHei", "Heiti SC", "STHeiti", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
     },
     color: { ink: '#111111', ink2: '#2b2b2b', ink3: '#4d4d4d', ink4: '#767676', bg: '#ffffff', canvas: '#ffffff', frame: '#111111', line: '#c9c9c9', chip: '#f0f0f0', side1: '#111111', side2: '#555555', axis: '#767676' },
-    radius: { person: 12, company: 0, organization: 0, government: 0, other: 0, pill: 2, group: 0 },
+    radius: { person: 18, company: 3, organization: 3, government: 3, other: 3, pill: 2, group: 0 },
     entity: {
-      person: { stroke: '#111111', fill: '#ffffff', width: 1 },
-      company: { stroke: '#111111', fill: '#ffffff', width: 1.5 },
-      organization: { stroke: '#111111', fill: '#ffffff', width: 1, dash: DASH.dashed },
-      government: { stroke: '#111111', fill: '#ffffff', width: 1 },
-      other: { stroke: '#555555', fill: '#ffffff', width: 0.9, dash: DASH.dotted },
+      person: { stroke: '#111111', fill: '#ffffff', width: 1.3 },
+      company: { stroke: '#111111', fill: '#ffffff', width: 1.6 },
+      organization: { stroke: '#111111', fill: '#ffffff', width: 1.3, dash: DASH.dashed },
+      government: { stroke: '#111111', fill: '#ffffff', width: 1.3 },
+      other: { stroke: '#555555', fill: '#ffffff', width: 1.1, dash: DASH.dotted },
     },
-    relation: withInk(BW_RELATION, '#111111'),
+    relation: withInk(DOC_RELATION, '#767676'),
     camp: [{ fill: '#ffffff', stroke: '#111111', text: '#111111' }, { fill: '#ececec', stroke: '#111111', text: '#111111' }, { fill: '#f7f7f7', stroke: '#8a8a8a', text: '#4d4d4d' }],
     group: { fill: '#f5f5f5', stroke: '#8a8a8a', title: '#111111' },
+    // A camp of the relationship diagram: a dotted outline and no wash, so it frames without competing with the boxes
+    campBox: { fill: 'none', stroke: '#111111', width: 0.75, dash: '2 3' },
     flow: {
       outcome: draw(OUTCOME_LINE, { neutral: { stroke: '#111111', fill: '#ffffff' }, positive: { stroke: '#111111', fill: '#ffffff' }, negative: { stroke: '#111111', fill: '#ececec' } }),
       start: { stroke: '#111111', fill: '#e2e2e2' },
@@ -119,6 +136,7 @@ export const THEMES = {
     relation: withInk(BW_RELATION, '#475569'),
     camp: [{ fill: '#f1f5f9', stroke: '#94a3b8', text: '#334155' }, { fill: '#ffffff', stroke: '#94a3b8', text: '#334155' }, { fill: '#f8fafc', stroke: '#e2e8f0', text: '#64748b' }],
     group: { fill: '#f8fafc', stroke: '#e2e8f0', title: '#475569' },
+    campBox: { fill: '#f8fafc', stroke: '#e2e8f0', width: 1 },
     flow: {
       outcome: draw(OUTCOME_LINE, { neutral: { stroke: '#64748b', fill: '#f8fafc' }, positive: { stroke: '#334155', fill: '#f1f5f9' }, negative: { stroke: '#64748b', fill: '#f1f5f9' } }),
       start: { stroke: '#334155', fill: '#e2e8f0' },
@@ -167,6 +185,7 @@ export const THEMES = {
     },
     camp: [{ fill: '#eaf0fb', stroke: '#9fb6e0', text: '#1f3f7f' }, { fill: '#fbecec', stroke: '#e3b4b4', text: '#9a1b1b' }, { fill: '#f4f7fc', stroke: '#c7d2e4', text: '#5b6f8f' }],
     group: { fill: '#f4f7fc', stroke: '#c7d2e4', title: '#2d4366' },
+    campBox: { fill: '#f4f7fc', stroke: '#c7d2e4', width: 1 },
     flow: {
       outcome: draw(OUTCOME_LINE, { neutral: { stroke: '#2f5aa8', fill: '#eef3fb' }, positive: { stroke: '#1f3f7f', fill: '#e3ecfa' }, negative: { stroke: '#9a1b1b', fill: '#fbecec' } }),
       start: { stroke: '#13233f', fill: '#dbe5f5' },

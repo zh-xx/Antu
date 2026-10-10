@@ -9,7 +9,7 @@
 // ============================================================
 
 import { memo } from 'react'
-import { groupPaint } from './palette.js'
+import { groupPaint, campBoxPaint } from './palette.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { GROUP_PAD, GROUP_TITLE_FONT } from './metrics.js'
 
@@ -17,6 +17,7 @@ const GroupBoxNode = memo(function GroupBoxNode({ data }) {
   const { boxes, width, height } = data
   const { theme } = useTheme()
   const GROUP_PAINT = groupPaint(theme)
+  const BOX_PAINT = campBoxPaint(theme)
   return (
     <div className="antu-rgroups">
       <svg className="antu-rgroups-svg" width={width} height={height} aria-hidden="true">
@@ -29,9 +30,10 @@ const GroupBoxNode = memo(function GroupBoxNode({ data }) {
             width={Math.max(0, b.w - 1)}
             height={Math.max(0, b.h - 1)}
             rx={theme.radius.group}
-            fill={GROUP_PAINT.fill}
-            stroke={GROUP_PAINT.stroke}
-            strokeWidth={1}
+            fill={BOX_PAINT.fill}
+            stroke={BOX_PAINT.stroke}
+            strokeWidth={BOX_PAINT.width}
+            strokeDasharray={BOX_PAINT.dash}
           />
         ))}
       </svg>

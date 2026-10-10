@@ -5,7 +5,7 @@
 //  its own JSON and where that item comes from: a contract host scrolls its text to the clause in `loc`. The
 //  renderers pin by the id of a canvas node, which is the item's id with, in some views, a mark of the view:
 //  a rule row of the flowchart is `rule:<id>`, and an item a view draws more than once carries a mark and
-//  where it is (`e-1@r0` on a relation path, `e-3@c1g0` in a guarantee chain, `n-1~e-2` for a copy in the
+//  where it is (`e-1@r0` on a relation path, `n-1~e-2` for a copy in the
 //  justification tree). Plain JS, no React, so a test checks it on every example and every kind: a view that
 //  comes with a mark of its own fails there until the mark is added to VIEW_MARKS.
 // ============================================================

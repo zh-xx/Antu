@@ -12,8 +12,8 @@
 //              a chain may not pass a party twice. How many more there are is said under the picture
 //    default   A and B are the two parties furthest apart (the ends of the longest shortest chain), so the
 //              view is never empty; the reader picks others
-//    under     each drawn chain written out as text, then the parties and relations on no drawn chain, so
-//              every relation is on the page once
+//    picture   one picture with one start and one end: the shortest chain is the main line, a party only a longer
+//              chain passes stands above or below it (a diamond); under it only how many more chains there are
 //
 //  If A and B are not tied at all, the view says so. Any valid JSON draws. Pure JS, so Node computes the same
 //  geometry for antu_layout and the tests check every example.
@@ -23,7 +23,11 @@ import { validateRelationship, hintsOfRelationship, isDirected } from '../graph/
 import { sectionWriter, SECTION_GAP } from '../sections.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
+import { pillW, pillH } from '../pill.js'
 import { tEn } from '../../../core/i18n.js'
+
+// The tests and the layouts of the other levelled views take the measure of a pill from here as from relationship/pill.js
+export { pillW, pillH }
 
 export const MAX_CHAINS = 3
 /** Chains longer than the shortest by more than this are not looked for */
@@ -33,67 +37,85 @@ const SEARCH_CAP = 5000
 const MIN_CONTENT_W = 760
 const MIN_BOX_W = 150
 /** Between two columns at the least; wider when a label has to sit on the line */
-const MIN_GAP = 110
+const MIN_GAP = 140
 const PILL_MARGIN = 14
-const ROW_TITLE_H = 24
-const ROW_GAP = 40
 const CARD_CLEAR = 108
 
-/** How wide a label's pill is (CJK wider than Latin; the page's pill has 9px of padding each side and wraps at 220) */
-export const pillW = (text) => Math.min(220, 20 + [...text].reduce((n, ch) => n + (/[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 12.5 : 7.4), 0))
-
 /**
- * Which column each party of each chain stands in: the two ends in the first and the last, the parties between
- * in the columns in between, and a party that two chains pass in the same column in both, so the rows read as
- * one picture. The longest chain sets the columns; a party another chain adds takes a free column in its place
- * between its neighbours; when that cannot be done in order, that row is spaced on its own.
- * @returns number[][]  per chain, the column of each of its parties
+ * Where each party stands, as a half-column (`pos`, even for the shortest chain, so its parties are every
+ * other position) and a row (`row`, 0 for the shortest chain). The shortest chain is the main line, left to
+ * right with nothing between its parties; a party only a longer chain passes stands above or below it, half
+ * a column over, so the picture is a diamond (or a few of them) and not one long row. The first longer chain
+ * goes below, the next above, and so on; a run of parties that follows a party already off the line goes one
+ * row further out. A run of k parties needs 2k positions between its neighbours; the parties after are
+ * moved right to make room, so the line only stretches where the chains need it.
+ * @returns { pos: Map<id, number>, row: Map<id, number> }
  */
-export function columnsOf(chains) {
-  if (!chains.length) return []
-  const mid = Math.max(...chains.map((c) => c.nodes.length - 2))
-  const last = mid + 1
-  const colOf = new Map()
-  const result = []
-  const order = chains.map((c, i) => i).sort((a, b) => chains[b].nodes.length - chains[a].nodes.length || a - b)
-  for (const ci of order) {
+export function placeChains(chains) {
+  const pos = new Map()
+  const row = new Map()
+  if (!chains.length) return { pos, row }
+  chains[0].nodes.forEach((id, i) => {
+    pos.set(id, 2 * i)
+    row.set(id, 0)
+  })
+  const at = (r, p) => [...pos].some(([id, q]) => row.get(id) === r && q === p)
+  let side = 1
+  for (let ci = 1; ci < chains.length; ci += 1) {
     const nodes = chains[ci].nodes
-    const k = nodes.length - 2
-    const interior = nodes.slice(1, -1)
-    // The columns the parties already have, then the gaps between them filled evenly
-    let cols = interior.map((id) => colOf.get(id) ?? null)
-    const known = cols.filter((v) => v !== null)
-    let ok = known.every((v, i) => i === 0 || v > known[i - 1]) && known.every((v) => v >= 1 && v <= last - 1)
-    if (ok) {
-      let i = 0
-      while (i < k && ok) {
-        if (cols[i] !== null) {
-          i += 1
-          continue
-        }
-        let j = i
-        while (j < k && cols[j] === null) j += 1
-        const lo = i === 0 ? 0 : cols[i - 1]
-        const hi = j === k ? last : cols[j]
-        const room = hi - lo - 1
-        const count = j - i
-        if (room < count) {
-          ok = false
-          break
-        }
-        for (let n = 0; n < count; n += 1) cols[i + n] = lo + 1 + Math.floor((n * room) / count)
-        i = j
+    let usedSide = false
+    let i = 0
+    while (i < nodes.length) {
+      if (pos.has(nodes[i])) {
+        i += 1
+        continue
       }
+      let j = i
+      while (j < nodes.length && !pos.has(nodes[j])) j += 1
+      const run = nodes.slice(i, j)
+      const k = run.length
+      const before = nodes[i - 1]
+      const after = nodes[j]
+      const a0 = pos.get(before)
+      let b0 = pos.get(after)
+      if (b0 > a0 && b0 - a0 < 2 * k) {
+        const d = 2 * k - (b0 - a0)
+        for (const [id, q] of pos) if (q >= b0) pos.set(id, q + d)
+        b0 += d
+      }
+      const ps = b0 <= a0 ? run.map((_, n) => a0 + 1 + 2 * n) : k === 1 ? [a0 + Math.round((b0 - a0) / 2)] : run.map((_, n) => a0 + 1 + Math.round((n * (b0 - a0 - 2)) / (k - 1)))
+      const off = [before, after].map((id) => row.get(id)).filter((r) => r !== 0)
+      let r0
+      if (off.length) {
+        const far = off.reduce((m, r) => (Math.abs(r) > Math.abs(m) ? r : m))
+        r0 = far + Math.sign(far)
+      } else {
+        r0 = side
+        usedSide = true
+      }
+      // The nearest row from there outwards where the run fits: no box within a column of its boxes, none
+      // between its first and last box, and none under the line that comes down (or up) from the main line
+      const fits = (r) => {
+        const dir = Math.sign(r)
+        for (const q of ps) for (let d = -1; d <= 1; d += 1) if (at(r, q + d)) return false
+        if (k > 1 && [...pos].some(([id, q]) => row.get(id) === r && q > ps[0] && q < ps[k - 1])) return false
+        for (const m of [before, after]) {
+          if (Math.abs(row.get(m)) >= Math.abs(r)) continue
+          for (let rr = row.get(m) + dir; rr !== r; rr += dir) if (at(rr, pos.get(m))) return false
+        }
+        return true
+      }
+      let r = r0
+      for (let tries = 0; tries < 8 && !fits(r); tries += 1) r += Math.sign(r0)
+      run.forEach((id, n) => {
+        pos.set(id, ps[n])
+        row.set(id, r)
+      })
+      i = j
     }
-    if (!ok) cols = interior.map((_, i) => 1 + Math.floor((i * (last - 1)) / Math.max(1, k)))
-    // Strictly increasing whatever happened above
-    for (let i = 0; i < k; i += 1) cols[i] = Math.min(Math.max(cols[i], i === 0 ? 1 : cols[i - 1] + 1), last - (k - i))
-    interior.forEach((id, i) => {
-      if (!colOf.has(id)) colOf.set(id, cols[i])
-    })
-    result[ci] = [0, ...cols, last]
+    if (usedSide) side = -side
   }
-  return result
+  return { pos, row }
 }
 
 /** Distances from one party over every relation, direction ignored: Map id -> steps */
@@ -180,7 +202,7 @@ export function findChains(spec, from, to) {
   // Two chains over the same relations (the same chain met twice) are one
   const seenKeys = new Set()
   const unique = found.filter((c) => {
-    const key = c.rels.map((r) => r.id).sort().join('|')
+    const key = c.rels.map((r) => r.id).sort().join('\u0000')
     if (seenKeys.has(key)) return false
     seenKeys.add(key)
     return true
@@ -205,59 +227,268 @@ export function buildPathGraph(spec, fields = {}) {
   const ends = endsOf(spec, fields)
   const found = findChains(spec, ends.from, ends.to)
 
-  // One row per chain, written as a sentence: the two ends (dark) with the parties between, every line level.
-  // Rows share columns by party, so a party that two chains pass stands over the other (see columnsOf).
+  // One picture: the two ends and every party on a drawn chain stand once. The shortest chain is the main
+  // line; a party only a longer chain passes stands above or below it (placeChains). A line between two
+  // parties on one row is straight, left to right; one between rows leaves the party nearer the main line by
+  // its top or bottom edge and turns once into the side of the other, so lines never run along each other.
   const chains = found.chains
   const shortestLen = chains[0]?.rels.length ?? 0
-  const cols = columnsOf(chains)
-  const nCols = chains.length ? Math.max(...cols.flat()) + 1 : 0
-  const boxW = Math.max(MIN_BOX_W, ...[...new Set(chains.flatMap((c) => c.nodes))].map((id) => party.sizes.get(id).w))
-  // The gap between two neighbouring columns is as wide as the widest label that has to sit on a line across it
-  const gap = Array.from({ length: Math.max(0, nCols - 1) }, () => MIN_GAP)
-  chains.forEach((c, ci) =>
+  const { pos, row } = placeChains(chains)
+  const ids = [...pos.keys()]
+  const boxW = Math.max(MIN_BOX_W, ...ids.map((id) => party.sizes.get(id).w))
+  const rowH = ids.length ? Math.max(...ids.map((id) => party.sizes.get(id).h)) : 0
+  const minRow = Math.min(0, ...row.values())
+  const maxRow = Math.max(0, ...row.values())
+  const nPos = ids.length ? Math.max(...pos.values()) + 1 : 0
+  const ROW_STEP = rowH + 88
+  const rowY = (r) => PAD + CARD_CLEAR + (r - minRow) * ROW_STEP
+  const ROUND_CLEAR = 26
+  const ROUND_STEP = 32
+  const PORT_STEP = Math.max(6, Math.min(14, (rowH - 16) / 3))
+
+  // The hops of every chain, once each (a relation two chains share is one line); heavy when a shortest chain has it
+  const hops = []
+  const hopOf = new Map()
+  chains.forEach((c) =>
     c.rels.forEach((r, i) => {
-      const span = cols[ci][i + 1] - cols[ci][i]
-      const need = (pillW(textOf(r)) + 2 * PILL_MARGIN - (span - 1) * boxW) / span
-      for (let k = cols[ci][i]; k < cols[ci][i + 1]; k += 1) gap[k] = Math.max(gap[k], need)
+      const heavy = c.rels.length === shortestLen
+      if (hopOf.has(r.id)) {
+        if (heavy) hopOf.get(r.id).heavy = true
+        return
+      }
+      const hop = { r, a: c.nodes[i], b: c.nodes[i + 1], heavy, pw: pillW(textOf(r)) }
+      hopOf.set(r.id, hop)
+      hops.push(hop)
     }),
   )
-  const colX = [PAD]
-  for (let k = 0; k < gap.length; k += 1) colX.push(colX[k] + boxW + gap[k])
-  const contentRight = nCols ? colX[nCols - 1] + boxW : PAD
+  for (const h of hops) {
+    const [pa, pb, ra, rb] = [pos.get(h.a), pos.get(h.b), row.get(h.a), row.get(h.b)]
+    if (ra === rb) {
+      h.type = 'row'
+      ;[h.s, h.e] = pa <= pb ? [h.a, h.b] : [h.b, h.a]
+    } else if (pa === pb) {
+      h.type = 'col'
+      ;[h.s, h.e] = ra < rb ? [h.a, h.b] : [h.b, h.a]
+    } else {
+      h.type = 'bend'
+      const aNear = Math.abs(ra) < Math.abs(rb) || (Math.abs(ra) === Math.abs(rb) && pa < pb)
+      ;[h.s, h.e] = aNear ? [h.a, h.b] : [h.b, h.a]
+      h.dir = Math.sign(row.get(h.e) - row.get(h.s))
+      h.toRight = pos.get(h.e) > pos.get(h.s)
+    }
+  }
+  // Parallel lines on one row: each at its own height, the same at both ends
+  const pairs = new Map()
+  for (const h of hops.filter((x) => x.type === 'row')) {
+    const key = [h.s, h.e].join('\u0000')
+    if (!pairs.has(key)) pairs.set(key, [])
+    pairs.get(key).push(h)
+  }
+  for (const list of pairs.values()) {
+    // Three lines or more between the same two parties are too close side by side: one (the one with the
+    // shortest label) stays straight, the others go round, alternately over and under the row, each in a
+    // corridor of its own with its label on it
+    if (list.length >= 3) {
+      const byLabel = [...list].sort((u, v) => u.pw - v.pw)
+      byLabel.slice(1).forEach((h, k) => {
+        h.type = 'round'
+        h.side = k % 2 === 0 ? -1 : 1
+        h.level = Math.floor(k / 2) + 1
+      })
+      list.splice(0, list.length, byLabel[0])
+    }
+    list.forEach((h, i) => {
+      h.y = rowY(row.get(h.s)) + rowH / 2 + (i - (list.length - 1) / 2) * PORT_STEP
+      h.slotOf = list
+    })
+  }
+  // Lines that turn into the same side of a box: each at its own height, the one whose line comes from further
+  // away the lower (higher, for a box above the line), so none crosses another
+  const entries = new Map()
+  for (const h of hops.filter((x) => x.type === 'bend')) {
+    const key = `${h.e}\u0000${h.toRight ? 'l' : 'r'}`
+    if (!entries.has(key)) entries.set(key, [])
+    entries.get(key).push(h)
+  }
+  // A side that also has lines along the row keeps them in the middle; the lines that turn in come in above
+  // them (from above) or below them (from below)
+  const along = new Map()
+  for (const list of pairs.values()) {
+    along.set(`${list[0].s}\u0000r`, (along.get(`${list[0].s}\u0000r`) ?? 0) + list.length)
+    along.set(`${list[0].e}\u0000l`, (along.get(`${list[0].e}\u0000l`) ?? 0) + list.length)
+  }
+  for (const [key, list] of entries) {
+    const far = (h) => Math.abs(pos.get(h.s) - pos.get(h.e))
+    list.sort((u, v) => (u.dir > 0 ? far(u) - far(v) : far(v) - far(u)))
+    const nr = along.get(key) ?? 0
+    list.forEach((h, i) => {
+      const centre = rowY(row.get(h.e)) + rowH / 2
+      if (!nr) h.y = centre + (i - (list.length - 1) / 2) * PORT_STEP
+      else h.y = h.dir > 0 ? centre - ((nr - 1) / 2 + list.length - i) * PORT_STEP : centre + ((nr - 1) / 2 + 1 + i) * PORT_STEP
+    })
+  }
+  // The places a line leaves a box by its top or bottom edge: the line with the longest way to go leaves
+  // nearest the middle, further lines further out on the side they turn to
+  const exits = new Map()
+  for (const h of hops.filter((x) => x.type === 'bend')) {
+    const key = `${h.s}\u0000${h.dir}\u0000${h.toRight ? 'r' : 'l'}`
+    if (!exits.has(key)) exits.set(key, [])
+    exits.get(key).push(h)
+  }
+  for (const list of exits.values()) {
+    list.sort((u, v) => Math.abs(v.y - rowY(row.get(v.s))) - Math.abs(u.y - rowY(row.get(u.s))))
+    // Spread over the width of the box (never past its edge), the one with the longest way to go nearest the middle
+    const reach = boxW / 2 - 14
+    list.forEach((h, i) => {
+      const at = list.length === 1 ? 14 : 14 + (i * (reach - 14)) / (list.length - 1)
+      h.exitAt = (h.toRight ? 1 : -1) * Math.min(at, reach)
+      h.exitRank = i
+    })
+  }
+
+  // The width between positions: boxes on one row keep their labels' room apart, a line that turns into the
+  // side of a box needs room beside the box it leaves
+  const unit = Array.from({ length: Math.max(0, nPos - 1) }, () => (boxW + MIN_GAP) / 2)
+  const need = []
+  for (let r = minRow; r <= maxRow; r += 1) {
+    const inRow = ids.filter((id) => row.get(id) === r).sort((u, v) => pos.get(u) - pos.get(v))
+    for (let n = 1; n < inRow.length; n += 1) {
+      const between = hops.filter((h) => h.type === 'row' && h.s === inRow[n - 1] && h.e === inRow[n])
+      const labels = [...new Set(between.map((h) => h.slotOf))].reduce((w, list) => w + list.reduce((m, h) => m + h.pw + 2 * PILL_MARGIN, 0), 0)
+      need.push({ a: pos.get(inRow[n - 1]), b: pos.get(inRow[n]), w: boxW + Math.max(MIN_GAP, labels) })
+    }
+  }
+  // A line that goes round has its label on the stretch over (or under) the gap: the gap is as wide as that label
+  for (const h of hops.filter((x) => x.type === 'round')) need.push({ a: pos.get(h.s), b: pos.get(h.e), w: boxW + h.pw - 44 + 2 * PILL_MARGIN })
+  for (const h of hops.filter((x) => x.type === 'bend')) {
+    const [p, q] = [pos.get(h.s), pos.get(h.e)]
+    need.push({ a: Math.min(p, q), b: Math.max(p, q), w: boxW / 2 + 56 + Math.abs(h.exitAt) })
+  }
+  for (let pass = 0; pass < 40; pass += 1) {
+    let changed = false
+    for (const c of need) {
+      let have = 0
+      for (let j = c.a; j < c.b; j += 1) have += unit[j]
+      if (have < c.w - 0.01) {
+        for (let j = c.a; j < c.b; j += 1) unit[j] += (c.w - have) / (c.b - c.a)
+        changed = true
+      }
+    }
+    if (!changed) break
+  }
+  const xc = (p) => PAD + boxW / 2 + unit.slice(0, p).reduce((n, w) => n + w, 0)
+  const contentRight = nPos ? xc(nPos - 1) + boxW / 2 : PAD
   const contentW = Math.max(contentRight - PAD, MIN_CONTENT_W - PAD * 2)
   const nodes = []
   const layer = { width: contentW + PAD * 2, height: 0, links: [], pills: [], empties: [], frames: [], texts: [] }
   const drawn = new Set()
   const drawnRels = new Set()
-  // The label card at the top left covers the first 140 px or so: the first row starts below it
-  let y = PAD + CARD_CLEAR
-  chains.forEach((c, ci) => {
-    layer.texts.push({ x: PAD, y, w: contentW, main: `${ci + 1}. ${t('rel.path.steps', { n: c.rels.length })}`, tone: 'row' })
-    y += ROW_TITLE_H
-    const h = Math.max(...c.nodes.map((id) => party.sizes.get(id).h))
-    const cy = y + h / 2
-    c.nodes.forEach((id, i) => {
-      drawn.add(id)
-      const end = i === 0 || i === c.nodes.length - 1
-      nodes.push({
-        id: `${id}@r${ci}`,
-        type: 'rnode',
-        position: { x: colX[cols[ci][i]], y },
-        data: { ...party.dataOf(entityById.get(id), { layer: 0, hintKey: 'rel.previewHint', vertical: false, end }), w: boxW, h, textW: boxW - 28 },
-      })
+  const firstChain = chains[0]
+  const endId = (id) => id === firstChain?.nodes[0] || id === firstChain?.nodes[firstChain.nodes.length - 1]
+  for (const id of ids) {
+    drawn.add(id)
+    nodes.push({
+      id,
+      type: 'rnode',
+      position: { x: xc(pos.get(id)) - boxW / 2, y: rowY(row.get(id)) },
+      data: { ...party.dataOf(entityById.get(id), { layer: 0, hintKey: 'rel.previewHint', vertical: false, end: endId(id) }), w: boxW, h: rowH, textW: boxW - 28 },
     })
-    c.rels.forEach((r, i) => {
-      drawnRels.add(r.id)
-      const x1 = colX[cols[ci][i]] + boxW
-      const x2 = colX[cols[ci][i + 1]]
-      // The line reads towards B; its arrowhead goes where the relation itself runs
-      const arrow = !isDirected(r) ? 'none' : r.from === c.nodes[i] ? 'end' : 'start'
-      layer.links.push({ d: `M ${x1} ${cy} L ${x2} ${cy}`, kind: r.kind, ink: true, back: false, via: [], arrow, width: c.rels.length === shortestLen ? 2.6 : 1.6 })
-      layer.pills.push({ x: (x1 + x2) / 2, y: cy, text: textOf(r), kind: r.kind, ink: true, back: false, relId: r.id })
-    })
-    y += h + ROW_GAP
-  })
-  y = chains.length ? y - ROW_GAP + SECTION_GAP : y
+  }
+  const belowDepth = Math.max(0, ...hops.filter((x) => x.type === 'round' && x.side > 0).map((x) => ROUND_CLEAR + ROUND_STEP * x.level))
+  const bottom = chains.length ? rowY(maxRow) + rowH + belowDepth : PAD + CARD_CLEAR
+  const bends = []
+  for (const h of hops) {
+    drawnRels.add(h.r.id)
+    const arrow = !isDirected(h.r) ? 'none' : h.r.from === h.s ? 'end' : 'start'
+    const link = { kind: h.r.kind, ink: true, back: false, via: [], arrow, width: h.heavy ? 2.6 : 1.4 }
+    const pill = { text: textOf(h.r), kind: h.r.kind, ink: true, back: false, relId: h.r.id }
+    if (h.type === 'row') {
+      // Straight; the labels of parallel lines side by side between the two boxes, each on its own line
+      const x1 = xc(pos.get(h.s)) + boxW / 2
+      const x2 = xc(pos.get(h.e)) - boxW / 2
+      const total = h.slotOf.reduce((n, o) => n + o.pw + 2 * PILL_MARGIN, 0)
+      const before = h.slotOf.slice(0, h.slotOf.indexOf(h)).reduce((n, o) => n + o.pw + 2 * PILL_MARGIN, 0)
+      link.d = `M ${x1} ${h.y} L ${x2} ${h.y}`
+      layer.links.push(link)
+      // A label of more than one line is taller than the gap between parallel lines: the top one's hangs up from
+      // its line and the bottom one's down from its line, so neither covers the line next to it
+      const at = h.slotOf.indexOf(h)
+      const tall = pillH(textOf(h.r)) > 22
+      const lean = pillH(textOf(h.r)) / 2 - 3
+      const shift = h.slotOf.length < 2 || !tall ? 0 : at === 0 ? -lean : at === h.slotOf.length - 1 ? lean : 0
+      layer.pills.push({ ...pill, x: x1 + (x2 - x1 - total) / 2 + before + PILL_MARGIN + h.pw / 2, y: h.y + shift })
+    } else if (h.type === 'round') {
+      const r = row.get(h.s)
+      const edgeY = h.side < 0 ? rowY(r) : rowY(r) + rowH
+      const cy = edgeY + h.side * (ROUND_CLEAR + ROUND_STEP * (h.level - 1))
+      const xs = xc(pos.get(h.s)) + boxW / 2 - 22 - 14 * (h.level - 1)
+      const xe = xc(pos.get(h.e)) - boxW / 2 + 22 + 14 * (h.level - 1)
+      link.d = `M ${xs} ${edgeY} L ${xs} ${cy} L ${xe} ${cy} L ${xe} ${edgeY}`
+      layer.links.push(link)
+      layer.pills.push({ ...pill, x: (xs + xe) / 2, y: cy })
+    } else if (h.type === 'col') {
+      const x = xc(pos.get(h.s))
+      const y1 = rowY(row.get(h.s)) + rowH
+      const y2 = rowY(row.get(h.e))
+      link.d = `M ${x} ${y1} L ${x} ${y2}`
+      layer.links.push(link)
+      layer.pills.push({ ...pill, x, y: (y1 + y2) / 2 })
+    } else {
+      // Out of the top or bottom edge of the party nearer the main line, then into the side of the other
+      const px = xc(pos.get(h.s)) + h.exitAt
+      const y0 = rowY(row.get(h.s)) + (h.dir > 0 ? rowH : 0)
+      const xe = xc(pos.get(h.e)) + (h.toRight ? -boxW / 2 : boxW / 2)
+      link.d = `M ${px} ${y0} L ${px} ${h.y} L ${xe} ${h.y}`
+      layer.links.push(link)
+      const placed = { ...pill, x: px, y: y0 + h.dir * 30 }
+      layer.pills.push(placed)
+      bends.push({ pill: placed, link: layer.links.length - 1, h, px, y0, xe })
+    }
+  }
+  // The labels of lines that turn: each at the spot (down the line out of the box, or along the turn) where it
+  // covers no other label, no box and as few other lines as possible
+  const polyline = (d) => {
+    const pts = [...d.matchAll(/[ML] ([\d.-]+) ([\d.-]+)/g)].map((m) => [+m[1], +m[2]])
+    return pts.slice(1).map((q, i) => [pts[i], q])
+  }
+  const cover = (r, [a, b]) => Math.max(a[0], b[0]) > r.x && Math.min(a[0], b[0]) < r.x + r.w && Math.max(a[1], b[1]) > r.y && Math.min(a[1], b[1]) < r.y + r.h
+  const rectOf = (pl, w) => ({ x: pl.x - w / 2, y: pl.y - pillH(pl.text) / 2, w, h: pillH(pl.text) })
+  const linePieces = layer.links.map((l) => polyline(l.d))
+  const taken = layer.pills.filter((pl) => !bends.some((b) => b.pill === pl)).map((pl) => rectOf(pl, pillW(pl.text)))
+  const boxRects = nodes.filter((n) => n.type === 'rnode').map((n) => ({ x: n.position.x, y: n.position.y, w: boxW, h: rowH }))
+  for (const b of bends) {
+    const w = pillW(b.pill.text)
+    const { px, y0, xe, h } = b
+    const spots = []
+    for (const f of [0.5, 0.25, 0.75, 0.38, 0.62]) {
+      const lo = y0 + h.dir * 20
+      const hi = h.y - h.dir * 16
+      if ((hi - lo) * h.dir >= 0) spots.push([px, lo + (hi - lo) * f])
+    }
+    // Or slid along the line's width: a wide label may hang to one side of its line (the line still runs through it)
+    const slide = w / 2 - 14
+    for (const f of [0.5, 0.25, 0.75]) {
+      const lo = y0 + h.dir * 20
+      const hi = h.y - h.dir * 16
+      if ((hi - lo) * h.dir >= 0 && slide > 8) for (const dx of [slide, -slide]) spots.push([px + dx, lo + (hi - lo) * f])
+    }
+    if (Math.abs(xe - px) >= w + 12) spots.push([(px + xe) / 2, h.y])
+    if (!spots.length) spots.push([px, y0 + h.dir * 30])
+    let best = null
+    for (const [x, yy] of spots) {
+      const r = rectOf({ x, y: yy, text: b.pill.text }, w)
+      const bad = taken.some((o) => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h) || boxRects.some((o) => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h)
+      const inner = { x: r.x + 3, y: r.y + 2, w: r.w - 6, h: r.h - 4 }
+      const crossing = linePieces.reduce((n, segs, i) => (i === b.link ? n : n + segs.filter((sg) => cover(inner, sg)).length), 0)
+      const score = (bad ? 1000 : 0) + crossing
+      if (!best || score < best.score) best = { score, x, y: yy }
+      if (score === 0) break
+    }
+    b.pill.x = best.x
+    b.pill.y = best.y
+    taken.push(rectOf(b.pill, w))
+  }
+  let y = chains.length ? bottom + SECTION_GAP : PAD + CARD_CLEAR
   const more = found.total - chains.length
   if (chains.length && (more > 0 || found.truncated)) {
     layer.texts.push({ x: PAD, y: y - SECTION_GAP + 14, w: contentW, main: t('rel.path.more', { n: more, atLeast: found.truncated ? 1 : 0 }), tone: 'note' })
@@ -265,17 +496,9 @@ export function buildPathGraph(spec, fields = {}) {
   }
 
   const sections = sectionWriter(layer, contentW, y)
-  const sep = t('rel.equity.sep')
   if (!chains.length) sections.empty(t('rel.path.noChain', { a: nameOf(ends.from), b: nameOf(ends.to) }), t('rel.path.noChainHint'))
   const off = entities.filter((e) => !drawn.has(e.id))
   const offRels = relations.filter((r) => !drawnRels.has(r.id))
-  if (off.length) sections.section(t('rel.path.off', { n: off.length }), [{ main: off.map((e) => e.label).join(sep) }])
-  if (offRels.length) {
-    sections.section(
-      t('rel.path.offRels', { n: offRels.length }),
-      offRels.map((r) => ({ main: `${textOf(r)}${t('rel.equity.colon')}${nameOf(r.from)} → ${nameOf(r.to)}` })),
-    )
-  }
   const height = Math.ceil(sections.y() - SECTION_GAP + PAD)
   layer.height = height
   nodes.unshift({

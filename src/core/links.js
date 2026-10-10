@@ -20,21 +20,21 @@ const MARGIN = 8
  * @param b      the rectangle of the node it enters
  * @returns the points; two of them, on one vertical line, when the link was a short Z whose line lies within both nodes
  */
-export function straightenJog(points, a, b) {
+export function straightenJog(points, a, b, maxJog = JOG_MAX) {
   if (!Array.isArray(points) || points.length !== 4 || !a || !b) return points
   const [p0, p1, p2, p3] = points
   const within = (v, lo, len) => v >= lo + MARGIN && v <= lo + len - MARGIN
   // down, a short step sideways, down (a link between two layers)
   if (p0[0] === p1[0] && p1[1] === p2[1] && p2[0] === p3[0]) {
     const step = Math.abs(p2[0] - p1[0])
-    if (step === 0 || step >= JOG_MAX) return points
+    if (step === 0 || step >= maxJog) return points
     const x = (p0[0] + p3[0]) / 2
     return within(x, a.x, a.w) && within(x, b.x, b.w) ? [[x, p0[1]], [x, p3[1]]] : points
   }
   // along, a short step up or down, along (a link between two nodes of one layer)
   if (p0[1] === p1[1] && p1[0] === p2[0] && p2[1] === p3[1]) {
     const step = Math.abs(p2[1] - p1[1])
-    if (step === 0 || step >= JOG_MAX) return points
+    if (step === 0 || step >= maxJog) return points
     const y = (p0[1] + p3[1]) / 2
     return within(y, a.y, a.h) && within(y, b.y, b.h) ? [[p0[0], y], [p3[0], y]] : points
   }

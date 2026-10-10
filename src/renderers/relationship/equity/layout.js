@@ -8,25 +8,29 @@
 //
 //    tree      the parties with an equity relation, in levels (longest path from a holder that is held by
 //              no one), the order inside a level chosen to keep the lines short
+//    company   with several separate structures a company is picked (relationship/scope.js): the picture holds it
+//              at the top and everyone below it; the lines above it are listed under it ("Above it"); a company
+//              with nothing below it keeps the ones above in its picture
 //    below     "Indirect holdings": for each ultimate holder (held by no one), what it holds through
 //              others, as the sum of the products along each path ("55% × 80% = 44%"); only when every
 //              share on every path is stated, otherwise the row says it cannot be computed
-//              "Not in the equity tree": the parties with no equity relation
-//              "Other relations": every relation that is not equity, as a list
 //
 //  A cross-holding (a cycle) is allowed: one line of each cycle is drawn dashed, upward, and flagged,
 //  and it is left out of the levels and of the products. A line that skips levels goes around the boxes
-//  between: it has a waypoint in each level, placed like a thin empty box. Every relation lands in exactly one place: a
-//  line of the tree or a row of the list of the rest. Any valid JSON draws (no equity at all has an
+//  between: it has a waypoint in each level, placed like a thin empty box. What the picture leaves out (the parties and
+//  relations that are not equity, or not in the company's picture) is not listed: the graph and the other views hold
+//  every relation. Any valid JSON draws (no equity at all has an
 //  explicit empty state). Pure JS, so Node computes the same geometry for antu_layout and the tests
 //  check every example.
 // ============================================================
 
 import { validateRelationship, hintsOfRelationship } from '../graph/rules.js'
-import { classifyLayers, layeredGraph, bezierAt, pathOf } from '../layered.js'
+import { classifyLayers, layeredGraph, placePills, pathOf, equalWidths } from '../layered.js'
 import { sectionWriter, SECTION_GAP } from '../sections.js'
+import { splitScope, companyOf, hasSeveral } from '../scope.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
+import { pillW, pillH } from '../pill.js'
 import { tEn } from '../../../core/i18n.js'
 
 // ---------- geometry ----------
@@ -48,18 +52,31 @@ export const shareText = (share) => `${Number(Number(share).toFixed(2))}%`
  *   level:     Map id -> level (0 = held by no one),
  *   roots:     ids of the ultimate holders (no incoming line except a back line),
  *   rest:      relations that are not equity,
- *   apart:     entities with no equity relation,
+ *   above:     with a company chosen, the equity relations above it (its holders), written under the picture,
+ *   apart:     entities not in the picture (no equity relation, or outside the chosen company's picture),
+ *   company:   the party whose picture it is, null for all of it,
+ *   companies: the parties in the whole tree, which the reader may pick from,
  * }
  */
-export function classifyEquity(spec) {
-  const edges = spec.relations.filter((r) => r.kind === 'equity').map((r) => ({ key: r.id, rel: r, from: r.from, to: r.to, back: false }))
-  const rest = spec.relations.filter((r) => r.kind !== 'equity')
-  const inTree = new Set(edges.flatMap((e) => [e.from, e.to]))
+export function classifyEquity(spec, asked) {
+  const all = spec.relations.filter((r) => r.kind === 'equity').map((r) => ({ key: r.id, rel: r, from: r.from, to: r.to, back: false }))
+  const inAll = new Set(all.flatMap((e) => [e.from, e.to]))
+  const treeIds = spec.entities.map((e) => e.id).filter((id) => inAll.has(id))
+  // One party's picture (relationship/scope.js): it at the top and everyone below it; the lines above it are listed
+  const company = companyOf(asked, treeIds, all)
+  const split = company ? splitScope(all, company) : null
+  const edges = split ? split.drawn : all
+  const above = split ? split.above.map((e) => e.rel) : []
+  const drawn = new Set(edges.map((e) => e.key))
+  const aboveIds = new Set(above.map((r) => r.id))
+  const rest = spec.relations.filter((r) => !drawn.has(r.id) && !aboveIds.has(r.id))
+  const inTree = new Set([...(company ? [company] : []), ...edges.flatMap((e) => [e.from, e.to])])
   const ids = spec.entities.map((e) => e.id).filter((id) => inTree.has(id))
-  const apart = spec.entities.filter((e) => !inTree.has(e.id))
+  const inAbove = new Set(above.flatMap((r) => [r.from, r.to]))
+  const apart = spec.entities.filter((e) => !inTree.has(e.id) && !inAbove.has(e.id))
   const { back, level, roots } = classifyLayers(ids, edges)
   for (const e of edges) e.back = back.has(e.key)
-  return { edges, ids, level, roots, rest, apart }
+  return { edges, ids, level, roots, rest, above, apart, company, several: hasSeveral(treeIds, all), companies: treeIds }
 }
 
 /**
@@ -113,13 +130,12 @@ export function buildEquityGraph(spec, fields = {}) {
   if (entities.length > SCALE_HINT_ENTITIES) hints.push(tEn('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
   const entityById = new Map(entities.map((e) => [e.id, e]))
   const party = makePartyData(spec, t)
-  const textIndex = new Map(relations.map((r, i) => [r.id, i]))
-  const textOf = (r) => party.labelTexts[textIndex.get(r.id)]
-  const parts = classifyEquity(spec)
+  const parts = classifyEquity(spec, fields.company)
   const nameOf = (id) => entityById.get(id).label
 
   // ── the drawing: levels top to bottom, lines round the boxes (relationship/layered.js) ──
-  const g = layeredGraph(parts.ids, parts.edges, (id) => party.sizes.get(id), { gapAcross: NODE_GAP, gapAlong: LEVEL_GAP })
+  const sizeOf = equalWidths(parts.ids, parts.level, (id) => party.sizes.get(id))
+  const g = layeredGraph(parts.ids, parts.edges, sizeOf, { gapAcross: NODE_GAP, gapAlong: LEVEL_GAP })
   const backCount = parts.edges.filter((e) => e.back).length
   const treeSpan = g.size.width
   const rightRoom = backCount ? 24 : 0
@@ -130,27 +146,34 @@ export function buildEquityGraph(spec, fields = {}) {
   const nodes = []
   const layer = { width: contentW + PAD * 2, height: 0, links: [], pills: [], empties: [], frames: [], texts: [] }
   for (const [id, b] of g.boxes) {
-    nodes.push({ id, type: 'rnode', position: { x: b.x + shift, y: b.y + PAD }, data: party.dataOf(entityById.get(id), { layer: g.level.get(id), hintKey: 'rel.previewHint' }) })
+    nodes.push({ id, type: 'rnode', position: { x: b.x + shift, y: b.y + PAD }, data: party.dataOf(entityById.get(id), { layer: g.level.get(id), hintKey: 'rel.previewHint', w: b.w, textW: sizeOf(id).textW }) })
   }
   const levels = g.levels
   let y = g.size.height + PAD
 
   // ── the lines and their pills ──
-  for (const e of parts.edges) {
-    const link = g.links.get(e.key)
-    const d = pathOf(link.segs, shift, PAD)
-    // The pill sits nearer the held end, so lines meeting in one party do not put their pills together
-    const seg = link.segs.at(-1)
-    const at = bezierAt(seg, e.back ? 0.5 : 0.68)
-    layer.links.push({ d, back: e.back, via: link.via.map(([x, yy]) => [x + shift, yy + PAD]) })
+  const pillTexts = parts.edges.map((e) => {
     const share = typeof e.rel.share === 'number' ? shareText(e.rel.share) : t('rel.equity.noShare')
-    const text = e.back ? `${share} · ${t('rel.equity.cross')}` : share
-    layer.pills.push({ x: at[0] + shift, y: at[1] + PAD, text, unknown: typeof e.rel.share !== 'number', back: e.back, relId: e.rel.id })
-  }
+    return e.back ? `${share} · ${t('rel.equity.cross')}` : share
+  })
+  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), h: pillH(pillTexts[i]), back: e.back, gathered: g.links.get(e.key).gathered })))
+  parts.edges.forEach((e, i) => {
+    const link = g.links.get(e.key)
+    layer.links.push({ d: pathOf(link.segs, shift, PAD), back: e.back, via: link.via.map(([x, yy]) => [x + shift, yy + PAD]) })
+    layer.pills.push({ x: spots[i][0] + shift, y: spots[i][1] + PAD, text: pillTexts[i], unknown: typeof e.rel.share !== 'number', back: e.back, relId: e.rel.id })
+  })
 
   const sections = sectionWriter(layer, contentW, y + (levels.length ? SECTION_GAP : 0))
   const section = sections.section
-  if (!parts.edges.length) sections.empty(t('rel.equity.noEquity'), t('rel.equity.noEquityHint'))
+  if (!parts.ids.length) sections.empty(t('rel.equity.noEquity'), t('rel.equity.noEquityHint'))
+
+  // ── who is above the chosen company ──
+  if (parts.above.length) {
+    section(
+      t('rel.equity.above', { n: parts.above.length }),
+      parts.above.map((r) => ({ main: `${nameOf(r.from)} → ${nameOf(r.to)}${t('rel.equity.colon')}${typeof r.share === 'number' ? shareText(r.share) : t('rel.equity.noShare')}` })),
+    )
+  }
 
   // ── indirect holdings ──
   const indirect = indirectHoldings(spec, parts)
@@ -163,23 +186,6 @@ export function buildEquityGraph(spec, fields = {}) {
     )
     if (indirect.length > shown.length) items.push({ main: t('rel.equity.moreRows', { n: indirect.length - shown.length }), tone: 'note' })
     section(t('rel.equity.indirect', { n: indirect.length }), items)
-  }
-
-  // ── parties with no equity relation ──
-  if (parts.apart.length && parts.edges.length) {
-    section(t('rel.equity.apart', { n: parts.apart.length }), [{ main: parts.apart.map((e) => e.label).join(t('rel.equity.sep')) }])
-  }
-
-  // ── every other relation, as a list ──
-  if (parts.rest.length) {
-    section(
-      t('rel.equity.other', { n: parts.rest.length }),
-      parts.rest.map((r) => ({ main: `${textOf(r)}${t('rel.equity.colon')}${nameOf(r.from)} → ${nameOf(r.to)}` })),
-    )
-  }
-  // With no equity at all the parties are listed too, so none is missing from the page
-  if (parts.apart.length && !parts.edges.length) {
-    section(t('rel.equity.apart', { n: parts.apart.length }), [{ main: parts.apart.map((e) => e.label).join(t('rel.equity.sep')) }])
   }
 
   const height = Math.ceil(sections.y() - SECTION_GAP + PAD)
@@ -215,7 +221,11 @@ export function buildEquityGraph(spec, fields = {}) {
     crossHoldings: parts.edges.filter((e) => e.back).length,
     indirect: indirect.length,
     apart: parts.apart.length,
+    above: parts.above.length,
     other: parts.rest.length,
+    company: parts.company,
+    several: parts.several,
+    companies: parts.companies.map((id) => ({ id, label: entityById.get(id).label })),
     size: { width: Math.ceil(layer.width), height },
     stats: { entities: entities.length, relations: relations.length, groups: spec.groups?.length ?? 0, kinds },
   }
