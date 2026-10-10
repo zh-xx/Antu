@@ -2184,10 +2184,11 @@ async function checkRenderLevelledViews() {
     await browser.open(`file://${html}?lang=en`)
     const names = () => browser.eval(`[...document.querySelectorAll('.antu-rn .antu-rn-label')].map((n) => n.textContent).sort().join(',')`)
     eq('equity: a box in the dock offers the companies', await browser.eval(`!!document.querySelector('.antu-co-pick')`), true)
-    eq('equity: it opens on the first of two equal structures', await names(), 'p1,p2,p3')
+    // The chosen party stands at the top with what is below it; its holder (p1) is written under the picture
+    eq('equity: it opens on the first of two equal structures', await names(), 'p2,p3')
     await browser.eval(`(() => { const sel = document.querySelector('.antu-co-pick'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'q2'); sel.dispatchEvent(new Event('change', { bubbles: true })) })()`, { userGesture: true })
     await settle(800)
-    eq('equity: picking another company draws that one', await names(), 'q1,q2,q3')
+    eq('equity: picking another company draws that one', await names(), 'q2,q3')
     await browser.eval(`(() => { const sel = document.querySelector('.antu-co-pick'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, '*'); sel.dispatchEvent(new Event('change', { bubbles: true })) })()`, { userGesture: true })
     await settle(800)
     eq('equity: "All" draws both', await names(), 'p1,p2,p3,q1,q2,q3')
