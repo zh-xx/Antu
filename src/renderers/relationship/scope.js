@@ -4,7 +4,8 @@
 //  A case often holds the shareholdings, the control and the posts of several companies. Drawn together they
 //  stand side by side and the picture is wide and flat. The reader picks one party (a company, mostly) and
 //  the picture holds it at the top and everyone below it (what it holds, who it commands, transitively); its
-//  holders and controllers (transitively) are written under the picture; everything else is written under the picture, so that
+//  holders and controllers (transitively) are written under the picture, except for a party with nothing below
+//  it, whose picture holds the ones above it; everything else is written under the picture, so that
 //  every relation is on the page once.
 //
 //    '*'        the reader chose "all": nothing is left out
@@ -39,6 +40,9 @@ export function splitScope(edges, focus) {
   const down = reachDown(edges, focus)
   const drawn = edges.filter((e) => down.has(e.from) && down.has(e.to))
   const whole = reachScope(edges, focus)
+  // A party with nothing below it (a company its officers all point at) would be a lone box: its picture is
+  // then everyone above it too, as one picture
+  if (!drawn.length) return { drawn: edges.filter((e) => whole.has(e.from) && whole.has(e.to)), above: [] }
   const above = edges.filter((e) => whole.has(e.from) && whole.has(e.to) && !drawn.includes(e))
   return { drawn, above }
 }

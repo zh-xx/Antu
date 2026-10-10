@@ -160,13 +160,12 @@ test('several separate structures: the busiest party opens, any party can be pic
   assert.deepEqual(opened.above.map((r) => r.id).sort(), ['r1', 'r2'])
   assert.deepEqual(opened.rest.map((r) => r.id), ['r4'], 'the line outside the picture is listed, not dropped')
   assert.deepEqual(opened.apart.map((e) => e.id).sort(), ['x', 'y'])
-  // A party with nothing below it is a box on its own, with everything above it listed
+  // A party with nothing below it would be a lone box: its picture is everyone above it too
   const b = classifyEquity(s, 'b')
-  assert.deepEqual(b.ids.sort(), ['b'])
-  assert.deepEqual(b.above.map((r) => r.id).sort(), ['r1', 'r2', 'r3'])
+  assert.deepEqual(b.ids.sort(), ['a', 'b', 'h1', 'h2'])
+  assert.deepEqual(b.above, [])
   const y = classifyEquity(s, 'y')
-  assert.deepEqual(y.ids.sort(), ['y'])
-  assert.deepEqual(y.above.map((r) => r.id), ['r4'])
+  assert.deepEqual(y.ids.sort(), ['x', 'y'])
   assert.equal(y.edges.length + y.above.length + y.rest.length, s.relations.length)
   // "All" draws every line, as before
   const all = classifyEquity(s, '*')
@@ -176,7 +175,7 @@ test('several separate structures: the busiest party opens, any party can be pic
   const g = buildEquityGraph(s, { company: 'y' })
   assert.equal(g.company, 'y')
   assert.deepEqual(g.companies.map((c) => c.id), ['h1', 'h2', 'a', 'b', 'x', 'y'])
-  assert.equal(g.treeParties, 1)
+  assert.equal(g.treeParties, 2)
   assertSound(s, 'several structures')
 })
 
