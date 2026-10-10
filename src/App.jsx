@@ -152,6 +152,9 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
     setKindPrefs(map)
     prefs.write({ kinds: map })
   }
+  // A page made with a preset that names the kind (a screenshot, antu_preview) has that kind fixed, and its label card
+  // names it instead of offering a switch that would do nothing (issue 180)
+  const kindFixed = kinds.some((k) => k.kind === preset?.kind)
   const Renderer = spec ? getRenderer(spec.type, kind) : null
   const ready = errors.length === 0 && Renderer
 
@@ -188,7 +191,7 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
           title={spec?.title || t('common.untitled')}
           typeLabel={spec ? labelOf(GRAPH_TYPE_KEYS, spec.type) : ''}
           info={diagramInfo(spec, t, formatNumber)}
-          kinds={kinds}
+          kinds={kindFixed ? kinds.filter((k) => k.kind === kind) : kinds}
           kind={kind}
           onSelectKind={selectKind}
         />
