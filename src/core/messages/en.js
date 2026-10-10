@@ -48,6 +48,8 @@ export const en = {
   'dock.actors': 'Parties',
   'dock.summary': 'Summary',
   'dock.sources': 'Sources',
+  'dock.orientation': 'Which way the levels run: vertical, top to bottom; horizontal, left to right.',
+  'dock.orientationCamps': 'Which way the levels run: vertical, top to bottom; horizontal, left to right. With the camps boxed they stand across that way: side by side when vertical, one under the other when horizontal, so the picture can look the other way round.',
   'dock.vertical': 'Vertical',
   'dock.horizontal': 'Horizontal',
   'dock.grid': 'Grid',

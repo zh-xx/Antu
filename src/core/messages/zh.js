@@ -46,6 +46,8 @@ export const zh = {
   'dock.actors': '主体',
   'dock.summary': '摘要',
   'dock.sources': '来源',
+  'dock.orientation': '层的走向：竖向是从上往下，横向是从左往右。',
+  'dock.orientationCamps': '层的走向：竖向是从上往下，横向是从左往右。画了阵营框时，阵营沿垂直于层的方向排开：竖向时左右并排，横向时上下叠放，所以整张图看起来可能和按钮相反。',
   'dock.vertical': '竖向',
   'dock.horizontal': '横向',
   'dock.grid': '格线',
