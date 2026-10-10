@@ -490,7 +490,7 @@ export function buildFocusGraph(spec, fields = {}) {
     const centre = ci === 0 ? mainCentre : defaultCentre({ entities: members, relations: rels })
     const laid = placeRings(members, rels, centre, sizes, campOf, (r) => labelSizes[relations.indexOf(r)].width)
     // Connections of this island
-    const pairKey = (r) => [r.from, r.to].sort().join('|')
+    const pairKey = (r) => [r.from, r.to].sort().join('\u0000')
     const byPair = new Map()
     rels.forEach((r) => byPair.set(pairKey(r), [...(byPair.get(pairKey(r)) ?? []), r]))
     const rects = new Map([...laid.boxes.entries()].map(([id, b]) => [id, rectOf(b)]))
@@ -689,7 +689,6 @@ export function buildFocusGraph(spec, fields = {}) {
         label: labelTexts[idx],
         points: c.points.map(([x, y]) => [x + ox, y + oy]),
         d: shiftPath(c.d, ox, oy),
-        dCurve: shiftPath(c.d, ox, oy),
         labelAt: { x: c.labelAt.x + ox, y: c.labelAt.y + oy },
         labelSize: c.labelSize,
         faint: c.faint,

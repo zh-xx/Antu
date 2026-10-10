@@ -16,6 +16,7 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 
 import { buildAuthorityGraph, classifyAuthority } from '../src/renderers/relationship/authority/layout.js'
+import { buildEquityGraph } from '../src/renderers/relationship/equity/layout.js'
 import { buildRelatedGraph, relatedRows, centreOf } from '../src/renderers/relationship/related/layout.js'
 import { buildPathGraph, findChains, defaultEnds, endsOf, placeChains, pillW, pillH, MAX_CHAINS } from '../src/renderers/relationship/path/layout.js'
 import { layeredGraph } from '../src/renderers/relationship/layered.js'
@@ -329,4 +330,23 @@ test('path: parallel lines between two parties, a label that wraps covers none o
       for (const [a, b] of ss) assert.ok(!(Math.max(a[0], b[0]) > r.x && Math.min(a[0], b[0]) < r.x + r.w && Math.max(a[1], b[1]) > r.y && Math.min(a[1], b[1]) < r.y + r.h), `the label of line ${i} covers line ${k}`)
     })
   })
+})
+
+test('authority and equity: parallel relations from one party into a gathering box are two lines, and ids starting with ~ draw', () => {
+  const s = spec(
+    [entity('a'), entity('b'), entity('c')],
+    [rel('r1', 'a', 'c', 'control', { label: '控制' }), rel('r2', 'a', 'c', 'employment', { label: '任职' }), rel('r3', 'b', 'c', 'agency', { label: '代理' })],
+  )
+  const layer = buildAuthorityGraph(s, {}).nodes.find((n) => n.type === 'lineLayer').data
+  assert.equal(new Set(layer.links.map((l) => l.d)).size, 3, 'no two relations drawn as the same line')
+  const firstStretch = layer.links.slice(0, 2).map((l) => l.d.match(/M ([\d.-]+) /)[1])
+  assert.notEqual(firstStretch[0], firstStretch[1], 'the two relations of one pair leave their party side by side')
+  // An id that looks like a waypoint of the old naming
+  const odd = spec(
+    [entity('~a'), entity('b'), entity('~r1~1')],
+    [rel('r1', '~a', 'b', 'control'), rel('r2', 'b', '~r1~1', 'control'), rel('r3', '~a', '~r1~1', 'control')],
+  )
+  assert.equal(buildAuthorityGraph(odd, {}).nodes.filter((n) => n.type === 'rnode').length, 3)
+  const odd2 = spec([entity('~a'), entity('b')], [rel('r1', '~a', 'b', 'equity', { share: 10 })])
+  assert.equal(buildEquityGraph(odd2, {}).nodes.filter((n) => n.type === 'rnode').length, 2)
 })

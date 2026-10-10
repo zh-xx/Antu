@@ -35,6 +35,7 @@ import { buildRelationshipGraph } from './layout.js'
 import { lookedAt } from './secures.js'
 import { OPEN_MAX_ZOOM } from './metrics.js'
 import { useSelectEvent } from '../../../shell/useSelectEvent.js'
+import { useSpecPref } from '../useSpecPref.js'
 
 /** Node types used by the graph. Adding one means registering one line here. */
 const nodeTypes = {
@@ -69,26 +70,18 @@ export default function RelationshipGraph({ spec }) {
   const { t, lang } = useLang()
 
   // What to show is a choice about this data, so it is remembered per diagram (as in the flowchart)
-  const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().relationshipFieldsByDiagram || {})
-  const fields = { ...FIELD_DEFAULTS, ...fieldPrefs[specKey], ...(PRESET?.fields || {}) }
-  const setField = (patch) => {
-    const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], ...patch } }
-    setFieldPrefs(map)
-    prefs.write({ relationshipFieldsByDiagram: map })
-  }
+  // (a preview's preset gives the first values; the controls still work after it)
+  const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey, (was) => (PRESET?.fields ? { ...was, ...PRESET.fields } : was))
+  const fields = { ...FIELD_DEFAULTS, ...stored }
+  const setField = (patch) => setStored({ ...stored, ...patch })
   const toggleKind = (kind) => {
     const hidden = fields.hiddenKinds.includes(kind) ? fields.hiddenKinds.filter((k) => k !== kind) : [...fields.hiddenKinds, kind]
     setField({ hiddenKinds: hidden })
   }
 
   // Orientation: remembered per diagram. With nothing chosen a holder stands above what it holds.
-  const [orientationPrefs, setOrientationPrefs] = useState(() => prefs.read().orientations || {})
-  const orientation = PRESET?.orientation || orientationPrefs[specKey] || 'vertical'
-  const toggleOrientation = (next) => {
-    const map = { ...orientationPrefs, [specKey]: next }
-    setOrientationPrefs(map)
-    prefs.write({ orientations: map })
-  }
+  const [orientationPref, toggleOrientation] = useSpecPref('orientations', specKey, (was) => PRESET?.orientation || was)
+  const orientation = orientationPref || 'vertical'
 
   // Link style: curved (the default) or straight, one choice for every diagram, remembered
   const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || prefs.read().linkStyle || 'curved')

@@ -12,8 +12,8 @@
 //              a chain may not pass a party twice. How many more there are is said under the picture
 //    default   A and B are the two parties furthest apart (the ends of the longest shortest chain), so the
 //              view is never empty; the reader picks others
-//    under     each drawn chain written out as text, then the parties and relations on no drawn chain, so
-//              every relation is on the page once
+//    picture   one picture with one start and one end: the shortest chain is the main line, a party only a longer
+//              chain passes stands above or below it (a diamond); under it only how many more chains there are
 //
 //  If A and B are not tied at all, the view says so. Any valid JSON draws. Pure JS, so Node computes the same
 //  geometry for antu_layout and the tests check every example.
@@ -23,7 +23,11 @@ import { validateRelationship, hintsOfRelationship, isDirected } from '../graph/
 import { sectionWriter, SECTION_GAP } from '../sections.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
+import { pillW, pillH } from '../pill.js'
 import { tEn } from '../../../core/i18n.js'
+
+// The tests and the layouts of the other levelled views take the measure of a pill from here as from relationship/pill.js
+export { pillW, pillH }
 
 export const MAX_CHAINS = 3
 /** Chains longer than the shortest by more than this are not looked for */
@@ -36,12 +40,6 @@ const MIN_BOX_W = 150
 const MIN_GAP = 140
 const PILL_MARGIN = 14
 const CARD_CLEAR = 108
-
-/** How wide a label's pill is (CJK wider than Latin; the page's pill has 9px of padding each side and wraps at 220) */
-const rawPillW = (text) => 20 + [...text].reduce((n, ch) => n + (/[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 12.5 : 7.4), 0)
-export const pillW = (text) => Math.min(220, rawPillW(text))
-/** How tall a label's pill is: one line is 22, and each further line (a label wider than 220 wraps) is 18 more */
-export const pillH = (text) => 22 + 18 * (Math.max(1, Math.ceil(rawPillW(text) / 220 - 1e-9)) - 1)
 
 /**
  * Where each party stands, as a half-column (`pos`, even for the shortest chain, so its parties are every
@@ -204,7 +202,7 @@ export function findChains(spec, from, to) {
   // Two chains over the same relations (the same chain met twice) are one
   const seenKeys = new Set()
   const unique = found.filter((c) => {
-    const key = c.rels.map((r) => r.id).sort().join('|')
+    const key = c.rels.map((r) => r.id).sort().join('\u0000')
     if (seenKeys.has(key)) return false
     seenKeys.add(key)
     return true
@@ -282,7 +280,7 @@ export function buildPathGraph(spec, fields = {}) {
   // Parallel lines on one row: each at its own height, the same at both ends
   const pairs = new Map()
   for (const h of hops.filter((x) => x.type === 'row')) {
-    const key = [h.s, h.e].join('|')
+    const key = [h.s, h.e].join('\u0000')
     if (!pairs.has(key)) pairs.set(key, [])
     pairs.get(key).push(h)
   }
@@ -308,7 +306,7 @@ export function buildPathGraph(spec, fields = {}) {
   // away the lower (higher, for a box above the line), so none crosses another
   const entries = new Map()
   for (const h of hops.filter((x) => x.type === 'bend')) {
-    const key = `${h.e}|${h.toRight ? 'l' : 'r'}`
+    const key = `${h.e}\u0000${h.toRight ? 'l' : 'r'}`
     if (!entries.has(key)) entries.set(key, [])
     entries.get(key).push(h)
   }
@@ -316,8 +314,8 @@ export function buildPathGraph(spec, fields = {}) {
   // them (from above) or below them (from below)
   const along = new Map()
   for (const list of pairs.values()) {
-    along.set(`${list[0].s}|r`, (along.get(`${list[0].s}|r`) ?? 0) + list.length)
-    along.set(`${list[0].e}|l`, (along.get(`${list[0].e}|l`) ?? 0) + list.length)
+    along.set(`${list[0].s}\u0000r`, (along.get(`${list[0].s}\u0000r`) ?? 0) + list.length)
+    along.set(`${list[0].e}\u0000l`, (along.get(`${list[0].e}\u0000l`) ?? 0) + list.length)
   }
   for (const [key, list] of entries) {
     const far = (h) => Math.abs(pos.get(h.s) - pos.get(h.e))
@@ -333,7 +331,7 @@ export function buildPathGraph(spec, fields = {}) {
   // nearest the middle, further lines further out on the side they turn to
   const exits = new Map()
   for (const h of hops.filter((x) => x.type === 'bend')) {
-    const key = `${h.s}|${h.dir}|${h.toRight ? 'r' : 'l'}`
+    const key = `${h.s}\u0000${h.dir}\u0000${h.toRight ? 'r' : 'l'}`
     if (!exits.has(key)) exits.set(key, [])
     exits.get(key).push(h)
   }

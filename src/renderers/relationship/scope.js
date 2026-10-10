@@ -4,9 +4,9 @@
 //  A case often holds the shareholdings, the control and the posts of several companies. Drawn together they
 //  stand side by side and the picture is wide and flat. The reader picks one party (a company, mostly) and
 //  the picture holds it at the top and everyone below it (what it holds, who it commands, transitively); its
-//  holders and controllers (transitively) are written under the picture, except for a party with nothing below
-//  it, whose picture holds the ones above it; everything else is written under the picture, so that
-//  every relation is on the page once.
+//  holders and controllers (transitively) are written under the picture as a list, except for a party with
+//  nothing below it, whose picture holds the ones above it. What the picture leaves out is not listed: the graph
+//  and the other views hold every relation.
 //
 //    '*'        the reader chose "all": nothing is left out
 //    an id      that party's picture, when it is in the tree
@@ -18,7 +18,7 @@
 
 /**
  * The parties a party's picture holds: itself and everyone below it (what it holds, who it commands, transitively).
- * The ones above it are not drawn: they are written under the picture (see aboveOf), so the party sits at the top.
+ * The ones above it are not drawn: they are listed under the picture (see splitScope), so the party sits at the top.
  */
 export function reachDown(edges, focus) {
   const down = new Map()
@@ -75,7 +75,17 @@ export function reachScope(edges, focus) {
 /** How many separate structures the lines make (parties joined by a line, in either direction, are one) */
 export function structureCount(ids, edges) {
   const parent = new Map(ids.map((id) => [id, id]))
-  const find = (x) => (parent.get(x) === x ? x : (parent.set(x, find(parent.get(x))), parent.get(x)))
+  // The root of a party's structure, found without recursion, and every party on the way pointed at it
+  const find = (x) => {
+    let root = x
+    while (parent.get(root) !== root) root = parent.get(root)
+    while (parent.get(x) !== root) {
+      const next = parent.get(x)
+      parent.set(x, root)
+      x = next
+    }
+    return root
+  }
   for (const e of edges) parent.set(find(e.from), find(e.to))
   return new Set(ids.map(find)).size
 }

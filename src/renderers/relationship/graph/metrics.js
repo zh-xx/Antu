@@ -80,6 +80,8 @@ export const CROSS_COST = 1300
 
 /** Past this many entities the diagram is reported with a hint (it is not an error) */
 export const SCALE_HINT_ENTITIES = 25
+/** The graph routes every relation round the others, and the time grows faster than the count: 40 relations take a few seconds, 60 about fifteen */
+export const SCALE_HINT_RELATIONS = 40
 
 /** The box a relation's label needs: width capped, text wrapped into lines */
 export function labelBox(text, wrapInto) {

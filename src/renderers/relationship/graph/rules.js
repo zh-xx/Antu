@@ -11,6 +11,7 @@
 // ============================================================
 
 import { tEn } from '../../../core/i18n.js'
+import { SOURCE_TYPE_KEYS } from '../../../core/labels.js'
 
 /** Entity kinds. They fix the shape and colour of the box and nothing else. */
 export const ENTITY_KINDS = ['person', 'company', 'organization', 'government', 'other']
@@ -52,6 +53,9 @@ export function validateRelationship(spec) {
     errors.push(tEn('rerr.badAsOf', { value: String(spec.asOf) }))
   }
 
+  // The title is shown at the top left and names the diagram's remembered choices
+  if (typeof spec.title !== 'string' || !spec.title.trim()) errors.push(tEn('rerr.required', { at: 'the diagram', field: 'title' }))
+
   // Rule 1: the two lists that make a diagram
   if (!Array.isArray(spec.entities) || spec.entities.length === 0) errors.push(tEn('rerr.entitiesEmpty'))
   if (!Array.isArray(spec.relations) || spec.relations.length === 0) errors.push(tEn('rerr.relationsEmpty'))
@@ -73,7 +77,23 @@ export function validateRelationship(spec) {
       })
     }
   }
-  const sourceIds = new Set(list(spec.sources).filter(isObj).map((s) => s.id))
+  // The materials the entities and relations rest on: each has an id, a type and a name
+  const sourceIds = new Set()
+  if (spec.sources !== undefined) {
+    if (!Array.isArray(spec.sources)) {
+      errors.push(tEn('rerr.notArray', { field: 'sources' }))
+    } else {
+      spec.sources.forEach((src, i) => {
+        const at = `sources[${i}]` + (isObj(src) && src.id ? ` (${src.id})` : '')
+        if (!isObj(src)) return void errors.push(tEn('rerr.notObject', { at: `sources[${i}]` }))
+        if (!src.id || typeof src.id !== 'string') errors.push(tEn('rerr.required', { at, field: 'id' }))
+        else if (sourceIds.has(src.id)) errors.push(tEn('rerr.duplicateId', { at, id: src.id, what: 'source' }))
+        else sourceIds.add(src.id)
+        if (!src.name || typeof src.name !== 'string') errors.push(tEn('rerr.required', { at, field: 'name' }))
+        if (!Object.keys(SOURCE_TYPE_KEYS).includes(src.type)) errors.push(tEn('rerr.badSourceType', { at, value: String(src.type), allowed: Object.keys(SOURCE_TYPE_KEYS).join(' / ') }))
+      })
+    }
+  }
 
   // ── entities (rules 2 to 4, 8) ──
   const entityById = new Map()
@@ -123,7 +143,7 @@ export function validateRelationship(spec) {
     if (typeof r.from === 'string' && r.from === r.to) errors.push(tEn('rerr.selfRelation', { at, id: r.from }))
     // Rule 7: the same relation twice
     if (typeof r.from === 'string' && typeof r.to === 'string') {
-      const key = [r.from, r.to, r.kind, r.label ?? ''].join('|')
+      const key = [r.from, r.to, r.kind, r.label ?? ''].join('\u0000')
       if (seenPair.has(key)) errors.push(tEn('rerr.duplicateRelation', { at, from: r.from, to: r.to, kind: String(r.kind) }))
       seenPair.add(key)
     }
@@ -201,15 +221,32 @@ export function hintsOfRelationship(spec) {
   for (const r of relations) if (r.kind === 'equity') holds.set(r.from, [...(holds.get(r.from) ?? []), r.to])
   const state = new Map()
   const cycle = []
-  const walk = (u, path) => {
-    state.set(u, 1)
-    for (const v of holds.get(u) ?? []) {
-      if (state.get(v) === 1) cycle.push([...path.slice(path.indexOf(v)), v])
-      else if (!state.has(v)) walk(v, [...path, v])
+  // Depth first without recursion: `path` is the parties from where the walk began to the one it is at
+  for (const first of holds.keys()) {
+    if (state.has(first)) continue
+    const path = [first]
+    const next = [0]
+    state.set(first, 1)
+    while (path.length) {
+      const u = path.at(-1)
+      const outs = holds.get(u) ?? []
+      const i = next.at(-1)
+      if (i < outs.length) {
+        next[next.length - 1] += 1
+        const v = outs[i]
+        if (state.get(v) === 1) cycle.push([...path.slice(path.indexOf(v)), v])
+        else if (!state.has(v)) {
+          state.set(v, 1)
+          path.push(v)
+          next.push(0)
+        }
+      } else {
+        state.set(u, 2)
+        path.pop()
+        next.pop()
+      }
     }
-    state.set(u, 2)
   }
-  for (const id of holds.keys()) if (!state.has(id)) walk(id, [id])
   for (const c of cycle) hints.push(tEn('rhint.equityCycle', { path: c.map(name).join(' → ') }))
 
   return hints

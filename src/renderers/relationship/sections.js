@@ -1,10 +1,9 @@
 // ============================================================
 //  src/renderers/relationship/sections.js — the lists under a levelled picture (shared)
 //
-//  The equity tree, the authority chart and the relation path each draw only part of
-//  the data and list the rest under the picture, so that every relation (and every party) is on the page
-//  once. This writes those lists into the line layer (LineLayerNode): a framed section with a title and
-//  rows of text, or the dashed empty box that says there is nothing to draw. Pure JS.
+//  The equity tree, the authority chart and the related-party list put a little text under the picture (the
+//  lines above a chosen company, the indirect holdings): a framed section with a title and rows of text, or the
+//  dashed empty box that says there is nothing to draw. This writes them into the line layer (LineLayerNode). Pure JS.
 // ============================================================
 
 import { wrapLineCount } from '../fact/cardGeometry.js'

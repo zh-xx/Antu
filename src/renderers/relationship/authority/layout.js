@@ -6,9 +6,10 @@
 //  the employed) and `agency` (the principal above the agent), as an organisation chart, each line
 //  carrying the text the graph would put on it. It answers "who is above whom".
 //
-//  Everything else is listed under the picture, so that every relation is on the page once: the parties
-//  with no relation of authority, and every relation that is not one. A case with none says so. A cycle of
-//  authority is allowed (it shows what the data says): one line of it is drawn dashed, round the side,
+//  With several separate structures a company is picked (relationship/scope.js): the picture holds it at the top
+//  and everyone below it, and the lines above it are listed under it ("Above it"); a party with nothing below it
+//  keeps the ones above in its picture. What the picture leaves out is not listed: the graph and the other views
+//  hold every relation. A case with no authority says so. A cycle of authority is allowed (it shows what the data says): one line of it is drawn dashed, round the side,
 //  and flagged, and it is left out of the levels (relationship/layered.js).
 //
 //  Any valid JSON draws. Pure JS, so Node computes the same geometry for antu_layout and the tests check
@@ -21,7 +22,7 @@ import { sectionWriter, SECTION_GAP } from '../sections.js'
 import { splitScope, companyOf, hasSeveral } from '../scope.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
-import { pillW } from '../path/layout.js'
+import { pillW, pillH } from '../pill.js'
 import { tEn } from '../../../core/i18n.js'
 
 export const AUTHORITY_KINDS = ['control', 'employment', 'agency']
@@ -83,7 +84,7 @@ export function buildAuthorityGraph(spec, fields = {}) {
     nodes.push({ id, type: 'rnode', position: { x: b.x + shift, y: b.y + PAD }, data: party.dataOf(entityById.get(id), { layer: g.level.get(id), hintKey: 'rel.previewHint', w: b.w, textW: sizeOf(id).textW }) })
   }
   const pillTexts = parts.edges.map((e) => (e.back ? `${textOf(e.rel)} · ${t('rel.authority.cycle')}` : textOf(e.rel)))
-  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), back: e.back, gathered: g.links.get(e.key).gathered })))
+  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), h: pillH(pillTexts[i]), back: e.back, gathered: g.links.get(e.key).gathered })))
   parts.edges.forEach((e, i) => {
     const link = g.links.get(e.key)
     layer.links.push({ d: pathOf(link.segs, shift, PAD), kind: e.rel.kind, back: e.back, via: link.via.map(([x, yy]) => [x + shift, yy + PAD]), arrow: isDirected(e.rel) ? 'end' : 'none' })

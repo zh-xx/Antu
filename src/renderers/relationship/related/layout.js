@@ -8,8 +8,8 @@
 //  and the sources (that column is left out when no relation names one). The party's own cell, and its
 //  sources, are as tall as all its relations together.
 //
-//  Under the table: the parties with no relation to the centre, and every relation that does not involve
-//  the centre, so every relation is on the page once. Any valid JSON draws. Pure JS, so Node computes the
+//  Nothing is listed under the table: the parties with no relation to the centre and the relations that do not
+//  involve it are in the graph and the other views. Any valid JSON draws. Pure JS, so Node computes the
 //  same geometry for antu_layout and the tests check every example.
 // ============================================================
 

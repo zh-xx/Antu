@@ -8,23 +8,16 @@
 //  opens on the busiest party and one with a single structure on all of it.
 // ============================================================
 
-import { useState } from 'react'
-
-import { usePreset, usePrefs } from '../../shell/env.js'
+import { usePreset } from '../../shell/env.js'
 import { useLang } from '../../shell/LangContext.jsx'
 import LevelledView from './LevelledView.jsx'
+import { useSpecPref } from './useSpecPref.js'
 
 export default function CompanyView({ spec, build, className, kind }) {
   const PRESET = usePreset()
-  const prefs = usePrefs()
   const { t } = useLang()
   const key = `rel:${spec?.title || ''}:${kind}`
-  const [chosen, setChosen] = useState(() => prefs.read().relationshipCompanies?.[key])
-  const asked = PRESET?.company ?? chosen
-  const pick = (id) => {
-    setChosen(id)
-    prefs.write({ relationshipCompanies: { ...(prefs.read().relationshipCompanies || {}), [key]: id } })
-  }
+  const [asked, pick] = useSpecPref('relationshipCompanies', key, (was) => PRESET?.company ?? was)
   return (
     <LevelledView
       spec={spec}

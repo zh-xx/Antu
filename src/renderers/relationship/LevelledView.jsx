@@ -12,7 +12,6 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../shell/Canvas.jsx'
-import { usePrefs } from '../../shell/env.js'
 import { PreviewContext } from '../../shell/previewContext.js'
 import { useExport } from '../../shell/useExport.js'
 import { useLang } from '../../shell/LangContext.jsx'
@@ -20,21 +19,17 @@ import EntityNode from './graph/EntityNode.jsx'
 import FocusDock from './focus/FocusDock.jsx'
 import LineLayerNode from './LineLayerNode.jsx'
 import { useSelectEvent } from '../../shell/useSelectEvent.js'
+import { useSpecPref } from './useSpecPref.js'
 
 const nodeTypes = { rnode: EntityNode, lineLayer: LineLayerNode }
 
 export default function LevelledView({ spec, build, className, options = {}, onParty = null, dockExtra = null, fitWidth = true, decorate = null, fitMaxZoom = 0 }) {
-  const prefs = usePrefs()
   const specKey = `rel:${spec?.title || ''}`
   const { t, lang } = useLang()
 
-  const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().relationshipFieldsByDiagram || {})
-  const showLabels = fieldPrefs[specKey]?.labels ?? true
-  const setLabels = (v) => {
-    const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], labels: v } }
-    setFieldPrefs(map)
-    prefs.write({ relationshipFieldsByDiagram: map })
-  }
+  const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey)
+  const showLabels = stored?.labels ?? true
+  const setLabels = (v) => setStored({ ...stored, labels: v })
 
   const optionsKey = JSON.stringify(options)
   const layout = useMemo(() => build(spec, { ...options, t }), [spec, lang, optionsKey])

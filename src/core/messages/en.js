@@ -240,6 +240,7 @@ export const en = {
   'rerr.duplicateId': ({ at, id, what }) => `${at}: id "${id}" duplicates an earlier ${what}`,
   'rerr.badEntityKind': ({ at, value, allowed }) => `${at}: kind is "${value}", which is not one of: ${allowed}`,
   'rerr.badRelationKind': ({ at, value, allowed }) => `${at}: kind is "${value}", which is not one of: ${allowed}`,
+  'rerr.badSourceType': ({ at, value, allowed }) => `${at}: \`type\` "${value}" is not one of ${allowed}`,
   'rerr.mustBeString': ({ at, field }) => `${at}: \`${field}\` must be a non-empty string`,
   'rerr.mustBeBoolean': ({ at, field }) => `${at}: \`${field}\` must be true or false`,
   'rerr.badRef': ({ at, field, kind, id }) => `${at}: \`${field}\` refers to a non-existent ${kind} "${id}"`,
@@ -260,6 +261,8 @@ export const en = {
   'rhint.noSecures': ({ id }) => `relations (${id}): a guarantee that does not say which claim it secures; add \`secures\` with that relation's id`,
   'rhint.tooLarge': ({ n, limit }) =>
     `${n} entities: past about ${limit} the diagram gets hard to read on one screen; consider splitting it by group`,
+  'rhint.tooManyRelations': ({ n, limit }) =>
+    `${n} relations: past about ${limit} the graph can take several seconds to draw (each change of orientation or groups draws it again); consider splitting it by group, or use another way of drawing`,
   'rhint.equityCycle': ({ path }) => `shareholdings loop back (${path}); allowed, but check it is what the registry says`,
 
   'rel.kind.equity': 'Equity',

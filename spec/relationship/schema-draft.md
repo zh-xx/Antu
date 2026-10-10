@@ -190,8 +190,10 @@ Errors, reported one by one with the field path and the id, in the same style as
 | 14 | an entity with no relation at all | **hint** (it floats beside the diagram) |
 | 15 | a `guarantee` with no `secures` | **hint** (which claim does it secure?) |
 | 16 | an equity cycle (cross-holding) | **hint**, allowed (it exists in the real world) |
+| 17 | `title` is a non-empty string | error |
+| 18 | `sources`, when written, is an array of objects, each with a unique `id`, a `name` and a `type` that is one of statute / case / contract / evidence / document / web / other | error |
 
-Structural errors stop the drawing; hints do not. This is the same split as procedure's (`spec/procedure/schema-draft.md` §5, §6.3).
+Structural errors (rules 1 to 12, 17 and 18) stop the drawing; hints (13 to 16) do not. This is the same split as procedure's (`spec/procedure/schema-draft.md` §5, §6.3).
 
 ---
 
@@ -222,7 +224,7 @@ The remembering rules are procedure's (§6.2 there): orientation and the toggles
 
 ### 6.3 Scale
 
-A cross-section of a case has few parties, usually 4 to 15. Past about 25 entities the diagram is reported with a hint (as procedure does for layers), not an error.
+A cross-section of a case has few parties, usually 4 to 15. Past about 25 entities, or past about 40 relations (the graph routes every relation round the others, so its time grows faster than the count: 40 relations take a few seconds, 60 about fifteen), the diagram is reported with a hint (as procedure does for layers), not an error.
 
 ### 6.4 The second sub-type, `focus` (issue #87)
 

@@ -8,16 +8,18 @@
 //
 //    tree      the parties with an equity relation, in levels (longest path from a holder that is held by
 //              no one), the order inside a level chosen to keep the lines short
+//    company   with several separate structures a company is picked (relationship/scope.js): the picture holds it
+//              at the top and everyone below it; the lines above it are listed under it ("Above it"); a company
+//              with nothing below it keeps the ones above in its picture
 //    below     "Indirect holdings": for each ultimate holder (held by no one), what it holds through
 //              others, as the sum of the products along each path ("55% × 80% = 44%"); only when every
 //              share on every path is stated, otherwise the row says it cannot be computed
-//              "Not in the equity tree": the parties with no equity relation
-//              "Other relations": every relation that is not equity, as a list
 //
 //  A cross-holding (a cycle) is allowed: one line of each cycle is drawn dashed, upward, and flagged,
 //  and it is left out of the levels and of the products. A line that skips levels goes around the boxes
-//  between: it has a waypoint in each level, placed like a thin empty box. Every relation lands in exactly one place: a
-//  line of the tree or a row of the list of the rest. Any valid JSON draws (no equity at all has an
+//  between: it has a waypoint in each level, placed like a thin empty box. What the picture leaves out (the parties and
+//  relations that are not equity, or not in the company's picture) is not listed: the graph and the other views hold
+//  every relation. Any valid JSON draws (no equity at all has an
 //  explicit empty state). Pure JS, so Node computes the same geometry for antu_layout and the tests
 //  check every example.
 // ============================================================
@@ -28,7 +30,7 @@ import { sectionWriter, SECTION_GAP } from '../sections.js'
 import { splitScope, companyOf, hasSeveral } from '../scope.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
-import { pillW } from '../path/layout.js'
+import { pillW, pillH } from '../pill.js'
 import { tEn } from '../../../core/i18n.js'
 
 // ---------- geometry ----------
@@ -154,7 +156,7 @@ export function buildEquityGraph(spec, fields = {}) {
     const share = typeof e.rel.share === 'number' ? shareText(e.rel.share) : t('rel.equity.noShare')
     return e.back ? `${share} · ${t('rel.equity.cross')}` : share
   })
-  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), back: e.back, gathered: g.links.get(e.key).gathered })))
+  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), h: pillH(pillTexts[i]), back: e.back, gathered: g.links.get(e.key).gathered })))
   parts.edges.forEach((e, i) => {
     const link = g.links.get(e.key)
     layer.links.push({ d: pathOf(link.segs, shift, PAD), back: e.back, via: link.via.map(([x, yy]) => [x + shift, yy + PAD]) })

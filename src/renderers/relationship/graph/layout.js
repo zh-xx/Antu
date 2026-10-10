@@ -40,6 +40,8 @@ import { routeLink } from '../../procedure/flow/router.js'
 import { toReal } from '../../procedure/flow/columns.js'
 import { textEm } from '../../fact/cardGeometry.js'
 import { tEn } from '../../../core/i18n.js'
+import { labelOf } from './labelOf.js'
+import { makePartyData } from '../partyData.js'
 import {
   PAD,
   LAYER_GAP,
@@ -50,6 +52,7 @@ import {
   GROUP_PAD,
   GROUP_TITLE_FONT,
   SCALE_HINT_ENTITIES,
+  SCALE_HINT_RELATIONS,
   CROSS_COST,
   sizeOf,
   labelBox,
@@ -58,6 +61,8 @@ import {
 /** Two links running side by side keep at least this far apart; the side ports of a box spread to allow it */
 const PARALLEL_MIN = 15
 const SIDE_SPREAD = 16
+
+export { labelOf }
 
 /** Every order of a short list */
 export function permutations(list) {
@@ -84,15 +89,6 @@ function shuffled(list, rand) {
 }
 
 const emptyStats = () => ({ entities: 0, relations: 0, groups: 0, layers: 0, widest: 0, kinds: {} })
-
-/**
- * The text a relation shows on its line: the one the author wrote, otherwise a default from its
- * kind and dedicated fields, in the interface language (`t`).
- */
-export function labelOf(relation, t = tEn) {
-  if (typeof relation.label === 'string' && relation.label.trim()) return relation.label
-  return t(`rel.auto.${relation.kind}`, { share: relation.share, amount: relation.amount })
-}
 
 /**
  * The box of a group's title, in the frame: where a link must not run. The title strip runs along
@@ -244,12 +240,14 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   const t = typeof fields?.t === 'function' ? fields.t : tEn
   const entities = spec.entities
   const relations = spec.relations
-  const groupById = new Map((spec.groups ?? []).map((g) => [g.id, g]))
   const presentGroups = (spec.groups ?? []).filter((g) => entities.some((e) => e.groupId === g.id))
   const showGroups = fields?.groups !== false && presentGroups.length > 0
 
   if (entities.length > SCALE_HINT_ENTITIES) {
     hints.push(tEn('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
+  }
+  if (relations.length > SCALE_HINT_RELATIONS) {
+    hints.push(tEn('rhint.tooManyRelations', { n: relations.length, limit: SCALE_HINT_RELATIONS }))
   }
 
   // ── the camps, in the order they stand ──
@@ -753,47 +751,11 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   // Layers are the shared rows: a level is a level, whichever camp its entities are in
   const perLayer = Array.from({ length: levelCount }, (_, i) => entities.filter((e) => levelOf.get(e.id) === i).length)
 
-  const sourceById = new Map((spec.sources ?? []).map((s) => [s.id, s]))
-  const degree = new Map(entities.map((e) => [e.id, 0]))
-  for (const r of relations) {
-    degree.set(r.from, degree.get(r.from) + 1)
-    degree.set(r.to, degree.get(r.to) + 1)
-  }
-  // What each party is related to, for its overlay: the other end and the text on the line
-  const nameOf = new Map(entities.map((e) => [e.id, e.label]))
-  const relationsOf = (id) =>
-    relations
-      .map((r, i) => ({ r, i }))
-      .filter(({ r }) => r.from === id || r.to === id)
-      .map(({ r, i }) => ({
-        id: r.id,
-        kind: r.kind,
-        directed: isDirected(r),
-        out: r.from === id,
-        other: nameOf.get(r.from === id ? r.to : r.from),
-        text: labels[i].text,
-      }))
+  // The data of a party's box is the one every kind of relationship diagram builds (partyData.js); here the size is the placed one
+  const party = makePartyData(spec, t)
   const rfNodes = entities.map((e) => {
     const p = real.placed.get(e.id)
-    return {
-      id: e.id,
-      type: 'rnode',
-      position: { x: p.x, y: p.y },
-      data: {
-        entity: e,
-        w: p.w,
-        h: p.h,
-        // the width of the text column the size was computed for; the entity draws its text in it
-        textW: sizeOf(e).textW,
-        groupLabel: groupById.get(e.groupId)?.label ?? '',
-        sources: (e.sourceIds ?? []).map((id) => sourceById.get(id)).filter(Boolean),
-        sourceCount: (e.sourceIds ?? []).filter((id) => sourceById.has(id)).length,
-        relationCount: degree.get(e.id),
-        relations: relationsOf(e.id),
-        layer: levelOf.get(e.id),
-        vertical,
-      },
-    }
+    return { id: e.id, type: 'rnode', position: { x: p.x, y: p.y }, data: party.dataOf(e, { w: p.w, h: p.h, layer: levelOf.get(e.id), vertical }) }
   })
 
   const kinds = {}
