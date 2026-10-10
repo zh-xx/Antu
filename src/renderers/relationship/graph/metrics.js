@@ -120,3 +120,6 @@ function labelBoxIn(text, k) {
   const lines = Math.max(1, Math.ceil(textW / inner - 1e-9))
   return { width: Math.ceil(inner + LABEL_PAD_X * 2), height: lines * LABEL_LINE + 2 }
 }
+
+/** The most a relationship graph or focus view opens enlarged: a 14 px name is then at most about 18 px on the screen */
+export const OPEN_MAX_ZOOM = 1.25

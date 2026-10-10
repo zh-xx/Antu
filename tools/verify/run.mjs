@@ -1734,6 +1734,8 @@ async function checkRenderFocus() {
     const graphHtml = join(OUT, 'render-focus-jump.html')
     renderToFile(spec, { outPath: graphHtml, quiet: true, preset: {} })
     await browser.open(`file://${graphHtml}?lang=zh`)
+    const openZoom = await browser.eval(`(() => { const m = /scale\\(([\\d.]+)\\)/.exec(document.querySelector('.react-flow__viewport').style.transform); return m ? +m[1] : null })()`)
+    truthy('graph: it opens no larger than 1.25 (a name of 14 px is then at most about 18 px)', openZoom !== null && openZoom <= 1.26, String(openZoom))
     await browser.eval(`document.querySelector('.react-flow__node[data-id="e-1"] .antu-rn').click()`, { userGesture: true })
     await settle(500)
     eq('graph: a pinned party offers to centre the focus view on it', await browser.eval(`!!document.querySelector('.antu-rn-focus')`), true)

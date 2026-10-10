@@ -22,6 +22,7 @@ import { useLang } from '../../../shell/LangContext.jsx'
 import EntityNode from '../graph/EntityNode.jsx'
 import ConnectionLayerNode from '../graph/ConnectionLayerNode.jsx'
 import { lookedAt } from '../graph/secures.js'
+import { OPEN_MAX_ZOOM } from '../graph/metrics.js'
 import FocusDock from './FocusDock.jsx'
 import FocusNoteNode from './FocusNoteNode.jsx'
 import { buildFocusGraph } from './layout.js'
@@ -111,6 +112,7 @@ export default function RelationshipFocus({ spec }) {
           ref={canvasRef}
           graph={graph}
           fitKey={layout}
+          fitMaxZoom={OPEN_MAX_ZOOM}
           nodeTypes={nodeTypes}
           onNodeMouseEnter={(_, n) => {
             if (n.type === 'rnode') setHoveredId(n.id)

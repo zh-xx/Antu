@@ -33,6 +33,7 @@ import GroupBoxNode from './GroupBoxNode.jsx'
 import RelationshipDock from './RelationshipDock.jsx'
 import { buildRelationshipGraph } from './layout.js'
 import { lookedAt } from './secures.js'
+import { OPEN_MAX_ZOOM } from './metrics.js'
 import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
 /** Node types used by the graph. Adding one means registering one line here. */
@@ -161,6 +162,7 @@ export default function RelationshipGraph({ spec }) {
           ref={canvasRef}
           graph={graph}
           fitKey={layout}
+          fitMaxZoom={OPEN_MAX_ZOOM}
           nodeTypes={nodeTypes}
           onNodeMouseEnter={(_, n) => {
             if (n.type === 'rnode') setHoveredId(n.id)

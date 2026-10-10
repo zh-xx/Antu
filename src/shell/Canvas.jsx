@@ -78,6 +78,7 @@ export default function Canvas({
   fitWidth = false,
   fitSelf = false,
   fitMinZoom = 0,
+  fitMaxZoom = 0,
   nodeTypes,
   showGrid = false,
   style,
@@ -157,6 +158,17 @@ export default function Canvas({
         const x = (viewport.width * FIT_PADDING) / 4
         const y = height * zoom + 16 <= viewport.height ? (viewport.height - height * zoom) / 2 : (viewport.height * FIT_PADDING) / 4
         rfRef.current.setViewport({ x, y, zoom }, { duration })
+        return
+      }
+    }
+    // A small picture does not open enlarged to fill the screen (fitMaxZoom: the relationship graph and focus view):
+    // the text stays about the size it was drawn at, centred, and the rest of the screen is left empty
+    if (fitMaxZoom && width && height && el?.clientWidth && el?.clientHeight) {
+      const viewport = { width: el.clientWidth, height: el.clientHeight }
+      const whole = Math.min(viewport.width / (width * (1 + FIT_PADDING)), viewport.height / (height * (1 + FIT_PADDING)))
+      if (whole > fitMaxZoom) {
+        const zoom = fitMaxZoom
+        rfRef.current.setViewport({ x: (viewport.width - width * zoom) / 2, y: (viewport.height - height * zoom) / 2, zoom }, { duration })
         return
       }
     }
@@ -390,7 +402,7 @@ export default function Canvas({
         // A width-fitted diagram is placed by fit() alone: React Flow's own initial fit runs once the nodes are
         // measured, which can come after fit() and would shrink a long column back to the whole
         fitView={!fitWidth && !fitSelf}
-        fitViewOptions={{ padding: FIT_PADDING }}
+        fitViewOptions={{ padding: FIT_PADDING, ...(fitMaxZoom ? { maxZoom: fitMaxZoom } : {}) }}
         minZoom={minZoom}
         maxZoom={MAX_ZOOM}
       >
