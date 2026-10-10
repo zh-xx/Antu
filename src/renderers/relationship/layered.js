@@ -13,6 +13,7 @@
 //    place      each level is packed, then every box is pulled toward the middle of its neighbours
 //    skipping   a line that skips levels has a waypoint in each, placed like a thin empty box, so the line
 //               goes around the real boxes of that level instead of behind them
+//    turns      lines leave a box straight on and turn across at a height of their own in the gap (no curves)
 //    ports      lines meeting in one box arrive side by side along its near side, in the order they
 //               come from, so their labels do not sit on one another
 //
@@ -196,6 +197,36 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
     const origin = horizontal ? b.y : b.x
     into.forEach((e, i) => entry.set(e.key, origin + (span * (i + 1)) / (into.length + 1)))
   }
+  // A line between two levels leaves its box straight on, turns across at a height of its own in the gap,
+  // and comes straight into the next box: squared, like a tree. Lines of one gap whose turns would run along
+  // each other take different heights (the greedy tracks below).
+  const route = new Map()
+  const turns = new Map()
+  for (const e of edges) {
+    if (back.has(e.key)) continue
+    const via = (waypointsOf.get(e.key) ?? []).map((id) => waypoint.get(id))
+    const pts = [farSide(boxes.get(e.from)), ...via, withAcross(boxes.get(e.to), entry.get(e.key))]
+    route.set(e.key, pts)
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const lo = Math.min(acrossOf(pts[i]), acrossOf(pts[i + 1]))
+      const hi = Math.max(acrossOf(pts[i]), acrossOf(pts[i + 1]))
+      if (hi - lo < 0.5) continue
+      const gapKey = level.get(e.from) + i
+      if (!turns.has(gapKey)) turns.set(gapKey, [])
+      turns.get(gapKey).push({ key: e.key, i, lo, hi, track: 0 })
+    }
+  }
+  const trackOf = new Map()
+  for (const list of turns.values()) {
+    const placed = []
+    list.sort((u, v) => u.lo - v.lo || u.hi - v.hi)
+    for (const t of list) {
+      while (placed.some((o) => o.track === t.track && Math.min(o.hi, t.hi) - Math.max(o.lo, t.lo) > 0.5)) t.track += 1
+      placed.push(t)
+    }
+    const n = Math.max(...list.map((t) => t.track)) + 1
+    for (const t of list) trackOf.set(`${t.key}#${t.i}`, n === 1 ? 0.45 : 0.25 + (0.35 * t.track) / (n - 1))
+  }
   const links = new Map()
   let backIndex = 0
   let farthest = 0
@@ -203,13 +234,13 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
     const a = boxes.get(e.from)
     const b = boxes.get(e.to)
     if (!back.has(e.key)) {
-      const via = (waypointsOf.get(e.key) ?? []).map((id) => waypoint.get(id))
-      const end = withAcross(b, entry.get(e.key))
-      const pts = [farSide(a), ...via, end]
+      const pts = route.get(e.key)
+      const via = pts.slice(1, -1)
       const segs = []
       for (let i = 0; i + 1 < pts.length; i++) {
         const [p, q] = [pts[i], pts[i + 1]]
-        const mid = horizontal ? (p[0] + q[0]) / 2 : (p[1] + q[1]) / 2
+        const f = trackOf.get(`${e.key}#${i}`) ?? 0.45
+        const mid = horizontal ? p[0] + (q[0] - p[0]) * f : p[1] + (q[1] - p[1]) * f
         segs.push(horizontal ? [p, [mid, p[1]], [mid, q[1]], q] : [p, [p[0], mid], [q[0], mid], q])
       }
       links.set(e.key, { back: false, segs, via })
@@ -233,14 +264,24 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
   return { levels, boxes, links, level, back, roots, size: horizontal ? { width: alongExtent, height: acrossExtent } : { width: acrossExtent, height: alongExtent } }
 }
 
-/** A cubic's point at t (the place of a label on a line) */
-export function bezierAt([p0, p1, p2, p3], tt) {
-  const u = 1 - tt
-  return [u * u * u * p0[0] + 3 * u * u * tt * p1[0] + 3 * u * tt * tt * p2[0] + tt * tt * tt * p3[0], u * u * u * p0[1] + 3 * u * u * tt * p1[1] + 3 * u * tt * tt * p2[1] + tt * tt * tt * p3[1]]
+/**
+ * Where a line's label goes: 'end' on the stretch that comes straight into the box (a little past its
+ * middle), 'early' nearer the turn (for lines whose labels would otherwise sit side by side), 'mid' for the
+ * middle of a back line's long stretch. A line whose last stretch is too short has its label on the turn.
+ * @param seg  the line's last segment [p, corner1, corner2, q]
+ */
+export function pillOn([p, c1, c2, q], where = 'end') {
+  if (where === 'mid') return [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2]
+  const last = Math.hypot(q[0] - c2[0], q[1] - c2[1])
+  if (last >= 30) {
+    const f = where === 'early' ? 0.3 : 0.55
+    return [c2[0] + (q[0] - c2[0]) * f, c2[1] + (q[1] - c2[1]) * f]
+  }
+  return Math.hypot(c2[0] - c1[0], c2[1] - c1[1]) > 0.5 ? [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2] : [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]
 }
 
-/** The SVG path of a link's segments */
+/** The SVG path of a link's segments: straight stretches and right-angle turns, no curves */
 export function pathOf(segs, dx = 0, dy = 0) {
   const f = ([x, y]) => `${x + dx} ${y + dy}`
-  return `M ${f(segs[0][0])}` + segs.map(([, c1, c2, p3]) => ` C ${f(c1)} ${f(c2)} ${f(p3)}`).join('')
+  return `M ${f(segs[0][0])}` + segs.map(([, c1, c2, p3]) => ` L ${f(c1)} L ${f(c2)} L ${f(p3)}`).join('')
 }

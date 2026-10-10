@@ -16,9 +16,9 @@
 // ============================================================
 
 import { validateRelationship, hintsOfRelationship, isDirected } from '../graph/rules.js'
-import { classifyLayers, layeredGraph, bezierAt, pathOf } from '../layered.js'
+import { classifyLayers, layeredGraph, pillOn, pathOf } from '../layered.js'
 import { sectionWriter, SECTION_GAP } from '../sections.js'
-import { reachScope, companyOf, hasSeveral } from '../scope.js'
+import { splitScope, companyOf, hasSeveral } from '../scope.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
 import { tEn } from '../../../core/i18n.js'
@@ -37,18 +37,21 @@ export function classifyAuthority(spec, asked) {
   const all = spec.relations.filter((r) => AUTHORITY_KINDS.includes(r.kind)).map((r) => ({ key: r.id, rel: r, from: r.from, to: r.to, back: false }))
   const inAll = new Set(all.flatMap((e) => [e.from, e.to]))
   const chartIds = spec.entities.map((e) => e.id).filter((id) => inAll.has(id))
-  // One party's picture (relationship/scope.js): it, everyone above it, everyone below it
+  // One party's picture (relationship/scope.js): it at the top and everyone below it; the lines above it are listed
   const company = companyOf(asked, chartIds, all)
-  const scope = company ? reachScope(all, company) : null
-  const edges = scope ? all.filter((e) => scope.has(e.from) && scope.has(e.to)) : all
+  const split = company ? splitScope(all, company) : null
+  const edges = split ? split.drawn : all
+  const above = split ? split.above.map((e) => e.rel) : []
   const drawn = new Set(edges.map((e) => e.key))
-  const rest = spec.relations.filter((r) => !drawn.has(r.id))
-  const inChart = new Set(edges.flatMap((e) => [e.from, e.to]))
+  const aboveIds = new Set(above.map((r) => r.id))
+  const rest = spec.relations.filter((r) => !drawn.has(r.id) && !aboveIds.has(r.id))
+  const inChart = new Set([...(company ? [company] : []), ...edges.flatMap((e) => [e.from, e.to])])
   const ids = spec.entities.map((e) => e.id).filter((id) => inChart.has(id))
-  const apart = spec.entities.filter((e) => !inChart.has(e.id))
+  const inAbove = new Set(above.flatMap((r) => [r.from, r.to]))
+  const apart = spec.entities.filter((e) => !inChart.has(e.id) && !inAbove.has(e.id))
   const { back, level, roots } = classifyLayers(ids, edges)
   for (const e of edges) e.back = back.has(e.key)
-  return { edges, ids, level, roots, rest, apart, company, several: hasSeveral(chartIds, all), companies: chartIds }
+  return { edges, ids, level, roots, rest, above, apart, company, several: hasSeveral(chartIds, all), companies: chartIds }
 }
 
 export function buildAuthorityGraph(spec, fields = {}) {
@@ -86,13 +89,19 @@ export function buildAuthorityGraph(spec, fields = {}) {
   }
   for (const e of parts.edges) {
     const link = g.links.get(e.key)
-    const at = bezierAt(link.segs.at(-1), e.back ? 0.5 : (rank.get(e.key) ?? 0) % 2 ? 0.84 : 0.5)
+    const at = pillOn(link.segs.at(-1), e.back ? 'mid' : (rank.get(e.key) ?? 0) % 2 ? 'early' : 'end')
     layer.links.push({ d: pathOf(link.segs, shift, PAD), kind: e.rel.kind, back: e.back, via: link.via.map(([x, yy]) => [x + shift, yy + PAD]), arrow: isDirected(e.rel) ? 'end' : 'none' })
     layer.pills.push({ x: at[0] + shift, y: at[1] + PAD, text: e.back ? `${textOf(e.rel)} · ${t('rel.authority.cycle')}` : textOf(e.rel), kind: e.rel.kind, back: e.back, relId: e.rel.id })
   }
 
   const sections = sectionWriter(layer, contentW, g.size.height + PAD + (parts.ids.length ? SECTION_GAP : 0))
-  if (!parts.edges.length) sections.empty(t('rel.authority.none'), t('rel.authority.noneHint'))
+  if (!parts.ids.length) sections.empty(t('rel.authority.none'), t('rel.authority.noneHint'))
+  if (parts.above.length) {
+    sections.section(
+      t('rel.authority.above', { n: parts.above.length }),
+      parts.above.map((r) => ({ main: `${textOf(r)}${t('rel.equity.colon')}${nameOf(r.from)} → ${nameOf(r.to)}` })),
+    )
+  }
   if (parts.apart.length) sections.section(t(parts.company ? 'rel.authority.outside' : 'rel.authority.apart', { n: parts.apart.length }), [{ main: parts.apart.map((e) => e.label).join(t('rel.equity.sep')) }])
   if (parts.rest.length) {
     sections.section(
@@ -131,6 +140,7 @@ export function buildAuthorityGraph(spec, fields = {}) {
     authorityLines: parts.edges.length,
     cycles: backCount,
     apart: parts.apart.length,
+    above: parts.above.length,
     other: parts.rest.length,
     company: parts.company,
     several: parts.several,

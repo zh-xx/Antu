@@ -3,8 +3,8 @@
 //
 //  A case often holds the shareholdings, the control and the posts of several companies. Drawn together they
 //  stand side by side and the picture is wide and flat. The reader picks one party (a company, mostly) and
-//  the picture holds it, everyone above it (its holders, its controllers, transitively) and everyone below
-//  it (what it holds, who it commands, transitively); everything else is written under the picture, so that
+//  the picture holds it at the top and everyone below it (what it holds, who it commands, transitively); its
+//  holders and controllers (transitively) are written under the picture; everything else is written under the picture, so that
 //  every relation is on the page once.
 //
 //    '*'        the reader chose "all": nothing is left out
@@ -14,6 +14,34 @@
 //
 //  Pure JS, no React: Node computes the same picture for antu_layout and the tests check it.
 // ============================================================
+
+/**
+ * The parties a party's picture holds: itself and everyone below it (what it holds, who it commands, transitively).
+ * The ones above it are not drawn: they are written under the picture (see aboveOf), so the party sits at the top.
+ */
+export function reachDown(edges, focus) {
+  const down = new Map()
+  for (const e of edges) down.set(e.from, [...(down.get(e.from) ?? []), e.to])
+  const seen = new Set([focus])
+  const stack = [focus]
+  while (stack.length) {
+    for (const y of down.get(stack.pop()) ?? []) {
+      if (seen.has(y)) continue
+      seen.add(y)
+      stack.push(y)
+    }
+  }
+  return seen
+}
+
+/** The lines of a party's picture, and the other lines among it and everyone above it (the ones written under it) */
+export function splitScope(edges, focus) {
+  const down = reachDown(edges, focus)
+  const drawn = edges.filter((e) => down.has(e.from) && down.has(e.to))
+  const whole = reachScope(edges, focus)
+  const above = edges.filter((e) => whole.has(e.from) && whole.has(e.to) && !drawn.includes(e))
+  return { drawn, above }
+}
 
 /** The parties a party's picture holds: itself, everyone above it and everyone below it */
 export function reachScope(edges, focus) {

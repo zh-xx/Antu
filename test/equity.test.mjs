@@ -33,8 +33,8 @@ function assertSound(s, label) {
   assert.deepEqual(g.errors, [], `${label}: valid`)
   const p = classifyEquity(s)
   const treeIds = new Set(p.ids)
-  for (const e of s.entities) assert.ok(treeIds.has(e.id) || p.apart.some((a) => a.id === e.id), `${label}: ${e.id} is in the tree or listed apart`)
-  assert.equal(p.edges.length + p.rest.length, s.relations.length, `${label}: every relation is a line or a row of the rest`)
+  for (const e of s.entities) assert.ok(treeIds.has(e.id) || p.apart.some((a) => a.id === e.id) || p.above.some((r) => r.from === e.id || r.to === e.id), `${label}: ${e.id} is in the tree, above it or listed apart`)
+  assert.equal(p.edges.length + p.above.length + p.rest.length, s.relations.length, `${label}: every relation is a line, above it or a row of the rest`)
   const boxes = g.nodes.filter((n) => n.type === 'rnode').map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }))
   for (let i = 0; i < boxes.length; i++) {
     const a = boxes[i]
@@ -87,7 +87,8 @@ test('a line that skips a level goes around the boxes of that level', () => {
     for (const [px, py] of l.via) {
       for (const b of boxes) assert.ok(!(px > b.x && px < b.x + b.w && py >= b.y && py <= b.y + b.h), `waypoint (${px}, ${py}) is inside ${b.id}`)
     }
-    assert.equal((l.d.match(/ C /g) ?? []).length, l.via.length + 1, 'one curve between each pair of points')
+    assert.ok(!/ C /.test(l.d), 'straight stretches and right-angle turns, no curve')
+    for (const [px, py] of l.via) assert.ok(l.d.includes(`L ${px} ${py}`), 'the line goes through its waypoint')
   }
 })
 
@@ -154,15 +155,19 @@ test('several separate structures: the busiest party opens, any party can be pic
   // Nothing asked: the structure with most lines, opened on its busiest party (a: three lines)
   const opened = classifyEquity(s)
   assert.equal(opened.company, 'a')
-  assert.deepEqual(opened.ids.sort(), ['a', 'b', 'h1', 'h2'])
+  // The party at the top and what is below it; its holders are written under the picture
+  assert.deepEqual(opened.ids.sort(), ['a', 'b'])
+  assert.deepEqual(opened.above.map((r) => r.id).sort(), ['r1', 'r2'])
   assert.deepEqual(opened.rest.map((r) => r.id), ['r4'], 'the line outside the picture is listed, not dropped')
   assert.deepEqual(opened.apart.map((e) => e.id).sort(), ['x', 'y'])
-  // Everyone above and below the party picked, and nothing else
+  // A party with nothing below it is a box on its own, with everything above it listed
   const b = classifyEquity(s, 'b')
-  assert.deepEqual(b.ids.sort(), ['a', 'b', 'h1', 'h2'])
+  assert.deepEqual(b.ids.sort(), ['b'])
+  assert.deepEqual(b.above.map((r) => r.id).sort(), ['r1', 'r2', 'r3'])
   const y = classifyEquity(s, 'y')
-  assert.deepEqual(y.ids.sort(), ['x', 'y'])
-  assert.equal(y.edges.length + y.rest.length, s.relations.length)
+  assert.deepEqual(y.ids.sort(), ['y'])
+  assert.deepEqual(y.above.map((r) => r.id), ['r4'])
+  assert.equal(y.edges.length + y.above.length + y.rest.length, s.relations.length)
   // "All" draws every line, as before
   const all = classifyEquity(s, '*')
   assert.equal(all.company, null)
@@ -171,7 +176,7 @@ test('several separate structures: the busiest party opens, any party can be pic
   const g = buildEquityGraph(s, { company: 'y' })
   assert.equal(g.company, 'y')
   assert.deepEqual(g.companies.map((c) => c.id), ['h1', 'h2', 'a', 'b', 'x', 'y'])
-  assert.equal(g.treeParties, 2)
+  assert.equal(g.treeParties, 1)
   assertSound(s, 'several structures')
 })
 
