@@ -244,6 +244,8 @@ export function buildPathGraph(spec, fields = {}) {
   const nPos = ids.length ? Math.max(...pos.values()) + 1 : 0
   const ROW_STEP = rowH + 88
   const rowY = (r) => PAD + CARD_CLEAR + (r - minRow) * ROW_STEP
+  const ROUND_CLEAR = 26
+  const ROUND_STEP = 32
   const PORT_STEP = Math.max(6, Math.min(14, (rowH - 16) / 3))
 
   // The hops of every chain, once each (a relation two chains share is one line); heavy when a shortest chain has it
@@ -285,12 +287,17 @@ export function buildPathGraph(spec, fields = {}) {
     pairs.get(key).push(h)
   }
   for (const list of pairs.values()) {
-    // The tallest labels (the ones that wrap) take the top and the bottom line, so the middle one stays one line
-    if (list.length > 2) {
-      const tall = [...list].sort((u, v) => pillH(textOf(v.r)) - pillH(textOf(u.r)))
-      const ends = tall.slice(0, 2)
-      const mid = list.filter((h) => !ends.includes(h))
-      list.splice(0, list.length, ends[0], ...mid, ends[1])
+    // Three lines or more between the same two parties are too close side by side: one (the one with the
+    // shortest label) stays straight, the others go round, alternately over and under the row, each in a
+    // corridor of its own with its label on it
+    if (list.length >= 3) {
+      const byLabel = [...list].sort((u, v) => u.pw - v.pw)
+      byLabel.slice(1).forEach((h, k) => {
+        h.type = 'round'
+        h.side = k % 2 === 0 ? -1 : 1
+        h.level = Math.floor(k / 2) + 1
+      })
+      list.splice(0, list.length, byLabel[0])
     }
     list.forEach((h, i) => {
       h.y = rowY(row.get(h.s)) + rowH / 2 + (i - (list.length - 1) / 2) * PORT_STEP
@@ -353,6 +360,8 @@ export function buildPathGraph(spec, fields = {}) {
       need.push({ a: pos.get(inRow[n - 1]), b: pos.get(inRow[n]), w: boxW + Math.max(MIN_GAP, labels) })
     }
   }
+  // A line that goes round has its label on the stretch over (or under) the gap: the gap is as wide as that label
+  for (const h of hops.filter((x) => x.type === 'round')) need.push({ a: pos.get(h.s), b: pos.get(h.e), w: boxW + h.pw - 44 + 2 * PILL_MARGIN })
   for (const h of hops.filter((x) => x.type === 'bend')) {
     const [p, q] = [pos.get(h.s), pos.get(h.e)]
     need.push({ a: Math.min(p, q), b: Math.max(p, q), w: boxW / 2 + 56 + Math.abs(h.exitAt) })
@@ -387,7 +396,8 @@ export function buildPathGraph(spec, fields = {}) {
       data: { ...party.dataOf(entityById.get(id), { layer: 0, hintKey: 'rel.previewHint', vertical: false, end: endId(id) }), w: boxW, h: rowH, textW: boxW - 28 },
     })
   }
-  const bottom = chains.length ? rowY(maxRow) + rowH : PAD + CARD_CLEAR
+  const belowDepth = Math.max(0, ...hops.filter((x) => x.type === 'round' && x.side > 0).map((x) => ROUND_CLEAR + ROUND_STEP * x.level))
+  const bottom = chains.length ? rowY(maxRow) + rowH + belowDepth : PAD + CARD_CLEAR
   const bends = []
   for (const h of hops) {
     drawnRels.add(h.r.id)
@@ -409,6 +419,15 @@ export function buildPathGraph(spec, fields = {}) {
       const lean = pillH(textOf(h.r)) / 2 - 3
       const shift = h.slotOf.length < 2 || !tall ? 0 : at === 0 ? -lean : at === h.slotOf.length - 1 ? lean : 0
       layer.pills.push({ ...pill, x: x1 + (x2 - x1 - total) / 2 + before + PILL_MARGIN + h.pw / 2, y: h.y + shift })
+    } else if (h.type === 'round') {
+      const r = row.get(h.s)
+      const edgeY = h.side < 0 ? rowY(r) : rowY(r) + rowH
+      const cy = edgeY + h.side * (ROUND_CLEAR + ROUND_STEP * (h.level - 1))
+      const xs = xc(pos.get(h.s)) + boxW / 2 - 22 - 14 * (h.level - 1)
+      const xe = xc(pos.get(h.e)) - boxW / 2 + 22 + 14 * (h.level - 1)
+      link.d = `M ${xs} ${edgeY} L ${xs} ${cy} L ${xe} ${cy} L ${xe} ${edgeY}`
+      layer.links.push(link)
+      layer.pills.push({ ...pill, x: (xs + xe) / 2, y: cy })
     } else if (h.type === 'col') {
       const x = xc(pos.get(h.s))
       const y1 = rowY(row.get(h.s)) + rowH
