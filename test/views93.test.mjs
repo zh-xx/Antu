@@ -17,7 +17,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 
 import { buildAuthorityGraph, classifyAuthority } from '../src/renderers/relationship/authority/layout.js'
 import { buildRelatedGraph, relatedRows, centreOf } from '../src/renderers/relationship/related/layout.js'
-import { buildPathGraph, findChains, defaultEnds, endsOf, columnsOf, MAX_CHAINS } from '../src/renderers/relationship/path/layout.js'
+import { buildPathGraph, findChains, defaultEnds, endsOf, placeChains, MAX_CHAINS } from '../src/renderers/relationship/path/layout.js'
 import { layeredGraph } from '../src/renderers/relationship/layered.js'
 import { relationshipKnowledge } from '../src/renderers/relationship/schema.js'
 import { registerKnowledge, layoutKindsOf } from '../src/core/registry.js'
@@ -235,12 +235,19 @@ test('path: one picture, each party and each relation once, no two lines sharing
     }
   }
   assertBoxes(g, 'path')
-  // columnsOf: the ends first and last, the rest in order
-  const chains = findChains(s, 'a', 'e').chains
-  for (const row of columnsOf(chains)) {
-    assert.equal(row[0], 0)
-    for (let i = 1; i < row.length; i++) assert.ok(row[i] > row[i - 1], 'strictly to the right')
-  }
+  // placeChains: the shortest chain is the main line, in order and on row 0; the parties only a longer chain
+  // passes stand above or below it, one side each time, and no two boxes on a row are closer than a column
+  const { pos, row } = placeChains(findChains(s, 'a', 'e').chains)
+  const main = findChains(s, 'a', 'e').chains[0].nodes
+  main.forEach((id, i) => {
+    assert.equal(row.get(id), 0)
+    if (i) assert.ok(pos.get(id) > pos.get(main[i - 1]), 'in order')
+  })
+  assert.equal(row.get('d') < 0 !== row.get('c') < 0, true, 'the second longer chain goes to the other side')
+  for (const x of pos.keys()) for (const y of pos.keys()) if (x < y && row.get(x) === row.get(y)) assert.ok(Math.abs(pos.get(x) - pos.get(y)) >= 2, 'a column apart on one row')
+  // A diamond: two parties of one hop apart on the main line, a third off the line at the middle, not a long row
+  const ys = boxes.map((n) => n.position.y)
+  assert.ok(Math.max(...ys) > Math.min(...ys), 'more than one row')
 })
 
 test('authority: with several separate structures one party\'s picture opens, and any other can be picked', () => {
