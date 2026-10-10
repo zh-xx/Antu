@@ -29,6 +29,29 @@ export const BULGE = 36
 export const BULGE_STEP = 26
 
 /**
+ * A box that several lines come into is made as wide as its parents standing side by side (when that is wider
+ * than the box), so each line can drop straight into it: no comb of lines that all turn once to reach one box.
+ * @param edges  [{ key, from, to, back }]
+ * @param size   id -> { w, h, textW }
+ * @returns id -> { w, h, textW } (the box's own size when it has fewer than two parents)
+ */
+export function widerForParents(edges, size, gap) {
+  const parents = new Map()
+  for (const e of edges) {
+    if (e.back) continue
+    if (!parents.has(e.to)) parents.set(e.to, new Set())
+    parents.get(e.to).add(e.from)
+  }
+  return (id) => {
+    const own = size(id)
+    const ps = [...(parents.get(id) ?? [])]
+    if (ps.length < 2) return own
+    const w = ps.reduce((n, p) => n + size(p).w, 0) + gap * (ps.length - 1)
+    return w > own.w ? { ...own, w, textW: own.textW } : own
+  }
+}
+
+/**
  * Which lines close a cycle, and the level of every box.
  * @param ids    box ids in written order
  * @param edges  [{ key, from, to }] (from -> to is the way the level grows)
@@ -189,13 +212,26 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
     const wp = waypointsOf.get(e.key) ?? []
     return wp.length ? acrossOf(waypoint.get(wp.at(-1))) : acrossOf(farSide(boxes.get(e.from)))
   }
+  // Where lines come into a box: straight below the box each comes from when that is within the box's width
+  // (so the box wide enough to hold its parents has only straight drops), else at the nearest end; lines that
+  // would land too close are moved apart
   const entry = new Map()
+  const ENTRY_INSET = 12
+  const ENTRY_GAP = 14
   for (const id of ids) {
     const into = edges.filter((e) => !back.has(e.key) && e.to === id).sort((p, q) => startOf(p) - startOf(q))
     const b = boxes.get(id)
     const span = horizontal ? b.h : b.w
     const origin = horizontal ? b.y : b.x
-    into.forEach((e, i) => entry.set(e.key, origin + (span * (i + 1)) / (into.length + 1)))
+    const lo = origin + Math.min(ENTRY_INSET, span / 2)
+    const hi = origin + span - Math.min(ENTRY_INSET, span / 2)
+    const at = into.map((e) => Math.min(hi, Math.max(lo, startOf(e))))
+    for (let i = 1; i < at.length; i++) at[i] = Math.max(at[i], at[i - 1] + ENTRY_GAP)
+    const over = at.length ? at.at(-1) - hi : 0
+    if (over > 0) {
+      for (let i = at.length - 1; i >= 0; i--) at[i] = Math.min(at[i] - (i === at.length - 1 ? over : 0), i === at.length - 1 ? hi : at[i + 1] - ENTRY_GAP)
+    }
+    into.forEach((e, i) => entry.set(e.key, at[i]))
   }
   // A line between two levels leaves its box straight on, turns across at a height of its own in the gap,
   // and comes straight into the next box: squared, like a tree. Lines of one gap whose turns would run along
@@ -265,19 +301,36 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
 }
 
 /**
- * Where a line's label goes: 'end' on the stretch that comes straight into the box (a little past its
- * middle), 'early' nearer the turn (for lines whose labels would otherwise sit side by side), 'mid' for the
- * middle of a back line's long stretch. A line whose last stretch is too short has its label on the turn.
- * @param seg  the line's last segment [p, corner1, corner2, q]
+ * Where the labels go. A label sits on the stretch that comes into the box; lines whose labels would sit on one
+ * another take other heights along it (candidates from a little past the middle towards the turn). A line whose
+ * last stretch is too short has its label on the turn; a back line's label is the middle of its long stretch.
+ * @param items  [{ seg: the line's last segment [p, corner1, corner2, q], w: the label's width, back }]
+ * @returns [x, y][] in the order of items
  */
-export function pillOn([p, c1, c2, q], where = 'end') {
-  if (where === 'mid') return [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2]
-  const last = Math.hypot(q[0] - c2[0], q[1] - c2[1])
-  if (last >= 30) {
-    const f = where === 'early' ? 0.3 : 0.55
-    return [c2[0] + (q[0] - c2[0]) * f, c2[1] + (q[1] - c2[1]) * f]
-  }
-  return Math.hypot(c2[0] - c1[0], c2[1] - c1[1]) > 0.5 ? [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2] : [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]
+export function placePills(items) {
+  const rects = []
+  const clash = (r) => rects.some((o) => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h)
+  const out = items.map(() => null)
+  const rect = ([x, y], w) => ({ x: x - w / 2 - 1, y: y - 12, w: w + 2, h: 24 })
+  items.forEach((it, i) => {
+    if (!it.back) return
+    const [, c1, c2] = it.seg
+    out[i] = [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2]
+    rects.push(rect(out[i], it.w))
+  })
+  items.forEach((it, i) => {
+    if (it.back) return
+    const [p, c1, c2, q] = it.seg
+    const last = Math.hypot(q[0] - c2[0], q[1] - c2[1])
+    const cands =
+      last >= 30
+        ? [0.55, 0.2, 0.38, 0.72].map((f) => [c2[0] + (q[0] - c2[0]) * f, c2[1] + (q[1] - c2[1]) * f])
+        : [Math.hypot(c2[0] - c1[0], c2[1] - c1[1]) > 0.5 ? [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2] : [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]]
+    const pick = cands.find((c) => !clash(rect(c, it.w))) ?? cands[0]
+    out[i] = pick
+    rects.push(rect(pick, it.w))
+  })
+  return out
 }
 
 /** The SVG path of a link's segments: straight stretches and right-angle turns, no curves */

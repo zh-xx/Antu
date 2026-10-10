@@ -270,3 +270,22 @@ test('authority: with several separate structures one party\'s picture opens, an
   assert.equal(g.company, 'a')
   assert.equal(g.chartParties, 2)
 })
+
+test('authority: several parties tied to one company drop straight into a company box as wide as they are, and no label covers another', () => {
+  const s = spec(
+    [entity('a'), entity('b'), entity('c'), entity('co')],
+    [rel('r1', 'a', 'co', 'employment', { label: '法定代表人、执行董事长' }), rel('r2', 'b', 'co', 'employment', { label: '总经理' }), rel('r3', 'c', 'co', 'employment', { label: '监事' })],
+  )
+  const g = buildAuthorityGraph(s, {})
+  const layer = g.nodes.find((n) => n.type === 'lineLayer').data
+  const co = g.nodes.find((n) => n.id === 'co')
+  const parents = g.nodes.filter((n) => ['a', 'b', 'c'].includes(n.id))
+  assert.ok(co.data.w >= Math.max(...parents.map((n) => n.position.x + n.data.w)) - Math.min(...parents.map((n) => n.position.x)) - 1, 'the company box spans its parents')
+  for (const l of layer.links) {
+    const xs = new Set([...l.d.matchAll(/[ML] ([\d.-]+) [\d.-]+/g)].map((m) => m[1]))
+    assert.equal(xs.size, 1, 'a straight drop: one x all along')
+  }
+  const pw = (t) => Math.min(220, 20 + [...t].reduce((n, ch) => n + (/[⺀-鿿＀-￯]/.test(ch) ? 12.5 : 7.4), 0))
+  const r = layer.pills.map((p) => ({ x: p.x - pw(p.text) / 2, y: p.y - 11, w: pw(p.text), h: 22 }))
+  for (let i = 0; i < r.length; i++) for (let j = i + 1; j < r.length; j++) assert.ok(!(r[i].x < r[j].x + r[j].w && r[j].x < r[i].x + r[i].w && r[i].y < r[j].y + r[j].h && r[j].y < r[i].y + r[i].h), `labels ${i} and ${j} overlap`)
+})

@@ -16,11 +16,12 @@
 // ============================================================
 
 import { validateRelationship, hintsOfRelationship, isDirected } from '../graph/rules.js'
-import { classifyLayers, layeredGraph, pillOn, pathOf } from '../layered.js'
+import { classifyLayers, layeredGraph, placePills, pathOf, widerForParents } from '../layered.js'
 import { sectionWriter, SECTION_GAP } from '../sections.js'
 import { splitScope, companyOf, hasSeveral } from '../scope.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
+import { pillW } from '../path/layout.js'
 import { tEn } from '../../../core/i18n.js'
 
 export const AUTHORITY_KINDS = ['control', 'employment', 'agency']
@@ -70,7 +71,8 @@ export function buildAuthorityGraph(spec, fields = {}) {
   const nameOf = (id) => entityById.get(id).label
   const parts = classifyAuthority(spec, fields.company)
 
-  const g = layeredGraph(parts.ids, parts.edges, (id) => party.sizes.get(id), { gapAcross: NODE_GAP, gapAlong: LEVEL_GAP })
+  const sizeOf = widerForParents(parts.edges, (id) => party.sizes.get(id), NODE_GAP)
+  const g = layeredGraph(parts.ids, parts.edges, sizeOf, { gapAcross: NODE_GAP, gapAlong: LEVEL_GAP })
   const backCount = parts.edges.filter((e) => e.back).length
   const contentW = Math.max(g.size.width + (backCount ? 24 : 0), MIN_CONTENT_W - PAD * 2)
   const shift = PAD + (contentW - g.size.width - (backCount ? 24 : 0)) / 2
@@ -78,21 +80,15 @@ export function buildAuthorityGraph(spec, fields = {}) {
   const nodes = []
   const layer = { width: contentW + PAD * 2, height: 0, links: [], pills: [], empties: [], frames: [], texts: [] }
   for (const [id, b] of g.boxes) {
-    nodes.push({ id, type: 'rnode', position: { x: b.x + shift, y: b.y + PAD }, data: party.dataOf(entityById.get(id), { layer: g.level.get(id), hintKey: 'rel.previewHint' }) })
+    nodes.push({ id, type: 'rnode', position: { x: b.x + shift, y: b.y + PAD }, data: party.dataOf(entityById.get(id), { layer: g.level.get(id), hintKey: 'rel.previewHint', w: b.w, textW: sizeOf(id).textW }) })
   }
-  // Lines leaving one party fan out to the parties below it, and their labels are long: so that they do not
-  // sit side by side, the labels of one party's lines take turns at two heights along the line
-  const rank = new Map()
-  for (const id of parts.ids) {
-    const out = parts.edges.filter((e) => !e.back && e.from === id).sort((p, q) => g.links.get(p.key).segs.at(-1)[3][0] - g.links.get(q.key).segs.at(-1)[3][0])
-    out.forEach((e, i) => rank.set(e.key, i))
-  }
-  for (const e of parts.edges) {
+  const pillTexts = parts.edges.map((e) => (e.back ? `${textOf(e.rel)} · ${t('rel.authority.cycle')}` : textOf(e.rel)))
+  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), back: e.back })))
+  parts.edges.forEach((e, i) => {
     const link = g.links.get(e.key)
-    const at = pillOn(link.segs.at(-1), e.back ? 'mid' : (rank.get(e.key) ?? 0) % 2 ? 'early' : 'end')
     layer.links.push({ d: pathOf(link.segs, shift, PAD), kind: e.rel.kind, back: e.back, via: link.via.map(([x, yy]) => [x + shift, yy + PAD]), arrow: isDirected(e.rel) ? 'end' : 'none' })
-    layer.pills.push({ x: at[0] + shift, y: at[1] + PAD, text: e.back ? `${textOf(e.rel)} · ${t('rel.authority.cycle')}` : textOf(e.rel), kind: e.rel.kind, back: e.back, relId: e.rel.id })
-  }
+    layer.pills.push({ x: spots[i][0] + shift, y: spots[i][1] + PAD, text: pillTexts[i], kind: e.rel.kind, back: e.back, relId: e.rel.id })
+  })
 
   const sections = sectionWriter(layer, contentW, g.size.height + PAD + (parts.ids.length ? SECTION_GAP : 0))
   if (!parts.ids.length) sections.empty(t('rel.authority.none'), t('rel.authority.noneHint'))
