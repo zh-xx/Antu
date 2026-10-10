@@ -4,7 +4,7 @@
 //  The fifth way of drawing a relationship diagram, from the same JSON as the graph. The graph shows
 //  how parties are tied together; the matrix answers "is there any relation between A and B, and what
 //  kind?" and shows at a glance which pairs have none. A cell reads from the row's party to the column's
-//  party (a line under the table says so). A relation with no direction (a contract, a marriage) stands in both
+//  party. A relation with no direction (a contract, a marriage) stands in both
 //  cells of its pair. Several relations between one pair stack in one cell.
 //
 //  Rows and columns follow the camps (`groups`, in written order), the parties of no camp last, each
@@ -132,11 +132,10 @@ export function buildMatrixGraph(spec, fields = {}) {
     y += rowH[r]
   }
   const width = gridX + n * CELL_W + PAD
-  // One line under the table says how to read a cell (it used to be a "row → column" box in the corner)
-  const NOTE_H = 28
-  const height = Math.ceil(y + NOTE_H + PAD)
+  const height = Math.ceil(y + PAD)
 
-  const layer = { width, height, note: { x: PAD + bandSize, y: y + 10, w: width - PAD * 2 - bandSize, text: t('rel.matrix.note') }, bands: [], heads: [], rowHeads: [], cells: [], diagonal: [], chipsTotal: 0, filled: 0 }
+  const layer = { width, height, // The empty cell where the head row and the head column meet (and the band row and column): ruled like the rest
+    corner: { x: PAD, y: PAD, w: gridX - PAD, h: gridY - PAD }, bands: [], heads: [], rowHeads: [], cells: [], diagonal: [], chipsTotal: 0, filled: 0 }
   bands.forEach((b, bi) => {
     const x0 = gridX + b.from * CELL_W
     const w = (b.to - b.from + 1) * CELL_W

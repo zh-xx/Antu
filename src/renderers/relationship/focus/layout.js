@@ -49,6 +49,9 @@ const ISLAND_ROW_GAP = 64
 export const NOTE_H = 24
 /** Parallel relations between one pair of parties are drawn this far apart */
 const PARALLEL_STEP = 24
+/** A line a party stands in the way of bends out to the side: first this far from the straight line, then further by this step */
+const DETOUR = 36
+const DETOUR_STEP = 20
 
 const rectOf = (p) => ({ x: p.x, y: p.y, w: p.w, h: p.h })
 const centreOf = (r) => [r.x + r.w / 2, r.y + r.h / 2]
@@ -366,27 +369,43 @@ function labelSpots(points, size, boxes, labels, lines) {
   const segs = points.slice(1).map((q, i) => [points[i], q])
   const lens = segs.map(([p, q]) => Math.hypot(q[0] - p[0], q[1] - p[1]))
   const total = lens.reduce((n, l) => n + l, 0)
+  // The point a fraction of the way along the line, and the direction the line runs there
   const pointAt = (f) => {
     let left = total * f
     for (let i = 0; i < segs.length; i += 1) {
       if (left <= lens[i] || i === segs.length - 1) {
         const t = lens[i] ? Math.min(1, left / lens[i]) : 0
-        return [segs[i][0][0] + (segs[i][1][0] - segs[i][0][0]) * t, segs[i][0][1] + (segs[i][1][1] - segs[i][0][1]) * t]
+        const dx = segs[i][1][0] - segs[i][0][0]
+        const dy = segs[i][1][1] - segs[i][0][1]
+        return [segs[i][0][0] + dx * t, segs[i][0][1] + dy * t, dx, dy]
       }
       left -= lens[i]
     }
-    return points[0]
+    return [points[0][0], points[0][1], 1, 0]
   }
-  return LABEL_FRACTIONS.map((f) => {
-    const [cx, cy] = pointAt(f)
-    const r = { x: cx - size.width / 2, y: cy - size.height / 2, w: size.width, h: size.height }
-    const bad =
-      boxes.filter((b) => overlaps(r, b, 2)).length * 50 +
-      labels.filter((l) => overlaps(r, l, 2)).length * 20 +
-      lines.filter((pts) => polyHits(pts, [r], 0)).length * 4 +
-      Math.abs(f - 0.5)
-    return { bad, x: r.x, y: r.y }
-  })
+  // On the line, or just beside it, on either side: two lines of one pair run only a few pixels apart, and a label
+  // in the middle of one covers the other whatever the spot along it. Beside its own line, touching it, it covers
+  // neither (the one that is on the line is preferred when it covers no more)
+  const out = []
+  for (const f of LABEL_FRACTIONS) {
+    const [cx, cy, dx, dy] = pointAt(f)
+    const len = Math.hypot(dx, dy) || 1
+    const n = [-dy / len, dx / len]
+    const reach = Math.abs(n[0]) * (size.width / 2) + Math.abs(n[1]) * (size.height / 2) + 3
+    for (const side of [0, 1, -1]) {
+      const x = cx + n[0] * side * reach
+      const y = cy + n[1] * side * reach
+      const r = { x: x - size.width / 2, y: y - size.height / 2, w: size.width, h: size.height }
+      const bad =
+        boxes.filter((b) => overlaps(r, b, 2)).length * 50 +
+        labels.filter((l) => overlaps(r, l, 2)).length * 20 +
+        lines.filter((pts) => polyHits(pts, [r], 0)).length * 4 +
+        Math.abs(f - 0.5) +
+        (side ? 0.6 : 0)
+      out.push({ bad, x: r.x, y: r.y })
+    }
+  }
+  return out
 }
 
 /**
@@ -434,6 +453,9 @@ export function buildFocusGraph(spec, fields = {}) {
     const byPair = new Map()
     rels.forEach((r) => byPair.set(pairKey(r), [...(byPair.get(pairKey(r)) ?? []), r]))
     const rects = new Map([...laid.boxes.entries()].map(([id, b]) => [id, rectOf(b)]))
+    // Which side of its straight line a pair's bent lines go to (the one that clears with the least bend), so the
+    // relations of one pair bend the same way and run side by side
+    const detourSide = new Map()
     const conns = []
     for (const r of rels) {
       const a = rects.get(r.from)
@@ -457,6 +479,35 @@ export function buildFocusGraph(spec, fields = {}) {
       let points = [p1, p2]
       let d = `M ${p1[0]} ${p1[1]} L ${p2[0]} ${p2[1]}`
       const others = othersOf(laid.boxes, r.from, r.to)
+      if (polyHits(points, others, LINE_CLEAR)) {
+        // First a short bend beside the straight line: out to one side by the least that clears every party. A
+        // line that went round the whole picture was the exception, not the answer (it could be 2000 px long)
+        const mid = [(ca[0] + cb[0]) / 2, (ca[1] + cb[1]) / 2]
+        const bendTo = (side, off) => {
+          const m = [mid[0] + normal[0] * side * off, mid[1] + normal[1] * side * off]
+          return smoothThrough([clipToBox(a, m), m, clipToBox(b, m)])
+        }
+        const bend = (side) => {
+          for (let j = 0; j < 10; j += 1) {
+            const off = DETOUR + j * DETOUR_STEP + k * PARALLEL_STEP
+            const arc = bendTo(side, off)
+            if (!polyHits(arc.points, others, LINE_CLEAR)) return { arc, off, side }
+          }
+          return null
+        }
+        const pref = detourSide.get(pairKey(r))
+        let found = null
+        for (const side of pref ? [pref, -pref] : [1, -1]) {
+          const f = bend(side)
+          if (f && (!found || (!pref && f.off < found.off))) found = f
+          if (found && pref) break
+        }
+        if (found) {
+          detourSide.set(pairKey(r), found.side)
+          points = found.arc.points
+          d = found.arc.d
+        }
+      }
       if (polyHits(points, others, LINE_CLEAR)) {
         // Round the outside of the rings: through a point beyond the outer end's ring, at the middle angle
         const ra = laid.boxes.get(r.from)

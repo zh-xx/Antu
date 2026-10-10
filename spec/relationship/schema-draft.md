@@ -248,7 +248,7 @@ Parties down and across, each cell naming the relations from its row's party to 
 
 - The order follows the camps (`groups`, in written order), the parties of no camp last, each camp a ruled cell of its own in the head row and in the head column.
 - A relation stands in the cell (row = `from`, column = `to`). A relation with no direction (a contract, a marriage, or `directed: false`) stands in both cells of its pair. Several relations between one pair stack in one cell. The diagonal is shaded.
-- **Look** (settled with the maintainer after review): a table, ruled cells with square corners, the head row and head column shaded, and no "row → column" box in the corner; one line under the table says how a cell reads. Each cell holds the text of its relations in full, the row growing with the longest cell, so nothing is cut. With the labels switch off the text becomes a dot of its kind.
+- **Look** (settled with the maintainer after review): a table, ruled cells with square corners, the head row and head column shaded, and no "row → column" box; the cell where the head row and the head column meet is an empty ruled cell, not a gap. Each cell holds the text of its relations in full, the row growing with the longest cell, so nothing is cut. With the labels switch off the text becomes a dot of its kind.
 - It shows no chains and no levels: use the graph for those.
 - Party overlay and orientation do not apply; it opens fitted to its width like the chronicle.
 

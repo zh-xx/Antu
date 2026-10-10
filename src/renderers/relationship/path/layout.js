@@ -422,10 +422,6 @@ export function buildPathGraph(spec, fields = {}) {
     }
   }
   let y = chains.length ? bottom + SECTION_GAP : PAD + CARD_CLEAR
-  if (chains.length) {
-    layer.texts.push({ x: PAD, y: y - SECTION_GAP + 14, w: contentW, main: t(chains.length > 1 ? 'rel.path.legend' : 'rel.path.legendOne', { n: shortestLen }), tone: 'note' })
-    y += 24
-  }
   const more = found.total - chains.length
   if (chains.length && (more > 0 || found.truncated)) {
     layer.texts.push({ x: PAD, y: y - SECTION_GAP + 14, w: contentW, main: t('rel.path.more', { n: more, atLeast: found.truncated ? 1 : 0 }), tone: 'note' })

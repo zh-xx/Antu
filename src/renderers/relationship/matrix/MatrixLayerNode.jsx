@@ -12,7 +12,7 @@ import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
   const { theme } = useTheme()
-  const { width, height, note, bands, heads, rowHeads, cells, diagonal, showLabels = true } = data
+  const { width, height, corner, bands, heads, rowHeads, cells, diagonal, showLabels = true } = data
   const last = diagonal.length - 1
   const right = diagonal[last].x + diagonal[last].w
   const bottom = diagonal[last].y + diagonal[last].h
@@ -30,7 +30,8 @@ const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
             </g>
           )
         })}
-        {/* The head row and the head column are cells of their own, shaded; the diagonal (a party with itself) too */}
+        {/* The head row and the head column are cells of their own, shaded, and so is the empty one where they meet */}
+        <rect x={corner.x} y={corner.y} width={corner.w} height={corner.h} fill={theme.color.chip} stroke={theme.color.ink4} />
         <rect x={left} y={topY} width={right - left} height={heads[0].h} fill={theme.color.chip} />
         <rect x={rowHeads[0].x} y={rowHeads[0].y} width={rowHeads[0].w} height={bottom - rowHeads[0].y} fill={theme.color.chip} />
         {diagonal.map((d, i) => (
@@ -58,9 +59,6 @@ const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
           )}
       </svg>
 
-      <div className="antu-mx-note" style={{ left: note.x, top: note.y, width: note.w }}>
-        {note.text}
-      </div>
       {bands.map((b, i) => (
         <div key={`bt${i}`}>
           <div className="antu-mx-band" style={{ left: b.top.x, top: b.top.y, width: b.top.w, height: b.top.h, color: (theme.camp[b.tone] ?? theme.camp[0]).text }}>

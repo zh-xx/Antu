@@ -126,6 +126,8 @@ export function portCostFor(a, b) {
   return { out: { bottom: 200, top: 200, left: 0, right: 0 }, in: { top: 200, bottom: 200, left: 0, right: 0 } }
 }
 
+/** A step sideways up to this wide between two boxes that overlap becomes one straight line (the review of PR 171: two of rel1's five lines) */
+const STRAIGHT_JOG = 60
 export const segsOf = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
 const overlaps = (a, b, m) => a.x < b.x + b.w + m && b.x < a.x + a.w + m && a.y < b.y + b.h + m && b.y < a.y + a.h + m
 const segHits = ([p, q], r, m) =>
@@ -137,7 +139,9 @@ const segHits = ([p, q], r, m) =>
  * several relations run through one corridor, and it kept landing on some other relation's line; on
  * its own line a label can only be read as that line's. Every long enough segment is tried at a few
  * places along it, and the spot that covers least of anything else wins: entities worst, then other
- * labels and titles, then other lines; the middle of the longest segment on a tie.
+ * labels and titles, then other lines; the middle of the longest segment on a tie. Where the line
+ * itself is hemmed in by another relation of the pair, the label may stand touching it instead, on
+ * the side away from the neighbour, which beats covering the neighbour's line too.
  */
 // Places tried along a segment, the middle first: a crowded corridor needs more than a few to find a free one
 const FRACTIONS = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82, 0.1, 0.9, 0.02, 0.98]
@@ -181,6 +185,13 @@ export function spotsOnLine(points, size, nodeRects, blocks, links, borders) {
       const cy = horizontal ? p[1] : p[1] + dir * t
       const r = { x: cx - w / 2, y: cy - h / 2, w, h }
       spots.push({ bad: badness(r) + Math.abs(f - 0.5) * 2, len, x: r.x, y: r.y })
+      // Just beside its own line, touching it, on either side. Two relations of one pair run 15 px apart, and a
+      // label on one of them covers the other whatever the spot along it; beside its own line it covers neither.
+      // It costs a little, so a label that covers nothing else stays on its line.
+      for (const side of [1, -1]) {
+        const b = horizontal ? { x: r.x, y: r.y + side * (h / 2 + 2), w, h } : { x: r.x + side * (w / 2 + 2), y: r.y, w, h }
+        spots.push({ bad: badness(b) + Math.abs(f - 0.5) * 2 + 4, len, x: b.x, y: b.y })
+      }
     }
   }
   return spots
@@ -641,7 +652,7 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   }
   // a link that steps sideways by a few px between two boxes of different sizes becomes one straight line
   drawn.forEach((c) => {
-    c.points = straightenJog(c.points, placed.get(relations[c.index].from), placed.get(relations[c.index].to))
+    c.points = straightenJog(c.points, placed.get(relations[c.index].from), placed.get(relations[c.index].to), STRAIGHT_JOG)
   })
   // A label in about `k` lines (1: as wide as it needs), in the frame
   const sizeIn = (c, k) => {
@@ -660,7 +671,24 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     // Every other line is in the way of this label; the lines of the relations it belongs to are not special
     const p = place(c, 1, [...titles, ...placedLabels.map(labelRect)])
     c.labelAt = p.at
+    c.labelBad = p.bad
     placedLabels.push(c)
+  }
+  // A label that still covers another relation's line (two lines side by side with a long label between) is tried
+  // in two and three lines: narrower, it can stand clear of the neighbour (beside its own line, or on it)
+  for (const c of placedLabels) {
+    if (c.labelBad < 10) continue
+    const rest = [...titles, ...placedLabels.filter((o) => o !== c).map(labelRect)]
+    let best = null
+    for (const k of [2, 3]) {
+      const p = place(c, k, rest)
+      if (!best || p.bad < best.bad) best = p
+    }
+    if (best && best.bad < c.labelBad - 3) {
+      c.labelAt = best.at
+      c.labelSize = best.size
+      c.labelBad = best.bad
+    }
   }
   // Two labels on each other: two lines side by side, closer than a label is long, each with a long label.
   // The two are placed again together, each in one, two or three lines, and the pair that covers least wins.

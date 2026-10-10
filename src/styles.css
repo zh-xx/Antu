@@ -1449,7 +1449,6 @@
 /* ===== relation matrix (issue #91) ===== */
 .antu-mx-layer { position: relative; }
 .antu-mx-svg { position: absolute; left: 0; top: 0; overflow: visible; }
-.antu-mx-note { position: absolute; font-size: 12px; line-height: 18px; color: var(--antu-text-3); }
 .antu-mx-band { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; line-height: 16px; overflow: hidden; }
 .antu-mx-band.is-side span { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
 .antu-mx-band.is-side.is-cjk span { writing-mode: horizontal-tb; transform: none; display: block; width: 1.2em; white-space: normal; word-break: break-all; line-height: 15px; text-align: center; }
