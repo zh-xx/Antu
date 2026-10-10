@@ -23,7 +23,7 @@
 // ============================================================
 
 import { validateRelationship, hintsOfRelationship } from '../graph/rules.js'
-import { classifyLayers, layeredGraph, placePills, pathOf, widerForParents } from '../layered.js'
+import { classifyLayers, layeredGraph, placePills, pathOf, equalWidths } from '../layered.js'
 import { sectionWriter, SECTION_GAP } from '../sections.js'
 import { splitScope, companyOf, hasSeveral } from '../scope.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
@@ -134,7 +134,7 @@ export function buildEquityGraph(spec, fields = {}) {
   const nameOf = (id) => entityById.get(id).label
 
   // ── the drawing: levels top to bottom, lines round the boxes (relationship/layered.js) ──
-  const sizeOf = widerForParents(parts.edges, (id) => party.sizes.get(id), NODE_GAP)
+  const sizeOf = equalWidths(parts.ids, parts.level, (id) => party.sizes.get(id))
   const g = layeredGraph(parts.ids, parts.edges, sizeOf, { gapAcross: NODE_GAP, gapAlong: LEVEL_GAP })
   const backCount = parts.edges.filter((e) => e.back).length
   const treeSpan = g.size.width
@@ -156,7 +156,7 @@ export function buildEquityGraph(spec, fields = {}) {
     const share = typeof e.rel.share === 'number' ? shareText(e.rel.share) : t('rel.equity.noShare')
     return e.back ? `${share} · ${t('rel.equity.cross')}` : share
   })
-  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), back: e.back })))
+  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), back: e.back, gathered: g.links.get(e.key).gathered })))
   parts.edges.forEach((e, i) => {
     const link = g.links.get(e.key)
     layer.links.push({ d: pathOf(link.segs, shift, PAD), back: e.back, via: link.via.map(([x, yy]) => [x + shift, yy + PAD]) })

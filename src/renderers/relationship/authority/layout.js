@@ -16,7 +16,7 @@
 // ============================================================
 
 import { validateRelationship, hintsOfRelationship, isDirected } from '../graph/rules.js'
-import { classifyLayers, layeredGraph, placePills, pathOf, widerForParents } from '../layered.js'
+import { classifyLayers, layeredGraph, placePills, pathOf, equalWidths } from '../layered.js'
 import { sectionWriter, SECTION_GAP } from '../sections.js'
 import { splitScope, companyOf, hasSeveral } from '../scope.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
@@ -71,7 +71,7 @@ export function buildAuthorityGraph(spec, fields = {}) {
   const nameOf = (id) => entityById.get(id).label
   const parts = classifyAuthority(spec, fields.company)
 
-  const sizeOf = widerForParents(parts.edges, (id) => party.sizes.get(id), NODE_GAP)
+  const sizeOf = equalWidths(parts.ids, parts.level, (id) => party.sizes.get(id))
   const g = layeredGraph(parts.ids, parts.edges, sizeOf, { gapAcross: NODE_GAP, gapAlong: LEVEL_GAP })
   const backCount = parts.edges.filter((e) => e.back).length
   const contentW = Math.max(g.size.width + (backCount ? 24 : 0), MIN_CONTENT_W - PAD * 2)
@@ -83,7 +83,7 @@ export function buildAuthorityGraph(spec, fields = {}) {
     nodes.push({ id, type: 'rnode', position: { x: b.x + shift, y: b.y + PAD }, data: party.dataOf(entityById.get(id), { layer: g.level.get(id), hintKey: 'rel.previewHint', w: b.w, textW: sizeOf(id).textW }) })
   }
   const pillTexts = parts.edges.map((e) => (e.back ? `${textOf(e.rel)} · ${t('rel.authority.cycle')}` : textOf(e.rel)))
-  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), back: e.back })))
+  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), back: e.back, gathered: g.links.get(e.key).gathered })))
   parts.edges.forEach((e, i) => {
     const link = g.links.get(e.key)
     layer.links.push({ d: pathOf(link.segs, shift, PAD), kind: e.rel.kind, back: e.back, via: link.via.map(([x, yy]) => [x + shift, yy + PAD]), arrow: isDirected(e.rel) ? 'end' : 'none' })

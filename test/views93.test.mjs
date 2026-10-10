@@ -271,21 +271,25 @@ test('authority: with several separate structures one party\'s picture opens, an
   assert.equal(g.chartParties, 2)
 })
 
-test('authority: several parties tied to one company drop straight into a company box as wide as they are, and no label covers another', () => {
+test('authority: several parties tied to one company gather on one bar, symmetric about it, and no label covers another', () => {
   const s = spec(
-    [entity('a'), entity('b'), entity('c'), entity('co')],
+    [entity('a', { label: 'Aa' }), entity('b', { label: 'A much longer name than the others' }), entity('c'), entity('co')],
     [rel('r1', 'a', 'co', 'employment', { label: '法定代表人、执行董事长' }), rel('r2', 'b', 'co', 'employment', { label: '总经理' }), rel('r3', 'c', 'co', 'employment', { label: '监事' })],
   )
   const g = buildAuthorityGraph(s, {})
   const layer = g.nodes.find((n) => n.type === 'lineLayer').data
-  const co = g.nodes.find((n) => n.id === 'co')
-  const parents = g.nodes.filter((n) => ['a', 'b', 'c'].includes(n.id))
-  assert.ok(co.data.w >= Math.max(...parents.map((n) => n.position.x + n.data.w)) - Math.min(...parents.map((n) => n.position.x)) - 1, 'the company box spans its parents')
-  for (const l of layer.links) {
-    const xs = new Set([...l.d.matchAll(/[ML] ([\d.-]+) [\d.-]+/g)].map((m) => m[1]))
-    assert.equal(xs.size, 1, 'a straight drop: one x all along')
+  const mid = (id) => {
+    const n = g.nodes.find((x) => x.id === id)
+    return n.position.x + n.data.w / 2
   }
-  const pw = (t) => Math.min(220, 20 + [...t].reduce((n, ch) => n + (/[⺀-鿿＀-￯]/.test(ch) ? 12.5 : 7.4), 0))
+  // The parties stand equally far apart, and the company is in the middle of them
+  assert.ok(Math.abs(mid('b') - mid('a') - (mid('c') - mid('b'))) < 1, 'equal spacing whatever the names')
+  assert.ok(Math.abs(mid('co') - (mid('a') + mid('c')) / 2) < 1, 'the company is in the middle of its parties')
+  // One line comes down into the company, at its middle; the bar is one stretch
+  const ends = new Set(layer.links.map((l) => l.d.trim().split(' ').slice(-2).join(' ')))
+  assert.equal(ends.size, 1, 'every line ends at the same point')
+  assert.ok(Math.abs(Number([...ends][0].split(' ')[0]) - mid('co')) < 1, 'at the middle of the company')
+  const pw = (t) => Math.min(220, 20 + [...t].reduce((n, ch) => n + (/[\u2e80-\u9fff\uff00-\uffef]/.test(ch) ? 12.5 : 7.4), 0))
   const r = layer.pills.map((p) => ({ x: p.x - pw(p.text) / 2, y: p.y - 11, w: pw(p.text), h: 22 }))
   for (let i = 0; i < r.length; i++) for (let j = i + 1; j < r.length; j++) assert.ok(!(r[i].x < r[j].x + r[j].w && r[j].x < r[i].x + r[i].w && r[i].y < r[j].y + r[j].h && r[j].y < r[i].y + r[i].h), `labels ${i} and ${j} overlap`)
 })

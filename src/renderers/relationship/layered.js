@@ -13,6 +13,7 @@
 //    place      each level is packed, then every box is pulled toward the middle of its neighbours
 //    skipping   a line that skips levels has a waypoint in each, placed like a thin empty box, so the line
 //               goes around the real boxes of that level instead of behind them
+//    gathers    lines coming into one box from the level above share a bar and one line into the middle of the box
 //    turns      lines leave a box straight on and turn across at a height of their own in the gap (no curves)
 //    ports      lines meeting in one box arrive side by side along its near side, in the order they
 //               come from, so their labels do not sit on one another
@@ -29,25 +30,19 @@ export const BULGE = 36
 export const BULGE_STEP = 26
 
 /**
- * A box that several lines come into is made as wide as its parents standing side by side (when that is wider
- * than the box), so each line can drop straight into it: no comb of lines that all turn once to reach one box.
- * @param edges  [{ key, from, to, back }]
+ * Boxes of one level made as wide as the widest of them, so the centres of a level's boxes are equally apart and
+ * lines that gather from (or fan out to) a level come out symmetric about the box they meet.
+ * @param level  Map id -> level
  * @param size   id -> { w, h, textW }
- * @returns id -> { w, h, textW } (the box's own size when it has fewer than two parents)
+ * @returns id -> { w, h, textW }
  */
-export function widerForParents(edges, size, gap) {
-  const parents = new Map()
-  for (const e of edges) {
-    if (e.back) continue
-    if (!parents.has(e.to)) parents.set(e.to, new Set())
-    parents.get(e.to).add(e.from)
-  }
+export function equalWidths(ids, level, size) {
+  const widest = new Map()
+  for (const id of ids) widest.set(level.get(id), Math.max(widest.get(level.get(id)) ?? 0, size(id).w))
   return (id) => {
     const own = size(id)
-    const ps = [...(parents.get(id) ?? [])]
-    if (ps.length < 2) return own
-    const w = ps.reduce((n, p) => n + size(p).w, 0) + gap * (ps.length - 1)
-    return w > own.w ? { ...own, w, textW: own.textW } : own
+    const w = widest.get(level.get(id))
+    return w > own.w ? { ...own, w, textW: w - 28 } : own
   }
 }
 
@@ -215,14 +210,23 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
   // Where lines come into a box: straight below the box each comes from when that is within the box's width
   // (so the box wide enough to hold its parents has only straight drops), else at the nearest end; lines that
   // would land too close are moved apart
+  // Lines that gather into one box from the level above (two parties or more) share one trunk: each comes
+  // straight down from its party to a common bar, and one line goes from the middle of the box straight up to it
+  const gathers = new Map()
+  for (const id of ids) {
+    const into = edges.filter((e) => !back.has(e.key) && e.to === id && !(waypointsOf.get(e.key) ?? []).length)
+    if (new Set(into.map((e) => e.from)).size >= 2) gathers.set(id, into)
+  }
+  const gathered = new Set([...gathers.values()].flat().map((e) => e.key))
   const entry = new Map()
   const ENTRY_INSET = 12
   const ENTRY_GAP = 14
   for (const id of ids) {
-    const into = edges.filter((e) => !back.has(e.key) && e.to === id).sort((p, q) => startOf(p) - startOf(q))
     const b = boxes.get(id)
     const span = horizontal ? b.h : b.w
     const origin = horizontal ? b.y : b.x
+    for (const e of gathers.get(id) ?? []) entry.set(e.key, origin + span / 2)
+    const into = edges.filter((e) => !back.has(e.key) && e.to === id && !gathered.has(e.key)).sort((p, q) => startOf(p) - startOf(q))
     const lo = origin + Math.min(ENTRY_INSET, span / 2)
     const hi = origin + span - Math.min(ENTRY_INSET, span / 2)
     const at = into.map((e) => Math.min(hi, Math.max(lo, startOf(e))))
@@ -246,14 +250,26 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
     for (let i = 0; i + 1 < pts.length; i++) {
       const lo = Math.min(acrossOf(pts[i]), acrossOf(pts[i + 1]))
       const hi = Math.max(acrossOf(pts[i]), acrossOf(pts[i + 1]))
-      if (hi - lo < 0.5) continue
       const gapKey = level.get(e.from) + i
       if (!turns.has(gapKey)) turns.set(gapKey, [])
-      turns.get(gapKey).push({ key: e.key, i, lo, hi, track: 0 })
+      const list = turns.get(gapKey)
+      if (gathered.has(e.key)) {
+        // One bar for every line gathering into the same box
+        const bar = list.find((t) => t.bar === e.to)
+        if (bar) {
+          bar.lo = Math.min(bar.lo, lo)
+          bar.hi = Math.max(bar.hi, hi)
+          bar.members.push(`${e.key}#${i}`)
+        } else list.push({ bar: e.to, members: [`${e.key}#${i}`], lo, hi, track: 0 })
+        continue
+      }
+      if (hi - lo < 0.5) continue
+      list.push({ members: [`${e.key}#${i}`], lo, hi, track: 0 })
     }
   }
   const trackOf = new Map()
   for (const list of turns.values()) {
+    if (!list.length) continue
     const placed = []
     list.sort((u, v) => u.lo - v.lo || u.hi - v.hi)
     for (const t of list) {
@@ -261,7 +277,7 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
       placed.push(t)
     }
     const n = Math.max(...list.map((t) => t.track)) + 1
-    for (const t of list) trackOf.set(`${t.key}#${t.i}`, n === 1 ? 0.45 : 0.25 + (0.35 * t.track) / (n - 1))
+    for (const t of list) for (const m of t.members) trackOf.set(m, n === 1 ? 0.45 : 0.25 + (0.35 * t.track) / (n - 1))
   }
   const links = new Map()
   let backIndex = 0
@@ -279,7 +295,7 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
         const mid = horizontal ? p[0] + (q[0] - p[0]) * f : p[1] + (q[1] - p[1]) * f
         segs.push(horizontal ? [p, [mid, p[1]], [mid, q[1]], q] : [p, [p[0], mid], [q[0], mid], q])
       }
-      links.set(e.key, { back: false, segs, via })
+      links.set(e.key, { back: false, segs, via, gathered: gathered.has(e.key) })
     } else {
       // Round the far side across the levels, out of the later box's side and into the earlier one's
       const lo2 = level.get(e.to)
@@ -304,7 +320,8 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
  * Where the labels go. A label sits on the stretch that comes into the box; lines whose labels would sit on one
  * another take other heights along it (candidates from a little past the middle towards the turn). A line whose
  * last stretch is too short has its label on the turn; a back line's label is the middle of its long stretch.
- * @param items  [{ seg: the line's last segment [p, corner1, corner2, q], w: the label's width, back }]
+ * @param items  [{ seg: the line's last segment [p, corner1, corner2, q], w: the label's width, back, gathered }]
+ *               (a line that gathers into a shared bar has its label on the stretch down from its party)
  * @returns [x, y][] in the order of items
  */
 export function placePills(items) {
@@ -321,6 +338,13 @@ export function placePills(items) {
   items.forEach((it, i) => {
     if (it.back) return
     const [p, c1, c2, q] = it.seg
+    if (it.gathered && Math.hypot(c1[0] - p[0], c1[1] - p[1]) >= 28) {
+      // On the line coming down from its party to the bar, at one of three heights
+      const spots = [0.3, 0.75, 0.52].map((f) => [p[0] + (c1[0] - p[0]) * f, p[1] + (c1[1] - p[1]) * f])
+      out[i] = spots.find((c) => !clash(rect(c, it.w))) ?? spots[0]
+      rects.push(rect(out[i], it.w))
+      return
+    }
     const last = Math.hypot(q[0] - c2[0], q[1] - c2[1])
     const cands =
       last >= 30
