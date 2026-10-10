@@ -126,6 +126,14 @@ test('the centre is flagged and in the middle of its own ring', () => {
   }
 })
 
+test('a chain of parties straight up or down is turned towards a side, so a wide screen is used', () => {
+  // The market case has a party two steps out behind one that stands above the centre: it used to stand straight above
+  // that one, so the picture was nearly square (1026 x 926); turned towards the side it is wider than tall
+  const s = JSON.parse(readFileSync('examples/relationship/marketplace-parties.zh-CN.json', 'utf8'))
+  const g = buildFocusGraph(s, {})
+  assert.ok(g.size.width / g.size.height >= 1.4, `${g.size.width} x ${g.size.height}`)
+})
+
 test('the first group stands on the left of the centre, the second on the right', () => {
   const s = load('sample-group-guarantee.zh-CN.json')
   const g = assertSound(s, 'camps')

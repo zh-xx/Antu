@@ -37,6 +37,8 @@ const BOX_GAP = 14
 const LINE_CLEAR = 4
 /** Between two rings, over the boxes' own sizes: room for the arcs that go round the inner ring */
 const RING_GAP = 70
+/** How far, of the way to the nearer side, a party of an outer ring is turned from its parent's direction */
+const SIDE_LEAN = 0.4
 /** The first ring's distance from the centre, over the boxes' own sizes */
 const FIRST_GAP = 60
 /** A camp's name over its parties' boxes */
@@ -210,6 +212,15 @@ export function placeRings(entities, relations, centre, sizes, campOf, labelWOf 
   const radii = [0]
   const halves = [half(centre)]
   const at = (angle, R) => [Math.cos(angle) * R * ASPECT, Math.sin(angle) * R]
+  // A party of an outer ring stands where its parent stands, turned part of the way towards the nearer side:
+  // a chain straight up or down would make the picture tall and narrow on a screen that is wide
+  const leanToSide = (a) => {
+    const target = Math.cos(a) >= -1e-9 ? 0 : Math.PI
+    let d = target - a
+    while (d > Math.PI) d -= Math.PI * 2
+    while (d < -Math.PI) d += Math.PI * 2
+    return a + d * SIDE_LEAN
+  }
 
   for (let k = 1; k < rings.length; k += 1) {
     const members = rings[k]
@@ -267,7 +278,7 @@ export function placeRings(entities, relations, centre, sizes, campOf, labelWOf 
         // circular mean of the parents' angles
         const s = parents.reduce((n, a) => n + Math.sin(a), 0)
         const c = parents.reduce((n, a) => n + Math.cos(a), 0)
-        return Math.atan2(s, c)
+        return leanToSide(Math.atan2(s, c))
       })
       // Children of one parent share an angle: spread them
       const groups = new Map()
