@@ -15,15 +15,14 @@ boxes around parties.
 
 The reader can also switch to a **focus view**: one party in the middle (by default the one with most
 relations; the reader clicks another), the parties tied to it around it, the others further out. It
-suits a case with many parties, where the graph is too busy. The **guarantee chain** shows one block per
-claim (a `debt`) with its guarantors beside it and what stands behind each; for a loan or guarantee
-dispute. **Write `secures` on every guarantee**: without it the chain ties a guarantee to a claim only when
-its creditor has exactly one, and puts it apart otherwise. The **matrix** puts the parties down and across and names the relations in each cell: for "is there any
+suits a case with many parties, where the graph is too busy. **Write `secures` on every guarantee**: it
+names the claim (a `debt`) the guarantee secures, and the graph ties the two lines together. The **matrix**
+puts the parties down and across and names the relations in each cell: for "is there any
 relation between A and B". The **equity tree** draws the `equity` relations in levels with the `share` on each
 line, so **write `share` on every equity relation**. The **authority chart** draws `control`, `employment` and `agency` as an organisation chart; the **related-party
 list** is a table of one party's relations (to paste into a brief); the **path** draws the shortest chains between
-two parties; the **summary** draws each camp (`groupId`) as one block. The same JSON draws in all nine;
-`kind: "focus"`, `"chain"`, `"matrix"`, `"equity"`, `"authority"`, `"related"`, `"path"` or `"summary"` on `layout`, `preview` and `render` shows it.
+two parties in one picture, one start and one end. The same JSON draws in all seven;
+`kind: "focus"`, `"matrix"`, `"equity"`, `"authority"`, `"related"` or `"path"` on `layout`, `preview` and `render` shows it.
 
 ## Three things, three places
 
@@ -35,6 +34,22 @@ groups      the camps            "creditor side", "debtor side" (optional)
 
 It is a cross-section: write the relations as they stand on one date (`asOf`, optional). Do not
 write a history. If the relations changed, write two diagrams.
+
+## A relation is a tie that stands, not something that happened
+
+Write what ties the parties to each other: a debt owed, a shareholding, a marriage, a job, a guarantee,
+an instruction to act for someone. **Do not write acts as relations**: a push, a blow, a stabbing, an
+insult, a lock changed, a visit to press for payment. Those happened once; they belong in a fact
+diagram. Leave them out, and offer the user a fact diagram for them.
+
+The test: is the sentence still true the day after? "A owes B" is; "A pushed B" is not.
+
+An act that leaves a tie behind is written as the tie: lending money is a `debt` (with its `contract`);
+"C sent people to collect the debt" is `agency` from C to those people; pledging a house for a loan is a
+`guarantee` with `secures`. Many acts between the same two parties are no reason for a relation.
+
+Write only the ties the material states. "Her family", "the company's people" do not say who is whose
+mother or who works where: leave such a tie out rather than guess it.
 
 ## The kind of a relation, and its direction
 
@@ -49,7 +64,7 @@ contract     either way, no arrowhead              amount: "CNY 80,000"
 kinship      either way, no arrowhead              spouses, parents and children
 employment   employer -> employee
 agency       principal -> agent
-other        anything else
+other        a standing tie none of the above fits (a lease, a licence); never an act
 ```
 
 `directed: true/false` overrides the kind's default arrowhead. A loan usually needs **two**
@@ -66,6 +81,10 @@ tell which of two loans the guarantee is for.
 `kind` is `person` / `company` / `organization` / `government` / `other` and fixes the shape only.
 `label` is the name; `role` is the role **in this case** on one short line ("Lender", "Guarantor").
 Keep labels short; put registered capital and the like in `detail` (its full text shows on click).
+
+**Two names are two parties** unless the material says they are one. A judgment that hides names writes
+"Fang X" for one person and "Fang Yuan" for another; do not merge them because they look alike, and do
+not merge them with a note saying you did. If it matters and the material does not say, ask the user.
 
 ## Groups
 

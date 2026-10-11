@@ -59,7 +59,7 @@ const USAGE = `Antu ${VERSION}: check and draw an Antu diagram (JSON)
   notice. Nothing of the diagram is sent. ANTU_NO_UPDATE_NOTIFIER=1 turns it off.
 
   --kind K: which way of drawing the same JSON. fact: timeline (the default), chronicle or scale;
-            relationship: graph (the default), focus, chain, matrix, equity, authority, related, path or summary;
+            relationship: graph (the default), focus, matrix, equity, authority, related or path;
             procedure: flow (the default) or route.
 `
 

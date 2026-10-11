@@ -27,7 +27,7 @@ Fields of a relationship spec. "yes" means required.
   id         yes string     unique among relations (a guarantee's secures refers to it)
   from       yes string     entity id; the direction of the relation runs from here
   to         yes string     entity id
-  kind       yes string     equity / control / contract / debt / guarantee / kinship / employment / agency / other. equity: holder -> held. debt: creditor -> debtor. guarantee: guarantor -> creditor. control/employment/agency: the controlling / employing / authorising side first
+  kind       yes string     equity / control / contract / debt / guarantee / kinship / employment / agency / other. equity: holder -> held. debt: creditor -> debtor. guarantee: guarantor -> creditor. control/employment/agency: the controlling / employing / authorising side first. A tie that stands, never an act (a blow, an insult): acts go in a fact diagram
   label      no string     a short phrase on the line; omit it and the engine writes one from the kind ("Holds 60%")
   detail     no string     terms, dates; the full text in the popover
   directed   no boolean    override of the kind's default: contract and kinship have no arrowhead, the rest do

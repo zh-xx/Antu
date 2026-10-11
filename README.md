@@ -29,7 +29,7 @@ Four types of legal content, each drawn in several ways. A selector in the page 
 <tr><th rowspan="1" align="left" valign="middle">Justification</th><td align="center"><a href="examples/justification/fang-yuan-defense-excess.en.json"><img src="assets/kinds/tree.svg" width="88" alt="reasoning tree"><br>reasoning tree</a></td></tr>
 </table>
 
-Relationship diagrams show parties, roles and legal relationships; fact diagrams the time, the participants and how events went;
+Relationship diagrams (seven ways of drawing the same JSON) show parties, roles and legal relationships; fact diagrams the time, the participants and how events went;
 procedure diagrams a procedural path and its branches; justification diagrams a conclusion drawn from norms and facts. The
 relationship and justification schemas are still drafts.
 
