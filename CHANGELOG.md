@@ -3,6 +3,19 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.13.1
+
+A diagram no longer flickers when the pointer is over a node, and a paint-only switch no longer hides every node for a
+moment (#184, fixing #179 and #182). Nothing breaks a file or a tool call.
+
+### Fixed
+- **Hover flicker in the relationship graph, the focus view and the justification tree.** With the real mouse over a
+  node, the node was hidden and shown again about 27 times in 1.4 s, and the pointer switched between the node and the
+  canvas. The shared canvas rebuilt the node set on every hover and dropped each node's measured size, and React Flow
+  hides a node it has not measured. A node of the same id and type now keeps its size across a rebuild; a card whose
+  height really changed (a folded issue) is measured again by React Flow's own resize observer.
+- **A paint-only switch hid every node for a moment** ("Labels", "Merge repeats", and the like), for the same reason.
+
 ## 0.13.0
 
 The relationship diagram was gone over, view by view, on real cases (#171). Lines no longer share a stretch, labels keep
