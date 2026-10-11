@@ -474,6 +474,23 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
       }
     },
 
+    /**
+     * Move the real mouse to the middle of an element (plus an offset), as a person hovering would: the pointer is
+     * hit-tested by the browser, so what it lands on is what the page really shows there. dispatching `mouseover`
+     * from a script cannot tell whether the element under the pointer was hidden for a moment (issue #182).
+     */
+    async hoverAt(expr, { dx = 0, dy = 0 } = {}) {
+      const json = await session.eval(`(() => {
+        const el = (${expr})
+        if (!el) return null
+        const r = el.getBoundingClientRect()
+        return JSON.stringify({ x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) })
+      })()`)
+      if (!json) throw new Error(`Cannot hover element: ${expr}`)
+      const { x, y } = JSON.parse(json)
+      await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x + dx, y: y + dy })
+    },
+
     /** URLs requested during this navigation */
     get requests() {
       return requests.slice()
