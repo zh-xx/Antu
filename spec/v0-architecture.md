@@ -156,7 +156,7 @@ Reason: LLM generation is the bottleneck, the renderer is not. Sacrificing the s
 ```
 JSON (envelope) ──> [validation gate] ──> route by top-level type ──> registry (top-level type × sub-type)
                                               ├─ relationship
-                                              │    └─ graph, focus, chain, matrix, equity, authority, related, path, summary   ← done
+                                              │    └─ graph, focus, matrix, equity, authority, related, path   ← done
                                               ├─ fact
                                               │    └─ timeline, chronicle, scale   ← done
                                               ├─ procedure

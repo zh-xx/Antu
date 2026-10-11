@@ -1,7 +1,7 @@
 // ============================================================
 //  src/renderers/relationship/LevelledView.jsx — the page of a levelled relationship view (shared)
 //
-//  The equity tree, the authority chart, the relation path and the camp summary are all a pure layout
+//  The equity tree, the authority chart and the relation path are all a pure layout
 //  (one `build(spec, options)` returning party boxes and one line layer) drawn by the graph's own party
 //  box and LineLayerNode. This holds what they share: the labels switch (remembered together with the
 //  graph's), the hover and pin of a party's overlay, fit to width or not, the dock and the export.
@@ -12,7 +12,6 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../shell/Canvas.jsx'
-import { usePrefs } from '../../shell/env.js'
 import { PreviewContext } from '../../shell/previewContext.js'
 import { useExport } from '../../shell/useExport.js'
 import { useLang } from '../../shell/LangContext.jsx'
@@ -20,21 +19,17 @@ import EntityNode from './graph/EntityNode.jsx'
 import FocusDock from './focus/FocusDock.jsx'
 import LineLayerNode from './LineLayerNode.jsx'
 import { useSelectEvent } from '../../shell/useSelectEvent.js'
+import { useSpecPref } from './useSpecPref.js'
 
 const nodeTypes = { rnode: EntityNode, lineLayer: LineLayerNode }
 
-export default function LevelledView({ spec, build, className, options = {}, onParty = null, dockExtra = null, fitWidth = true, decorate = null }) {
-  const prefs = usePrefs()
+export default function LevelledView({ spec, build, className, options = {}, onParty = null, dockExtra = null, fitWidth = true, decorate = null, fitMaxZoom = 0 }) {
   const specKey = `rel:${spec?.title || ''}`
   const { t, lang } = useLang()
 
-  const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().relationshipFieldsByDiagram || {})
-  const showLabels = fieldPrefs[specKey]?.labels ?? true
-  const setLabels = (v) => {
-    const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], labels: v } }
-    setFieldPrefs(map)
-    prefs.write({ relationshipFieldsByDiagram: map })
-  }
+  const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey)
+  const showLabels = stored?.labels ?? true
+  const setLabels = (v) => setStored({ ...stored, labels: v })
 
   const optionsKey = JSON.stringify(options)
   const layout = useMemo(() => build(spec, { ...options, t }), [spec, lang, optionsKey])
@@ -66,6 +61,7 @@ export default function LevelledView({ spec, build, className, options = {}, onP
           fitKey={layout}
           fitWidth={fitWidth}
           fitSelf={!fitWidth}
+          fitMaxZoom={fitMaxZoom}
           nodeTypes={nodeTypes}
           onNodeMouseEnter={(_, n) => {
             if (n.type === 'rnode') setHoveredId(n.id)

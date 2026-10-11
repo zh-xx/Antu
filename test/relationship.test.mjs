@@ -11,6 +11,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import fs, { readFileSync } from 'node:fs'
 
 import '../src/renderers/index.js'
 import { validateSpec } from '../src/core/validate.js'
@@ -503,4 +504,122 @@ test('the real cases stand with (almost) no crossing when the picture runs down 
     // the marketplace case had six; one line into a crowded side of the group sample is left
     assert.ok(n <= (f.startsWith('marketplace') ? 0 : 1), `${f}: ${n} crossings`)
   }
+})
+
+test('no two links share a stretch; two loans on one pair are two lines, their labels apart', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs')
+  const segs = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
+  // Two axis-aligned segments on one line that overlap for more than a pixel
+  const share = ([a, b], [c, d]) => {
+    const h1 = Math.abs(a[1] - b[1]) < 0.5
+    const h2 = Math.abs(c[1] - d[1]) < 0.5
+    if (h1 !== h2) return false
+    const [k, i] = h1 ? [1, 0] : [0, 1]
+    if (Math.abs(a[k] - c[k]) > 0.5) return false
+    return Math.min(Math.max(a[i], b[i]), Math.max(c[i], d[i])) - Math.max(Math.min(a[i], b[i]), Math.min(c[i], d[i])) > 1
+  }
+  const ov = (a, b) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 1 && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 1
+  const rect = (c) => ({ x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height })
+  const dir = 'examples/relationship/'
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+    for (const o of ['vertical', 'horizontal']) {
+      const g = buildRelationshipGraph(JSON.parse(readFileSync(dir + f, 'utf8')), {}, undefined, o)
+      g.connections.forEach((c, i) =>
+        g.connections.slice(i + 1).forEach((d) => {
+          assert.ok(!segs(c.points).some((s) => segs(d.points).some((t) => share(s, t))), `${f} ${o}: "${c.label}" and "${d.label}" share a stretch`)
+          // two relations on one pair: their labels never stand on each other
+          if ([c.from, c.to].sort().join() === [d.from, d.to].sort().join()) assert.ok(!ov(rect(c), rect(d)), `${f} ${o}: "${c.label}" on "${d.label}"`)
+        }),
+      )
+    }
+  }
+})
+
+test('the borrower is not hidden behind her husband: both loans run straight to her (Fang Yuan, vertical)', () => {
+  const spec = JSON.parse(readFileSync('examples/relationship/fang-yuan-parties.zh-CN.json', 'utf8'))
+  const g = buildRelationshipGraph(spec)
+  for (const id of ['r-1', 'r-2']) {
+    const c = g.connections.find((x) => x.relationId === id)
+    assert.equal(c.points.length, 2, `${c.label}: one straight line`)
+  }
+  // and no label sits on a camp's title
+  const titles = g.groupBoxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: 32 }))
+  const ov = (a, b) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 1 && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 1
+  for (const c of g.connections) {
+    const r = { x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height }
+    assert.ok(!titles.some((t) => ov(r, t)), `"${c.label}" on a camp's title`)
+  }
+})
+
+test('two links running side by side keep at least 15 px apart (review on PR 171: 11 px read as one line)', () => {
+  const { readdirSync } = fs
+  const segs = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
+  const gap = ([a, b], [c, d]) => {
+    const h1 = Math.abs(a[1] - b[1]) < 0.5
+    if (h1 !== Math.abs(c[1] - d[1]) < 0.5) return Infinity
+    const [k, i] = h1 ? [1, 0] : [0, 1]
+    const ov = Math.min(Math.max(a[i], b[i]), Math.max(c[i], d[i])) - Math.max(Math.min(a[i], b[i]), Math.min(c[i], d[i]))
+    return ov > 4 ? Math.abs(a[k] - c[k]) : Infinity
+  }
+  const dir = 'examples/relationship/'
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+    for (const o of ['vertical', 'horizontal']) {
+      const g = buildRelationshipGraph(JSON.parse(readFileSync(dir + f, 'utf8')), {}, undefined, o)
+      g.connections.forEach((c, i) =>
+        g.connections.slice(i + 1).forEach((d) => {
+          for (const s of segs(c.points)) for (const t of segs(d.points)) assert.ok(gap(s, t) >= 15, `${f} ${o}: "${c.label}" and "${d.label}" ${gap(s, t)} px apart`)
+        }),
+      )
+    }
+  }
+})
+
+test('validation: a diagram without a title, and a source that is not a source, are errors (rules 17 and 18)', () => {
+  const noTitle = { ...base(), title: '   ' }
+  assert.ok(validateRelationship(noTitle).some((e) => /title/.test(e)), 'a blank title')
+  const noTitle2 = base()
+  delete noTitle2.title
+  assert.ok(validateRelationship(noTitle2).some((e) => /title/.test(e)), 'no title')
+  const bad = { ...base(), sources: [{}, { id: 's-1', type: 'rumour', name: 'x' }, 'x', { id: 's-1', type: 'web', name: 'y' }] }
+  const errors = validateRelationship(bad).join('\n')
+  assert.match(errors, /sources\[0\]: missing required field `id`/)
+  assert.match(errors, /sources\[0\]: missing required field `name`/)
+  assert.match(errors, /sources\[1\] \(s-1\): `type` "rumour" is not one of/)
+  assert.match(errors, /sources\[2\]: must be an object/)
+  assert.match(errors, /sources\[3\] \(s-1\): id "s-1" duplicates an earlier source/)
+  assert.deepEqual(validateRelationship({ ...base(), sources: ['s-1', 's-2', 's-3'].map((id) => ({ id, type: 'web', name: id })) }), [])
+})
+
+test('the graph says so when there are many relations, and ids that contain | do not merge two pairs', async () => {
+  const many = base()
+  many.entities = Array.from({ length: 12 }, (_, i) => ({ id: `e${i}`, kind: 'company', label: `C${i}` }))
+  many.groups = []
+  many.relations = Array.from({ length: 45 }, (_, i) => ({ id: `r${i}`, from: `e${i % 12}`, to: `e${(i + 1 + (i % 5)) % 12}`, kind: 'contract', label: `c${i}` }))
+  many.relations = many.relations.filter((r) => r.from !== r.to)
+  assert.ok(buildRelationshipGraph(many, {}).hints.some((h) => /relations: past about 40/.test(h)))
+  // Two different pairs whose ids join to the same text
+  const { buildPathGraph } = await import('../src/renderers/relationship/path/layout.js')
+  const s = {
+    type: 'relationship',
+    specVersion: 1,
+    title: 't',
+    entities: [{ id: 'a|b', kind: 'company', label: 'AB' }, { id: 'c', kind: 'company', label: 'C' }, { id: 'a', kind: 'company', label: 'A' }, { id: 'b|c', kind: 'company', label: 'BC' }],
+    relations: [
+      { id: 'r1', from: 'a|b', to: 'c', kind: 'contract', label: 'x' },
+      { id: 'r2', from: 'a', to: 'b|c', kind: 'contract', label: 'y' },
+      { id: 'r3', from: 'c', to: 'a', kind: 'contract', label: 'z' },
+    ],
+  }
+  const g = buildPathGraph(s, { from: 'a|b', to: 'b|c' })
+  assert.equal(g.errors.length, 0)
+  assert.equal(g.nodes.filter((n) => n.type === 'rnode').length, 4)
+})
+
+test('a long chain of authority (20000 parties) is classified without overflowing the stack', async () => {
+  const { classifyAuthority } = await import('../src/renderers/relationship/authority/layout.js')
+  const N = 20000
+  const entities = Array.from({ length: N }, (_, i) => ({ id: `e${i}`, kind: 'person', label: `p${i}` }))
+  const relations = Array.from({ length: N - 1 }, (_, i) => ({ id: `r${i}`, from: `e${i}`, to: `e${i + 1}`, kind: 'control' }))
+  const g = classifyAuthority({ type: 'relationship', specVersion: 1, title: 't', entities, relations })
+  assert.equal(Math.max(...g.level.values()), N - 1)
 })

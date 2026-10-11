@@ -33,8 +33,8 @@ function assertSound(s, label) {
   assert.deepEqual(g.errors, [], `${label}: valid`)
   const p = classifyEquity(s)
   const treeIds = new Set(p.ids)
-  for (const e of s.entities) assert.ok(treeIds.has(e.id) || p.apart.some((a) => a.id === e.id), `${label}: ${e.id} is in the tree or listed apart`)
-  assert.equal(p.edges.length + p.rest.length, s.relations.length, `${label}: every relation is a line or a row of the rest`)
+  for (const e of s.entities) assert.ok(treeIds.has(e.id) || p.apart.some((a) => a.id === e.id) || p.above.some((r) => r.from === e.id || r.to === e.id), `${label}: ${e.id} is in the tree, above it or listed apart`)
+  assert.equal(p.edges.length + p.above.length + p.rest.length, s.relations.length, `${label}: every relation is a line, above it or a row of the rest`)
   const boxes = g.nodes.filter((n) => n.type === 'rnode').map((n) => ({ id: n.id, x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }))
   for (let i = 0; i < boxes.length; i++) {
     const a = boxes[i]
@@ -52,7 +52,7 @@ function assertSound(s, label) {
 
 test('the equity tree is a registered relationship kind, after the matrix', () => {
   registerKnowledge('relationship', relationshipKnowledge)
-  assert.deepEqual(layoutKindsOf('relationship').slice(0, 5), ['graph', 'focus', 'chain', 'matrix', 'equity'])
+  assert.deepEqual(layoutKindsOf('relationship').slice(0, 4), ['graph', 'focus', 'matrix', 'equity'])
 })
 
 for (const f of files) {
@@ -87,7 +87,8 @@ test('a line that skips a level goes around the boxes of that level', () => {
     for (const [px, py] of l.via) {
       for (const b of boxes) assert.ok(!(px > b.x && px < b.x + b.w && py >= b.y && py <= b.y + b.h), `waypoint (${px}, ${py}) is inside ${b.id}`)
     }
-    assert.equal((l.d.match(/ C /g) ?? []).length, l.via.length + 1, 'one curve between each pair of points')
+    assert.ok(!/ C /.test(l.d), 'straight stretches and right-angle turns, no curve')
+    for (const [px, py] of l.via) assert.ok(l.d.includes(`L ${px} ${py}`), 'the line goes through its waypoint')
   }
 })
 
@@ -122,13 +123,13 @@ test('a cross-holding is drawn once, upward and dashed', () => {
   assertSound(ring, 'ring')
 })
 
-test('no equity at all: an explicit empty state, and the rest still listed', () => {
+test('no equity at all: an explicit empty state', () => {
   const s = spec([entity('a'), entity('b')], [rel('r1', 'a', 'b', 'contract')])
   const g = assertSound(s, 'none')
   const layer = g.nodes[0].data
   assert.equal(layer.empties.length, 1)
   assert.equal(g.equityLines, 0)
-  assert.ok(layer.frames.length >= 2, 'the parties and the other relations are listed')
+  assert.equal(layer.frames.length, 0, 'no lists of what the picture leaves out')
 })
 
 test('the share is written without trailing noise', () => {
@@ -143,4 +144,44 @@ test('the report names what the data leaves unsaid, by kind', () => {
   assert.equal(r.ok, true)
   assert.equal(r.noShare, 1)
   assert.match(formatLayoutReport(r), /no share written/)
+})
+
+test('several separate structures: the busiest party opens, any party can be picked, "all" keeps everything', () => {
+  // two holders of A, A holds B (one structure); X holds Y (another)
+  const s = spec(
+    [entity('h1'), entity('h2'), entity('a'), entity('b'), entity('x'), entity('y')],
+    [holds('r1', 'h1', 'a', 60), holds('r2', 'h2', 'a', 40), holds('r3', 'a', 'b', 100), holds('r4', 'x', 'y', 100)],
+  )
+  // Nothing asked: the structure with most lines, opened on its busiest party (a: three lines)
+  const opened = classifyEquity(s)
+  assert.equal(opened.company, 'a')
+  // The party at the top and what is below it; its holders are written under the picture
+  assert.deepEqual(opened.ids.sort(), ['a', 'b'])
+  assert.deepEqual(opened.above.map((r) => r.id).sort(), ['r1', 'r2'])
+  assert.deepEqual(opened.rest.map((r) => r.id), ['r4'], 'the line outside the picture is listed, not dropped')
+  assert.deepEqual(opened.apart.map((e) => e.id).sort(), ['x', 'y'])
+  // A party with nothing below it would be a lone box: its picture is everyone above it too
+  const b = classifyEquity(s, 'b')
+  assert.deepEqual(b.ids.sort(), ['a', 'b', 'h1', 'h2'])
+  assert.deepEqual(b.above, [])
+  const y = classifyEquity(s, 'y')
+  assert.deepEqual(y.ids.sort(), ['x', 'y'])
+  assert.equal(y.edges.length + y.above.length + y.rest.length, s.relations.length)
+  // "All" draws every line, as before
+  const all = classifyEquity(s, '*')
+  assert.equal(all.company, null)
+  assert.equal(all.edges.length, 4)
+  // The page says which party it is and lists the parties to pick from
+  const g = buildEquityGraph(s, { company: 'y' })
+  assert.equal(g.company, 'y')
+  assert.deepEqual(g.companies.map((c) => c.id), ['h1', 'h2', 'a', 'b', 'x', 'y'])
+  assert.equal(g.treeParties, 2)
+  assertSound(s, 'several structures')
+})
+
+test('one structure opens on all of it, and a party the data does not have falls back to the default', () => {
+  const s = spec([entity('h'), entity('a'), entity('b')], [holds('r1', 'h', 'a', 100), holds('r2', 'a', 'b', 100)])
+  assert.equal(classifyEquity(s).company, null)
+  assert.equal(classifyEquity(s, 'nobody').company, null)
+  assert.equal(classifyEquity(s).edges.length, 2)
 })

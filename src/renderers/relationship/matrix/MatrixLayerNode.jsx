@@ -1,9 +1,9 @@
 // ============================================================
 //  src/renderers/relationship/matrix/MatrixLayerNode.jsx — the whole relation matrix, as one layer
 //
-//  Bands, the grid, the heads, and the chips in the cells. One decoration layer (1×1 to React Flow, drawn
+//  Bands, the ruled grid, the heads, and the text of each relation in its cell. One decoration layer (1×1 to React Flow, drawn
 //  at full size inside); paint is given as SVG attributes so the exported picture keeps it. The chips'
-//  text is HTML laid over the SVG, as in the guarantee chain.
+//  text is HTML laid over the SVG.
 // ============================================================
 
 import { memo } from 'react'
@@ -25,32 +25,29 @@ const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
           const tone = theme.camp[b.tone] ?? theme.camp[0]
           return (
             <g key={`b${i}`}>
-              <rect x={b.top.x} y={b.top.y} width={b.top.w} height={b.top.h} rx={6} fill={tone.fill} stroke={tone.stroke} />
-              <rect x={b.left.x} y={b.left.y} width={b.left.w} height={b.left.h} rx={6} fill={tone.fill} stroke={tone.stroke} />
+              <rect x={b.top.x} y={b.top.y} width={b.top.w} height={b.top.h} fill={tone.fill} stroke={tone.stroke} />
+              <rect x={b.left.x} y={b.left.y} width={b.left.w} height={b.left.h} fill={tone.fill} stroke={tone.stroke} />
             </g>
           )
         })}
+        {/* The head row and the head column are cells of their own, shaded, and so is the empty one where they meet */}
+        <rect x={corner.x} y={corner.y} width={corner.w} height={corner.h} fill={theme.color.chip} stroke={theme.color.ink4} />
+        <rect x={left} y={topY} width={right - left} height={heads[0].h} fill={theme.color.chip} />
+        <rect x={rowHeads[0].x} y={rowHeads[0].y} width={rowHeads[0].w} height={bottom - rowHeads[0].y} fill={theme.color.chip} />
         {diagonal.map((d, i) => (
           <rect key={`d${i}`} x={d.x} y={d.y} width={d.w} height={d.h} fill={theme.color.chip} />
         ))}
-        {/* The grid: a hairline between rows and between columns */}
+        {/* The grid: ruled lines between rows and between columns, as in a table */}
         {rowHeads.map((r, i) => (
-          <line key={`rl${i}`} x1={rowHeads[0].x} x2={right} y1={r.y} y2={r.y} stroke={theme.color.line} />
+          <line key={`rl${i}`} x1={rowHeads[0].x} x2={right} y1={r.y} y2={r.y} stroke={theme.color.ink4} />
         ))}
-        <line x1={rowHeads[0].x} x2={right} y1={bottom} y2={bottom} stroke={theme.color.line} />
+        <line x1={rowHeads[0].x} x2={right} y1={bottom} y2={bottom} stroke={theme.color.ink4} />
         {heads.map((c, i) => (
-          <line key={`cl${i}`} x1={c.x} x2={c.x} y1={topY} y2={bottom} stroke={theme.color.line} />
+          <line key={`cl${i}`} x1={c.x} x2={c.x} y1={topY} y2={bottom} stroke={theme.color.ink4} />
         ))}
-        <line x1={right} x2={right} y1={topY} y2={bottom} stroke={theme.color.line} />
-        <line x1={left} x2={right} y1={topY + heads[0].h} y2={topY + heads[0].h} stroke={theme.color.ink4} />
-        <line x1={left} x2={left} y1={topY} y2={bottom} stroke={theme.color.ink4} />
-        {showLabels &&
-          cells.flatMap((c) =>
-            c.chips.map((ch, i) => {
-              const p = relationPaint(ch.kind, theme)
-              return <rect key={`${c.row}|${c.col}|${i}`} x={ch.x} y={ch.y} width={ch.w} height={ch.h} rx={8} fill={p.stroke} fillOpacity={0.12} stroke={p.stroke} strokeWidth={1} strokeDasharray={p.dash} />
-            }),
-          )}
+        <line x1={right} x2={right} y1={topY} y2={bottom} stroke={theme.color.ink4} />
+        <line x1={left} x2={right} y1={topY + heads[0].h} y2={topY + heads[0].h} stroke={theme.color.ink} strokeWidth={1.5} />
+        <line x1={left} x2={left} y1={topY} y2={bottom} stroke={theme.color.ink} strokeWidth={1.5} />
         {!showLabels &&
           cells.flatMap((c) =>
             c.chips.map((ch, i) => {
@@ -62,9 +59,6 @@ const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
           )}
       </svg>
 
-      <div className="antu-mx-corner" style={{ left: corner.x, top: corner.y, width: corner.w, height: corner.h }}>
-        {corner.text}
-      </div>
       {bands.map((b, i) => (
         <div key={`bt${i}`}>
           <div className="antu-mx-band" style={{ left: b.top.x, top: b.top.y, width: b.top.w, height: b.top.h, color: (theme.camp[b.tone] ?? theme.camp[0]).text }}>
@@ -88,7 +82,7 @@ const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
       {showLabels &&
         cells.flatMap((c) =>
           c.chips.map((ch, i) => (
-            <span key={`t${c.row}|${c.col}|${i}`} className={`antu-mx-chip k-${ch.kind}`} data-rel={ch.id} style={{ left: ch.x, top: ch.y, width: ch.w, height: ch.h, color: relationPaint(ch.kind, theme).stroke }}>
+            <span key={`t${c.row}|${c.col}|${i}`} className={`antu-mx-chip k-${ch.kind}`} data-rel={ch.id} style={{ left: ch.x, top: ch.y, width: ch.w, height: ch.h }}>
               <span>{ch.text}</span>
             </span>
           )),

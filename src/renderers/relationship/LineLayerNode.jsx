@@ -1,9 +1,9 @@
 // ============================================================
 //  src/renderers/relationship/LineLayerNode.jsx — everything of a levelled relationship view that is not a party box
 //
-//  Shared by the equity tree, the authority chart, the relation path and the camp summary: one decoration
+//  Shared by the equity tree, the authority chart and the relation path: one decoration
 //  layer (1×1 to React Flow, drawn at full size inside) holding the lines from box to box, their pills,
-//  the camp blocks of the summary, the frames of the sections under the picture, and the text in them.
+//  the frames of the sections under the picture, and the text in them.
 //  Paint is given as SVG attributes (and the pills' border as CSS the export keeps), so the exported
 //  picture shows what the screen shows. A line is painted by its relation kind (palette.js).
 // ============================================================
@@ -14,7 +14,7 @@ import { useTheme } from '../../theme/ThemeContext.jsx'
 
 const LineLayerNode = memo(function LineLayerNode({ data }) {
   const { theme } = useTheme()
-  const { width, height, links, pills, blocks = [], empties, frames, texts, table = null, showLabels = true } = data
+  const { width, height, links, pills, empties, frames, texts, table = null, showLabels = true } = data
   const kinds = [...new Set(links.filter((l) => l.arrow !== 'none').map((l) => (l.ink ? 'ink' : l.kind ?? 'equity')))]
   return (
     <div className="antu-ln-layer" style={{ width, height }}>
@@ -47,10 +47,6 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
             </text>
           </g>
         ))}
-        {blocks.map((b, i) => {
-          const tone = theme.camp[b.tone] ?? theme.camp[2]
-          return <rect key={`b${i}`} x={b.x} y={b.y} width={b.w} height={b.h} rx={theme.radius.group} fill={tone.fill} stroke={tone.stroke} strokeWidth={1.5} />
-        })}
         {empties.map((e, i) => (
           <g key={`e${i}`}>
             <rect x={e.x} y={e.y} width={e.w} height={e.h} rx={theme.radius.group} fill={theme.color.chip} stroke={theme.color.ink4} strokeDasharray="4 4" />
@@ -92,29 +88,13 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
           r.cells.map((c, i) => (
             <div key={`${r.id}:${i}`} className={`antu-ln-cell${c.bold ? ' is-first' : ''}`} data-row={r.id} style={{ left: c.x, top: c.y ?? r.y, width: c.w, height: c.h ?? r.h }}>
               {c.lines.map((l, j) => (
-                <div key={j} className={i === 0 && j > 0 ? 'antu-ln-cell-sub' : undefined}>
+                <div key={j} className={(i === 0 || c.sub) && j > 0 ? 'antu-ln-cell-sub' : undefined}>
                   {l}
                 </div>
               ))}
             </div>
           )),
         )}
-      {blocks.map((b, i) => {
-        const tone = theme.camp[b.tone] ?? theme.camp[2]
-        return (
-          <div key={`bt${i}`} className="antu-ln-block" data-block={b.id} style={{ left: b.x, top: b.y, width: b.w, height: b.h }}>
-            <div className="antu-ln-block-title" style={{ color: tone.text }}>
-              {b.title}
-            </div>
-            {b.lines.map((x, j) => (
-              <div key={j} className="antu-ln-block-line">
-                {x}
-              </div>
-            ))}
-            {b.foot && <div className="antu-ln-block-foot">{b.foot}</div>}
-          </div>
-        )
-      })}
       {showLabels &&
         pills.map((p, i) => (
           <span
@@ -127,7 +107,7 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
           </span>
         ))}
       {texts.map((x, i) => (
-        <div key={`t${i}`} className={`antu-ln-text${x.tone === 'note' ? ' is-note' : x.tone === 'row' ? ' is-row' : ''}`} style={{ left: x.x, top: x.y, width: x.w }}>
+        <div key={`t${i}`} className={`antu-ln-text${x.tone === 'note' ? ' is-note' : x.tone === 'row' ? ' is-row' : x.tone === 'title' ? ' is-title' : ''}`} style={{ left: x.x, top: x.y, width: x.w }}>
           <div>{x.main}</div>
           {x.sub && <div className="antu-ln-text-sub">{x.sub}</div>}
         </div>

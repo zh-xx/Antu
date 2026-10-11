@@ -2,7 +2,7 @@
 //  src/renderers/relationship/graph/ConnectionLayerNode.jsx — the link layer (a decoration node)
 //
 //  Every relation of the graph is drawn here, in one SVG, from the geometry layout.js already
-//  computed (`points` / `d` / `dCurve` / `labelAt`). This file computes no geometry of its own,
+//  computed (`points` / `d` / `dCurve` where the layout has a curved drawing of the line / `labelAt`). This file computes no geometry of its own,
 //  apart from the tie of a guarantee to the claim it secures (secures.js).
 //
 //  Hiding a kind of relation is done here, by not drawing it: the layout is never asked again, so
@@ -63,7 +63,7 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
 
         {visible.map((c) => {
           const p = relationPaint(c.kind, theme)
-          const d = curved ? c.dCurve : c.d
+          const d = curved && c.dCurve ? c.dCurve : c.d
           const marker = c.directed ? `url(#antu-rarrow-${c.kind})` : undefined
           return (
             <g key={c.id} className={`antu-rlink k-${c.kind}`} opacity={opacityOf(c)}>

@@ -7,27 +7,26 @@
 //  right and is wide, so it opens fitted to the whole picture, not to its width.
 // ============================================================
 
-import { useState } from 'react'
-
-import { usePreset, usePrefs } from '../../../shell/env.js'
+import { usePreset } from '../../../shell/env.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import LevelledView from '../LevelledView.jsx'
 import { buildPathGraph } from './layout.js'
+import { useSpecPref } from '../useSpecPref.js'
+
+/** The path opens no larger than this (the review of PR 171: it filled the whole screen with no room to breathe) */
+const OPEN_MAX_ZOOM = 1
 
 export default function RelationshipPath({ spec }) {
   // External preset (antu_preview, the skill's preview): `from` and `to` name the two ends
   // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
   const PRESET = usePreset()
-  const prefs = usePrefs()
   const specKey = `rel:${spec?.title || ''}`
   const { t } = useLang()
-  const [ends, setEnds] = useState(() => prefs.read().relationshipPaths?.[specKey] || {})
-  const asked = { from: PRESET?.from ?? ends.from, to: PRESET?.to ?? ends.to }
-  const setEnd = (patch) => {
-    const next = { ...ends, ...patch }
-    setEnds(next)
-    prefs.write({ relationshipPaths: { ...(prefs.read().relationshipPaths || {}), [specKey]: next } })
-  }
+  // The two ends, remembered per diagram; a preview's preset gives the first values
+  const [stored, setStored] = useSpecPref('relationshipPaths', specKey, (was) => (PRESET?.from || PRESET?.to ? { ...was, ...(PRESET.from ? { from: PRESET.from } : {}), ...(PRESET.to ? { to: PRESET.to } : {}) } : was))
+  const ends = stored || {}
+  const asked = { from: ends.from, to: ends.to }
+  const setEnd = (patch) => setStored({ ...ends, ...patch })
   const pick = (layoutValue, key) => (
     <select className="antu-dock-chip antu-pt-end" value={layoutValue} onChange={(e) => setEnd({ [key]: e.target.value })} title={t(`rel.path.${key}`)} aria-label={t(`rel.path.${key}`)}>
       {spec.entities.map((e) => (
@@ -44,6 +43,7 @@ export default function RelationshipPath({ spec }) {
       className="antu-pt"
       options={asked}
       fitWidth={false}
+      fitMaxZoom={OPEN_MAX_ZOOM}
       dockExtra={(layout) => (
         <>
           {pick(layout.from, 'from')}

@@ -71,7 +71,7 @@ than an empty table (an empty table reads as "this type exists, it is just empty
 | `antu_versions` | Which diagram types and which ways of drawing (`kind`) there are, with the version and status of each and the generation of each type's JSON format; optional `type`. The same list as `antu versions` on the command line and `spec/versions.md` | a few lines | no |
 
 `antu_layout`, `antu_render` and `antu_preview` take an optional `kind`: the way of drawing (a fact
-diagram is `timeline`, the default, `chronicle` or `scale`; a relationship diagram is `graph`, the default, `focus`, `chain`, `matrix`, `equity`, `authority`, `related`, `path` or `summary`; a procedure diagram is `flow`, the default, or `route`). An unknown kind is refused with the list of
+diagram is `timeline`, the default, `chronicle` or `scale`; a relationship diagram is `graph`, the default, `focus`, `matrix`, `equity`, `authority`, `related` or `path`; a procedure diagram is `flow`, the default, or `route`). An unknown kind is refused with the list of
 kinds. `antu_render` with a kind makes the page open in it; the reader can still switch.
 
 `antu_render` and `antu_preview` also take an optional `theme`: the look of the page (`document`, black and white for print, the default; `modern`; `legal`, navy). Only the diagram is themed. Without `theme` the reader chooses in the label card and the choice is remembered; with it the page is fixed to that theme. An unknown theme is refused. See [theme.md](theme.md).

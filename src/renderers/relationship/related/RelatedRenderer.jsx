@@ -6,30 +6,21 @@
 //  The layout (related/layout.js) is pure; the page is the shared levelled view.
 // ============================================================
 
-import { useState } from 'react'
-
-import { usePreset, usePrefs } from '../../../shell/env.js'
+import { usePreset } from '../../../shell/env.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import LevelledView from '../LevelledView.jsx'
 import { buildRelatedGraph } from './layout.js'
+import { useSpecPref } from '../useSpecPref.js'
 
 export default function RelationshipRelated({ spec }) {
   // External preset (antu_preview, the skill's preview): `centre` names the party
   // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
   const PRESET = usePreset()
-  const prefs = usePrefs()
   const specKey = `rel:${spec?.title || ''}`
   const { t } = useLang()
   // The centre is shared with the focus view: picking one party there picks it here
-  const [centres, setCentres] = useState(() => prefs.read().relationshipCentres || {})
-  const chosen = PRESET?.centre ?? centres[specKey]
-  const setCentre = (id) => {
-    const map = { ...centres }
-    if (id === '') delete map[specKey]
-    else map[specKey] = id
-    setCentres(map)
-    prefs.write({ relationshipCentres: map })
-  }
+  const [chosen, setChosen] = useSpecPref('relationshipCentres', specKey, (was) => PRESET?.centre ?? was)
+  const setCentre = (id) => setChosen(id === '' ? null : id)
   return (
     <LevelledView
       spec={spec}

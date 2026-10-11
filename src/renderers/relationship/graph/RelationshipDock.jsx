@@ -73,7 +73,9 @@ export default function RelationshipDock({
 
         <span className="antu-dock-sep" />
 
-        <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} />
+        {/* The buttons say which way the levels run; with the camps boxed the camps stand across that way, which is why the
+            picture can look the other way round (the review of PR 171): the tooltip says so */}
+        <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} title={t(hasGroups && showGroups ? 'dock.orientationCamps' : 'dock.orientation')} />
 
         <DockSegmented options={LINK_STYLES} value={linkStyle} onChange={onToggleLinkStyle} title={t('flow.linkStyle')} />
 

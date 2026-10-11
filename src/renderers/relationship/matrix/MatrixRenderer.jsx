@@ -7,31 +7,26 @@
 //  opens fitted to its width like the chronicle.
 // ============================================================
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { usePrefs } from '../../../shell/env.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import FocusDock from '../focus/FocusDock.jsx'
 import MatrixLayerNode from './MatrixLayerNode.jsx'
 import { buildMatrixGraph } from './layout.js'
+import { useSpecPref } from '../useSpecPref.js'
 
 const nodeTypes = { matrixLayer: MatrixLayerNode }
 
 export default function RelationshipMatrix({ spec }) {
-  const prefs = usePrefs()
   const specKey = `rel:${spec?.title || ''}`
   const { t, lang } = useLang()
 
   // The labels switch is shared with the graph and the other kinds (same key)
-  const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().relationshipFieldsByDiagram || {})
-  const showLabels = fieldPrefs[specKey]?.labels ?? true
-  const setLabels = (v) => {
-    const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], labels: v } }
-    setFieldPrefs(map)
-    prefs.write({ relationshipFieldsByDiagram: map })
-  }
+  const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey)
+  const showLabels = stored?.labels ?? true
+  const setLabels = (v) => setStored({ ...stored, labels: v })
 
   const layout = useMemo(() => buildMatrixGraph(spec, { t }), [spec, lang])
   const graph = useMemo(

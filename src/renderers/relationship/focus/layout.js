@@ -25,20 +25,22 @@
 // ============================================================
 
 import { validateRelationship, hintsOfRelationship, isDirected } from '../graph/rules.js'
-import { labelOf } from '../graph/layout.js'
+import { labelOf, permutations } from '../graph/layout.js'
 import { sizeOf, labelBox, PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
 import { tEn } from '../../../core/i18n.js'
 
 /** The rings are ellipses, wider than tall (a screen is) */
-export const ASPECT = 1.5
+export const ASPECT = 1.7
 /** Clear space kept between two boxes, and around a box for a line to pass */
 const BOX_GAP = 14
 const LINE_CLEAR = 4
 /** Between two rings, over the boxes' own sizes: room for the arcs that go round the inner ring */
-const RING_GAP = 100
+const RING_GAP = 70
+/** How far, of the way to the nearer side, a party of an outer ring is turned from its parent's direction */
+const SIDE_LEAN = 0.4
 /** The first ring's distance from the centre, over the boxes' own sizes */
-const FIRST_GAP = 90
+const FIRST_GAP = 60
 /** A camp's name over its parties' boxes */
 export const CAMP_TAG_H = 18
 /** Islands: the gap between two, and the gap between the picture and the islands' caption */
@@ -46,7 +48,10 @@ const ISLAND_GAP = 56
 const ISLAND_ROW_GAP = 64
 export const NOTE_H = 24
 /** Parallel relations between one pair of parties are drawn this far apart */
-const PARALLEL_STEP = 14
+const PARALLEL_STEP = 24
+/** A line a party stands in the way of bends out to the side: first this far from the straight line, then further by this step */
+const DETOUR = 36
+const DETOUR_STEP = 20
 
 const rectOf = (p) => ({ x: p.x, y: p.y, w: p.w, h: p.h })
 const centreOf = (r) => [r.x + r.w / 2, r.y + r.h / 2]
@@ -82,6 +87,17 @@ export function clipToBox(r, to, outset = 2) {
   if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) return [cx, cy - r.h / 2 - outset]
   const k = Math.min((r.w / 2 + outset) / (Math.abs(dx) || 1e-9), (r.h / 2 + outset) / (Math.abs(dy) || 1e-9))
   return [cx + dx * k, cy + dy * k]
+}
+
+/** Where the line from `from` (inside the box) towards `to` leaves the box, `outset` beyond its edge */
+export function exitOf(r, from, to, outset = 2) {
+  const [cx, cy] = centreOf(r)
+  const dx = to[0] - from[0]
+  const dy = to[1] - from[1]
+  const along = (d, p, c, half) => (Math.abs(d) < 1e-9 ? Infinity : (Math.sign(d) * (half + outset) - (p - c)) / d)
+  const t = Math.min(along(dx, from[0], cx, r.w / 2), along(dy, from[1], cy, r.h / 2))
+  if (!Number.isFinite(t)) return clipToBox(r, to, outset)
+  return [from[0] + dx * t, from[1] + dy * t]
 }
 
 /** Parties by number of relations: the default centre is the busiest, the first written on a tie */
@@ -162,6 +178,42 @@ export function spreadAngles(desired, halves, R, gap = BOX_GAP) {
   return out
 }
 
+/** How far from the direction they stand in, two parties of ring 1 that are tied to each other stand apart (radians) */
+const TRIANGLE = 0.62
+
+/**
+ * The angles of the parties of ring 1 when some of them are tied to one another: round the centre in an order that
+ * puts tied parties on neighbouring places (the places are even round the circle, or, for just two, a short way
+ * either side of one direction so that the centre and the two make a triangle). The camps' old sides (the first
+ * group left, the second right, the rest above and below) are what is kept when two orders are as good.
+ * @returns number[] | null  null: nothing is tied (or there are too many to try every order), keep the camps' places
+ */
+function relatedRing(members, related, campOf) {
+  const n = members.length
+  if (n < 2 || !related.length || n > 7) return null
+  const prefer = (id) => (campOf(id) === 'a' ? Math.PI : campOf(id) === 'b' ? 0 : -Math.PI / 2)
+  const gap = (x, y) => {
+    const d = Math.abs(x - y) % (Math.PI * 2)
+    return Math.min(d, Math.PI * 2 - d)
+  }
+  const step = (Math.PI * 2) / n
+  // Where the places are: for two, either side of the direction their camps favour; for more, even, turned a
+  // half place or not
+  const layouts =
+    n === 2
+      ? [Math.PI, 0].map((base) => [base - TRIANGLE, base + TRIANGLE])
+      : [0, step / 2].map((turn) => Array.from({ length: n }, (_, i) => turn + i * step))
+  let best = null
+  for (const places of layouts) {
+    for (const order of permutations(members)) {
+      const at = new Map(order.map((id, i) => [id, places[i]]))
+      const cost = related.reduce((sum, r) => sum + gap(at.get(r.from), at.get(r.to)), 0) + 0.04 * members.reduce((sum, id) => sum + gap(at.get(id), prefer(id)), 0)
+      if (!best || cost < best.cost - 1e-9) best = { cost, at }
+    }
+  }
+  return members.map((id) => best.at.get(id))
+}
+
 /**
  * Lay out one connected group around `centre`, in a frame whose origin is the centre's middle.
  * @returns { boxes: Map id -> {x,y,w,h,ring,angle}, rings: id[][], radii: number[], halves: number[] }
@@ -199,6 +251,15 @@ export function placeRings(entities, relations, centre, sizes, campOf, labelWOf 
   const radii = [0]
   const halves = [half(centre)]
   const at = (angle, R) => [Math.cos(angle) * R * ASPECT, Math.sin(angle) * R]
+  // A party of an outer ring stands where its parent stands, turned part of the way towards the nearer side:
+  // a chain straight up or down would make the picture tall and narrow on a screen that is wide
+  const leanToSide = (a) => {
+    const target = Math.cos(a) >= -1e-9 ? 0 : Math.PI
+    let d = target - a
+    while (d > Math.PI) d -= Math.PI * 2
+    while (d < -Math.PI) d += Math.PI * 2
+    return a + d * SIDE_LEAN
+  }
 
   for (let k = 1; k < rings.length; k += 1) {
     const members = rings[k]
@@ -217,18 +278,51 @@ export function placeRings(entities, relations, centre, sizes, campOf, labelWOf 
       const top = n.slice(0, Math.ceil(n.length / 2))
       const bottom = n.slice(Math.ceil(n.length / 2))
       const byId = new Map()
-      a.forEach((id, i) => byId.set(id, Math.PI + ((a.length - 1) / 2 - i) * s))
-      b.forEach((id, i) => byId.set(id, (i - (b.length - 1) / 2) * s))
-      top.forEach((id, i) => byId.set(id, (3 * Math.PI) / 2 + (i - (top.length - 1) / 2) * s))
-      bottom.forEach((id, i) => byId.set(id, Math.PI / 2 - (i - (bottom.length - 1) / 2) * s))
+      const blocks = [
+        [a, (i, list) => Math.PI + ((list.length - 1) / 2 - i) * s],
+        [b, (i, list) => (i - (list.length - 1) / 2) * s],
+        [top, (i, list) => (3 * Math.PI) / 2 + (i - (list.length - 1) / 2) * s],
+        [bottom, (i, list) => Math.PI / 2 - (i - (list.length - 1) / 2) * s],
+      ]
+      const setBlock = (list, angleAt) => list.forEach((id, i) => byId.set(id, angleAt(i, list)))
+      blocks.forEach(([list, angleAt]) => setBlock(list, angleAt))
+      // Two parties of this ring related to each other stand next to each other: on opposite sides of the
+      // centre their line went round the whole picture (the company and its employee, above and below the
+      // owner). Within each block the order that keeps such pairs closest round the ring wins; written order
+      // on a tie. One block at a time, twice over, so a pair across two blocks settles too.
+      const inRing = relations.filter((r) => r.from !== r.to && members.includes(r.from) && members.includes(r.to))
+      const gap = (x, y) => {
+        const d = Math.abs(x - y) % (Math.PI * 2)
+        return Math.min(d, Math.PI * 2 - d)
+      }
+      const cost = () => inRing.reduce((n, r) => n + gap(byId.get(r.from), byId.get(r.to)), 0)
+      for (let pass = 0; pass < 2 && inRing.length; pass += 1) {
+        for (const block of blocks) {
+          const [list, angleAt] = block
+          if (list.length < 2 || list.length > 6) continue
+          let best = { c: cost() - 1e-9, order: list }
+          for (const order of permutations(list)) {
+            setBlock(order, angleAt)
+            const c = cost()
+            if (c < best.c - 1e-9) best = { c, order }
+          }
+          block[0] = best.order
+          setBlock(best.order, angleAt)
+        }
+      }
       angles = members.map((id) => byId.get(id))
+      // Parties of this ring tied to one another stand next to one another, whichever camps they are in: a camp
+      // sent one to each side of the centre, so the three of them (the centre and two that are tied to each other
+      // and to it) lay on one line when they should have made a triangle. The camps only break a tie now.
+      const around = relatedRing(members, inRing, campOf)
+      if (around) angles = around
     } else {
       angles = members.map((id) => {
         const parents = next.get(id).filter((p) => ring.get(p) === k - 1).map((p) => boxes.get(p).angle)
         // circular mean of the parents' angles
         const s = parents.reduce((n, a) => n + Math.sin(a), 0)
         const c = parents.reduce((n, a) => n + Math.cos(a), 0)
-        return Math.atan2(s, c)
+        return leanToSide(Math.atan2(s, c))
       })
       // Children of one parent share an angle: spread them
       const groups = new Map()
@@ -303,32 +397,56 @@ const polyHits = (pts, rects, m) => pts.slice(1).some((q, i) => rects.some((r) =
 
 /** The label's rectangle, centred at a spot along the line, tried at a few places: least overlap wins */
 function placeLabel(points, size, boxes, labels, lines) {
+  let best = null
+  for (const sp of labelSpots(points, size, boxes, labels, lines)) if (!best || sp.bad < best.bad) best = sp
+  return best
+}
+
+// Places tried along a line, the middle first
+const LABEL_FRACTIONS = [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82, 0.1, 0.9]
+
+/** Every spot placeLabel weighs, with what it covers (`bad`) */
+function labelSpots(points, size, boxes, labels, lines) {
   const segs = points.slice(1).map((q, i) => [points[i], q])
   const lens = segs.map(([p, q]) => Math.hypot(q[0] - p[0], q[1] - p[1]))
   const total = lens.reduce((n, l) => n + l, 0)
+  // The point a fraction of the way along the line, and the direction the line runs there
   const pointAt = (f) => {
     let left = total * f
     for (let i = 0; i < segs.length; i += 1) {
       if (left <= lens[i] || i === segs.length - 1) {
         const t = lens[i] ? Math.min(1, left / lens[i]) : 0
-        return [segs[i][0][0] + (segs[i][1][0] - segs[i][0][0]) * t, segs[i][0][1] + (segs[i][1][1] - segs[i][0][1]) * t]
+        const dx = segs[i][1][0] - segs[i][0][0]
+        const dy = segs[i][1][1] - segs[i][0][1]
+        return [segs[i][0][0] + dx * t, segs[i][0][1] + dy * t, dx, dy]
       }
       left -= lens[i]
     }
-    return points[0]
+    return [points[0][0], points[0][1], 1, 0]
   }
-  let best = null
-  for (const f of [0.5, 0.42, 0.58, 0.34, 0.66, 0.26, 0.74, 0.18, 0.82]) {
-    const [cx, cy] = pointAt(f)
-    const r = { x: cx - size.width / 2, y: cy - size.height / 2, w: size.width, h: size.height }
-    const bad =
-      boxes.filter((b) => overlaps(r, b, 2)).length * 50 +
-      labels.filter((l) => overlaps(r, l, 2)).length * 20 +
-      lines.filter((pts) => polyHits(pts, [r], 0)).length * 4 +
-      Math.abs(f - 0.5)
-    if (!best || bad < best.bad) best = { bad, x: r.x, y: r.y }
+  // On the line, or just beside it, on either side: two lines of one pair run only a few pixels apart, and a label
+  // in the middle of one covers the other whatever the spot along it. Beside its own line, touching it, it covers
+  // neither (the one that is on the line is preferred when it covers no more)
+  const out = []
+  for (const f of LABEL_FRACTIONS) {
+    const [cx, cy, dx, dy] = pointAt(f)
+    const len = Math.hypot(dx, dy) || 1
+    const n = [-dy / len, dx / len]
+    const reach = Math.abs(n[0]) * (size.width / 2) + Math.abs(n[1]) * (size.height / 2) + 3
+    for (const side of [0, 1, -1]) {
+      const x = cx + n[0] * side * reach
+      const y = cy + n[1] * side * reach
+      const r = { x: x - size.width / 2, y: y - size.height / 2, w: size.width, h: size.height }
+      const bad =
+        boxes.filter((b) => overlaps(r, b, 2)).length * 50 +
+        labels.filter((l) => overlaps(r, l, 2)).length * 20 +
+        lines.filter((pts) => polyHits(pts, [r], 0)).length * 4 +
+        Math.abs(f - 0.5) +
+        (side ? 0.6 : 0)
+      out.push({ bad, x: r.x, y: r.y })
+    }
   }
-  return { x: best.x, y: best.y }
+  return out
 }
 
 /**
@@ -372,10 +490,13 @@ export function buildFocusGraph(spec, fields = {}) {
     const centre = ci === 0 ? mainCentre : defaultCentre({ entities: members, relations: rels })
     const laid = placeRings(members, rels, centre, sizes, campOf, (r) => labelSizes[relations.indexOf(r)].width)
     // Connections of this island
-    const pairKey = (r) => [r.from, r.to].sort().join('|')
+    const pairKey = (r) => [r.from, r.to].sort().join('\u0000')
     const byPair = new Map()
     rels.forEach((r) => byPair.set(pairKey(r), [...(byPair.get(pairKey(r)) ?? []), r]))
     const rects = new Map([...laid.boxes.entries()].map(([id, b]) => [id, rectOf(b)]))
+    // Which side of its straight line a pair's bent lines go to (the one that clears with the least bend), so the
+    // relations of one pair bend the same way and run side by side
+    const detourSide = new Map()
     const conns = []
     for (const r of rels) {
       const a = rects.get(r.from)
@@ -385,17 +506,49 @@ export function buildFocusGraph(spec, fields = {}) {
       const ca = centreOf(a)
       const cb = centreOf(b)
       const len = Math.hypot(cb[0] - ca[0], cb[1] - ca[1]) || 1
-      const normal = [-(cb[1] - ca[1]) / len, (cb[0] - ca[0]) / len]
+      // The side to step to is taken one way along the pair whichever way the relation runs: from it, a
+      // shareholding one way and a post the other way stepped to the same side and lay on each other
+      const sign = r.from < r.to ? 1 : -1
+      const normal = [(-(cb[1] - ca[1]) / len) * sign, ((cb[0] - ca[0]) / len) * sign]
       const off = (k - (sib.length - 1) / 2) * Math.min(PARALLEL_STEP, (Math.min(a.h, b.h) / 2 - 5) / Math.max(1, (sib.length - 1) / 2))
       const sa = [ca[0] + normal[0] * off, ca[1] + normal[1] * off]
       const sb = [cb[0] + normal[0] * off, cb[1] + normal[1] * off]
-      const p1 = clipToBox(a, sb)
-      const p2 = clipToBox(b, sa)
-      p1[0] += normal[0] * off
-      p1[1] += normal[1] * off
+      // Where the offset line leaves each box: both ends offset, so two loans on one pair run apart all the way
+      // (clipped towards the other box's centre, the second end fell back on the middle and the arrows met)
+      const p1 = exitOf(a, sa, sb)
+      const p2 = exitOf(b, sb, sa)
       let points = [p1, p2]
       let d = `M ${p1[0]} ${p1[1]} L ${p2[0]} ${p2[1]}`
       const others = othersOf(laid.boxes, r.from, r.to)
+      if (polyHits(points, others, LINE_CLEAR)) {
+        // First a short bend beside the straight line: out to one side by the least that clears every party. A
+        // line that went round the whole picture was the exception, not the answer (it could be 2000 px long)
+        const mid = [(ca[0] + cb[0]) / 2, (ca[1] + cb[1]) / 2]
+        const bendTo = (side, off) => {
+          const m = [mid[0] + normal[0] * side * off, mid[1] + normal[1] * side * off]
+          return smoothThrough([clipToBox(a, m), m, clipToBox(b, m)])
+        }
+        const bend = (side) => {
+          for (let j = 0; j < 10; j += 1) {
+            const off = DETOUR + j * DETOUR_STEP + k * PARALLEL_STEP
+            const arc = bendTo(side, off)
+            if (!polyHits(arc.points, others, LINE_CLEAR)) return { arc, off, side }
+          }
+          return null
+        }
+        const pref = detourSide.get(pairKey(r))
+        let found = null
+        for (const side of pref ? [pref, -pref] : [1, -1]) {
+          const f = bend(side)
+          if (f && (!found || (!pref && f.off < found.off))) found = f
+          if (found && pref) break
+        }
+        if (found) {
+          detourSide.set(pairKey(r), found.side)
+          points = found.arc.points
+          d = found.arc.d
+        }
+      }
       if (polyHits(points, others, LINE_CLEAR)) {
         // Round the outside of the rings: through a point beyond the outer end's ring, at the middle angle
         const ra = laid.boxes.get(r.from)
@@ -427,8 +580,28 @@ export function buildFocusGraph(spec, fields = {}) {
       const c = conns[i]
       const size = labelSizes[relations.indexOf(c.r)]
       c.labelSize = { width: size.width, height: size.height }
-      c.labelAt = placeLabel(c.points, c.labelSize, [...rects.values()], placedLabels, conns.filter((o) => o !== c).map((o) => o.points))
+      const at = placeLabel(c.points, c.labelSize, [...rects.values()], placedLabels, conns.filter((o) => o !== c).map((o) => o.points))
+      c.labelAt = { x: at.x, y: at.y }
       placedLabels.push({ x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height })
+    }
+    // Two labels on each other (two relations on one short pair, one label long): the first was put in the
+    // middle without knowing of the second. The two are placed again together, the first at each of its
+    // spots and the second at its best then, and the pair that covers least wins.
+    const rectOfLabel = (c) => ({ x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height })
+    for (const a of conns) {
+      for (const b of conns) {
+        if (a === b || !overlaps(rectOfLabel(a), rectOfLabel(b), 0)) continue
+        const rest = conns.filter((o) => o !== a && o !== b).map(rectOfLabel)
+        const linesBut = (c) => conns.filter((o) => o !== c).map((o) => o.points)
+        let best = null
+        for (const sa of labelSpots(a.points, a.labelSize, [...rects.values()], rest, linesBut(a))) {
+          const ra = { x: sa.x, y: sa.y, w: a.labelSize.width, h: a.labelSize.height }
+          const sb = placeLabel(b.points, b.labelSize, [...rects.values()], [...rest, ra], linesBut(b))
+          if (!best || sa.bad + sb.bad < best.bad - 1e-9) best = { bad: sa.bad + sb.bad, sa, sb }
+        }
+        a.labelAt = { x: best.sa.x, y: best.sa.y }
+        b.labelAt = { x: best.sb.x, y: best.sb.y }
+      }
     }
     // The island's own bounding box (boxes with their camp tag, lines, labels), origin at the centre
     let x0 = Infinity
@@ -516,7 +689,6 @@ export function buildFocusGraph(spec, fields = {}) {
         label: labelTexts[idx],
         points: c.points.map(([x, y]) => [x + ox, y + oy]),
         d: shiftPath(c.d, ox, oy),
-        dCurve: shiftPath(c.d, ox, oy),
         labelAt: { x: c.labelAt.x + ox, y: c.labelAt.y + oy },
         labelSize: c.labelSize,
         faint: c.faint,

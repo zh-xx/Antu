@@ -24,5 +24,8 @@ export const relationPaint = (kind, theme = themeOf()) => theme.relation[kind] ?
 /** A camp's box: a pale wash behind its entities, a hairline edge, a quiet title */
 export const groupPaint = (theme = themeOf()) => theme.group
 
+/** The box round a camp of the relationship diagram: its own fill, edge, weight and dash */
+export const campBoxPaint = (theme = themeOf()) => theme.campBox
+
 /** An entity is being looked at: the links that touch it stay, the rest fade to this opacity */
 export const DIM_OPACITY = 0.18

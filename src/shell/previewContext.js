@@ -21,4 +21,6 @@ export const PreviewContext = createContext({
   // which keyboard users cannot reach. These two functions let the card pin and close itself.
   pin: () => {},
   unpin: () => {},
+  // A view that can hand a party over to another view (the relationship graph to its focus view) sets this
+  focusOn: null,
 })
