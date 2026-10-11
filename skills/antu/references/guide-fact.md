@@ -49,7 +49,8 @@ unless both acted.
 **Someone on neither side** (the police who came, the ambulance, the court that served a paper) is not a party:
 write the name in the label and leave `actorIds` out. The event goes on the axis.
 
-Several parties on one side each get their own column, the earlier in `actors` the closer to the axis.
+Several parties on one side each get their own column, the earlier in `actors` the closer to the axis. A party
+with no card of its own (it only acts with others) has no column.
 
 ### One party (or none): the groups split the events
 

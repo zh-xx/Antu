@@ -3,6 +3,70 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.13.0
+
+The relationship diagram was gone over, view by view, on real cases (#171). Lines no longer share a stretch, labels keep
+apart, and the focus, path, equity and authority pictures have new shapes. Two views are removed, and two rules about
+the file are stricter, so a relationship file or tool call written for 0.12 may need a change (see *Breaking*). A fact
+diagram no longer draws a party's column with nothing in it (#172, #174).
+
+### Breaking
+- **The guarantee chain (`chain`) and the camp summary (`summary`) are removed.** `kind: chain` or `kind: summary`
+  (the `--kind` option, the `kind` of the MCP tools, a preset) is now refused with the list of kinds there are. Use
+  `graph` for camps, and `focus` or `path` for a chain of guarantees. `secures` stays: validation checks it and the
+  graph draws it.
+- **Two rules of `relationship` validation are stricter** (spec §5 rules 17 and 18):
+  - `title` must be a non-empty string;
+  - `sources` must be an array of objects, each with a unique `id`, a `name` and a `type` of the seven.
+
+  A file that had no `title`, or a `sources` entry without a name or with an unknown type, now fails. Add the field or
+  correct the entry.
+
+### Changed
+- **A relationship diagram has seven ways of drawing:** graph, focus, matrix, equity, authority, related, path. Each is
+  at version 2 (`spec/versions.md`).
+- **Graph:** no two links share a stretch (two loans between one pair were one line); the labels of relations on one
+  pair stand side by side; a party standing between another and its camp no longer forces its links round it; a label
+  never lands on a camp title.
+- **Focus:** parties tied to each other stand next to each other, so three that are tied make a triangle with the
+  centre; parallel lines are offset at both ends and step the same way; a line a party stands in the way of bends out by
+  the least that clears, not round the whole picture.
+- **Path:** one picture with one start and one end. The shortest chain runs along the top row with heavy lines; a party
+  only a longer chain passes stands on a row below or above, half a column over, so the picture is a diamond. Every
+  line starts and ends on a box and no two share a stretch. Between two parties, three lines or more (or two when a
+  label wraps) leave the shortest label straight and send the others round, over and under the row, each in a corridor
+  of its own.
+- **Equity tree and authority chart:** the picture holds the chosen party at the top and everyone below it, with squared
+  lines and no curves; its holders and controllers are written under it as "Above it". The boxes of a level are equally
+  wide; lines that gather into one box come down to one bar, and one line goes from the middle of the box up to it.
+  The lists of what a picture leaves out ("not in this picture" and the like) are gone: the graph and the other views
+  hold every relation.
+- **Matrix and related-party list:** the matrix is a table with the text of every relation in full; the related-party
+  list shows each relation as written, "A → B", and has no direction column.
+- **The dock:** a box lists the parties and picks the centre of the focus view; the graph's pinned card has a button that
+  opens the focus view on that party. A page whose preset fixes the kind no longer shows the `‹ ›` switch (#180).
+- **Remembered choices** (labels, hidden kinds, centre, company, path ends, orientation) are re-read at every write, so
+  two diagrams on one page no longer overwrite each other. A preset gives only the first value; the dock still changes
+  it afterwards.
+- **The document theme** draws relationship lines thinner and grey, party boxes with a small corner, and a camp as a
+  dotted outline (new theme role `campBox`).
+- **Fact timeline: a party has a column only where it has a card of its own** (`fact/timeline` version 5), and the time
+  scale's "Lane per party" follows the same rule (`fact/scale` version 4). With two or more parties, a side where no
+  party has a card of its own stands as one thin lane under its title (#172, #174).
+- **The guide for agents** (relationship): a relation is a tie that stands, not an act (blows, insults and changing a
+  lock belong in a fact diagram), and two names are two parties unless the material says they are one.
+
+### Fixed
+- An id starting with `~` crashed the equity tree and the authority chart.
+- Ids containing `|` could merge two pairs (path, ports, focus pairs, duplicate relations).
+- Parallel relations from one party into a gathering box were drawn as one line.
+- A path line could start outside its box; labels of wrapped lines covered the line next to them.
+- A chain of 20000 parties overflowed the stack in the levels, the cycle test and the structure count.
+
+### Added
+- **Validation hints:** a graph of more than 40 relations is hinted (it takes seconds to lay out, #181), as one of
+  more than 25 parties already was; a party that no event names in its `actorIds` is noted (fact; not an error).
+
 ## 0.12.0
 
 The fact diagram has one placement, chosen by how many parties it has: format generation 2 (#158). Its time scale and

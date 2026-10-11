@@ -27,7 +27,7 @@ JSON，再由引擎据此画图；同一份 JSON 得到的图是一致的。案�
 <tr><th rowspan="1" align="left" valign="middle">证成图</th><td align="center"><a href="examples/justification/fang-yuan-defense-excess.zh-CN.json"><img src="assets/kinds/tree.svg" width="88" alt="说理树"><br>说理树</a></td></tr>
 </table>
 
-关系图画主体、角色和法律关系；事实图画时间、参与人和事件经过；程序图画程序路径与可能分支；证成图画由规范与事实推出的结论。关系图和证成图的 schema 仍是草案。
+关系图（同一份 JSON 有七种画法）画主体、角色和法律关系；事实图画时间、参与人和事件经过；程序图画程序路径与可能分支；证成图画由规范与事实推出的结论。关系图和证成图的 schema 仍是草案。
 
 三种外观，叫**主题**：`document` 文书黑白（方正、纯黑白，适合打印和归档，默认）、`modern` 现代简洁、`legal` 法律蓝。读者在页面里
 切换，调用时也可以把页面固定成某一个。只有图本身受主题影响，详见 [spec/theme.md](spec/theme.md)。

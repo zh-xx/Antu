@@ -58,7 +58,7 @@ const themeArg = z
 const kindArg = z
   .string()
   .optional()
-  .describe('which way of drawing (fact: timeline, chronicle or scale; relationship: graph, focus, chain, matrix, equity, authority, related, path or summary; procedure: flow or route); omit it for the default, the first')
+  .describe('which way of drawing (fact: timeline, chronicle or scale; relationship: graph, focus, matrix, equity, authority, related or path; procedure: flow or route); omit it for the default, the first')
 
 
 
@@ -256,7 +256,7 @@ server.registerTool(
       spec: specArg,
       outPath: z.string().optional().describe('output path. Omit it and the file goes to dist-html/<title>.html'),
       theme: themeArg,
-      kind: kindArg.describe('which way of drawing the page opens in (fact: timeline, chronicle or scale; relationship: graph, focus, chain, matrix, equity, authority, related, path or summary; procedure: flow or route); the reader can still switch. Omit it for the default, the first'),
+      kind: kindArg.describe('which way of drawing the page opens in (fact: timeline, chronicle or scale; relationship: graph, focus, matrix, equity, authority, related or path; procedure: flow or route); the reader can still switch. Omit it for the default, the first'),
     },
   },
   async ({ spec, outPath, kind, theme }) => {
