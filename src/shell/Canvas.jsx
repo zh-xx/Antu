@@ -103,13 +103,19 @@ export default function Canvas({
     // Replacing the whole set wipes React Flow's runtime state, of which selected
     // must survive: it weights the selected node (z-index 1000), and once wiped, a
     // pinned overlay is covered by a neighbouring card.
-    // measured is deliberately not kept: the card height may have changed, so let it
-    // be measured again.
+    // measured is kept for a node of the same id and type (issue #182). Without it every rebuild (a hover, a
+    // paint-only switch) left the node with no size until React Flow measured it again, and it hides a node it has
+    // not measured: the node vanished under the pointer, the pointer then hit the pane, the hover cleared, the
+    // graph was rebuilt, and so on, a flicker. A card whose height really changed is measured again by React Flow's
+    // own resize observer on the node, so the old size is only what shows until then.
     setNodes((prev) => {
       const prevById = new Map(prev.map((n) => [n.id, n]))
       return [miniGhost(graph.size), ...graph.nodes].map((n) => {
         const old = prevById.get(n.id)
-        return old?.selected ? { ...n, selected: true } : n
+        if (!old) return n
+        let next = n
+        if (old.measured && old.type === n.type) next = { ...next, measured: old.measured }
+        return old.selected ? { ...next, selected: true } : next
       })
     })
     setEdges(graph.edges)

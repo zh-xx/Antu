@@ -2095,6 +2095,44 @@ async function checkMinimapShowsExtent() {
   }
 }
 
+async function checkHoverKeepsNodesVisible() {
+  section('hover: a real mouse over a node never hides it (issue 182, 179)')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  // The synthetic mouseover of the other checks cannot see this: it needs the browser to hit-test the pointer. A node
+  // React Flow has not measured is hidden, so a rebuild that dropped the sizes hid the node under the pointer.
+  const cases = [
+    ['examples/relationship/marketplace-parties.zh-CN.json', ['graph', 'focus'], '.antu-rn'],
+    ['examples/justification/fang-yuan-defense-excess.zh-CN.json', ['tree'], '.antu-jn'],
+  ]
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  try {
+    for (const [file, kinds, sel] of cases) {
+      const spec = JSON.parse(readFileSync(join(REPO, file), 'utf8'))
+      for (const kind of kinds) {
+        const html = join(OUT, `hover-${kind}.html`)
+        renderToFile(spec, { outPath: html, quiet: true, preset: { kind } })
+        await browser.open(`file://${html}?lang=zh`)
+        const node = `document.querySelector('.react-flow__node:has(${sel})')`
+        await browser.eval(`(() => {
+          const n = ${node}
+          window.__hidden = 0
+          new MutationObserver(() => { if (getComputedStyle(n).visibility === 'hidden') window.__hidden += 1 }).observe(n, { attributes: true, attributeFilter: ['style', 'class'] })
+        })()`)
+        await browser.hoverAt(node)
+        await new Promise((r) => setTimeout(r, 300))
+        await browser.hoverAt(node, { dx: 2, dy: 1 })
+        await new Promise((r) => setTimeout(r, 1200))
+        eq(`${kind}: the hovered node was hidden 0 times`, await browser.eval('window.__hidden'), 0)
+      }
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderLevelledViews() {
   section('render: relationship authority chart, related-party list, relation path')
   if (!findChrome()) {
@@ -3103,6 +3141,7 @@ if (!shotOnly && !skipBrowser) {
   await checkRenderLevelledViews()
   await checkDocumentThemeIsGrey()
   await checkMinimapShowsExtent()
+  await checkHoverKeepsNodesVisible()
   await checkDockClearance()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)
