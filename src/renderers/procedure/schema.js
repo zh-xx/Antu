@@ -67,8 +67,8 @@ export const PROCEDURE_FIELDS = {
       ty: 'string',
       note: `shape: ${KINDS.join(' / ')} (decision = a diamond decision point; it needs at least 2 outgoing edges, each with a condition)`,
     },
-    { name: 'label', req: 'yes', ty: 'string', note: 'the line shown on the node; about 12 full-width characters per line' },
-    { name: 'detail', req: 'no', ty: 'string', note: 'amounts, deadlines and the like; one line inside the box, the full text in the popover' },
+    { name: 'label', req: 'yes', ty: 'string', note: 'the text shown on the node: two lines, about 20 Chinese characters; a longer label is cut on the node and hinted by validate. Keep it a short phrase and put the rest in detail' },
+    { name: 'detail', req: 'no', ty: 'string', note: 'amounts, deadlines and the like; the first line, about 16 Chinese characters, shows under the label (a ⋯ mark says more is left), the full text is in the popover' },
     { name: 'actorIds', req: 'no', ty: 'string[]', note: 'references actors; display-only' },
     { name: 'stageId', req: 'no', ty: 'string', note: 'references stages; decides which stage band it falls in' },
     {
@@ -140,7 +140,7 @@ export function describeProcedureSchema() {
  */
 function routeReport(spec, layout, { canvas }) {
   const g = layout(spec, {})
-  const open = Math.max(Number(fitZoom(g.size, canvas).toFixed(3)), 0.8)
+  const open = Math.max(Number(fitZoom(g.size, canvas).toFixed(3)), 0.7)
   return {
     text: { font: NODE_FONT, canvas, open: { name: 'route', fit: Math.min(open, 1) }, other: { name: 'route', fit: Math.min(open, 1) } },
     counts: { nodes: g.stats.nodes, edges: g.edgeCount, rules: g.rules, stages: Array.isArray(spec.stages) ? spec.stages.length : 0, actors: spec.actors?.length ?? 0, sources: spec.sources?.length ?? 0 },
