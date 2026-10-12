@@ -20,6 +20,9 @@ import { bendsOf } from './straighten.js'
 import { joinsAsTrunk, ownPart } from './merge.js'
 import { PAD, STAGE_PAD } from './metrics.js'
 
+/** Where any route stays: the picture grows right and down only */
+const PICTURE = { x: PAD / 4, y: PAD / 4, w: 1e6, h: 1e6 }
+
 /** Who gives way when two links cross: the loop first, the main line last */
 export const GIVE_WAY = { back: 0, branch: 1, main: 2 }
 
@@ -125,7 +128,8 @@ export function linkRouting(ctx) {
         join: merge,
         soft: within(g) ? undefined : boxes,
         borders,
-        bounds: within(g),
+        // A link between stages may go round the outside of the boxes, but not off the top or the left of the picture
+        bounds: within(g) ?? PICTURE,
       })
     if (onlyJoin) {
       const joined = others.some((c) => joinable(g, c)) ? route(true) : null
@@ -446,7 +450,7 @@ export function polishLinks(ctx) {
       blocks: [...titles, ...labels],
       routes: others.map((o) => ({ points: o.points })),
       borders,
-      bounds: within(c),
+      bounds: within(c) ?? PICTURE,
     })
     if (!pts || crossingsOf(pts, others) > crossingsOf(c.points, others)) continue
     c.points = pts

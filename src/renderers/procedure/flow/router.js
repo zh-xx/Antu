@@ -175,6 +175,8 @@ class Heap {
  * @param {number[][]} [p.inAt]  arrive only at one of these points (a link that joins another into the same node)
  * @param {{x,y,w,h}[]} [p.soft]  boxes a route may run through but a little dearer (5% more per pixel): a link between
  *   two stages then takes the gap between their boxes rather than a strip inside one, where both are as short
+ * @param {boolean} [p.exhaustive]  search without the A* estimate (for the tests: it must find routes as cheap)
+ * @param {Function} [p.onCost]  called with the cost of the route found (for the tests)
  * @param {boolean} [p.join]  a `share` link is one to join (merge.js): the route may lie exactly on it, a little cheaper
  *   than beside it, and keeps such a run where it is (without it, `share` links may only be run along, as a bundle)
  * @param {number} [p.crossCost]  what crossing another link costs, in pixels of length (default: more than two bends)
@@ -429,6 +431,7 @@ export function routeLink(p) {
   const ends = inPorts.map(([x, y, side]) => [x, y, (OUTWARD[side] + 2) % 4])
   const scale = p.join && routes.some((rt) => rt.share) ? 0.8 : 1
   const est = (s) => {
+    if (p.exhaustive) return 0
     const d = s % 4
     const cell = (s - d) / 4
     const i = cell % W
@@ -493,6 +496,7 @@ export function routeLink(p) {
       }
     }
   }
+  p.onCost?.(bestCost)
   if (best === null) return null
 
   // Walk back, keeping only the corners

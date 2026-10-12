@@ -54,3 +54,27 @@ test('a port another link uses is taken', () => {
   assert.ok(second)
   assert.notDeepEqual(second[0], first[0], 'two links leave from one point')
 })
+
+test('the A* search finds routes as cheap as the search without its estimate (ports off the half-pixel grid too)', () => {
+  // A seeded scatter of boxes, routes between pairs of them among the rest, some with existing links to cross
+  let seed = 7
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  for (let scene = 0; scene < 24; scene += 1) {
+    const boxes = []
+    for (let k = 0; k < 9; k += 1) {
+      const r = { x: Math.round(rnd() * 900), y: Math.round(rnd() * 700) + (k % 3) * 0.05, w: 80 + Math.round(rnd() * 120), h: 40 + Math.round(rnd() * 40) + 0.1 }
+      if (!boxes.some((b) => r.x < b.x + b.w + 30 && b.x < r.x + r.w + 30 && r.y < b.y + b.h + 30 && b.y < r.y + r.h + 30)) boxes.push(r)
+    }
+    if (boxes.length < 3) continue
+    const routes = []
+    for (let k = 0; k + 1 < boxes.length; k += 1) {
+      const p = { from: boxes[k], to: boxes[k + 1], nodes: boxes, routes: [...routes], fromDiamond: k % 4 === 1, toDiamond: k % 5 === 2 }
+      let fast = null
+      let full = null
+      const a = routeLink({ ...p, onCost: (c) => (fast = c) })
+      const b = routeLink({ ...p, exhaustive: true, onCost: (c) => (full = c) })
+      assert.equal(fast, full, `scene ${scene}, link ${k}: ${JSON.stringify(a)} costs ${fast}, the exhaustive search found ${full} ${JSON.stringify(b)}`)
+      if (a) routes.push({ points: a })
+    }
+  }
+})
