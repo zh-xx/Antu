@@ -100,7 +100,7 @@ const FlowNode = memo(function FlowNode({ id, data }) {
   const open = isPinned || showPreview
   const kind = node.kind
   const outcome = node.outcome || 'neutral'
-  const detail = showDetail && node.detail ? shortDetail(node.detail).text : ''
+  const detail = showDetail && node.detail ? (kind === 'note' ? String(node.detail).replace(/\s*\n\s*/g, ' ') : shortDetail(node.detail).text) : ''
 
   // The overlay pops towards where there is room, the same rule as the fact card: the first
   // layer has nothing before it along the flow, so it opens after; the rest open before and
@@ -136,6 +136,9 @@ const FlowNode = memo(function FlowNode({ id, data }) {
         ))}</div>
         {detail && <div className="antu-pn-detail">{detail}</div>}
       </div>
+
+      {/* A note says what it is: a small tag in its corner, so it is not read as a step */}
+      {kind === 'note' && <span className="antu-pn-tag" aria-hidden="true">{t('flow.noteTag')}</span>}
 
       {/* The node shows part of its text: the rest is in the popover */}
       {cut && <span className="antu-pn-more" aria-hidden="true">⋯</span>}

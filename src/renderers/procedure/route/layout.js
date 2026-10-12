@@ -314,8 +314,10 @@ export function buildRouteGraph(spec, fields = {}) {
     const tx = x.get(a.to)
     const right = tx > a.startX
     const fromSide = right ? 1 : -1
-    const out = a.start === 'box' ? a.startX + 16 : a.startX + fromSide * (groupW(a.from) / 2 + 14)
-    const into = tx - fromSide * (groupW(a.to) / 2 + 14)
+    // Round the branches hanging at a station only when it has some; a bare station is left and entered straight
+    // below it, so the line does not jog sideways and back
+    const out = a.start === 'box' ? a.startX + 16 : groupW(a.from) ? a.startX + fromSide * (groupW(a.from) / 2 + 14) : a.startX
+    const into = groupW(a.to) ? tx - fromSide * (groupW(a.to) / 2 + 14) : tx
     const lo = Math.min(out, into, a.startX, tx)
     const hi = Math.max(out, into, a.startX, tx)
     let depth = hangFloor(lo, hi) + 36

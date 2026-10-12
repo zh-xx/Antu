@@ -12,10 +12,10 @@
 //  outcome reads in black and white too.
 // ============================================================
 
-/** Paint for one node's outline: { stroke, fill, width, dash? } (a note has no border and a fold) */
+/** Paint for one node's outline: { stroke, fill, width, dash? } (a note: a dashed outline and a fold) */
 export function nodePaint(kind, outcome, theme) {
   const f = theme.flow
-  if (kind === 'note') return { ...f.note, width: 1 }
+  if (kind === 'note') return { ...f.note, stroke: f.note.fold, width: 1, dash: '4 3' }
   if (kind === 'start' && (outcome ?? 'neutral') === 'neutral') return { ...f.outcome.neutral, ...f.start }
   return f.outcome[outcome] ?? f.outcome.neutral
 }

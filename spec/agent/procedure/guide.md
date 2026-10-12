@@ -99,6 +99,7 @@ delivering.
 
 - **Referenced ids must exist**: `stageId`, `actorIds`, `sourceIds`, an edge's `from` /
   `to`, a rule's `stageIds` / `endId`.
+- **A `note` is an explanation, not a step** (why an argument fails, what the evidence lacked): write it as one full sentence, in `detail` when it is long. It is drawn with a dashed outline and a small tag, apart from the steps; `validate` hints at a note that is only a short phrase with no `detail`.
 - **Keep labels short.** A node shows two lines of `label` (about 20 Chinese characters) and cuts the rest, and
   a `⋯` mark says something is left out; `validate` hints at a longer label. Write the label as a short phrase and
   put the rest (amounts, periods, conditions) in `detail`: its first line shows under the label (about 16 Chinese

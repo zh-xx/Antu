@@ -22,6 +22,9 @@ export const NODE_FONT = 14
 export const NODE_LINE = 20
 export const DETAIL_FONT = 12
 export const DETAIL_LINE = 16
+/** A note: how many lines of its detail it shows, and the strip its tag (a small word in the corner) takes */
+export const NOTE_DETAIL_LINES = 2
+export const NOTE_TAG_H = 12
 export const NODE_MAX_LINES = 2
 /** A diamond folds its text into a block that is taller than a box's, so it keeps three lines */
 export const DIAMOND_MAX_LINES = 3
@@ -39,7 +42,7 @@ export const DIAMOND_TEXT_MAX_W = 148
 
 /** ELK spacing: between two layers, and between two nodes side by side in one layer */
 export const LAYER_GAP = 28
-export const NODE_GAP = 28
+export const NODE_GAP = 44
 
 /** A stage box: room at the top for its title, and around its nodes */
 export const STAGE_PAD_TOP = 44
@@ -136,11 +139,11 @@ const BOLD_SLACK = 1.07
  * How many lines a label takes in a text column of `colW` px when a line breaks only between words: a greedy wrap by
  * the same measure the boxes use. A word wider than a column takes the lines it needs.
  */
-export function wrapLines(label, colW) {
+export function wrapLines(label, colW, font = NODE_FONT) {
   let lines = 1
   let used = 0
   for (const word of wordsOf(label)) {
-    const w = textEm(word) * NODE_FONT * BOLD_SLACK
+    const w = textEm(word) * font * BOLD_SLACK
     if (used > 0 && used + w > colW + 0.5) {
       lines += 1
       used = 0
@@ -162,7 +165,9 @@ export const labelCut = (label, kind) => wrapLines(label, kind === 'decision' ? 
  */
 export function sizeOf(node) {
   const label = String(node?.label ?? '')
-  const short = node?.detail ? shortDetail(node.detail) : { text: '', cut: false }
+  // A note is an explanation, and its detail is most of what it says: it shows up to two lines of it
+  const isNote = node?.kind === 'note'
+  const short = node?.detail ? (isNote ? { text: String(node.detail).replace(/\s*\n\s*/g, ' '), cut: false } : shortDetail(node.detail)) : { text: '', cut: false }
   const detail = short.text
   const cap = node?.kind === 'decision' ? DIAMOND_TEXT_MAX_W : TEXT_MAX_W
   const labelW = textEm(label) * NODE_FONT
@@ -175,9 +180,11 @@ export function sizeOf(node) {
   const wanted = wrapLines(label, textW)
   const maxLines = node?.kind === 'decision' ? DIAMOND_MAX_LINES : NODE_MAX_LINES
   const lines = Math.min(maxLines, Math.max(1, wanted))
-  // Whether the node leaves something out that the popover shows: a label cut by the line limit, or a cut detail
-  const cut = wanted > maxLines || short.cut
-  const textH = lines * NODE_LINE + (detail ? DETAIL_LINE + 2 : 0)
+  // Whether the node leaves out something its text does not say so itself (the ⋯ mark)
+  // Only text that looks whole but is not: a detail with a second line. A label or a detail cut short shows its own “…”
+  const cut = node?.kind !== 'note' && Boolean(node?.detail) && String(node.detail).includes('\n') && !short.text.endsWith('…')
+  const detailLines = !detail ? 0 : isNote ? Math.min(NOTE_DETAIL_LINES, wrapLines(detail, textW, DETAIL_FONT)) : 1
+  const textH = lines * NODE_LINE + (detail ? detailLines * DETAIL_LINE + 2 : 0)
   switch (node?.kind) {
     case 'start':
     case 'end':
@@ -189,6 +196,9 @@ export function sizeOf(node) {
     case 'document':
       // The wavy bottom edge takes a strip the text must stay out of
       return { cut, w: textW + NODE_PAD_X * 2, h: textH + NODE_PAD_Y * 2 + DOC_WAVE, textW }
+    case 'note':
+      // The small tag in the top left corner takes a strip of its own
+      return { cut, w: textW + NODE_PAD_X * 2, h: textH + NODE_PAD_Y * 2 + NOTE_TAG_H, textW }
     default:
       return { cut, w: textW + NODE_PAD_X * 2, h: textH + NODE_PAD_Y * 2, textW }
   }

@@ -26,6 +26,8 @@ import { runsAlongBorder } from './router.js'
 /** Room kept between a link and a node it passes, and between a label and anything else */
 const CLEAR = 8
 const LABEL_CLEAR = 3
+/** A line may meet the middle of a box's face within this many px and still count as in the middle */
+const CENTRE_TOL = 8
 /** Two links running side by side closer than this read as one */
 const PARALLEL_GAP = 12
 /** A side exit needs this much room before it turns */
@@ -69,6 +71,15 @@ export function linkCost(c, placed, diamonds, points = c.points) {
       // The four points of a diamond lie on its two middle lines
       const atPoint = Math.abs(pt[0] - cx) < 1 || Math.abs(pt[1] - cy) < 1
       if (!atPoint) cost += WEIGHT[c.kind]
+    }
+    // A line that meets a box (not a diamond: that is by its points) well off the middle of the face it enters
+    // reads as sloppy, and costs a little more than one bend: a side exit that enters at the middle beats it
+    const T = placed.get(c.to)
+    if (T && !diamonds.has(c.to) && points.length >= 2) {
+      const last = points[points.length - 1]
+      const prev = points[points.length - 2]
+      const off = last[0] === prev[0] ? Math.abs(last[0] - (T.x + T.w / 2)) : Math.abs(last[1] - (T.y + T.h / 2))
+      if (off > CENTRE_TOL) cost += WEIGHT[c.kind] * 1.5
     }
   }
   return cost

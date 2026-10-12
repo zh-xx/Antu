@@ -75,8 +75,13 @@ const RouteLayerNode = memo(function RouteLayerNode({ data }) {
             const to = stations.find((s) => s.id === h.tail.to)
             const sx = last.x + last.w
             const sy = last.y + last.h / 2
+            // Straight up into the station when nothing is in the way: right, then up beside the station's own
+            // line (7 px off it), one turn. Round the station's branches (or past a box) only when it must
+            const side = to.x >= sx + 17 ? to.x - 7 : null
+            const blocked = (x) => hangs.some((g) => g.boxes.some((b) => b.x - 2 < x && x < b.x + b.w + 2 && b.y < sy && b.y + b.h > lineY + 14 && b !== last))
+            const direct = side !== null && !hangs.some((g) => g.from === to.id) && !blocked(side)
             const rx = Math.max(sx + 22, to.x + 34)
-            parts.push(<path key="ret" d={poly([[sx, sy], [rx, sy], [rx, lineY + 38], [to.x, lineY + 38], [to.x, lineY + 14]])} fill="none" stroke={RED} strokeWidth={2} strokeDasharray="5 4" strokeLinejoin="round" markerEnd={`url(#${arrowId(RED)})`} />)
+            parts.push(<path key="ret" d={poly(direct ? [[sx, sy], [side, sy], [side, lineY + 14]] : [[sx, sy], [rx, sy], [rx, lineY + 38], [to.x, lineY + 38], [to.x, lineY + 14]])} fill="none" stroke={RED} strokeWidth={2} strokeDasharray="5 4" strokeLinejoin="round" markerEnd={`url(#${arrowId(RED)})`} />)
           }
           return <g key={`h${i}`}>{parts}</g>
         })}

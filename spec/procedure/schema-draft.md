@@ -447,6 +447,7 @@ nodes[2] (n-3): dead end; a node that is neither end nor note must have an outgo
 | 18 | array order clearly contradicts the `stages` order (a node's `stageId` comes before that of its upstream node) | hint, not an error |
 | 19 | a decision on the main line has 2 or more outgoing edges but none is marked `main` | hint, not an error (see §4.1) |
 | 22 | a `label` wider than a node shows (two lines, about 20 Chinese characters) | hint, not an error |
+| 23 | a `note` with no `detail` whose label is a bare short phrase (under about ten Chinese characters) | hint, not an error |
 
 Rule 11 is the same class as fact's "one slot, one event": **both prevent content from being silently
 dropped.** The comment in `fact/timeline/layout.js` sets the reason out clearly, and that position is
@@ -544,10 +545,14 @@ Decisions the renderer made, so they are not undone by accident:
   most two lines (words kept whole), with 18 px inside the box at the sides and 14 px above and below; a diamond folds
   its text into a near-square block. **A node shows only part of long text** (settled with the maintainer): a label
   wider than two lines (about 20 Chinese characters) is cut, a detail shows its first line cut at a punctuation mark
-  (about 16 Chinese characters), and a `⋯` mark says something is left out; the popover has it all. Rule 22 hints
-  at a long label. Fixed 208×64 boxes left
+  (about 16 Chinese characters), and a `⋯` mark says something is left out that the text does not say itself (a cut
+  text shows its own “…”, so the two never stand together); the popover has it all. Rule 22 hints at a long label.
+  **A `note` looks unlike a step** (dashed fold outline, italic, a small tag “Note” in the corner) and shows up to two
+  lines of its detail, since the detail is most of what it says; rule 23 hints at a note with a bare short phrase and
+  no detail. Fixed 208×64 boxes left
   most of every box empty and, fitted to a screen, the text too small to read — what putting the
   same data through Mermaid showed.
+- **A line meets the middle of the face it enters** (`flow/straighten.js`, `linkCost`): a line that meets a box off the middle of its face costs a little more than a bend, so a decision's two ways out leave by its side points and go down into the middle of each box (the space between siblings is 44 px so this fits), and a lone end is moved under the line that enters it when it has room.
 - **Links bend as little as possible: straight first, then one bend** (`flow/straighten.js`).
   ELK's router takes every link out of a bottom and into a top, so two nodes not exactly in line
   cost a Z (two bends) and a loop four. After ELK, each link is offered simpler routes, fewest

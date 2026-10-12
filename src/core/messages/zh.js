@@ -83,6 +83,7 @@ export const zh = {
   'rule.tScopeAll': '全程',
   'rule.tScopeRange': ({ from, to }) => `${from} 至 ${to}`,
   'flow.ruleBadge': ({ n }) => `条款 ${n} 条`,
+  'flow.noteTag': '注',
   'rule.if': '若',
   'rule.or': '，或',
   'flow.previewHint': '点击节点查看全文',

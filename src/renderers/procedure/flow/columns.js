@@ -398,6 +398,29 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
   const all = straighten(connections, placed, titles, true, diamonds, { borders, within })
   connections.splice(0, connections.length, ...all)
 
+  // An end (or any node nothing leaves) that one straight line comes down into, off its middle: moved under the line
+  // when it has room, so the line meets the middle of its top, as a person would draw it. Nodes beside it, other
+  // lines and the stage box's edge decide whether it has room
+  for (const c of connections) {
+    const T = placed.get(c.to)
+    const node = byId.get(c.to)
+    if (!T || !node || node.kind === 'decision' || c.points.length < 2) continue
+    if (connections.filter((o) => o.from === c.to || o.to === c.to).length !== 1) continue
+    const last = c.points[c.points.length - 1]
+    const prev = c.points[c.points.length - 2]
+    if (last[0] !== prev[0] || Math.abs(last[1] - T.y) > 0.5) continue
+    const dx = last[0] - (T.x + T.w / 2)
+    if (Math.abs(dx) < 4) continue
+    const moved = { x: T.x + dx, y: T.y, w: T.w, h: T.h }
+    const stageBox = boxOfStage.get(node.stageId)
+    if (stageBox && (moved.x < stageBox.x + STAGE_PAD || moved.x + moved.w > stageBox.x + stageBox.w - STAGE_PAD)) continue
+    if (nodeRects.some((r) => r !== T && rectsOverlapAt(moved, r, 14))) continue
+    if (titles.some((r) => rectsOverlapAt(moved, r, 4))) continue
+    if (connections.some((o) => o !== c && segsOf(o.points).some((sg) => segHits(sg, moved, 2)))) continue
+    if (connections.some((o) => labelRect(o) && rectsOverlapAt(moved, labelRect(o), 4))) continue
+    T.x = moved.x
+  }
+
   // A link ELK routed inside a stage may still run along the edge of the box (a loop round the
   // outside of the content sits exactly one padding in): routed afresh, inside the box, off the
   // edge, if the router finds such a route
@@ -495,6 +518,11 @@ export function toReal(frame, vertical) {
   }))
   const size = vertical ? { width: frame.width, height: frame.height } : { width: frame.height, height: frame.width }
   return { placed, stageBoxes, connections, size }
+}
+
+/** Whether two rectangles come within `m` of each other */
+function rectsOverlapAt(a, b, m) {
+  return a.x < b.x + b.w + m && b.x < a.x + a.w + m && a.y < b.y + b.h + m && b.y < a.y + a.h + m
 }
 
 /** A point on a diamond's bounding box slid along its segment onto the outline (as layout.js) */
