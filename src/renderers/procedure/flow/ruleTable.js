@@ -39,7 +39,7 @@ import {
 /**
  * The line over the table. It says "while the contract runs" only for a contract's flow (domain contract-performance):
  * the same table holds an administrative decision's rules or a bankruptcy claim's, and the sentence must not call
- * them a contract (found on real cases, #186).
+ * them a contract.
  */
 export const ruleTableNoteKey = (domain) => (domain === 'contract-performance' ? 'rule.tableNoteContract' : 'rule.tableNote')
 
