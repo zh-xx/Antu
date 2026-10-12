@@ -162,9 +162,12 @@ export function polishLinks(ctx) {
   // A line leaving a node that moves sideways by dx keeps its far end: its first segment gives way (a vertical one is
   // moved with its turn, a horizontal one is made longer or shorter, never reversed). A line entering one is the same
   // read from the other end
-  const moveStart = (o, dx) => {
+  // `box`: the node the line leaves (a box, not a diamond): a line down out of its bottom that still meets the bottom,
+  // well inside it, after the move needs no change at all (a straight line to a box with other lines in stays straight)
+  const moveStart = (o, dx, box = null) => {
     const q = o.points.map((pt) => [...pt])
     if (q.length < 2) return null
+    if (box && q[0][0] === q[1][0] && q[0][0] >= box.x + dx + 8 && q[0][0] <= box.x + box.w + dx - 8) return q
     if (q[0][0] === q[1][0]) {
       if (q.length < 3 || q[1][1] !== q[2][1]) return null
       q[0][0] += dx
@@ -176,8 +179,8 @@ export function polishLinks(ctx) {
     } else return null
     return q
   }
-  const moveEnd = (o, dx) => {
-    const back = moveStart({ points: [...o.points].reverse() }, dx)
+  const moveEnd = (o, dx, box = null) => {
+    const back = moveStart({ points: [...o.points].reverse() }, dx, box)
     return back ? back.reverse() : null
   }
   const segmentsClear = (pts, rects) => segsOf(pts).every((sg) => rects.every((r) => !segHits(sg, r, 4)))
@@ -205,7 +208,14 @@ export function polishLinks(ctx) {
       const m = chain[k]
       for (const o of connections) {
         if (o === skip || o === inLink) continue
-        if (o.to === m && !chainLinks.has(o)) return null
+        // Another line into a node that moves gives way at its end (a branch that joins the line in, a second way in)
+        const boxOf = (id) => (diamonds.has(id) ? null : placed.get(id))
+        if (o.to === m && !chainLinks.has(o)) {
+          const pts = moveEnd(o, dxs[k], boxOf(m))
+          if (!pts) return null
+          adapted.set(o, pts)
+          continue
+        }
         if (o.from !== m) continue
         if (o.kind !== 'back' && isNearVertical(o) && connections.filter((q) => q.to === o.to).length === 1) {
           chainLinks.add(o)
@@ -216,7 +226,7 @@ export function polishLinks(ctx) {
           const T = placed.get(o.to)
           dxs.push(diamonds.has(m) ? S.x + S.w / 2 + dxs[k] - (T.x + T.w / 2) : dxs[k])
         } else {
-          const pts = moveStart(o, dxs[k])
+          const pts = moveStart(o, dxs[k], boxOf(m))
           if (!pts) return null
           adapted.set(o, pts)
         }
@@ -242,7 +252,8 @@ export function polishLinks(ctx) {
         if (box && (to.x < box.x + STAGE_PAD || to.x + to.w > box.x + box.w - STAGE_PAD)) return false
         if (after.some((q) => !rects.includes(q.orig) && rectsOverlapAt(to, q.now, 14))) return false
         if (titles.some((q) => rectsOverlapAt(to, q, 4))) return false
-        if (connections.some((o) => live(o) && segsOf(o.points).some((sg) => segHits(sg, to, 2)))) return false
+        // ...and keeps a line's width of room from every line it does not move (a line 2 px off a box reads as its edge)
+        if (connections.some((o) => live(o) && segsOf(o.points).some((sg) => segHits(sg, to, 8)))) return false
         return !connections.some((o) => live(o) && labelRect(o) && rectsOverlapAt(to, labelRect(o), 4))
       }) &&
       [...adapted.entries()].every(
@@ -280,7 +291,8 @@ export function polishLinks(ctx) {
       if (c.kind === 'back' || !(isVertical(c) || isZ)) continue
       const S = placed.get(c.from)
       const T = placed.get(c.to)
-      if (!S || !T || connections.filter((o) => o.to === c.to).length !== 1) continue
+      // A box with several lines in follows the main one (the others give way at their ends)
+      if (!S || !T || (c.kind !== 'main' && connections.filter((o) => o.to === c.to && o.kind !== 'back').length !== 1)) continue
       const fromDiamond = diamonds.has(c.from)
       // The only line out of a box leaves by its middle; one of several keeps the place the router gave it
       const onlyOut = connections.filter((o) => o.from === c.from && o.kind !== 'back').length === 1
@@ -319,6 +331,13 @@ export function polishLinks(ctx) {
         pushed.push(pq)
       }
       if (blocked || !roomFor(plan, pushed, c)) continue
+      // The straight line itself, and every line that moves with the boxes, keep a line's width off the boxes they pass
+      const moveOf = new Map()
+      for (const q of [plan, ...pushed]) q.rects.forEach((r, n) => moveOf.set(r, q.dxs[n]))
+      const at = (r) => (moveOf.has(r) ? { ...r, x: r.x + moveOf.get(r) } : r)
+      const passes = (pts, a, b) => segsOf(pts).some((sg) => nodeRects.some((r) => r !== placed.get(a) && r !== placed.get(b) && segHits(sg, at(r), 8)))
+      if (passes([[x, startY], [x, endY]], c.from, c.to)) continue
+      if ([plan, ...pushed].some((q) => [...q.chainLinks].some((o) => passes(o.points.map(([px, py]) => [px + q.dxs[q.chain.indexOf(o.from)], py]), o.from, o.to)))) continue
       applyPlan(plan)
       for (const pq of pushed) applyPlan(pq)
       c.points = [[x, startY], [x, endY]]
