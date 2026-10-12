@@ -15,7 +15,7 @@
 //         stays in, or null, boxOf(id): the box node id stays in, or null }
 // ============================================================
 
-import { routeLink, runsAlongBorder } from './router.js'
+import { routeLink, runsAlongBorder, BEND, CROSS } from './router.js'
 import { bendsOf } from './straighten.js'
 import { joinsAsTrunk, ownPart } from './merge.js'
 import { PAD, STAGE_PAD } from './metrics.js'
@@ -111,7 +111,8 @@ export function linkRouting(ctx) {
   // another forward link into the same node where that reads better (merge.js). `routes`: the links it must keep
   // clear of; `taken`: more end points it may not use
   // `onlyJoin`: the route that joins another link into the same node, or null (no route of its own)
-  const routeFor = (g, routes, taken = [], onlyJoin = false) => {
+  // `limit`: a route that costs the router no more than this is not worth finding (a second try at a link)
+  const routeFor = (g, routes, taken = [], onlyJoin = false, limit = undefined) => {
     const others = routes.filter((c) => c !== g)
     const labels = others.map(labelRect).filter(Boolean)
     const route = (merge) =>
@@ -130,6 +131,7 @@ export function linkRouting(ctx) {
         borders,
         // A link between stages may go round the outside of the boxes, but not off the top or the left of the picture
         bounds: within(g) ?? PICTURE,
+        maxCost: limit,
       })
     if (onlyJoin) {
       const joined = others.some((c) => joinable(g, c)) ? route(true) : null
@@ -144,7 +146,9 @@ export function linkRouting(ctx) {
     const merged = !fine && others.some((c) => joinable(g, c)) ? route(true) : null
     const joins = merged && others.every((c) => !joinable(g, c) || joinsAsTrunk(merged, c.points))
     // Joining another line is taken only where it reads better than a route of its own
-    return joins && (!plain || routeScore(merged, g) < routeScore(plain, g)) ? merged : plain
+    // (crossings counted: a join that crosses what a route of its own would not is no better)
+    const full = (pts) => routeScore(pts, g) + overshoot(pts, S, T) + ROUTE_CROSS * crossingsOf(pts, others)
+    return joins && (!plain || full(merged) < full(plain)) ? merged : plain
   }
   return { routeFor, joinable, routeScore, labelRect }
 }
@@ -280,6 +284,93 @@ export function polishLinks(ctx) {
     for (const [o, pts] of plan.adapted) o.points = pts
   }
 
+  // When the lines at a box cannot simply slide with it (a line that turns the other way once the box has moved, a
+  // loop up out of it, a sibling with two lines in): the box (and the straight chain under it) is moved anyway, a
+  // sibling in the way pushed aside, every line at a moved box routed again by the router, and the whole kept only
+  // when those lines together read better by the one score (polish's routeScore, going past both ends, crossings)
+  // than before; else everything goes back
+  // Whether every line keeps out of every box but its own two ends (what a move must never break)
+  const linesClear = () =>
+    connections.every((o) =>
+      segsOf(o.points).every((sg, i, all) =>
+        nodeRects.every((r) => {
+          const own = r === placed.get(o.from) || r === placed.get(o.to)
+          if (own && (i === 0 || i === all.length - 1)) return true
+          return !segHits(sg, r, own ? -0.5 : 1)
+        }),
+      ),
+    )
+
+  const moveAndReroute = (c, x, startY, endY, dx) => {
+    const move = new Map([[c.to, dx]])
+    // The straight chain below: boxes with one line in, joined by a straight line, go along
+    for (let grew = true; grew; ) {
+      grew = false
+      for (const o of connections) {
+        if (o.kind === 'back' || !move.has(o.from) || move.has(o.to) || !isNearVertical(o)) continue
+        if (connections.filter((q) => q.to === o.to && q.kind !== 'back').length !== 1) continue
+        const S = placed.get(o.from)
+        const B = placed.get(o.to)
+        move.set(o.to, diamonds.has(o.from) ? S.x + S.w / 2 + move.get(o.from) - (B.x + B.w / 2) : move.get(o.from))
+        grew = true
+      }
+    }
+    const idOf = new Map([...placed].map(([id, r]) => [r, id]))
+    const finalOf = (r) => ({ ...r, x: r.x + (move.get(idOf.get(r)) ?? 0) })
+    // Siblings in the way are pushed aside (away from the move), once each
+    for (const [id] of [...move]) {
+      const to = finalOf(placed.get(id))
+      for (const q of nodeRects) {
+        const qid = idOf.get(q)
+        if (move.has(qid) || !rectsOverlapAt(to, finalOf(q), 14)) continue
+        const d = move.get(id) < 0 ? to.x - 14 - (q.x + q.w) : to.x + to.w + 14 - q.x
+        move.set(qid, d)
+      }
+    }
+    // Room: inside the stage box, clear of every box and title
+    for (const [id] of move) {
+      const to = finalOf(placed.get(id))
+      const box = boxOf(id)
+      if (box && (to.x < box.x + STAGE_PAD - 6 || to.x + to.w > box.x + box.w - STAGE_PAD + 6)) return false
+      if (nodeRects.some((r) => r !== placed.get(id) && rectsOverlapAt(to, finalOf(r), move.has(idOf.get(r)) ? 14 : 14))) return false
+      if (titles.some((q) => rectsOverlapAt(to, q, 4))) return false
+    }
+    // The lines touched, and how they read now
+    const touched = connections.filter((o) => o !== c && (move.has(o.from) || move.has(o.to)))
+    const score = (o) => {
+      const rest = connections.filter((q) => q !== o)
+      return routeScore(o.points, o) + overshoot(o.points, placed.get(o.from), placed.get(o.to)) + ROUTE_CROSS * crossingsOf(o.points, rest)
+    }
+    const before = [c, ...touched].reduce((n, o) => n + score(o), 0)
+    const saved = { rects: [...move.keys()].map((id) => [placed.get(id), placed.get(id).x]), lines: connections.map((o) => [o, o.points, o.labelAt]) }
+    const undo = () => {
+      for (const [r, x0] of saved.rects) r.x = x0
+      for (const [o, pts, at] of saved.lines) {
+        o.points = pts
+        o.labelAt = at
+      }
+      return false
+    }
+    for (const [id, d] of move) placed.get(id).x += d
+    c.points = [[x, startY], [x, endY]]
+    if (segsOf(c.points).some((sg) => nodeRects.some((r) => r !== placed.get(c.from) && r !== placed.get(c.to) && segHits(sg, r, 8)))) return undo()
+    // Routed again, the main line first (the others then go round it)
+    for (const o of [...touched].sort((a, b) => GIVE_WAY[b.kind] - GIVE_WAY[a.kind])) {
+      const pts = routeFor(o, connections)
+      if (!pts) return undo()
+      o.points = pts
+    }
+    const after = [c, ...touched].reduce((n, o) => n + score(o), 0)
+    if (after >= before || !linesClear()) return undo()
+    for (const o of [c, ...touched]) {
+      if (!o.labelSize) continue
+      const others = connections.filter((q) => q !== o)
+      const labels = others.map(labelRect).filter(Boolean)
+      o.labelAt = placeLabel(ownPart(o.points, others.filter((q) => joinable(o, q)).map((q) => q.points)), o.labelSize, nodeRects, [...titles, ...labels], others, borders)
+    }
+    return true
+  }
+
   const alignDown = () => {
     let moved = false
     for (const c of connections) {
@@ -308,7 +399,10 @@ export function polishLinks(ctx) {
         continue
       }
       const plan = planShift(c.to, dx, null, c)
-      if (!plan) continue
+      if (!plan) {
+        if (moveAndReroute(c, x, startY, endY, dx)) moved = true
+        continue
+      }
       // A node in the way (a sibling beside it) is pushed aside by what it takes to clear it, when it can give way
       const pushed = []
       const to = { x: T.x + dx, y: T.y, w: T.w, h: T.h }
@@ -330,7 +424,10 @@ export function polishLinks(ctx) {
         }
         pushed.push(pq)
       }
-      if (blocked || !roomFor(plan, pushed, c)) continue
+      if (blocked || !roomFor(plan, pushed, c)) {
+        if (moveAndReroute(c, x, startY, endY, dx)) moved = true
+        continue
+      }
       // The straight line itself, and every line that moves with the boxes, keep a line's width off the boxes they pass
       const moveOf = new Map()
       for (const q of [plan, ...pushed]) q.rects.forEach((r, n) => moveOf.set(r, q.dxs[n]))
@@ -338,9 +435,20 @@ export function polishLinks(ctx) {
       const passes = (pts, a, b) => segsOf(pts).some((sg) => nodeRects.some((r) => r !== placed.get(a) && r !== placed.get(b) && segHits(sg, at(r), 8)))
       if (passes([[x, startY], [x, endY]], c.from, c.to)) continue
       if ([plan, ...pushed].some((q) => [...q.chainLinks].some((o) => passes(o.points.map(([px, py]) => [px + q.dxs[q.chain.indexOf(o.from)], py]), o.from, o.to)))) continue
+      const saved = { rects: nodeRects.map((r) => [r, r.x]), lines: connections.map((o) => [o, o.points, o.labelAt]) }
       applyPlan(plan)
       for (const pq of pushed) applyPlan(pq)
+      const was = c.points
       c.points = [[x, startY], [x, endY]]
+      if (!linesClear()) {
+        for (const [r, x0] of saved.rects) r.x = x0
+        for (const [o, pts, at] of saved.lines) {
+          o.points = pts
+          o.labelAt = at
+        }
+        c.points = was
+        continue
+      }
       moved = true
     }
     return moved
@@ -480,9 +588,12 @@ export function polishLinks(ctx) {
   // into its node from behind, going past both its ends, and every link it crosses. Every reroute below is kept only
   // when it lowers this, so a crossing is not traded for a long way round, nor a bend for a detour
   const scoreOf = (c, pts, others) => routeScore(pts, c) + overshoot(pts, placed.get(c.from), placed.get(c.to)) + ROUTE_CROSS * crossingsOf(pts, others)
+  // What the router would charge for a route (its length, bends and crossings, and the dearest ports): a new route
+  // dearer than the present one by that measure would not read better, so the search need not go there
+  const routerCost = (pts, others) => lengthOf(pts) + BEND * bendsOf(pts) + CROSS * crossingsOf(pts, others) + 1400
   const reroute = (c) => {
     const others = connections.filter((o) => o !== c)
-    const pts = routeFor(c, connections)
+    const pts = routeFor(c, connections, [], false, routerCost(c.points, others))
     if (!pts || scoreOf(c, pts, others) >= scoreOf(c, c.points, others)) return
     c.points = pts
     if (c.labelSize) {
@@ -497,7 +608,8 @@ export function polishLinks(ctx) {
   // together read better, else both go back
   const makeRoom = (c) => {
     const ends = new Set([c.from, c.to])
-    const holders = connections.filter((o) => o !== c && o.kind !== 'back' && (ends.has(o.from) || ends.has(o.to)))
+    // The links at its two nodes that could join another instead (only those can give their point up)
+    const holders = connections.filter((o) => o !== c && o.kind !== 'back' && (ends.has(o.from) || ends.has(o.to)) && connections.some((q) => q !== o && joinable(o, q))).slice(0, 3)
     for (const b of holders) {
       const saved = [b.points, b.labelAt, c.points, c.labelAt]
       const pair = () => {
@@ -539,6 +651,7 @@ export function polishLinks(ctx) {
     const bad = () => entersFromBehind(c.points, S, T) || overshoot(c.points, S, T) > OVERSHOOT || bendsOf(c.points) >= 3
     if (!bad()) continue
     reroute(c)
+    // Making room is for a line that goes round or comes in from behind, not for one with a bend too many
     if (bad()) makeRoom(c)
   }
 

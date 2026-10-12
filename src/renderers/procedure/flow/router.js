@@ -27,9 +27,9 @@ const CLEAR = 10
 /** Two links closer than this, side by side, read as one */
 export const PARALLEL_GAP = 10
 /** What a bend costs, in pixels of length: more than any detour on one screen */
-const BEND = 600
+export const BEND = 600
 /** What crossing another link costs: more than two bends, so a detour always beats a crossing */
-const CROSS = 1400
+export const CROSS = 1400
 /** An off-centre port costs a little: the middle of a side is where a link is expected */
 const QUARTER = 16
 /** Ports: leaving through the top or arriving through the bottom goes against the flow */
@@ -114,44 +114,78 @@ export const edgesOf = (r) => [
   ],
 ]
 
-/** A tiny binary heap of [cost, state] */
+/**
+ * A binary heap of (key, state, cost), kept in three growing typed arrays rather than one array of small arrays: the
+ * search pushes hundreds of thousands of entries, and the small arrays were most of its time (and of the garbage).
+ * The same sifting as a plain heap, so the order states come out in is the same.
+ */
 class Heap {
   constructor() {
-    this.a = []
+    this.n = 0
+    this.k = new Float64Array(1024)
+    this.s = new Int32Array(1024)
+    this.c = new Float64Array(1024)
   }
-  push(item) {
-    const a = this.a
-    a.push(item)
-    let i = a.length - 1
+  swap(i, j) {
+    const { k, s, c } = this
+    const tk = k[i]
+    k[i] = k[j]
+    k[j] = tk
+    const ts = s[i]
+    s[i] = s[j]
+    s[j] = ts
+    const tc = c[i]
+    c[i] = c[j]
+    c[j] = tc
+  }
+  push(key, state, cost) {
+    if (this.n === this.k.length) {
+      const grow = (a, T) => {
+        const b = new T(a.length * 2)
+        b.set(a)
+        return b
+      }
+      this.k = grow(this.k, Float64Array)
+      this.s = grow(this.s, Int32Array)
+      this.c = grow(this.c, Float64Array)
+    }
+    let i = this.n
+    this.n += 1
+    this.k[i] = key
+    this.s[i] = state
+    this.c[i] = cost
     while (i > 0) {
       const p = (i - 1) >> 1
-      if (a[p][0] <= a[i][0]) break
-      ;[a[p], a[i]] = [a[i], a[p]]
+      if (this.k[p] <= this.k[i]) break
+      this.swap(p, i)
       i = p
     }
   }
+  /** Takes the least entry off; read it from `top` ([key, state, cost]) */
   pop() {
-    const a = this.a
-    const top = a[0]
-    const last = a.pop()
-    if (a.length) {
-      a[0] = last
+    const { k, s, c } = this
+    this.top = [k[0], s[0], c[0]]
+    this.n -= 1
+    if (this.n > 0) {
+      k[0] = k[this.n]
+      s[0] = s[this.n]
+      c[0] = c[this.n]
       let i = 0
       for (;;) {
         const l = i * 2 + 1
         const r = l + 1
         let m = i
-        if (l < a.length && a[l][0] < a[m][0]) m = l
-        if (r < a.length && a[r][0] < a[m][0]) m = r
+        if (l < this.n && k[l] < k[m]) m = l
+        if (r < this.n && k[r] < k[m]) m = r
         if (m === i) break
-        ;[a[m], a[i]] = [a[i], a[m]]
+        this.swap(m, i)
         i = m
       }
     }
-    return top
+    return this.top
   }
   get size() {
-    return this.a.length
+    return this.n
   }
 }
 
@@ -175,6 +209,8 @@ class Heap {
  * @param {number[][]} [p.inAt]  arrive only at one of these points (a link that joins another into the same node)
  * @param {{x,y,w,h}[]} [p.soft]  boxes a route may run through but a little dearer (5% more per pixel): a link between
  *   two stages then takes the gap between their boxes rather than a strip inside one, where both are as short
+ * @param {number} [p.maxCost]  find only a route cheaper than this (the search stops there): a second try at a link
+ *   that has a route already need not look at anything dearer
  * @param {boolean} [p.exhaustive]  search without the A* estimate (for the tests: it must find routes as cheap)
  * @param {Function} [p.onCost]  called with the cost of the route found (for the tests)
  * @param {boolean} [p.join]  a `share` link is one to join (merge.js): the route may lie exactly on it, a little cheaper
@@ -410,7 +446,7 @@ export function routeLink(p) {
   // stub shorter than the arrowhead: the head then sits sideways on a 1px jog. So no turning on
   // the stretch of an arrival port's own axis nearer than END_RUN (issue #23). Only the arrival
   // end: the start has no head, and holding it too costs extra bends in tight columns
-  const noTurn = new Set()
+  const noTurn = new Uint8Array(W * H)
   for (const [x, y, side] of inPorts) {
     const i = xi.get(Math.round(x * 2) / 2)
     const j = yi.get(Math.round(y * 2) / 2)
@@ -418,7 +454,7 @@ export function routeLink(p) {
     const d = OUTWARD[side]
     for (let a = i + DX[d], b = j + DY[d]; a >= 0 && b >= 0 && a < W && b < H; a += DX[d], b += DY[d]) {
       if (Math.abs(xs[a] - x) + Math.abs(ys[b] - y) >= END_RUN) break
-      noTurn.add(b * W + a)
+      noTurn[b * W + a] = 1
     }
   }
 
@@ -449,8 +485,9 @@ export function routeLink(p) {
     }
     return m
   }
-  const dist = new Map()
-  const prev = new Map()
+  // Typed arrays, not maps: the search touches every state many times (a grid point and a heading)
+  const dist = new Float64Array(W * H * 4).fill(Infinity)
+  const prev = new Int32Array(W * H * 4).fill(-1)
   const heap = new Heap()
   // A route leaves its port straight out: no turning on the node's own edge
   const starts = new Set()
@@ -461,17 +498,17 @@ export function routeLink(p) {
     const s = (j * W + i) * 4 + OUTWARD[side]
     const c = portCost.out[side] + (quarter ? QUARTER : 0)
     starts.add(s)
-    if (c < (dist.get(s) ?? Infinity)) {
-      dist.set(s, c)
-      heap.push([c + est(s), s, c])
+    if (c < dist[s]) {
+      dist[s] = c
+      heap.push(c + est(s), s, c)
     }
   }
 
   let best = null
-  let bestCost = Infinity
+  let bestCost = p.maxCost ?? Infinity
   while (heap.size) {
     const [f, s, c] = heap.pop()
-    if (c > (dist.get(s) ?? Infinity)) continue
+    if (c > dist[s]) continue
     if (f >= bestCost) break
     if (goal.has(s)) {
       const total = c + goal.get(s)
@@ -484,15 +521,15 @@ export function routeLink(p) {
     const cell = (s - d) / 4
     const i = cell % W
     const j = (cell - i) / W
-    for (const nd of starts.has(s) || noTurn.has(cell) ? [d] : [d, (d + 1) % 4, (d + 3) % 4]) {
+    for (const nd of starts.has(s) || noTurn[cell] ? [d] : [d, (d + 1) % 4, (d + 3) % 4]) {
       const st = step(i, j, nd)
       if (!st) continue
       const ns = (st.nj * W + st.ni) * 4 + nd
       const nc = c + st.cost + (nd === d ? 0 : BEND)
-      if (nc < (dist.get(ns) ?? Infinity)) {
-        dist.set(ns, nc)
-        prev.set(ns, s)
-        heap.push([nc + est(ns), ns, nc])
+      if (nc < dist[ns]) {
+        dist[ns] = nc
+        prev[ns] = s
+        heap.push(nc + est(ns), ns, nc)
       }
     }
   }
@@ -501,7 +538,7 @@ export function routeLink(p) {
 
   // Walk back, keeping only the corners
   const pts = []
-  for (let s = best; s !== undefined; s = prev.get(s)) {
+  for (let s = best; s !== -1; s = prev[s]) {
     const cell = (s - (s % 4)) / 4
     const i = cell % W
     const j = (cell - i) / W

@@ -89,6 +89,9 @@ function mirrorSegment(seg) {
   }
 }
 
+/** No bounds: a stage on its own, before its box is drawn, may grow every way */
+const OPEN = { x: -1e6, y: -1e6, w: 2e6, h: 2e6 }
+
 /** Main-line links: ELK keeps them straight first */
 const MAIN_PRIORITY = { 'elk.layered.priority.straightness': '10', 'elk.layered.priority.direction': '10' }
 
@@ -279,6 +282,9 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
       }
     })
     const straightened = straighten(connections, placed, [], true, diamonds)
+    // The last passes (polish.js) on the stage alone, before its box is drawn round it: a box moved under the line
+    // above it, or a sibling pushed aside, has all the room it needs, and the box is then made to fit
+    polishLinks({ placed, connections: straightened, diamonds, within: () => OPEN, boxOf: () => null })
     // The content box, links and labels included (a loop can reach past the nodes)
     let x0 = Infinity
     let y0 = Infinity
