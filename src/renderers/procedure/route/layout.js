@@ -36,7 +36,10 @@ const LABEL_FONT = 12
 const LABEL_LH = 15
 const LABEL_MAX_LINES = 4
 const ACTOR_H = 14
-const BAND_TITLE_H = 30
+const BAND_TITLE_H = 42
+/** How far a stage band reaches past its first and last station, and the extra gap at a stage boundary that keeps two bands apart */
+const BAND_REACH = STATION_GAP / 2 + 6
+const STAGE_BREAK = 52
 const LINE_TOP_GAP = 26
 const BOX_FONT = 11.5
 const BOX_LH = 14
@@ -206,12 +209,15 @@ export function buildRouteGraph(spec, fields = {}) {
     const n = hangsOf.get(id).length
     return n ? n * HANG_W + (n - 1) * HANG_GAP : 0
   }
+  const hasStages = (spec.stages ?? []).length > 0
   const x = new Map()
   let cursor = PAD + STATION_GAP / 2
   spine.forEach((id, i) => {
     if (i > 0) {
       const prev = spine[i - 1]
-      cursor += Math.max(STATION_GAP, groupW(prev) / 2 + groupW(id) / 2 + 24)
+      // A stage boundary gets extra room, so the bands (which reach BAND_REACH past their end stations) stay apart
+      const boundary = byId.get(prev).stageId !== byId.get(id).stageId && hasStages ? STAGE_BREAK : 0
+      cursor += Math.max(STATION_GAP, groupW(prev) / 2 + groupW(id) / 2 + 24) + boundary
     }
     x.set(id, cursor)
   })
@@ -231,7 +237,6 @@ export function buildRouteGraph(spec, fields = {}) {
     labelInfo.set(id, { lines, actor, h })
     topBlock = Math.max(topBlock, h)
   }
-  const hasStages = (spec.stages ?? []).length > 0
   const top = PAD
   const labelTop = top + (hasStages ? BAND_TITLE_H : 8)
   const lineY = labelTop + topBlock + LINE_TOP_GAP
@@ -324,7 +329,7 @@ export function buildRouteGraph(spec, fields = {}) {
       if (st && stageById.has(st)) {
         const first = x.get(spine[runStart])
         const last = x.get(id)
-        const pad = STATION_GAP / 2 - 6
+        const pad = BAND_REACH
         bands.push({ stageId: st, label: stageById.get(st).label, x: first - pad, w: last - first + pad * 2 })
       }
       runStart = null

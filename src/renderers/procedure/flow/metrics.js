@@ -40,8 +40,8 @@ export const LAYER_GAP = 24
 export const NODE_GAP = 24
 
 /** A stage box: room at the top for its title, and around its nodes */
-export const STAGE_PAD_TOP = 30
-export const STAGE_PAD = 14
+export const STAGE_PAD_TOP = 44
+export const STAGE_PAD = 28
 export const STAGE_TITLE_FONT = 13
 
 /**
