@@ -691,3 +691,15 @@ test('the rule switch removes the table and the counts', () => {
   assert.ok(off.nodes.every((n) => n.data.ruleCount === 0), 'no counts on the ends')
   assert.ok(off.size.height < on.size.height, 'switching rules off should give the height of the table back')
 })
+
+test('the line over the rule table says "contract" only for a contract flow', async () => {
+  const { ruleTableNoteKey } = await import('../src/renderers/procedure/flow/ruleTable.js')
+  assert.equal(ruleTableNoteKey('contract-performance'), 'rule.tableNoteContract')
+  for (const d of ['litigation', 'administrative', 'approval', 'negotiation', 'other', undefined]) assert.equal(ruleTableNoteKey(d), 'rule.tableNote')
+  const en = (await import('../src/core/messages/en.js')).default
+  const zh = (await import('../src/core/messages/zh.js')).default
+  for (const dict of [en, zh]) {
+    assert.ok(!/contract|合同/i.test(dict['rule.tableNote']), 'the neutral line does not call it a contract')
+    assert.ok(/contract|合同/i.test(dict['rule.tableNoteContract']))
+  }
+})

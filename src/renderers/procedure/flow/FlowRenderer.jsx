@@ -173,7 +173,7 @@ export default function ProcedureFlow({ spec }) {
             selectable: false,
             connectable: false,
             focusable: false,
-            data: { table: layout.ruleTable, sourceById: new Map((spec.sources ?? []).map((s) => [s.id, s])) },
+            data: { table: layout.ruleTable, domain: spec.domain, sourceById: new Map((spec.sources ?? []).map((s) => [s.id, s])) },
           },
         ]
       : []
