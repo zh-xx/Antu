@@ -552,7 +552,7 @@ Decisions the renderer made, so they are not undone by accident:
   no detail. Fixed 208×64 boxes left
   most of every box empty and, fitted to a screen, the text too small to read — what putting the
   same data through Mermaid showed.
-- **A line meets the middle of the face it enters** (`flow/straighten.js`, `linkCost`): a line that meets a box off the middle of its face costs a little more than a bend, so a decision's two ways out leave by its side points and go down into the middle of each box (the space between siblings is 44 px so this fits), and a lone end is moved under the line that enters it when it has room.
+- **A line meets the middle of the face it enters** (`flow/straighten.js`, `linkCost`): a line that meets a box off the middle of its face costs a little more than a bend, so a decision's two ways out leave by its side points and go down into the middle of each box (the space between siblings is 44 px so this fits), and a lone end is moved under the line that enters it when it has room. **A line that goes down out of a decision leaves by its lower point**, never by the slanted side: the box below is moved under the point when there is room (a sibling beside it is pushed aside), and where there is not the line takes a short jog just under the point. A step of a few pixels in a line (two boxes that nearly line up) is drawn straight.
 - **Links bend as little as possible: straight first, then one bend** (`flow/straighten.js`).
   ELK's router takes every link out of a bottom and into a top, so two nodes not exactly in line
   cost a Z (two bends) and a loop four. After ELK, each link is offered simpler routes, fewest

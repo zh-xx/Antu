@@ -398,27 +398,191 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
   const all = straighten(connections, placed, titles, true, diamonds, { borders, within })
   connections.splice(0, connections.length, ...all)
 
-  // An end (or any node nothing leaves) that one straight line comes down into, off its middle: moved under the line
-  // when it has room, so the line meets the middle of its top, as a person would draw it. Nodes beside it, other
-  // lines and the stage box's edge decide whether it has room
+  // A node that one straight line comes down into, off its middle (or from the slanted side of a diamond): moved under
+  // the line, with the straight chain below it, when there is room, so the line leaves a diamond by its point and meets
+  // the middle of the top it enters, as a person would draw it. Nodes beside it, other lines and the stage box's edge
+  // decide whether there is room; where there is none the line stays as the router drew it
+  // A line leaving a node that moves sideways by dx keeps its far end: its first segment gives way (a vertical one is
+  // moved with its turn, a horizontal one is made longer or shorter, never reversed). A line entering one is the same
+  // read from the other end
+  const moveStart = (o, dx) => {
+    const q = o.points.map((pt) => [...pt])
+    if (q.length < 2) return null
+    if (q[0][0] === q[1][0]) {
+      if (q.length < 3 || q[1][1] !== q[2][1]) return null
+      q[0][0] += dx
+      q[1][0] += dx
+      if (Math.sign(q[2][0] - q[1][0]) !== Math.sign(o.points[2][0] - o.points[1][0]) || q[2][0] === q[1][0]) return null
+    } else if (q[0][1] === q[1][1]) {
+      q[0][0] += dx
+      if (Math.sign(q[1][0] - q[0][0]) !== Math.sign(o.points[1][0] - o.points[0][0]) || q[1][0] === q[0][0]) return null
+    } else return null
+    return q
+  }
+  const moveEnd = (o, dx) => {
+    const back = moveStart({ points: [...o.points].reverse() }, dx)
+    return back ? back.reverse() : null
+  }
+  const segmentsClear = (pts, rects) => segsOf(pts).every((sg) => rects.every((r) => !segHits(sg, r, 4)))
+  const isVertical = (c) => c.points.length === 2 && c.points[0][0] === c.points[1][0]
+
+  // What it takes to move node `id` sideways by dx: the nodes below it joined by one straight vertical line each move
+  // with it (their lines too); every other line at them gives way at the near end. `inLink` (when the node's own line in
+  // gives way too) is moved with it. null when some line cannot give way
+  const planShift = (id, dx, inLink, skip) => {
+    const chain = [id]
+    const chainLinks = new Set()
+    const adapted = new Map()
+    if (inLink) {
+      const pts = moveEnd(inLink, dx)
+      if (!pts) return null
+      adapted.set(inLink, pts)
+    }
+    for (let k = 0; k < chain.length; k += 1) {
+      const m = chain[k]
+      for (const o of connections) {
+        if (o === skip || o === inLink) continue
+        if (o.to === m && !chainLinks.has(o)) return null
+        if (o.from !== m) continue
+        if (o.kind !== 'back' && isVertical(o) && connections.filter((q) => q.to === o.to).length === 1) {
+          chainLinks.add(o)
+          if (!chain.includes(o.to)) chain.push(o.to)
+        } else {
+          const pts = moveStart(o, dx)
+          if (!pts) return null
+          adapted.set(o, pts)
+        }
+      }
+    }
+    return { dx, chain, rects: chain.map((n) => placed.get(n)), chainLinks, adapted }
+  }
+  // Whether a plan has room: inside its stage box, clear of every node it does not move, of the stage titles, of other
+  // lines and labels, with its adapted lines still clear of the nodes
+  const roomFor = (plan, others, skip) => {
+    const { dx, chain, rects, chainLinks, adapted } = plan
+    // Every node at the place it will stand: this plan's and the pushed ones' shifted, the rest where they are
+    const shifted = new Map()
+    for (const r of rects) shifted.set(r, dx)
+    for (const q of others) for (const r of q.rects) shifted.set(r, q.dx)
+    const finalOf = (r) => (shifted.has(r) ? { x: r.x + shifted.get(r), y: r.y, w: r.w, h: r.h } : r)
+    const after = nodeRects.map((r) => ({ orig: r, now: finalOf(r) }))
+    const live = (o) => o !== skip && !chainLinks.has(o) && !adapted.has(o) && !others.some((q) => q.chainLinks.has(o) || q.adapted.has(o))
+    return (
+      rects.every((r, n) => {
+        const to = finalOf(r)
+        const box = boxOfStage.get(byId.get(chain[n]).stageId)
+        if (box && (to.x < box.x + STAGE_PAD || to.x + to.w > box.x + box.w - STAGE_PAD)) return false
+        if (after.some((q) => !rects.includes(q.orig) && rectsOverlapAt(to, q.now, 14))) return false
+        if (titles.some((q) => rectsOverlapAt(to, q, 4))) return false
+        if (connections.some((o) => live(o) && segsOf(o.points).some((sg) => segHits(sg, to, 2)))) return false
+        return !connections.some((o) => live(o) && labelRect(o) && rectsOverlapAt(to, labelRect(o), 4))
+      }) &&
+      [...adapted.entries()].every(
+        ([o, pts]) =>
+          segmentsClear(pts, after.filter((q) => q.orig !== placed.get(o.from) && q.orig !== placed.get(o.to)).map((q) => q.now)) &&
+          crossingsOf(pts, connections.filter((q) => live(q))) <= crossingsOf(o.points, connections.filter((q) => live(q))),
+      )
+    )
+  }
+  const applyPlan = (plan) => {
+    for (const r of plan.rects) r.x += plan.dx
+    for (const o of plan.chainLinks) {
+      o.points = o.points.map(([px, py]) => [px + plan.dx, py])
+      if (o.labelAt) o.labelAt = { x: o.labelAt.x + plan.dx, y: o.labelAt.y }
+    }
+    for (const [o, pts] of plan.adapted) o.points = pts
+  }
+
+  const alignDown = () => {
+    let moved = false
+    for (const c of connections) {
+      // A straight vertical line, or a bent one that a shift would straighten: a Z (down, across, down: a jog) or an L
+      // (down, then across into the side of the box below)
+      const isZ =
+        (c.points.length === 4 && c.points[0][0] === c.points[1][0] && c.points[1][1] === c.points[2][1] && c.points[2][0] === c.points[3][0]) ||
+        (c.points.length === 3 && c.points[0][0] === c.points[1][0] && c.points[1][1] === c.points[2][1])
+      if (c.kind === 'back' || !(isVertical(c) || isZ)) continue
+      const S = placed.get(c.from)
+      const T = placed.get(c.to)
+      if (!S || !T || !byId.get(c.to) || connections.filter((o) => o.to === c.to).length !== 1) continue
+      const fromDiamond = diamonds.has(c.from)
+      const x = fromDiamond ? S.x + S.w / 2 : c.points[0][0]
+      const startY = fromDiamond ? S.y + S.h : c.points[0][1]
+      const dx = x - (T.x + T.w / 2)
+      const atVertex = !fromDiamond || Math.abs(c.points[0][1] - startY) < 0.5
+      if (Math.abs(dx) < 0.5 && atVertex) continue
+      const endY = isVertical(c) || c.points.length === 4 ? c.points[c.points.length - 1][1] : T.y
+      if (Math.abs(dx) < 0.5) {
+        c.points = [[x, startY], [x, endY]]
+        moved = true
+        continue
+      }
+      const plan = planShift(c.to, dx, null, c)
+      if (!plan) continue
+      // A node in the way (a sibling beside it) is pushed aside by what it takes to clear it, when it can give way
+      const pushed = []
+      const to = { x: T.x + dx, y: T.y, w: T.w, h: T.h }
+      let blocked = false
+      for (const q of nodeRects) {
+        if (plan.rects.includes(q) || !rectsOverlapAt(to, q, 14)) continue
+        const id = [...placed.keys()].find((k) => placed.get(k) === q)
+        const ins = connections.filter((o) => o.to === id)
+        if (!id || ins.length !== 1 || ins[0].kind === 'back' || diamonds.has(id)) {
+          blocked = true
+          break
+        }
+        const need = dx < 0 ? to.x - 14 - (q.x + q.w) : to.x + to.w + 14 - q.x
+        const shift = dx < 0 ? Math.min(0, need) : Math.max(0, need)
+        const pq = planShift(id, shift, ins[0], c)
+        if (!pq || !roomFor(pq, [plan], c)) {
+          blocked = true
+          break
+        }
+        pushed.push(pq)
+      }
+      if (blocked || !roomFor(plan, pushed, c)) continue
+      applyPlan(plan)
+      for (const pq of pushed) applyPlan(pq)
+      c.points = [[x, startY], [x, endY]]
+      moved = true
+    }
+    return moved
+  }
+  for (let pass = 0; pass < 3 && alignDown(); pass += 1);
+
+  // A line that leaves a diamond downward from its slanted side (the router aimed it at the box below) is made to leave by
+  // the diamond's lower point, with a short jog under it where the box stands off the point: it reads as leaving the point
   for (const c of connections) {
+    if (c.kind === 'back' || !diamonds.has(c.from) || c.points.length < 2) continue
+    const S = placed.get(c.from)
+    const [p0, p1] = c.points
+    const bottom = S.y + S.h
+    const cx = S.x + S.w / 2
+    if (p0[0] !== p1[0] || p1[1] <= p0[1] || p0[1] >= bottom - 1.5 || p0[1] < S.y + S.h / 2 || p1[1] - bottom < 24) continue
+    const g = Math.min(14, (p1[1] - bottom) / 2)
+    const pts = Math.abs(p0[0] - cx) < 4 ? [[cx, bottom], ...c.points.slice(1)] : [[cx, bottom], [cx, bottom + g], [p0[0], bottom + g], ...c.points.slice(1)]
+    const others = connections.filter((o) => o !== c)
+    if (crossingsOf(pts, others) > crossingsOf(c.points, others)) continue
+    if (segsOf(pts).some((sg, i, all) => nodeRects.some((r) => r !== S && r !== placed.get(c.to) && segHits(sg, r, 2)) && i < all.length)) continue
+    if (others.some((o) => segsOf(o.points).some((sg) => segsOf(pts).slice(0, 3).some((sc) => linesShare(sg, sc))))) continue
+    c.points = pts
+  }
+
+  // A step of a few pixels in a line (down, across 8 px or less, down) is a rounding of two boxes that nearly line
+  // up: it is drawn straight, at a place both boxes reach, where there is one (a diamond only at its point)
+  for (const c of connections) {
+    const q = c.points
+    if (c.kind === 'back' || q.length !== 4 || q[0][0] !== q[1][0] || q[1][1] !== q[2][1] || q[2][0] !== q[3][0] || Math.abs(q[1][0] - q[2][0]) > 8) continue
+    const S = placed.get(c.from)
     const T = placed.get(c.to)
-    const node = byId.get(c.to)
-    if (!T || !node || node.kind === 'decision' || c.points.length < 2) continue
-    if (connections.filter((o) => o.from === c.to || o.to === c.to).length !== 1) continue
-    const last = c.points[c.points.length - 1]
-    const prev = c.points[c.points.length - 2]
-    if (last[0] !== prev[0] || Math.abs(last[1] - T.y) > 0.5) continue
-    const dx = last[0] - (T.x + T.w / 2)
-    if (Math.abs(dx) < 4) continue
-    const moved = { x: T.x + dx, y: T.y, w: T.w, h: T.h }
-    const stageBox = boxOfStage.get(node.stageId)
-    if (stageBox && (moved.x < stageBox.x + STAGE_PAD || moved.x + moved.w > stageBox.x + stageBox.w - STAGE_PAD)) continue
-    if (nodeRects.some((r) => r !== T && rectsOverlapAt(moved, r, 14))) continue
-    if (titles.some((r) => rectsOverlapAt(moved, r, 4))) continue
-    if (connections.some((o) => o !== c && segsOf(o.points).some((sg) => segHits(sg, moved, 2)))) continue
-    if (connections.some((o) => labelRect(o) && rectsOverlapAt(moved, labelRect(o), 4))) continue
-    T.x = moved.x
+    if (!S || !T || diamonds.has(c.from) || diamonds.has(c.to)) continue
+    const lo = Math.max(S.x, T.x) + 8
+    const hi = Math.min(S.x + S.w, T.x + T.w) - 8
+    if (lo > hi) continue
+    const x = Math.min(hi, Math.max(lo, T.x + T.w / 2))
+    const straight = [[x, q[0][1]], [x, q[3][1]]]
+    if (crossingsOf(straight, connections.filter((o) => o !== c)) > crossingsOf(c.points, connections.filter((o) => o !== c))) continue
+    c.points = straight
   }
 
   // A link ELK routed inside a stage may still run along the edge of the box (a loop round the
@@ -518,6 +682,13 @@ export function toReal(frame, vertical) {
   }))
   const size = vertical ? { width: frame.width, height: frame.height } : { width: frame.height, height: frame.width }
   return { placed, stageBoxes, connections, size }
+}
+
+/** Whether two axis-parallel segments lie on one another for some length */
+function linesShare([a, b], [c, d]) {
+  if (a[0] === b[0] && c[0] === d[0] && a[0] === c[0]) return Math.min(Math.max(a[1], b[1]), Math.max(c[1], d[1])) - Math.max(Math.min(a[1], b[1]), Math.min(c[1], d[1])) > 0.5
+  if (a[1] === b[1] && c[1] === d[1] && a[1] === c[1]) return Math.min(Math.max(a[0], b[0]), Math.max(c[0], d[0])) - Math.max(Math.min(a[0], b[0]), Math.min(c[0], d[0])) > 0.5
+  return false
 }
 
 /** Whether two rectangles come within `m` of each other */

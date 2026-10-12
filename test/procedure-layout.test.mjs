@@ -86,8 +86,10 @@ test('seven real contracts: both orientations lay out and no nodes overlap', () 
 test('the main line runs straight inside a stage: almost no main link there bends', () => {
   // Inside a stage the flow runs down one column and main-line links carry ELK's straightness
   // priority. A main link into the next stage has to leave one column and enter the next, so it
-  // bends (see the bend test below); those are left out here. Measured: 4 of 114 main links
-  // inside a stage bend, both orientations.
+  // bends (see the bend test below); those are left out here. Measured: 26 of 224 main links
+  // inside a stage bend, both orientations. They are the ones out of a decision whose box below stands off its point:
+  // the line leaves the diamond by its point (not by the slanted side, as it did when 4 of 114 bent) and turns once or
+  // twice into the middle of the box, #186.
   let total = 0
   let bent = 0
   for (const f of files) {
@@ -102,7 +104,7 @@ test('the main line runs straight inside a stage: almost no main link there bend
       }
     }
   }
-  assert.ok(bent / total <= 0.06, `${bent} of ${total} main links inside a stage bend`)
+  assert.ok(bent / total <= 0.13, `${bent} of ${total} main links inside a stage bend`)
 })
 
 test('back edges are recognised: only the real loops are left', () => {
