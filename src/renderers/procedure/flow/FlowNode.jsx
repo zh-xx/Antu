@@ -84,7 +84,7 @@ function Outline({ kind, outcome, w, h, theme }) {
       )
     }
     default:
-      return <rect className="antu-pn-shape" {...paint} x={x} y={y} width={W} height={H} rx={6} />
+      return <rect className="antu-pn-shape" {...paint} x={x} y={y} width={W} height={H} rx={10} />
   }
 }
 
