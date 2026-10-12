@@ -29,6 +29,7 @@ import StageBoxNode from './StageBoxNode.jsx'
 import FlowDock from './FlowDock.jsx'
 import { buildProcedureGraph } from './layout.js'
 import { useSelectEvent } from '../../../shell/useSelectEvent.js'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 /** Node types used by the flowchart. Adding one means registering one line here. */
 const nodeTypes = {
@@ -43,7 +44,9 @@ const nodeTypes = {
  * Stored under their own preference key, apart from the timeline's card fields: the two
  * sets share no switch, and one key for both would make each overwrite the other.
  */
-const FIELD_DEFAULTS = { conditions: true, detail: true, mainLine: true, states: true, stages: true, rules: true }
+const FIELD_DEFAULTS = { conditions: true, detail: true, mainLine: true, stages: true, rules: true }
+/** The States switch starts off in the black-and-white document theme, on in the others (issue 187) */
+export const statesByDefault = (themeId) => themeId !== 'document'
 
 /** Attributes shared by decoration nodes; for why 1×1, see cellsNode in fact/timeline/nodes.js */
 const DECORATION = {
@@ -69,7 +72,8 @@ export default function ProcedureFlow({ spec }) {
   // this data (many diagrams have no stages at all), so turning stages off on one must not turn
   // them off everywhere (issue #22)
   const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().flowFieldsByDiagram || {})
-  const fields = { ...FIELD_DEFAULTS, ...fieldPrefs[specKey], ...(PRESET?.fields || {}) }
+  const { id: themeId } = useTheme()
+  const fields = { ...FIELD_DEFAULTS, states: statesByDefault(themeId), ...fieldPrefs[specKey], ...(PRESET?.fields || {}) }
   const toggleField = (key, value) => {
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], [key]: value } }
     setFieldPrefs(map)
