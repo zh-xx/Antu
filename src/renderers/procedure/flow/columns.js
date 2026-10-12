@@ -425,12 +425,18 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
   }
   const segmentsClear = (pts, rects) => segsOf(pts).every((sg) => rects.every((r) => !segHits(sg, r, 4)))
   const isVertical = (c) => c.points.length === 2 && c.points[0][0] === c.points[1][0]
+  // A line that is straight but for a step of a few px: it goes with the box it leads to (the step is drawn out afterwards)
+  const isNearVertical = (c) => {
+    const q = c.points
+    return isVertical(c) || (q.length === 4 && q[0][0] === q[1][0] && q[1][1] === q[2][1] && q[2][0] === q[3][0] && Math.abs(q[1][0] - q[2][0]) <= 8)
+  }
 
   // What it takes to move node `id` sideways by dx: the nodes below it joined by one straight vertical line each move
   // with it (their lines too); every other line at them gives way at the near end. `inLink` (when the node's own line in
   // gives way too) is moved with it. null when some line cannot give way
   const planShift = (id, dx, inLink, skip) => {
     const chain = [id]
+    const dxs = [dx]
     const chainLinks = new Set()
     const adapted = new Map()
     if (inLink) {
@@ -444,26 +450,31 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
         if (o === skip || o === inLink) continue
         if (o.to === m && !chainLinks.has(o)) return null
         if (o.from !== m) continue
-        if (o.kind !== 'back' && isVertical(o) && connections.filter((q) => q.to === o.to).length === 1) {
+        if (o.kind !== 'back' && isNearVertical(o) && connections.filter((q) => q.to === o.to).length === 1) {
           chainLinks.add(o)
-          if (!chain.includes(o.to)) chain.push(o.to)
+          if (chain.includes(o.to)) continue
+          chain.push(o.to)
+          // Below a diamond the box follows the diamond's point, not the place the line happened to leave by
+          const S = placed.get(m)
+          const T = placed.get(o.to)
+          dxs.push(diamonds.has(m) ? S.x + S.w / 2 + dxs[k] - (T.x + T.w / 2) : dxs[k])
         } else {
-          const pts = moveStart(o, dx)
+          const pts = moveStart(o, dxs[k])
           if (!pts) return null
           adapted.set(o, pts)
         }
       }
     }
-    return { dx, chain, rects: chain.map((n) => placed.get(n)), chainLinks, adapted }
+    return { dx, dxs, chain, rects: chain.map((n) => placed.get(n)), chainLinks, adapted }
   }
   // Whether a plan has room: inside its stage box, clear of every node it does not move, of the stage titles, of other
   // lines and labels, with its adapted lines still clear of the nodes
   const roomFor = (plan, others, skip) => {
-    const { dx, chain, rects, chainLinks, adapted } = plan
+    const { chain, rects, chainLinks, adapted } = plan
     // Every node at the place it will stand: this plan's and the pushed ones' shifted, the rest where they are
     const shifted = new Map()
-    for (const r of rects) shifted.set(r, dx)
-    for (const q of others) for (const r of q.rects) shifted.set(r, q.dx)
+    rects.forEach((r, n) => shifted.set(r, plan.dxs[n]))
+    for (const q of others) q.rects.forEach((r, n) => shifted.set(r, q.dxs[n]))
     const finalOf = (r) => (shifted.has(r) ? { x: r.x + shifted.get(r), y: r.y, w: r.w, h: r.h } : r)
     const after = nodeRects.map((r) => ({ orig: r, now: finalOf(r) }))
     const live = (o) => o !== skip && !chainLinks.has(o) && !adapted.has(o) && !others.some((q) => q.chainLinks.has(o) || q.adapted.has(o))
@@ -485,10 +496,18 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
     )
   }
   const applyPlan = (plan) => {
-    for (const r of plan.rects) r.x += plan.dx
+    plan.rects.forEach((r, n) => {
+      r.x += plan.dxs[n]
+    })
     for (const o of plan.chainLinks) {
-      o.points = o.points.map(([px, py]) => [px + plan.dx, py])
-      if (o.labelAt) o.labelAt = { x: o.labelAt.x + plan.dx, y: o.labelAt.y }
+      const n = plan.chain.indexOf(o.from)
+      if (diamonds.has(o.from)) {
+        // Straight down from the point of the diamond to the box below it
+        const S = placed.get(o.from)
+        const T = placed.get(o.to)
+        o.points = [[S.x + S.w / 2, S.y + S.h], [S.x + S.w / 2, T.y]]
+      } else o.points = o.points.map(([px, py]) => [px + plan.dxs[n], py])
+      if (o.labelAt) o.labelAt = { x: o.labelAt.x + plan.dxs[n], y: o.labelAt.y }
     }
     for (const [o, pts] of plan.adapted) o.points = pts
   }
@@ -506,7 +525,9 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
       const T = placed.get(c.to)
       if (!S || !T || !byId.get(c.to) || connections.filter((o) => o.to === c.to).length !== 1) continue
       const fromDiamond = diamonds.has(c.from)
-      const x = fromDiamond ? S.x + S.w / 2 : c.points[0][0]
+      // The only line out of a box leaves by its middle; one of several keeps the place the router gave it
+      const onlyOut = connections.filter((o) => o.from === c.from && o.kind !== 'back').length === 1
+      const x = fromDiamond || onlyOut ? S.x + S.w / 2 : c.points[0][0]
       const startY = fromDiamond ? S.y + S.h : c.points[0][1]
       const dx = x - (T.x + T.w / 2)
       const atVertex = !fromDiamond || Math.abs(c.points[0][1] - startY) < 0.5
@@ -645,7 +666,7 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
     const r = labelRect(c)
     if (!r) continue
     const others = connections.filter((o) => o !== c)
-    if (!others.some((o) => segsOf(o.points).some((sg) => segHits(sg, r, 2)))) continue
+    if (!others.some((o) => segsOf(o.points).some((sg) => segHits(sg, r, 2))) && !nodeRects.some((n) => rectsOverlapAt(r, n, 2))) continue
     const labels = others.map(labelRect).filter(Boolean)
     c.labelAt = placeLabel(c.points, c.labelSize, nodeRects, [...titles, ...labels], others, borders)
   }
