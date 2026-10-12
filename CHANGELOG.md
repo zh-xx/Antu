@@ -3,6 +3,25 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## 0.14.0
+
+The procedure diagrams were gone over (#186, #188, #189, #191): roomier, rounded boxes, less text on a node, lines with as few turns as possible, a switch that paints each node by its state, and a layout that puts a box under the line above it. Nothing breaks a file or a tool call: what changed is how the diagrams look, and two hints are new.
+
+### Added
+- **A "States" switch** on the flowchart and the route map (#188, #191, issue #187). With it on, a node is painted by the state it is in, read from what the file already says: an end with a negative `outcome` is a termination (red), any other end a normal end (green), a step with a negative `outcome` something gone wrong (yellow), the rest as it should be. Each theme has its own colours, and keeps the line that says the same in black and white (dashed for gone wrong and terminated, heavy for a normal end). It starts **off in the document theme** (black and white) and **on in the others**; a choice made for a diagram, or `fields.states` in a preset, wins.
+- **Two hints.** A label that needs more lines than a node shows (rule 22), and a `note` that is a bare short phrase with no `detail` (rule 23). Hints never stop a diagram.
+- **A `note` looks unlike a step** (a dashed outline, italics, a small tag) and shows up to two lines of its detail.
+
+### Changed
+- **Roomier, rounded, less text** (#186). More room inside a box and between boxes; stage groups and boxes have rounded corners; a node shows two lines of label (a decision three) and the first line of its detail, cut at a punctuation mark, the rest in the popover; lines break between words. The link style opens as straight (right-angle turns); curved is one click away.
+- **Fewer bends and better places** (#186, #189). A line down out of a decision leaves by its lower point; a box is moved under the line above it (a sibling steps aside, a box with several lines in follows the main one); a step of a few pixels is drawn straight; lines into a decision meet at its top point; two lines into one box may join into one trunk; a line that went round the picture or came in from behind is routed again and kept only when it reads better by one score (length, bends, going past both ends, crossings). Measured over the examples and eight non-contract cases, both orientations (958 lines): main-line bends inside a stage 62 → 32, small steps 2 → 0, slanted starts out of a decision 27 → 1.
+- **The route map** is drawn as right-angle polylines, with the arcs and the bands kept to what they cover, and without the lists under the picture.
+- **The router is faster** (an A* search over the edges worked out once, state kept in typed arrays; the same routes, checked against the exhaustive search in a test): the largest example I measured, 24 nodes, lays out in about 4 s.
+- The line over the rule table says "contract" only for a contract flow.
+
+### Fixed
+- A flaky test of the update notice (it failed about one run in six).
+
 ## 0.13.1
 
 A diagram no longer flickers when the pointer is over a node, and a paint-only switch no longer hides every node for a

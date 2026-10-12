@@ -31,8 +31,8 @@ Fields of a procedure spec. "yes" means required.
 [nodes]
   id         yes string     unique within the diagram; edges reference it via from/to
   kind       yes string     shape: start / step / decision / end / document / note (decision = a diamond decision point; it needs at least 2 outgoing edges, each with a condition)
-  label      yes string     the line shown on the node; about 12 full-width characters per line
-  detail     no string     amounts, deadlines and the like; one line inside the box, the full text in the popover
+  label      yes string     the text shown on the node: two lines, about 20 Chinese characters; a longer label is cut on the node and hinted by validate. Keep it a short phrase and put the rest in detail
+  detail     no string     amounts, deadlines and the like; the first line, about 16 Chinese characters, shows under the label (a ⋯ mark says more is left), the full text is in the popover
   actorIds   no string[]   references actors; display-only
   stageId    no string     references stages; decides which stage band it falls in
   outcome    no string     outcome (drives colour, not shape): positive / negative / neutral, default neutral
