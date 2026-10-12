@@ -1975,7 +1975,8 @@ async function checkDocumentThemeIsGrey() {
       const spec = JSON.parse(readFileSync(join(REPO, file), 'utf8'))
       for (const kind of kinds) {
         const html = join(OUT, `theme-grey-${kind}.html`)
-        renderToFile(spec, { outPath: html, quiet: true, preset: { kind, theme: 'document' } })
+        // A procedure's States switch is the one place the document theme may carry colour (issue 187): turned off here
+        renderToFile(spec, { outPath: html, quiet: true, preset: { kind, theme: 'document', ...(kind === 'flow' || kind === 'route' ? { fields: { states: false } } : {}) } })
         await browser.open(`file://${html}?lang=zh`)
         // Only the diagram is themed (the viewport); open the preview of the first box as well, for it is part of it
         const found = await browser.eval(`(() => {
@@ -2491,8 +2492,8 @@ async function checkRenderProcedure(sampleFile) {
     })()`)
     truthy('the flowchart dock is present', dock)
     if (dock) {
-      // conditions · detail · main line, plus stages and rules when the data has them
-      eq('the dock has a switch per thing the data has', dock.chips, 3 + (spec.stages?.length ? 1 : 0) + (spec.rules?.length ? 1 : 0))
+      // conditions · detail · main line · states, plus stages and rules when the data has them
+      eq('the dock has a switch per thing the data has', dock.chips, 4 + (spec.stages?.length ? 1 : 0) + (spec.rules?.length ? 1 : 0))
       eq('four blocks: switches · orientation · language · export', dock.blocks, 4)
       eq('only the export action is solid dark', dock.dark, ['antu-dock-action'])
     }
@@ -2515,21 +2516,21 @@ async function checkRenderProcedure(sampleFile) {
     await settle()
     eq('the main-line switch brings it back', await count('.antu-plinks.is-main-hl'), 1)
 
-    await clickChip(3)
+    await clickChip(4)
     await settle()
     eq('the stage switch removes the boxes', await count('.antu-pstage-box'), 0)
     // Issue #22: the choice is kept for this diagram only, not as a global switch
     const saved = await browser.eval(`JSON.parse(localStorage.getItem('antu.prefs') || '{}')`)
     eq('the stage choice is stored under this diagram', saved.flowFieldsByDiagram?.[spec.title]?.stages, false)
     truthy('and no global switch is written', saved.flowFields === undefined)
-    await clickChip(3)
+    await clickChip(4)
     await settle()
 
-    // The rule switch (the fifth chip: the sample has stages and rules) gives the lane back
-    await clickChip(4)
+    // The rule switch (the sixth chip: the sample has stages and rules) gives the lane back
+    await clickChip(5)
     await settle()
     eq('the rule switch removes the table', await count('.antu-rtable'), 0)
-    await clickChip(4)
+    await clickChip(5)
     await settle()
     eq('and brings it back', await count('.antu-rtable-row'), ruleRows)
 

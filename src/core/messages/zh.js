@@ -66,6 +66,7 @@ export const zh = {
   'flow.conditions': '条件',
   'flow.detail': '详情',
   'flow.mainLine': '主干',
+  'flow.states': '状态',
   'flow.stages': '阶段',
   'flow.rules': '条款',
   'flow.linkStraight': '折线',

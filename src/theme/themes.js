@@ -6,7 +6,8 @@
 //  picture keeps it (paint that is only in CSS is lost in the export, see shell/exportPng.js).
 //
 //    document   black and white, square, pure ink: for print and for filing. Meaning is carried by line
-//               style, weight and outline, never by colour.
+//               style, weight and outline, never by colour (one exception: a procedure's states, flow.state,
+//               behind a switch, with the line style still saying them).
 //    modern     screen first: rounded, pale greys, one ink.
 //    legal      navy as the main colour; red only where it is adverse.
 //
@@ -101,6 +102,9 @@ export const THEMES = {
     flow: {
       outcome: draw(OUTCOME_LINE, { neutral: { stroke: '#111111', fill: '#ffffff' }, positive: { stroke: '#111111', fill: '#ffffff' }, negative: { stroke: '#111111', fill: '#ececec' } }),
       start: { stroke: '#111111', fill: '#e2e2e2' },
+      // A procedure's four states (the flowchart's and the route map's "States" switch): the one place the document
+      // theme carries meaning by colour, with the line style still saying it in black and white
+      state: { warn: { stroke: '#a16207', fill: '#fef3c7' }, stop: { stroke: '#b91c1c', fill: '#fee2e2' }, done: { stroke: '#15803d', fill: '#dcfce7' } },
       note: { stroke: 'none', fill: '#f5f5f5', fold: '#767676' },
       stage: { fill: '#f5f5f5', stroke: '#8a8a8a', title: '#111111' },
       stageLit: { fill: '#e2e2e2', stroke: '#111111', title: '#111111' },
@@ -140,6 +144,7 @@ export const THEMES = {
     flow: {
       outcome: draw(OUTCOME_LINE, { neutral: { stroke: '#64748b', fill: '#f8fafc' }, positive: { stroke: '#334155', fill: '#f1f5f9' }, negative: { stroke: '#64748b', fill: '#f1f5f9' } }),
       start: { stroke: '#334155', fill: '#e2e8f0' },
+      state: { warn: { stroke: '#b45309', fill: '#fffbeb' }, stop: { stroke: '#be123c', fill: '#fff1f2' }, done: { stroke: '#047857', fill: '#ecfdf5' } },
       note: { stroke: 'none', fill: '#f1f5f9', fold: '#94a3b8' },
       stage: { fill: '#f8fafc', stroke: '#e2e8f0', title: '#475569' },
       stageLit: { fill: '#f1f5f9', stroke: '#64748b', title: '#334155' },
@@ -189,6 +194,7 @@ export const THEMES = {
     flow: {
       outcome: draw(OUTCOME_LINE, { neutral: { stroke: '#2f5aa8', fill: '#eef3fb' }, positive: { stroke: '#1f3f7f', fill: '#e3ecfa' }, negative: { stroke: '#9a1b1b', fill: '#fbecec' } }),
       start: { stroke: '#13233f', fill: '#dbe5f5' },
+      state: { warn: { stroke: '#a16207', fill: '#fdf6e3' }, stop: { stroke: '#9a1b1b', fill: '#fbecec' }, done: { stroke: '#1f6f43', fill: '#e8f4ec' } },
       note: { stroke: 'none', fill: '#f4f7fc', fold: '#8aa0c4' },
       stage: { fill: '#f4f7fc', stroke: '#c7d2e4', title: '#2d4366' },
       stageLit: { fill: '#eaf0fb', stroke: '#1f3f7f', title: '#1f3f7f' },
