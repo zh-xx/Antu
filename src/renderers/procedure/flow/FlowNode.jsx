@@ -4,7 +4,8 @@
 //  Two dimensions, never mixed (spec/procedure/schema-draft.md §4.3):
 //    kind    fixes the **shape**: start / end pills, step box, decision diamond,
 //            document with a wavy bottom, note with a folded corner
-//    outcome fixes the **colour**: positive green, negative red, neutral grey
+//    outcome fixes the **colour**: positive green, negative red, neutral grey (with the States switch, one of four
+//    states read from kind and outcome, palette.js)
 //
 //  The size comes from metrics.js through layout.js (data.w / data.h); this file never
 //  decides a size of its own. The outline is drawn in SVG because a diamond, a wavy bottom
@@ -30,8 +31,8 @@ const INSET = 1
  * The outline of one shape, as SVG children. w / h are the node's design size.
  * Paint goes on as attributes (see palette.js for why not CSS).
  */
-function Outline({ kind, outcome, w, h, theme }) {
-  const p = nodePaint(kind, outcome, theme)
+function Outline({ kind, outcome, w, h, theme, states }) {
+  const p = nodePaint(kind, outcome, theme, states)
   const paint = { fill: p.fill, stroke: p.stroke, strokeWidth: p.width ?? 1.1, ...(p.dash ? { strokeDasharray: p.dash } : {}) }
   const ring = { fill: 'none', stroke: p.stroke, strokeWidth: 1 }
   const x = INSET
@@ -90,7 +91,7 @@ function Outline({ kind, outcome, w, h, theme }) {
 }
 
 const FlowNode = memo(function FlowNode({ id, data }) {
-  const { node, w, h, textW, cut = false, ruleCount = 0, lit = false, isSpine, stageLabel, actorNames, sources, showDetail, vertical, layer } = data
+  const { node, w, h, textW, cut = false, ruleCount = 0, lit = false, states = false, isSpine, stageLabel, actorNames, sources, showDetail, vertical, layer } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
   const { theme } = useTheme()
@@ -126,7 +127,7 @@ const FlowNode = memo(function FlowNode({ id, data }) {
       }}
     >
       <svg className="antu-pn-svg" width={w} height={h} aria-hidden="true">
-        <Outline kind={kind} outcome={outcome} w={w} h={h} theme={theme} />
+        <Outline kind={kind} outcome={outcome} w={w} h={h} theme={theme} states={states} />
       </svg>
 
       {/* The text column is exactly as wide as metrics.js measured it, so the lines break where the box was sized for */}

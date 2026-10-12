@@ -10,6 +10,7 @@
 import { memo } from 'react'
 import LineLayerNode from '../../relationship/LineLayerNode.jsx'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
+import { stateOf, statePaint } from '../flow/palette.js'
 
 /** A polyline through points as an SVG path, without the points that add no turn (a repeated or collinear one) */
 const poly = (pts) => {
@@ -31,8 +32,13 @@ const RouteLayerNode = memo(function RouteLayerNode({ data }) {
   const LINE = f.link.main.stroke
   const RED = f.outcome.negative.stroke
   const GREY = f.link.plain.stroke
-  const outOf = (o) => f.outcome[o] ?? f.outcome.neutral
-  const { width, height, top, bandBottom, bands, lineY, lineFrom, lineTo, stations, hangs, arcs, showLabels = true } = data
+  const { width, height, top, bandBottom, bands, lineY, lineFrom, lineTo, stations, hangs, arcs, showLabels = true, showStates = false } = data
+  // A node's paint: by its outcome, or with the States switch by its state (palette.js); `normal` keeps the outcome's
+  const paintOf = (kind, o) => {
+    const st = showStates ? stateOf(kind, o) : 'normal'
+    return st === 'normal' ? f.outcome[showStates ? 'neutral' : o] ?? f.outcome.neutral : statePaint(st, theme)
+  }
+  const isPlain = (kind, o) => (showStates ? stateOf(kind, o) === 'normal' : o === 'neutral')
   const colours = [...new Set([RED, GREY, LINE])]
   return (
     <div className="antu-rt-layer" style={{ width, height }}>
@@ -58,12 +64,13 @@ const RouteLayerNode = memo(function RouteLayerNode({ data }) {
             parts.push(<path key="in" d={poly([[startX, startY], [startX, lineY + 38], [h.cx, lineY + 38], [h.cx, first.y - 2]])} fill="none" stroke={RED} strokeWidth={2} markerEnd={`url(#${arrowId(RED)})`} />)
           }
           h.boxes.forEach((b, j) => {
-            const c = outOf(b.outcome).stroke
+            const bp = paintOf(b.kind, b.outcome)
+            const c = bp.stroke
             if (j > 0) {
               const p = h.boxes[j - 1]
               parts.push(<path key={`a${j}`} d={`M ${h.cx} ${p.y + p.h} L ${h.cx} ${b.y - 2}`} fill="none" stroke={GREY} strokeWidth={1.6} markerEnd={`url(#${arrowId(GREY)})`} />)
             }
-            parts.push(<rect key={`r${j}`} x={b.x} y={b.y} width={b.w} height={b.h} rx={b.kind === 'end' ? Math.min(b.h / 2, 22) : 8} fill={b.kind === 'end' ? outOf(b.outcome).fill : theme.color.bg} stroke={b.kind === 'end' ? c : b.outcome === 'neutral' ? theme.color.ink4 : c} strokeWidth={1.6} strokeDasharray={b.kind === 'end' ? outOf(b.outcome).dash : undefined} />)
+            parts.push(<rect key={`r${j}`} x={b.x} y={b.y} width={b.w} height={b.h} rx={b.kind === 'end' ? Math.min(b.h / 2, 22) : 8} fill={b.kind === 'end' || (showStates && !isPlain(b.kind, b.outcome)) ? bp.fill : theme.color.bg} stroke={isPlain(b.kind, b.outcome) && b.kind !== 'end' ? theme.color.ink4 : c} strokeWidth={1.6} strokeDasharray={b.kind === 'end' || showStates ? bp.dash : undefined} />)
           })
           if (h.more) {
             const last = h.boxes.at(-1)
@@ -96,10 +103,10 @@ const RouteLayerNode = memo(function RouteLayerNode({ data }) {
           return <path key={`c${i}`} d={d} fill="none" stroke={colour} strokeWidth={2} strokeDasharray={a.kind === 'jump' ? undefined : '6 4'} strokeLinejoin="round" markerEnd={`url(#${arrowId(colour)})`} />
         })}
         {stations.map((s) => {
-          const c = outOf(s.outcome).stroke
+          const c = paintOf(s.kind, s.outcome).stroke
           if (s.kind === 'decision') return <path key={s.id} d={`M ${s.x} ${s.y - 17} L ${s.x + 17} ${s.y} L ${s.x} ${s.y + 17} L ${s.x - 17} ${s.y} Z`} fill={f.outcome.neutral.fill} stroke={LINE} strokeWidth={2.6} />
           if (s.kind === 'start') return <circle key={s.id} cx={s.x} cy={s.y} r={11} fill={LINE} stroke={theme.color.bg} strokeWidth={3} />
-          if (s.kind === 'end') return <rect key={s.id} x={s.x - 11} y={s.y - 11} width={22} height={22} rx={4} fill={s.outcome === 'neutral' ? theme.color.ink : c} stroke={theme.color.bg} strokeWidth={3} />
+          if (s.kind === 'end') return <rect key={s.id} x={s.x - 11} y={s.y - 11} width={22} height={22} rx={4} fill={isPlain(s.kind, s.outcome) ? theme.color.ink : c} stroke={theme.color.bg} strokeWidth={3} />
           if (s.kind === 'document') return <rect key={s.id} x={s.x - 8} y={s.y - 10} width={16} height={20} rx={3} fill={theme.color.bg} stroke={c} strokeWidth={3} />
           return <circle key={s.id} cx={s.x} cy={s.y} r={9} fill={theme.color.bg} stroke={c} strokeWidth={3} strokeDasharray={s.kind === 'note' ? '3 3' : undefined} />
         })}
@@ -117,7 +124,7 @@ const RouteLayerNode = memo(function RouteLayerNode({ data }) {
       ))}
       {hangs.flatMap((h, i) => [
         ...h.boxes.map((b) => (
-          <div key={`hb${i}${b.id}`} className={`antu-rt-box${b.kind === 'end' ? ' is-end' : ''}`} data-id={b.id} title={b.detail || undefined} style={{ left: b.x, top: b.y, width: b.w, height: b.h, color: b.kind === 'end' ? outOf(b.outcome).stroke : undefined }}>
+          <div key={`hb${i}${b.id}`} className={`antu-rt-box${b.kind === 'end' ? ' is-end' : ''}`} data-id={b.id} title={b.detail || undefined} style={{ left: b.x, top: b.y, width: b.w, height: b.h, color: b.kind === 'end' ? paintOf(b.kind, b.outcome).stroke : undefined }}>
             <span>{b.label}</span>
           </div>
         )),

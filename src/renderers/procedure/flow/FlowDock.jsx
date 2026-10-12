@@ -3,7 +3,7 @@
 //
 //  The controls are the ones listed in spec/procedure/schema-draft.md §6.2, in the four shapes
 //  of spec/fact/rendering.md §4.2 (no new shapes invented):
-//    condition labels / node detail / main line / stage bands / rules   independent switches → chips
+//    condition labels / node detail / main line / states / stage bands / rules   independent switches → chips
 //    orientation, link style (straight / curved)                         two exclusive options → segmented
 //    language, export image                                              shared with every dock (shell/DockParts.jsx)
 //  The stage-band and rule switches only appear when the data has stages / rules: a switch
@@ -18,6 +18,7 @@ const SWITCHES = [
   ['conditions', 'flow.conditions'],
   ['detail', 'flow.detail'],
   ['mainLine', 'flow.mainLine'],
+  ['states', 'flow.states'],
   ['stages', 'flow.stages'],
   ['rules', 'flow.rules'],
 ]

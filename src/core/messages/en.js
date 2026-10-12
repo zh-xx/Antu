@@ -86,6 +86,7 @@ export const en = {
   'flow.conditions': 'Conditions',
   'flow.detail': 'Detail',
   'flow.mainLine': 'Main line',
+  'flow.states': 'States',
   'flow.stages': 'Stages',
   'flow.rules': 'Rules',
   'flow.linkStraight': 'Straight',

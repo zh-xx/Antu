@@ -29,21 +29,26 @@ export default function ProcedureRoute({ spec }) {
   const { t, lang } = useLang()
   const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().procedureRouteFieldsByDiagram || {})
   const showLabels = fieldPrefs[specKey]?.labels ?? true
-  const setLabels = (v) => {
-    const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], labels: v } }
+  // The four states in colour (issue 187), as on the flowchart; on unless turned off for this diagram
+  const showStates = fieldPrefs[specKey]?.states ?? true
+  const setField = (key, v) => {
+    const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], [key]: v } }
     setFieldPrefs(map)
     prefs.write({ procedureRouteFieldsByDiagram: map })
   }
   const layout = useMemo(() => buildRouteGraph(spec, { t }), [spec, lang])
-  const graph = useMemo(() => ({ nodes: layout.nodes.map((n) => ({ ...n, data: { ...n.data, showLabels } })), edges: [], size: layout.size }), [layout, showLabels])
+  const graph = useMemo(() => ({ nodes: layout.nodes.map((n) => ({ ...n, data: { ...n.data, showLabels, showStates } })), edges: [], size: layout.size }), [layout, showLabels, showStates])
   const { canvasRef, exporting, onExport } = useExport(spec?.title)
   return (
     <div className="antu-procedure antu-rt">
       <Canvas ref={canvasRef} graph={graph} fitKey={layout} fitSelf fitMinZoom={OPEN_MIN_ZOOM} nodeTypes={nodeTypes}>
         <div className="antu-dock">
           <div className="antu-dock-bar">
-            <button className={`antu-dock-chip${showLabels ? ' is-on' : ''}`} onClick={() => setLabels(!showLabels)}>
+            <button className={`antu-dock-chip${showLabels ? ' is-on' : ''}`} onClick={() => setField('labels', !showLabels)}>
               {t('proc.route.labels')}
+            </button>
+            <button className={`antu-dock-chip${showStates ? ' is-on' : ''}`} onClick={() => setField('states', !showStates)}>
+              {t('flow.states')}
             </button>
             <span className="antu-dock-sep" />
             <DockLangSwitch />

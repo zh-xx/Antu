@@ -43,7 +43,7 @@ const nodeTypes = {
  * Stored under their own preference key, apart from the timeline's card fields: the two
  * sets share no switch, and one key for both would make each overwrite the other.
  */
-const FIELD_DEFAULTS = { conditions: true, detail: true, mainLine: true, stages: true, rules: true }
+const FIELD_DEFAULTS = { conditions: true, detail: true, mainLine: true, states: true, stages: true, rules: true }
 
 /** Attributes shared by decoration nodes; for why 1×1, see cellsNode in fact/timeline/nodes.js */
 const DECORATION = {
@@ -157,9 +157,7 @@ export default function ProcedureFlow({ spec }) {
         curved: linkStyle === 'curved',
       },
     })
-    const nodes = activeRule?.endId
-      ? layout.nodes.map((n) => (n.id === activeRule.endId ? { ...n, data: { ...n.data, lit: true } } : n))
-      : layout.nodes
+    const nodes = layout.nodes.map((n) => ({ ...n, data: { ...n.data, states: fields.states, lit: n.id === activeRule?.endId || n.data.lit } }))
     // The rule table: one node, not draggable, its rows hover and pin themselves
     const table = layout.ruleTable
       ? [
@@ -178,7 +176,7 @@ export default function ProcedureFlow({ spec }) {
         ]
       : []
     return { nodes: [...deco, ...nodes, ...table], edges: [], size: layout.size }
-  }, [layout, spec, fields.conditions, fields.mainLine, linkStyle, activeRule])
+  }, [layout, spec, fields.conditions, fields.mainLine, fields.states, linkStyle, activeRule])
 
   const { canvasRef, exporting, onExport } = useExport(spec?.title)
 
