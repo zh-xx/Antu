@@ -29,6 +29,8 @@ import { validateProcedure, hintsOfProcedure, ruleEndIds } from './rules.js'
 import { elkLayoutSync } from './elk.js'
 import { straighten, linkCost } from './straighten.js'
 import { layoutColumns } from './columns.js'
+import { polishLinks } from './polish.js'
+import { edgesOf } from './router.js'
 import { layoutRuleTable } from './ruleTable.js'
 // The same text measure the fact cards use, so a CJK character counts the same everywhere
 import { textEm } from '../../fact/cardGeometry.js'
@@ -439,7 +441,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
         size.height = Math.max(size.height, c.labelAt.y + c.labelSize.height + PAD)
       }
     }
-    return { placed, stageBoxes, connections, size }
+    return { placed, stageBoxes, stageTitles, connections, size }
   }
 
   // Node placement decides how many bends are left: where two nodes are not in line no route is
@@ -466,6 +468,8 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
       if (!best || cost < best.cost) best = { ...tried, cost }
     }
   }
+  // The last passes over the links (polish.js), as in the column layout
+  if (!columnMode) polishSingle(best, diamonds, vertical, byId)
   const { placed, stageBoxes, size } = best
   const connections = best.connections.map((c) => ({ ...c, d: toPathD(c.points), dCurve: toCurveD(c.points) }))
 
@@ -566,5 +570,44 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
     // Whole pixels: ELK places on fractions, and the canvas and the exported image want integers
     size: { width: Math.ceil(size.width), height: Math.ceil(size.height) },
     stats,
+  }
+}
+
+/**
+ * The last passes over the links of the single-graph layout (polish.js), run in the frame polish.js works in (the flow
+ * running down): a picture that runs left to right is turned for it and back. Nodes move only across the flow, so the
+ * layers read back from the picture stay as they are; the content grows to hold what moved.
+ */
+function polishSingle(best, diamonds, vertical, byId) {
+  const R = vertical ? (r) => ({ ...r }) : (r) => ({ ...r, x: r.y, y: r.x, w: r.h, h: r.w })
+  const P = vertical ? (pt) => [...pt] : ([x, y]) => [y, x]
+  const turn = (c) => ({
+    ...c,
+    points: c.points.map(P),
+    labelAt: c.labelAt ? (vertical ? { ...c.labelAt } : { x: c.labelAt.y, y: c.labelAt.x }) : null,
+    labelSize: c.labelSize ? (vertical ? { ...c.labelSize } : { width: c.labelSize.height, height: c.labelSize.width }) : null,
+  })
+  const placed = new Map([...best.placed].map(([id, r]) => [id, R(r)]))
+  const boxes = best.stageBoxes.map(R)
+  const connections = best.connections.map(turn)
+  // A node stays in its stage box; with none, it stays clear of the left (or top) of the picture
+  const free = { x: PAD / 2 - STAGE_PAD + 6, y: -1e6, w: 1e7, h: 2e7 }
+  const boxOf = (id) => boxes.find((b) => b.stageId === byId.get(id)?.stageId) ?? free
+  const within = (c) => {
+    const b = boxOf(c.from)
+    return b !== free && b === boxOf(c.to) ? b : null
+  }
+  polishLinks({ placed, connections, diamonds, titles: (best.stageTitles ?? []).map(R), boxes, borders: boxes.flatMap(edgesOf), within, boxOf })
+  best.placed = new Map([...placed].map(([id, r]) => [id, R(r)]))
+  best.connections = connections.map(turn)
+  for (const r of best.placed.values()) {
+    best.size.width = Math.max(best.size.width, r.x + r.w + PAD)
+    best.size.height = Math.max(best.size.height, r.y + r.h + PAD)
+  }
+  for (const c of best.connections) {
+    for (const [x, y] of c.points) {
+      best.size.width = Math.max(best.size.width, x + PAD)
+      best.size.height = Math.max(best.size.height, y + PAD)
+    }
   }
 }

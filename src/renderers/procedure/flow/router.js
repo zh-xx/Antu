@@ -172,6 +172,11 @@ class Heap {
  * @param {boolean} [p.sidePorts]  also offer a quarter port on each side (left and right), not only top and bottom
  * @param {number} [p.sideSpread]  with sidePorts, put the two side ports this far from the middle of the side (px)
  * @param {number} [p.parallelGap]  how far apart two links running side by side must be (default PARALLEL_GAP)
+ * @param {number[][]} [p.inAt]  arrive only at one of these points (a link that joins another into the same node)
+ * @param {{x,y,w,h}[]} [p.soft]  boxes a route may run through but a little dearer (5% more per pixel): a link between
+ *   two stages then takes the gap between their boxes rather than a strip inside one, where both are as short
+ * @param {boolean} [p.join]  a `share` link is one to join (merge.js): the route may lie exactly on it, a little cheaper
+ *   than beside it, and keeps such a run where it is (without it, `share` links may only be run along, as a bundle)
  * @param {number} [p.crossCost]  what crossing another link costs, in pixels of length (default: more than two bends)
  * @returns {number[][] | null}  the polyline, first point on the source, last on the target
  */
@@ -190,7 +195,9 @@ export function routeLink(p) {
   ]
   const free = ([x, y]) => !taken.some(([tx, ty]) => Math.abs(tx - x) < 1 && Math.abs(ty - y) < 1)
   const outPorts = portsOf(from, p.fromDiamond, p.sidePorts, p.sideSpread).filter(([x, y, s]) => (!p.outSides || p.outSides.includes(s)) && free([x, y]))
-  const inPorts = portsOf(to, p.toDiamond, p.sidePorts, p.sideSpread).filter(([x, y, s]) => (!p.inSides || p.inSides.includes(s)) && free([x, y]))
+  // `inAt`: only these points (a link joining another goes in where that one does)
+  const at = (pt) => !p.inAt || p.inAt.some(([ax, ay]) => Math.abs(ax - pt[0]) < 1 && Math.abs(ay - pt[1]) < 1)
+  const inPorts = portsOf(to, p.toDiamond, p.sidePorts, p.sideSpread).filter(([x, y, s]) => (!p.inSides || p.inSides.includes(s)) && free([x, y]) && at([x, y]))
 
   // Obstacles: nodes with clearance, the two ends without (the route starts on their edge)
   const isEnd = (r) => r === from || r === to || (r.x === from.x && r.y === from.y) || (r.x === to.x && r.y === to.y)
@@ -224,6 +231,11 @@ export function routeLink(p) {
     for (const [x, y] of rt.points) {
       xsSet.add(x - gap - 1).add(x + gap + 1)
       ysSet.add(y - gap - 1).add(y + gap + 1)
+      // ...and on a link it may join, exactly on it
+      if (rt.share && p.join) {
+        xsSet.add(x)
+        ysSet.add(y)
+      }
     }
   }
   const sortNum = (s) => [...s].map((v) => Math.round(v * 2) / 2).sort((a, b) => a - b).filter((v, i, a) => i === 0 || v !== a[i - 1])
@@ -272,20 +284,113 @@ export function routeLink(p) {
     return hSegs.filter((s) => !s.share && s.y >= a - 0.01 && s.y < b - 0.01 && x0 > s.a + 0.5 && x0 < s.b - 0.5).length
   }
 
+  // A run that lies on a link it may join, for part of its length: centre() keeps it where it is
+  const alongShared = (x0, y0, x1, y1) =>
+    Math.abs(y0 - y1) < 0.5
+      ? hSegs.some((s) => s.share && Math.abs(s.y - y0) < 0.5 && Math.min(Math.max(x0, x1), s.b) - Math.max(Math.min(x0, x1), s.a) > 0.5)
+      : vSegs.some((s) => s.share && Math.abs(s.x - x0) < 0.5 && Math.min(Math.max(y0, y1), s.b) - Math.max(Math.min(y0, y1), s.a) > 0.5)
+
+  // Every edge of the grid (one cell east, or one cell south, from a grid point) worked out once: whether a route may
+  // run along it, how many links it crosses, whether it lies on a link it may join. The tests are those of segCheck,
+  // run only for the edges near each obstacle (found by a binary search on the grid lines), so the search itself only
+  // looks things up. hBad[j * W + i]: the edge from (i, j) east; vBad: the edge from (i, j) south
+  const N = W * H
+  const hBad = new Uint8Array(N)
+  const vBad = new Uint8Array(N)
+  const hCross = new Uint16Array(N)
+  const vCross = new Uint16Array(N)
+  const hOn = new Uint8Array(N)
+  const vOn = new Uint8Array(N)
+  // First index whose value is >= v (values sorted)
+  const lb = (arr, v) => {
+    let a = 0
+    let b = arr.length
+    while (a < b) {
+      const m = (a + b) >> 1
+      if (arr[m] < v) a = m + 1
+      else b = m
+    }
+    return a
+  }
+  // Edges that may touch the box [x0, x1] x [y0, y1]: a cell wider each way than the binary search finds
+  const near = (x0, x1, y0, y1, fn) => {
+    const i0 = Math.max(0, lb(xs, x0) - 1)
+    const i1 = Math.min(W - 1, lb(xs, x1) + 1)
+    const j0 = Math.max(0, lb(ys, y0) - 1)
+    const j1 = Math.min(H - 1, lb(ys, y1) + 1)
+    for (let j = j0; j <= j1; j += 1) for (let i = i0; i <= i1; i += 1) fn(i, j)
+  }
+  const markIf = (test) => (i, j) => {
+    const k = j * W + i
+    if (i + 1 < W && !hBad[k] && test(xs[i], ys[j], xs[i + 1], ys[j])) hBad[k] = 1
+    if (j + 1 < H && !vBad[k] && test(xs[i], ys[j], xs[i], ys[j + 1])) vBad[k] = 1
+  }
+  for (const r of solid) near(r.x - CLEAR, r.x + r.w + CLEAR, r.y - CLEAR, r.y + r.h + CLEAR, markIf((a, b, c, d) => hitsRect(a, b, c, d, r, CLEAR)))
+  for (const r of [from, to]) near(r.x, r.x + r.w, r.y, r.y + r.h, markIf((a, b, c, d) => hitsRect(a, b, c, d, r, -0.5)))
+  for (const r of blocks) near(r.x - 2, r.x + r.w + 2, r.y - 2, r.y + r.h + 2, markIf((a, b, c, d) => hitsRect(a, b, c, d, r, 2)))
+  for (const bd of borders) {
+    const [[bx0, by0], [bx1, by1]] = bd
+    near(Math.min(bx0, bx1) - BORDER_GAP, Math.max(bx0, bx1) + BORDER_GAP, Math.min(by0, by1) - BORDER_GAP, Math.max(by0, by1) + BORDER_GAP, markIf((a, b, c, d) => runsAlongBorder(a, b, c, d, [bd])))
+  }
+  for (const sg of hSegs) {
+    if (sg.share) {
+      near(sg.a, sg.b, sg.y, sg.y, (i, j) => {
+        if (p.join && i + 1 < W && Math.abs(sg.y - ys[j]) < 0.5 && xs[i] >= sg.a - 0.5 && xs[i + 1] <= sg.b + 0.5) hOn[j * W + i] = 1
+      })
+      continue
+    }
+    // Lying beside it, closer than the gap
+    near(sg.a, sg.b, sg.y - gap, sg.y + gap, (i, j) => {
+      if (i + 1 < W && Math.abs(sg.y - ys[j]) < gap && Math.min(xs[i + 1], sg.b) - Math.max(xs[i], sg.a) > 0.5) hBad[j * W + i] = 1
+    })
+    // Crossed by a vertical edge
+    near(sg.a, sg.b, sg.y, sg.y, (i, j) => {
+      if (j + 1 < H && sg.y >= ys[j] - 0.01 && sg.y < ys[j + 1] - 0.01 && xs[i] > sg.a + 0.5 && xs[i] < sg.b - 0.5) vCross[j * W + i] += 1
+    })
+  }
+  for (const sg of vSegs) {
+    if (sg.share) {
+      near(sg.x, sg.x, sg.a, sg.b, (i, j) => {
+        if (p.join && j + 1 < H && Math.abs(sg.x - xs[i]) < 0.5 && ys[j] >= sg.a - 0.5 && ys[j + 1] <= sg.b + 0.5) vOn[j * W + i] = 1
+      })
+      continue
+    }
+    near(sg.x - gap, sg.x + gap, sg.a, sg.b, (i, j) => {
+      if (j + 1 < H && Math.abs(sg.x - xs[i]) < gap && Math.min(ys[j + 1], sg.b) - Math.max(ys[j], sg.a) > 0.5) vBad[j * W + i] = 1
+    })
+    near(sg.x, sg.x, sg.a, sg.b, (i, j) => {
+      if (i + 1 < W && sg.x >= xs[i] - 0.01 && sg.x < xs[i + 1] - 0.01 && ys[j] > sg.a + 0.5 && ys[j] < sg.b - 0.5) hCross[j * W + i] += 1
+    })
+  }
+  // Inside a soft box (see p.soft): the edge's middle in it
+  const hSoft = new Uint8Array(N)
+  const vSoft = new Uint8Array(N)
+  for (const r of p.soft ?? []) {
+    near(r.x, r.x + r.w, r.y, r.y + r.h, (i, j) => {
+      const k = j * W + i
+      const inside = (x, y) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h
+      if (i + 1 < W && inside((xs[i] + xs[i + 1]) / 2, ys[j])) hSoft[k] = 1
+      if (j + 1 < H && inside(xs[i], (ys[j] + ys[j + 1]) / 2)) vSoft[k] = 1
+    })
+  }
+  const inBounds = (x0, y0, x1, y1) =>
+    !bounds || !(Math.min(x0, x1) < bounds.x || Math.max(x0, x1) > bounds.x + bounds.w || Math.min(y0, y1) < bounds.y || Math.max(y0, y1) > bounds.y + bounds.h)
+
   // Can we step from grid point (i, j) one cell in heading d? And at what cost?
-  const stepCache = new Map()
   const step = (i, j, d) => {
-    const key = (j * W + i) * 4 + d
-    if (stepCache.has(key)) return stepCache.get(key)
-    let res = null
     const ni = i + DX[d]
     const nj = j + DY[d]
-    if (ni >= 0 && nj >= 0 && ni < W && nj < H) {
-      const cross = segCheck(xs[i], ys[j], xs[ni], ys[nj])
-      if (cross !== null) res = { ni, nj, cost: Math.abs(xs[ni] - xs[i]) + Math.abs(ys[nj] - ys[j]) + cross * crossCost }
-    }
-    stepCache.set(key, res)
-    return res
+    if (ni < 0 || nj < 0 || ni >= W || nj >= H) return null
+    // The edge between the two points, named by its west or north end
+    const horizontal = d === 0 || d === 2
+    const k = horizontal ? j * W + Math.min(i, ni) : Math.min(j, nj) * W + i
+    if (horizontal ? hBad[k] : vBad[k]) return null
+    if (!inBounds(xs[i], ys[j], xs[ni], ys[nj])) return null
+    const len = Math.abs(xs[ni] - xs[i]) + Math.abs(ys[nj] - ys[j])
+    const cross = horizontal ? hCross[k] : vCross[k]
+    const on = horizontal ? hOn[k] : vOn[k]
+    const soft = horizontal ? hSoft[k] : vSoft[k]
+    return { ni, nj, cost: len * (on ? 0.8 : soft ? 1.05 : 1) + cross * crossCost }
   }
 
   // Targets: arriving at a port, heading into the node
@@ -315,6 +420,32 @@ export function routeLink(p) {
     }
   }
 
+  // A*: what is left to go is at least the distance to the nearest arrival port (a run on a link it joins costs 0.8 of
+  // its length, so the estimate is scaled to stay below the true cost). The route found is the cheapest one, as before;
+  // only far fewer grid points are looked at
+  // ...plus the turns it must still make: none when the port is straight ahead, heading the way it goes in; one when
+  // it goes in across the present heading; two otherwise. Grid lines are rounded to half a pixel and ports are not:
+  // the tests allow for that, so the estimate never goes above the true cost (it would miss the best route)
+  const ends = inPorts.map(([x, y, side]) => [x, y, (OUTWARD[side] + 2) % 4])
+  const scale = p.join && routes.some((rt) => rt.share) ? 0.8 : 1
+  const est = (s) => {
+    const d = s % 4
+    const cell = (s - d) / 4
+    const i = cell % W
+    const j = (cell - i) / W
+    const x = xs[i]
+    const y = ys[j]
+    let m = Infinity
+    for (const [gx, gy, hd] of ends) {
+      let turns
+      if (d === hd) {
+        const ahead = DX[d] ? Math.abs(gy - y) < 0.5 && (gx - x) * DX[d] > -0.5 : Math.abs(gx - x) < 0.5 && (gy - y) * DY[d] > -0.5
+        turns = ahead ? 0 : 2
+      } else turns = (d + 2) % 4 === hd ? 2 : 1
+      m = Math.min(m, Math.max(0, Math.abs(gx - x) + Math.abs(gy - y) - 0.5) * scale + turns * BEND)
+    }
+    return m
+  }
   const dist = new Map()
   const prev = new Map()
   const heap = new Heap()
@@ -329,16 +460,16 @@ export function routeLink(p) {
     starts.add(s)
     if (c < (dist.get(s) ?? Infinity)) {
       dist.set(s, c)
-      heap.push([c, s])
+      heap.push([c + est(s), s, c])
     }
   }
 
   let best = null
   let bestCost = Infinity
   while (heap.size) {
-    const [c, s] = heap.pop()
+    const [f, s, c] = heap.pop()
     if (c > (dist.get(s) ?? Infinity)) continue
-    if (c >= bestCost) break
+    if (f >= bestCost) break
     if (goal.has(s)) {
       const total = c + goal.get(s)
       if (total < bestCost) {
@@ -358,7 +489,7 @@ export function routeLink(p) {
       if (nc < (dist.get(ns) ?? Infinity)) {
         dist.set(ns, nc)
         prev.set(ns, s)
-        heap.push([nc, ns])
+        heap.push([nc + est(ns), ns, nc])
       }
     }
   }
@@ -382,7 +513,7 @@ export function routeLink(p) {
     if (!straight) out.push(pts[k])
   }
   out.push(pts[pts.length - 1])
-  return centre(out, segCheck)
+  return centre(out, segCheck, p.join ? alongShared : undefined)
 }
 
 /**
@@ -392,12 +523,14 @@ export function routeLink(p) {
  * the router already put it as close in as is clear. No move adds a crossing.
  */
 const SPAN = 160
-function centre(points, segCheck) {
+function centre(points, segCheck, onShared = () => false) {
   const pts = points.map((p) => [...p])
   for (let k = 1; k < pts.length - 2; k += 1) {
     const vertical = Math.abs(pts[k][0] - pts[k + 1][0]) < 0.5
     const ax = vertical ? 0 : 1
     const here = pts[k][ax]
+    // A run on a link it joins stays on it
+    if (onShared(...pts[k], ...pts[k + 1])) continue
     const crossesAt = (v) => {
       const a = [...pts[k - 1]]
       const b = [...pts[k]]
