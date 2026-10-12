@@ -20,6 +20,9 @@ import { bendsOf } from './straighten.js'
 import { joinsAsTrunk, ownPart } from './merge.js'
 import { PAD, STAGE_PAD } from './metrics.js'
 
+/** Room a straight line keeps from a box it passes (the router's own clearance) */
+const CLEAR_LINE = 10
+
 /** Where any route stays: the picture grows right and down only */
 const PICTURE = { x: PAD / 4, y: PAD / 4, w: 1e6, h: 1e6 }
 
@@ -327,6 +330,15 @@ export function polishLinks(ctx) {
         move.set(qid, d)
       }
     }
+    // Boxes the straight line would pass close by (a branch beside it, reaching over its axis) step aside, away from it
+    for (const q of nodeRects) {
+      const qid = idOf.get(q)
+      if (qid === c.from || qid === c.to) continue
+      const r = finalOf(q)
+      if (!segHits([[x, startY], [x, endY]], r, CLEAR_LINE)) continue
+      const d = r.x + r.w / 2 >= x ? x + CLEAR_LINE + 1 - r.x : x - CLEAR_LINE - 1 - (r.x + r.w)
+      move.set(qid, (move.get(qid) ?? 0) + d)
+    }
     // Room: inside the stage box, clear of every box and title
     for (const [id] of move) {
       const to = finalOf(placed.get(id))
@@ -337,6 +349,11 @@ export function polishLinks(ctx) {
     }
     // The lines touched, and how they read now
     const touched = connections.filter((o) => o !== c && (move.has(o.from) || move.has(o.to)))
+    // A moved box keeps a line's width off every line that is not routed again
+    for (const [id] of move) {
+      const to = finalOf(placed.get(id))
+      if (connections.some((o) => o !== c && !touched.includes(o) && segsOf(o.points).some((sg) => segHits(sg, to, 8)))) return false
+    }
     const score = (o) => {
       const rest = connections.filter((q) => q !== o)
       return routeScore(o.points, o) + overshoot(o.points, placed.get(o.from), placed.get(o.to)) + ROUTE_CROSS * crossingsOf(o.points, rest)
@@ -394,8 +411,15 @@ export function polishLinks(ctx) {
       if (Math.abs(dx) < 0.5 && atVertex) continue
       const endY = isVertical(c) || c.points.length === 4 ? c.points[c.points.length - 1][1] : T.y
       if (Math.abs(dx) < 0.5) {
+        // The box is under the line already: straight down, unless that passes a box, which then steps aside
+        const was = c.points
         c.points = [[x, startY], [x, endY]]
-        moved = true
+        const near = segsOf(c.points).some((sg) => nodeRects.some((r) => r !== S && r !== T && segHits(sg, r, CLEAR_LINE)))
+        if (!near && linesClear()) moved = true
+        else {
+          c.points = was
+          if (moveAndReroute(c, x, startY, endY, 0)) moved = true
+        }
         continue
       }
       const plan = planShift(c.to, dx, null, c)
@@ -432,8 +456,11 @@ export function polishLinks(ctx) {
       const moveOf = new Map()
       for (const q of [plan, ...pushed]) q.rects.forEach((r, n) => moveOf.set(r, q.dxs[n]))
       const at = (r) => (moveOf.has(r) ? { ...r, x: r.x + moveOf.get(r) } : r)
-      const passes = (pts, a, b) => segsOf(pts).some((sg) => nodeRects.some((r) => r !== placed.get(a) && r !== placed.get(b) && segHits(sg, at(r), 8)))
-      if (passes([[x, startY], [x, endY]], c.from, c.to)) continue
+      const passes = (pts, a, b) => segsOf(pts).some((sg) => nodeRects.some((r) => r !== placed.get(a) && r !== placed.get(b) && segHits(sg, at(r), CLEAR_LINE)))
+      if (passes([[x, startY], [x, endY]], c.from, c.to)) {
+        if (moveAndReroute(c, x, startY, endY, dx)) moved = true
+        continue
+      }
       if ([plan, ...pushed].some((q) => [...q.chainLinks].some((o) => passes(o.points.map(([px, py]) => [px + q.dxs[q.chain.indexOf(o.from)], py]), o.from, o.to)))) continue
       const saved = { rects: nodeRects.map((r) => [r, r.x]), lines: connections.map((o) => [o, o.points, o.labelAt]) }
       applyPlan(plan)
@@ -447,6 +474,7 @@ export function polishLinks(ctx) {
           o.labelAt = at
         }
         c.points = was
+        if (moveAndReroute(c, x, startY, endY, dx)) moved = true
         continue
       }
       moved = true
