@@ -627,7 +627,7 @@ The main line as one line, left to right, like a route map; where the process lo
 | Condition labels | toggle | show / hide the `condition` on edges |
 | Node detail | toggle | whether to show the `detail` line |
 | Main-line highlight | toggle | bolden the main edges |
-| States | toggle | on by default: paint each node by its state (below); off, by `outcome` as before |
+| States | toggle | off by default in the document theme (black and white), on in the others: paint each node by its state (below); off, by `outcome` as before |
 | Stage boxes | toggle | available when `stages` is written |
 | Rule table | toggle | available when `rules` is written; hides the table and the "N rules" badges together |
 | Export image | action | reuses the export the canvas shell already has |
@@ -644,7 +644,7 @@ outcome written positive or none at all, is a **normal end** (green); a node on 
 **something gone wrong** (yellow); every other node is **performance as it should be**, in the theme's own paint (a
 positive step stays ordinary: only an end is an ending). Every theme has its own yellow, red and green (`flow.state` in
 `src/theme/themes.js`), and keeps the line that says the same in black and white: dashed for gone wrong and terminated,
-heavy for a normal end. This is the one place the document theme carries meaning by colour; the switch turns it off.
+heavy for a normal end. This is the one place the document theme may carry meaning by colour, so there the switch starts off.
 The route map has the same switch, for its hanging boxes and its stations.
 
 The rules for the four control forms (menu / toggle / segmented / action) follow §4.2 of

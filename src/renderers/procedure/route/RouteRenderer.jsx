@@ -17,6 +17,8 @@ import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch } from '../../../shell/DockParts.jsx'
 import RouteLayerNode from './RouteLayerNode.jsx'
 import { buildRouteGraph } from './layout.js'
+import { useTheme } from '../../../theme/ThemeContext.jsx'
+import { statesByDefault } from '../flow/FlowRenderer.jsx'
 
 const nodeTypes = { routeLayer: RouteLayerNode }
 
@@ -29,9 +31,11 @@ export default function ProcedureRoute({ spec }) {
   const { t, lang } = useLang()
   const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().procedureRouteFieldsByDiagram || {})
   const showLabels = fieldPrefs[specKey]?.labels ?? true
-  // The four states in colour (issue 187), as on the flowchart; on unless turned off for this diagram
+  // The four states in colour (issue 187), as on the flowchart: off in the document theme, on in the others, unless
+  // switched for this diagram
   const PRESET = usePreset()
-  const showStates = PRESET?.fields?.states ?? fieldPrefs[specKey]?.states ?? true
+  const { id: themeId } = useTheme()
+  const showStates = PRESET?.fields?.states ?? fieldPrefs[specKey]?.states ?? statesByDefault(themeId)
   const setField = (key, v) => {
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], [key]: v } }
     setFieldPrefs(map)
