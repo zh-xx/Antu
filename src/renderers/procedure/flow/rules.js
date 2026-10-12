@@ -34,6 +34,11 @@ export const DOMAINS = [
 ]
 
 import { tEn } from '../../../core/i18n.js'
+import { labelCut } from './metrics.js'
+import { textEm } from '../../fact/cardGeometry.js'
+
+/** A note whose label is shorter than this (in em, about ten Chinese characters) and has no detail is a bare phrase */
+const NOTE_BARE_EM = 10
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 const list = (v) => (Array.isArray(v) ? v : [])
@@ -338,6 +343,23 @@ export function hintsOfProcedure(spec) {
     const hasMainOut = out.get(n.id).some((e) => e.main === true)
     if (onSpine && out.get(n.id).length >= 2 && !hasMainOut) {
       hints.push(tEn('phint.decisionOnSpine', { id: n.id, label: n.label }))
+    }
+  }
+
+  // Rule 22 (a hint): a label longer than a node shows. The node cuts it and the popover has the rest; a short
+  // label with the detail in `detail` reads better and is not cut
+  for (const n of byId.values()) {
+    if (typeof n.label === 'string' && labelCut(n.label, n.kind)) {
+      hints.push(tEn('phint.longLabel', { id: n.id, n: [...n.label].length }))
+    }
+  }
+
+  // Rule 23 (a hint): a note with no detail. A note is not a step: it explains something (why an argument fails, what
+  // the evidence lacked), and a bare short phrase leaves the reader not knowing what it points at (a label that is
+  // already a sentence stands alone)
+  for (const n of byId.values()) {
+    if (n.kind === 'note' && !(typeof n.detail === 'string' && n.detail.trim()) && textEm(String(n.label ?? '')) < NOTE_BARE_EM) {
+      hints.push(tEn('phint.noteNoDetail', { id: n.id, label: n.label }))
     }
   }
 

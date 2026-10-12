@@ -50,7 +50,15 @@ function assertSound(s, label) {
     assert.ok(b.x >= 0 && b.x + b.w <= g.size.width && b.y > layer.lineY && b.y + b.h <= layer.bandBottom, `${label}: box ${b.id} inside the picture`)
     for (let j = i + 1; j < boxes.length; j++) assert.ok(!overlap(b, boxes[j]), `${label}: boxes ${b.id} and ${boxes[j].id} apart`)
   }
-  for (const a of layer.arcs) assert.ok(a.depth > Math.max(layer.lineY, ...boxes.map((b) => b.y + b.h)), `${label}: an arc runs below every hanging box`)
+  // An arc runs under every hanging box in its own span (not under the deepest branch of the whole picture), and stays
+  // inside the stage bands
+  for (const a of layer.arcs) {
+    const lo = Math.min(a.out, a.into, a.fromX, a.toX)
+    const hi = Math.max(a.out, a.into, a.fromX, a.toX)
+    const under = boxes.filter((b) => b.x < hi && lo < b.x + b.w)
+    assert.ok(a.depth > Math.max(layer.lineY, ...under.map((b) => b.y + b.h)), `${label}: an arc runs below the hanging boxes in its span`)
+    assert.ok(a.depth < layer.bandBottom, `${label}: an arc is inside the bands`)
+  }
   assert.ok(g.size.width >= layer.lineTo, `${label}: the line is inside the content`)
   return g
 }
@@ -110,14 +118,14 @@ test('a branch to an end ends in the end; a long branch is cut with its count', 
   assert.ok(r.drawn.has('b5') && r.drawn.has('b6'))
 })
 
-test('an end reached only through a rule is listed, not lost', () => {
+test('an end reached only through a rule is not drawn, and no list stands under the picture', () => {
   const s = spec([node('s', 'start'), node('a'), node('e', 'end'), node('x', 'end', { outcome: 'negative' })], [edge('s', 'a'), edge('a', 'e')], { rules: [{ id: 'r1', when: 'breach', then: 'pay', endId: 'x' }] })
   const g = assertSound(s, 'rule end')
   assert.equal(g.off, 1)
   assert.equal(g.rules, 1)
   const layer = g.nodes[0].data
-  assert.ok(layer.frames.some((f) => /Not on the route/.test(f.title)))
-  assert.ok(layer.texts.some((x) => /reached only through a rule/.test(x.main)))
+  assert.equal(layer.frames.length, 0)
+  assert.equal(layer.texts.length, 0)
 })
 
 test('no stages, no main marked: the line is inferred and draws without bands', () => {

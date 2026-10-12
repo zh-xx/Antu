@@ -446,6 +446,8 @@ nodes[2] (n-3): dead end; a node that is neither end nor note must have an outgo
 | 17 | if `outcome` is written it must be in the enum | error |
 | 18 | array order clearly contradicts the `stages` order (a node's `stageId` comes before that of its upstream node) | hint, not an error |
 | 19 | a decision on the main line has 2 or more outgoing edges but none is marked `main` | hint, not an error (see §4.1) |
+| 22 | a `label` wider than a node shows (two lines, about 20 Chinese characters) | hint, not an error |
+| 23 | a `note` with no `detail` whose label is a bare short phrase (under about ten Chinese characters) | hint, not an error |
 
 Rule 11 is the same class as fact's "one slot, one event": **both prevent content from being silently
 dropped.** The comment in `fact/timeline/layout.js` sets the reason out clearly, and that position is
@@ -540,9 +542,19 @@ Decisions the renderer made, so they are not undone by accident:
   when they cross, unless that costs more than one extra bend. Without stages, or with stages on
   only some nodes, the diagram is one graph as before, stages then drawn as ELK compound nodes.
 - **A node is as big as its text** (`metrics.js` `sizeOf`): 14px text, wrapped past a cap, at
-  most three lines; a diamond folds its text into a near-square block. Fixed 208×64 boxes left
+  most two lines (words kept whole), with 18 px inside the box at the sides and 14 px above and below; a diamond folds
+  its text into a near-square block. **A node shows only part of long text** (settled with the maintainer): a label
+  wider than two lines (about 20 Chinese characters) is cut, a detail shows its first line cut at a punctuation mark
+  (about 16 Chinese characters), and a `⋯` mark says something is left out that the text does not say itself (a cut
+  text shows its own “…”, so the two never stand together); the popover has it all. Rule 22 hints at a long label.
+  **A `note` looks unlike a step** (dashed fold outline, italic, a small tag “Note” in the corner) and shows up to two
+  lines of its detail, since the detail is most of what it says; rule 23 hints at a note with a bare short phrase and
+  no detail. Fixed 208×64 boxes left
   most of every box empty and, fitted to a screen, the text too small to read — what putting the
   same data through Mermaid showed.
+- **A line meets the middle of the face it enters** (`flow/straighten.js`, `linkCost`): a line that meets a box off the middle of its face costs a little more than a bend, so a decision's two ways out leave by its side points and go down into the middle of each box (the space between siblings is 44 px so this fits), and a lone end is moved under the line that enters it when it has room. **A line that goes down out of a decision leaves by its lower point**, never by the slanted side: the box below is moved under the point when there is room (a sibling beside it is pushed aside), and where there is not the line takes a short jog just under the point. A step of a few pixels in a line (two boxes that nearly line up) is drawn straight, in a line down a stage or across between stages.
+- **Lines into one node may join into one trunk** (`flow/merge.js`, `flow/polish.js`). Two forward lines into the same node meet before it and go in as one line through one point, as a person draws them; the second runs onto the first and shares its last stretch, and its label stays on its own part. Without that the second needs a point of its own, and when the node has none left on the near side it goes round the picture and comes in from behind. **Lines into a decision meet at its top point**, so its side points are free for the ways out, and the main line takes the lower point from a branch, which then leaves by a side. A loop (dashed) keeps its own line.
+- **One score for every second try at a route** (`flow/polish.js`): a line that crosses another, comes into its node from behind, goes well past both its ends, or turns three times or more is routed again, on its own or joining a line into the same node, and the new route is kept only when it reads better by one number: its length, a bend as 150 px of line, coming in from behind as 400, going past both ends by what it goes past, and every crossing as 600. So a crossing is not traded for a way round the picture, nor a bend for a long detour. A link short of a point to leave or arrive by may move the link holding it onto a join, when the two together read better. A line between stages takes the gap between the stage boxes rather than a strip inside one, where both are as short. The same passes run on a flowchart without stages.
 - **Links bend as little as possible: straight first, then one bend** (`flow/straighten.js`).
   ELK's router takes every link out of a bottom and into a top, so two nodes not exactly in line
   cost a Z (two bends) and a loop four. After ELK, each link is offered simpler routes, fewest
@@ -600,18 +612,18 @@ damages …), 05 has 4, 01 has 4. Several ends in one layer sit side by side in 
 The main line as one line, left to right, like a route map; where the process loops or ends early hangs below it. Code: `src/renderers/procedure/route/`. The flowchart reads "stage columns, nodes top to bottom"; this reads "one line to the end, and where it can go wrong".
 
 - **The line** is the main line, found as the flowchart finds it (edges marked `main`, else the first unconditional edge). Each node on it is a **station** at an even distance (more where branches hang): a step a circle, a decision a diamond, the start a dot, an end a square, a `document` a small page; the ring or square is coloured by `outcome`. The label is written above the line, with the party's name (`actorIds`) over it; `detail` is the tooltip. Stations are never closer than 128 px; a label wraps to at most four lines.
-- **Stages** are bands behind the stations of one stage (a run of stations of one stage is one band; a station with no stage has none).
+- **Stages** are rounded bands behind the stations of one stage (a run of stations of one stage is one band; a station with no stage has none). A band reaches past its end stations and past the branches hanging there, and two bands keep a gap between them.
 - **Hanging**: each other edge out of a station starts a branch below it, boxes one under another with the condition on top. The branch follows the first way on from each box until it reaches (a) an end (the end box, drawn by its outcome), (b) a station (a dashed line back, an arc under the picture when it is not the station itself or its neighbour), (c) a node already drawn (a merge), or (d) its fourth box, then it says "... and N more". The other ways out of a hanging box are not followed and are counted.
-- **Arcs** under the hanging branches: an edge between two stations that is not along the line: a loop back (dashed) or a jump ahead (grey). The condition is on the arc.
-- **Left out, and said so**: nodes that no branch reached (an end reached only through a rule is one), branches not followed, and the number of rules (the flowchart's table lists them). So every node is on the picture or listed under it.
-- A long main line makes a wide picture; it opens at a readable zoom (not below 0.8) from the left and the reader scrolls sideways.
+- **Arcs** under the hanging branches: an edge between two stations that is not along the line: a loop back (dashed) or a jump ahead (grey). The condition is on the arc. Every line of the picture is a polyline with right-angle turns (no curves); an arc runs under the branches in its own span only, so a loop over a bare stretch of the line stays short.
+- **Left out, without a list** (settled with the maintainer; the relationship views dropped theirs too): nodes that no branch reached (an end reached only through a rule is one), branches not followed, and the rules are not drawn and not listed under the picture; the flowchart draws every node and has the table of rules.
+- A long main line makes a wide picture; it opens at a readable zoom (not below 0.7) from the left and the reader scrolls sideways.
 
 ### 6.2 The control capsule (rendering parameters inside the sub-type)
 
 | Control | Form | Notes |
 |---|---|---|
 | Orientation | segmented | vertical / horizontal |
-| Link style | segmented | curved (default) / straight; remembered for every diagram |
+| Link style | segmented | straight (default; right-angle turns, settled with the maintainer) / curved; remembered for every diagram |
 | Condition labels | toggle | show / hide the `condition` on edges |
 | Node detail | toggle | whether to show the `detail` line |
 | Main-line highlight | toggle | bolden the main edges |

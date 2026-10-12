@@ -86,8 +86,10 @@ test('seven real contracts: both orientations lay out and no nodes overlap', () 
 test('the main line runs straight inside a stage: almost no main link there bends', () => {
   // Inside a stage the flow runs down one column and main-line links carry ELK's straightness
   // priority. A main link into the next stage has to leave one column and enter the next, so it
-  // bends (see the bend test below); those are left out here. Measured: 4 of 114 main links
-  // inside a stage bend, both orientations.
+  // bends (see the bend test below); those are left out here. Measured: 26 of 224 main links
+  // inside a stage bend, both orientations. They are the ones out of a decision whose box below stands off its point:
+  // the line leaves the diamond by its point (not by the slanted side, as it did when 4 of 114 bent) and turns once or
+  // twice into the middle of the box, #186.
   let total = 0
   let bent = 0
   for (const f of files) {
@@ -102,7 +104,7 @@ test('the main line runs straight inside a stage: almost no main link there bend
       }
     }
   }
-  assert.ok(bent / total <= 0.06, `${bent} of ${total} main links inside a stage bend`)
+  assert.ok(bent / total <= 0.13, `${bent} of ${total} main links inside a stage bend`)
 })
 
 test('back edges are recognised: only the real loops are left', () => {
@@ -690,4 +692,60 @@ test('the rule switch removes the table and the counts', () => {
   assert.equal(off.ruleTable, null)
   assert.ok(off.nodes.every((n) => n.data.ruleCount === 0), 'no counts on the ends')
   assert.ok(off.size.height < on.size.height, 'switching rules off should give the height of the table back')
+})
+
+test('the line over the rule table says "contract" only for a contract flow', async () => {
+  const { ruleTableNoteKey } = await import('../src/renderers/procedure/flow/ruleTable.js')
+  assert.equal(ruleTableNoteKey('contract-performance'), 'rule.tableNoteContract')
+  for (const d of ['litigation', 'administrative', 'approval', 'negotiation', 'other', undefined]) assert.equal(ruleTableNoteKey(d), 'rule.tableNote')
+  const en = (await import('../src/core/messages/en.js')).default
+  const zh = (await import('../src/core/messages/zh.js')).default
+  for (const dict of [en, zh]) {
+    assert.ok(!/contract|合同/i.test(dict['rule.tableNote']), 'the neutral line does not call it a contract')
+    assert.ok(/contract|合同/i.test(dict['rule.tableNoteContract']))
+  }
+})
+
+// Every example, both languages' structure being the same: the contracts and the agent examples, both orientations
+const everyLayout = () => {
+  const out = []
+  const agentDir = 'examples/agent/procedure'
+  const specs = [...files.map((f) => [f, load(f)]), ...readdirSync(agentDir).filter((f) => f.endsWith(LANG)).map((f) => [f, JSON.parse(readFileSync(`${agentDir}/${f}`, 'utf8'))])]
+  for (const [f, spec] of specs) for (const o of ['vertical', 'horizontal']) out.push([`${f}/${o}`, buildProcedureGraph(spec, {}, undefined, o)])
+  return out
+}
+const segsOfPts = (p) => p.slice(1).map((q, i) => [p[i], q])
+const dirOf = ([a, b]) => (a[0] === b[0] ? (b[1] > a[1] ? 'D' : 'U') : b[0] > a[0] ? 'R' : 'L')
+
+test('no line has a step of a few pixels in it (two runs the same way, a jog of 8 px or less between), either way', () => {
+  for (const [name, g] of everyLayout()) {
+    for (const c of g.connections) {
+      const S = segsOfPts(c.points)
+      for (let i = 1; i < S.length - 1; i += 1) {
+        const len = Math.abs(S[i][1][0] - S[i][0][0]) + Math.abs(S[i][1][1] - S[i][0][1])
+        assert.ok(!(dirOf(S[i - 1]) === dirOf(S[i + 1]) && len > 0.5 && len <= 8), `${name}: ${c.id} has a ${len} px step`)
+      }
+    }
+  }
+})
+
+test('no line goes past its node and comes back into it from behind', () => {
+  for (const [name, g] of everyLayout()) {
+    const rect = new Map(g.nodes.filter((n) => n.type === 'pnode').map((n) => [n.id, { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }]))
+    for (const c of g.connections) {
+      if (c.kind === 'back') continue
+      const a = rect.get(c.from)
+      const b = rect.get(c.to)
+      const [p, q] = c.points.slice(-2)
+      const last = dirOf([p, q])
+      const acx = a.x + a.w / 2
+      const acy = a.y + a.h / 2
+      const behind = (last === 'L' && acx < b.x) || (last === 'R' && acx > b.x + b.w) || (last === 'U' && acy < b.y) || (last === 'D' && acy > b.y + b.h)
+      // past the node by more than 40 px on the side it comes in from
+      const xs = c.points.map((pt) => pt[0])
+      const ys = c.points.map((pt) => pt[1])
+      const past = { L: Math.max(...xs) - (b.x + b.w), R: b.x - Math.min(...xs), U: Math.max(...ys) - (b.y + b.h), D: b.y - Math.min(...ys) }[last]
+      assert.ok(!(behind && past > 40), `${name}: ${c.id} goes ${Math.round(past)} px past its node and comes back into it`)
+    }
+  }
 })

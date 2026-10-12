@@ -26,6 +26,9 @@ import { runsAlongBorder } from './router.js'
 /** Room kept between a link and a node it passes, and between a label and anything else */
 const CLEAR = 8
 const LABEL_CLEAR = 3
+/** A line may meet the middle of a box's top within this many px and still count as in the middle */
+const CENTRE_TOL = 8
+const CENTRE_PENALTY = 1.2
 /** Two links running side by side closer than this read as one */
 const PARALLEL_GAP = 12
 /** A side exit needs this much room before it turns */
@@ -51,10 +54,12 @@ export function bendsOf(points) {
 /**
  * How much a link bends, weighted: a bend on the main line costs most, one on a loop least; a
  * forward arrow that meets a diamond beside its point (on a slanted edge) costs like a bend,
- * because it reads as aimed at nothing. The layout keeps the placement with the lowest total.
+ * because it reads as aimed at nothing. The layout keeps the placement with the lowest total. With `centre`, a line that
+ * comes down off the middle of the top of the box it enters costs more too: that is for choosing a route for a link,
+ * not for choosing between placements (it would trade a good main line for a tidy branch).
  */
 const WEIGHT = { main: 3, branch: 2, back: 1 }
-export function linkCost(c, placed, diamonds, points = c.points) {
+export function linkCost(c, placed, diamonds, points = c.points, centre = false) {
   if (points.length < 2) return 0
   let cost = bendsOf(points) * (WEIGHT[c.kind] ?? 1)
   if (c.kind !== 'back') {
@@ -69,6 +74,15 @@ export function linkCost(c, placed, diamonds, points = c.points) {
       // The four points of a diamond lie on its two middle lines
       const atPoint = Math.abs(pt[0] - cx) < 1 || Math.abs(pt[1] - cy) < 1
       if (!atPoint) cost += WEIGHT[c.kind]
+    }
+    // A line that comes down onto a box (not a diamond: that is by its points) well off the middle of its top reads as
+    // sloppy, and costs a little more than a bend: a side exit that enters at the middle beats it. Side entries are
+    // not judged here (a line into the side of the next stage's box lands where the router put it)
+    const T = placed.get(c.to)
+    if (centre && T && !diamonds.has(c.to) && points.length >= 2) {
+      const last = points[points.length - 1]
+      const prev = points[points.length - 2]
+      if (last[0] === prev[0] && Math.abs(last[0] - (T.x + T.w / 2)) > CENTRE_TOL) cost += WEIGHT[c.kind] * CENTRE_PENALTY
     }
   }
   return cost
@@ -371,11 +385,11 @@ export function straighten(connections, placed, obstacles, vertical, diamonds = 
     // Try the simpler routes for c. `must`: its current route no longer fits, so any clear
     // route will do, fewest crossings first.
     const improve = (c, must) => {
-      const cost = linkCost(c, placed, diamonds)
+      const cost = linkCost(c, placed, diamonds, c.points, true)
       const was = crossingsWith(c.points, c)
       const len = lengthOf(c.points)
       const options = candidatesFor(c)
-        .map((pts) => ({ pts, cost: linkCost(c, placed, diamonds, pts), len: lengthOf(pts) }))
+        .map((pts) => ({ pts, cost: linkCost(c, placed, diamonds, pts, true), len: lengthOf(pts) }))
         .filter((o) => must || (o.cost <= cost && o.len <= len * 1.6 + 40))
         .map((o) => ({ ...o, cross: crossingsWith(o.pts, c) }))
         // Simpler, or as simple and crossing fewer links (a loop moved to the side nothing leaves by)
@@ -406,7 +420,7 @@ export function straighten(connections, placed, obstacles, vertical, diamonds = 
     const pass = (list) => {
       for (let n = 0, changed = true; changed && n < 4; n += 1) {
         changed = false
-        for (const c of list) if (c.points.length >= 2 && linkCost(c, placed, diamonds) > 0 && improve(c, false)) changed = true
+        for (const c of list) if (c.points.length >= 2 && linkCost(c, placed, diamonds, c.points, true) > 0 && improve(c, false)) changed = true
       }
     }
     pass(order.filter((c) => settled.has(c)))

@@ -17,13 +17,13 @@ import { memo, useContext } from 'react'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { SOURCE_TYPE_KEYS, labelOf } from '../../../core/labels.js'
 import { useLang } from '../../../shell/LangContext.jsx'
-import { whensOf } from './ruleTable.js'
+import { ruleTableNoteKey, whensOf } from './ruleTable.js'
 
 const scopeText = (t, scope) =>
   scope.kind === 'all' ? t('rule.tScopeAll') : scope.kind === 'one' ? scope.stage : t('rule.tScopeRange', { from: scope.from, to: scope.to })
 
 const RuleTableNode = memo(function RuleTableNode({ data }) {
-  const { table, sourceById } = data
+  const { table, sourceById, domain } = data
   const { hoveredId, pinnedId, pin, unpin, hover } = useContext(PreviewContext)
   const { t, lang } = useLang()
   const cols = table.cols.map((c) => `${c}px`).join(' ')
@@ -32,7 +32,7 @@ const RuleTableNode = memo(function RuleTableNode({ data }) {
     <div className="antu-rtable nopan" style={{ width: table.w, height: table.h }}>
       <div className="antu-rtable-title">
         <b>{t('rule.tableTitle')}</b>
-        <span>{t('rule.tableNote')}</span>
+        <span>{t(ruleTableNoteKey(domain))}</span>
       </div>
       <div className="antu-rtable-head" style={{ gridTemplateColumns: cols }}>
         <span>{t('rule.colWhen')}</span>

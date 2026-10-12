@@ -88,7 +88,7 @@ export default function ProcedureFlow({ spec }) {
 
   // Link style: curved (the default, the reader's choice: it reads softer, like Mermaid) or
   // straight (orthogonal). Both draw the same route. One choice for every diagram, remembered.
-  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || prefs.read().linkStyle || 'curved')
+  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || prefs.read().linkStyle || 'straight')
   const toggleLinkStyle = (next) => {
     setLinkStyle(next)
     prefs.write({ linkStyle: next })
@@ -173,7 +173,7 @@ export default function ProcedureFlow({ spec }) {
             selectable: false,
             connectable: false,
             focusable: false,
-            data: { table: layout.ruleTable, sourceById: new Map((spec.sources ?? []).map((s) => [s.id, s])) },
+            data: { table: layout.ruleTable, domain: spec.domain, sourceById: new Map((spec.sources ?? []).map((s) => [s.id, s])) },
           },
         ]
       : []

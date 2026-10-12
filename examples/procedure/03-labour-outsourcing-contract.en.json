@@ -55,7 +55,7 @@
     {
       "id": "n-3",
       "kind": "step",
-      "label": "Party B submits service list and invoice",
+      "label": "Party B submits list and invoice",
       "detail": "By the 25th of each month",
       "actorIds": [
         "a-2"
@@ -81,7 +81,7 @@
     {
       "id": "n-6",
       "kind": "decision",
-      "label": "Termination requested 30 days before expiry?",
+      "label": "Terminate 30 days before expiry?",
       "stageId": "st-1"
     },
     {

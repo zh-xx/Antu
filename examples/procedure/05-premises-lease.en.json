@@ -99,7 +99,7 @@
     {
       "id": "n-16",
       "kind": "step",
-      "label": "Party B gives 90 days' written notice to renew",
+      "label": "Party B gives 90 days' renewal notice",
       "actorIds": [
         "a-2"
       ],
@@ -166,7 +166,7 @@
     {
       "id": "n-24",
       "kind": "step",
-      "label": "Party A refunds the deposit without interest",
+      "label": "Party A refunds deposit, no interest",
       "detail": "within 15 business days",
       "actorIds": [
         "a-1"

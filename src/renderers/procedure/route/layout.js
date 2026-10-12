@@ -23,7 +23,6 @@
 
 import { validateProcedure, hintsOfProcedure, ruleEndIds } from '../flow/rules.js'
 import { PAD } from '../flow/metrics.js'
-import { sectionWriter, SECTION_GAP } from '../../relationship/sections.js'
 import { wrapLineCount } from '../../fact/cardGeometry.js'
 import { tEn } from '../../../core/i18n.js'
 
@@ -36,7 +35,10 @@ const LABEL_FONT = 12
 const LABEL_LH = 15
 const LABEL_MAX_LINES = 4
 const ACTOR_H = 14
-const BAND_TITLE_H = 30
+const BAND_TITLE_H = 42
+/** How far a stage band reaches past its first and last station, and the extra gap at a stage boundary that keeps two bands apart */
+const BAND_REACH = STATION_GAP / 2 + 6
+const BAND_GAP = 28
 const LINE_TOP_GAP = 26
 const BOX_FONT = 11.5
 const BOX_LH = 14
@@ -206,12 +208,17 @@ export function buildRouteGraph(spec, fields = {}) {
     const n = hangsOf.get(id).length
     return n ? n * HANG_W + (n - 1) * HANG_GAP : 0
   }
+  const hasStages = (spec.stages ?? []).length > 0
+  const reachOf = (id) => Math.max(BAND_REACH, groupW(id) / 2 + 16)
   const x = new Map()
   let cursor = PAD + STATION_GAP / 2
   spine.forEach((id, i) => {
     if (i > 0) {
       const prev = spine[i - 1]
-      cursor += Math.max(STATION_GAP, groupW(prev) / 2 + groupW(id) / 2 + 24)
+      // At a stage boundary the two bands (each reaches past its end station, and past the branches hanging there)
+      // keep a gap between them
+      const boundary = hasStages && byId.get(prev).stageId !== byId.get(id).stageId ? reachOf(prev) + reachOf(id) + BAND_GAP : 0
+      cursor += Math.max(STATION_GAP, groupW(prev) / 2 + groupW(id) / 2 + 24, boundary)
     }
     x.set(id, cursor)
   })
@@ -231,7 +238,6 @@ export function buildRouteGraph(spec, fields = {}) {
     labelInfo.set(id, { lines, actor, h })
     topBlock = Math.max(topBlock, h)
   }
-  const hasStages = (spec.stages ?? []).length > 0
   const top = PAD
   const labelTop = top + (hasStages ? BAND_TITLE_H : 8)
   const lineY = labelTop + topBlock + LINE_TOP_GAP
@@ -291,26 +297,36 @@ export function buildRouteGraph(spec, fields = {}) {
     h.tail = { ...h.tail, asArc: true }
   }
   const arcDraw = []
-  const arcBase = bottom + 36
+  // An arc runs under what hangs in its own span, not under the deepest branch of the whole picture, and a longer
+  // arc under a shorter one it spans
+  const hangFloor = (x0, x1) => {
+    let floor = lineY + 24
+    for (const h of hangDraw) {
+      if (h.cx + HANG_W / 2 < Math.min(x0, x1) || h.cx - HANG_W / 2 > Math.max(x0, x1)) continue
+      const last = h.more ?? h.boxes.at(-1)
+      if (last) floor = Math.max(floor, last.y + last.h)
+    }
+    return floor
+  }
   const sorted = [...arcSpecs].sort((a, b) => Math.abs(x.get(a.to) - a.startX) - Math.abs(x.get(b.to) - b.startX))
-  sorted.forEach((a, k) => {
+  const placed = []
+  sorted.forEach((a) => {
     const tx = x.get(a.to)
     const right = tx > a.startX
     const fromSide = right ? 1 : -1
-    arcDraw.push({
-      kind: a.kind,
-      cond: a.cond,
-      start: a.start,
-      fromX: a.startX,
-      fromY: a.startY,
-      toX: tx,
-      out: a.start === 'box' ? a.startX + 16 : a.startX + fromSide * (groupW(a.from) / 2 + 14),
-      into: tx - fromSide * (groupW(a.to) / 2 + 14),
-      depth: arcBase + k * ARC_STEP,
-    })
+    // Round the branches hanging at a station only when it has some; a bare station is left and entered straight
+    // below it, so the line does not jog sideways and back
+    const out = a.start === 'box' ? a.startX + 16 : groupW(a.from) ? a.startX + fromSide * (groupW(a.from) / 2 + 14) : a.startX
+    const into = groupW(a.to) ? tx - fromSide * (groupW(a.to) / 2 + 14) : tx
+    const lo = Math.min(out, into, a.startX, tx)
+    const hi = Math.max(out, into, a.startX, tx)
+    let depth = hangFloor(lo, hi) + 36
+    for (const q of placed) if (q.lo < hi && lo < q.hi) depth = Math.max(depth, q.depth + ARC_STEP)
+    placed.push({ lo, hi, depth })
+    arcDraw.push({ kind: a.kind, cond: a.cond, start: a.start, fromX: a.startX, fromY: a.startY, toX: tx, out, into, depth })
   })
-  const arcBottom = arcDraw.length ? arcBase + (arcDraw.length - 1) * ARC_STEP + 24 : bottom + 20
-  const bandBottom = arcBottom + 8
+  const arcBottom = arcDraw.length ? Math.max(...arcDraw.map((a) => a.depth)) + 24 : 0
+  const bandBottom = Math.max(arcBottom, bottom + 20) + 8
 
   // ── stage bands: a run of stations of one stage ──
   const bands = []
@@ -324,8 +340,9 @@ export function buildRouteGraph(spec, fields = {}) {
       if (st && stageById.has(st)) {
         const first = x.get(spine[runStart])
         const last = x.get(id)
-        const pad = STATION_GAP / 2 - 6
-        bands.push({ stageId: st, label: stageById.get(st).label, x: first - pad, w: last - first + pad * 2 })
+        const padL = reachOf(spine[runStart])
+        const padR = reachOf(id)
+        bands.push({ stageId: st, label: stageById.get(st).label, x: first - padL, w: last - first + padL + padR })
       }
       runStart = null
     }
@@ -350,17 +367,8 @@ export function buildRouteGraph(spec, fields = {}) {
     frames: [],
     texts: [],
   }
-  const sections = sectionWriter(layer, width - PAD * 2, bandBottom + SECTION_GAP)
-  if (r.off.length) {
-    sections.section(
-      t('proc.route.off', { n: r.off.length }),
-      r.off.map((n) => ({ main: `${n.label}${r.ruleEnds.has(n.id) ? t('proc.route.viaRule') : r.off.length ? '' : ''}`, tone: r.ruleEnds.has(n.id) ? 'note' : undefined })),
-    )
-  }
-  if (r.notFollowed) sections.section(t('proc.route.notFollowed', { n: r.notFollowed }), [{ main: t('proc.route.notFollowedHint') }])
   const ruleCount = Array.isArray(spec.rules) ? spec.rules.length : 0
-  if (ruleCount) sections.section(t('proc.route.rules', { n: ruleCount }), [{ main: t('proc.route.rulesHint') }])
-  const height = Math.ceil(sections.y() - SECTION_GAP + PAD)
+  const height = Math.ceil(bandBottom + PAD)
   layer.height = height
   nodesOut.push({
     id: '__route__',

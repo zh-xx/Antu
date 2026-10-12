@@ -36,6 +36,13 @@ import {
 } from './metrics.js'
 
 /** The whens of a rule, always as a list */
+/**
+ * The line over the table. It says "while the contract runs" only for a contract's flow (domain contract-performance):
+ * the same table holds an administrative decision's rules or a bankruptcy claim's, and the sentence must not call
+ * them a contract.
+ */
+export const ruleTableNoteKey = (domain) => (domain === 'contract-performance' ? 'rule.tableNoteContract' : 'rule.tableNote')
+
 export const whensOf = (rule) => (Array.isArray(rule.when) ? rule.when : [rule.when])
 
 /**

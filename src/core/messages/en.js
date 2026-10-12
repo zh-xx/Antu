@@ -92,7 +92,8 @@ export const en = {
   'flow.linkCurved': 'Curved',
   'flow.linkStyle': 'Link style',
   'rule.tableTitle': 'Rules',
-  'rule.tableNote': 'What may happen while the contract runs; not steps of the flow',
+  'rule.tableNote': 'What may happen along the way; not steps of the flow',
+  'rule.tableNoteContract': 'What may happen while the contract runs; not steps of the flow',
   'rule.colWhen': 'If',
   'rule.colThen': 'Then',
   'rule.colScope': 'Stages',
@@ -103,6 +104,7 @@ export const en = {
   'rule.tScopeAll': 'Throughout',
   'rule.tScopeRange': ({ from, to }) => `${from} → ${to}`,
   'flow.ruleBadge': ({ n }) => (n === 1 ? '1 rule' : `${n} rules`),
+  'flow.noteTag': 'Note',
   'rule.if': 'If',
   'rule.or': ', or ',
   'flow.previewHint': 'Click a node to read the full text',
@@ -377,12 +379,6 @@ export const en = {
   'graphKind.route': 'Route map',
   'proc.route.labels': 'Conditions',
   'proc.route.more': ({ n }) => `… and ${n} more`,
-  'proc.route.off': ({ n }) => `Not on the route (${n})`,
-  'proc.route.viaRule': ' (reached only through a rule)',
-  'proc.route.notFollowed': ({ n }) => `Branches not followed (${n})`,
-  'proc.route.notFollowedHint': 'A hanging branch follows the first way on; the other ways out of its boxes are not drawn. The flowchart shows them all.',
-  'proc.route.rules': ({ n }) => `Rules not shown here (${n})`,
-  'proc.route.rulesHint': 'The route map draws the steps; the rules (what happens if …) are in the flowchart, in the table under it.',
   'rel.focus.open': 'Centre the focus view on this party',
   'rel.focus.centre': 'Centre',
   'rel.focus.hint': 'Click to put this party in the middle',
@@ -484,6 +480,10 @@ export const en = {
     `stage runs backwards: ${from} (${fromStage}) -> ${to} (${toStage}); back edges are normal, others need a second look`,
   'phint.decisionOnSpine': ({ id, label }) =>
     `decision "${id}" (${label}) is on the main line but no outgoing edge is marked main; the breach path may end up drawn as the main line`,
+  'phint.longLabel': ({ id, n }) =>
+    `node "${id}" has a label of ${n} characters; a node shows about two lines (20 Chinese characters) and cuts the rest, the popover has it all. Shorten the label and move the detail into \`detail\``,
+  'phint.noteNoDetail': ({ id, label }) =>
+    `note "${id}" (${label}) has no detail; a note is an explanation, so write it as one full sentence (in detail) that says what it explains`,
   'phint.multipleEntries': ({ n, ids }) =>
     `${n} entries (${ids}), they will all sit in the first layer; a contract flow usually has a single entry, so check whether an upstream link is missing`,
 }

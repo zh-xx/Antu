@@ -85,7 +85,7 @@ export const THEMES = {
       head: '"SimHei", "Heiti SC", "STHeiti", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
     },
     color: { ink: '#111111', ink2: '#2b2b2b', ink3: '#4d4d4d', ink4: '#767676', bg: '#ffffff', canvas: '#ffffff', frame: '#111111', line: '#c9c9c9', chip: '#f0f0f0', side1: '#111111', side2: '#555555', axis: '#767676' },
-    radius: { person: 18, company: 3, organization: 3, government: 3, other: 3, pill: 2, group: 0 },
+    radius: { person: 18, company: 3, organization: 3, government: 3, other: 3, pill: 2, group: 12 },
     entity: {
       person: { stroke: '#111111', fill: '#ffffff', width: 1.3 },
       company: { stroke: '#111111', fill: '#ffffff', width: 1.6 },
