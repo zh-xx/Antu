@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { usePrefs } from '../../../shell/env.js'
+import { usePrefs, usePreset } from '../../../shell/env.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch } from '../../../shell/DockParts.jsx'
@@ -30,7 +30,8 @@ export default function ProcedureRoute({ spec }) {
   const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().procedureRouteFieldsByDiagram || {})
   const showLabels = fieldPrefs[specKey]?.labels ?? true
   // The four states in colour (issue 187), as on the flowchart; on unless turned off for this diagram
-  const showStates = fieldPrefs[specKey]?.states ?? true
+  const PRESET = usePreset()
+  const showStates = PRESET?.fields?.states ?? fieldPrefs[specKey]?.states ?? true
   const setField = (key, v) => {
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], [key]: v } }
     setFieldPrefs(map)
