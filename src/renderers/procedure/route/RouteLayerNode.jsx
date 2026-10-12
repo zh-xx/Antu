@@ -11,6 +11,18 @@ import { memo } from 'react'
 import LineLayerNode from '../../relationship/LineLayerNode.jsx'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 
+/** A polyline through points as an SVG path, without the points that add no turn (a repeated or collinear one) */
+const poly = (pts) => {
+  const out = []
+  for (const q of pts) {
+    const n = out.length
+    if (n && out[n - 1][0] === q[0] && out[n - 1][1] === q[1]) continue
+    if (n > 1 && ((out[n - 2][0] === out[n - 1][0] && out[n - 1][0] === q[0]) || (out[n - 2][1] === out[n - 1][1] && out[n - 1][1] === q[1]))) out.pop()
+    out.push(q)
+  }
+  return out.map((q, i) => `${i ? 'L' : 'M'} ${q[0]} ${q[1]}`).join(' ')
+}
+
 const arrowId = (c) => `antu-rt-arrow-${c.replace(/[^0-9a-z]/gi, '')}`
 
 const RouteLayerNode = memo(function RouteLayerNode({ data }) {
@@ -43,7 +55,7 @@ const RouteLayerNode = memo(function RouteLayerNode({ data }) {
           const startY = lineY + 16
           const parts = []
           if (first) {
-            parts.push(<path key="in" d={`M ${startX} ${startY} C ${startX} ${startY + 22} ${h.cx} ${first.y - 30} ${h.cx} ${first.y - 2}`} fill="none" stroke={RED} strokeWidth={2} markerEnd={`url(#${arrowId(RED)})`} />)
+            parts.push(<path key="in" d={poly([[startX, startY], [startX, lineY + 38], [h.cx, lineY + 38], [h.cx, first.y - 2]])} fill="none" stroke={RED} strokeWidth={2} markerEnd={`url(#${arrowId(RED)})`} />)
           }
           h.boxes.forEach((b, j) => {
             const c = outOf(b.outcome).stroke
@@ -64,15 +76,18 @@ const RouteLayerNode = memo(function RouteLayerNode({ data }) {
             const sx = last.x + last.w
             const sy = last.y + last.h / 2
             const rx = Math.max(sx + 22, to.x + 34)
-            parts.push(<path key="ret" d={`M ${sx} ${sy} L ${rx} ${sy} L ${rx} ${lineY + 40} L ${to.x + 9} ${lineY + 15}`} fill="none" stroke={RED} strokeWidth={2} strokeDasharray="5 4" strokeLinejoin="round" markerEnd={`url(#${arrowId(RED)})`} />)
+            parts.push(<path key="ret" d={poly([[sx, sy], [rx, sy], [rx, lineY + 38], [to.x, lineY + 38], [to.x, lineY + 14]])} fill="none" stroke={RED} strokeWidth={2} strokeDasharray="5 4" strokeLinejoin="round" markerEnd={`url(#${arrowId(RED)})`} />)
           }
           return <g key={`h${i}`}>{parts}</g>
         })}
         {arcs.map((a, i) => {
           const colour = a.kind === 'jump' ? GREY : RED
-          const dir = a.toX > a.fromX ? 1 : -1
-          const head = a.start === 'box' ? `M ${a.fromX} ${a.fromY} L ${a.out} ${a.fromY} L ${a.out} ${a.depth - 18}` : `M ${a.fromX} ${lineY + 16} C ${a.fromX} ${lineY + 40} ${a.out} ${lineY + 50} ${a.out} ${lineY + 80} L ${a.out} ${a.depth - 18}`
-          const d = `${head} Q ${a.out} ${a.depth} ${a.out + dir * 18} ${a.depth} L ${a.into - dir * 18} ${a.depth} Q ${a.into} ${a.depth} ${a.into} ${a.depth - 18} L ${a.into} ${lineY + 80} C ${a.into} ${lineY + 50} ${a.toX} ${lineY + 40} ${a.toX} ${lineY + 14}`
+          // Down out of the station (or out of the last box), round the hanging branches, under them, and up into the target
+          const d = poly(
+            a.start === 'box'
+              ? [[a.fromX, a.fromY], [a.out, a.fromY], [a.out, a.depth], [a.into, a.depth], [a.into, lineY + 38], [a.toX, lineY + 38], [a.toX, lineY + 14]]
+              : [[a.fromX, lineY + 16], [a.fromX, lineY + 38], [a.out, lineY + 38], [a.out, a.depth], [a.into, a.depth], [a.into, lineY + 38], [a.toX, lineY + 38], [a.toX, lineY + 14]],
+          )
           return <path key={`c${i}`} d={d} fill="none" stroke={colour} strokeWidth={2} strokeDasharray={a.kind === 'jump' ? undefined : '6 4'} strokeLinejoin="round" markerEnd={`url(#${arrowId(colour)})`} />
         })}
         {stations.map((s) => {

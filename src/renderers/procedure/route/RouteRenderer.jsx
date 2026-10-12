@@ -21,7 +21,7 @@ import { buildRouteGraph } from './layout.js'
 const nodeTypes = { routeLayer: RouteLayerNode }
 
 /** The zoom a wide route opens at: small enough to see the shape, not so small that the text is unreadable */
-const OPEN_MIN_ZOOM = 0.8
+const OPEN_MIN_ZOOM = 0.7
 
 export default function ProcedureRoute({ spec }) {
   const prefs = usePrefs()
