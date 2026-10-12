@@ -107,7 +107,8 @@ export function linkRouting(ctx) {
   // A route for link g (a group or a link already drawn) among the links drawn so far: of its own, or joining
   // another forward link into the same node where that reads better (merge.js). `routes`: the links it must keep
   // clear of; `taken`: more end points it may not use
-  const routeFor = (g, routes, taken = []) => {
+  // `onlyJoin`: the route that joins another link into the same node, or null (no route of its own)
+  const routeFor = (g, routes, taken = [], onlyJoin = false) => {
     const others = routes.filter((c) => c !== g)
     const labels = others.map(labelRect).filter(Boolean)
     const route = (merge) =>
@@ -126,6 +127,11 @@ export function linkRouting(ctx) {
         borders,
         bounds: within(g),
       })
+    if (onlyJoin) {
+      const joined = others.some((c) => joinable(g, c)) ? route(true) : null
+      const trunks = others.filter((c) => joinable(g, c)).map((c) => c.points)
+      return joined && trunks.every((t) => joinsAsTrunk(joined, t)) && ownPart(joined, trunks) !== joined ? joined : null
+    }
     const plain = route(false)
     // Joining is tried only where a route of its own reads badly (it is a second search)
     const S = placed.get(g.from)
@@ -318,6 +324,28 @@ export function polishLinks(ctx) {
   }
   for (let pass = 0; pass < 3 && alignDown(); pass += 1);
 
+  // Lines into a diamond meet at its top point, as a person draws a decision: in at the top, out by the sides and the
+  // bottom. A forward line that comes in by a side point is moved onto the line that comes in at the top (merge.js),
+  // when that costs it no crossing and at most one bend more: the side point is then free for a way out
+  for (const d of diamonds) {
+    const D = placed.get(d)
+    const top = (q) => Math.abs(q[0] - (D.x + D.w / 2)) < 1 && Math.abs(q[1] - D.y) < 1
+    const ins = connections.filter((o) => o.to === d && o.kind !== 'back')
+    if (!ins.some((o) => top(o.points[o.points.length - 1]))) continue
+    for (const o of ins) {
+      if (top(o.points[o.points.length - 1])) continue
+      const others = connections.filter((x) => x !== o)
+      const joined = routeFor(o, connections, [], true)
+      if (!joined || !top(joined[joined.length - 1])) continue
+      if (crossingsOf(joined, others) > crossingsOf(o.points, others) || bendsOf(joined) > bendsOf(o.points) + 1) continue
+      o.points = joined
+      if (o.labelSize) {
+        const labels = others.map(labelRect).filter(Boolean)
+        o.labelAt = placeLabel(ownPart(joined, others.filter((x) => joinable(o, x)).map((x) => x.points)), o.labelSize, nodeRects, [...titles, ...labels], others, borders)
+      }
+    }
+  }
+
   // A line that leaves a diamond downward from its slanted side (the router aimed it at the box below) is made to leave by
   // the diamond's lower point, with a short jog under it where the box stands off the point: it reads as leaving the point
   for (const c of connections) {
@@ -330,11 +358,34 @@ export function polishLinks(ctx) {
     const g = Math.min(14, (p1[1] - bottom) / 2)
     const pts = Math.abs(p0[0] - cx) < 4 ? [[cx, bottom], ...c.points.slice(1)] : [[cx, bottom], [cx, bottom + g], [p0[0], bottom + g], ...c.points.slice(1)]
     const others = connections.filter((o) => o !== c)
-    if (crossingsOf(pts, others) > crossingsOf(c.points, others)) continue
     if (segsOf(pts).some((sg, i, all) => nodeRects.some((r) => r !== S && r !== placed.get(c.to) && segHits(sg, r, 2)) && i < all.length)) continue
-    if (others.some((o) => segsOf(o.points).some((sg) => segsOf(pts).slice(0, 3).some((sc) => linesShare(sg, sc))))) continue
+    // (a line out of the same point counts, whatever half pixel it was rounded to)
+    const atPoint = (q) => Math.abs(q[0] - cx) < 1 && Math.abs(q[1] - bottom) < 1
+    const clash = others.filter((o) => (o.from === c.from && atPoint(o.points[0])) || segsOf(o.points).some((sg) => segsOf(pts).slice(0, 3).some((sc) => linesShare(sg, sc))))
+    if (!clash.length) {
+      if (crossingsOf(pts, others) <= crossingsOf(c.points, others)) c.points = pts
+      continue
+    }
+    // The point is held by a branch out of the same diamond: the main line has it, and the branch is routed again
+    // without it (out of a side point), when that costs it no crossing and at most one bend more
+    const [o] = clash
+    if (c.kind !== 'main' || clash.length !== 1 || o.kind === 'back' || o.from !== c.from || !atPoint(o.points[0])) continue
+    const rest = connections.filter((x) => x !== c && x !== o)
+    const moved = { ...c, points: pts }
+    const alt = routeFor(o, [...rest, moved], [[cx, bottom]])
+    if (!alt || bendsOf(alt) > bendsOf(o.points) + 1) continue
+    if (crossingsOf(alt, [...rest, moved]) > crossingsOf(o.points, [...rest, c])) continue
+    if (crossingsOf(pts, [...rest, { points: alt }]) > crossingsOf(c.points, [...rest, o])) continue
     c.points = pts
+    o.points = alt
+    if (o.labelSize) {
+      const labels = connections.filter((x) => x !== o).map(labelRect).filter(Boolean)
+      o.labelAt = placeLabel(o.points, o.labelSize, nodeRects, [...titles, ...labels], connections.filter((x) => x !== o), borders)
+    }
   }
+
+  // A box below a line that now leaves a diamond's point with a jog may have room to move under it
+  for (let pass = 0; pass < 2 && alignDown(); pass += 1);
 
   // A step of a few pixels in a line (a run, a jog of 8 px or less across it, a run on the same way) is a rounding
   // of two things that nearly line up: it is taken out by moving the part of the line before it, or the part after
@@ -417,6 +468,38 @@ export function polishLinks(ctx) {
     }
   }
 
+  // A link that still reads badly may be short of a way out or in: a node has few places a line can meet it (a
+  // diamond four), and another link may hold the one it needs. Such a link, when it can join a link into the same node
+  // instead (merge.js), is moved onto that one, and the first link is routed again; both are kept when the two
+  // together read better, else both go back
+  const makeRoom = (c) => {
+    const ends = new Set([c.from, c.to])
+    const holders = connections.filter((o) => o !== c && o.kind !== 'back' && (ends.has(o.from) || ends.has(o.to)))
+    for (const b of holders) {
+      const saved = [b.points, b.labelAt, c.points, c.labelAt]
+      const pair = () => {
+        const rest = connections.filter((o) => o !== b && o !== c)
+        return scoreOf(b, b.points, [...rest, c]) + scoreOf(c, c.points, [...rest, b])
+      }
+      const before = pair()
+      const moved = routeFor(b, connections, [], true)
+      if (!moved) continue
+      b.points = moved
+      const pts = routeFor(c, connections)
+      if (pts) c.points = pts
+      if (pts && pair() < before) {
+        for (const o of [b, c]) {
+          if (!o.labelSize) continue
+          const others = connections.filter((x) => x !== o)
+          const labels = others.map(labelRect).filter(Boolean)
+          o.labelAt = placeLabel(ownPart(o.points, others.filter((x) => joinable(o, x)).map((x) => x.points)), o.labelSize, nodeRects, [...titles, ...labels], others, borders)
+        }
+        return
+      }
+      ;[b.points, b.labelAt, c.points, c.labelAt] = saved
+    }
+  }
+
   // A link that crosses another is routed afresh. Loops first, then branches, the main line last: a loop is the one
   // to give way, so the main line keeps the direct route
   const byGiveWay = [...connections].sort((a, b) => GIVE_WAY[a.kind] - GIVE_WAY[b.kind])
@@ -430,7 +513,10 @@ export function polishLinks(ctx) {
     if (c.kind === 'back') continue
     const S = placed.get(c.from)
     const T = placed.get(c.to)
-    if (entersFromBehind(c.points, S, T) || overshoot(c.points, S, T) > OVERSHOOT || bendsOf(c.points) >= 3) reroute(c)
+    const bad = () => entersFromBehind(c.points, S, T) || overshoot(c.points, S, T) > OVERSHOOT || bendsOf(c.points) >= 3
+    if (!bad()) continue
+    reroute(c)
+    if (bad()) makeRoom(c)
   }
 
   // Last of all: a label that ended up on another link (links moved after it was placed) is
