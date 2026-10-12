@@ -73,8 +73,8 @@
     {
       "id": "n-5",
       "kind": "end",
-      "label": "Party A refunds double the deposit and Party B's due diligence costs",
-      "detail": "RMB 48,000,000",
+      "label": "Party A refunds double deposit",
+      "detail": "RMB 48,000,000, plus Party B's due diligence costs",
       "actorIds": [
         "a-1"
       ],
@@ -95,7 +95,7 @@
     {
       "id": "n-19",
       "kind": "step",
-      "label": "Agreement terminated: notice by the non-breaching party",
+      "label": "Terminated: notice by non-breaching party",
       "outcome": "negative",
       "stageId": "st-1"
     },
@@ -136,13 +136,14 @@
     {
       "id": "n-9",
       "kind": "step",
-      "label": "Within 10 business days of closing: change of legal representative, directors and supervisors",
+      "label": "10 business days: registry changes",
+      "detail": "change of legal representative, directors and supervisors",
       "stageId": "st-2"
     },
     {
       "id": "n-10",
       "kind": "step",
-      "label": "Within 180 days of closing: price adjustment audit",
+      "label": "Within 180 days: price audit",
       "stageId": "st-3"
     },
     {
@@ -165,39 +166,39 @@
     {
       "id": "n-13",
       "kind": "step",
-      "label": "Shortfall deducted from the adjustment amount",
+      "label": "Shortfall deducted from adjustment",
       "detail": "adjustment amount RMB 24,000,000; Party A tops up any excess",
       "stageId": "st-3"
     },
     {
       "id": "n-14",
       "kind": "step",
-      "label": "Adjustment period ends: remaining adjustment funds released",
+      "label": "Adjustment ends: funds released",
       "stageId": "st-3"
     },
     {
       "id": "n-15",
       "kind": "step",
-      "label": "Within 90 days of closing: transition management handover",
+      "label": "Within 90 days: transition handover",
       "stageId": "st-4"
     },
     {
       "id": "n-16",
       "kind": "step",
-      "label": "Within 12 months of closing: employee retention undertaking",
+      "label": "Within 12 months: employee retention",
       "detail": "headcount not below 90%",
       "stageId": "st-4"
     },
     {
       "id": "n-17",
       "kind": "step",
-      "label": "Within 3 years of closing: non-compete and non-solicitation",
+      "label": "Within 3 years: non-compete, non-solicit",
       "stageId": "st-4"
     },
     {
       "id": "n-18",
       "kind": "end",
-      "label": "Agreement terminated: performance complete",
+      "label": "Terminated: performance complete",
       "outcome": "positive",
       "stageId": "st-4"
     },

@@ -446,6 +446,7 @@ nodes[2] (n-3): dead end; a node that is neither end nor note must have an outgo
 | 17 | if `outcome` is written it must be in the enum | error |
 | 18 | array order clearly contradicts the `stages` order (a node's `stageId` comes before that of its upstream node) | hint, not an error |
 | 19 | a decision on the main line has 2 or more outgoing edges but none is marked `main` | hint, not an error (see §4.1) |
+| 22 | a `label` wider than a node shows (two lines, about 20 Chinese characters) | hint, not an error |
 
 Rule 11 is the same class as fact's "one slot, one event": **both prevent content from being silently
 dropped.** The comment in `fact/timeline/layout.js` sets the reason out clearly, and that position is
@@ -540,7 +541,11 @@ Decisions the renderer made, so they are not undone by accident:
   when they cross, unless that costs more than one extra bend. Without stages, or with stages on
   only some nodes, the diagram is one graph as before, stages then drawn as ELK compound nodes.
 - **A node is as big as its text** (`metrics.js` `sizeOf`): 14px text, wrapped past a cap, at
-  most three lines; a diamond folds its text into a near-square block. Fixed 208×64 boxes left
+  most two lines (words kept whole), with 18 px inside the box at the sides and 14 px above and below; a diamond folds
+  its text into a near-square block. **A node shows only part of long text** (settled with the maintainer): a label
+  wider than two lines (about 20 Chinese characters) is cut, a detail shows its first line cut at a punctuation mark
+  (about 16 Chinese characters), and a `⋯` mark says something is left out; the popover has it all. Rule 22 hints
+  at a long label. Fixed 208×64 boxes left
   most of every box empty and, fitted to a screen, the text too small to read — what putting the
   same data through Mermaid showed.
 - **Links bend as little as possible: straight first, then one bend** (`flow/straighten.js`).
@@ -611,7 +616,7 @@ The main line as one line, left to right, like a route map; where the process lo
 | Control | Form | Notes |
 |---|---|---|
 | Orientation | segmented | vertical / horizontal |
-| Link style | segmented | curved (default) / straight; remembered for every diagram |
+| Link style | segmented | straight (default; right-angle turns, settled with the maintainer) / curved; remembered for every diagram |
 | Condition labels | toggle | show / hide the `condition` on edges |
 | Node detail | toggle | whether to show the `detail` line |
 | Main-line highlight | toggle | bolden the main edges |

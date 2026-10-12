@@ -2,6 +2,7 @@
 // that it asks at most once a day, and that it never gets in the way (no network, a bad answer, switched off).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -17,7 +18,9 @@ async function registry(body, status = 200) {
     res.end(JSON.stringify(body))
   })
   await new Promise((r) => server.listen(0, '127.0.0.1', r))
-  return { url: `http://127.0.0.1:${server.address().port}/latest`, seen, close: () => new Promise((r) => server.close(r)) }
+  // The kept answer is filed under a hash of the address, in the temporary folder: an address that carries only a
+  // random port could meet the file of an earlier run on the same port (a flaky failure), so each run asks its own
+  return { url: `http://127.0.0.1:${server.address().port}/latest?run=${randomUUID()}`, seen, close: () => new Promise((r) => server.close(r)) }
 }
 
 test('versions are compared as numbers, and only MAJOR.MINOR.PATCH is compared', () => {

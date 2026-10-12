@@ -484,6 +484,8 @@ export const en = {
     `stage runs backwards: ${from} (${fromStage}) -> ${to} (${toStage}); back edges are normal, others need a second look`,
   'phint.decisionOnSpine': ({ id, label }) =>
     `decision "${id}" (${label}) is on the main line but no outgoing edge is marked main; the breach path may end up drawn as the main line`,
+  'phint.longLabel': ({ id, n }) =>
+    `node "${id}" has a label of ${n} characters; a node shows about two lines (20 Chinese characters) and cuts the rest, the popover has it all. Shorten the label and move the detail into \`detail\``,
   'phint.multipleEntries': ({ n, ids }) =>
     `${n} entries (${ids}), they will all sit in the first layer; a contract flow usually has a single entry, so check whether an upstream link is missing`,
 }

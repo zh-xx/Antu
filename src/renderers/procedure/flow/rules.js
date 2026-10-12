@@ -34,6 +34,7 @@ export const DOMAINS = [
 ]
 
 import { tEn } from '../../../core/i18n.js'
+import { labelCut } from './metrics.js'
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 const list = (v) => (Array.isArray(v) ? v : [])
@@ -338,6 +339,14 @@ export function hintsOfProcedure(spec) {
     const hasMainOut = out.get(n.id).some((e) => e.main === true)
     if (onSpine && out.get(n.id).length >= 2 && !hasMainOut) {
       hints.push(tEn('phint.decisionOnSpine', { id: n.id, label: n.label }))
+    }
+  }
+
+  // Rule 22 (a hint): a label longer than a node shows. The node cuts it and the popover has the rest; a short
+  // label with the detail in `detail` reads better and is not cut
+  for (const n of byId.values()) {
+    if (typeof n.label === 'string' && labelCut(n.label, n.kind)) {
+      hints.push(tEn('phint.longLabel', { id: n.id, n: [...n.label].length }))
     }
   }
 

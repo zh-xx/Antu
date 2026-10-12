@@ -35,7 +35,7 @@
     {
       "id": "n-2",
       "kind": "step",
-      "label": "Receiving Party accesses confidential information",
+      "label": "Receiving Party accesses information",
       "actorIds": [
         "a-2"
       ]
@@ -43,7 +43,7 @@
     {
       "id": "n-4",
       "kind": "step",
-      "label": "Confidentiality obligation survives indefinitely"
+      "label": "Confidentiality survives indefinitely"
     },
     {
       "id": "n-6",

@@ -39,7 +39,7 @@ export default function FlowDock({
   hasRules = false,
   orientation = 'vertical',
   onToggleOrientation,
-  linkStyle = 'curved',
+  linkStyle = 'straight',
   onToggleLinkStyle,
   exporting = false,
   onExport,

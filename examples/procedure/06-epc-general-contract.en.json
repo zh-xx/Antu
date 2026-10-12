@@ -86,7 +86,7 @@
     {
       "id": "n-5",
       "kind": "step",
-      "label": "End of month 1: concept design submitted",
+      "label": "Month 1: concept design submitted",
       "actorIds": [
         "a-2"
       ],
@@ -95,7 +95,7 @@
     {
       "id": "n-6",
       "kind": "step",
-      "label": "End of month 3: preliminary design approved",
+      "label": "Month 3: preliminary design approved",
       "actorIds": [
         "a-2"
       ],
@@ -104,7 +104,7 @@
     {
       "id": "n-7",
       "kind": "step",
-      "label": "End of month 6: construction drawings passed review",
+      "label": "Month 6: construction drawings reviewed",
       "actorIds": [
         "a-2"
       ],
@@ -113,27 +113,27 @@
     {
       "id": "n-8",
       "kind": "step",
-      "label": "End of month 10: main equipment procured and on site",
+      "label": "Month 10: main equipment on site",
       "stageId": "st-2"
     },
     {
       "id": "n-9",
       "kind": "step",
-      "label": "End of month 12: civil foundation works accepted",
+      "label": "Month 12: foundation works accepted",
       "detail": "cumulative payment to 30%",
       "stageId": "st-3"
     },
     {
       "id": "n-10",
       "kind": "step",
-      "label": "End of month 18: equipment installation complete",
+      "label": "Month 18: installation complete",
       "detail": "cumulative payment to 55%",
       "stageId": "st-3"
     },
     {
       "id": "n-11",
       "kind": "step",
-      "label": "End of month 22: integrated commissioning complete",
+      "label": "Month 22: commissioned",
       "detail": "cumulative payment to 70%",
       "stageId": "st-3"
     },
@@ -154,7 +154,7 @@
     {
       "id": "n-14",
       "kind": "step",
-      "label": "Defect liability period ends with no outstanding defects",
+      "label": "Defect period ends, none outstanding",
       "detail": "payment to 97%",
       "stageId": "st-4"
     },
@@ -207,7 +207,7 @@
     {
       "id": "n-31",
       "kind": "end",
-      "label": "Contract terminated: completed works settled",
+      "label": "Terminated: works settled",
       "outcome": "negative",
       "stageId": "st-4"
     }

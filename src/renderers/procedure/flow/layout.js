@@ -526,6 +526,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
         h: p.h,
         // the width of the text column the size was computed for; the node draws its text in it
         textW: sizeOf(n).textW,
+        cut: sizeOf(n).cut,
         isSpine: spineSet.has(n.id),
         stageLabel: stageById.get(n.stageId)?.label ?? '',
         actorNames: (n.actorIds ?? []).map((id) => actorById.get(id)?.name ?? id),

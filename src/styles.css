@@ -909,8 +909,8 @@
 .antu-pn.k-note .antu-pn-body { text-align: left; }
 .antu-pn-label {
   display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   font-size: 14px;
@@ -919,6 +919,11 @@
   color: var(--antu-text);
   overflow-wrap: anywhere;
 }
+.antu-pn.k-decision .antu-pn-label { -webkit-line-clamp: 3; line-clamp: 3; }
+.antu-pn-word { display: inline-block; white-space: pre-wrap; }
+/* 节点只显示了一部分文字（其余在浮层里）：右下角一个小标记 */
+.antu-pn-more { position: absolute; right: 8px; bottom: 2px; font-size: 12px; line-height: 12px; color: var(--antu-text-3, #767676); pointer-events: none; }
+.antu-pn.k-decision .antu-pn-more { display: none; }
 .antu-pn.k-note .antu-pn-label { font-weight: 400; color: var(--antu-text-2); }
 .antu-pn-detail {
   margin-top: 2px;

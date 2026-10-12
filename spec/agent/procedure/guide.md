@@ -99,8 +99,10 @@ delivering.
 
 - **Referenced ids must exist**: `stageId`, `actorIds`, `sourceIds`, an edge's `from` /
   `to`, a rule's `stageIds` / `endId`.
-- **Keep labels short.** A node shows about three lines of `label`; put the rest in
-  `detail` (its first line shows under the label, all of it on click).
+- **Keep labels short.** A node shows two lines of `label` (about 20 Chinese characters) and cuts the rest, and
+  a `⋯` mark says something is left out; `validate` hints at a longer label. Write the label as a short phrase and
+  put the rest (amounts, periods, conditions) in `detail`: its first line shows under the label (about 16 Chinese
+  characters, cut at a punctuation mark), all of it on click.
 
 ## Another way to look at it
 

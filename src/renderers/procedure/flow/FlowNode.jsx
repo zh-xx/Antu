@@ -20,6 +20,7 @@ import { PreviewContext } from '../../../shell/previewContext.js'
 import { SOURCE_TYPE_KEYS, labelOf } from '../../../core/labels.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import { nodePaint } from './palette.js'
+import { shortDetail, wordsOf } from './metrics.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 /** Inset of the outline from the node box, so a 1.5px stroke is not clipped at the edge */
@@ -89,7 +90,7 @@ function Outline({ kind, outcome, w, h, theme }) {
 }
 
 const FlowNode = memo(function FlowNode({ id, data }) {
-  const { node, w, h, textW, ruleCount = 0, lit = false, isSpine, stageLabel, actorNames, sources, showDetail, vertical, layer } = data
+  const { node, w, h, textW, cut = false, ruleCount = 0, lit = false, isSpine, stageLabel, actorNames, sources, showDetail, vertical, layer } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
   const { t, lang } = useLang()
   const { theme } = useTheme()
@@ -99,7 +100,7 @@ const FlowNode = memo(function FlowNode({ id, data }) {
   const open = isPinned || showPreview
   const kind = node.kind
   const outcome = node.outcome || 'neutral'
-  const detail = showDetail && node.detail ? String(node.detail).split('\n')[0] : ''
+  const detail = showDetail && node.detail ? shortDetail(node.detail).text : ''
 
   // The overlay pops towards where there is room, the same rule as the fact card: the first
   // layer has nothing before it along the flow, so it opens after; the rest open before and
@@ -130,9 +131,14 @@ const FlowNode = memo(function FlowNode({ id, data }) {
 
       {/* The text column is exactly as wide as metrics.js measured it, so the lines break where the box was sized for */}
       <div className="antu-pn-body" style={{ width: textW }}>
-        <div className="antu-pn-label">{node.label}</div>
+        <div className="antu-pn-label">{wordsOf(node.label).map((word, i) => (
+          <span key={i} className="antu-pn-word">{word}</span>
+        ))}</div>
         {detail && <div className="antu-pn-detail">{detail}</div>}
       </div>
+
+      {/* The node shows part of its text: the rest is in the popover */}
+      {cut && <span className="antu-pn-more" aria-hidden="true">⋯</span>}
 
       {/* An end the rules lead to says how many: the table below lists them under its name */}
       {ruleCount > 0 && <span className="antu-pn-rules">{t('flow.ruleBadge', { n: ruleCount })}</span>}
