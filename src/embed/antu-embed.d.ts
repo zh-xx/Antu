@@ -51,8 +51,8 @@ export interface MountOptions {
   theme?: AntuTheme
   /** The language of the page's own words; the case is never translated. Default: the browser's. */
   lang?: AntuLang
-  /** Pieces of the page's chrome to leave out; all shown by default */
-  ui?: { header?: boolean; capsule?: boolean; minimap?: boolean; zoom?: boolean }
+  /** Pieces of the page's chrome to leave out; all shown by default. `panOnScroll: false` lets the wheel scroll the host page (a chat card). */
+  ui?: { header?: boolean; capsule?: boolean; minimap?: boolean; zoom?: boolean; panOnScroll?: boolean }
   /** Where the reader's choices are kept: 'none' (default) while mounted only, 'local' in the viewer page's localStorage key, or the host's store */
   prefs?: 'none' | 'local' | AntuPrefsStore
   /** How it opens, ahead of the reader's stored choices (the reader can still change it). An unknown key or a wrong value: `mount` throws. */

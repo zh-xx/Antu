@@ -1,0 +1,30 @@
+{
+  "name": "@zh-xx/antu-dsh",
+  "version": "0.14.0",
+  "private": true,
+  "description": "Antu diagrams inside DeepSeek Harness (Host tools + chat card). Scaffold only — not published yet. See tools/dsh/README.md and spec/dsh-plugin.md.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": ["@deepseek-ai/dsh-client-ui-tool"]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "^0.2.0-rc.2"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": { "optional": true }
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

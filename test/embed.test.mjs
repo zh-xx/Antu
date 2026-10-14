@@ -96,6 +96,13 @@ test('a mounted diagram keeps its preferences to itself unless the host says oth
   assert.deepEqual(standaloneEnv({ preset: { kind: 'route' } }).preset, { kind: 'route' })
 })
 
+test('ui.panOnScroll defaults on and a host may turn it off for a chat card', () => {
+  assert.equal(embeddedEnv().ui?.panOnScroll, undefined)
+  assert.equal(embeddedEnv({ ui: {} }).ui.panOnScroll, undefined, 'absent means on (useUi !== false)')
+  assert.equal(embeddedEnv({ ui: { panOnScroll: false } }).ui.panOnScroll, false)
+  assert.equal(embeddedEnv({ ui: { header: false, panOnScroll: false } }).ui.header, false)
+})
+
 test('a command sent before anything answers it is held, the last of each name, and run when it comes', () => {
   const { commands } = embeddedEnv()
   const got = []

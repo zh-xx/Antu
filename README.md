@@ -97,6 +97,10 @@ The MCP server is the npm package [`@zh-xx/antu`](https://www.npmjs.com/package/
 
 Tools: `antu_schema`, `antu_guide`, `antu_examples`, `antu_validate`, `antu_layout`, `antu_render`, `antu_preview`, `antu_versions`.
 
+### DeepSeek Harness (DSH)
+
+A native DSH plugin (`@zh-xx/antu-dsh`: Host tools + chat card) is **planned** — see [spec/dsh-plugin.md](spec/dsh-plugin.md) and the scaffold under [`tools/dsh/`](tools/dsh/). Until it ships, a profile that already has Node can attach `antu-mcp` with a configuration-only bundle; the recipe and its limits are in [tools/dsh/README.md](tools/dsh/README.md).
+
 ## In an Application
 
 The same package has three entries for an application's own code ([spec/embed.md](spec/embed.md)):
@@ -111,7 +115,7 @@ const diagram = mount(element, spec, { lang: 'en', onEvent: (e) => console.log(e
 
 ## Documentation
 
-- Design documents for people, under [`spec/`](spec/): [architecture](spec/v0-architecture.md), [the source types](spec/source-schema-draft.md), [themes](spec/theme.md), [the MCP server](spec/mcp-server.md), [embedding in an application](spec/embed.md), and the diagrams ([fact](spec/fact/), [procedure](spec/procedure/schema-draft.md), [relationship](spec/relationship/schema-draft.md), [justification](spec/justification/schema-draft.md)). The notes for Agents are under [`spec/agent/`](spec/agent/).
+- Design documents for people, under [`spec/`](spec/): [architecture](spec/v0-architecture.md), [the source types](spec/source-schema-draft.md), [themes](spec/theme.md), [the MCP server](spec/mcp-server.md), [embedding in an application](spec/embed.md), [the DSH plugin plan](spec/dsh-plugin.md), and the diagrams ([fact](spec/fact/), [procedure](spec/procedure/schema-draft.md), [relationship](spec/relationship/schema-draft.md), [justification](spec/justification/schema-draft.md)). The notes for Agents are under [`spec/agent/`](spec/agent/).
 - [CHANGELOG.md](CHANGELOG.md) and the versioning rules in [spec/versioning.md](spec/versioning.md).
 - Known problems and requests are tracked as [GitHub issues](https://github.com/zh-xx/Antu/issues). Working rules for contributors are in [CONTRIBUTING.md](CONTRIBUTING.md).
 

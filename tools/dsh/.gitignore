@@ -1,0 +1,3 @@
+# Built Client / Host bundles (P2). Never commit.
+package/dist/
+*.tgz
