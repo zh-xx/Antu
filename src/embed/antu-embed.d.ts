@@ -51,8 +51,19 @@ export interface MountOptions {
   theme?: AntuTheme
   /** The language of the page's own words; the case is never translated. Default: the browser's. */
   lang?: AntuLang
-  /** Pieces of the page's chrome to leave out; all shown by default. `panOnScroll: false` lets the wheel scroll the host page (a chat card). */
-  ui?: { header?: boolean; capsule?: boolean; minimap?: boolean; zoom?: boolean; panOnScroll?: boolean }
+  /**
+   * Pieces of the page's chrome to leave out; all shown by default.
+   * `panOnScroll: false` lets the wheel scroll the host page (a chat card).
+   * `panOnDrag: false` stops press-and-drag from panning. See `cardUi`.
+   */
+  ui?: {
+    header?: boolean
+    capsule?: boolean
+    minimap?: boolean
+    zoom?: boolean
+    panOnScroll?: boolean
+    panOnDrag?: boolean
+  }
   /** Where the reader's choices are kept: 'none' (default) while mounted only, 'local' in the viewer page's localStorage key, or the host's store */
   prefs?: 'none' | 'local' | AntuPrefsStore
   /** How it opens, ahead of the reader's stored choices (the reader can still change it). An unknown key or a wrong value: `mount` throws. */
@@ -84,6 +95,18 @@ export interface AntuHandle {
 
 /** Draw `spec` inside `element` (in a shadow root; the element needs a height). Throws if one is already mounted there, or if `kind`/`kinds` name a way of drawing the spec's type does not have. */
 export function mount(element: HTMLElement, spec: AntuSpec, options?: MountOptions): AntuHandle
+
+/**
+ * Recommended `ui` for a chat card: no label card, capsule, minimap or zoom buttons, and the wheel
+ * does not pan the diagram (the host page can still scroll). Spread into `mount(…, { ui: { …cardUi } })`.
+ */
+export declare const cardUi: Readonly<{
+  header: false
+  capsule: false
+  minimap: false
+  zoom: false
+  panOnScroll: false
+}>
 
 /** Check a spec the way the diagram checks it before drawing; each error names its field */
 export function validate(spec: unknown): { ok: boolean; errors: string[] }

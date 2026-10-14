@@ -7,7 +7,7 @@
 //  leaves that origin fails the check, as it does for the viewer page.
 //    isolation   the host's CSS does not reach the diagram, the diagram's does not reach the host
 //    globals     the host's title, language, window and localStorage are untouched
-//    options     kind, kinds, theme, lang, ui
+//    options     kind, kinds, theme, lang, ui, cardUi (quiet chrome + wheel does not pan)
 //    events      select (with the item's sources), kindchange, invalid
 //    handle      ready, update, setKind/setTheme/setLang, exportPng, destroy and mounting again
 //    asking      select, focus and highlight by the spec's ids; initial.headerFolded
@@ -51,25 +51,26 @@ function hostPage(specs) {
   div { border: 3px solid rgb(0, 255, 0); }
   .antu-app { display: none !important; }
   .react-flow__node { outline: 5px solid rgb(0, 0, 255); }
-  #a, #b, #c { width: 1000px; height: 640px; border: 0; }
+  #a, #b, #c, #d { width: 1000px; height: 640px; border: 0; }
   #probe { width: 100px; padding: 10px; border: 0; }
 </style>
 </head>
 <body>
-<div id="a"></div><div id="b"></div><div id="c"></div>
+<div id="a"></div><div id="b"></div><div id="c"></div><div id="d"></div>
 <div id="probe" tabindex="0"></div><input id="host-input">
 <script type="module">
-import { mount, validate, kindsOf } from './antu-embed.js'
+import { mount, validate, kindsOf, cardUi } from './antu-embed.js'
 const SPECS = ${JSON.stringify(specs).replace(/</g, '\\u003c')}
-window.__events = { a: [], b: [], c: [] }
-window.__api = { mount, validate, kindsOf, SPECS }
+window.__events = { a: [], b: [], c: [], d: [] }
+window.__api = { mount, validate, kindsOf, cardUi, SPECS }
 const on = (k) => (e) => window.__events[k].push(JSON.parse(JSON.stringify(e)))
 const a = mount(document.getElementById('a'), SPECS.flow, { lang: 'zh', onEvent: on('a') })
 const b = mount(document.getElementById('b'), SPECS.other, { lang: 'en', kind: 'route', theme: 'legal', ui: { header: false, minimap: false }, onEvent: on('b') })
 const c = mount(document.getElementById('c'), { type: 'procedure', title: 'broken' }, { onEvent: on('c') })
-window.__h = { a, b, c }
+const d = mount(document.getElementById('d'), SPECS.flow, { lang: 'zh', ui: { ...cardUi }, onEvent: on('d') })
+window.__h = { a, b, c, d }
 window.__invalid = await c.ready.then(() => null, (e) => e.errors ?? [])
-await Promise.all([a.ready, b.ready])
+await Promise.all([a.ready, b.ready, d.ready])
 window.__drawn = true
 </script>
 </body>
@@ -113,6 +114,7 @@ export async function checkEmbed(t) {
     a: "document.getElementById('a').shadowRoot",
     b: "document.getElementById('b').shadowRoot",
     c: "document.getElementById('c').shadowRoot",
+    d: "document.getElementById('d').shadowRoot",
   }
   const S = (id) => ROOTS[id]
   try {
@@ -155,6 +157,29 @@ export async function checkEmbed(t) {
       aDock: !!${S('a')}.querySelector('.antu-dock') })`)
     eq('embed: `ui` leaves out what the host turned off, and only that', ui, { aHeader: true, bHeader: false, bMinimap: false, bZoom: true, aDock: true })
     truthy('embed: `lang` sets the page\'s own words (zh)', (await browser.eval(`${S('a')}.querySelector('.antu-header')?.textContent || ''`)).includes(translate('zh', 'graphKind.flow')))
+
+    // ---- cardUi: quiet chrome + wheel does not pan (spec/dsh-plugin.md P1) ----
+    const card = await browser.eval(`(() => {
+      const root = ${S('d')}
+      const chrome = {
+        header: !!root.querySelector('.antu-header'),
+        capsule: !!root.querySelector('.antu-dock'),
+        minimap: !!root.querySelector('.react-flow__minimap'),
+        zoom: !!root.querySelector('.react-flow__controls'),
+        nodes: root.querySelectorAll('.antu-pn').length,
+      }
+      const pane = root.querySelector('.react-flow__pane')
+      const vp = root.querySelector('.react-flow__viewport')
+      const before = vp?.style.transform || ''
+      pane?.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true }))
+      const after = vp?.style.transform || ''
+      return { chrome, before, after, cardUi: window.__api.cardUi }
+    })()`)
+    eq('embed: cardUi turns off the page chrome', card.chrome, {
+      header: false, capsule: false, minimap: false, zoom: false, nodes: pnodes,
+    })
+    eq('embed: cardUi.panOnScroll is false', card.cardUi?.panOnScroll, false)
+    eq('embed: with cardUi a wheel over the pane does not pan the diagram', card.after, card.before)
 
     // ---- invalid ----
     const invalid = await browser.eval('window.__invalid')

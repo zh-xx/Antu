@@ -166,16 +166,35 @@ test('a way of drawing written as the type is refused by every entry, alike (rev
   assert.match(validate({ type: 'nope' }).errors[0], /not a diagram type; expected one of fact \/ procedure \/ relationship \/ justification/)
 })
 
-/** The functions a module exports, read from its text (the embed entry imports JSX and a stylesheet, which Node cannot) */
+/** The functions and consts a module exports, read from its text (the embed entry imports JSX and a stylesheet, which Node cannot) */
 const exportedNames = (text) =>
-  [...text.matchAll(/^export (?:async )?function (\w+)/gm), ...text.matchAll(/^export \{ ([\w, ]+) \}/gm)].flatMap((m) => m[1].split(',').map((s) => s.trim())).sort()
+  [
+    ...text.matchAll(/^export (?:async )?function (\w+)/gm),
+    ...text.matchAll(/^export const (\w+)/gm),
+    ...text.matchAll(/^export \{ ([\w, ]+) \}/gm),
+  ]
+    .flatMap((m) => m[1].split(',').map((s) => s.trim()))
+    .sort()
 
-test('the declarations name every function each entry exports, and nothing else', () => {
+test('the declarations name every function and const each entry exports, and nothing else', () => {
   const code = { './embed': 'src/embed/index.js', './validate': 'tools/api/validate.mjs', './html': 'tools/api/html.mjs' }
   for (const e of ENTRIES) {
-    const declared = [...readFileSync(e.src, 'utf8').matchAll(/^export function (\w+)/gm)].map((m) => m[1]).sort()
+    const declared = [
+      ...readFileSync(e.src, 'utf8').matchAll(/^export function (\w+)/gm),
+      ...readFileSync(e.src, 'utf8').matchAll(/^export declare const (\w+)/gm),
+    ]
+      .map((m) => m[1])
+      .sort()
     assert.deepEqual(declared, exportedNames(readFileSync(code[e.path], 'utf8')), `${e.path}: ${e.src}`)
   }
+})
+
+test('cardUi is the quiet chrome a chat card needs, and is frozen', async () => {
+  const { cardUi } = await import('../src/embed/cardUi.js')
+  assert.deepEqual(cardUi, { header: false, capsule: false, minimap: false, zoom: false, panOnScroll: false })
+  assert.throws(() => {
+    cardUi.header = true
+  }, TypeError)
 })
 
 test('the package exports the three entries and its package.json, nothing else', () => {

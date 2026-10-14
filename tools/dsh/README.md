@@ -64,6 +64,6 @@ Install with DSH's `plugin_manager` → `install_bundle` and the **absolute** pa
 ## Next code (P2)
 
 1. Host `apply`: register `antu_validate` / `antu_layout` / `antu_render` using `@zh-xx/antu/validate` and `/html`.
-2. Client: `tool.call.toolview` keyed by `antu_render`, calling `mount(el, spec, { ui: { header: false, capsule: false, minimap: false, zoom: false, panOnScroll: false }, … })`.
+2. Client: `tool.call.toolview` keyed by `antu_render`, calling `mount(el, spec, { ui: { …cardUi }, … })` (`cardUi` from `@zh-xx/antu/embed`).
 3. `tools/build-dsh-plugin.mjs`: pack ModuleLoader client + copy version from root `package.json`.
 4. Release: attach tarball / publish `@zh-xx/antu-dsh` beside `@zh-xx/antu`.

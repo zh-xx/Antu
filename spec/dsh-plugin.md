@@ -42,10 +42,11 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 - Scaffold `tools/dsh/` and the interim MCP recipe in the README.
 - Embed option for cards: `ui.panOnScroll: false` so the conversation can scroll (see [embed.md](embed.md)).
 
-### P1 — embed card mode (engine, minor release)
+### P1 — embed card mode (engine) — done in tree
 
-- Options a chat card needs: wheel does not pan the diagram by default; optional quieter chrome.
-- Covered by verify / embed checks.
+- `cardUi` on `@zh-xx/antu/embed`: quiet chrome + `panOnScroll: false` ([embed.md](embed.md)).
+- `ui.panOnDrag` can be turned off the same way.
+- Covered by `test/embed.test.mjs` and `tools/verify/embed.mjs` (wheel does not pan; chrome off).
 
 ### P2 — `@zh-xx/antu-dsh` 0.x first publish
 

@@ -39,10 +39,11 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（可交互卡片
 - `tools/dsh/` 脚手架，以及 README 里的临时 MCP 配方。
 - 卡片用的 embed 选项：`ui.panOnScroll: false`，避免滚轮抢走对话滚动（见 [embed.zh-CN.md](embed.zh-CN.md)）。
 
-### P1 — embed 卡片模式（引擎，minor）
+### P1 — embed 卡片模式（引擎）— 已在仓库落地
 
-- 聊天卡片需要的选项：默认滚轮不平移图；可收起外壳。
-- 由 verify / embed 检查覆盖。
+- `@zh-xx/antu/embed` 的 `cardUi`：安静外壳 + `panOnScroll: false`（[embed.zh-CN.md](embed.zh-CN.md)）。
+- `ui.panOnDrag` 可用同样方式关掉。
+- 由 `test/embed.test.mjs` 与 `tools/verify/embed.mjs` 覆盖（滚轮不平移；外壳关掉）。
 
 ### P2 — `@zh-xx/antu-dsh` 0.x 首发
 
