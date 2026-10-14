@@ -1,6 +1,7 @@
 # DeepSeek Harness（DSH）插件
 
-> 状态：**规划中**（issue [#79](https://github.com/zh-xx/Antu/issues/79)）。尚无可安装的包。
+> 状态：**P2 已在仓库落地**（issue [#79](https://github.com/zh-xx/Antu/issues/79)）。源码在 `tools/dsh/`；
+> `npm run build:dsh` 生成可 `install_bundle` 的 `tools/dsh/package/`（尚未发 npm）。
 > 下列决策于 2026-10-14 锁定。本文取代 #79 初稿中已过时的部分（Host 起 HTML 再 iframe、MCP 未发布、
 > `/antu/view/<id>` 存储）。
 
@@ -45,12 +46,12 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（可交互卡片
 - `ui.panOnDrag` 可用同样方式关掉。
 - 由 `test/embed.test.mjs` 与 `tools/verify/embed.mjs` 覆盖（滚轮不平移；外壳关掉）。
 
-### P2 — `@zh-xx/antu-dsh` 0.x 首发
+### P2 — `@zh-xx/antu-dsh` 0.x 首发 — 已在仓库落地
 
 - Host：`antu_validate`、`antu_layout`、`antu_render`（进程内；HTML 写在会话 cwd）。
 - Client：小入口 + 懒加载的 embed 块；为 `antu_render`（及必要时的 MCP 名）注册 `tool.call.toolview`。
-- 内存 skill；「在侧栏打开」先用 `openFile` 打开写出的 HTML。
-- CI：构建、manifest 冒烟、Host `apply` 冒烟。为新包配置 trusted publisher。
+- 内存 skill `antu-diagram`；「在侧栏打开」先用 `openFile` 打开写出的 HTML。
+- CI：`test/dsh-plugin.test.mjs`（helpers、manifest、`build.mjs`、Host `apply` 冒烟）。trusted publisher / 发 npm 仍待做。
 
 ### P3 — 按需再做
 

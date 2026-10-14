@@ -1,3 +1,3 @@
-# Placeholder: P2 inserts the Host row for @zh-xx/antu-dsh itself (native tools).
-# Until then this file is empty so an accidental install_bundle does not change a profile.
-[]
+- insert:
+    - id: antu-dsh
+      name: '@zh-xx/antu-dsh'

@@ -1,6 +1,7 @@
 # DeepSeek Harness (DSH) plugin
 
-> Status: **planned** (issue [#79](https://github.com/zh-xx/Antu/issues/79)). No installable package yet.
+> Status: **P2 in tree** (issue [#79](https://github.com/zh-xx/Antu/issues/79)). Sources under `tools/dsh/`;
+> build with `npm run build:dsh` (output `tools/dsh/package/`, not published to npm yet).
 > Decisions below were locked 2026-10-14. This document supersedes the outdated parts of #79's first body
 > (iframe of a Host HTML route, unpublished MCP, `/antu/view/<id>` storage).
 
@@ -48,12 +49,12 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 - `ui.panOnDrag` can be turned off the same way.
 - Covered by `test/embed.test.mjs` and `tools/verify/embed.mjs` (wheel does not pan; chrome off).
 
-### P2 — `@zh-xx/antu-dsh` 0.x first publish
+### P2 — `@zh-xx/antu-dsh` 0.x first publish — in tree
 
 - Host: `antu_validate`, `antu_layout`, `antu_render` (in-process; HTML under session cwd).
 - Client: small entry + lazy-loaded embed chunk; `tool.call.toolview` for `antu_render` (and MCP name if needed).
-- Memory skill; "open in sidebar" via `openFile` on the written HTML.
-- CI: build, manifest smoke, Host `apply` smoke. Trusted publisher for the new package.
+- Memory skill `antu-diagram`; "open in sidebar" via `openFile` on the written HTML.
+- CI: `test/dsh-plugin.test.mjs` (helpers, manifest, `build.mjs`, Host `apply` smoke). Trusted publisher / npm publish still open.
 
 ### P3 — later, if wanted
 

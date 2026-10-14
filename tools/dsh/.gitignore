@@ -1,3 +1,4 @@
-# Built Client / Host bundles (P2). Never commit.
+# Built Client chunk (repackaged @zh-xx/antu/embed). Never commit.
+package/client.embed.js
 package/dist/
 *.tgz

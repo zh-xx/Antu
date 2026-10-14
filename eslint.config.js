@@ -45,11 +45,23 @@ export default [
 
   // Node 侧：构建脚本与 MCP 服务端
   {
-    files: ['tools/**/*.mjs', 'site/**/*.mjs', '*.config.js'],
+    files: ['tools/**/*.{mjs,js}', 'site/**/*.mjs', 'test/**/*.mjs', '*.config.js'],
+    ignores: ['tools/dsh/src/client.js', 'tools/dsh/package/client.js', 'tools/dsh/package/client.embed.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: { ...globals.node },
+    },
+    rules: RULES,
+  },
+
+  // DSH Client ModuleLoader entry (browser; React comes from the host module table)
+  {
+    files: ['tools/dsh/src/client.js', 'tools/dsh/package/client.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: { ...globals.browser },
     },
     rules: RULES,
   },
@@ -86,6 +98,19 @@ export default [
 
   {
     // skills/ is generated (tools/build-skill.mjs); its scripts/antu.mjs is one bundled file
-    ignores: ['dist/**', 'dist-engine/**', 'dist-embed/**', 'dist-api/**', 'dist-cli/**', 'dist-mcp/**', 'dist-npm/**', 'dist-html/**', 'skills/**', 'node_modules/**'],
+    ignores: [
+      'dist/**',
+      'dist-engine/**',
+      'dist-embed/**',
+      'dist-api/**',
+      'dist-cli/**',
+      'dist-mcp/**',
+      'dist-npm/**',
+      'dist-html/**',
+      'skills/**',
+      'node_modules/**',
+      'tools/dsh/package/client.embed.js',
+      '**/client.embed.js',
+    ],
   },
 ]

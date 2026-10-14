@@ -14,6 +14,7 @@
     "build:embed": "vite build --config vite.embed.config.js",
     "build:api": "vite build --config vite.api.config.js",
     "build:skill": "node tools/build-skill.mjs",
+    "build:dsh": "node tools/dsh/build.mjs",
     "diagram": "node tools/make-html.mjs",
     "mcp": "node tools/mcp/server.mjs",
     "mcp:test": "node tools/mcp/client-test.mjs",
