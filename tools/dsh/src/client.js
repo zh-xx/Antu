@@ -15,6 +15,10 @@ window.__ModuleLoader__.load({
 
     const WIRE_NAMES = ['antu_render', 'mcp__antu__antu_render']
     const THEMES = ['document', 'modern', 'legal']
+    const TAB_ID = '@zh-xx/antu-dsh'
+    const TAB_KIND = 'antu-diagram'
+    /** Filled when sidebar-right is available; Enlarge no-ops until then. */
+    const enlargeApi = { open: null }
 
     function parseArgsRaw(argsRaw) {
       if (typeof argsRaw !== 'string' || !argsRaw.trim()) return null
@@ -75,6 +79,81 @@ window.__ModuleLoader__.load({
         })
       }
       return embedPromise
+    }
+
+    /** Full-size diagram in the right Sidebar (no cardUi chrome reduction). */
+    function AntuSidebarBody({ useTabInfo }) {
+      const hostRef = useRef(null)
+      const handleRef = useRef(null)
+      const [embed, setEmbed] = useState(null)
+      const [embedError, setEmbedError] = useState(null)
+      const { tab } = useTabInfo()
+      const params = tab?.navigation?.params && typeof tab.navigation.params === 'object' ? tab.navigation.params : {}
+      const spec = params.spec && typeof params.spec === 'object' ? params.spec : null
+      const paramKind = typeof params.kind === 'string' ? params.kind : null
+      const paramTheme = typeof params.theme === 'string' ? params.theme : null
+      const revision = tab?.navigation?.revision
+
+      useEffect(() => {
+        let cancelled = false
+        loadEmbed(require.async)
+          .then((mod) => {
+            if (!cancelled) setEmbed(mod)
+          })
+          .catch((err) => {
+            if (!cancelled) setEmbedError(err?.message || String(err))
+          })
+        return () => {
+          cancelled = true
+        }
+      }, [])
+
+      useLayoutEffect(() => {
+        const el = hostRef.current
+        if (!el || !embed || !spec) return undefined
+        destroyHandle(handleRef.current)
+        handleRef.current = null
+        el.replaceChildren()
+        setEmbedError(null)
+        let known
+        try {
+          known = typeof spec.type === 'string' ? embed.kindsOf(spec.type) || [] : []
+        } catch {
+          known = []
+        }
+        const mountKind = paramKind && known.includes(paramKind) ? paramKind : null
+        const mountTheme = paramTheme && THEMES.includes(paramTheme) ? paramTheme : null
+        try {
+          handleRef.current = embed.mount(el, spec, {
+            ...(mountKind ? { kind: mountKind } : {}),
+            ...(mountTheme ? { theme: mountTheme } : {}),
+            // Full page chrome in the sidebar — not cardUi.
+          })
+        } catch (err) {
+          setEmbedError(err?.message || String(err))
+          return undefined
+        }
+        return () => {
+          destroyHandle(handleRef.current)
+          handleRef.current = null
+        }
+      }, [embed, spec, paramKind, paramTheme, revision])
+
+      const label = spec && typeof spec.title === 'string' && spec.title.trim() ? spec.title.trim() : 'Antu'
+      return h(
+        'div',
+        { className: 'antuDsh_side' },
+        embedError
+          ? h('div', { className: 'antuDsh_fallback' }, embedError)
+          : !spec
+            ? h('div', { className: 'antuDsh_fallback' }, 'No diagram in this tab.')
+            : h('div', {
+                ref: hostRef,
+                className: 'antuDsh_sideCanvas',
+                role: 'img',
+                'aria-label': label,
+              }),
+      )
     }
 
     function AntuRenderCard(props) {
@@ -275,6 +354,22 @@ window.__ModuleLoader__.load({
                       ),
                     ),
                   ),
+                  typeof enlargeApi.open === 'function' && spec
+                    ? h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'antuDsh_btn antuDsh_btnPrimary',
+                          onClick: () =>
+                            enlargeApi.open({
+                              spec,
+                              kind: activeKind || undefined,
+                              theme: activeTheme || undefined,
+                            }),
+                        },
+                        'Enlarge',
+                      )
+                    : null,
                   path && typeof openFile === 'function'
                     ? h(
                         'button',
@@ -309,6 +404,9 @@ window.__ModuleLoader__.load({
 .antuDsh_btnActive{border-color:var(--dsw-alias-label-secondary);color:var(--dsw-alias-label-primary)}
 .antuDsh_btnPrimary{border-color:var(--dsw-alias-border-l2)}
 .antuDsh_fallback{padding:10px 12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,8px);font-size:12px;color:var(--dsw-alias-label-tertiary);background:var(--dsw-alias-markdown-code-block)}
+.antuDsh_side{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;padding:8px;box-sizing:border-box}
+.antuDsh_sideCanvas{flex:auto;min-height:0;border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-base);overflow:hidden}
+.antuDsh_sideCanvas>div,.antuDsh_sideCanvas>*{width:100%;height:100%}
 @media (prefers-reduced-motion:reduce){.antuDsh_btn{transition:none}}
 `
 
@@ -332,7 +430,36 @@ window.__ModuleLoader__.load({
             ctx.slots.register({ name: 'tool.call.toolview', key }, AntuRenderCard)
           }
         })
+        // Optional: profiles without the right Sidebar still get the chat card.
+        ctx.inject(['sidebarRight', 'sidebarRightTabs'], (sideCtx) => {
+          sideCtx.effect(
+            () =>
+              sideCtx.sidebarRightTabs.register({
+                id: TAB_ID,
+                kind: TAB_KIND,
+                priority: 'extension',
+                title: () => 'Antu',
+              }),
+            'antu-dsh: sidebar tab type',
+          )
+          sideCtx.effect(
+            () =>
+              sideCtx.slots.inject('sidebar.right.pane.tab', () =>
+                sideCtx.slots.register({ name: 'sidebar.right.pane.tab', key: TAB_ID }, AntuSidebarBody),
+              ),
+            'antu-dsh: sidebar tab body',
+          )
+          sideCtx.effect(() => {
+            enlargeApi.open = (params) => {
+              sideCtx.sidebarRight.openTab(TAB_KIND, { params })
+            }
+            return () => {
+              enlargeApi.open = null
+            }
+          }, 'antu-dsh: enlarge opener')
+        })
       },
     }
   },
 })
+

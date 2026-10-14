@@ -54,11 +54,14 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 - Host: `antu_validate`, `antu_layout`, `antu_render` (in-process; HTML under session cwd).
 - Client: small entry + lazy-loaded embed chunk; `tool.call.toolview` for `antu_render` (and MCP name if needed).
 - Memory skill `antu-diagram`; "open in sidebar" via `openFile` on the written HTML.
+- **Enlarge**: right-sidebar page tab `antu-diagram` mounts the full embed (no `cardUi`) from the same
+  `argsRaw` `spec`; the chat card stays a compact preview.
+- Install: `npm run build:dsh` also packs `zh-xx-antu-dsh-*.tgz` (preferred over a bare `package/` link).
 - CI: `test/dsh-plugin.test.mjs` (helpers, manifest, `build.mjs`, Host `apply` smoke). Trusted publisher / npm publish still open.
 
 ### P3 — later, if wanted
 
-- Full sidebar tab that rebuilds from the log (resource type or Host projection + `wire.view`).
+- Sidebar tab that rebuilds from the session log (resource type or Host projection + `wire.view`), not only from the latest Enlarge params.
 - Dark diagram theme; in-host PNG export without leaving the card.
 
 ## Acceptance (P2)

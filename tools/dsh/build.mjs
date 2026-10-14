@@ -12,7 +12,8 @@
 //    node tools/dsh/build.mjs
 // ============================================================
 
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build as viteBuild } from 'vite'
@@ -127,7 +128,33 @@ function syncPackageJson() {
     'locale/',
     'icon.svg',
   ]
+  pkg.dsh = pkg.dsh || {}
+  pkg.dsh.client = {
+    platform: 'web',
+    immediately: true,
+    inject: [
+      '@deepseek-ai/dsh-client-ui-tool',
+      '@deepseek-ai/dsh-client-ui-sidebar-right',
+    ],
+  }
   writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`)
+}
+
+/** Prefer installing the tgz: a bare directory `link:` often lacks resolvable peers. */
+function packTarball() {
+  for (const name of readdirSync(HERE)) {
+    if (name.startsWith('zh-xx-antu-dsh-') && name.endsWith('.tgz')) {
+      rmSync(join(HERE, name), { force: true })
+    }
+  }
+  execFileSync('npm', ['pack', '--pack-destination', HERE], {
+    cwd: PKG,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+  })
+  const tgz = readdirSync(HERE).find((n) => n.startsWith('zh-xx-antu-dsh-') && n.endsWith('.tgz'))
+  if (!tgz) throw new Error('tools/dsh/build.mjs: npm pack produced no tarball')
+  return join(HERE, tgz)
 }
 
 async function main() {
@@ -137,7 +164,9 @@ async function main() {
   writeEmbedChunk(embedPath)
   const dist = join(PKG, 'dist')
   if (existsSync(dist)) rmSync(dist, { recursive: true, force: true })
+  const tarball = packTarball()
   console.log(`@zh-xx/antu-dsh ${rootVersion()} → ${PKG}`)
+  console.log(`tarball → ${tarball}`)
 }
 
 main().catch((err) => {

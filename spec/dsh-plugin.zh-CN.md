@@ -51,11 +51,13 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（可交互卡片
 - Host：`antu_validate`、`antu_layout`、`antu_render`（进程内；HTML 写在会话 cwd）。
 - Client：小入口 + 懒加载的 embed 块；为 `antu_render`（及必要时的 MCP 名）注册 `tool.call.toolview`。
 - 内存 skill `antu-diagram`；「在侧栏打开」先用 `openFile` 打开写出的 HTML。
+- **Enlarge**：右侧栏页面标签 `antu-diagram` 用完整 embed（不用 `cardUi`）画同一份 `argsRaw` 里的 `spec`；聊天卡片仍是缩略预览。
+- 安装：`npm run build:dsh` 同时打出 `zh-xx-antu-dsh-*.tgz`（优先于对裸 `package/` 做 link）。
 - CI：`test/dsh-plugin.test.mjs`（helpers、manifest、`build.mjs`、Host `apply` 冒烟）。trusted publisher / 发 npm 仍待做。
 
 ### P3 — 按需再做
 
-- 能从日志重建的整页侧栏标签（资源类型，或 Host projection + `wire.view`）。
+- 能从会话日志重建的侧栏标签（资源类型，或 Host projection + `wire.view`），不只靠 Enlarge 传入的 params。
 - 暗色图主题；不离卡片的宿主内 PNG 导出。
 
 ## 验收（P2）

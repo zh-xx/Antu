@@ -5,9 +5,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import {
   parseArgsRaw,
@@ -44,8 +44,18 @@ test('slugify and resolveOutPath stay under the session cwd', () => {
     mkdirSync(ws)
     mkdirSync(outside)
     writeFileSync(join(outside, 'secret.txt'), 'secret')
+    // Existing symlink to an outside file
     symlinkSync(join(outside, 'secret.txt'), join(ws, 'evil.html'))
     assert.throws(() => resolveOutPath('evil.html', 'x', ws), /must stay under/)
+    // Dangling symlink to a not-yet-existing outside file
+    symlinkSync(join(outside, 'new.html'), join(ws, 'dangling.html'))
+    assert.throws(() => resolveOutPath('dangling.html', 'x', ws), /must stay under/)
+    // Symlinked parent directory pointing outside
+    symlinkSync(outside, join(ws, 'linkdir'))
+    assert.throws(() => resolveOutPath('linkdir/via.html', 'x', ws), /must stay under/)
+    // Absolute outPath inside the (possibly non-realpath) cwd still accepted
+    const absInside = join(ws, 'abs2.html')
+    assert.equal(resolveOutPath(absInside, 'x', ws), absInside)
   } finally {
     rmSync(base, { recursive: true, force: true })
   }
@@ -148,12 +158,18 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(client, /client\.embed\.js/)
   assert.match(client, /\.destroy\(/)
   assert.match(client, /cardUi/)
+  assert.match(client, /Enlarge/)
+  assert.match(client, /antu-diagram/)
+  assert.match(client, /sidebarRightTabs/)
 
   const chunk = readFileSync(join(pkgDir, 'client.embed.js'), 'utf8')
   assert.match(chunk, /chunk:\s*['"]client\.embed\.js['"]/)
   assert.match(chunk, /exports\[["']mount["']\]/)
   assert.match(chunk, /exports\[["']cardUi["']\]/)
   assert.match(chunk, /exports\[["']kindsOf["']\]/)
+
+  const tgz = readdirSync('tools/dsh').find((n) => n.startsWith('zh-xx-antu-dsh-') && n.endsWith('.tgz'))
+  assert.ok(tgz, 'build:dsh should pack zh-xx-antu-dsh-*.tgz')
 })
 
 test('Host apply registers three tools and the skill on a stub Cordis context', async () => {
@@ -210,7 +226,12 @@ test('Host apply registers three tools and the skill on a stub Cordis context', 
     )
     assert.equal(rendered.ok, true)
     assert.ok(existsSync(rendered.path))
-    assert.ok(rendered.path.startsWith(join(dir, 'ws')))
+    const wsReal = realpathSync(join(dir, 'ws'))
+    assert.ok(
+      rendered.path === join(wsReal, 'card.html') ||
+        realpathSync(dirname(rendered.path)) === wsReal,
+      `path ${rendered.path} should be under ${wsReal}`,
+    )
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

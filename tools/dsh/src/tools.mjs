@@ -5,8 +5,8 @@
 //  Session cwd: exec.agent.session.header.cwd (same as @deepseek-ai/dsh-tool-fs).
 // ============================================================
 
-import { existsSync, lstatSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs'
-import { dirname, isAbsolute, relative, resolve } from 'node:path'
+import { existsSync, lstatSync, mkdirSync, readlinkSync, realpathSync, writeFileSync } from 'node:fs'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 
 /** Session workspace cwd for this call, or undefined */
 export function sessionCwd(exec) {
@@ -23,9 +23,85 @@ export function slugify(title) {
 }
 
 /** True when `path` is outside `root` (including `..` and absolute relatives). */
-function leavesRoot(root, path) {
+export function leavesRoot(root, path) {
   const rel = relative(root, path)
   return rel === '' || isAbsolute(rel) || rel === '..' || rel.startsWith('../') || rel.startsWith('..\\')
+}
+
+function tryLstat(path) {
+  try {
+    return lstatSync(path)
+  } catch {
+    return null
+  }
+}
+
+/** Nearest path that exists in the filesystem sense of `lstat` (includes dangling symlinks). */
+function nearestLstatPath(path) {
+  let cursor = path
+  for (;;) {
+    if (tryLstat(cursor)) return cursor
+    const parent = dirname(cursor)
+    if (parent === cursor) return null
+    cursor = parent
+  }
+}
+
+/** Resolve one symlink step to an absolute path (target need not exist). */
+function readLinkAbsolute(linkPath) {
+  const target = readlinkSync(linkPath)
+  return isAbsolute(target) ? resolve(target) : resolve(dirname(linkPath), target)
+}
+
+/**
+ * Where a create/write at `path` would actually land, following symlinks on the
+ * path prefix (including a dangling leaf symlink and a symlinked parent dir).
+ */
+export function effectiveWritePath(path) {
+  const existing = nearestLstatPath(path)
+  if (!existing) return resolve(path)
+  const st = lstatSync(existing)
+  if (existing === path) {
+    if (!st.isSymbolicLink()) {
+      try {
+        return realpathSync(path)
+      } catch {
+        return resolve(path)
+      }
+    }
+    // Leaf is a symlink (possibly dangling): writing replaces/follows the target.
+    const target = readLinkAbsolute(path)
+    try {
+      return realpathSync(path)
+    } catch {
+      return effectiveWritePath(target)
+    }
+  }
+  // `existing` is an ancestor. If it is a symlink to a directory (or anything),
+  // join the remainder onto its real location.
+  let base
+  if (st.isSymbolicLink()) {
+    const target = readLinkAbsolute(existing)
+    try {
+      base = realpathSync(existing)
+    } catch {
+      base = effectiveWritePath(target)
+    }
+  } else {
+    base = realpathSync(existing)
+  }
+  const rest = relative(existing, path)
+  return rest ? join(base, rest) : base
+}
+
+function workspaceRoot(cwd) {
+  const root = resolve(cwd)
+  try {
+    if (existsSync(root)) return realpathSync(root)
+  } catch {
+    /* keep lexical */
+  }
+  return root
 }
 
 /**
@@ -36,28 +112,14 @@ export function resolveOutPath(outPath, title, cwd) {
   if (!cwd || typeof cwd !== 'string') {
     throw new Error('antu_render needs a session workspace (cwd)')
   }
-  const root = resolve(cwd)
-  let rootReal = root
-  try {
-    if (existsSync(root)) rootReal = realpathSync(root)
-  } catch {
-    rootReal = root
-  }
+  const rootReal = workspaceRoot(cwd)
   const name = outPath && String(outPath).trim() ? String(outPath).trim() : `${slugify(title)}.html`
+  // Relative names join the real cwd. Absolute names keep resolve(), then the
+  // effective-write check accepts macOS `/var` vs `/private/var` equivalences.
   const path = isAbsolute(name) ? resolve(name) : resolve(rootReal, name)
-  if (leavesRoot(rootReal, path)) {
+  const effective = effectiveWritePath(path)
+  if (leavesRoot(rootReal, effective)) {
     throw new Error(`antu_render outPath must stay under the session workspace (${rootReal})`)
-  }
-  // Refuse an existing symlink target that would write outside the workspace.
-  try {
-    if (existsSync(path) && lstatSync(path).isSymbolicLink()) {
-      const real = realpathSync(path)
-      if (leavesRoot(rootReal, real)) {
-        throw new Error(`antu_render outPath must stay under the session workspace (${rootReal})`)
-      }
-    }
-  } catch (e) {
-    if (e && /must stay under/.test(e.message)) throw e
   }
   return path
 }
