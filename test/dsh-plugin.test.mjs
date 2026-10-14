@@ -5,7 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -36,6 +36,19 @@ test('slugify and resolveOutPath stay under the session cwd', () => {
   assert.throws(() => resolveOutPath('/abs/x.html', 'x', '/tmp/sess'), /must stay under/)
   assert.throws(() => resolveOutPath('../../.bashrc', 'x', '/tmp/sess'), /must stay under/)
   assert.throws(() => resolveOutPath('..', 'x', '/tmp/sess'), /must stay under/)
+
+  const base = mkdtempSync(join(tmpdir(), 'antu-dsh-symlink-'))
+  try {
+    const ws = join(base, 'ws')
+    const outside = join(base, 'outside')
+    mkdirSync(ws)
+    mkdirSync(outside)
+    writeFileSync(join(outside, 'secret.txt'), 'secret')
+    symlinkSync(join(outside, 'secret.txt'), join(ws, 'evil.html'))
+    assert.throws(() => resolveOutPath('evil.html', 'x', ws), /must stay under/)
+  } finally {
+    rmSync(base, { recursive: true, force: true })
+  }
 })
 
 test('sessionCwd reads exec.agent.session.header.cwd', () => {

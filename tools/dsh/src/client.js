@@ -227,14 +227,17 @@ window.__ModuleLoader__.load({
             : h(
                 'div',
                 { className: 'antuDsh_body' },
-                embedError
-                  ? h('div', { className: 'antuDsh_fallback' }, embedError)
-                  : h('div', {
-                      ref: hostRef,
-                      className: 'antuDsh_canvas',
-                      role: 'img',
-                      'aria-label': title,
-                    }),
+                // Keep the mount host in the tree even when the last mount failed.
+                // If we swap it for the error fallback, hostRef is null on the next
+                // argsRaw change and the layout effect returns early forever.
+                h('div', {
+                  ref: hostRef,
+                  className: 'antuDsh_canvas',
+                  role: 'img',
+                  'aria-label': title,
+                  hidden: !!embedError,
+                }),
+                embedError ? h('div', { className: 'antuDsh_fallback' }, embedError) : null,
                 h(
                   'div',
                   { className: 'antuDsh_chrome' },

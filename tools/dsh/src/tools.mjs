@@ -5,7 +5,7 @@
 //  Session cwd: exec.agent.session.header.cwd (same as @deepseek-ai/dsh-tool-fs).
 // ============================================================
 
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, relative, resolve } from 'node:path'
 
 /** Session workspace cwd for this call, or undefined */
@@ -22,21 +22,42 @@ export function slugify(title) {
   return s || 'antu'
 }
 
+/** True when `path` is outside `root` (including `..` and absolute relatives). */
+function leavesRoot(root, path) {
+  const rel = relative(root, path)
+  return rel === '' || isAbsolute(rel) || rel === '..' || rel.startsWith('../') || rel.startsWith('..\\')
+}
+
 /**
  * Resolve where antu_render writes the HTML.
- * Always under the session cwd (absolute paths and `..` that leave it are refused).
+ * Always under the session cwd (absolute paths, `..`, and symlink escapes are refused).
  */
 export function resolveOutPath(outPath, title, cwd) {
   if (!cwd || typeof cwd !== 'string') {
     throw new Error('antu_render needs a session workspace (cwd)')
   }
   const root = resolve(cwd)
+  let rootReal = root
+  try {
+    if (existsSync(root)) rootReal = realpathSync(root)
+  } catch {
+    rootReal = root
+  }
   const name = outPath && String(outPath).trim() ? String(outPath).trim() : `${slugify(title)}.html`
-  const path = isAbsolute(name) ? resolve(name) : resolve(root, name)
-  const rel = relative(root, path)
-  // '' would be writing the workspace directory itself; '..' / absolute leave the tree.
-  if (rel === '' || isAbsolute(rel) || rel === '..' || rel.startsWith('../') || rel.startsWith('..\\')) {
-    throw new Error(`antu_render outPath must stay under the session workspace (${root})`)
+  const path = isAbsolute(name) ? resolve(name) : resolve(rootReal, name)
+  if (leavesRoot(rootReal, path)) {
+    throw new Error(`antu_render outPath must stay under the session workspace (${rootReal})`)
+  }
+  // Refuse an existing symlink target that would write outside the workspace.
+  try {
+    if (existsSync(path) && lstatSync(path).isSymbolicLink()) {
+      const real = realpathSync(path)
+      if (leavesRoot(rootReal, real)) {
+        throw new Error(`antu_render outPath must stay under the session workspace (${rootReal})`)
+      }
+    }
+  } catch (e) {
+    if (e && /must stay under/.test(e.message)) throw e
   }
   return path
 }
