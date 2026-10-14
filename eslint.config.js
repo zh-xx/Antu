@@ -46,7 +46,7 @@ export default [
   // Node 侧：构建脚本与 MCP 服务端
   {
     files: ['tools/**/*.{mjs,js}', 'site/**/*.mjs', 'test/**/*.mjs', '*.config.js'],
-    ignores: ['tools/dsh/src/client.js', 'tools/dsh/package/client.js', 'tools/dsh/package/client.embed.js'],
+    ignores: ['tools/dsh/src/client.js', 'tools/dsh/package/**'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -57,7 +57,7 @@ export default [
 
   // DSH Client ModuleLoader entry (browser; React comes from the host module table)
   {
-    files: ['tools/dsh/src/client.js', 'tools/dsh/package/client.js'],
+    files: ['tools/dsh/src/client.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -109,7 +109,10 @@ export default [
       'dist-html/**',
       'skills/**',
       'node_modules/**',
+      'tools/dsh/package/index.js',
+      'tools/dsh/package/client.js',
       'tools/dsh/package/client.embed.js',
+      'tools/dsh/package/lib/**',
       '**/client.embed.js',
     ],
   },

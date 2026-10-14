@@ -6,7 +6,7 @@
 // ============================================================
 
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { dirname, isAbsolute, relative, resolve } from 'node:path'
 
 /** Session workspace cwd for this call, or undefined */
 export function sessionCwd(exec) {
@@ -24,17 +24,21 @@ export function slugify(title) {
 
 /**
  * Resolve where antu_render writes the HTML.
- * Relative paths and omitted outPath are under the session cwd (required).
+ * Always under the session cwd (absolute paths and `..` that leave it are refused).
  */
 export function resolveOutPath(outPath, title, cwd) {
-  if (outPath && isAbsolute(outPath)) return resolve(outPath)
   if (!cwd || typeof cwd !== 'string') {
-    throw new Error(
-      'antu_render needs a session workspace (cwd); pass an absolute outPath when testing without a session',
-    )
+    throw new Error('antu_render needs a session workspace (cwd)')
   }
-  const name = outPath && outPath.trim() ? outPath.trim() : `${slugify(title)}.html`
-  return resolve(join(cwd, name))
+  const root = resolve(cwd)
+  const name = outPath && String(outPath).trim() ? String(outPath).trim() : `${slugify(title)}.html`
+  const path = isAbsolute(name) ? resolve(name) : resolve(root, name)
+  const rel = relative(root, path)
+  // '' would be writing the workspace directory itself; '..' / absolute leave the tree.
+  if (rel === '' || isAbsolute(rel) || rel === '..' || rel.startsWith('../') || rel.startsWith('..\\')) {
+    throw new Error(`antu_render outPath must stay under the session workspace (${root})`)
+  }
+  return path
 }
 
 /** Validate; return the tool's JSON value (never throws for bad specs) */
@@ -81,8 +85,12 @@ export function runRender(spec, { renderHtml, outPath, kind, theme, cwd } = {}) 
   } catch (e) {
     return { ok: false, reason: e.message || String(e) }
   }
-  mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, html)
+  try {
+    mkdirSync(dirname(path), { recursive: true })
+    writeFileSync(path, html)
+  } catch (e) {
+    return { ok: false, reason: e.message || String(e) }
+  }
   return {
     ok: true,
     path,

@@ -392,9 +392,12 @@ export default function Canvas({
         //   pinch / Ctrl(Cmd)+wheel          → zoom (zoomOnPinch, a path independent of the wheel)
         //   press and drag                   → pan (unless ui.panOnDrag is false)
         // When panOnScroll is off, zoomOnScroll stays off so the wheel reaches the page (a chat card).
+        // preventScrolling must follow: xyflow's zoom-on-scroll handler still calls preventDefault on
+        // plain wheel events unless it is false, which would block the host page from scrolling.
         panOnScroll={panOnScroll}
         panOnScrollMode="free"
         panOnScrollSpeed={1}
+        preventScrolling={panOnScroll}
         zoomOnScroll={false}
         zoomOnPinch
         panOnDrag={panOnDrag}

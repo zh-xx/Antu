@@ -5,7 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -28,12 +28,14 @@ const pkgDir = 'tools/dsh/package'
 
 const MINI = JSON.parse(readFileSync('examples/agent/procedure/1-minimal.en.json', 'utf8'))
 
-test('slugify and resolveOutPath prefer the session cwd', () => {
+test('slugify and resolveOutPath stay under the session cwd', () => {
   assert.equal(slugify('Hello / 世界'), 'Hello-世界')
   assert.equal(resolveOutPath(undefined, 'Hello', '/tmp/sess'), join('/tmp/sess', 'Hello.html'))
   assert.equal(resolveOutPath('out/a.html', 'x', '/tmp/sess'), join('/tmp/sess', 'out/a.html'))
-  assert.equal(resolveOutPath('/abs/x.html', 'x', undefined), join('/abs/x.html'))
   assert.throws(() => resolveOutPath('rel.html', 'x', undefined), /session workspace/)
+  assert.throws(() => resolveOutPath('/abs/x.html', 'x', '/tmp/sess'), /must stay under/)
+  assert.throws(() => resolveOutPath('../../.bashrc', 'x', '/tmp/sess'), /must stay under/)
+  assert.throws(() => resolveOutPath('..', 'x', '/tmp/sess'), /must stay under/)
 })
 
 test('sessionCwd reads exec.agent.session.header.cwd', () => {
@@ -72,6 +74,12 @@ test('runValidate / runLayout / runRender against the real engine API', () => {
     const fail = runRender({ type: 'procedure' }, { renderHtml, cwd: dir })
     assert.equal(fail.ok, false)
     assert.ok(fail.errors?.length)
+
+    // Parent path that cannot be created as a directory → { ok: false }, not a throw.
+    writeFileSync(join(dir, 'blocked'), 'x')
+    const io = runRender(MINI, { renderHtml, cwd: dir, outPath: 'blocked/out.html' })
+    assert.equal(io.ok, false)
+    assert.match(io.reason || '', /./)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
@@ -125,6 +133,7 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(client, /antu_render/)
   assert.match(client, /mcp__antu__antu_render/)
   assert.match(client, /client\.embed\.js/)
+  assert.match(client, /\.destroy\(/)
   assert.match(client, /cardUi/)
 
   const chunk = readFileSync(join(pkgDir, 'client.embed.js'), 'utf8')
@@ -135,14 +144,15 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
 })
 
 test('Host apply registers three tools and the skill on a stub Cordis context', async () => {
-  // Peers are not in the repo root: rewrite imports into a temp module that uses
-  // the local engine API and a passthrough defineTool.
+  // Ensure build artifacts exist (previous test usually wrote them).
+  if (!existsSync(join(pkgDir, 'index.js'))) {
+    const r = spawnSync(process.execPath, ['tools/dsh/build.mjs'], { cwd: process.cwd(), encoding: 'utf8' })
+    assert.equal(r.status, 0, r.stderr || r.stdout)
+  }
+
   const dir = mkdtempSync(join(tmpdir(), 'antu-dsh-host-'))
   try {
-    writeFileSync(
-      join(dir, 'dsh-tools.mjs'),
-      'export function defineTool(def) { return def }\n',
-    )
+    writeFileSync(join(dir, 'dsh-tools.mjs'), 'export function defineTool(def) { return def }\n')
     writeFileSync(
       join(dir, 'antu-validate.mjs'),
       `export { validate, layout } from ${JSON.stringify(join(process.cwd(), 'tools/api/validate.mjs'))}\n`,
@@ -180,12 +190,14 @@ test('Host apply registers three tools and the skill on a stub Cordis context', 
 
     const v = await registered[0].execute({ spec: MINI })
     assert.equal(v.ok, true)
+    mkdirSync(join(dir, 'ws'), { recursive: true })
     const rendered = await registered[2].execute(
       { spec: MINI, outPath: 'card.html' },
-      { agent: { session: { header: { cwd: dir } } } },
+      { agent: { session: { header: { cwd: join(dir, 'ws') } } } },
     )
     assert.equal(rendered.ok, true)
     assert.ok(existsSync(rendered.path))
+    assert.ok(rendered.path.startsWith(join(dir, 'ws')))
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

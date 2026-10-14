@@ -3,7 +3,7 @@
 //
 //  Tiny Client half: registers tool.call.toolview for antu_render (and the
 //  stopgap MCP wire name). Lazy-loads client.embed.js (repackaged @zh-xx/antu/embed).
-//  Copied into package/client.js by build.mjs.
+//  Copied into package/client.js by build.mjs (build output is not committed).
 // ============================================================
 
 window.__ModuleLoader__.load({
@@ -51,6 +51,15 @@ window.__ModuleLoader__.load({
       return 'ok'
     }
 
+    function destroyHandle(handle) {
+      if (!handle) return
+      try {
+        handle.destroy()
+      } catch {
+        /* already destroyed */
+      }
+    }
+
     /** Lazy promise for the ModuleLoader embed chunk (mount + cardUi + kindsOf). */
     let embedPromise
     function loadEmbed(requireAsync) {
@@ -58,6 +67,9 @@ window.__ModuleLoader__.load({
         embedPromise = requireAsync('./client.embed.js').then((mod) => {
           if (!mod || typeof mod.mount !== 'function') {
             throw new Error('@zh-xx/antu-dsh: client.embed.js did not export mount()')
+          }
+          if (!mod.cardUi || mod.cardUi.panOnScroll !== false) {
+            throw new Error('@zh-xx/antu-dsh: client.embed.js is missing cardUi (rebuild with npm run build:dsh)')
           }
           return mod
         })
@@ -71,8 +83,9 @@ window.__ModuleLoader__.load({
       const handleRef = useRef(null)
       const [embed, setEmbed] = useState(null)
       const [embedError, setEmbedError] = useState(null)
-      const [kind, setKind] = useState(undefined)
-      const [theme, setTheme] = useState(undefined)
+      // What the diagram is showing (for chrome); seeded from args, then from successful setters.
+      const [activeKind, setActiveKind] = useState(null)
+      const [activeTheme, setActiveTheme] = useState(null)
 
       const argsRaw = argsRawOf(block)
       const args = useMemo(() => parseArgsRaw(argsRaw), [argsRaw])
@@ -85,6 +98,15 @@ window.__ModuleLoader__.load({
           : toolName === 'mcp__antu__antu_render'
             ? 'Antu (MCP)'
             : 'Antu'
+
+      const kinds = useMemo(() => {
+        if (!embed || !spec || typeof spec.type !== 'string') return []
+        try {
+          return embed.kindsOf(spec.type) || []
+        } catch {
+          return []
+        }
+      }, [embed, spec])
 
       useEffect(() => {
         let cancelled = false
@@ -100,76 +122,65 @@ window.__ModuleLoader__.load({
         }
       }, [])
 
-      // Seed kind/theme from call args once per new spec payload.
-      useEffect(() => {
-        if (!args || typeof args !== 'object') return
-        setKind(typeof args.kind === 'string' ? args.kind : undefined)
-        setTheme(typeof args.theme === 'string' ? args.theme : undefined)
-      }, [argsRaw])
-
       useLayoutEffect(() => {
         const el = hostRef.current
         if (!el || !embed || !spec || typeof spec !== 'object') return undefined
 
-        if (handleRef.current) {
-          try {
-            handleRef.current.unmount()
-          } catch {
-            /* ignore */
-          }
-          handleRef.current = null
-        }
+        destroyHandle(handleRef.current)
+        handleRef.current = null
         el.replaceChildren()
+        setEmbedError(null)
+
+        const known = (() => {
+          try {
+            return typeof spec.type === 'string' ? embed.kindsOf(spec.type) || [] : []
+          } catch {
+            return []
+          }
+        })()
+        const wantKind = args && typeof args.kind === 'string' ? args.kind : null
+        const mountKind = wantKind && known.includes(wantKind) ? wantKind : null
+        const wantTheme = args && typeof args.theme === 'string' ? args.theme : null
+        const mountTheme = wantTheme && THEMES.includes(wantTheme) ? wantTheme : null
 
         try {
-          const initialKind = kind
-          const initialTheme = theme
           handleRef.current = embed.mount(el, spec, {
-            ...(initialKind != null ? { kind: initialKind } : {}),
-            ...(initialTheme != null ? { theme: initialTheme } : {}),
+            ...(mountKind ? { kind: mountKind } : {}),
+            ...(mountTheme ? { theme: mountTheme } : {}),
             ui: { ...embed.cardUi },
           })
+          // Opening kind is a validated arg, else the type's first kind (kindsOf order).
+          setActiveKind(mountKind || known[0] || null)
+          setActiveTheme(mountTheme)
         } catch (err) {
           setEmbedError(err?.message || String(err))
           return undefined
         }
 
         return () => {
-          if (handleRef.current) {
-            try {
-              handleRef.current.unmount()
-            } catch {
-              /* ignore */
-            }
-            handleRef.current = null
-          }
+          destroyHandle(handleRef.current)
+          handleRef.current = null
         }
-        // Remount only when the embed API or the spec identity changes; kind/theme use setters below.
-      }, [embed, spec])
+        // Remount when the embed API or the call's argsRaw/spec change; kind/theme buttons use setters.
+      }, [embed, spec, argsRaw])
 
-      useEffect(() => {
+      function chooseKind(k) {
         const handle = handleRef.current
-        if (!handle) return
-        try {
-          if (kind != null && typeof handle.setKind === 'function') handle.setKind(kind)
-        } catch {
-          /* invalid kind: leave as-is */
+        if (!handle || typeof handle.setKind !== 'function') {
+          setActiveKind(k)
+          return
         }
-        try {
-          if (theme != null && typeof handle.setTheme === 'function') handle.setTheme(theme)
-        } catch {
-          /* invalid theme */
-        }
-      }, [kind, theme, embed, spec])
+        if (handle.setKind(k)) setActiveKind(k)
+      }
 
-      const kinds = useMemo(() => {
-        if (!embed || !spec || typeof spec.type !== 'string') return []
-        try {
-          return embed.kindsOf(spec.type) || []
-        } catch {
-          return []
+      function chooseTheme(t) {
+        const handle = handleRef.current
+        if (!handle || typeof handle.setTheme !== 'function') {
+          setActiveTheme(t)
+          return
         }
-      }, [embed, spec])
+        if (handle.setTheme(t)) setActiveTheme(t)
+      }
 
       const summary =
         status === 'preparing'
@@ -237,8 +248,8 @@ window.__ModuleLoader__.load({
                             {
                               key: k,
                               type: 'button',
-                              className: 'antuDsh_btn' + (kind === k || (!kind && k === kinds[0]) ? ' antuDsh_btnActive' : ''),
-                              onClick: () => setKind(k),
+                              className: 'antuDsh_btn' + (activeKind === k ? ' antuDsh_btnActive' : ''),
+                              onClick: () => chooseKind(k),
                             },
                             k,
                           ),
@@ -254,8 +265,8 @@ window.__ModuleLoader__.load({
                         {
                           key: t,
                           type: 'button',
-                          className: 'antuDsh_btn' + (theme === t ? ' antuDsh_btnActive' : ''),
-                          onClick: () => setTheme(t),
+                          className: 'antuDsh_btn' + (activeTheme === t ? ' antuDsh_btnActive' : ''),
+                          onClick: () => chooseTheme(t),
                         },
                         t,
                       ),

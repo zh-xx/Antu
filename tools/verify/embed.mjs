@@ -158,7 +158,7 @@ export async function checkEmbed(t) {
     eq('embed: `ui` leaves out what the host turned off, and only that', ui, { aHeader: true, bHeader: false, bMinimap: false, bZoom: true, aDock: true })
     truthy('embed: `lang` sets the page\'s own words (zh)', (await browser.eval(`${S('a')}.querySelector('.antu-header')?.textContent || ''`)).includes(translate('zh', 'graphKind.flow')))
 
-    // ---- cardUi: quiet chrome + wheel does not pan (spec/dsh-plugin.md P1) ----
+    // ---- cardUi: quiet chrome + wheel does not pan or cancel (spec/dsh-plugin.md P1) ----
     const card = await browser.eval(`(() => {
       const root = ${S('d')}
       const chrome = {
@@ -171,15 +171,20 @@ export async function checkEmbed(t) {
       const pane = root.querySelector('.react-flow__pane')
       const vp = root.querySelector('.react-flow__viewport')
       const before = vp?.style.transform || ''
-      pane?.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true }))
+      // dispatchEvent returns false when a listener called preventDefault — that would
+      // block the host page from scrolling even when the diagram itself does not pan.
+      const wheelOk = pane
+        ? pane.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true }))
+        : false
       const after = vp?.style.transform || ''
-      return { chrome, before, after, cardUi: window.__api.cardUi }
+      return { chrome, before, after, wheelOk, cardUi: window.__api.cardUi }
     })()`)
     eq('embed: cardUi turns off the page chrome', card.chrome, {
       header: false, capsule: false, minimap: false, zoom: false, nodes: pnodes,
     })
     eq('embed: cardUi.panOnScroll is false', card.cardUi?.panOnScroll, false)
     eq('embed: with cardUi a wheel over the pane does not pan the diagram', card.after, card.before)
+    eq('embed: with cardUi a wheel over the pane is not cancelled (host page can scroll)', card.wheelOk, true)
 
     // ---- invalid ----
     const invalid = await browser.eval('window.__invalid')

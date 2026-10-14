@@ -13,14 +13,14 @@ Needs a published (or otherwise resolvable) `@zh-xx/antu` at the same version fo
 tools/dsh/
   README.md           this file
   build.mjs           assemble package/ (Host copy + ModuleLoader embed chunk)
-  src/                Host / Client / skill sources
-  package/            install_bundle root (@zh-xx/antu-dsh)
-  .gitignore          client.embed.js stays out of git
+  src/                Host / Client / skill sources (committed)
+  package/            install_bundle root — committed: package.json, cordis.patch.yml, locale/
+  .gitignore          generated Host/Client/embed under package/ stay out of git
 ```
 
-`npm run build:dsh` writes `package/index.js`, `package/client.js`, `package/lib/*`, and
-`package/client.embed.js` (repackaged `@zh-xx/antu/embed` for DSH's ModuleLoader). The embed
-chunk is never committed.
+`npm run build:dsh` always rebuilds the embed, then writes `package/index.js`, `package/client.js`,
+`package/lib/*`, and `package/client.embed.js`. Those generated files are not committed
+(`spec/dsh-plugin.md`).
 
 ## What it registers
 

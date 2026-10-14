@@ -4,8 +4,10 @@
 //
 //  - Copy Host sources into package/ (index.js, lib/)
 //  - Copy Client ModuleLoader entry
-//  - Build / reuse @zh-xx/antu/embed and wrap it as client.embed.js
+//  - Always rebuild @zh-xx/antu/embed and wrap it as client.embed.js
 //  - Sync version from the repository package.json
+//
+//  Generated files under package/ are not committed (see .gitignore).
 //
 //    node tools/dsh/build.mjs
 // ============================================================
@@ -25,12 +27,14 @@ function rootVersion() {
   return JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).version
 }
 
+/** Always rebuild so a stale dist-embed without cardUi cannot ship. */
 async function ensureEmbed() {
-  if (existsSync(EMBED_OUT)) return EMBED_OUT
-  const npmEmbed = join(REPO, 'dist-npm/embed/antu-embed.js')
-  if (existsSync(npmEmbed)) return npmEmbed
   await viteBuild({ configFile: join(REPO, 'vite.embed.config.js') })
   if (!existsSync(EMBED_OUT)) throw new Error('tools/dsh/build.mjs: embed build produced no antu-embed.js')
+  const text = readFileSync(EMBED_OUT, 'utf8')
+  if (!/\bas cardUi\b/.test(text) && !/\bcardUi\b/.test(text)) {
+    throw new Error('tools/dsh/build.mjs: embed bundle is missing cardUi — rebuild from current src/embed')
+  }
   return EMBED_OUT
 }
 
@@ -46,6 +50,12 @@ function writeEmbedChunk(embedPath) {
     throw new Error('tools/dsh/build.mjs: antu-embed.js has no trailing named export block')
   }
   const body = esm.slice(0, match.index)
+  // A future ESM with a live import cannot sit inside a plain factory function.
+  if (/(?:^|\n)\s*import[\s{*]/.test(body) || /\bimport\.meta\b/.test(body)) {
+    throw new Error(
+      'tools/dsh/build.mjs: embed bundle has a top-level import or import.meta; refuse to wrap as a ModuleLoader chunk',
+    )
+  }
   const assigns = match[1]
     .split(',')
     .map((part) => part.trim())
@@ -57,6 +67,10 @@ function writeEmbedChunk(embedPath) {
       return `    exports[${JSON.stringify(name)}] = ${local};`
     })
     .join('\n')
+
+  if (!assigns.includes('["cardUi"]') && !assigns.includes("['cardUi']")) {
+    throw new Error('tools/dsh/build.mjs: embed export list has no cardUi')
+  }
 
   const wrapped = `window.__ModuleLoader__.load({
   id: '@zh-xx/antu-dsh',
@@ -76,7 +90,6 @@ function copyHost() {
   mkdirSync(join(PKG, 'lib'), { recursive: true })
   cpSync(join(SRC, 'tools.mjs'), join(PKG, 'lib', 'tools.mjs'))
   cpSync(join(SRC, 'skill.mjs'), join(PKG, 'lib', 'skill.mjs'))
-  // Host entry: rewrite relative imports to ./lib/
   let host = readFileSync(join(SRC, 'host.mjs'), 'utf8')
   host = host
     .replace("from './tools.mjs'", "from './lib/tools.mjs'")
@@ -122,7 +135,6 @@ async function main() {
   syncPackageJson()
   const embedPath = await ensureEmbed()
   writeEmbedChunk(embedPath)
-  // Drop any stale dist/ folder from earlier scaffold notes.
   const dist = join(PKG, 'dist')
   if (existsSync(dist)) rmSync(dist, { recursive: true, force: true })
   console.log(`@zh-xx/antu-dsh ${rootVersion()} → ${PKG}`)
