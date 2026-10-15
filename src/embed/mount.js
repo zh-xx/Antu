@@ -64,8 +64,10 @@ const isItem = (spec, id) => itemOf(spec, id)?.item.id === id
  * @param {string[]} [options.kinds]    the kinds the reader may pick from (one: the kind is fixed)
  * @param {'document'|'modern'|'legal'} [options.theme]  the theme it opens in
  * @param {'zh'|'en'} [options.lang]   the language of the page's own words (the case is never translated)
- * @param {{header?: boolean, capsule?: boolean, minimap?: boolean, zoom?: boolean}} [options.ui]
- *                                      pieces of the page's chrome to leave out (all shown by default)
+ * @param {{header?: boolean, capsule?: boolean, minimap?: boolean, zoom?: boolean, panOnScroll?: boolean, panOnDrag?: boolean}} [options.ui]
+ *                                      pieces of the page's chrome to leave out (all shown by default);
+ *                                      `panOnScroll: false` lets the wheel scroll the host page (a chat card);
+ *                                      `panOnDrag: false` stops press-and-drag from panning (see also `cardUi`)
  * @param {'none'|'local'|{read(): object, write(patch: object): void}} [options.prefs]
  *                                      where the reader's choices are kept: 'none' (default) while mounted
  *                                      only, 'local' in the viewer page's localStorage key, or the host's store

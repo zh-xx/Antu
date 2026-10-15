@@ -33,6 +33,8 @@ export interface NormalizeResult {
 
 /** Repair what is inconsistent in the marks of a spec but not in its content (a procedure's main line). Call it before `validate` */
 export function normalize(spec: unknown): NormalizeResult
+/** The field table of one type, the text `antu_schema` serves; `reason` names the available types when the type is unknown */
+export function describe(type?: string): { ok: true; text: string } | { ok: false; reason: string }
 /** Each type and its kinds, the first kind being the one a diagram opens in */
 export function kinds(): Record<string, string[]>
 export function versions(): VersionsReport

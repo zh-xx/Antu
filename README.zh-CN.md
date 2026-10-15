@@ -92,6 +92,10 @@ MCP 服务是 npm 包 [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu)
 
 工具：`antu_schema`、`antu_guide`、`antu_examples`、`antu_validate`、`antu_layout`、`antu_render`、`antu_preview`、`antu_versions`。
 
+### DeepSeek Harness（DSH）
+
+面向 DSH 的原生插件（`@zh-xx/antu-dsh`：Host 工具 + 聊天卡片）仍在**规划中**——见 [spec/dsh-plugin.zh-CN.md](spec/dsh-plugin.zh-CN.md) 与脚手架 [`tools/dsh/`](tools/dsh/)。在它发布之前，已有 Node 的 profile 可用配置型 bundle 挂上 `antu-mcp`；配方与限制写在 [tools/dsh/README.md](tools/dsh/README.md)。
+
 ## 在应用里使用
 
 同一个包为应用自己的代码提供三个入口（[spec/embed.zh-CN.md](spec/embed.zh-CN.md)）：
@@ -106,7 +110,7 @@ const diagram = mount(element, spec, { lang: 'zh', onEvent: (e) => console.log(e
 
 ## 文档
 
-- 供人阅读的设计文档在 [`spec/`](spec/)：[架构](spec/v0-architecture.md)、[来源的 7 类字段](spec/source-schema-draft.md)、[主题](spec/theme.md)、[MCP 服务端](spec/mcp-server.md)、[在应用里使用](spec/embed.zh-CN.md)，以及各类图（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 Agent 看的说明在 [`spec/Agent/`](spec/Agent/)。
+- 供人阅读的设计文档在 [`spec/`](spec/)：[架构](spec/v0-architecture.md)、[来源的 7 类字段](spec/source-schema-draft.md)、[主题](spec/theme.md)、[MCP 服务端](spec/mcp-server.md)、[在应用里使用](spec/embed.zh-CN.md)、[DSH 插件规划](spec/dsh-plugin.zh-CN.md)，以及各类图（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 Agent 看的说明在 [`spec/Agent/`](spec/Agent/)。
 - [CHANGELOG.md](CHANGELOG.md)，版本号的规则见 [spec/versioning.md](spec/versioning.md)。
 - 已知问题与需求记录在 [GitHub issues](https://github.com/zh-xx/Antu/issues)。参与贡献前，请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 

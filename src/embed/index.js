@@ -13,6 +13,7 @@ import { listKinds } from '../core/registry.js'
 import { normalizeSpec } from '../core/normalize.js'
 
 export { mount } from './mount.js'
+export { cardUi } from './cardUi.js'
 
 /**
  * Check a spec the way the diagram checks it before drawing.
