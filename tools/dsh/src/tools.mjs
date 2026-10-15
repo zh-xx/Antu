@@ -5,12 +5,102 @@
 //  Session cwd: exec.agent.session.header.cwd (same as @deepseek-ai/dsh-tool-fs).
 // ============================================================
 
-import { lstatSync, mkdirSync, readlinkSync, realpathSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, readdirSync, realpathSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 
 /** Session workspace cwd for this call, or undefined */
 export function sessionCwd(exec) {
   return exec?.agent?.session?.header?.cwd
+}
+
+/** A plain name: one path element, no separator and no `.`/`..`. The only shape a type or an example file may have. */
+function isPlainName(name) {
+  return (
+    typeof name === 'string' &&
+    name !== '' &&
+    name !== '.' &&
+    name !== '..' &&
+    !name.includes('/') &&
+    !name.includes('\\')
+  )
+}
+
+/** The type directories under `<root>/spec/agent` that carry a guide, sorted. */
+function guideTypes(root) {
+  const base = join(root, 'spec', 'agent')
+  if (!existsSync(base)) return []
+  return readdirSync(base, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && existsSync(join(base, e.name, 'guide.md')))
+    .map((e) => e.name)
+    .sort()
+}
+
+/** The type directories under `<root>/examples/agent`, sorted (whether or not they have files). */
+function exampleTypes(root) {
+  const base = join(root, 'examples', 'agent')
+  if (!existsSync(base)) return []
+  return readdirSync(base, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort()
+}
+
+/**
+ * The mechanism notes of one type: `<root>/spec/agent/<type>/guide.md`.
+ * Read-only and by plain name only: no `/`, `\` or `..` reaches the filesystem.
+ * @returns {{ ok: true, text: string } | { ok: false, reason: string }}
+ */
+export function readGuide(root, type) {
+  const types = guideTypes(root)
+  if (!isPlainName(type) || !types.includes(type)) {
+    return { ok: false, reason: `no mechanism notes for type "${type}" yet. Available: ${types.join(', ') || '(none)'}.` }
+  }
+  return { ok: true, text: readFileSync(join(root, 'spec', 'agent', type, 'guide.md'), 'utf8') }
+}
+
+/** The example files of one type in one language, each with its title. Default `en`; `zh-CN` lists the paired copies. */
+export function listExamples(root, type = 'fact', lang = 'en') {
+  const types = exampleTypes(root)
+  if (!isPlainName(type) || !types.includes(type)) {
+    return { ok: false, reason: `no examples for type "${type}" yet. Available: ${types.join(', ') || '(none)'}.` }
+  }
+  const dir = join(root, 'examples', 'agent', type)
+  const suffix = lang === 'zh-CN' ? '.zh-CN.json' : '.en.json'
+  const examples = readdirSync(dir)
+    .filter((f) => f.endsWith(suffix))
+    .sort()
+    .map((file) => ({ file, title: exampleTitle(join(dir, file)) }))
+  return { ok: true, examples }
+}
+
+/** The title of one example, or '' when the file cannot be read or carries none. */
+function exampleTitle(path) {
+  try {
+    const title = JSON.parse(readFileSync(path, 'utf8')).title
+    return typeof title === 'string' ? title : ''
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * The JSON text of one example: `<root>/examples/agent/<type>/<file>`.
+ * The file must be one plain name from the list `listExamples` returned; nothing else is read.
+ * @returns {{ ok: true, text: string } | { ok: false, reason: string }}
+ */
+export function readExample(root, type, file) {
+  const types = exampleTypes(root)
+  if (!isPlainName(type) || !types.includes(type)) {
+    return { ok: false, reason: `no examples for type "${type}" yet. Available: ${types.join(', ') || '(none)'}.` }
+  }
+  const dir = join(root, 'examples', 'agent', type)
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith('.json'))
+    .sort()
+  if (!isPlainName(file) || !files.includes(file)) {
+    return { ok: false, reason: `no example "${file}" for type "${type}" yet. Available: ${files.join(', ') || '(none)'}.` }
+  }
+  return { ok: true, text: readFileSync(join(dir, file), 'utf8') }
 }
 
 /** Safe file stem from a title */

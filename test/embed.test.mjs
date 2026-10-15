@@ -14,7 +14,7 @@ import { HOST_RULES, PAGE_FONT, toShadowCss } from '../src/embed/shadowCss.js'
 import { embeddedEnv, isInside, standaloneEnv } from '../src/shell/env.js'
 import { localPrefs } from '../src/shell/prefs.js'
 import { buildHtml } from '../tools/lib/make-html.mjs'
-import { validate, layout, kinds, versions } from '../tools/api/validate.mjs'
+import { validate, layout, kinds, versions, describe } from '../tools/api/validate.mjs'
 import { renderHtml } from '../tools/api/html.mjs'
 import { ENTRIES, packageJson } from '../tools/build-npm.mjs'
 
@@ -143,6 +143,17 @@ test('@zh-xx/antu/validate: the checks, notes and geometry of the command line, 
   assert.deepEqual(kinds().procedure, ['flow', 'route'])
   assert.deepEqual(Object.keys(kinds()).sort(), listKnowledgeTypes().map((t) => t.type).sort())
   assert.ok(versions().types.length === listKnowledgeTypes().length)
+})
+
+test('@zh-xx/antu/validate describe: the field table as data, an unknown type names the available ones', () => {
+  const r = describe('procedure')
+  assert.equal(r.ok, true)
+  assert.ok(r.text.length > 20, 'the field table is the type descriptor text')
+  assert.equal(describe().ok, true, 'fact by default')
+  const bad = describe('nope')
+  assert.equal(bad.ok, false)
+  assert.match(bad.reason, /no reference material for type "nope" yet/)
+  assert.match(bad.reason, /Available: .*fact/)
 })
 
 test('@zh-xx/antu/html: the page render writes, refused where render refuses', () => {

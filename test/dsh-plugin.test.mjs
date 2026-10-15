@@ -10,7 +10,10 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 import {
+  readExample,
+  readGuide,
   resolveOutPath,
+  listExamples,
   runLayout,
   runRender,
   renderPresentation,
@@ -114,6 +117,49 @@ test('slugify and resolveOutPath stay under the session cwd', () => {
 test('sessionCwd reads exec.agent.session.header.cwd', () => {
   assert.equal(sessionCwd({ agent: { session: { header: { cwd: '/w' } } } }), '/w')
   assert.equal(sessionCwd({}), undefined)
+})
+
+test('readGuide / listExamples / readExample read the agent material by plain name only', () => {
+  const root = process.cwd()
+
+  const guide = readGuide(root, 'fact')
+  assert.equal(guide.ok, true)
+  assert.match(guide.text, /Mechanism notes for an agent/)
+
+  const listed = listExamples(root, 'procedure')
+  assert.equal(listed.ok, true)
+  assert.ok(
+    listed.examples.some((e) => e.file === '1-minimal.en.json' && typeof e.title === 'string' && e.title.length > 0),
+  )
+  const zh = listExamples(root, 'procedure', 'zh-CN')
+  assert.equal(zh.ok, true)
+  assert.ok(zh.examples.length > 0)
+  assert.ok(zh.examples.every((e) => e.file.endsWith('.zh-CN.json')))
+  assert.ok(zh.examples.some((e) => e.file === '1-minimal.zh-CN.json'))
+
+  const one = readExample(root, 'procedure', '1-minimal.en.json')
+  assert.equal(one.ok, true)
+  assert.equal(JSON.parse(one.text).type, 'procedure')
+  assert.equal(readExample(root, 'procedure', '1-minimal.zh-CN.json').ok, true)
+
+  // Unknown types name what is available
+  const noGuide = readGuide(root, 'nope')
+  assert.equal(noGuide.ok, false)
+  assert.match(noGuide.reason, /type "nope"/)
+  assert.match(noGuide.reason, /Available: .*fact/)
+  const noExamples = listExamples(root, 'nope')
+  assert.equal(noExamples.ok, false)
+  assert.match(noExamples.reason, /type "nope"/)
+  assert.match(noExamples.reason, /Available: .*fact/)
+
+  // Path-like input is refused everywhere: no `..`, no separator, only listed names
+  for (const bad of ['../x', 'a/b', '..', '.', 'a\\b', '']) {
+    assert.equal(readGuide(root, bad).ok, false, `readGuide(${JSON.stringify(bad)})`)
+    assert.equal(listExamples(root, bad).ok, false, `listExamples(${JSON.stringify(bad)})`)
+    assert.equal(readExample(root, 'procedure', bad).ok, false, `readExample(file=${JSON.stringify(bad)})`)
+  }
+  assert.equal(readExample(root, 'procedure', 'missing.json').ok, false)
+  assert.equal(readExample(root, '../fact', '1-minimal.en.json').ok, false)
 })
 
 test('parseArgsRaw tolerates truncated JSON', () => {
@@ -310,10 +356,17 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(host, /antu_validate/)
   assert.match(host, /antu_layout/)
   assert.match(host, /antu_render/)
+  assert.match(host, /antu_schema/)
+  assert.match(host, /antu_guide/)
+  assert.match(host, /antu_examples/)
   assert.match(host, /defineTool/)
   assert.match(host, /antu-diagram/)
   assert.match(host, /@zh-xx\/antu\/validate/)
   assert.match(host, /@zh-xx\/antu\/html/)
+  // The validate entry is a namespace import: a named `describe` import would fail to link against an
+  // older installed @zh-xx/antu and take every tool down with it.
+  assert.match(host, /import \* as antuValidate from '@zh-xx\/antu\/validate'/)
+  assert.doesNotMatch(host, /import\s*\{[^}]*\bdescribe\b[^}]*\}\s*from\s*['"]@zh-xx\/antu\/validate['"]/)
 
   const client = readFileSync(join(pkgDir, 'client.js'), 'utf8')
   assert.match(client, /__ModuleLoader__/)
@@ -418,7 +471,7 @@ test('built client factory surfaces missing require.async as a rejected load (0.
   assert.equal(typeof mod.mount, 'function')
 })
 
-test('Host apply registers three tools and the skill on a stub Cordis context', async () => {
+test('Host apply registers the tools and the skill on a stub Cordis context', async () => {
   // Ensure build artifacts exist (previous test usually wrote them).
   if (!existsSync(join(pkgDir, 'index.js'))) {
     const r = spawnSync(process.execPath, ['tools/dsh/build.mjs'], { cwd: process.cwd(), encoding: 'utf8' })
@@ -430,11 +483,21 @@ test('Host apply registers three tools and the skill on a stub Cordis context', 
     writeFileSync(join(dir, 'dsh-tools.mjs'), 'export function defineTool(def) { return def }\n')
     writeFileSync(
       join(dir, 'antu-validate.mjs'),
-      `export { validate, layout } from ${JSON.stringify(join(process.cwd(), 'tools/api/validate.mjs'))}\n`,
+      `export { validate, layout, describe } from ${JSON.stringify(join(process.cwd(), 'tools/api/validate.mjs'))}\n`,
     )
     writeFileSync(
       join(dir, 'antu-html.mjs'),
       `export { renderHtml } from ${JSON.stringify(join(process.cwd(), 'tools/api/html.mjs'))}\n`,
+    )
+    // A minimal @zh-xx/antu package root, so the reference tools can resolve one.
+    const antuRoot = join(dir, 'node_modules', '@zh-xx', 'antu')
+    mkdirSync(join(antuRoot, 'spec', 'agent', 'fact'), { recursive: true })
+    mkdirSync(join(antuRoot, 'examples', 'agent', 'fact'), { recursive: true })
+    writeFileSync(join(antuRoot, 'package.json'), `${JSON.stringify({ name: '@zh-xx/antu', version: '0.0.0' })}\n`)
+    writeFileSync(join(antuRoot, 'spec', 'agent', 'fact', 'guide.md'), '# Guide for fact\n')
+    writeFileSync(
+      join(antuRoot, 'examples', 'agent', 'fact', '1-minimal.en.json'),
+      `${JSON.stringify({ type: 'fact', title: 'Minimal fact' })}\n`,
     )
     let host = readFileSync(join(pkgDir, 'index.js'), 'utf8')
     host = host
@@ -459,7 +522,7 @@ test('Host apply registers three tools and the skill on a stub Cordis context', 
     })
     assert.deepEqual(
       registered.map((t) => t.name),
-      ['antu_validate', 'antu_layout', 'antu_render'],
+      ['antu_validate', 'antu_layout', 'antu_render', 'antu_schema', 'antu_guide', 'antu_examples'],
     )
     assert.equal(skills[0]?.name, 'antu-diagram')
 
@@ -472,6 +535,25 @@ test('Host apply registers three tools and the skill on a stub Cordis context', 
     )
     assert.equal(rendered.ok, true)
     assert.ok(existsSync(rendered.path))
+
+    // The reference tools: field table from the engine, guide and examples from the resolved package root
+    const byName = Object.fromEntries(registered.map((t) => [t.name, t]))
+    const schema = await byName.antu_schema.execute({ type: 'fact' })
+    assert.equal(schema.ok, true)
+    assert.ok(schema.text.length > 0)
+    const guide = await byName.antu_guide.execute({ type: 'fact' })
+    assert.equal(guide.ok, true)
+    assert.match(guide.text, /Guide for fact/)
+    const listed = await byName.antu_examples.execute({ type: 'fact' })
+    assert.deepEqual(listed, { ok: true, examples: [{ file: '1-minimal.en.json', title: 'Minimal fact' }] })
+    assert.match(
+      byName.antu_examples.output.render({}, listed).map((b) => b.text).join(''),
+      /1-minimal\.en\.json/,
+    )
+    const fetched = await byName.antu_examples.execute({ type: 'fact', file: '1-minimal.en.json' })
+    assert.equal(fetched.ok, true)
+    assert.equal(fetched.file, '1-minimal.en.json')
+    assert.match(fetched.text, /"Minimal fact"/)
 
     // The declared output contract, not only the pure function: presentationMeta must be lossless JSON on
     // every path (DSH rejects undefined with INVALID_TOOL_OUTPUT and the reason is lost), failures included
@@ -505,6 +587,68 @@ test('Host apply registers three tools and the skill on a stub Cordis context', 
         realpathSync(dirname(rendered.path)) === wsReal,
       `path ${rendered.path} should be under ${wsReal}`,
     )
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('Host apply still loads all six tools when @zh-xx/antu/validate has no describe', async () => {
+  // The published 0.14.0 @zh-xx/antu/validate exports validate and layout only. A named `describe`
+  // import would fail at link time and hide every tool; a namespace import must keep them all.
+  if (!existsSync(join(pkgDir, 'index.js'))) {
+    const r = spawnSync(process.execPath, ['tools/dsh/build.mjs'], { cwd: process.cwd(), encoding: 'utf8' })
+    assert.equal(r.status, 0, r.stderr || r.stdout)
+  }
+
+  const dir = mkdtempSync(join(tmpdir(), 'antu-dsh-old-'))
+  try {
+    writeFileSync(join(dir, 'dsh-tools.mjs'), 'export function defineTool(def) { return def }\n')
+    writeFileSync(
+      join(dir, 'antu-validate.mjs'),
+      `export { validate, layout } from ${JSON.stringify(join(process.cwd(), 'tools/api/validate.mjs'))}\n`,
+    )
+    writeFileSync(
+      join(dir, 'antu-html.mjs'),
+      `export { renderHtml } from ${JSON.stringify(join(process.cwd(), 'tools/api/html.mjs'))}\n`,
+    )
+    // A minimal old @zh-xx/antu root: guides and examples are there, `describe` is not.
+    const antuRoot = join(dir, 'node_modules', '@zh-xx', 'antu')
+    mkdirSync(join(antuRoot, 'spec', 'agent', 'fact'), { recursive: true })
+    mkdirSync(join(antuRoot, 'examples', 'agent', 'fact'), { recursive: true })
+    writeFileSync(join(antuRoot, 'package.json'), `${JSON.stringify({ name: '@zh-xx/antu', version: '0.14.0' })}\n`)
+    writeFileSync(join(antuRoot, 'spec', 'agent', 'fact', 'guide.md'), '# Guide for fact\n')
+    writeFileSync(
+      join(antuRoot, 'examples', 'agent', 'fact', '1-minimal.en.json'),
+      `${JSON.stringify({ type: 'fact', title: 'Minimal fact' })}\n`,
+    )
+
+    let host = readFileSync(join(pkgDir, 'index.js'), 'utf8')
+    host = host
+      .replace('@deepseek-ai/dsh-tools', './dsh-tools.mjs')
+      .replace('@zh-xx/antu/validate', './antu-validate.mjs')
+      .replace('@zh-xx/antu/html', './antu-html.mjs')
+      .replace("from './lib/tools.mjs'", `from ${JSON.stringify(join(process.cwd(), pkgDir, 'lib/tools.mjs'))}`)
+      .replace("from './lib/skill.mjs'", `from ${JSON.stringify(join(process.cwd(), pkgDir, 'lib/skill.mjs'))}`)
+    const hostFile = join(dir, 'host.mjs')
+    writeFileSync(hostFile, host)
+
+    // Importing must not throw (the namespace import tolerates the missing `describe`).
+    const { apply } = await import(hostFile)
+    const registered = []
+    apply({ tools: { register: (t) => registered.push(t) }, inject: () => {} })
+    assert.deepEqual(
+      registered.map((t) => t.name),
+      ['antu_validate', 'antu_layout', 'antu_render', 'antu_schema', 'antu_guide', 'antu_examples'],
+    )
+
+    const byName = Object.fromEntries(registered.map((t) => [t.name, t]))
+    assert.equal((await byName.antu_validate.execute({ spec: MINI })).ok, true)
+    const schema = await byName.antu_schema.execute({ type: 'fact' })
+    assert.equal(schema.ok, false)
+    assert.match(schema.reason, /too old/)
+    assert.match(schema.reason, /antu_guide and antu_examples still work/)
+    assert.equal((await byName.antu_guide.execute({ type: 'fact' })).ok, true)
+    assert.equal((await byName.antu_examples.execute({ type: 'fact' })).ok, true)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

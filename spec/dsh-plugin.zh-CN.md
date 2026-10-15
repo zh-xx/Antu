@@ -16,7 +16,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 | | 选择 |
 | --- | --- |
 | 工具来源 | **原生 Host 工具**（在 DSH 进程内 `import` `@zh-xx/antu/validate` 与 `/html`），长期路径不是「仅配置的 MCP bundle」 |
-| 线名 | `antu_validate`、`antu_layout`、`antu_render` …（不是 `mcp__antu__…`）。若仍临时挂着 MCP 行，卡片可同时注册 MCP 名 |
+| 线名 | `antu_validate`、`antu_layout`、`antu_render`，以及只读参考工具 `antu_schema`、`antu_guide`、`antu_examples` …（不是 `mcp__antu__…`）。若仍临时挂着 MCP 行，卡片可同时注册 MCP 名 |
 | `antu_render` | **写入**会话**工作区**下的自包含 HTML（绝对路径）。卡片从工具调用的**参数**（`spec`）画图；文件用于归档、转发与 `openFile` |
 | 聊天卡片 | **只有图**：整张图缩进卡片（`mount()` 加 `cardUi`），没有标题行、没有按钮。点图任意位置打开大图。滚轮交给聊天。2026-10-15 看过效果图后决定：按可读字号打开只能看到图的一小块，不值得 |
 | 大图 | DSH 右侧面板里的页面 `antu-diagram`，以**全屏**方式呈现（面板自带的全屏模式盖住整个窗口），带完整外壳：画法、主题、详情卡片、导出，以及**打开 HTML** |
@@ -49,7 +49,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 
 ### P2 — `@zh-xx/antu-dsh` 0.x 首发 — 已在仓库落地
 
-- Host：`antu_validate`、`antu_layout`、`antu_render`（进程内；HTML 写在会话 cwd）。
+- Host：`antu_validate`、`antu_layout`、`antu_render`（进程内；HTML 写在会话 cwd），以及只读参考工具 `antu_schema`、`antu_guide`、`antu_examples`（字段表、机制说明、示例，取自已安装的 `@zh-xx/antu`）。
 - Client：小入口 + 懒加载的 embed 块；为 `antu_render`（及必要时的 MCP 名）注册 `tool.call.toolview`。
 - Client 需要 **DSH ≥ 0.2.0-rc.2**（`require.async` 加载包内 `client.embed.js`）。在 0.1.x 上卡片显示升级提示，而不是把 slot 打崩。
 - 内存 skill `antu-diagram`；「在侧栏打开」先用 `openFile` 打开写出的 HTML。

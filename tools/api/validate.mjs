@@ -9,8 +9,9 @@
 
 import { validate as problemsOf, notesOf, layoutReport, formatLayoutReport, kindProblem } from '../lib/report.mjs'
 import { versionsReport } from '../lib/versions.mjs'
-import { listKnowledgeTypes, layoutKindsOf } from '../../src/core/registry.js'
+import { knowledgeOf, listKnowledgeTypes, layoutKindsOf } from '../../src/core/registry.js'
 import { normalizeSpec } from '../../src/core/normalize.js'
+import { tEn } from '../../src/core/i18n.js'
 
 // set by the bundler; a run from the source reads it where the engine does
 // eslint-disable-next-line no-undef
@@ -49,6 +50,25 @@ export function layout(spec, { kind, orientation } = {}) {
  */
 export function normalize(spec) {
   return normalizeSpec(spec)
+}
+
+/**
+ * The field table of one type, the same text `antu_schema` serves. It is generated from the type's own
+ * descriptor (registry knowledge), so it cannot disagree with the validator.
+ * @param {string} [type]
+ * @returns {{ ok: true, text: string } | { ok: false, reason: string }} `reason` names the available types
+ */
+export function describe(type = 'fact') {
+  const k = knowledgeOf(type)
+  if (!k) return { ok: false, reason: unknownType(type) }
+  return { ok: true, text: k.describe() }
+}
+
+/** The wording used when the type asked for does not exist yet (the same as tools/mcp/engine.mjs) */
+function unknownType(type) {
+  const known = listKnowledgeTypes()
+  const list = known.map((t) => `${t.type} (${tEn(t.labelKey)})`).join(', ')
+  return `no reference material for type "${type}" yet. Available: ${list || '(none)'}.`
 }
 
 /** The types and their kinds, the first kind being the one a diagram opens in */

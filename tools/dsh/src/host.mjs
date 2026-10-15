@@ -1,25 +1,72 @@
 // ============================================================
 //  tools/dsh/src/host.mjs — Host apply for @zh-xx/antu-dsh
 //
-//  Registers native tools (antu_validate / antu_layout / antu_render) and an
+//  Registers native tools (antu_validate / antu_layout / antu_render), the three
+//  read-only reference tools (antu_schema / antu_guide / antu_examples) and an
 //  in-memory skill (antu-diagram). Built into package/index.js by build.mjs.
 // ============================================================
 
+import { createRequire } from 'node:module'
+import { dirname } from 'node:path'
+
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { validate, layout } from '@zh-xx/antu/validate'
+// A namespace import, not named imports: the installed `@zh-xx/antu` may be older than this plugin, and
+// `import { describe } …` against a package without that export fails at link time, taking all six tools
+// down with it. With a namespace, an old package still loads and only the field table reports itself.
+import * as antuValidate from '@zh-xx/antu/validate'
 import { renderHtml } from '@zh-xx/antu/html'
 
-import { sessionCwd, runValidate, runLayout, runRender, renderPresentation } from './tools.mjs'
+import { sessionCwd, runValidate, runLayout, runRender, renderPresentation, readGuide, listExamples, readExample } from './tools.mjs'
 import { SKILL } from './skill.mjs'
 
 /** Cordis service ids required to activate (skills are optional). */
 export const inject = ['tools']
 
+/**
+ * The root of the installed `@zh-xx/antu` package: the guides it ships under `spec/agent` and the
+ * examples it lists under `examples/agent`. Resolved when a lookup runs, so importing the plugin never
+ * depends on it being installed; a failure is reported as a tool result, not a crash.
+ */
+function antuPackageRoot() {
+  return dirname(createRequire(import.meta.url).resolve('@zh-xx/antu/package.json'))
+}
+
+/** Run a package-root lookup, turning "the package is missing" into the same `{ ok: false, reason }` shape. */
+function withPackageRoot(lookup) {
+  try {
+    return lookup(antuPackageRoot())
+  } catch (e) {
+    return { ok: false, reason: `could not find the \`@zh-xx/antu\` package: ${e.message}` }
+  }
+}
+
+/**
+ * The field table of one type, from whichever `@zh-xx/antu` is installed. `describe` was added after
+ * 0.14.0, so an older package (still fine for guides, examples, validation and layout) reports only
+ * this one lookup as unavailable instead of failing the whole plugin at import.
+ */
+export function describeFieldTable(antu, type = 'fact') {
+  if (typeof antu?.describe !== 'function') {
+    return {
+      ok: false,
+      reason:
+        'the installed `@zh-xx/antu` is too old for the field table (no `describe` export). Update `@zh-xx/antu`; antu_guide and antu_examples still work.',
+    }
+  }
+  return antu.describe(type)
+}
+
 const SPEC_PARAM = {
   type: 'json',
   required: true,
   description:
-    'The Antu JSON (envelope + content). See the antu-diagram skill and antu_validate before rendering.',
+    'The Antu JSON (envelope + content). See antu_schema, antu_guide and the antu-diagram skill before writing.',
+}
+
+const TYPE_PARAM = {
+  type: 'string',
+  description:
+    'Which diagram type: fact (timeline), procedure (flowchart), relationship (map) or justification (tree). Omit for fact.',
 }
 
 const KIND_PARAM = {
@@ -72,7 +119,7 @@ function registerTools(ctx) {
         },
       },
       async execute(args) {
-        return runValidate(args.spec, { validate })
+        return runValidate(args.spec, { validate: antuValidate.validate })
       },
     }),
   )
@@ -109,7 +156,7 @@ function registerTools(ctx) {
       },
       async execute(args) {
         return runLayout(args.spec, {
-          layout,
+          layout: antuValidate.layout,
           kind: args.kind,
           orientation: args.orientation,
         })
@@ -164,6 +211,115 @@ function registerTools(ctx) {
           theme: args.theme,
           cwd: sessionCwd(exec),
         })
+      },
+    }),
+  )
+
+  // ---------------------------------------------------------------
+  // Reference material: the field table, the mechanism notes, the examples
+  // ---------------------------------------------------------------
+  // The same three read-only lookups as the MCP server, so a model never has to search the filesystem
+  // for documentation. The package root is resolved from `@zh-xx/antu`, the dependency that ships both
+  // `spec/agent/<type>/guide.md` and `examples/agent/<type>/*.json`.
+  const TEXT_OUTPUT = {
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        ok: { type: 'boolean', required: true },
+        text: { type: 'string' },
+        reason: { type: 'string' },
+      },
+    },
+    render(_args, value) {
+      return textBlocks(value.ok ? value.text : value.reason)
+    },
+  }
+
+  ctx.tools.register(
+    defineTool({
+      name: 'antu_schema',
+      description:
+        'The field list of one diagram type: what is required, of what type, one line of explanation. Read this before writing JSON. Then call antu_guide (how the data becomes the picture) and antu_examples (how one is written). Cross-field rules are not in this table: call antu_validate after writing and it reports each one.',
+      parameters: { type: TYPE_PARAM },
+      output: TEXT_OUTPUT,
+      async execute(args) {
+        return describeFieldTable(antuValidate, args.type ?? 'fact')
+      },
+    }),
+  )
+
+  ctx.tools.register(
+    defineTool({
+      name: 'antu_guide',
+      description:
+        'One page on how the data becomes the picture for one type. Read it once before writing JSON; it saves a few rounds of validation. The field list is antu_schema, real examples to copy from are antu_examples.',
+      parameters: { type: TYPE_PARAM },
+      output: TEXT_OUTPUT,
+      async execute(args) {
+        return withPackageRoot((root) => readGuide(root, args.type ?? 'fact'))
+      },
+    }),
+  )
+
+  ctx.tools.register(
+    defineTool({
+      name: 'antu_examples',
+      description:
+        'List the small examples of one type, or fetch one in full. With no arguments you get the English examples (about 1 KB each, one idea each). A good first pass is: antu_schema for the fields, antu_guide for the mechanism, then fetch 1-minimal.en.json here to see how one is written. Pass file to fetch one; pass lang "zh-CN" to list the Chinese copies of the same examples.',
+      parameters: {
+        type: TYPE_PARAM,
+        file: {
+          type: 'string',
+          description:
+            'One example to fetch in full, e.g. `1-minimal.en.json` (a name antu_examples listed). Omit to list them.',
+        },
+        lang: {
+          type: 'string',
+          enum: ['en', 'zh-CN'],
+          description: 'Which language to list: `en` (default) or `zh-CN` (the paired Chinese copies).',
+        },
+      },
+      output: {
+        schema: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            ok: { type: 'boolean', required: true },
+            file: { type: 'string' },
+            text: { type: 'string' },
+            reason: { type: 'string' },
+            examples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  file: { type: 'string', required: true },
+                  title: { type: 'string', required: true },
+                },
+              },
+            },
+          },
+        },
+        render(_args, value) {
+          if (!value.ok) return textBlocks(value.reason)
+          if (typeof value.text === 'string') {
+            return textBlocks(`# ${value.file}\n\n\`\`\`json\n${value.text}\n\`\`\``)
+          }
+          const rows = value.examples.map((e) => `- ${e.file}\n    ${e.title}`)
+          return textBlocks(`Small examples (about 1 KB each, start with 1-minimal):\n\n${rows.join('\n')}`)
+        },
+      },
+      async execute(args) {
+        const type = args.type ?? 'fact'
+        if (args.file) {
+          return withPackageRoot((root) => {
+            const r = readExample(root, type, args.file)
+            return r.ok ? { ...r, file: args.file } : r
+          })
+        }
+        return withPackageRoot((root) => listExamples(root, type, args.lang ?? 'en'))
       },
     }),
   )

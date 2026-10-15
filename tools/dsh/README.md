@@ -67,6 +67,7 @@ DSH's plugin log does not include pnpm's error text.
 | Side | Capability |
 | --- | --- |
 | Host | Native tools `antu_validate`, `antu_layout`, `antu_render` (HTML under the session cwd) |
+| Host | Reference tools `antu_schema` (field table), `antu_guide` (mechanism notes), `antu_examples` (list or fetch one) — read from the installed `@zh-xx/antu` package, so no filesystem search is needed |
 | Host | Memory skill `antu-diagram` (teaches Host wire names, not the CLI) |
 | Client | `tool.call.toolview` for `antu_render` and `mcp__antu__antu_render` |
 | Client | Right-panel page `antu-diagram` (full embed, fullscreen); a click on the card opens it |

@@ -17,7 +17,7 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 | | Choice |
 | --- | --- |
 | Tool source | **Native Host tools** in the DSH process (`import` from `@zh-xx/antu/validate` and `/html`), not a configuration-only MCP bundle as the long-term path |
-| Wire tool names | `antu_validate`, `antu_layout`, `antu_render`, … (not `mcp__antu__…`). A chat card may also register the MCP names while a stopgap MCP row is still in use |
+| Wire tool names | `antu_validate`, `antu_layout`, `antu_render`, and the read-only reference tools `antu_schema`, `antu_guide`, `antu_examples`, … (not `mcp__antu__…`). A chat card may also register the MCP names while a stopgap MCP row is still in use |
 | `antu_render` | **Writes** a self-contained HTML file under the **session workspace** (absolute path). The card draws from the tool-call **arguments** (`spec`); the file is for archive, forward, and `openFile` |
 | Chat card | **The picture only**: the whole diagram fitted into the card (`mount()` with `cardUi`), no title row, no buttons. A click anywhere on it opens the full view. The wheel goes on to the conversation. Decided 2026-10-15 after a mock-up: opening at a readable text size showed too little of a diagram to be worth it |
 | Full view | A page `antu-diagram` in DSH's right panel, presented **fullscreen** (the panel's own fullscreen mode covers the window), with the full chrome: kind, theme, detail cards, export, and **Open HTML** |
@@ -52,7 +52,7 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 
 ### P2 — `@zh-xx/antu-dsh` 0.x first publish — in tree
 
-- Host: `antu_validate`, `antu_layout`, `antu_render` (in-process; HTML under session cwd).
+- Host: `antu_validate`, `antu_layout`, `antu_render` (in-process; HTML under session cwd) and the read-only reference tools `antu_schema`, `antu_guide`, `antu_examples` (field table, mechanism notes, examples from the installed `@zh-xx/antu`).
 - Client: small entry + lazy-loaded embed chunk; `tool.call.toolview` for `antu_render` (and MCP name if needed).
 - Client needs **DSH ≥ 0.2.0-rc.2** (`require.async` for package-local `client.embed.js`). On 0.1.x the card
   shows an upgrade message instead of crashing the slot.
