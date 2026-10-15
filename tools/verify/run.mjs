@@ -827,7 +827,11 @@ async function downloadHelpers(browser) {
     let file = null
     for (let i = 0; i < 40 && !file; i++) {
       await new Promise((r) => setTimeout(r, 250))
-      file = readdirSync(dir).find((f) => f.endsWith('.png')) ?? null
+      const landed = readdirSync(dir).filter((f) => !f.endsWith('.crdownload'))
+      // A Chromium headless build renames a suggested file name that is not ASCII to a bare `download`
+      // (the examples carry `·` or a Chinese title); the bytes are the PNG this checks. The name itself is
+      // unit-tested in test/exportPng.test.mjs.
+      file = landed.find((f) => f.endsWith('.png')) ?? landed.find((f) => f === 'download' || f.startsWith('download (')) ?? null
     }
     if (!file) {
       bad(`${hint}: export was clicked but no file landed on disk`)
