@@ -65,7 +65,7 @@ shadow root 是开放的，正为此。
 | `kinds` | 该类型的全部 | 读者可选的画法；只给一种就等于锁定。其中有不属于该类型的画法，或 `kind` 不在列表里，`mount` 抛错。（`update` 换成另一类型的 spec 后，不属于它的 `kind`、`kinds` 不再生效，图以它的第一种画法打开） |
 | `theme` | `document` | 打开时的主题：`document`、`modern`、`legal`（`spec/theme.md`）。读者仍可切换，除非去掉了标签卡 |
 | `lang` | 浏览器的 | `zh` 或 `en`：页面自身文字的语言。案件内容不翻译 |
-| `ui` | 全部 `true` | `{ header, capsule, minimap, zoom }`：去掉页面上的哪些部件（左上角标签卡、底部控制胶囊、缩略图、缩放按钮） |
+| `ui` | 全部 `true` | `{ header, capsule, minimap, zoom, panOnScroll, panOnDrag }`：去掉页面上的哪些部件（左上角标签卡、底部控制胶囊、缩略图、缩放按钮）。`panOnScroll: false` 时滚轮不再平移图，宿主页面（如聊天卡片）仍可滚动；`panOnDrag: false` 时按住拖拽不再平移；捏合缩放仍可用。聊天卡片请优先展开 [`cardUi`](#卡片-ui) |
 | `prefs` | `'none'` | 读者的选择（画法、字段、方向……）存在哪：`'none'` 只在挂载期间保留；`'local'` 存进 viewer 页面的 `localStorage` 键（`antu.prefs`）；或宿主自己的存储 `{ read(): object, write(patch) }` |
 | `initial` | 无 | 打开时的样子，先于读者保存的选择：`{ headerFolded }`（标签卡折叠成一行，或展开）。打开时它压过保存的选择，与 `theme` 相同；之后读者仍可改，改动按 `prefs` 保存。键不在其中、或值不是布尔值，`mount` 抛错 |
 | `onEvent` | 无 | `(event) => void`；处理函数抛错只会打印在控制台，不影响图 |
@@ -90,6 +90,24 @@ shadow root 是开放的，正为此。
 `select`、`focus`、`highlight` 接收 spec 里的 id，即 `select` 事件报告的那些 id。它们在画布上的找法与事件反向一致：
 流程图的规则是规则表里的一行；一个视图里画了多次的条目（关系路径、论证树里的副本）任一副本都算；`focus` 移到第一个，
 `highlight` 全部标出。
+
+### 卡片 UI
+
+画在聊天消息里的图（DeepSeek Harness 等）不应带上整页外壳，也不能抢走对话的滚动。导出 `cardUi` 并展开：
+
+```js
+import { mount, cardUi } from '@zh-xx/antu/embed'
+
+mount(el, spec, {
+  lang: 'zh',
+  ui: { ...cardUi },
+  // 宿主侧按钮调用 setKind / setTheme / fitView
+})
+```
+
+`cardUi` 为 `{ header: false, capsule: false, minimap: false, zoom: false, panOnScroll: false }`（冻结）。
+宿主用自己的主题 token 画法/主题控件；图仍用案图的主题（默认 `document`）。见
+[dsh-plugin.zh-CN.md](dsh-plugin.zh-CN.md)。
 
 ### 事件
 

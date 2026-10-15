@@ -321,6 +321,9 @@ export default function Canvas({
   const showZoom = useUi('zoom')
   const showMinimap = useUi('minimap')
   const showCapsule = useUi('capsule')
+  // Wheel / drag pan the diagram unless the host turns them off (a chat card: the conversation must still scroll)
+  const panOnScroll = useUi('panOnScroll')
+  const panOnDrag = useUi('panOnDrag')
 
   // Where the capsule goes on this width, and whether the minimap gives way to it (shell/dockPlace.js)
   const [dock, setDock] = useState({ left: null, maxWidth: null, hideMinimap: false })
@@ -385,15 +388,19 @@ export default function Canvas({
         edgesFocusable={false}
         // Both trackpad and mouse should feel right, following the usual convention
         // "scroll = pan, with a modifier = zoom":
-        //   two-finger swipe / wheel         → pan (panOnScroll)
+        //   two-finger swipe / wheel         → pan (panOnScroll), unless the host set ui.panOnScroll false
         //   pinch / Ctrl(Cmd)+wheel          → zoom (zoomOnPinch, a path independent of the wheel)
-        //   press and drag                   → pan
-        panOnScroll
+        //   press and drag                   → pan (unless ui.panOnDrag is false)
+        // When panOnScroll is off, zoomOnScroll stays off so the wheel reaches the page (a chat card).
+        // preventScrolling must follow: xyflow's zoom-on-scroll handler still calls preventDefault on
+        // plain wheel events unless it is false, which would block the host page from scrolling.
+        panOnScroll={panOnScroll}
         panOnScrollMode="free"
         panOnScrollSpeed={1}
+        preventScrolling={panOnScroll}
         zoomOnScroll={false}
         zoomOnPinch
-        panOnDrag
+        panOnDrag={panOnDrag}
         translateExtent={translateExtent}
         onInit={(inst) => {
           rfRef.current = inst

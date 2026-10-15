@@ -45,11 +45,41 @@ export default [
 
   // Node 侧：构建脚本与 MCP 服务端
   {
-    files: ['tools/**/*.mjs', 'site/**/*.mjs', '*.config.js'],
+    files: ['tools/**/*.{mjs,js}', 'site/**/*.mjs', 'test/**/*.mjs', '*.config.js'],
+    ignores: ['tools/dsh/src/client.js', 'tools/dsh/package/**'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: { ...globals.node },
+    },
+    rules: RULES,
+  },
+
+  // DSH Client ModuleLoader entry (browser; React comes from the host module table).
+  // The helpers of card-model.mjs and require-async.mjs are inlined into it by tools/dsh/build.mjs.
+  {
+    files: ['tools/dsh/src/client.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        THEMES: 'readonly',
+        parseArgsRaw: 'readonly',
+        argsRawOf: 'readonly',
+        resultPath: 'readonly',
+        renderFailure: 'readonly',
+        statusOf: 'readonly',
+        knownKinds: 'readonly',
+        pickOpening: 'readonly',
+        mountOptions: 'readonly',
+        titleOf: 'readonly',
+        ANTU_DIAGRAMS_KIND: 'readonly',
+        antuDiagramsDefinition: 'readonly',
+        beginLoadEmbed: 'readonly',
+        resolveRequireAsync: 'readonly',
+        assertEmbedExports: 'readonly',
+      },
     },
     rules: RULES,
   },
@@ -86,6 +116,22 @@ export default [
 
   {
     // skills/ is generated (tools/build-skill.mjs); its scripts/antu.mjs is one bundled file
-    ignores: ['dist/**', 'dist-engine/**', 'dist-embed/**', 'dist-api/**', 'dist-cli/**', 'dist-mcp/**', 'dist-npm/**', 'dist-html/**', 'skills/**', 'node_modules/**'],
+    ignores: [
+      'dist/**',
+      'dist-engine/**',
+      'dist-embed/**',
+      'dist-api/**',
+      'dist-cli/**',
+      'dist-mcp/**',
+      'dist-npm/**',
+      'dist-html/**',
+      'skills/**',
+      'node_modules/**',
+      'tools/dsh/package/index.js',
+      'tools/dsh/package/client.js',
+      'tools/dsh/package/client.embed.js',
+      'tools/dsh/package/lib/**',
+      '**/client.embed.js',
+    ],
   },
 ]

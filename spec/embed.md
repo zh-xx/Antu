@@ -71,7 +71,7 @@ What is drawn lives in the element's **shadow root**, not among its children: `e
 | `kinds` | all of the type's | the kinds the reader may pick from; one fixes the kind. A name in it that is not a kind of the type, or a `kind` not in it, makes `mount` throw. (After `update` to a spec of another type, a `kind` and `kinds` that are not its own are let go, and it opens in its first kind) |
 | `theme` | `document` | the theme it opens in: `document`, `modern`, `legal` (`spec/theme.md`). The reader can still switch, unless the label card is left out |
 | `lang` | the browser's | `zh` or `en`: the language of the page's own words. The case is never translated |
-| `ui` | all `true` | `{ header, capsule, minimap, zoom }`: pieces of the page's chrome to leave out (the label card at the top left, the control capsule at the bottom, the minimap, the zoom buttons) |
+| `ui` | all `true` | `{ header, capsule, minimap, zoom, panOnScroll, panOnDrag }`: pieces of the page's chrome to leave out (the label card at the top left, the control capsule at the bottom, the minimap, the zoom buttons). `panOnScroll: false` stops the wheel from panning the diagram so a host page (a chat card) can still scroll; `panOnDrag: false` stops press-and-drag from panning; pinch-zoom stays on. For a chat card, prefer spreading [`cardUi`](#card-ui) |
 | `prefs` | `'none'` | where the reader's choices (kind, fields, orientation …) are kept: `'none'` while mounted only; `'local'` in the viewer page's `localStorage` key (`antu.prefs`); or the host's store `{ read(): object, write(patch) }` |
 | `initial` | none | how it opens, ahead of the reader's stored choices: `{ headerFolded }` (the label card folded to one line, or unfolded). It wins over a stored choice when the diagram opens, as `theme` does; after that the reader can change it and the choice is kept as `prefs` says. A key that is not one of these, or a value that is not a boolean, makes `mount` throw |
 | `onEvent` | none | `(event) => void`; a handler that throws is reported on the console and does not stop the diagram |
@@ -98,6 +98,25 @@ A call made right after `mount`, before the diagram is drawn, is kept and carrie
 on the canvas the way those events name them back: a rule of the flowchart is a row of its rule table, and an
 item a view draws more than once (a relation path, a copy in the justification tree) is found by any of its
 copies; `focus` goes to the first, `highlight` rings them all.
+
+### Card UI
+
+A diagram inside a chat message (DeepSeek Harness and the like) should not bring the full page chrome, and
+must not steal the conversation's scroll. Export `cardUi` and spread it:
+
+```js
+import { mount, cardUi } from '@zh-xx/antu/embed'
+
+mount(el, spec, {
+  lang: 'zh',
+  ui: { ...cardUi },
+  // host-side buttons call setKind / setTheme / fitView
+})
+```
+
+`cardUi` is `{ header: false, capsule: false, minimap: false, zoom: false, panOnScroll: false }` (frozen).
+The host draws its own kind/theme controls with its theme tokens; the diagram keeps Antu's themes
+(default `document`). See [dsh-plugin.md](dsh-plugin.md).
 
 ### Events
 

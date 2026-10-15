@@ -1,0 +1,8 @@
+# Build output of npm run build:dsh (spec/dsh-plugin.md: not committed).
+package/index.js
+package/client.js
+package/client.embed.js
+package/lib/
+package/dist/
+*.tgz
+.pack-*/

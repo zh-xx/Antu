@@ -132,7 +132,7 @@ export const usePrefs = () => useContext(EnvContext).prefs
 /** How this page was asked to open (a screenshot, `render --kind`); null when embedded */
 export const usePreset = () => useContext(EnvContext).preset
 
-/** Whether a piece of the page's chrome shows: on unless the host turned it off */
+/** Whether a piece of the page's chrome (or a canvas behaviour such as `panOnScroll`) is on: on unless the host turned it off */
 export const useUi = (name) => useContext(EnvContext).ui?.[name] !== false
 
 /**
