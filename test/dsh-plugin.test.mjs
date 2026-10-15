@@ -10,7 +10,6 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 import {
-  parseArgsRaw,
   resolveOutPath,
   runLayout,
   runRender,
@@ -18,6 +17,17 @@ import {
   sessionCwd,
   slugify,
 } from '../tools/dsh/src/tools.mjs'
+import {
+  THEMES,
+  argsRawOf,
+  knownKinds,
+  mountOptions,
+  parseArgsRaw,
+  pickOpening,
+  resultPath,
+  statusOf,
+  titleOf,
+} from '../tools/dsh/src/card-model.mjs'
 import {
   assertEmbedExports,
   beginLoadEmbed,
@@ -74,6 +84,13 @@ test('slugify and resolveOutPath stay under the session cwd', () => {
     // Symlinked parent directory pointing outside
     symlinkSync(outside, join(ws, 'linkdir'))
     assert.throws(() => resolveOutPath('linkdir/via.html', 'x', ws), /must stay under/)
+    // A link loop is refused, not a stack overflow
+    symlinkSync(join(ws, 'loop-b.html'), join(ws, 'loop-a.html'))
+    symlinkSync(join(ws, 'loop-a.html'), join(ws, 'loop-b.html'))
+    symlinkSync(join(ws, 'self.html'), join(ws, 'self.html'))
+    for (const name of ['loop-a.html', 'loop-b.html', 'self.html']) {
+      assert.throws(() => resolveOutPath(name, 'x', ws), /too many levels of symbolic links/)
+    }
     // Absolute outPath inside the (possibly non-realpath) cwd still accepted
     const absInside = join(ws, 'abs2.html')
     assert.equal(resolveOutPath(absInside, 'x', ws), absInside)
@@ -91,6 +108,51 @@ test('parseArgsRaw tolerates truncated JSON', () => {
   assert.deepEqual(parseArgsRaw('{"a":1}'), { a: 1 })
   assert.equal(parseArgsRaw('{"a":'), null)
   assert.equal(parseArgsRaw(''), null)
+})
+
+test('card model: where the call arguments, the written file and the status come from', () => {
+  assert.equal(argsRawOf(null), null)
+  assert.equal(argsRawOf({ phase: 'start', argsRaw: '{"spec":1}' }), '{"spec":1}')
+  assert.equal(argsRawOf({ phase: 'preparing', argsRaw: '{' }), null)
+  assert.equal(argsRawOf({ kind: 'result', call: { argsRaw: '{"a":1}' } }), '{"a":1}')
+
+  assert.equal(resultPath({ kind: 'result', meta: { path: '/w/a.html' } }), '/w/a.html')
+  assert.equal(
+    resultPath({ kind: 'result', content: [{ type: 'text', text: 'Written: /w/b.html\nSize: 1 KB' }] }),
+    '/w/b.html',
+  )
+  assert.equal(resultPath({ kind: 'result', isError: true, meta: { path: '/w/a.html' } }), null)
+  assert.equal(resultPath({ phase: 'start' }), null)
+
+  assert.equal(statusOf('preparing'), 'preparing')
+  assert.equal(statusOf('start'), 'running')
+  assert.equal(statusOf('end', { isError: true }), 'error')
+  assert.equal(statusOf('end', { error: { code: 'interrupted' } }), 'stopped')
+  assert.equal(statusOf('end', {}), 'ok')
+
+  assert.equal(titleOf({ title: '  案情  ' }, 'Antu'), '案情')
+  assert.equal(titleOf({ title: ' ' }, 'Antu'), 'Antu')
+  assert.equal(titleOf(null, 'Antu (MCP)'), 'Antu (MCP)')
+})
+
+test('card model: a diagram opens as asked only when the kind and theme exist', () => {
+  const embed = { kindsOf: (type) => (type === 'fact' ? ['timeline', 'chronicle', 'scale'] : []) }
+  const known = knownKinds(embed, { type: 'fact' })
+  assert.deepEqual(known, ['timeline', 'chronicle', 'scale'])
+  assert.deepEqual(knownKinds(embed, { type: 'nope' }), [])
+  assert.deepEqual(knownKinds(embed, { type: 7 }), [])
+  assert.deepEqual(knownKinds(null, { type: 'fact' }), [])
+  assert.deepEqual(knownKinds({ kindsOf() { throw new Error('boom') } }, { type: 'fact' }), [])
+
+  // Asked for and valid
+  assert.deepEqual(pickOpening(known, 'scale', 'legal'), { mountKind: 'scale', mountTheme: 'legal', activeKind: 'scale' })
+  // Not valid: mount with the engine's default, highlight the type's first kind
+  assert.deepEqual(pickOpening(known, 'bogus', 'neon'), { mountKind: null, mountTheme: null, activeKind: 'timeline' })
+  assert.deepEqual(pickOpening([], undefined, undefined), { mountKind: null, mountTheme: null, activeKind: null })
+  assert.deepEqual(THEMES, ['document', 'modern', 'legal'])
+
+  assert.deepEqual(mountOptions({ mountKind: 'scale', mountTheme: null }, { zoom: false }), { kind: 'scale', ui: { zoom: false } })
+  assert.deepEqual(mountOptions({ mountKind: null, mountTheme: 'modern' }), { theme: 'modern' })
 })
 
 test('runValidate / runLayout / runRender against the real engine API', () => {
@@ -234,7 +296,10 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(client, /≥ 0\.2\.0-rc\.2/)
   assert.match(client, /loadEmbed\(require\)/)
   assert.doesNotMatch(client, /loadEmbed\(require\.async\)/)
-  assert.doesNotMatch(client, /@@INJECT_REQUIRE_ASYNC@@/)
+  assert.doesNotMatch(client, /@@INJECT_/)
+  // card-model.mjs is inlined too
+  assert.match(client, /function pickOpening/)
+  assert.match(client, /function parseArgsRaw/)
   assert.ok(existsSync(join(pkgDir, 'lib', 'require-async.mjs')))
 
   const chunk = readFileSync(join(pkgDir, 'client.embed.js'), 'utf8')
@@ -351,4 +416,201 @@ test('Host apply registers three tools and the skill on a stub Cordis context', 
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+})
+
+// ---- The built Client, run for real in a tiny hooks runtime (no browser, no DSH) ----
+
+/** Just enough React to run a function component with hooks: state, refs, memo, effects, re-render until stable */
+function miniReact() {
+  let cur = null
+  const slot = (make) => {
+    const i = cur.i++
+    if (!(i in cur.slots)) cur.slots[i] = make()
+    return cur.slots[i]
+  }
+  const sameDeps = (a, b) => a && b && a.length === b.length && a.every((x, k) => Object.is(x, b[k]))
+  const effect = (fn, deps) => {
+    const s = slot(() => ({ deps: null, cleanup: null, ran: false }))
+    cur.effects.push({ s, fn, deps })
+  }
+  const React = {
+    createElement: (type, props, ...children) => ({ type, props: props || {}, children: children.flat() }),
+    useRef: (v) => slot(() => ({ current: v })),
+    useState: (init) => {
+      const s = slot(() => ({ v: typeof init === 'function' ? init() : init }))
+      const owner = cur
+      return [s.v, (nv) => { s.v = typeof nv === 'function' ? nv(s.v) : nv; owner.dirty = true }]
+    },
+    useMemo: (fn, deps) => {
+      const s = slot(() => ({ deps: null, v: undefined }))
+      if (!sameDeps(s.deps, deps)) { s.v = fn(); s.deps = deps }
+      return s.v
+    },
+    useEffect: effect,
+    useLayoutEffect: effect,
+  }
+  /** Mount a component; `props` can be replaced with update(). `flush()` lets promises settle and re-renders */
+  function mount(Component, props) {
+    const inst = { slots: [], i: 0, effects: [], dirty: false, tree: null }
+    const run = () => {
+      for (let n = 0; n < 12; n += 1) {
+        inst.i = 0
+        inst.effects = []
+        inst.dirty = false
+        cur = inst
+        inst.tree = Component(props)
+        cur = null
+        // commit: refs get a stand-in element
+        const walk = (node) => {
+          if (!node || typeof node !== 'object') return
+          if (node.props?.ref) node.props.ref.current = inst.el
+          for (const c of node.children || []) walk(c)
+        }
+        walk(inst.tree)
+        for (const { s, fn, deps } of inst.effects) {
+          if (s.ran && sameDeps(s.deps, deps)) continue
+          if (s.cleanup) s.cleanup()
+          s.cleanup = fn() || null
+          s.deps = deps
+          s.ran = true
+        }
+        if (!inst.dirty) return
+      }
+      throw new Error('component did not settle')
+    }
+    inst.el = { replaceChildren() {} }
+    run()
+    return {
+      tree: () => inst.tree,
+      async flush() { await new Promise((r) => setTimeout(r, 0)); run() },
+      update(next) { props = next; run() },
+      rerender: run,
+    }
+  }
+  return { React, mount }
+}
+
+const textOf = (node) => (node && typeof node === 'object' ? (node.children || []).map(textOf).join('') : node == null || node === false ? '' : String(node))
+const findAll = (node, pred, out = []) => {
+  if (!node || typeof node !== 'object') return out
+  if (pred(node)) out.push(node)
+  for (const c of node.children || []) findAll(c, pred, out)
+  return out
+}
+const buttonLabelled = (tree, label) => findAll(tree, (n) => n.type === 'button' && textOf(n) === label)[0]
+
+/** Load the built package/client.js; return the registered chat card component */
+function loadBuiltCard({ requireAsync }) {
+  const { React, mount } = miniReact()
+  let def
+  new Function('window', readFileSync(join(pkgDir, 'client.js'), 'utf8'))({ __ModuleLoader__: { load: (d) => { def = d } } })
+  const req = (id) => { assert.equal(id, 'react'); return React }
+  if (requireAsync) req.async = requireAsync
+  const registered = {}
+  def.factory(req).apply({
+    slots: { inject: (_n, fn) => fn(), register: ({ key }, comp) => { registered[key] = comp } },
+    inject() { /* no right sidebar in this run */ },
+  })
+  return { Card: registered.antu_render, McpCard: registered.mcp__antu__antu_render, mount }
+}
+
+function fakeEmbed({ failMount } = {}) {
+  const calls = { mount: [], destroyed: 0, kinds: [], themes: [] }
+  const embed = {
+    cardUi: { panOnScroll: false, header: false },
+    kindsOf: (type) => (type === 'fact' ? ['timeline', 'chronicle', 'scale'] : []),
+    mount(el, spec, options) {
+      calls.mount.push({ spec, options })
+      if (failMount) throw new Error('mount refused')
+      return {
+        destroy() { calls.destroyed += 1 },
+        setKind(k) { calls.kinds.push(k); return k !== 'scale-not-allowed' },
+        setTheme(t) { calls.themes.push(t); return true },
+      }
+    },
+  }
+  return { embed, calls }
+}
+
+const callBlock = (args, extra = {}) => ({ kind: 'result', call: { argsRaw: JSON.stringify(args) }, meta: { path: '/w/a.html' }, ...extra })
+
+test('built client card: opens as asked, switches kind and theme, remounts on new arguments', async () => {
+  if (!existsSync(join(pkgDir, 'client.js'))) {
+    const r = spawnSync(process.execPath, ['tools/dsh/build.mjs'], { cwd: process.cwd(), encoding: 'utf8' })
+    assert.equal(r.status, 0, r.stderr || r.stdout)
+  }
+  const { embed, calls } = fakeEmbed()
+  const { Card, McpCard, mount } = loadBuiltCard({ requireAsync: async () => embed })
+  assert.equal(typeof Card, 'function')
+  assert.equal(McpCard, Card, 'the stopgap MCP wire name shows the same card')
+
+  const spec = { type: 'fact', title: '案情' }
+  const opened = []
+  const view = mount(Card, {
+    phase: 'end',
+    toolName: 'antu_render',
+    openFile: (p) => opened.push(p),
+    block: callBlock({ spec, kind: 'scale', theme: 'legal' }),
+  })
+  await view.flush()
+
+  // Mounted once, with the asked-for kind and theme and the quiet chrome of cardUi
+  assert.equal(calls.mount.length, 1)
+  assert.deepEqual(calls.mount[0].options, { kind: 'scale', theme: 'legal', ui: embed.cardUi })
+  assert.deepEqual(calls.mount[0].spec, spec)
+  const active = (label) => String(buttonLabelled(view.tree(), label).props.className).includes('antuDsh_btnActive')
+  assert.equal(active('scale'), true)
+  assert.equal(active('timeline'), false)
+  assert.equal(active('legal'), true)
+
+  // A kind button changes the diagram and the highlight; a refused kind changes neither
+  buttonLabelled(view.tree(), 'chronicle').props.onClick()
+  view.rerender()
+  assert.deepEqual(calls.kinds, ['chronicle'])
+  assert.equal(active('chronicle'), true)
+  assert.equal(active('scale'), false)
+  buttonLabelled(view.tree(), 'modern').props.onClick()
+  view.rerender()
+  assert.deepEqual(calls.themes, ['modern'])
+  assert.equal(active('modern'), true)
+
+  // Open HTML hands the written path to DSH
+  buttonLabelled(view.tree(), 'Open HTML').props.onClick()
+  assert.deepEqual(opened, ['/w/a.html'])
+
+  // New arguments: the old mount is destroyed, then the diagram is mounted again (never "already mounted")
+  view.update({
+    phase: 'end', toolName: 'antu_render', openFile() {},
+    block: callBlock({ spec: { type: 'fact', title: '二稿' }, kind: 'bogus', theme: 'neon' }),
+  })
+  assert.equal(calls.destroyed, 1)
+  assert.equal(calls.mount.length, 2)
+  // An unknown kind or theme is not passed on; the first kind of the type is highlighted
+  assert.deepEqual(calls.mount[1].options, { ui: embed.cardUi })
+  assert.equal(active('timeline'), true)
+})
+
+test('built client card: says what is wrong instead of crashing (mount fails, truncated arguments, DSH 0.1.x)', async () => {
+  // The engine refuses the spec: the card keeps its mount host and shows the reason
+  const bad = fakeEmbed({ failMount: true })
+  const a = loadBuiltCard({ requireAsync: async () => bad.embed })
+  const refused = a.mount(a.Card, { phase: 'end', toolName: 'antu_render', block: callBlock({ spec: { type: 'fact' } }) })
+  await refused.flush()
+  const fallback = findAll(refused.tree(), (n) => String(n.props?.className || '').includes('antuDsh_fallback'))[0]
+  assert.match(textOf(fallback), /mount refused/)
+  assert.ok(findAll(refused.tree(), (n) => String(n.props?.className || '') === 'antuDsh_canvas')[0], 'the mount host stays in the tree')
+
+  // Arguments cut off while the model is still writing them
+  const ok = fakeEmbed()
+  const b = loadBuiltCard({ requireAsync: async () => ok.embed })
+  const partial = b.mount(b.Card, { phase: 'start', toolName: 'antu_render', block: { phase: 'start', argsRaw: '{"spec":{"type":' } })
+  await partial.flush()
+  assert.equal(ok.calls.mount.length, 0)
+  assert.match(textOf(partial.tree()), /Could not parse tool arguments/)
+
+  // DSH 0.1.x has no require.async: a clear message, no throw
+  const c = loadBuiltCard({ requireAsync: undefined })
+  const old = c.mount(c.Card, { phase: 'end', toolName: 'antu_render', block: callBlock({ spec: { type: 'fact' } }) })
+  await old.flush()
+  assert.match(textOf(old.tree()), /≥ 0\.2\.0-rc\.2/)
 })

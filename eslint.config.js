@@ -56,7 +56,7 @@ export default [
   },
 
   // DSH Client ModuleLoader entry (browser; React comes from the host module table).
-  // beginLoadEmbed / friends are inlined from require-async.mjs by tools/dsh/build.mjs.
+  // The helpers of card-model.mjs and require-async.mjs are inlined into it by tools/dsh/build.mjs.
   {
     files: ['tools/dsh/src/client.js'],
     languageOptions: {
@@ -64,6 +64,15 @@ export default [
       sourceType: 'module',
       globals: {
         ...globals.browser,
+        THEMES: 'readonly',
+        parseArgsRaw: 'readonly',
+        argsRawOf: 'readonly',
+        resultPath: 'readonly',
+        statusOf: 'readonly',
+        knownKinds: 'readonly',
+        pickOpening: 'readonly',
+        mountOptions: 'readonly',
+        titleOf: 'readonly',
         beginLoadEmbed: 'readonly',
         resolveRequireAsync: 'readonly',
         assertEmbedExports: 'readonly',

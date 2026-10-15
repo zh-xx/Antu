@@ -61,6 +61,28 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 - Install: `npm run build:dsh` also packs `zh-xx-antu-dsh-*.tgz` (preferred over a bare `package/` link).
 - CI: `test/dsh-plugin.test.mjs` (helpers, manifest, `build.mjs`, Host `apply` smoke). Trusted publisher / npm publish still open.
 
+### P2.x — make it dependable, then publish (next, in this order)
+
+1. **Stabilise (in tree).** The Client's pure logic lives in `tools/dsh/src/card-model.mjs` (arguments, status, which kinds, how a
+   diagram opens) and is unit-tested; `client.js` only wires React and DSH slots and gets those helpers inlined by `build:dsh`.
+   Symlink loops in `outPath` are refused.
+2. **Card check without DSH.** A browser check under `tools/verify/` loads the built `client.js` and `client.embed.js` into a stub
+   `__ModuleLoader__` with a real React, feeds it `antu_render` blocks (valid, truncated, wrong kind, 0.1.x-shaped `require`), and
+   asserts: the card mounts, kind and theme buttons switch, a changed `argsRaw` remounts without "already mounted", a wheel over the
+   card is not cancelled, the highlighted button follows the view. It covers the card and tab, not DSH itself.
+3. **Real DSH, by version.** Run the P2 acceptance on `0.2.0-rc.2` and on the newest `0.2.x` alpha, from the tarball, and write the
+   result (DSH version, model, what worked) in `tools/dsh/README.md`. `0.1.x` is Host-tools-only by design. A packaged file that reads
+   the profile's DSH version and says "card unavailable" without a stack trace is the supported behaviour there.
+4. **The card in Chinese.** The card's words ("Enlarge", "Open HTML", "Rendering…") are English only. The conversation passes the card a
+   locale seat (`t`, namespace `conversation`); how a plugin adds its own dictionary is to be read from the DSH sources first. Until
+   then the words stay English rather than guessed.
+5. **Publish.** `@zh-xx/antu-dsh` is `private` today. Needs the maintainer: an npm account or trusted publisher and the package name;
+   the Release workflow gains "build, test, pack, attach the tarball, publish" (same flow as `@zh-xx/antu`); a minor release number
+   confirmed by the maintainer. Peer ranges for `@deepseek-ai/*` are reviewed against what step 3 found. Nothing is published before
+   step 3 has passed on a real DSH.
+
+Not planned here: a hosted service, a second package for another host, a chat-side editor for the JSON.
+
 ### P3 — later, if wanted
 
 - Sidebar tab that rebuilds from the session log (resource type or Host projection + `wire.view`), not only from the latest Enlarge params.

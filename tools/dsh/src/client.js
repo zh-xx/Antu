@@ -14,46 +14,10 @@ window.__ModuleLoader__.load({
     const { useEffect, useLayoutEffect, useMemo, useRef, useState } = React
 
     const WIRE_NAMES = ['antu_render', 'mcp__antu__antu_render']
-    const THEMES = ['document', 'modern', 'legal']
     const TAB_ID = '@zh-xx/antu-dsh'
     const TAB_KIND = 'antu-diagram'
     /** Filled when sidebar-right is available; Enlarge no-ops until then. */
     const enlargeApi = { open: null }
-
-    function parseArgsRaw(argsRaw) {
-      if (typeof argsRaw !== 'string' || !argsRaw.trim()) return null
-      try {
-        return JSON.parse(argsRaw)
-      } catch {
-        return null
-      }
-    }
-
-    function argsRawOf(block) {
-      if (!block) return null
-      if ('kind' in block) return block.call?.argsRaw ?? null
-      if (block.phase === 'start') return block.argsRaw ?? null
-      return null
-    }
-
-    function resultPath(block) {
-      if (!block || !('kind' in block) || block.isError) return null
-      const meta = block.meta
-      if (meta && typeof meta === 'object' && typeof meta.path === 'string') return meta.path
-      const text = Array.isArray(block.content)
-        ? block.content.map((c) => (c && c.type === 'text' ? c.text : '')).join('\n')
-        : ''
-      const m = text.match(/^Written:\s*(.+)$/m)
-      return m ? m[1].trim() : null
-    }
-
-    function statusOf(phase, block) {
-      if (phase === 'preparing') return 'preparing'
-      if (phase === 'start') return 'running'
-      if (block?.isError) return 'error'
-      if (block?.error?.code === 'interrupted') return 'stopped'
-      return 'ok'
-    }
 
     function destroyHandle(handle) {
       if (!handle) return
@@ -64,7 +28,9 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // Inlined from require-async.mjs by build.mjs (do not edit the marker body by hand).
+    // Inlined by build.mjs (do not edit the marker bodies by hand): card-model.mjs, then require-async.mjs.
+    /*@@INJECT_CARD_MODEL@@*/
+
     /*@@INJECT_REQUIRE_ASYNC@@*/
 
     /** Lazy promise for the ModuleLoader embed chunk (mount + cardUi + kindsOf). */
@@ -73,32 +39,42 @@ window.__ModuleLoader__.load({
       return beginLoadEmbed(requireFn, embedPromiseCache)
     }
 
-    /** Full-size diagram in the right Sidebar (no cardUi chrome reduction). */
-    function AntuSidebarBody({ useTabInfo }) {
-      const hostRef = useRef(null)
-      const handleRef = useRef(null)
-      const [embed, setEmbed] = useState(null)
-      const [embedError, setEmbedError] = useState(null)
-      const { tab } = useTabInfo()
-      const params = tab?.navigation?.params && typeof tab.navigation.params === 'object' ? tab.navigation.params : {}
-      const spec = params.spec && typeof params.spec === 'object' ? params.spec : null
-      const paramKind = typeof params.kind === 'string' ? params.kind : null
-      const paramTheme = typeof params.theme === 'string' ? params.theme : null
-      const revision = tab?.navigation?.revision
-
+    /** The embed API once its chunk has loaded, or why it could not (e.g. DSH older than 0.2.0-rc.2) */
+    function useEmbed() {
+      const [state, setState] = useState({ embed: null, loadError: null })
       useEffect(() => {
         let cancelled = false
         loadEmbed(require)
-          .then((mod) => {
-            if (!cancelled) setEmbed(mod)
+          .then((embed) => {
+            if (!cancelled) setState({ embed, loadError: null })
           })
           .catch((err) => {
-            if (!cancelled) setEmbedError(err?.message || String(err))
+            if (!cancelled) setState({ embed: null, loadError: err?.message || String(err) })
           })
         return () => {
           cancelled = true
         }
       }, [])
+      return state
+    }
+
+    /** Mount `spec` into `el` as asked (kind and theme are checked); `ui` is the chat card's quiet chrome */
+    function mountDiagram(embed, el, spec, wantKind, wantTheme, ui) {
+      const opening = pickOpening(knownKinds(embed, spec), wantKind, wantTheme)
+      return { handle: embed.mount(el, spec, mountOptions(opening, ui)), opening }
+    }
+
+    /** Full-size diagram in the right Sidebar (no cardUi chrome reduction). */
+    function AntuSidebarBody({ useTabInfo }) {
+      const hostRef = useRef(null)
+      const handleRef = useRef(null)
+      const { embed, loadError } = useEmbed()
+      const [mountError, setMountError] = useState(null)
+      const { tab } = useTabInfo()
+      const params = tab?.navigation?.params && typeof tab.navigation.params === 'object' ? tab.navigation.params : {}
+      const spec = params.spec && typeof params.spec === 'object' ? params.spec : null
+      const revision = tab?.navigation?.revision
+      const embedError = loadError || mountError
 
       useLayoutEffect(() => {
         const el = hostRef.current
@@ -106,32 +82,21 @@ window.__ModuleLoader__.load({
         destroyHandle(handleRef.current)
         handleRef.current = null
         el.replaceChildren()
-        setEmbedError(null)
-        let known
+        setMountError(null)
         try {
-          known = typeof spec.type === 'string' ? embed.kindsOf(spec.type) || [] : []
-        } catch {
-          known = []
-        }
-        const mountKind = paramKind && known.includes(paramKind) ? paramKind : null
-        const mountTheme = paramTheme && THEMES.includes(paramTheme) ? paramTheme : null
-        try {
-          handleRef.current = embed.mount(el, spec, {
-            ...(mountKind ? { kind: mountKind } : {}),
-            ...(mountTheme ? { theme: mountTheme } : {}),
-            // Full page chrome in the sidebar — not cardUi.
-          })
+          // Full page chrome in the sidebar — no cardUi.
+          handleRef.current = mountDiagram(embed, el, spec, params.kind, params.theme).handle
         } catch (err) {
-          setEmbedError(err?.message || String(err))
+          setMountError(err?.message || String(err))
           return undefined
         }
         return () => {
           destroyHandle(handleRef.current)
           handleRef.current = null
         }
-      }, [embed, spec, paramKind, paramTheme, revision])
+      }, [embed, spec, params.kind, params.theme, revision])
 
-      const label = spec && typeof spec.title === 'string' && spec.title.trim() ? spec.title.trim() : 'Antu'
+      const label = titleOf(spec, 'Antu')
       return h(
         'div',
         { className: 'antuDsh_side' },
@@ -152,8 +117,8 @@ window.__ModuleLoader__.load({
       const { phase, block, openFile, toolName } = props
       const hostRef = useRef(null)
       const handleRef = useRef(null)
-      const [embed, setEmbed] = useState(null)
-      const [embedError, setEmbedError] = useState(null)
+      const { embed, loadError } = useEmbed()
+      const [mountError, setMountError] = useState(null)
       // What the diagram is showing (for chrome); seeded from args, then from successful setters.
       const [activeKind, setActiveKind] = useState(null)
       const [activeTheme, setActiveTheme] = useState(null)
@@ -163,35 +128,9 @@ window.__ModuleLoader__.load({
       const spec = args && typeof args === 'object' ? args.spec : null
       const path = resultPath(block)
       const status = statusOf(phase, block)
-      const title =
-        spec && typeof spec.title === 'string' && spec.title.trim()
-          ? spec.title.trim()
-          : toolName === 'mcp__antu__antu_render'
-            ? 'Antu (MCP)'
-            : 'Antu'
-
-      const kinds = useMemo(() => {
-        if (!embed || !spec || typeof spec.type !== 'string') return []
-        try {
-          return embed.kindsOf(spec.type) || []
-        } catch {
-          return []
-        }
-      }, [embed, spec])
-
-      useEffect(() => {
-        let cancelled = false
-        loadEmbed(require)
-          .then((mod) => {
-            if (!cancelled) setEmbed(mod)
-          })
-          .catch((err) => {
-            if (!cancelled) setEmbedError(err?.message || String(err))
-          })
-        return () => {
-          cancelled = true
-        }
-      }, [])
+      const title = titleOf(spec, toolName === 'mcp__antu__antu_render' ? 'Antu (MCP)' : 'Antu')
+      const embedError = loadError || mountError
+      const kinds = useMemo(() => knownKinds(embed, spec), [embed, spec])
 
       useLayoutEffect(() => {
         const el = hostRef.current
@@ -200,31 +139,16 @@ window.__ModuleLoader__.load({
         destroyHandle(handleRef.current)
         handleRef.current = null
         el.replaceChildren()
-        setEmbedError(null)
-
-        const known = (() => {
-          try {
-            return typeof spec.type === 'string' ? embed.kindsOf(spec.type) || [] : []
-          } catch {
-            return []
-          }
-        })()
-        const wantKind = args && typeof args.kind === 'string' ? args.kind : null
-        const mountKind = wantKind && known.includes(wantKind) ? wantKind : null
-        const wantTheme = args && typeof args.theme === 'string' ? args.theme : null
-        const mountTheme = wantTheme && THEMES.includes(wantTheme) ? wantTheme : null
+        setMountError(null)
 
         try {
-          handleRef.current = embed.mount(el, spec, {
-            ...(mountKind ? { kind: mountKind } : {}),
-            ...(mountTheme ? { theme: mountTheme } : {}),
-            ui: { ...embed.cardUi },
-          })
-          // Opening kind is a validated arg, else the type's first kind (kindsOf order).
-          setActiveKind(mountKind || known[0] || null)
-          setActiveTheme(mountTheme)
+          const { handle, opening } = mountDiagram(embed, el, spec, args?.kind, args?.theme, { ...embed.cardUi })
+          handleRef.current = handle
+          // The highlighted button follows what is shown: a validated arg, else the type's first kind.
+          setActiveKind(opening.activeKind)
+          setActiveTheme(opening.mountTheme)
         } catch (err) {
-          setEmbedError(err?.message || String(err))
+          setMountError(err?.message || String(err))
           return undefined
         }
 
@@ -388,7 +312,7 @@ window.__ModuleLoader__.load({
 .antuDsh_summaryWarn{color:var(--dsw-alias-state-warn-label)}
 .antuDsh_body{display:flex;flex-direction:column;gap:8px;min-width:0}
 .antuDsh_canvas{min-height:220px;height:min(42vh,360px);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-base);overflow:hidden}
-.antuDsh_canvas>div,.antuDsh_canvas [antu-embed-root],.antuDsh_canvas>*{width:100%;height:100%}
+.antuDsh_canvas>*{width:100%;height:100%}
 .antuDsh_chrome{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .antuDsh_group{display:inline-flex;flex-wrap:wrap;gap:4px}
 .antuDsh_btn{appearance:none;border:.5px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-secondary);border-radius:6px;padding:2px 8px;font-size:11px;line-height:16px;cursor:pointer}
@@ -398,7 +322,7 @@ window.__ModuleLoader__.load({
 .antuDsh_fallback{padding:10px 12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,8px);font-size:12px;color:var(--dsw-alias-label-tertiary);background:var(--dsw-alias-markdown-code-block)}
 .antuDsh_side{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;padding:8px;box-sizing:border-box}
 .antuDsh_sideCanvas{flex:auto;min-height:0;border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-base);overflow:hidden}
-.antuDsh_sideCanvas>div,.antuDsh_sideCanvas>*{width:100%;height:100%}
+.antuDsh_sideCanvas>*{width:100%;height:100%}
 @media (prefers-reduced-motion:reduce){.antuDsh_btn{transition:none}}
 `
 

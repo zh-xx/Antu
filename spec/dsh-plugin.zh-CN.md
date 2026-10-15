@@ -56,6 +56,23 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（可交互卡片
 - 安装：`npm run build:dsh` 同时打出 `zh-xx-antu-dsh-*.tgz`（优先于对裸 `package/` 做 link）。
 - CI：`test/dsh-plugin.test.mjs`（helpers、manifest、`build.mjs`、Host `apply` 冒烟）。trusted publisher / 发 npm 仍待做。
 
+### P2.x — 先可靠，再发布（接下来，按此顺序）
+
+1. **稳住（已在仓库）。** Client 的纯逻辑放在 `tools/dsh/src/card-model.mjs`（参数、状态、有哪些画法、图怎么打开），有单元测试；
+   `client.js` 只接 React 和 DSH 插槽，辅助函数由 `build:dsh` 内联进去。`outPath` 里的符号链接循环会被拒绝。
+2. **不靠 DSH 的卡片检查。** `tools/verify/` 下加一条浏览器检查：用真实 React 和一个桩 `__ModuleLoader__` 载入构建出的
+   `client.js` 与 `client.embed.js`，喂入 `antu_render` 调用块（正常、被截断、画法不对、0.1.x 形状的 `require`），断言：卡片挂载、
+   画法与主题按钮能切换、`argsRaw` 变化后重新挂载而不报“已挂载”、卡片上滚轮不被拦截、高亮按钮跟着当前视图。它覆盖卡片和标签页，不覆盖 DSH 本身。
+3. **按版本在真实 DSH 上验。** 用 tgz 在 `0.2.0-rc.2` 和最新的 `0.2.x` alpha 上各做一遍 P2 验收，把结果（DSH 版本、模型、哪些通过）
+   写进 `tools/dsh/README.md`。`0.1.x` 按设计只有 Host 工具，卡片显示“需要更高版本”，不抛堆栈。
+4. **卡片的中文。** 卡片上的字（“Enlarge”“Open HTML”“Rendering…”）现在只有英文。会话给卡片传了本地化入口（`t`，命名空间
+   `conversation`）；插件怎么加自己的词典，要先读 DSH 源码再定。在那之前保持英文，不凭猜测写。
+5. **发布。** `@zh-xx/antu-dsh` 目前是 `private`。需要维护者：npm 账号或 trusted publisher、包名；Release 工作流增加“构建、测试、打包、
+   附上 tgz、发布”（与 `@zh-xx/antu` 同一流程）；次版本号由维护者确认。`@deepseek-ai/*` 的 peer 范围按第 3 步的发现复核。
+   第 3 步在真实 DSH 上通过之前，不发布任何东西。
+
+不在计划内：托管服务、给别的宿主的第二个包、在聊天里编辑 JSON。
+
 ### P3 — 按需再做
 
 - 能从会话日志重建的侧栏标签（资源类型，或 Host projection + `wire.view`），不只靠 Enlarge 传入的 params。

@@ -87,22 +87,29 @@ ${assigns}
   writeFileSync(join(PKG, 'client.embed.js'), wrapped)
 }
 
-/** Inline require-async.mjs into the ModuleLoader client entry (no ESM import there). */
+/** Helper modules inlined into the ModuleLoader client entry (it has no ESM imports): marker, file, one name each must define */
+const INLINED = [
+  ['/*@@INJECT_CARD_MODEL@@*/', 'card-model.mjs', ['parseArgsRaw', 'pickOpening', 'mountOptions', 'THEMES']],
+  ['/*@@INJECT_REQUIRE_ASYNC@@*/', 'require-async.mjs', ['resolveRequireAsync', 'beginLoadEmbed']],
+]
+
 function writeClientEntry() {
-  const marker = '/*@@INJECT_REQUIRE_ASYNC@@*/'
-  const clientSrc = readFileSync(join(SRC, 'client.js'), 'utf8')
-  if (!clientSrc.includes(marker)) {
-    throw new Error('tools/dsh/build.mjs: client.js is missing the require-async inject marker')
+  let out = readFileSync(join(SRC, 'client.js'), 'utf8')
+  for (const [marker, file, names] of INLINED) {
+    if (!out.includes(marker)) {
+      throw new Error(`tools/dsh/build.mjs: client.js is missing the ${file} inject marker`)
+    }
+    const helper = readFileSync(join(SRC, file), 'utf8')
+      // Drop the file banner; keep JSDoc / inline comments.
+      .replace(/^\/\/ =+[\s\S]*?\/\/ =+\n+/, '')
+      .replace(/^export /gm, '')
+      .trim()
+    for (const name of names) {
+      if (!helper.includes(name)) throw new Error(`tools/dsh/build.mjs: ${file} is missing ${name}`)
+    }
+    out = out.replace(marker, helper)
   }
-  const helper = readFileSync(join(SRC, 'require-async.mjs'), 'utf8')
-    // Drop the file banner; keep JSDoc / inline comments.
-    .replace(/^\/\/ =+[\s\S]*?\/\/ =+\n+/, '')
-    .replace(/^export /gm, '')
-    .trim()
-  if (!helper.includes('resolveRequireAsync') || !helper.includes('beginLoadEmbed')) {
-    throw new Error('tools/dsh/build.mjs: require-async.mjs is missing expected helpers')
-  }
-  writeFileSync(join(PKG, 'client.js'), clientSrc.replace(marker, helper))
+  writeFileSync(join(PKG, 'client.js'), out)
 }
 
 function copyHost() {

@@ -53,11 +53,16 @@ function readLinkAbsolute(linkPath) {
   return isAbsolute(target) ? resolve(target) : resolve(dirname(linkPath), target)
 }
 
+/** The OS gives up after about 40 symlink hops (ELOOP); so do we, instead of recursing forever. */
+const MAX_LINK_HOPS = 40
+
 /**
  * Where a create/write at `path` would actually land, following symlinks on the
  * path prefix (including a dangling leaf symlink and a symlinked parent dir).
+ * A link loop throws "too many levels of symbolic links" (a refusal, not a crash).
  */
-export function effectiveWritePath(path) {
+export function effectiveWritePath(path, hops = 0) {
+  if (hops > MAX_LINK_HOPS) throw new Error('too many levels of symbolic links')
   const existing = nearestLstatPath(path)
   if (!existing) return resolve(path)
   const st = lstatSync(existing)
@@ -74,7 +79,7 @@ export function effectiveWritePath(path) {
     try {
       return realpathSync(path)
     } catch {
-      return effectiveWritePath(target)
+      return effectiveWritePath(target, hops + 1)
     }
   }
   // `existing` is an ancestor. If it is a symlink to a directory (or anything),
@@ -85,7 +90,7 @@ export function effectiveWritePath(path) {
     try {
       base = realpathSync(existing)
     } catch {
-      base = effectiveWritePath(target)
+      base = effectiveWritePath(target, hops + 1)
     }
   } else {
     base = realpathSync(existing)
@@ -179,15 +184,5 @@ export function runRender(spec, { renderHtml, outPath, kind, theme, cwd } = {}) 
     path,
     bytes: Buffer.byteLength(html),
     title: typeof spec?.title === 'string' ? spec.title : '',
-  }
-}
-
-/** Parse tool-call argsRaw JSON; null when truncated or invalid */
-export function parseArgsRaw(argsRaw) {
-  if (typeof argsRaw !== 'string' || !argsRaw.trim()) return null
-  try {
-    return JSON.parse(argsRaw)
-  } catch {
-    return null
   }
 }

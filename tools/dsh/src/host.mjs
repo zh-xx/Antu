@@ -39,6 +39,11 @@ function textBlocks(text) {
   return [{ type: 'text', text }]
 }
 
+/** "1. first\n2. second" */
+function numbered(list) {
+  return list.map((item, i) => `${i + 1}. ${item}`).join('\n')
+}
+
 function registerTools(ctx) {
   ctx.tools.register(
     defineTool({
@@ -58,12 +63,9 @@ function registerTools(ctx) {
         },
         render(_args, value) {
           if (!value.ok) {
-            const lines = value.errors.map((e, i) => `${i + 1}. ${e}`)
-            return textBlocks(`Validation failed:\n\n${lines.join('\n')}`)
+            return textBlocks(`Validation failed:\n\n${numbered(value.errors)}`)
           }
-          const notes = value.notes.length
-            ? `\n\nNotes:\n${value.notes.map((n, i) => `${i + 1}. ${n}`).join('\n')}`
-            : ''
+          const notes = value.notes.length ? `\n\nNotes:\n${numbered(value.notes)}` : ''
           return textBlocks(
             `Validation passed. Next: antu_layout for the geometry, or antu_render for the HTML.${notes}`,
           )
@@ -99,9 +101,7 @@ function registerTools(ctx) {
         },
         render(_args, value) {
           if (!value.ok) {
-            const errs = Array.isArray(value.errors) && value.errors.length
-              ? `\n\n${value.errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`
-              : ''
+            const errs = Array.isArray(value.errors) && value.errors.length ? `\n\n${numbered(value.errors)}` : ''
             return textBlocks(`${value.reason || 'Layout failed.'}${errs}`)
           }
           return textBlocks(value.text)
@@ -143,9 +143,7 @@ function registerTools(ctx) {
         render(_args, value) {
           if (!value.ok) {
             if (Array.isArray(value.errors) && value.errors.length) {
-              return textBlocks(
-                `Validation failed; fix these first:\n\n${value.errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`,
-              )
+              return textBlocks(`Validation failed; fix these first:\n\n${numbered(value.errors)}`)
             }
             return textBlocks(value.reason || 'Render failed.')
           }
