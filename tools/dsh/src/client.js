@@ -64,21 +64,13 @@ window.__ModuleLoader__.load({
       }
     }
 
+    // Inlined from require-async.mjs by build.mjs (do not edit the marker body by hand).
+    /*@@INJECT_REQUIRE_ASYNC@@*/
+
     /** Lazy promise for the ModuleLoader embed chunk (mount + cardUi + kindsOf). */
-    let embedPromise
-    function loadEmbed(requireAsync) {
-      if (!embedPromise) {
-        embedPromise = requireAsync('./client.embed.js').then((mod) => {
-          if (!mod || typeof mod.mount !== 'function') {
-            throw new Error('@zh-xx/antu-dsh: client.embed.js did not export mount()')
-          }
-          if (!mod.cardUi || mod.cardUi.panOnScroll !== false) {
-            throw new Error('@zh-xx/antu-dsh: client.embed.js is missing cardUi (rebuild with npm run build:dsh)')
-          }
-          return mod
-        })
-      }
-      return embedPromise
+    const embedPromiseCache = { promise: null }
+    function loadEmbed(requireFn) {
+      return beginLoadEmbed(requireFn, embedPromiseCache)
     }
 
     /** Full-size diagram in the right Sidebar (no cardUi chrome reduction). */
@@ -96,7 +88,7 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         let cancelled = false
-        loadEmbed(require.async)
+        loadEmbed(require)
           .then((mod) => {
             if (!cancelled) setEmbed(mod)
           })
@@ -189,7 +181,7 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         let cancelled = false
-        loadEmbed(require.async)
+        loadEmbed(require)
           .then((mod) => {
             if (!cancelled) setEmbed(mod)
           })

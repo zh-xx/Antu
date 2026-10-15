@@ -18,10 +18,31 @@ import {
   sessionCwd,
   slugify,
 } from '../tools/dsh/src/tools.mjs'
+import {
+  assertEmbedExports,
+  beginLoadEmbed,
+  resolveRequireAsync,
+} from '../tools/dsh/src/require-async.mjs'
 import { SKILL } from '../tools/dsh/src/skill.mjs'
 import { validate, layout } from '../tools/api/validate.mjs'
 import { renderHtml } from '../tools/api/html.mjs'
 import '../src/renderers/index.js'
+
+/** Shape of DSH ≥ 0.2 ModuleLoader factory require (has .async). */
+function makeRequireV02(loader) {
+  const requireFn = () => {
+    throw new Error('sync require unused in this test')
+  }
+  requireFn.async = async (spec) => loader(spec)
+  return requireFn
+}
+
+/** Shape of DSH 0.1.x factory require (no .async). */
+function makeRequireV01() {
+  return () => {
+    throw new Error('sync require unused in this test')
+  }
+}
 
 const root = JSON.parse(readFileSync('package.json', 'utf8'))
 const pkgDir = 'tools/dsh/package'
@@ -134,6 +155,52 @@ test('package manifest matches root version and DSH bundle shape', () => {
   assert.match(patch, /@zh-xx\/antu-dsh/)
 })
 
+test('resolveRequireAsync accepts DSH 0.2 require.async and refuses 0.1-shaped require', async () => {
+  const good = makeRequireV02(async (spec) => {
+    assert.equal(spec, './client.embed.js')
+    return { mount() {}, cardUi: { panOnScroll: false }, kindsOf: () => [] }
+  })
+  const load = resolveRequireAsync(good)
+  const mod = assertEmbedExports(await load('./client.embed.js'))
+  assert.equal(typeof mod.mount, 'function')
+
+  assert.throws(() => resolveRequireAsync(makeRequireV01()), (err) => {
+    assert.match(err.message, /≥ 0\.2\.0-rc\.2/)
+    assert.match(err.message, /no require\.async/)
+    assert.equal(err.code, 'ANTU_DSH_REQUIRE_ASYNC')
+    return true
+  })
+  assert.throws(() => resolveRequireAsync(undefined), /no require\.async/)
+  assert.throws(() => assertEmbedExports(null), /did not export mount/)
+  assert.throws(() => assertEmbedExports({ mount() {} }), /missing cardUi/)
+})
+
+test('beginLoadEmbed never throws sync on 0.1-shaped require (card can catch)', async () => {
+  const cache = { promise: null }
+  let syncThrow = false
+  let rejected
+  try {
+    rejected = beginLoadEmbed(makeRequireV01(), cache)
+  } catch {
+    syncThrow = true
+  }
+  assert.equal(syncThrow, false, 'must not throw synchronously — that crashes tool.call.toolview')
+  await assert.rejects(rejected, (err) => {
+    assert.equal(err.code, 'ANTU_DSH_REQUIRE_ASYNC')
+    return true
+  })
+  // Memoized: same rejected promise
+  assert.equal(beginLoadEmbed(makeRequireV01(), cache), rejected)
+
+  const okCache = { promise: null }
+  const ok = await beginLoadEmbed(
+    makeRequireV02(async () => ({ mount() {}, cardUi: { panOnScroll: false }, kindsOf: () => ['swimlane'] })),
+    okCache,
+  )
+  assert.equal(typeof ok.mount, 'function')
+  assert.equal(await beginLoadEmbed(makeRequireV02(async () => ({})), okCache), ok)
+})
+
 test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', () => {
   const r = spawnSync(process.execPath, ['tools/dsh/build.mjs'], {
     cwd: process.cwd(),
@@ -161,6 +228,14 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(client, /Enlarge/)
   assert.match(client, /antu-diagram/)
   assert.match(client, /sidebarRightTabs/)
+  // Injected helper + safe call site (not require.async, which is undefined on DSH 0.1.x)
+  assert.match(client, /function resolveRequireAsync/)
+  assert.match(client, /function beginLoadEmbed/)
+  assert.match(client, /≥ 0\.2\.0-rc\.2/)
+  assert.match(client, /loadEmbed\(require\)/)
+  assert.doesNotMatch(client, /loadEmbed\(require\.async\)/)
+  assert.doesNotMatch(client, /@@INJECT_REQUIRE_ASYNC@@/)
+  assert.ok(existsSync(join(pkgDir, 'lib', 'require-async.mjs')))
 
   const chunk = readFileSync(join(pkgDir, 'client.embed.js'), 'utf8')
   assert.match(chunk, /chunk:\s*['"]client\.embed\.js['"]/)
@@ -170,6 +245,47 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
 
   const tgz = readdirSync('tools/dsh').find((n) => n.startsWith('zh-xx-antu-dsh-') && n.endsWith('.tgz'))
   assert.ok(tgz, 'build:dsh should pack zh-xx-antu-dsh-*.tgz')
+})
+
+test('built client factory surfaces missing require.async as a rejected load (0.1.x shape)', async () => {
+  // Ensure artifacts exist.
+  if (!existsSync(join(pkgDir, 'client.js'))) {
+    const r = spawnSync(process.execPath, ['tools/dsh/build.mjs'], { cwd: process.cwd(), encoding: 'utf8' })
+    assert.equal(r.status, 0, r.stderr || r.stdout)
+  }
+  const clientSrc = readFileSync(join(pkgDir, 'client.js'), 'utf8')
+  // Extract the inlined helpers by evaluating them in a tiny sandbox.
+  const start = clientSrc.indexOf('function resolveRequireAsync')
+  const end = clientSrc.indexOf('/** Lazy promise for the ModuleLoader embed chunk')
+  assert.ok(start >= 0 && end > start, 'injected helpers must be present in built client.js')
+  const helperSrc = clientSrc.slice(start, end)
+  const sandbox = { exports: {} }
+  const run = new Function(
+    'exports',
+    `${helperSrc}\nexports.resolveRequireAsync = resolveRequireAsync;\nexports.beginLoadEmbed = beginLoadEmbed;\nexports.assertEmbedExports = assertEmbedExports;`,
+  )
+  run(sandbox)
+
+  const cache = { promise: null }
+  const requireV01 = makeRequireV01()
+  let sync = false
+  let p
+  try {
+    p = sandbox.beginLoadEmbed(requireV01, cache)
+  } catch {
+    sync = true
+  }
+  assert.equal(sync, false)
+  await assert.rejects(p, (err) => {
+    assert.match(String(err.message), /≥ 0\.2\.0-rc\.2/)
+    return true
+  })
+
+  const mod = await sandbox.beginLoadEmbed(
+    makeRequireV02(async () => ({ mount() {}, cardUi: { panOnScroll: false } })),
+    { promise: null },
+  )
+  assert.equal(typeof mod.mount, 'function')
 })
 
 test('Host apply registers three tools and the skill on a stub Cordis context', async () => {

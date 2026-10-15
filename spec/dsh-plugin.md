@@ -53,6 +53,8 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 
 - Host: `antu_validate`, `antu_layout`, `antu_render` (in-process; HTML under session cwd).
 - Client: small entry + lazy-loaded embed chunk; `tool.call.toolview` for `antu_render` (and MCP name if needed).
+- Client needs **DSH ≥ 0.2.0-rc.2** (`require.async` for package-local `client.embed.js`). On 0.1.x the card
+  shows an upgrade message instead of crashing the slot.
 - Memory skill `antu-diagram`; "open in sidebar" via `openFile` on the written HTML.
 - **Enlarge**: right-sidebar page tab `antu-diagram` mounts the full embed (no `cardUi`) from the same
   `argsRaw` `spec`; the chat card stays a compact preview.
@@ -66,9 +68,9 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 
 ## Acceptance (P2)
 
-On Desktop without system Node: `install_bundle` → `application: applied`; a turn that calls `antu_render`
-shows an interactive card (kind switch works); light and dark host themes stay readable; uninstall leaves
-no rows. Maintainer records DSH version and model used (#53-style).
+On Desktop without system Node, **DSH ≥ 0.2.0-rc.2**: `install_bundle` → `application: applied`; a turn that
+calls `antu_render` shows an interactive card (kind switch works); light and dark host themes stay readable;
+uninstall leaves no rows. Maintainer records DSH version and model used (#53-style).
 
 ## Related
 

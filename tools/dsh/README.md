@@ -6,6 +6,15 @@ Umbrella issue: [#79](https://github.com/zh-xx/Antu/issues/79).
 **Not published yet.** Build with `npm run build:dsh`, then install the **tarball** (preferred) into DSH.
 Needs a published (or otherwise resolvable) `@zh-xx/antu` at the same version for Host imports.
 
+## Requirements
+
+| Side | Needs |
+| --- | --- |
+| Host tools / skill | DSH that can resolve `@deepseek-ai/dsh-tools` / `@deepseek-ai/dsh-skill` (peer `^0.2.0-rc.2`) and `@zh-xx/antu` |
+| Client chat card + Enlarge | **DeepSeek Harness ≥ 0.2.0-rc.2** — the lazy embed chunk uses ModuleLoader `require.async('./client.embed.js')`. DSH **0.1.x** has no `require.async` and no Host route for package-local chunks; on those hosts the card shows a clear upgrade message instead of crashing the slot |
+
+Peers are marked optional so a Host-only profile can still install; the Client half will not render a diagram until the host provides `require.async`.
+
 ## Layout
 
 ```
@@ -98,7 +107,10 @@ Install with DSH's `plugin_manager` → `install_bundle` and the **absolute** pa
 
 ## Maintainer check (P2 acceptance)
 
-On Desktop without system Node: `npm run build:dsh` → `install_bundle` on the **tgz** →
+On Desktop without system Node, with **DSH ≥ 0.2.0-rc.2**: `npm run build:dsh` → `install_bundle` on the **tgz** →
 `application: applied`; a turn that calls `antu_render` shows an interactive card (kind switch works);
 **Enlarge** opens a readable sidebar diagram; light and dark host themes stay readable; uninstall leaves
 no rows. Record DSH version and model used (#53-style).
+
+On DSH 0.1.x the Host tools still run, but the card must show the ≥ 0.2 upgrade message (not a blank
+`tool.call.toolview` crash).

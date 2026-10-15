@@ -55,13 +55,19 @@ export default [
     rules: RULES,
   },
 
-  // DSH Client ModuleLoader entry (browser; React comes from the host module table)
+  // DSH Client ModuleLoader entry (browser; React comes from the host module table).
+  // beginLoadEmbed / friends are inlined from require-async.mjs by tools/dsh/build.mjs.
   {
     files: ['tools/dsh/src/client.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
-      globals: { ...globals.browser },
+      globals: {
+        ...globals.browser,
+        beginLoadEmbed: 'readonly',
+        resolveRequireAsync: 'readonly',
+        assertEmbedExports: 'readonly',
+      },
     },
     rules: RULES,
   },

@@ -87,16 +87,35 @@ ${assigns}
   writeFileSync(join(PKG, 'client.embed.js'), wrapped)
 }
 
+/** Inline require-async.mjs into the ModuleLoader client entry (no ESM import there). */
+function writeClientEntry() {
+  const marker = '/*@@INJECT_REQUIRE_ASYNC@@*/'
+  const clientSrc = readFileSync(join(SRC, 'client.js'), 'utf8')
+  if (!clientSrc.includes(marker)) {
+    throw new Error('tools/dsh/build.mjs: client.js is missing the require-async inject marker')
+  }
+  const helper = readFileSync(join(SRC, 'require-async.mjs'), 'utf8')
+    // Drop the file banner; keep JSDoc / inline comments.
+    .replace(/^\/\/ =+[\s\S]*?\/\/ =+\n+/, '')
+    .replace(/^export /gm, '')
+    .trim()
+  if (!helper.includes('resolveRequireAsync') || !helper.includes('beginLoadEmbed')) {
+    throw new Error('tools/dsh/build.mjs: require-async.mjs is missing expected helpers')
+  }
+  writeFileSync(join(PKG, 'client.js'), clientSrc.replace(marker, helper))
+}
+
 function copyHost() {
   mkdirSync(join(PKG, 'lib'), { recursive: true })
   cpSync(join(SRC, 'tools.mjs'), join(PKG, 'lib', 'tools.mjs'))
   cpSync(join(SRC, 'skill.mjs'), join(PKG, 'lib', 'skill.mjs'))
+  cpSync(join(SRC, 'require-async.mjs'), join(PKG, 'lib', 'require-async.mjs'))
   let host = readFileSync(join(SRC, 'host.mjs'), 'utf8')
   host = host
     .replace("from './tools.mjs'", "from './lib/tools.mjs'")
     .replace("from './skill.mjs'", "from './lib/skill.mjs'")
   writeFileSync(join(PKG, 'index.js'), host)
-  cpSync(join(SRC, 'client.js'), join(PKG, 'client.js'))
+  writeClientEntry()
 }
 
 function syncPackageJson() {
@@ -111,6 +130,8 @@ function syncPackageJson() {
     ...(pkg.dependencies || {}),
     '@zh-xx/antu': version,
   }
+  // Client chat card needs ModuleLoader require.async (package-local chunks) — DSH ≥ 0.2.0-rc.2.
+  // Peers stay optional so a Host-only profile can still load the tools without the web Client stack.
   pkg.peerDependencies = {
     '@deepseek-ai/dsh-tools': '^0.2.0-rc.2',
     '@deepseek-ai/dsh-skill': '^0.2.0-rc.2',

@@ -50,6 +50,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（可交互卡片
 
 - Host：`antu_validate`、`antu_layout`、`antu_render`（进程内；HTML 写在会话 cwd）。
 - Client：小入口 + 懒加载的 embed 块；为 `antu_render`（及必要时的 MCP 名）注册 `tool.call.toolview`。
+- Client 需要 **DSH ≥ 0.2.0-rc.2**（`require.async` 加载包内 `client.embed.js`）。在 0.1.x 上卡片显示升级提示，而不是把 slot 打崩。
 - 内存 skill `antu-diagram`；「在侧栏打开」先用 `openFile` 打开写出的 HTML。
 - **Enlarge**：右侧栏页面标签 `antu-diagram` 用完整 embed（不用 `cardUi`）画同一份 `argsRaw` 里的 `spec`；聊天卡片仍是缩略预览。
 - 安装：`npm run build:dsh` 同时打出 `zh-xx-antu-dsh-*.tgz`（优先于对裸 `package/` 做 link）。
@@ -62,7 +63,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（可交互卡片
 
 ## 验收（P2）
 
-在没有系统 Node 的 Desktop 上：`install_bundle` → `application: applied`；一次调用 `antu_render` 的回合出现可切
+在没有系统 Node 的 Desktop 上，**DSH ≥ 0.2.0-rc.2**：`install_bundle` → `application: applied`；一次调用 `antu_render` 的回合出现可切
 画法的卡片；宿主明暗两种主题下都读得清；卸载无残留。维护者记下 DSH 版本与所用模型（#53 一类写法）。
 
 ## 相关
