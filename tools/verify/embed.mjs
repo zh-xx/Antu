@@ -8,6 +8,7 @@
 //    isolation   the host's CSS does not reach the diagram, the diagram's does not reach the host
 //    globals     the host's title, language, window and localStorage are untouched
 //    options     kind, kinds, theme, lang, ui
+//    view state  initial, locked, persist: what a host configures and what a reader may change (issue 200)
 //    events      select (with the item's sources), kindchange, invalid
 //    handle      ready, update, setKind/setTheme/setLang, exportPng, destroy and mounting again
 //    asking      select, focus and highlight by the spec's ids; initial.headerFolded
@@ -365,6 +366,75 @@ export async function checkEmbed(t) {
     })()`, { awaitPromise: true })
     eq('embed: the host narrows to 520 px: the minimap gives way, the capsule wraps, clear and on the canvas', resized.narrow, { minimap: false, wrapped: true, clear: true, inside: true })
     eq('embed: and widens to 1400 px: the capsule is on one line again and the minimap comes back', resized.wide, { minimap: true, wrapped: false, clear: true, inside: true })
+
+    // ---- a host configuring what the reader sees: initial, locked, persist (issue 200) ----
+    const viewState = await browser.eval(`(async () => {
+      const pause = (ms) => new Promise((r) => setTimeout(r, ms))
+      const flow = window.__api.SPECS.flow
+      const start = (options) => {
+        const host = document.createElement('div')
+        host.style.cssText = 'width: 1000px; height: 640px'
+        document.body.append(host)
+        return { host, h: window.__api.mount(host, flow, { lang: 'en', ...options }) }
+      }
+      const chip = (host, label) => [...host.shadowRoot.querySelectorAll('.antu-dock-chip')].find((c) => c.textContent.trim() === label)
+      const off = ({ host, h }) => { h.destroy(); host.remove() }
+      const out = {}
+
+      // initial wins over the stored choice
+      {
+        const it = start({ initial: { view: { flow: { states: true } } }, prefs: { read: () => ({ flowFieldsByDiagram: { [flow.title]: { states: false } } }), write: () => {} } })
+        await it.h.ready; await pause(200)
+        out.initialOn = !!chip(it.host, ${JSON.stringify(translate('en', 'flow.states'))})?.classList.contains('is-on')
+        off(it)
+      }
+
+      // a locked switch offers no control
+      {
+        const it = start({ locked: { view: { flow: { states: true } } } })
+        await it.h.ready; await pause(200)
+        out.lockedHidden = !chip(it.host, ${JSON.stringify(translate('en', 'flow.states'))})
+        off(it)
+      }
+
+      // the dock opens folded, and its one button brings the bar back
+      {
+        const it = start({ initial: { shell: { dockFolded: true } } })
+        await it.h.ready; await pause(200)
+        const root = it.host.shadowRoot
+        out.folded = [!!root.querySelector('.antu-dock-open'), !!root.querySelector('.antu-dock-capsule .antu-dock-bar')]
+        root.querySelector('.antu-dock-open')?.click()
+        await pause(300)
+        out.unfolded = [!!root.querySelector('.antu-dock-open'), !!root.querySelector('.antu-dock-capsule .antu-dock-bar')]
+        off(it)
+      }
+
+      // persist false: the reader's click changes the screen but writes nothing to the host's store
+      {
+        const writes = []
+        const it = start({ persist: false, prefs: { read: () => ({}), write: (p) => writes.push(p) } })
+        await it.h.ready; await pause(200)
+        chip(it.host, ${JSON.stringify(translate('en', 'flow.states'))})?.click()
+        await pause(200)
+        out.persist = [writes.length, !!chip(it.host, ${JSON.stringify(translate('en', 'flow.states'))})?.classList.contains('is-on')]
+        off(it)
+      }
+
+      // a locked key that is not one makes mount throw, naming options.locked
+      {
+        const host = document.createElement('div')
+        host.style.height = '300px'
+        document.body.append(host)
+        out.badLocked = (() => { try { window.__api.mount(host, flow, { locked: { nope: true } }); return 'mounted' } catch (e) { return e.message } })()
+        host.remove()
+      }
+      return out
+    })()`, { awaitPromise: true })
+    eq('embed: `initial` opens a switch on over the store\'s off', viewState.initialOn, true)
+    eq('embed: a locked switch renders no control', viewState.lockedHidden, true)
+    eq('embed: `initial` opens the dock folded (one button, no bar), and the button brings the bar back', [viewState.folded, viewState.unfolded], [[true, false], [false, true]])
+    eq('embed: `persist: false` keeps the reader\'s change on screen and off the host\'s store', viewState.persist, [0, true])
+    truthy('embed: an unknown `locked` key makes mount throw, naming options.locked', viewState.badLocked.includes('options.locked'), viewState.badLocked)
 
     // ---- destroy, and mount again on the same element ----
     const again = await browser.eval(`(async () => {

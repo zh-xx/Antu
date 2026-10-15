@@ -60,6 +60,9 @@ export const en = {
   'dock.exporting': 'Exporting…',
   'dock.exportTitle': 'Export the whole diagram as a PNG (2× resolution)',
   'dock.lang': 'Language',
+  // The dock fold (issue 200): "Fold" on the small chevron, "Display" on the one button the folded dock shows
+  'dock.fold': 'Fold',
+  'dock.display': 'Display',
   'export.failed': ({ message }) => `Export failed: ${message}`,
   // Each language name is written in its own language (English / Chinese) and never translated: on the switcher you must recognise your own language at a glance.
   'dock.langEn': 'EN',

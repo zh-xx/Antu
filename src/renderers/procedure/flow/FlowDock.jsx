@@ -42,6 +42,7 @@ export default function FlowDock({
   onToggleOrientation,
   linkStyle = 'straight',
   onToggleLinkStyle,
+  locked = {},
   exporting = false,
   onExport,
 }) {
@@ -50,7 +51,7 @@ export default function FlowDock({
   return (
     <div className="antu-dock">
       <div className="antu-dock-bar">
-        {SWITCHES.filter(([key]) => (key !== 'stages' || hasStages) && (key !== 'rules' || hasRules)).map(([key, label]) => (
+        {SWITCHES.filter(([key]) => !locked[key] && (key !== 'stages' || hasStages) && (key !== 'rules' || hasRules)).map(([key, label]) => (
           <button
             key={key}
             className={`antu-dock-chip${fields[key] ? ' is-on' : ''}`}
@@ -62,9 +63,10 @@ export default function FlowDock({
 
         <span className="antu-dock-sep" />
 
-        <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} />
+        {/* A locked orientation or style has no control at all (issue 200) */}
+        {!locked.orientation && <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} />}
 
-        <DockSegmented options={LINK_STYLES} value={linkStyle} onChange={onToggleLinkStyle} title={t('flow.linkStyle')} />
+        {!locked.linkStyle && <DockSegmented options={LINK_STYLES} value={linkStyle} onChange={onToggleLinkStyle} title={t('flow.linkStyle')} />}
 
         <span className="antu-dock-sep" />
 

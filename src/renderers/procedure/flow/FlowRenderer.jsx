@@ -19,7 +19,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { usePreset, usePrefs } from '../../../shell/env.js'
+import { usePrefs, useViewValue } from '../../../shell/env.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import FlowNode from './FlowNode.jsx'
@@ -60,9 +60,6 @@ const DECORATION = {
 }
 
 export default function ProcedureFlow({ spec }) {
-  // External preset: used only by MCP's antu_preview (same convention as the timeline)
-  // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
-  const PRESET = usePreset()
   const prefs = usePrefs()
   const specKey = spec?.title || ''
   const hasStages = Array.isArray(spec?.stages) && spec.stages.length > 0
@@ -72,9 +69,21 @@ export default function ProcedureFlow({ spec }) {
   // this data (many diagrams have no stages at all), so turning stages off on one must not turn
   // them off everywhere (issue #22)
   const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().flowFieldsByDiagram || {})
+  const storedFields = fieldPrefs[specKey] || {}
   const { id: themeId } = useTheme()
-  const fields = { ...FIELD_DEFAULTS, states: statesByDefault(themeId), ...fieldPrefs[specKey], ...(PRESET?.fields || {}) }
+
+  // Every switch goes through the view state (issue 200): a host's `initial`/`locked`/`persist`, the page's
+  // preset and the reader's own click are resolved in one place; `statesByDefault` stays the fallback
+  const conditionsView = useViewValue('view.flow.conditions', storedFields.conditions, FIELD_DEFAULTS.conditions)
+  const detailView = useViewValue('view.flow.detail', storedFields.detail, FIELD_DEFAULTS.detail)
+  const mainLineView = useViewValue('view.flow.mainLine', storedFields.mainLine, FIELD_DEFAULTS.mainLine)
+  const statesView = useViewValue('view.flow.states', storedFields.states, statesByDefault(themeId))
+  const stagesView = useViewValue('view.flow.stages', storedFields.stages, FIELD_DEFAULTS.stages)
+  const rulesView = useViewValue('view.flow.rules', storedFields.rules, FIELD_DEFAULTS.rules)
+  const fieldView = { conditions: conditionsView, detail: detailView, mainLine: mainLineView, states: statesView, stages: stagesView, rules: rulesView }
+  const fields = Object.fromEntries(Object.entries(fieldView).map(([key, view]) => [key, view.value]))
   const toggleField = (key, value) => {
+    fieldView[key].touch()
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], [key]: value } }
     setFieldPrefs(map)
     prefs.write({ flowFieldsByDiagram: map })
@@ -83,8 +92,10 @@ export default function ProcedureFlow({ spec }) {
   // Orientation: remembered per diagram, as with the timeline. With nothing chosen a
   // flowchart reads top to bottom (§6.1): the main line runs down the centre of the screen.
   const [orientationPrefs, setOrientationPrefs] = useState(() => prefs.read().orientations || {})
-  const orientation = PRESET?.orientation || orientationPrefs[specKey] || 'vertical'
+  const orientationView = useViewValue('view.flow.orientation', orientationPrefs[specKey], 'vertical')
+  const orientation = orientationView.value
   const toggleOrientation = (next) => {
+    orientationView.touch()
     const map = { ...orientationPrefs, [specKey]: next }
     setOrientationPrefs(map)
     prefs.write({ orientations: map })
@@ -92,8 +103,11 @@ export default function ProcedureFlow({ spec }) {
 
   // Link style: curved (the default, the reader's choice: it reads softer, like Mermaid) or
   // straight (orthogonal). Both draw the same route. One choice for every diagram, remembered.
-  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || prefs.read().linkStyle || 'straight')
+  const [linkStyle, setLinkStyle] = useState(() => prefs.read().linkStyle || 'straight')
+  const linkStyleView = useViewValue('view.flow.linkStyle', linkStyle, 'straight')
+  const linkStyleValue = linkStyleView.value
   const toggleLinkStyle = (next) => {
+    linkStyleView.touch()
     setLinkStyle(next)
     prefs.write({ linkStyle: next })
   }
@@ -158,7 +172,7 @@ export default function ProcedureFlow({ spec }) {
         height,
         showConditions: fields.conditions,
         highlightMain: fields.mainLine,
-        curved: linkStyle === 'curved',
+        curved: linkStyleValue === 'curved',
       },
     })
     const nodes = layout.nodes.map((n) => ({ ...n, data: { ...n.data, states: fields.states, lit: n.id === activeRule?.endId || n.data.lit } }))
@@ -180,9 +194,15 @@ export default function ProcedureFlow({ spec }) {
         ]
       : []
     return { nodes: [...deco, ...nodes, ...table], edges: [], size: layout.size }
-  }, [layout, spec, fields.conditions, fields.mainLine, fields.states, linkStyle, activeRule])
+  }, [layout, spec, fields.conditions, fields.mainLine, fields.states, linkStyleValue, activeRule])
 
   const { canvasRef, exporting, onExport } = useExport(spec?.title)
+  // Which controls a host locked (issue 200): FlowDock leaves exactly those out
+  const locked = {
+    ...Object.fromEntries(Object.entries(fieldView).filter(([, view]) => view.locked).map(([key]) => [key, true])),
+    orientation: orientationView.locked,
+    linkStyle: linkStyleView.locked,
+  }
 
   return (
     <div className="antu-procedure">
@@ -210,8 +230,9 @@ export default function ProcedureFlow({ spec }) {
             hasRules={hasRules}
             orientation={orientation}
             onToggleOrientation={toggleOrientation}
-            linkStyle={linkStyle}
+            linkStyle={linkStyleValue}
             onToggleLinkStyle={toggleLinkStyle}
+            locked={locked}
             exporting={exporting}
             onExport={onExport}
           />

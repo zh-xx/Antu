@@ -13,7 +13,7 @@
 // ============================================================
 
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import { usePrefs, usePreset } from '../shell/env.js'
+import { useEnv, usePrefs, usePreset } from '../shell/env.js'
 import { DEFAULT_THEME, THEME_IDS, isTheme, themeOf } from './themes.js'
 
 const ThemeContext = createContext({ id: DEFAULT_THEME, theme: themeOf(DEFAULT_THEME), setTheme: () => {}, forced: false })
@@ -53,12 +53,14 @@ export function themeVars(theme) {
 export function ThemeProvider({ children, theme: forcedTheme, initialTheme }) {
   const prefs = usePrefs()
   const preset = usePreset()
+  // A host locking the theme (`mount(…, { locked: { theme } })`) forces it and hides the switch (issue 200)
+  const { locked } = useEnv()
   const [stored, setStored] = useState(() => {
     if (isTheme(initialTheme)) return initialTheme
     const id = prefs.read().theme
     return isTheme(id) ? id : null
   })
-  const forced = isTheme(forcedTheme) ? forcedTheme : isTheme(preset?.theme) ? preset.theme : null
+  const forced = isTheme(locked?.theme) ? locked.theme : isTheme(forcedTheme) ? forcedTheme : isTheme(preset?.theme) ? preset.theme : null
   const id = forced ?? stored ?? DEFAULT_THEME
   const setTheme = useCallback(
     (next) => {

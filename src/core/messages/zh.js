@@ -58,6 +58,9 @@ export const zh = {
   'dock.exporting': '正在导出…',
   'dock.exportTitle': '将整张图导出为 PNG（2 倍分辨率）',
   'dock.lang': '语言',
+  // 控制胶囊的收起／展开（issue 200）
+  'dock.fold': '收起',
+  'dock.display': '显示选项',
   'export.failed': ({ message }) => `导出失败：${message}`,
   'dock.langEn': 'EN',
   'dock.langZh': '中文',
