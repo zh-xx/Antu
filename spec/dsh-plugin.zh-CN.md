@@ -18,7 +18,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 | 工具来源 | **原生 Host 工具**（在 DSH 进程内 `import` `@zh-xx/antu/validate` 与 `/html`），长期路径不是「仅配置的 MCP bundle」 |
 | 线名 | `antu_validate`、`antu_layout`、`antu_render`，以及只读参考工具 `antu_schema`、`antu_guide`、`antu_examples` …（不是 `mcp__antu__…`）。若仍临时挂着 MCP 行，卡片可同时注册 MCP 名 |
 | `antu_render` | **写入**会话**工作区**下的自包含 HTML（绝对路径）。卡片从工具调用的**参数**（`spec`）画图；文件用于归档、转发与 `openFile` |
-| 聊天卡片 | **只有图**：整张图缩进卡片（`mount()` 加 `cardUi`），没有标题行、没有按钮。点图任意位置打开大图。滚轮交给聊天。2026-10-15 看过效果图后决定：按可读字号打开只能看到图的一小块，不值得 |
+| 聊天卡片 | **只有图**，画在回合末尾（`conversation.chat.turnTail`），DSH 把已完成回合的工具步骤折起来后仍看得见，不藏在折层里。整张图缩进卡片（`mount()` 加 `cardUi`），没有标题行、没有按钮；折层打开时用 `ResizeObserver` 重新适配。折起来的工具行只有一行（标题、状态、**打开大图**）。点图任意位置打开大图。滚轮交给聊天。2026-10-15 看过效果图后决定（按可读字号打开只能看到图的一小块）；浏览器测试发现折层里的卡片不可见且空白后，改画在回合末尾 |
 | 大图 | DSH 右侧面板里的页面 `antu-diagram`，以**全屏**方式呈现（面板自带的全屏模式盖住整个窗口），带完整外壳：画法、主题、详情卡片、导出，以及**打开 HTML** |
 | 包 | 独立 **`@zh-xx/antu-dsh`**，版本号与 `@zh-xx/antu` **同号**。源码在 `tools/dsh/`；**构建产物不入库** |
 | Skill | 从有 Host 工具那一期起随插件带；名称**不要**裸用 `antu`（避免与 `skills/antu/` 撞名）。正文教 Host 工具名，不教命令行 |
@@ -28,7 +28,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 ## 为什么不用 iframe / 不以 MCP 为终局
 
 - DSH 官方实践：不要由 Host 提供 HTML 再用 iframe 嵌（拿不到主题 token、明暗、`ctx.locale`）。案图页面是**交付物**；
-  聊天卡片是**插件 UI**，须在 Client 的 `tool.call.toolview` 里用 `mount()`（`@zh-xx/antu/embed`）。
+  聊天卡片是**插件 UI**，须在 Client 的 `conversation.chat.turnTail` 里用 `mount()`（`@zh-xx/antu/embed`）；工具行只标出这次调用。
 - 仅配置的 MCP bundle（`npx … antu-mcp`）对已有 Node 的机器是有用的止疼方案（见 [tools/dsh/README.md](../tools/dsh/README.md)），
   **不是**给 Desktop 用户的产品：系统不一定有 `npx`、首次下载很大，且 `antu_render` 默认输出路径跟的是 MCP 进程
   cwd，不是会话工作区。
@@ -50,7 +50,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 ### P2 — `@zh-xx/antu-dsh` 0.x 首发 — 已在仓库落地
 
 - Host：`antu_validate`、`antu_layout`、`antu_render`（进程内；HTML 写在会话 cwd），以及只读参考工具 `antu_schema`、`antu_guide`、`antu_examples`（字段表、机制说明、示例，取自已安装的 `@zh-xx/antu`）。
-- Client：小入口 + 懒加载的 embed 块；为 `antu_render`（及必要时的 MCP 名）注册 `tool.call.toolview`。
+- Client：小入口 + 懒加载的 embed 块；把 `antu_render` 的按回合数据（`antu-diagrams`）画在回合末尾，有该服务时 `tool.call.toolview` 为 `antu_render`（及必要时的 MCP 名）只留一行。
 - Client 需要 **DSH ≥ 0.2.0-rc.2**（`require.async` 加载包内 `client.embed.js`）。在 0.1.x 上卡片显示升级提示，而不是把 slot 打崩。
 - 内存 skill `antu-diagram`；「在侧栏打开」先用 `openFile` 打开写出的 HTML。
 - **大图**：点聊天里的图，在右侧面板打开页面 `antu-diagram` 并请求全屏，用完整 embed（不用 `cardUi`）画同一份 `argsRaw` 里的 `spec`。

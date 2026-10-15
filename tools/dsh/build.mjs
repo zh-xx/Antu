@@ -89,7 +89,23 @@ ${assigns}
 
 /** Helper modules inlined into the ModuleLoader client entry (it has no ESM imports): marker, file, one name each must define */
 const INLINED = [
-  ['/*@@INJECT_CARD_MODEL@@*/', 'card-model.mjs', ['parseArgsRaw', 'pickOpening', 'mountOptions', 'renderFailure', 'THEMES']],
+  [
+    '/*@@INJECT_CARD_MODEL@@*/',
+    'card-model.mjs',
+    [
+      'parseArgsRaw',
+      'pickOpening',
+      'mountOptions',
+      'renderFailure',
+      'THEMES',
+      'ANTU_DIAGRAMS_KIND',
+      'antuDiagramsDefinition',
+      'antuDiagramsStart',
+      'antuDiagramsUpdate',
+      'isAntuRenderName',
+      'isAppendSurfaceEvent',
+    ],
+  ],
   ['/*@@INJECT_REQUIRE_ASYNC@@*/', 'require-async.mjs', ['resolveRequireAsync', 'beginLoadEmbed']],
 ]
 
@@ -163,6 +179,8 @@ function syncPackageJson() {
     inject: [
       '@deepseek-ai/dsh-client-ui-tool',
       '@deepseek-ai/dsh-client-ui-sidebar-right',
+      '@deepseek-ai/dsh-client-ui-chat',
+      '@deepseek-ai/dsh-client-ui-conversation',
     ],
   }
   writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`)

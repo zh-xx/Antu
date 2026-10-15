@@ -74,6 +74,8 @@ export default [
         pickOpening: 'readonly',
         mountOptions: 'readonly',
         titleOf: 'readonly',
+        ANTU_DIAGRAMS_KIND: 'readonly',
+        antuDiagramsDefinition: 'readonly',
         beginLoadEmbed: 'readonly',
         resolveRequireAsync: 'readonly',
         assertEmbedExports: 'readonly',

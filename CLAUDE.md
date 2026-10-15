@@ -6,6 +6,10 @@ The maintainer's standing instruction: Claude does not write the bulk of the cod
 hands the writing to a DSH (DeepSeek Harness) worker running headless, then reviews, tests and
 ships. This saves the maintainer's Claude usage; DeepSeek tokens are cheap.
 
+**If you are the DSH worker running a brief, this section is not for you:** do the task yourself, in
+this working tree, and never start another DSH. Every brief should open with that sentence too, since
+DSH also reads this file.
+
 **Delegate** work that is sizeable and well specified: new tests, doc edits and en / zh-CN syncs,
 a feature that follows an existing pattern, mechanical refactors, fixes whose cause is already found.
 

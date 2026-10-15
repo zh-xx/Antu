@@ -1,9 +1,9 @@
 // ============================================================
 //  tools/dsh/src/client.js — ModuleLoader entry for @zh-xx/antu-dsh
 //
-//  Tiny Client half: registers tool.call.toolview for antu_render (and the
-//  stopgap MCP wire name). Lazy-loads client.embed.js (repackaged @zh-xx/antu/embed).
-//  Copied into package/client.js by build.mjs (build output is not committed).
+//  Client half: the turn data of antu_render calls, their diagram cards in the turn tail, a compact
+//  tool row, and the full view in the right panel. Lazy-loads client.embed.js (repackaged
+//  @zh-xx/antu/embed). Copied into package/client.js by build.mjs (build output is not committed).
 // ============================================================
 
 window.__ModuleLoader__.load({
@@ -21,6 +21,8 @@ window.__ModuleLoader__.load({
      * `files` maps a written path to the card's `openFile`, so the full view can open the HTML.
      */
     const fullView = { open: null, files: new Map() }
+    /** Set once the conversation service is there: the turn tail draws finished diagrams, so the tool row stays compact. */
+    let hasTurnTail = false
 
     function destroyHandle(handle) {
       if (!handle) return
@@ -85,16 +87,97 @@ window.__ModuleLoader__.load({
       return { handle: embed.mount(el, spec, mountOptions(opening, ui)), opening }
     }
 
+    /**
+     * Mount the diagram into `hostRef` and keep it fitted. React Flow fits when it mounts; a card
+     * mounted inside DSH's collapsed fold is 0×0 and would stay blank, so refit on every resize
+     * (opening the fold changes the host's size). Returns the mount error, if any.
+     */
+    function useDiagram(hostRef, handleRef, embed, spec, kind, theme, ui, revision) {
+      const [mountError, setMountError] = useState(null)
+
+      useLayoutEffect(() => {
+        const el = hostRef.current
+        if (!el || !embed || !spec || typeof spec !== 'object') return undefined
+
+        destroyHandle(handleRef.current)
+        handleRef.current = null
+        el.replaceChildren()
+        setMountError(null)
+
+        try {
+          handleRef.current = mountDiagram(embed, el, spec, kind, theme, ui).handle
+        } catch (err) {
+          setMountError(err?.message || String(err))
+          return undefined
+        }
+
+        // React Flow fitted at mount; refit on every later resize (opening DSH's fold grows the host).
+        let observer
+        if (typeof ResizeObserver !== 'undefined') {
+          observer = new ResizeObserver(() => {
+            try {
+              handleRef.current?.fitView()
+            } catch {
+              /* the handle is gone (destroyed): nothing left to fit */
+            }
+          })
+          observer.observe(el)
+        }
+
+        return () => {
+          observer?.disconnect()
+          destroyHandle(handleRef.current)
+          handleRef.current = null
+        }
+      }, [embed, spec, kind, theme, ui, revision])
+
+      return mountError
+    }
+
+    /** The fitted whole diagram with the cover that opens the full view (the tool row and the tail share it). */
+    function diagramCard({ hostRef, title, embedError, canOpenFull, onOpenFull }) {
+      return h(
+        'div',
+        { className: 'antuDsh_card', 'data-antu-dsh': 'render' },
+        // Keep the mount host in the tree even when the last mount failed.
+        // If we swap it for the error fallback, hostRef is null on the next
+        // argsRaw change and the layout effect returns early forever.
+        h('div', {
+          ref: hostRef,
+          className: 'antuDsh_canvas',
+          role: 'img',
+          'aria-label': title,
+          hidden: !!embedError,
+        }),
+        embedError ? h('div', { className: 'antuDsh_fallback' }, embedError) : null,
+        // A cover over the picture: a click opens the full view, and the wheel goes on to the conversation.
+        canOpenFull
+          ? h(
+              'button',
+              {
+                type: 'button',
+                className: 'antuDsh_cover',
+                title: 'Open full view',
+                'aria-label': `Open full view: ${title}`,
+                onClick: onOpenFull,
+              },
+              h('span', { className: 'antuDsh_coverIcon', 'aria-hidden': true }, '⤢'),
+            )
+          : null,
+      )
+    }
+
     /** Full-size diagram in the right Sidebar (no cardUi chrome reduction). */
     function AntuSidebarBody({ useTabInfo }) {
       const hostRef = useRef(null)
       const handleRef = useRef(null)
       const { embed, loadError } = useEmbed()
-      const [mountError, setMountError] = useState(null)
       const { tab, sidebar } = useTabInfo()
       const params = tab?.navigation?.params && typeof tab.navigation.params === 'object' ? tab.navigation.params : {}
       const spec = params.spec && typeof params.spec === 'object' ? params.spec : null
       const revision = tab?.navigation?.revision
+      // Full page chrome in the sidebar — no cardUi.
+      const mountError = useDiagram(hostRef, handleRef, embed, spec, params.kind, params.theme, undefined, revision)
       const embedError = loadError || mountError
       const path = typeof params.path === 'string' ? params.path : null
       const openFile = path ? fullView.files.get(path) : null
@@ -106,26 +189,6 @@ window.__ModuleLoader__.load({
         askedRevision.current = revision
         if (typeof fullView.fullscreen === 'function') fullView.fullscreen()
       }, [revision, params.wantFullscreen, sidebar?.fullscreen])
-
-      useLayoutEffect(() => {
-        const el = hostRef.current
-        if (!el || !embed || !spec) return undefined
-        destroyHandle(handleRef.current)
-        handleRef.current = null
-        el.replaceChildren()
-        setMountError(null)
-        try {
-          // Full page chrome in the sidebar — no cardUi.
-          handleRef.current = mountDiagram(embed, el, spec, params.kind, params.theme).handle
-        } catch (err) {
-          setMountError(err?.message || String(err))
-          return undefined
-        }
-        return () => {
-          destroyHandle(handleRef.current)
-          handleRef.current = null
-        }
-      }, [embed, spec, params.kind, params.theme, revision])
 
       const label = titleOf(spec, 'Antu')
       return h(
@@ -156,7 +219,6 @@ window.__ModuleLoader__.load({
       const hostRef = useRef(null)
       const handleRef = useRef(null)
       const { embed, loadError } = useEmbed()
-      const [mountError, setMountError] = useState(null)
 
       const argsRaw = argsRawOf(block)
       const args = useMemo(() => parseArgsRaw(argsRaw), [argsRaw])
@@ -166,31 +228,10 @@ window.__ModuleLoader__.load({
       // antu_render returned ok: false (bad spec, outPath outside the workspace, a write error): say why, draw nothing
       const failure = renderFailure(block)
       const title = titleOf(spec, toolName === 'mcp__antu__antu_render' ? 'Antu (MCP)' : 'Antu')
+      // The whole diagram, fitted; no chrome (cardUi). Reading happens in the full view.
+      const ui = useMemo(() => (embed ? { ...embed.cardUi } : undefined), [embed])
+      const mountError = useDiagram(hostRef, handleRef, embed, spec, args?.kind, args?.theme, ui, argsRaw)
       const embedError = loadError || mountError
-
-      useLayoutEffect(() => {
-        const el = hostRef.current
-        if (!el || !embed || !spec || typeof spec !== 'object') return undefined
-
-        destroyHandle(handleRef.current)
-        handleRef.current = null
-        el.replaceChildren()
-        setMountError(null)
-
-        try {
-          // The whole diagram, fitted; no chrome (cardUi). Reading happens in the full view.
-          handleRef.current = mountDiagram(embed, el, spec, args?.kind, args?.theme, { ...embed.cardUi }).handle
-        } catch (err) {
-          setMountError(err?.message || String(err))
-          return undefined
-        }
-
-        return () => {
-          destroyHandle(handleRef.current)
-          handleRef.current = null
-        }
-        // Remount when the embed API or the call's argsRaw/spec change.
-      }, [embed, spec, argsRaw])
 
       const openFull = () => {
         if (typeof fullView.open !== 'function' || !spec) return
@@ -198,6 +239,33 @@ window.__ModuleLoader__.load({
         fullView.open({ spec, kind: args?.kind, theme: args?.theme, path: path || undefined, title })
       }
       const canOpenFull = typeof fullView.open === 'function' && !!spec && !embedError
+
+      // With the turn tail there, the finished diagram is drawn after DSH's fold; the folded tool
+      // row only names the diagram and opens the full view, so the reader sees one line, not a blank card.
+      if (hasTurnTail) {
+        const error = status === 'error' || !!failure
+        const label =
+          status === 'preparing' || (!spec && !argsRaw)
+            ? 'Preparing…'
+            : error
+              ? failure || 'Render failed'
+              : status === 'running'
+                ? 'Running…'
+                : status === 'stopped'
+                  ? 'Stopped'
+                  : !spec
+                    ? 'Could not parse tool arguments'
+                    : 'Done'
+        return h(
+          'div',
+          { className: 'antuDsh_toolrow', 'data-antu-dsh': 'render' },
+          h('span', { className: 'antuDsh_toolTitle' }, title),
+          h('span', { className: 'antuDsh_toolStatus' + (error ? ' antuDsh_noticeError' : '') }, label),
+          canOpenFull && status === 'ok'
+            ? h('button', { type: 'button', className: 'antuDsh_btn', onClick: openFull }, 'Open full view')
+            : null,
+        )
+      }
 
       // Before the diagram can be drawn, or when it cannot: one quiet line, no picture.
       const notice =
@@ -207,11 +275,11 @@ window.__ModuleLoader__.load({
             ? 'Render failed'
             : failure
               ? failure
-            : status === 'stopped'
-              ? 'Stopped'
-              : !spec
-                ? 'Could not parse tool arguments; open the HTML file when the call finishes.'
-                : null
+              : status === 'stopped'
+                ? 'Stopped'
+                : !spec
+                  ? 'Could not parse tool arguments; open the HTML file when the call finishes.'
+                  : null
 
       if (notice) {
         return h(
@@ -227,35 +295,74 @@ window.__ModuleLoader__.load({
         )
       }
 
-      return h(
-        'div',
-        { className: 'antuDsh_card', 'data-antu-dsh': 'render' },
-        // Keep the mount host in the tree even when the last mount failed.
-        // If we swap it for the error fallback, hostRef is null on the next
-        // argsRaw change and the layout effect returns early forever.
-        h('div', {
-          ref: hostRef,
-          className: 'antuDsh_canvas',
-          role: 'img',
-          'aria-label': title,
-          hidden: !!embedError,
-        }),
-        embedError ? h('div', { className: 'antuDsh_fallback' }, embedError) : null,
-        // A cover over the picture: a click opens the full view, and the wheel goes on to the conversation.
-        canOpenFull
-          ? h(
-              'button',
-              {
-                type: 'button',
-                className: 'antuDsh_cover',
-                title: 'Open full view',
-                'aria-label': `Open full view: ${title}`,
-                onClick: openFull,
-              },
-              h('span', { className: 'antuDsh_coverIcon', 'aria-hidden': true }, '⤢'),
-            )
-          : null,
-      )
+      return diagramCard({ hostRef, title, embedError, canOpenFull, onOpenFull: openFull })
+    }
+
+    /** One finished call's card in the turn tail; `call` is a record of the turn's diagram data. */
+    function AntuTailDiagram({ call, openFile }) {
+      const hostRef = useRef(null)
+      const handleRef = useRef(null)
+      const { embed, loadError } = useEmbed()
+      const args = call.args && typeof call.args === 'object' ? call.args : null
+      const spec = args ? args.spec : null
+      const title = titleOf(spec, call.name === 'mcp__antu__antu_render' ? 'Antu (MCP)' : 'Antu')
+      const ui = useMemo(() => (embed ? { ...embed.cardUi } : undefined), [embed])
+      const mountError = useDiagram(hostRef, handleRef, embed, spec, args?.kind, args?.theme, ui, call.argsRaw)
+      const embedError = loadError || mountError
+
+      const openFull = () => {
+        if (typeof fullView.open !== 'function' || !spec) return
+        // The tail's openFile is the chat's, so the full view's "Open HTML" reaches the written file.
+        if (call.path && typeof openFile === 'function') fullView.files.set(call.path, openFile)
+        fullView.open({ spec, kind: args?.kind, theme: args?.theme, path: call.path || undefined, title })
+      }
+
+      return diagramCard({
+        hostRef,
+        title,
+        embedError,
+        canOpenFull: typeof fullView.open === 'function' && !!spec && !embedError,
+        onOpenFull: openFull,
+      })
+    }
+
+    /**
+     * The finished turn's diagrams, drawn in `conversation.chat.turnTail` after DSH folds the turn's
+     * tool steps. Running calls show nothing; a failure is one quiet line; a success is the card.
+     */
+    function AntuTurnTail({ turn, openFile }) {
+      const data = turn && turn.data ? turn.data.get(ANTU_DIAGRAMS_KIND) : undefined
+      const calls = data && Array.isArray(data.calls) ? data.calls : []
+      if (calls.length === 0) return null
+
+      const rows = []
+      for (const call of calls) {
+        if (call.status === 'running') continue
+        if (call.status !== 'ok') {
+          rows.push(
+            h(
+              'div',
+              { key: call.callId, className: 'antuDsh_notice antuDsh_noticeError', 'data-antu-dsh': 'render' },
+              call.failure || 'Render failed',
+            ),
+          )
+          continue
+        }
+        const spec = call.args && typeof call.args === 'object' ? call.args.spec : null
+        if (!spec) {
+          rows.push(
+            h(
+              'div',
+              { key: call.callId, className: 'antuDsh_notice', 'data-antu-dsh': 'render' },
+              'Could not parse tool arguments; open the HTML file when the call finishes.',
+            ),
+          )
+          continue
+        }
+        rows.push(h(AntuTailDiagram, { key: call.callId, call, openFile }))
+      }
+
+      return rows.length === 0 ? null : h('div', { className: 'antuDsh_tail', 'data-antu-dsh': 'turn-tail' }, rows)
     }
 
     const css = `
@@ -276,6 +383,10 @@ window.__ModuleLoader__.load({
 .antuDsh_sideCanvas{flex:auto;min-height:0;border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-base);overflow:hidden}
 .antuDsh_sideCanvas>*{width:100%;height:100%}
 .antuDsh_sideFile{position:absolute;right:16px;bottom:16px}
+.antuDsh_toolrow{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}
+.antuDsh_toolTitle{color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.antuDsh_toolStatus{color:var(--dsw-alias-label-tertiary)}
+.antuDsh_tail{display:flex;flex-direction:column;gap:8px}
 @media (prefers-reduced-motion:reduce){.antuDsh_coverIcon{transition:none}}
 `
 
@@ -328,6 +439,18 @@ window.__ModuleLoader__.load({
               fullView.fullscreen = null
             }
           }, 'antu-dsh: full view opener')
+        })
+        // Optional: only DSH with the conversation service has the turn tail. Without it the tool
+        // row keeps the full card (older DSH has no folded turn to get lost in).
+        ctx.inject(['uiConversation'], (convCtx) => {
+          hasTurnTail = true
+          convCtx.effect(
+            () => convCtx.uiConversation.events.register(antuDiagramsDefinition),
+            'antu-dsh: diagram turn data',
+          )
+          convCtx.slots.inject('conversation.chat.turnTail', () =>
+            convCtx.slots.register({ name: 'conversation.chat.turnTail', id: TAB_ID }, AntuTurnTail),
+          )
         })
       },
     }

@@ -91,3 +91,89 @@ export function mountOptions({ mountKind, mountTheme }, ui) {
 export function titleOf(spec, fallback) {
   return spec && typeof spec.title === 'string' && spec.title.trim() ? spec.title.trim() : fallback
 }
+
+// ---- Per-turn diagram calls (the turn tail reads this; the folded tool row stays compact) ----
+
+/** The Turn data key of the per-turn diagram calls. */
+export const ANTU_DIAGRAMS_KIND = 'antu-diagrams'
+
+/** Does this wire name call the diagram renderer? */
+export function isAntuRenderName(name) {
+  return name === 'antu_render' || name === 'mcp__antu__antu_render'
+}
+
+/** Only append-origin surface events are transcript history; a replacement copy must not rewrite it. */
+export function isAppendSurfaceEvent(event) {
+  return !!event && event.surfaceOp === 'append'
+}
+
+/** New per-turn state at `turn/start`. */
+export function antuDiagramsStart(event) {
+  return { turn: event.data.turn, calls: [] }
+}
+
+/**
+ * One turn's diagram calls, in call order: a `tool/call` appends a running call and a `tool/result`
+ * settles it with the written path or the failure. Unrelated tools and replacement results leave
+ * `state` as it is, so React keeps the same Location value.
+ */
+export function antuDiagramsUpdate(state, event) {
+  if (!state) return state
+  if (event.type === 'tool/call') {
+    if (!isAntuRenderName(event.data?.name)) return state
+    const callId = event.data.callId == null ? null : String(event.data.callId)
+    if (callId === null) return state
+    const argsRaw = typeof event.data.arguments === 'string' ? event.data.arguments : null
+    return {
+      ...state,
+      calls: [
+        ...state.calls,
+        { callId, name: event.data.name, argsRaw, args: parseArgsRaw(argsRaw), status: 'running', path: null, failure: null },
+      ],
+    }
+  }
+  if (event.type !== 'tool/result' || !isAppendSurfaceEvent(event)) return state
+  const message = event.data?.message
+  const callId = message?.source?.callId == null ? null : String(message.source.callId)
+  if (callId === null) return state
+  const index = state.calls.findIndex((call) => call.callId === callId)
+  if (index < 0) return state
+  const block = {
+    kind: 'result',
+    isError: message.isError === true,
+    // DSH 0.2.0-rc.2 carries the presentation meta on the event; message.meta is the documented fallback.
+    meta: event.data.meta ?? message.meta,
+    content: message.content,
+  }
+  const failure = renderFailure(block) || (block.isError ? 'Render failed' : null)
+  const calls = state.calls.slice()
+  calls[index] = {
+    ...calls[index],
+    status: failure ? 'failed' : 'ok',
+    path: failure ? null : resultPath(block),
+    failure,
+  }
+  return { ...state, calls }
+}
+
+/** Turn-scoped accumulator of diagram calls; it publishes no view Node. */
+export const antuDiagramsDefinition = {
+  kind: ANTU_DIAGRAMS_KIND,
+  match: (event) => {
+    if (event.type === 'turn/start') return { id: String(event.data.turn), role: 'start' }
+    if (event.type === 'tool/call') return isAntuRenderName(event.data?.name) ? { id: String(event.data.turn), role: 'update' } : null
+    if (event.type === 'tool/result' && isAppendSurfaceEvent(event)) return { id: String(event.data.turn), role: 'update' }
+    return null
+  },
+  start: (_context, match) => antuDiagramsStart(match.event),
+  update: (context, match) => antuDiagramsUpdate(context.state, match.event),
+  buildLocationData: (context, scope, previous) => {
+    if (scope !== 'turn' || context.state === undefined) return null
+    const value = { calls: context.state.calls }
+    // The same calls array means nothing changed: hand back `previous` so React does not re-render.
+    if (previous?.kind === 'turn' && previous.turn === context.state.turn && previous.key === ANTU_DIAGRAMS_KIND && previous.value?.calls === value.calls) {
+      return previous
+    }
+    return { kind: 'turn', turn: context.state.turn, key: ANTU_DIAGRAMS_KIND, value }
+  },
+}

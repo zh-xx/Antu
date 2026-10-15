@@ -19,7 +19,7 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 | Tool source | **Native Host tools** in the DSH process (`import` from `@zh-xx/antu/validate` and `/html`), not a configuration-only MCP bundle as the long-term path |
 | Wire tool names | `antu_validate`, `antu_layout`, `antu_render`, and the read-only reference tools `antu_schema`, `antu_guide`, `antu_examples`, … (not `mcp__antu__…`). A chat card may also register the MCP names while a stopgap MCP row is still in use |
 | `antu_render` | **Writes** a self-contained HTML file under the **session workspace** (absolute path). The card draws from the tool-call **arguments** (`spec`); the file is for archive, forward, and `openFile` |
-| Chat card | **The picture only**: the whole diagram fitted into the card (`mount()` with `cardUi`), no title row, no buttons. A click anywhere on it opens the full view. The wheel goes on to the conversation. Decided 2026-10-15 after a mock-up: opening at a readable text size showed too little of a diagram to be worth it |
+| Chat card | **The picture only**, drawn in the turn tail (`conversation.chat.turnTail`) after DSH folds a finished turn's tool steps, so it is not hidden in that fold. The whole diagram is fitted into the card (`mount()` with `cardUi`), no title row, no buttons; a `ResizeObserver` refits it when the fold opens. The folded tool row is one line (title, status, **Open full view**). A click anywhere on the picture opens the full view. The wheel goes on to the conversation. Decided 2026-10-15 after a mock-up (readable text size showed too little of a diagram); moved to the turn tail after the browser test showed the folded card invisible and blank |
 | Full view | A page `antu-diagram` in DSH's right panel, presented **fullscreen** (the panel's own fullscreen mode covers the window), with the full chrome: kind, theme, detail cards, export, and **Open HTML** |
 | Package | Separate **`@zh-xx/antu-dsh`**, version **same number** as `@zh-xx/antu`. Source under `tools/dsh/`; **build output is not committed** |
 | Skill | Shipped with the plugin from the Host-tool phase onward; name **not** bare `antu` (avoid clashing with `skills/antu/`). Text teaches Host tool names, not the command line |
@@ -30,7 +30,7 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 
 - Official DSH practice: do not serve HTML from the Host and embed it in an iframe (no host theme tokens,
   light/dark, or `ctx.locale`). Antu's page is a *deliverable*; the chat card is *plugin UI* and must use
-  `mount()` (`@zh-xx/antu/embed`) in a Client slot (`tool.call.toolview`).
+  `mount()` (`@zh-xx/antu/embed`) in a Client slot (`conversation.chat.turnTail`; the tool row only names the call).
 - A configuration-only MCP bundle (`npx … antu-mcp`) is a useful stopgap for machines that already have
   Node (see [tools/dsh/README.md](../tools/dsh/README.md)). It is **not** the product for Desktop users:
   system `npx` is not guaranteed, the download is large, and `antu_render`'s default output path follows the
@@ -53,7 +53,7 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 ### P2 — `@zh-xx/antu-dsh` 0.x first publish — in tree
 
 - Host: `antu_validate`, `antu_layout`, `antu_render` (in-process; HTML under session cwd) and the read-only reference tools `antu_schema`, `antu_guide`, `antu_examples` (field table, mechanism notes, examples from the installed `@zh-xx/antu`).
-- Client: small entry + lazy-loaded embed chunk; `tool.call.toolview` for `antu_render` (and MCP name if needed).
+- Client: small entry + lazy-loaded embed chunk; per-turn `antu_render` data (`antu-diagrams`) in the turn tail, and a compact `tool.call.toolview` row for `antu_render` (and MCP name if needed) when that service is there.
 - Client needs **DSH ≥ 0.2.0-rc.2** (`require.async` for package-local `client.embed.js`). On 0.1.x the card
   shows an upgrade message instead of crashing the slot.
 - Memory skill `antu-diagram`; "open in sidebar" via `openFile` on the written HTML.

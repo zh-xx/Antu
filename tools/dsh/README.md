@@ -69,12 +69,17 @@ DSH's plugin log does not include pnpm's error text.
 | Host | Native tools `antu_validate`, `antu_layout`, `antu_render` (HTML under the session cwd) |
 | Host | Reference tools `antu_schema` (field table), `antu_guide` (mechanism notes), `antu_examples` (list or fetch one) — read from the installed `@zh-xx/antu` package, so no filesystem search is needed |
 | Host | Memory skill `antu-diagram` (teaches Host wire names, not the CLI) |
-| Client | `tool.call.toolview` for `antu_render` and `mcp__antu__antu_render` |
+| Client | `tool.call.toolview` for `antu_render` and `mcp__antu__antu_render` (one compact line: title, status, **Open full view**) when the turn tail is there; the full card otherwise |
+| Client | `conversation.chat.turnTail` data `antu-diagrams`: the fitted diagram after DSH's "Completed in Ns" fold; a `ResizeObserver` refits it whenever the fold opens |
 | Client | Right-panel page `antu-diagram` (full embed, fullscreen); a click on the card opens it |
 
-The chat card reads `spec` from the tool-call **arguments** (`argsRaw`) and shows only the picture: the whole
-diagram fitted (`cardUi`), nothing else. A click opens the full view, fullscreen in the right panel, with kind and
-theme switches, detail cards, export and **Open HTML** (the card's `openFile`).
+The diagram is drawn in the turn tail (`conversation.chat.turnTail`), after DSH collapses a finished turn's tool
+steps into their fold, so it stays visible without opening that fold. The card reads `spec` from the tool-call
+**arguments** (`argsRaw`) and shows only the picture: the whole diagram fitted (`cardUi`), nothing else. A
+`ResizeObserver` calls the embed's `fitView()` when the host grows, so a card mounted while hidden is never blank.
+A click opens the full view, fullscreen in the right panel, with kind and theme switches, detail cards, export and
+**Open HTML** (the card's `openFile`). On a DSH without the conversation service the full card stays in the tool
+row.
 
 ## Interim: MCP on a machine that already has Node
 

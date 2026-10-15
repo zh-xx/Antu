@@ -23,6 +23,7 @@ import {
 } from '../tools/dsh/src/tools.mjs'
 import {
   THEMES,
+  ANTU_DIAGRAMS_KIND,
   argsRawOf,
   knownKinds,
   mountOptions,
@@ -378,6 +379,9 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(client, /cardUi/)
   assert.match(client, /Open full view/)
   assert.match(client, /antu-diagram/)
+  assert.match(client, /conversation\.chat\.turnTail/)
+  assert.match(client, /ResizeObserver/)
+  assert.match(client, /antu-diagrams/)
   assert.match(client, /sidebarRightTabs/)
   // Injected helper + safe call site (not require.async, which is undefined on DSH 0.1.x)
   assert.match(client, /function resolveRequireAsync/)
@@ -735,25 +739,75 @@ const findAll = (node, pred, out = []) => {
 }
 const buttonLabelled = (tree, label) => findAll(tree, (n) => n.type === 'button' && textOf(n) === label)[0]
 
-/** Load the built package/client.js; return the chat card, and the full-view page when a right sidebar is given */
-function loadBuiltCard({ requireAsync, sidebarRight }) {
+/** Load the built package/client.js; return the chat card, the turn tail, and the full-view page when a right sidebar is given */
+function loadBuiltCard({ requireAsync, sidebarRight, uiConversation }) {
   const { React, mount } = miniReact()
   let def
   new Function('window', readFileSync(join(pkgDir, 'client.js'), 'utf8'))({ __ModuleLoader__: { load: (d) => { def = d } } })
   const req = (id) => { assert.equal(id, 'react'); return React }
   if (requireAsync) req.async = requireAsync
-  const registered = {}
-  const slots = { inject: (_n, fn) => fn(), register: ({ key }, comp) => { registered[key] = comp } }
+  const byKey = {}
+  const byId = {}
+  const slots = {
+    inject: (_n, fn) => fn(),
+    register: (spec, comp) => {
+      if (spec.key !== undefined) byKey[spec.key] = comp
+      if (spec.id !== undefined) byId[spec.id] = comp
+    },
+  }
   const tabTypes = []
+  const definitions = []
+  // A minimal conversation service: the plugin's definition is captured so a test can replay events.
+  const conversation = {
+    events: { register: (definition) => { definitions.push(definition); return () => {} } },
+  }
   def.factory(req).apply({
     slots,
-    inject(_names, fn) {
-      if (!sidebarRight) return // a profile without the right sidebar
-      fn({ effect: (f) => f(), slots, sidebarRight, sidebarRightTabs: { register: (t) => tabTypes.push(t) } })
+    inject(names, fn) {
+      const want = new Set(names)
+      if (want.has('sidebarRight') || want.has('sidebarRightTabs')) {
+        if (!sidebarRight) return // a profile without the right sidebar
+        fn({ effect: (f) => f(), slots, sidebarRight, sidebarRightTabs: { register: (t) => tabTypes.push(t) } })
+        return
+      }
+      if (want.has('uiConversation')) {
+        if (!uiConversation) return // a DSH without the conversation service (no turn tail)
+        fn({ effect: (f) => f(), slots, uiConversation: conversation })
+      }
     },
   })
-  return { Card: registered.antu_render, McpCard: registered.mcp__antu__antu_render, Page: registered['@zh-xx/antu-dsh'], tabTypes, mount }
+  return {
+    Card: byKey.antu_render,
+    McpCard: byKey.mcp__antu__antu_render,
+    Page: byKey['@zh-xx/antu-dsh'],
+    Tail: byId['@zh-xx/antu-dsh'],
+    definitions,
+    tabTypes,
+    mount,
+  }
 }
+
+/** Build one turn's diagram data by replaying events through the plugin's own definition. */
+function turnWithDiagrams(definition, events, turn = 1) {
+  let state = definition.start({}, { event: { type: 'turn/start', data: { turn } } })
+  for (const event of events) state = definition.update({ state }, { event })
+  return definition.buildLocationData({ state }, 'turn', null).value
+}
+
+/** One `tool/call` event as DSH 0.2.0-rc.2 logs it. */
+const toolCall = (turn, callId, args, name = 'antu_render') => ({
+  type: 'tool/call',
+  seq: 1,
+  data: { turn, step: 1, callId, name, arguments: typeof args === 'string' ? args : JSON.stringify(args) },
+})
+
+/** One append-origin `tool/result` event. */
+const toolResult = (turn, callId, message = {}, data = {}) => ({
+  type: 'tool/result',
+  seq: 2,
+  surfaceOp: 'append',
+  data: { turn, step: 1, message: { source: { callId }, isError: false, content: [], ...message }, ...data },
+})
 
 function fakeEmbed({ failMount } = {}) {
   const calls = { mount: [], destroyed: 0, kinds: [], themes: [] }
@@ -883,4 +937,107 @@ test('built client card: says what is wrong instead of crashing (mount fails, tr
   const old = c.mount(c.Card, { phase: 'end', toolName: 'antu_render', block: callBlock({ spec: { type: 'fact' } }) })
   await old.flush()
   assert.match(textOf(old.tree()), /≥ 0\.2\.0-rc\.2/)
+})
+
+test('built client tool row: compact when the turn tail draws the diagram', async () => {
+  const { embed, calls } = fakeEmbed()
+  const { Card, mount } = loadBuiltCard({ requireAsync: async () => embed, uiConversation: true })
+  const spec = { type: 'fact', title: '案情' }
+
+  // Done: one line, no mount, and no full view while the right sidebar is absent.
+  const done = mount(Card, { phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec, kind: 'scale' }) })
+  await done.flush()
+  assert.equal(calls.mount.length, 0, 'the compact row does not mount the diagram')
+  assert.equal(textOf(done.tree()), '案情Done')
+  assert.equal(findAll(done.tree(), (n) => n.type === 'button').length, 0)
+
+  // Running and preparing say so
+  const running = mount(Card, { phase: 'start', toolName: 'antu_render', openFile() {}, block: { phase: 'start', argsRaw: JSON.stringify({ spec }) } })
+  await running.flush()
+  assert.equal(textOf(running.tree()), '案情Running…')
+  const preparing = mount(Card, { phase: 'preparing', toolName: 'antu_render', openFile() {}, block: { phase: 'preparing' } })
+  await preparing.flush()
+  assert.match(textOf(preparing.tree()), /Preparing…/)
+
+  // A failed call names the reason in the row
+  const failed = mount(Card, {
+    phase: 'end', toolName: 'antu_render', openFile() {},
+    block: { kind: 'result', call: { argsRaw: JSON.stringify({ spec }) }, meta: { ok: false, reason: 'EPERM: operation not permitted', errors: [] } },
+  })
+  await failed.flush()
+  assert.match(textOf(failed.tree()), /EPERM: operation not permitted/)
+})
+
+test('built client tool row: compact row opens the full view', async () => {
+  const { embed } = fakeEmbed()
+  const opened = []
+  const sidebarRight = {
+    openTab: (kind, options) => opened.push({ kind, options }),
+    commandTarget: () => ({ paneId: 'p1', host: 'dock' }),
+    toggleFullscreen() {},
+  }
+  const { Card, mount } = loadBuiltCard({ requireAsync: async () => embed, uiConversation: true, sidebarRight })
+  const spec = { type: 'fact', title: '案情' }
+  const view = mount(Card, { phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec, kind: 'scale' }) })
+  await view.flush()
+  const button = buttonLabelled(view.tree(), 'Open full view')
+  assert.ok(button, 'a done call offers the full view')
+  button.props.onClick()
+  assert.equal(opened.length, 1)
+  assert.deepEqual(opened[0].options.params, { spec, kind: 'scale', theme: undefined, path: '/w/a.html', title: '案情', wantFullscreen: true })
+})
+
+test('built client tail: finished diagrams draw there, failures explain, running calls wait', async () => {
+  const { embed, calls } = fakeEmbed()
+  const opened = []
+  const files = []
+  const sidebarRight = {
+    openTab: (kind, options) => opened.push({ kind, options }),
+    commandTarget: () => ({ paneId: 'p1', host: 'dock' }),
+    toggleFullscreen() {},
+  }
+  const load = loadBuiltCard({ requireAsync: async () => embed, uiConversation: true, sidebarRight })
+  assert.equal(typeof load.Tail, 'function')
+  const definition = load.definitions[0]
+  const turnOf = (data) => ({ data: { get: (key) => (key === ANTU_DIAGRAMS_KIND ? data : undefined) } })
+
+  // No antu_render calls: the tail adds nothing.
+  const empty = load.mount(load.Tail, { turn: turnOf(turnWithDiagrams(definition, [])), openFile() {} })
+  assert.equal(empty.tree(), null)
+
+  // One done, one failed, one still running.
+  const spec = { type: 'fact', title: '案情' }
+  const data = turnWithDiagrams(definition, [
+    toolCall(1, 'c1', { spec, kind: 'scale' }),
+    toolCall(1, 'c2', { spec: { type: 'fact', title: '二稿' } }),
+    toolCall(1, 'c3', { spec: { type: 'fact', title: '三稿' } }),
+    toolResult(1, 'c1', { content: [{ type: 'text', text: 'Written: /w/one.html' }] }),
+    toolResult(1, 'c2', { isError: true }),
+  ])
+  const view = load.mount(load.Tail, { turn: turnOf(data), openFile: (p) => files.push(p) })
+  const tree = view.tree()
+  assert.match(textOf(tree), /Render failed/, 'the failed call leaves one quiet line')
+  assert.equal(textOf(tree).includes('三稿'), false, 'a running call shows nothing')
+  const diagramEl = findAll(tree, (n) => typeof n.type === 'function' && n.props?.call)[0]
+  assert.ok(diagramEl, 'the finished call is one diagram card')
+  assert.equal(diagramEl.props.call.path, '/w/one.html')
+
+  // Mount that card on its own (miniReact does not descend into child components) and open the full view.
+  const card = load.mount(diagramEl.type, diagramEl.props)
+  await card.flush()
+  assert.equal(calls.mount.length, 1)
+  assert.deepEqual(calls.mount[0].options, { kind: 'scale', ui: embed.cardUi })
+  const cover = findAll(card.tree(), (n) => n.type === 'button')[0]
+  assert.match(cover.props['aria-label'], /Open full view: 案情/)
+  cover.props.onClick()
+  assert.equal(opened.length, 1)
+  assert.deepEqual(opened[0].options.params, { spec, kind: 'scale', theme: undefined, path: '/w/one.html', title: '案情', wantFullscreen: true })
+
+  // The tail passed its openFile through, so the full view can open the written HTML.
+  const page = load.mount(load.Page, {
+    useTabInfo: () => ({ sidebar: { expanded: true, fullscreen: false }, tab: { navigation: { params: opened[0].options.params, revision: 1 } } }),
+  })
+  await page.flush()
+  buttonLabelled(page.tree(), 'Open HTML').props.onClick()
+  assert.deepEqual(files, ['/w/one.html'])
 })
