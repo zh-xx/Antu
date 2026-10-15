@@ -13,7 +13,7 @@
 // ============================================================
 
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build as viteBuild } from 'vite'
@@ -170,19 +170,30 @@ function syncPackageJson() {
 
 /** Prefer installing the tgz: a bare directory `link:` often lacks resolvable peers. */
 function packTarball() {
-  for (const name of readdirSync(HERE)) {
-    if (name.startsWith('zh-xx-antu-dsh-') && name.endsWith('.tgz')) {
-      rmSync(join(HERE, name), { force: true })
+  const isTgz = (n) => n.startsWith('zh-xx-antu-dsh-') && n.endsWith('.tgz')
+  // Pack into a staging folder first: if npm pack fails, the tarball from the last good build stays.
+  const staging = mkdtempSync(join(HERE, '.pack-'))
+  try {
+    try {
+      execFileSync('npm', ['pack', '--pack-destination', staging], {
+        cwd: PKG,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        encoding: 'utf8',
+      })
+    } catch (e) {
+      const detail = String(e.stderr || e.stdout || e.message || e).trim()
+      throw new Error(`tools/dsh/build.mjs: npm pack failed; the previous tarball (if any) is kept\n${detail}`, { cause: e })
     }
+    const tgz = readdirSync(staging).find(isTgz)
+    if (!tgz) throw new Error('tools/dsh/build.mjs: npm pack produced no tarball')
+    for (const name of readdirSync(HERE)) {
+      if (isTgz(name)) rmSync(join(HERE, name), { force: true })
+    }
+    renameSync(join(staging, tgz), join(HERE, tgz))
+    return join(HERE, tgz)
+  } finally {
+    rmSync(staging, { recursive: true, force: true })
   }
-  execFileSync('npm', ['pack', '--pack-destination', HERE], {
-    cwd: PKG,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    encoding: 'utf8',
-  })
-  const tgz = readdirSync(HERE).find((n) => n.startsWith('zh-xx-antu-dsh-') && n.endsWith('.tgz'))
-  if (!tgz) throw new Error('tools/dsh/build.mjs: npm pack produced no tarball')
-  return join(HERE, tgz)
 }
 
 async function main() {

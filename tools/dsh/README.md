@@ -46,6 +46,22 @@ Installing the bare `tools/dsh/package/` directory with a `link:` style add ofte
 `failed to import` because that folder has no `node_modules` for `@deepseek-ai/dsh-tools`.
 Use the tgz (or a published npm package) instead.
 
+### After you change the plugin
+
+The tarball name only carries the version, so a rebuilt tgz with the same version looks unchanged to
+pnpm: `add` prints `Already up to date` and keeps the old code. To test a new build:
+
+```bash
+npm run build:dsh                                  # a failed pack keeps the last good tgz and prints why
+ls tools/dsh/zh-xx-antu-dsh-*.tgz                  # the file must exist before you install it
+dsh plugin --profile <name> remove @zh-xx/antu-dsh
+dsh plugin --profile <name> add /abs/path/to/zh-xx-antu-dsh-0.14.0.tgz
+```
+
+Then **restart DSH**: plugins load when it starts, so a running session keeps the old code.
+If `add` fails with only an exit code (for example `254`), check first that the tgz path exists;
+DSH's plugin log does not include pnpm's error text.
+
 ## What it registers
 
 | Side | Capability |

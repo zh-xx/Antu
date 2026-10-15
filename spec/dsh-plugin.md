@@ -60,7 +60,7 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 - **Full view**: a click on the card opens the page `antu-diagram` in the right panel and asks for fullscreen. It mounts the full
   embed (no `cardUi`) from the same `argsRaw` `spec`. DSH 0.2.0-rc.2's public `ctx.sidebarRight` has no fullscreen call; the plugin
   uses the controller's `commandTarget` / `toggleFullscreen` when present and otherwise leaves the panel to its own fullscreen button.
-- Install: `npm run build:dsh` also packs `zh-xx-antu-dsh-*.tgz` (preferred over a bare `package/` link).
+- Install: `npm run build:dsh` also packs `zh-xx-antu-dsh-*.tgz` (preferred over a bare `package/` link). pnpm treats a rebuilt tgz with the same version as unchanged: to update, `remove` then `add`, and restart DSH (see `tools/dsh/README.md`).
 - CI: `test/dsh-plugin.test.mjs` (helpers, manifest, `build.mjs`, Host `apply` smoke). Trusted publisher / npm publish still open.
 
 ### P2.x — make it dependable, then publish (next, in this order)

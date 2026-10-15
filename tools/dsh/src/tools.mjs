@@ -5,7 +5,7 @@
 //  Session cwd: exec.agent.session.header.cwd (same as @deepseek-ai/dsh-tool-fs).
 // ============================================================
 
-import { existsSync, lstatSync, mkdirSync, readlinkSync, realpathSync, writeFileSync } from 'node:fs'
+import { lstatSync, mkdirSync, readlinkSync, realpathSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 
 /** Session workspace cwd for this call, or undefined */
@@ -100,13 +100,13 @@ export function effectiveWritePath(path, hops = 0) {
 }
 
 function workspaceRoot(cwd) {
-  const root = resolve(cwd)
+  // Same resolution as the write path, so a symlinked parent (macOS `/tmp` → `/private/tmp`)
+  // is resolved on both sides even when the workspace folder does not exist yet.
   try {
-    if (existsSync(root)) return realpathSync(root)
+    return effectiveWritePath(resolve(cwd))
   } catch {
-    /* keep lexical */
+    return resolve(cwd)
   }
-  return root
 }
 
 /**

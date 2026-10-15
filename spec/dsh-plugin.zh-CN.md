@@ -55,7 +55,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 - 内存 skill `antu-diagram`；「在侧栏打开」先用 `openFile` 打开写出的 HTML。
 - **大图**：点聊天里的图，在右侧面板打开页面 `antu-diagram` 并请求全屏，用完整 embed（不用 `cardUi`）画同一份 `argsRaw` 里的 `spec`。
   DSH 0.2.0-rc.2 公开的 `ctx.sidebarRight` 没有全屏接口；插件在控制器有 `commandTarget` / `toggleFullscreen` 时用它们，否则由面板自己的全屏按钮来切。
-- 安装：`npm run build:dsh` 同时打出 `zh-xx-antu-dsh-*.tgz`（优先于对裸 `package/` 做 link）。
+- 安装：`npm run build:dsh` 同时打出 `zh-xx-antu-dsh-*.tgz`（优先于对裸 `package/` 做 link）。同版本号的新 tgz 会被 pnpm 当成没变，更新时先 `remove` 再 `add`，然后重启 DSH（见 `tools/dsh/README.md`）。
 - CI：`test/dsh-plugin.test.mjs`（helpers、manifest、`build.mjs`、Host `apply` 冒烟）。trusted publisher / 发 npm 仍待做。
 
 ### P2.x — 先可靠，再发布（接下来，按此顺序）

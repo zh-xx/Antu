@@ -63,12 +63,22 @@ const MINI = JSON.parse(readFileSync('examples/agent/procedure/1-minimal.en.json
 
 test('slugify and resolveOutPath stay under the session cwd', () => {
   assert.equal(slugify('Hello / 世界'), 'Hello-世界')
-  assert.equal(resolveOutPath(undefined, 'Hello', '/tmp/sess'), join('/tmp/sess', 'Hello.html'))
-  assert.equal(resolveOutPath('out/a.html', 'x', '/tmp/sess'), join('/tmp/sess', 'out/a.html'))
-  assert.throws(() => resolveOutPath('rel.html', 'x', undefined), /session workspace/)
-  assert.throws(() => resolveOutPath('/abs/x.html', 'x', '/tmp/sess'), /must stay under/)
-  assert.throws(() => resolveOutPath('../../.bashrc', 'x', '/tmp/sess'), /must stay under/)
-  assert.throws(() => resolveOutPath('..', 'x', '/tmp/sess'), /must stay under/)
+  // A real folder under tmpdir(): on macOS that is behind a symlink (`/var` → `/private/var`).
+  const sessBase = mkdtempSync(join(tmpdir(), 'antu-dsh-sess-'))
+  try {
+    const sess = realpathSync(sessBase)
+    assert.equal(resolveOutPath(undefined, 'Hello', sessBase), join(sess, 'Hello.html'))
+    assert.equal(resolveOutPath('out/a.html', 'x', sessBase), join(sess, 'out/a.html'))
+    assert.throws(() => resolveOutPath('rel.html', 'x', undefined), /session workspace/)
+    assert.throws(() => resolveOutPath('/abs/x.html', 'x', sessBase), /must stay under/)
+    assert.throws(() => resolveOutPath('../../.bashrc', 'x', sessBase), /must stay under/)
+    assert.throws(() => resolveOutPath('..', 'x', sessBase), /must stay under/)
+    // A workspace folder that does not exist yet still resolves through the symlinked parent.
+    const later = join(sessBase, 'not-yet')
+    assert.equal(resolveOutPath('a.html', 'x', later), join(sess, 'not-yet', 'a.html'))
+  } finally {
+    rmSync(sessBase, { recursive: true, force: true })
+  }
 
   const base = mkdtempSync(join(tmpdir(), 'antu-dsh-symlink-'))
   try {
@@ -336,6 +346,35 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
 
   const tgz = readdirSync('tools/dsh').find((n) => n.startsWith('zh-xx-antu-dsh-') && n.endsWith('.tgz'))
   assert.ok(tgz, 'build:dsh should pack zh-xx-antu-dsh-*.tgz')
+})
+
+test('build.mjs keeps the last good tarball when npm pack fails', { skip: process.platform === 'win32' && 'needs a POSIX fake npm on PATH' }, () => {
+  const isTgz = (n) => n.startsWith('zh-xx-antu-dsh-') && n.endsWith('.tgz')
+  let tgz = readdirSync('tools/dsh').find(isTgz)
+  if (!tgz) {
+    const r = spawnSync(process.execPath, ['tools/dsh/build.mjs'], { encoding: 'utf8' })
+    assert.equal(r.status, 0, r.stderr || r.stdout)
+    tgz = readdirSync('tools/dsh').find(isTgz)
+  }
+  const before = readFileSync(join('tools/dsh', tgz))
+
+  const bin = mkdtempSync(join(tmpdir(), 'antu-dsh-fake-npm-'))
+  try {
+    const fake = join(bin, 'npm')
+    writeFileSync(fake, '#!/bin/sh\necho "npm error code EPERM (fake)" >&2\nexit 1\n', { mode: 0o755 })
+    const r = spawnSync(process.execPath, ['tools/dsh/build.mjs'], {
+      encoding: 'utf8',
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+    })
+    assert.notEqual(r.status, 0)
+    assert.match(r.stderr, /npm pack failed; the previous tarball \(if any\) is kept/)
+    assert.match(r.stderr, /EPERM \(fake\)/)
+    assert.ok(existsSync(join('tools/dsh', tgz)), 'the last good tarball must survive a failed pack')
+    assert.ok(readFileSync(join('tools/dsh', tgz)).equals(before))
+    assert.ok(!readdirSync('tools/dsh').some((n) => n.startsWith('.pack-')), 'no staging folder left behind')
+  } finally {
+    rmSync(bin, { recursive: true, force: true })
+  }
 })
 
 test('built client factory surfaces missing require.async as a rejected load (0.1.x shape)', async () => {
