@@ -13,6 +13,7 @@ import {
   resolveOutPath,
   runLayout,
   runRender,
+  renderPresentation,
   runValidate,
   sessionCwd,
   slugify,
@@ -24,6 +25,7 @@ import {
   mountOptions,
   parseArgsRaw,
   pickOpening,
+  renderFailure,
   resultPath,
   statusOf,
   titleOf,
@@ -133,6 +135,30 @@ test('card model: where the call arguments, the written file and the status come
   assert.equal(titleOf({ title: '  案情  ' }, 'Antu'), '案情')
   assert.equal(titleOf({ title: ' ' }, 'Antu'), 'Antu')
   assert.equal(titleOf(null, 'Antu (MCP)'), 'Antu (MCP)')
+})
+
+test('render presentation: lossless JSON on every path, the reason kept', () => {
+  const ok = renderPresentation({ ok: true, path: '/w/a.html', bytes: 12, title: undefined })
+  assert.deepEqual(ok, { ok: true, path: '/w/a.html', title: '', bytes: 12 })
+  for (const value of [
+    { ok: false, reason: 'antu_render outPath must stay under the session workspace (/w)' },
+    { ok: false, errors: ['nodes (n-2): a decision needs at least 2'] },
+    { ok: false },
+    undefined,
+  ]) {
+    const meta = renderPresentation(value)
+    assert.deepEqual(JSON.parse(JSON.stringify(meta)), meta)
+    assert.equal(meta.ok, false)
+    assert.ok(meta.reason)
+  }
+  // The card reads it back
+  assert.equal(renderFailure({ kind: 'result', meta: renderPresentation({ ok: false, reason: 'EPERM: operation not permitted' }) }), 'EPERM: operation not permitted')
+  assert.equal(
+    renderFailure({ kind: 'result', meta: renderPresentation({ ok: false, errors: ['a', 'b'] }) }),
+    'Validation failed: a (+1 more)',
+  )
+  assert.equal(renderFailure({ kind: 'result', meta: ok }), null)
+  assert.equal(renderFailure({ phase: 'start' }), null)
 })
 
 test('card model: a diagram opens as asked only when the kind and theme exist', () => {
@@ -407,6 +433,33 @@ test('Host apply registers three tools and the skill on a stub Cordis context', 
     )
     assert.equal(rendered.ok, true)
     assert.ok(existsSync(rendered.path))
+
+    // The declared output contract, not only the pure function: presentationMeta must be lossless JSON on
+    // every path (DSH rejects undefined with INVALID_TOOL_OUTPUT and the reason is lost), failures included
+    const render = registered[2]
+    const ws = { agent: { session: { header: { cwd: join(dir, 'ws') } } } }
+    const lossless = (v) => assert.deepEqual(JSON.parse(JSON.stringify(v)), v, `not lossless JSON: ${String(v)}`)
+    const metaOf = (args, value) => {
+      const meta = render.output.presentationMeta(args, value)
+      assert.notEqual(meta, undefined)
+      lossless(meta)
+      return meta
+    }
+    assert.equal(metaOf({}, rendered).path, rendered.path)
+    const outside = await render.execute({ spec: MINI, outPath: '../../outside-workspace.html' }, ws)
+    assert.equal(outside.ok, false)
+    const outsideMeta = metaOf({}, outside)
+    assert.deepEqual(outsideMeta, { ok: false, reason: outside.reason, errors: [] })
+    assert.match(outsideMeta.reason, /must stay under the session workspace/)
+    const invalid = await render.execute({ spec: { type: 'fact', title: 'x', events: 'nope' } }, ws)
+    assert.equal(invalid.ok, false)
+    const invalidMeta = metaOf({}, invalid)
+    assert.ok(invalidMeta.errors.length > 0)
+    const noCwd = await render.execute({ spec: MINI }, {})
+    assert.match(metaOf({}, noCwd).reason, /session workspace/)
+    // and the text the model reads still carries the reason
+    assert.match(render.output.render({}, outside).map((b) => b.text).join(''), /must stay under/)
+
     const wsReal = realpathSync(join(dir, 'ws'))
     assert.ok(
       rendered.path === join(wsReal, 'card.html') ||
@@ -632,6 +685,15 @@ test('built client card: says what is wrong instead of crashing (mount fails, tr
   await partial.flush()
   assert.equal(ok.calls.mount.length, 0)
   assert.match(textOf(partial.tree()), /Could not parse tool arguments/)
+
+  // antu_render returned ok: false (here: outPath outside the workspace): the reason, not a picture
+  const failed = b.mount(b.Card, {
+    phase: 'end', toolName: 'antu_render',
+    block: { kind: 'result', call: { argsRaw: JSON.stringify({ spec: { type: 'fact' } }) }, meta: { ok: false, reason: 'antu_render outPath must stay under the session workspace (/w)', errors: [] } },
+  })
+  await failed.flush()
+  assert.match(textOf(failed.tree()), /must stay under the session workspace/)
+  assert.equal(ok.calls.mount.length, 0, 'nothing is drawn for a call that failed')
 
   // DSH 0.1.x has no require.async: a clear message, no throw
   const c = loadBuiltCard({ requireAsync: undefined })

@@ -38,6 +38,16 @@ export function resultPath(block) {
   return m ? m[1].trim() : null
 }
 
+/** Why `antu_render` produced no file (from its presentation meta), or null when it did or is not done */
+export function renderFailure(block) {
+  if (!block || !('kind' in block)) return null
+  const meta = block.meta
+  if (!meta || typeof meta !== 'object' || meta.ok !== false) return null
+  const errors = Array.isArray(meta.errors) ? meta.errors.filter((e) => typeof e === 'string') : []
+  const reason = typeof meta.reason === 'string' && meta.reason ? meta.reason : 'Render failed'
+  return errors.length ? `${reason}: ${errors[0]}${errors.length > 1 ? ` (+${errors.length - 1} more)` : ''}` : reason
+}
+
 /** preparing | running | error | stopped | ok */
 export function statusOf(phase, block) {
   if (phase === 'preparing') return 'preparing'

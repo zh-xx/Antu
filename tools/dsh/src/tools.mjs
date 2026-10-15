@@ -154,6 +154,28 @@ export function runLayout(spec, { layout, kind, orientation } = {}) {
 }
 
 /**
+ * What `antu_render` leaves in the session log for the chat card (`output.presentationMeta`).
+ * DSH requires lossless JSON here on every path: `undefined` (or a key holding it) fails the whole call
+ * with INVALID_TOOL_OUTPUT and hides the reason. So a failure is kept too, with its reason.
+ * @returns {{ ok: true, path: string, title: string, bytes: number } | { ok: false, reason: string, errors: string[] }}
+ */
+export function renderPresentation(value) {
+  if (value && value.ok === true && typeof value.path === 'string') {
+    return {
+      ok: true,
+      path: value.path,
+      title: typeof value.title === 'string' ? value.title : '',
+      bytes: Number.isFinite(value.bytes) ? value.bytes : 0,
+    }
+  }
+  const errors = Array.isArray(value?.errors) ? value.errors.map(String) : []
+  const reason = typeof value?.reason === 'string' && value.reason
+    ? value.reason
+    : errors.length ? 'Validation failed' : 'Render failed'
+  return { ok: false, reason, errors }
+}
+
+/**
  * Validate, render HTML, write under the session workspace.
  * @returns {{ ok: true, path, bytes, title } | { ok: false, errors?, reason? }}
  */

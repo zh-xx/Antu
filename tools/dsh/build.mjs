@@ -89,7 +89,7 @@ ${assigns}
 
 /** Helper modules inlined into the ModuleLoader client entry (it has no ESM imports): marker, file, one name each must define */
 const INLINED = [
-  ['/*@@INJECT_CARD_MODEL@@*/', 'card-model.mjs', ['parseArgsRaw', 'pickOpening', 'mountOptions', 'THEMES']],
+  ['/*@@INJECT_CARD_MODEL@@*/', 'card-model.mjs', ['parseArgsRaw', 'pickOpening', 'mountOptions', 'renderFailure', 'THEMES']],
   ['/*@@INJECT_REQUIRE_ASYNC@@*/', 'require-async.mjs', ['resolveRequireAsync', 'beginLoadEmbed']],
 ]
 

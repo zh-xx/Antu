@@ -9,7 +9,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { validate, layout } from '@zh-xx/antu/validate'
 import { renderHtml } from '@zh-xx/antu/html'
 
-import { sessionCwd, runValidate, runLayout, runRender } from './tools.mjs'
+import { sessionCwd, runValidate, runLayout, runRender, renderPresentation } from './tools.mjs'
 import { SKILL } from './skill.mjs'
 
 /** Cordis service ids required to activate (skills are optional). */
@@ -151,9 +151,9 @@ function registerTools(ctx) {
             `Written: ${value.path}\nSize: ${Math.round(value.bytes / 1024)} KB\nOpen the file in the sidebar, or double-click it offline.`,
           )
         },
+        // Lossless JSON on every path, failures included (see renderPresentation)
         presentationMeta(_args, value) {
-          if (!value.ok || typeof value.path !== 'string') return undefined
-          return { path: value.path, title: value.title ?? '', bytes: value.bytes }
+          return renderPresentation(value)
         },
       },
       async execute(args, exec) {

@@ -163,6 +163,8 @@ window.__ModuleLoader__.load({
       const spec = args && typeof args === 'object' ? args.spec : null
       const path = resultPath(block)
       const status = statusOf(phase, block)
+      // antu_render returned ok: false (bad spec, outPath outside the workspace, a write error): say why, draw nothing
+      const failure = renderFailure(block)
       const title = titleOf(spec, toolName === 'mcp__antu__antu_render' ? 'Antu (MCP)' : 'Antu')
       const embedError = loadError || mountError
 
@@ -203,6 +205,8 @@ window.__ModuleLoader__.load({
           ? 'Preparing diagram…'
           : status === 'error'
             ? 'Render failed'
+            : failure
+              ? failure
             : status === 'stopped'
               ? 'Stopped'
               : !spec
@@ -215,7 +219,7 @@ window.__ModuleLoader__.load({
           {
             className:
               'antuDsh_notice' +
-              (status === 'error' ? ' antuDsh_noticeError' : '') +
+              (status === 'error' || failure ? ' antuDsh_noticeError' : '') +
               (status === 'stopped' ? ' antuDsh_noticeWarn' : ''),
             'data-antu-dsh': 'render',
           },

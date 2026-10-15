@@ -68,6 +68,7 @@ export default [
         parseArgsRaw: 'readonly',
         argsRawOf: 'readonly',
         resultPath: 'readonly',
+        renderFailure: 'readonly',
         statusOf: 'readonly',
         knownKinds: 'readonly',
         pickOpening: 'readonly',
