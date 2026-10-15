@@ -7,7 +7,7 @@
 
 ## Goal
 
-A DSH user asks for a diagram in the conversation, **sees it in the chat** (an interactive card), and can
+A DSH user asks for a diagram in the conversation, **sees it in the chat** (the whole diagram as a picture), and can
 **open the self-contained HTML** in the sidebar or as a file: hover and click for detail, switch kind and
 theme, export. The plugin carries Host tools (same jobs as the MCP tools) and, later, a short skill. Nothing
 else has to be installed on the user's machine (no system Node, no `npx`).
@@ -19,7 +19,8 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 | Tool source | **Native Host tools** in the DSH process (`import` from `@zh-xx/antu/validate` and `/html`), not a configuration-only MCP bundle as the long-term path |
 | Wire tool names | `antu_validate`, `antu_layout`, `antu_render`, … (not `mcp__antu__…`). A chat card may also register the MCP names while a stopgap MCP row is still in use |
 | `antu_render` | **Writes** a self-contained HTML file under the **session workspace** (absolute path). The card draws from the tool-call **arguments** (`spec`); the file is for archive, forward, and `openFile` |
-| Chat card | **Interactive** `mount()` with chrome reduced (`ui.header/capsule/minimap/zoom: false`); host-side buttons for kind/theme. Not a static thumbnail-only card (thumbnail only as a fallback) |
+| Chat card | **The picture only**: the whole diagram fitted into the card (`mount()` with `cardUi`), no title row, no buttons. A click anywhere on it opens the full view. The wheel goes on to the conversation. Decided 2026-10-15 after a mock-up: opening at a readable text size showed too little of a diagram to be worth it |
+| Full view | A page `antu-diagram` in DSH's right panel, presented **fullscreen** (the panel's own fullscreen mode covers the window), with the full chrome: kind, theme, detail cards, export, and **Open HTML** |
 | Package | Separate **`@zh-xx/antu-dsh`**, version **same number** as `@zh-xx/antu`. Source under `tools/dsh/`; **build output is not committed** |
 | Skill | Shipped with the plugin from the Host-tool phase onward; name **not** bare `antu` (avoid clashing with `skills/antu/`). Text teaches Host tool names, not the command line |
 | Theme in a dark host | Diagram stays on Antu's themes (default `document`, light). Card chrome uses DSH `--dsw-alias-*`. A dark diagram theme is a later issue |
@@ -56,8 +57,9 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 - Client needs **DSH ≥ 0.2.0-rc.2** (`require.async` for package-local `client.embed.js`). On 0.1.x the card
   shows an upgrade message instead of crashing the slot.
 - Memory skill `antu-diagram`; "open in sidebar" via `openFile` on the written HTML.
-- **Enlarge**: right-sidebar page tab `antu-diagram` mounts the full embed (no `cardUi`) from the same
-  `argsRaw` `spec`; the chat card stays a compact preview.
+- **Full view**: a click on the card opens the page `antu-diagram` in the right panel and asks for fullscreen. It mounts the full
+  embed (no `cardUi`) from the same `argsRaw` `spec`. DSH 0.2.0-rc.2's public `ctx.sidebarRight` has no fullscreen call; the plugin
+  uses the controller's `commandTarget` / `toggleFullscreen` when present and otherwise leaves the panel to its own fullscreen button.
 - Install: `npm run build:dsh` also packs `zh-xx-antu-dsh-*.tgz` (preferred over a bare `package/` link).
 - CI: `test/dsh-plugin.test.mjs` (helpers, manifest, `build.mjs`, Host `apply` smoke). Trusted publisher / npm publish still open.
 
@@ -73,7 +75,7 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 3. **Real DSH, by version.** Run the P2 acceptance on `0.2.0-rc.2` and on the newest `0.2.x` alpha, from the tarball, and write the
    result (DSH version, model, what worked) in `tools/dsh/README.md`. `0.1.x` is Host-tools-only by design. A packaged file that reads
    the profile's DSH version and says "card unavailable" without a stack trace is the supported behaviour there.
-4. **The card in Chinese.** The card's words ("Enlarge", "Open HTML", "Rendering…") are English only. The conversation passes the card a
+4. **The words in Chinese.** The few words left ("Open HTML", "Preparing diagram…", "Open full view") are English only. The conversation passes the card a
    locale seat (`t`, namespace `conversation`); how a plugin adds its own dictionary is to be read from the DSH sources first. Until
    then the words stay English rather than guessed.
 5. **Publish.** `@zh-xx/antu-dsh` is `private` today. Needs the maintainer: an npm account or trusted publisher and the package name;
@@ -85,13 +87,13 @@ Not planned here: a hosted service, a second package for another host, a chat-si
 
 ### P3 — later, if wanted
 
-- Sidebar tab that rebuilds from the session log (resource type or Host projection + `wire.view`), not only from the latest Enlarge params.
+- Sidebar tab that rebuilds from the session log (resource type or Host projection + `wire.view`), not only from the params of the latest click.
 - Dark diagram theme; in-host PNG export without leaving the card.
 
 ## Acceptance (P2)
 
 On Desktop without system Node, **DSH ≥ 0.2.0-rc.2**: `install_bundle` → `application: applied`; a turn that
-calls `antu_render` shows an interactive card (kind switch works); light and dark host themes stay readable;
+calls `antu_render` shows the whole diagram in the chat; a click opens it fullscreen with kind and theme switches; light and dark host themes stay readable;
 uninstall leaves no rows. Maintainer records DSH version and model used (#53-style).
 
 ## Related

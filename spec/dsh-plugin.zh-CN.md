@@ -7,7 +7,7 @@
 
 ## 目标
 
-DSH 用户在对话里要一张图，**在聊天中看到它**（可交互卡片），并能**打开自包含 HTML**（侧栏或文件）：悬停与
+DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只有图），并能**打开自包含 HTML**（侧栏或文件）：悬停与
 点击看细节、切换画法与主题、导出。插件自带 Host 工具（职责与 MCP 工具相同），之后再带一份短 skill。用户机器上
 不必另装东西（不要求系统 Node，不要求 `npx`）。
 
@@ -18,7 +18,8 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（可交互卡片
 | 工具来源 | **原生 Host 工具**（在 DSH 进程内 `import` `@zh-xx/antu/validate` 与 `/html`），长期路径不是「仅配置的 MCP bundle」 |
 | 线名 | `antu_validate`、`antu_layout`、`antu_render` …（不是 `mcp__antu__…`）。若仍临时挂着 MCP 行，卡片可同时注册 MCP 名 |
 | `antu_render` | **写入**会话**工作区**下的自包含 HTML（绝对路径）。卡片从工具调用的**参数**（`spec`）画图；文件用于归档、转发与 `openFile` |
-| 聊天卡片 | **可交互**的 `mount()`，收起外壳（`ui.header/capsule/minimap/zoom: false`）；画法/主题由宿主侧按钮切换。不是纯缩略图（缩略图只作降级） |
+| 聊天卡片 | **只有图**：整张图缩进卡片（`mount()` 加 `cardUi`），没有标题行、没有按钮。点图任意位置打开大图。滚轮交给聊天。2026-10-15 看过效果图后决定：按可读字号打开只能看到图的一小块，不值得 |
+| 大图 | DSH 右侧面板里的页面 `antu-diagram`，以**全屏**方式呈现（面板自带的全屏模式盖住整个窗口），带完整外壳：画法、主题、详情卡片、导出，以及**打开 HTML** |
 | 包 | 独立 **`@zh-xx/antu-dsh`**，版本号与 `@zh-xx/antu` **同号**。源码在 `tools/dsh/`；**构建产物不入库** |
 | Skill | 从有 Host 工具那一期起随插件带；名称**不要**裸用 `antu`（避免与 `skills/antu/` 撞名）。正文教 Host 工具名，不教命令行 |
 | 宿主暗色 | 图仍用案图主题（默认 `document`，浅色）。卡片外壳用 DSH 的 `--dsw-alias-*`。暗色图主题另开 issue |
@@ -52,7 +53,8 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（可交互卡片
 - Client：小入口 + 懒加载的 embed 块；为 `antu_render`（及必要时的 MCP 名）注册 `tool.call.toolview`。
 - Client 需要 **DSH ≥ 0.2.0-rc.2**（`require.async` 加载包内 `client.embed.js`）。在 0.1.x 上卡片显示升级提示，而不是把 slot 打崩。
 - 内存 skill `antu-diagram`；「在侧栏打开」先用 `openFile` 打开写出的 HTML。
-- **Enlarge**：右侧栏页面标签 `antu-diagram` 用完整 embed（不用 `cardUi`）画同一份 `argsRaw` 里的 `spec`；聊天卡片仍是缩略预览。
+- **大图**：点聊天里的图，在右侧面板打开页面 `antu-diagram` 并请求全屏，用完整 embed（不用 `cardUi`）画同一份 `argsRaw` 里的 `spec`。
+  DSH 0.2.0-rc.2 公开的 `ctx.sidebarRight` 没有全屏接口；插件在控制器有 `commandTarget` / `toggleFullscreen` 时用它们，否则由面板自己的全屏按钮来切。
 - 安装：`npm run build:dsh` 同时打出 `zh-xx-antu-dsh-*.tgz`（优先于对裸 `package/` 做 link）。
 - CI：`test/dsh-plugin.test.mjs`（helpers、manifest、`build.mjs`、Host `apply` 冒烟）。trusted publisher / 发 npm 仍待做。
 
@@ -65,7 +67,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（可交互卡片
    画法与主题按钮能切换、`argsRaw` 变化后重新挂载而不报“已挂载”、卡片上滚轮不被拦截、高亮按钮跟着当前视图。它覆盖卡片和标签页，不覆盖 DSH 本身。
 3. **按版本在真实 DSH 上验。** 用 tgz 在 `0.2.0-rc.2` 和最新的 `0.2.x` alpha 上各做一遍 P2 验收，把结果（DSH 版本、模型、哪些通过）
    写进 `tools/dsh/README.md`。`0.1.x` 按设计只有 Host 工具，卡片显示“需要更高版本”，不抛堆栈。
-4. **卡片的中文。** 卡片上的字（“Enlarge”“Open HTML”“Rendering…”）现在只有英文。会话给卡片传了本地化入口（`t`，命名空间
+4. **界面文字的中文。** 剩下的几处字（“Open HTML”“Preparing diagram…”“Open full view”）现在只有英文。会话给卡片传了本地化入口（`t`，命名空间
    `conversation`）；插件怎么加自己的词典，要先读 DSH 源码再定。在那之前保持英文，不凭猜测写。
 5. **发布。** `@zh-xx/antu-dsh` 目前是 `private`。需要维护者：npm 账号或 trusted publisher、包名；Release 工作流增加“构建、测试、打包、
    附上 tgz、发布”（与 `@zh-xx/antu` 同一流程）；次版本号由维护者确认。`@deepseek-ai/*` 的 peer 范围按第 3 步的发现复核。
@@ -75,7 +77,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（可交互卡片
 
 ### P3 — 按需再做
 
-- 能从会话日志重建的侧栏标签（资源类型，或 Host projection + `wire.view`），不只靠 Enlarge 传入的 params。
+- 能从会话日志重建的侧栏标签（资源类型，或 Host projection + `wire.view`），不只靠最近一次点击传入的 params。
 - 暗色图主题；不离卡片的宿主内 PNG 导出。
 
 ## 验收（P2）

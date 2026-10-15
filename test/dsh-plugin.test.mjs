@@ -287,7 +287,7 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(client, /client\.embed\.js/)
   assert.match(client, /\.destroy\(/)
   assert.match(client, /cardUi/)
-  assert.match(client, /Enlarge/)
+  assert.match(client, /Open full view/)
   assert.match(client, /antu-diagram/)
   assert.match(client, /sidebarRightTabs/)
   // Injected helper + safe call site (not require.async, which is undefined on DSH 0.1.x)
@@ -499,19 +499,24 @@ const findAll = (node, pred, out = []) => {
 }
 const buttonLabelled = (tree, label) => findAll(tree, (n) => n.type === 'button' && textOf(n) === label)[0]
 
-/** Load the built package/client.js; return the registered chat card component */
-function loadBuiltCard({ requireAsync }) {
+/** Load the built package/client.js; return the chat card, and the full-view page when a right sidebar is given */
+function loadBuiltCard({ requireAsync, sidebarRight }) {
   const { React, mount } = miniReact()
   let def
   new Function('window', readFileSync(join(pkgDir, 'client.js'), 'utf8'))({ __ModuleLoader__: { load: (d) => { def = d } } })
   const req = (id) => { assert.equal(id, 'react'); return React }
   if (requireAsync) req.async = requireAsync
   const registered = {}
+  const slots = { inject: (_n, fn) => fn(), register: ({ key }, comp) => { registered[key] = comp } }
+  const tabTypes = []
   def.factory(req).apply({
-    slots: { inject: (_n, fn) => fn(), register: ({ key }, comp) => { registered[key] = comp } },
-    inject() { /* no right sidebar in this run */ },
+    slots,
+    inject(_names, fn) {
+      if (!sidebarRight) return // a profile without the right sidebar
+      fn({ effect: (f) => f(), slots, sidebarRight, sidebarRightTabs: { register: (t) => tabTypes.push(t) } })
+    },
   })
-  return { Card: registered.antu_render, McpCard: registered.mcp__antu__antu_render, mount }
+  return { Card: registered.antu_render, McpCard: registered.mcp__antu__antu_render, Page: registered['@zh-xx/antu-dsh'], tabTypes, mount }
 }
 
 function fakeEmbed({ failMount } = {}) {
@@ -534,7 +539,7 @@ function fakeEmbed({ failMount } = {}) {
 
 const callBlock = (args, extra = {}) => ({ kind: 'result', call: { argsRaw: JSON.stringify(args) }, meta: { path: '/w/a.html' }, ...extra })
 
-test('built client card: opens as asked, switches kind and theme, remounts on new arguments', async () => {
+test('built client card: only the whole picture; new arguments remount it', async () => {
   if (!existsSync(join(pkgDir, 'client.js'))) {
     const r = spawnSync(process.execPath, ['tools/dsh/build.mjs'], { cwd: process.cwd(), encoding: 'utf8' })
     assert.equal(r.status, 0, r.stderr || r.stdout)
@@ -545,49 +550,69 @@ test('built client card: opens as asked, switches kind and theme, remounts on ne
   assert.equal(McpCard, Card, 'the stopgap MCP wire name shows the same card')
 
   const spec = { type: 'fact', title: '案情' }
-  const opened = []
-  const view = mount(Card, {
-    phase: 'end',
-    toolName: 'antu_render',
-    openFile: (p) => opened.push(p),
-    block: callBlock({ spec, kind: 'scale', theme: 'legal' }),
-  })
+  const view = mount(Card, { phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec, kind: 'scale', theme: 'legal' }) })
   await view.flush()
 
-  // Mounted once, with the asked-for kind and theme and the quiet chrome of cardUi
+  // Mounted once, with the asked-for kind and theme and the quiet chrome of cardUi (the whole diagram, fitted)
   assert.equal(calls.mount.length, 1)
   assert.deepEqual(calls.mount[0].options, { kind: 'scale', theme: 'legal', ui: embed.cardUi })
   assert.deepEqual(calls.mount[0].spec, spec)
-  const active = (label) => String(buttonLabelled(view.tree(), label).props.className).includes('antuDsh_btnActive')
-  assert.equal(active('scale'), true)
-  assert.equal(active('timeline'), false)
-  assert.equal(active('legal'), true)
-
-  // A kind button changes the diagram and the highlight; a refused kind changes neither
-  buttonLabelled(view.tree(), 'chronicle').props.onClick()
-  view.rerender()
-  assert.deepEqual(calls.kinds, ['chronicle'])
-  assert.equal(active('chronicle'), true)
-  assert.equal(active('scale'), false)
-  buttonLabelled(view.tree(), 'modern').props.onClick()
-  view.rerender()
-  assert.deepEqual(calls.themes, ['modern'])
-  assert.equal(active('modern'), true)
-
-  // Open HTML hands the written path to DSH
-  buttonLabelled(view.tree(), 'Open HTML').props.onClick()
-  assert.deepEqual(opened, ['/w/a.html'])
+  // Nothing but the picture: no title row, no buttons (no right sidebar here, so no cover either)
+  assert.equal(findAll(view.tree(), (n) => n.type === 'button').length, 0)
+  assert.equal(textOf(view.tree()).trim(), '')
 
   // New arguments: the old mount is destroyed, then the diagram is mounted again (never "already mounted")
-  view.update({
-    phase: 'end', toolName: 'antu_render', openFile() {},
-    block: callBlock({ spec: { type: 'fact', title: '二稿' }, kind: 'bogus', theme: 'neon' }),
-  })
+  view.update({ phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec: { type: 'fact', title: '二稿' }, kind: 'bogus', theme: 'neon' }) })
   assert.equal(calls.destroyed, 1)
   assert.equal(calls.mount.length, 2)
-  // An unknown kind or theme is not passed on; the first kind of the type is highlighted
+  // An unknown kind or theme is not passed on
   assert.deepEqual(calls.mount[1].options, { ui: embed.cardUi })
-  assert.equal(active('timeline'), true)
+})
+
+test('built client card: a click opens the full view, fullscreen, with the HTML one click away', async () => {
+  const { embed, calls } = fakeEmbed()
+  const opened = []
+  const toggled = []
+  const sidebarRight = {
+    openTab: (kind, options) => opened.push({ kind, options }),
+    commandTarget: () => ({ paneId: 'p1', host: 'dock' }),
+    toggleFullscreen: (target) => toggled.push(target),
+  }
+  const { Card, Page, tabTypes, mount } = loadBuiltCard({ requireAsync: async () => embed, sidebarRight })
+  assert.deepEqual(tabTypes.map((t) => t.kind), ['antu-diagram'])
+  assert.equal(typeof Page, 'function')
+
+  const files = []
+  const spec = { type: 'fact', title: '案情' }
+  const card = mount(Card, { phase: 'end', toolName: 'antu_render', openFile: (p) => files.push(p), block: callBlock({ spec, kind: 'scale' }) })
+  await card.flush()
+  const cover = findAll(card.tree(), (n) => n.type === 'button')
+  assert.equal(cover.length, 1, 'one cover over the picture, nothing else')
+  assert.match(cover[0].props['aria-label'], /Open full view: 案情/)
+  cover[0].props.onClick()
+  assert.equal(opened.length, 1)
+  assert.equal(opened[0].kind, 'antu-diagram')
+  assert.deepEqual(opened[0].options.params, { spec, kind: 'scale', theme: undefined, path: '/w/a.html', title: '案情', wantFullscreen: true })
+
+  // The page: the full diagram (no cardUi), the panel asked to go fullscreen once, and the HTML button
+  let tabInfo = { sidebar: { expanded: true, fullscreen: false }, tab: { navigation: { params: opened[0].options.params, revision: 1 } } }
+  const page = mount(Page, { useTabInfo: () => tabInfo })
+  await page.flush()
+  assert.deepEqual(calls.mount.at(-1).options, { kind: 'scale' })
+  assert.equal(toggled.length, 1)
+  page.rerender()
+  assert.equal(toggled.length, 1, 'asked once per opening, not on every render')
+  // The reader leaves fullscreen: the page does not force it back
+  tabInfo = { ...tabInfo, sidebar: { expanded: true, fullscreen: false } }
+  page.rerender()
+  assert.equal(toggled.length, 1)
+  buttonLabelled(page.tree(), 'Open HTML').props.onClick()
+  assert.deepEqual(files, ['/w/a.html'])
+
+  // Already fullscreen: nothing toggled (toggling would leave it)
+  const again = mount(Page, { useTabInfo: () => ({ sidebar: { expanded: true, fullscreen: true }, tab: { navigation: { params: opened[0].options.params, revision: 2 } } }) })
+  await again.flush()
+  assert.equal(toggled.length, 1)
 })
 
 test('built client card: says what is wrong instead of crashing (mount fails, truncated arguments, DSH 0.1.x)', async () => {

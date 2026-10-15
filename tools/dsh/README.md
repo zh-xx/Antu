@@ -11,7 +11,7 @@ Needs a published (or otherwise resolvable) `@zh-xx/antu` at the same version fo
 | Side | Needs |
 | --- | --- |
 | Host tools / skill | DSH that can resolve `@deepseek-ai/dsh-tools` / `@deepseek-ai/dsh-skill` (peer `^0.2.0-rc.2`) and `@zh-xx/antu` |
-| Client chat card + Enlarge | **DeepSeek Harness ≥ 0.2.0-rc.2** — the lazy embed chunk uses ModuleLoader `require.async('./client.embed.js')`. DSH **0.1.x** has no `require.async` and no Host route for package-local chunks; on those hosts the card shows a clear upgrade message instead of crashing the slot |
+| Client chat card + full view | **DeepSeek Harness ≥ 0.2.0-rc.2** — the lazy embed chunk uses ModuleLoader `require.async('./client.embed.js')`. DSH **0.1.x** has no `require.async` and no Host route for package-local chunks; on those hosts the card shows a clear upgrade message instead of crashing the slot |
 
 Peers are marked optional so a Host-only profile can still install; the Client half will not render a diagram until the host provides `require.async`.
 
@@ -53,11 +53,11 @@ Use the tgz (or a published npm package) instead.
 | Host | Native tools `antu_validate`, `antu_layout`, `antu_render` (HTML under the session cwd) |
 | Host | Memory skill `antu-diagram` (teaches Host wire names, not the CLI) |
 | Client | `tool.call.toolview` for `antu_render` and `mcp__antu__antu_render` |
-| Client | Right-sidebar page tab `antu-diagram` (full embed); card **Enlarge** opens it |
+| Client | Right-panel page `antu-diagram` (full embed, fullscreen); a click on the card opens it |
 
-The chat card reads `spec` from the tool-call **arguments** (`argsRaw`), mounts with
-`cardUi`, and offers kind / theme controls, **Enlarge** (sidebar, full chrome), and **Open HTML**
-via the Host `openFile` callback.
+The chat card reads `spec` from the tool-call **arguments** (`argsRaw`) and shows only the picture: the whole
+diagram fitted (`cardUi`), nothing else. A click opens the full view, fullscreen in the right panel, with kind and
+theme switches, detail cards, export and **Open HTML** (the card's `openFile`).
 
 ## Interim: MCP on a machine that already has Node
 
@@ -108,8 +108,8 @@ Install with DSH's `plugin_manager` → `install_bundle` and the **absolute** pa
 ## Maintainer check (P2 acceptance)
 
 On Desktop without system Node, with **DSH ≥ 0.2.0-rc.2**: `npm run build:dsh` → `install_bundle` on the **tgz** →
-`application: applied`; a turn that calls `antu_render` shows an interactive card (kind switch works);
-**Enlarge** opens a readable sidebar diagram; light and dark host themes stay readable; uninstall leaves
+`application: applied`; a turn that calls `antu_render` shows the whole diagram in the chat;
+a click opens it fullscreen and readable, with kind and theme switches; light and dark host themes stay readable; uninstall leaves
 no rows. Record DSH version and model used (#53-style).
 
 On DSH 0.1.x the Host tools still run, but the card must show the ≥ 0.2 upgrade message (not a blank
