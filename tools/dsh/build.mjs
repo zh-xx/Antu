@@ -125,6 +125,19 @@ function writeClientEntry() {
     }
     out = out.replace(marker, helper)
   }
+  // Plugin UI words live in package/locale/*.json (the Host manifest already ships them); inline the
+  // `client` half into the ModuleLoader entry, which has no ESM imports to read them at runtime.
+  const localeMarker = '/*@@INJECT_LOCALE@@*/'
+  if (!out.includes(localeMarker)) {
+    throw new Error('tools/dsh/build.mjs: client.js is missing the locale inject marker')
+  }
+  const readClientLocale = (name) => {
+    const path = join(PKG, 'locale', name)
+    if (!existsSync(path)) throw new Error(`tools/dsh/build.mjs: missing locale file ${path}`)
+    return JSON.parse(readFileSync(path, 'utf8')).client || {}
+  }
+  const locale = { zh: readClientLocale('zh.json'), en: readClientLocale('en.json') }
+  out = out.replace(localeMarker, () => `const LOCALE = ${JSON.stringify(locale)}`)
   writeFileSync(join(PKG, 'client.js'), out)
 }
 

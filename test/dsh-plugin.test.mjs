@@ -405,6 +405,34 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.ok(tgz, 'build:dsh should pack zh-xx-antu-dsh-*.tgz')
 })
 
+test('locale dictionaries carry the full-view back label and build injects them', () => {
+  const en = JSON.parse(readFileSync(join(pkgDir, 'locale', 'en.json'), 'utf8'))
+  const zh = JSON.parse(readFileSync(join(pkgDir, 'locale', 'zh.json'), 'utf8'))
+  // The existing Host manifest words stay untouched; the plugin UI half is added under `client`.
+  assert.deepEqual(Object.keys(en.meta).sort(), ['description', 'title'])
+  assert.deepEqual(Object.keys(zh.meta).sort(), ['description', 'title'])
+  assert.equal(en.client?.['fullView.back'], '← Back to chat (Esc)')
+  assert.equal(zh.client?.['fullView.back'], '← 返回对话（Esc）')
+
+  // The source keeps the marker and the exit helper; build.mjs knows how to replace the marker.
+  const src = readFileSync('tools/dsh/src/client.js', 'utf8')
+  assert.match(src, /\/\*@@INJECT_LOCALE@@\*\//)
+  assert.match(src, /function tryExitFullscreen/)
+  assert.match(readFileSync('tools/dsh/build.mjs', 'utf8'), /INJECT_LOCALE/)
+
+  if (!existsSync(join(pkgDir, 'client.js'))) {
+    const r = spawnSync(process.execPath, ['tools/dsh/build.mjs'], { cwd: process.cwd(), encoding: 'utf8' })
+    assert.equal(r.status, 0, r.stderr || r.stdout)
+  }
+  const built = readFileSync(join(pkgDir, 'client.js'), 'utf8')
+  assert.match(built, /function tryExitFullscreen/)
+  assert.doesNotMatch(built, /@@INJECT_LOCALE@@/)
+  assert.match(built, /const LOCALE = /)
+  assert.match(built, /fullView\.back/)
+  assert.match(built, /← Back to chat \(Esc\)/)
+  assert.match(built, /← 返回对话（Esc）/)
+})
+
 test('build.mjs keeps the last good tarball when npm pack fails', { skip: process.platform === 'win32' && 'needs a POSIX fake npm on PATH' }, () => {
   const isTgz = (n) => n.startsWith('zh-xx-antu-dsh-') && n.endsWith('.tgz')
   let tgz = readdirSync('tools/dsh').find(isTgz)
@@ -903,6 +931,12 @@ test('built client card: a click opens the full view, fullscreen, with the HTML 
   const again = mount(Page, { useTabInfo: () => ({ sidebar: { expanded: true, fullscreen: true }, tab: { navigation: { params: opened[0].options.params, revision: 2 } } }) })
   await again.flush()
   assert.equal(toggled.length, 1)
+  // …but the full view shows a back button, and clicking it exits through the controller's pane target.
+  const back = buttonLabelled(again.tree(), '← Back to chat (Esc)')
+  assert.ok(back, 'a back button is shown while the panel is fullscreen')
+  back.props.onClick()
+  assert.equal(toggled.length, 2)
+  assert.deepEqual(toggled[1], { paneId: 'p1', host: 'dock' })
 })
 
 test('built client card: says what is wrong instead of crashing (mount fails, truncated arguments, DSH 0.1.x)', async () => {

@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
      * The full view (a page in DSH's right panel). `open` is filled when sidebar-right is available.
      * `files` maps a written path to the card's `openFile`, so the full view can open the HTML.
      */
-    const fullView = { open: null, files: new Map() }
+    const fullView = { open: null, exitFullscreen: null, files: new Map() }
     /** Set once the conversation service is there: the turn tail draws finished diagrams, so the tool row stays compact. */
     let hasTurnTail = false
 
@@ -37,6 +37,11 @@ window.__ModuleLoader__.load({
     /*@@INJECT_CARD_MODEL@@*/
 
     /*@@INJECT_REQUIRE_ASYNC@@*/
+
+    /*@@INJECT_LOCALE@@*/
+
+    /** Plugin UI words; English until DSH binds its own dictionary (see apply). */
+    let t = (key) => LOCALE.en[key] || key
 
     /** Lazy promise for the ModuleLoader embed chunk (mount + cardUi + kindsOf). */
     const embedPromiseCache = { promise: null }
@@ -73,6 +78,23 @@ window.__ModuleLoader__.load({
       try {
         if (typeof sidebarRight?.commandTarget !== 'function' || typeof sidebarRight?.toggleFullscreen !== 'function') return false
         const target = sidebarRight.commandTarget()
+        if (!target) return false
+        sidebarRight.toggleFullscreen(target)
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    /**
+     * Leave the right panel fullscreen, as its own chrome's icon button does. `element` is inside the
+     * pane, so `commandTarget` resolves the pane that owns it. Defensive: false when the controller
+     * (or the pane) is not there, so Esc still reaches DSH when nothing can be toggled.
+     */
+    function tryExitFullscreen(sidebarRight, element) {
+      try {
+        if (typeof sidebarRight?.commandTarget !== 'function' || typeof sidebarRight?.toggleFullscreen !== 'function') return false
+        const target = sidebarRight.commandTarget(element)
         if (!target) return false
         sidebarRight.toggleFullscreen(target)
         return true
@@ -171,16 +193,58 @@ window.__ModuleLoader__.load({
     function AntuSidebarBody({ useTabInfo }) {
       const hostRef = useRef(null)
       const handleRef = useRef(null)
+      const sideRef = useRef(null)
+      const exitingRef = useRef(false)
       const { embed, loadError } = useEmbed()
       const { tab, sidebar } = useTabInfo()
       const params = tab?.navigation?.params && typeof tab.navigation.params === 'object' ? tab.navigation.params : {}
       const spec = params.spec && typeof params.spec === 'object' ? params.spec : null
       const revision = tab?.navigation?.revision
+      // Only the visible Antu page answers Esc (another page may be the one shown fullscreen).
+      const fullscreen = !!sidebar?.fullscreen && tab?.visible !== false
       // Full page chrome in the sidebar — no cardUi.
       const mountError = useDiagram(hostRef, handleRef, embed, spec, params.kind, params.theme, undefined, revision)
       const embedError = loadError || mountError
       const path = typeof params.path === 'string' ? params.path : null
       const openFile = path ? fullView.files.get(path) : null
+
+      const exitFull = () => {
+        if (typeof fullView.exitFullscreen === 'function') fullView.exitFullscreen(sideRef.current)
+      }
+
+      // Esc leaves the full view. The listener is on `document` in the capture phase: focus inside the
+      // embed's open shadow root retargets the event to its host, which would hide a bubble-phase
+      // listener on the panel. `exitingRef` keeps repeated keys from toggling twice before re-render.
+      useEffect(() => {
+        if (!fullscreen) {
+          exitingRef.current = false
+          return undefined
+        }
+        if (typeof document === 'undefined') return undefined
+        const onKeyDown = (e) => {
+          if (e.key !== 'Escape' || e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return
+          if (e.repeat || e.isComposing || e.defaultPrevented) return
+          const path = e.composedPath ? e.composedPath() : []
+          const el = sideRef.current
+          const active = document.activeElement
+          if (!el || !(path.includes(el) || el.contains(active) || active === document.body || !active)) return
+          // An open dropdown / menu / dialog inside the panel gets Esc first.
+          const panelAt = path.indexOf(el)
+          const inner = panelAt >= 0 ? path.slice(0, panelAt) : path
+          for (const node of inner) {
+            if (!node || typeof node.getAttribute !== 'function') continue
+            const role = node.getAttribute('role')
+            if (node.getAttribute('aria-expanded') === 'true' || role === 'menu' || role === 'listbox' || role === 'dialog') return
+          }
+          if (exitingRef.current) return
+          exitingRef.current = true
+          e.preventDefault()
+          e.stopPropagation()
+          exitFull()
+        }
+        document.addEventListener('keydown', onKeyDown, true)
+        return () => document.removeEventListener('keydown', onKeyDown, true)
+      }, [fullscreen])
 
       // Opened from a chat card: present the panel fullscreen (once per opening; leaving it is the reader's choice).
       const askedRevision = useRef(null)
@@ -193,7 +257,14 @@ window.__ModuleLoader__.load({
       const label = titleOf(spec, 'Antu')
       return h(
         'div',
-        { className: 'antuDsh_side' },
+        { className: 'antuDsh_side', ref: sideRef },
+        fullscreen
+          ? h(
+              'button',
+              { type: 'button', className: 'antuDsh_btn antuDsh_back', onClick: exitFull },
+              t('fullView.back'),
+            )
+          : null,
         embedError
           ? h('div', { className: 'antuDsh_fallback' }, embedError)
           : !spec
@@ -373,6 +444,8 @@ window.__ModuleLoader__.load({
 .antuDsh_cover:focus-visible{outline:2px solid var(--dsw-alias-label-secondary);outline-offset:2px}
 .antuDsh_coverIcon{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-base);border:.5px solid var(--dsw-alias-border-l4);opacity:0;transition:opacity .15s}
 .antuDsh_cover:hover .antuDsh_coverIcon,.antuDsh_cover:focus-visible .antuDsh_coverIcon{opacity:1}
+.antuDsh_back{align-self:flex-start;margin-bottom:8px;font-size:12px;line-height:18px;padding:3px 10px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-base);border-color:var(--dsw-alias-border-l4)}
+.antuDsh_back:focus-visible{outline:2px solid var(--dsw-alias-label-secondary);outline-offset:2px}
 .antuDsh_notice{font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px));color:var(--dsw-alias-label-tertiary)}
 .antuDsh_noticeError{color:var(--dsw-alias-state-error-primary)}
 .antuDsh_noticeWarn{color:var(--dsw-alias-state-warn-label)}
@@ -405,6 +478,15 @@ window.__ModuleLoader__.load({
       inject: ['slots'],
       apply(ctx) {
         ensureStyles()
+        // Optional: DSH with a locale service gets our dictionary; older DSH (no ctx.locale) keeps English.
+        try {
+          if (ctx.locale && typeof ctx.locale.register === 'function') {
+            ctx.effect(() => ctx.locale.register('antuDsh', LOCALE), 'antu-dsh: dictionaries')
+            t = ctx.locale.bind('antuDsh')
+          }
+        } catch {
+          /* no locale seat (or a broken one): the English fallback stays */
+        }
         ctx.slots.inject('tool.call.toolview', () => {
           for (const key of WIRE_NAMES) {
             ctx.slots.register({ name: 'tool.call.toolview', key }, AntuRenderCard)
@@ -434,9 +516,11 @@ window.__ModuleLoader__.load({
               sideCtx.sidebarRight.openTab(TAB_KIND, { params: { ...params, wantFullscreen: true } })
             }
             fullView.fullscreen = () => tryFullscreen(sideCtx.sidebarRight)
+            fullView.exitFullscreen = (el) => tryExitFullscreen(sideCtx.sidebarRight, el)
             return () => {
               fullView.open = null
               fullView.fullscreen = null
+              fullView.exitFullscreen = null
             }
           }, 'antu-dsh: full view opener')
         })
