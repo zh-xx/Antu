@@ -5,13 +5,14 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## 0.15.0
 
-A host that embeds a diagram can now decide how it opens and what a reader may change (#203, phase 1 of issue #200), and Antu runs inside DeepSeek Harness as a plugin (#201). Nothing breaks a file or a tool call: every new option is optional, and with none given a mounted diagram behaves as before.
+A host that embeds a diagram can now decide how it opens and what a reader may change (#203, phase 1 of issue #200). Nothing breaks a file or a tool call: every new option is optional, and with none given a mounted diagram behaves as before.
+
+The DeepSeek Harness plugin (`tools/dsh/`, #201) is in the repository but is **not part of this release**: it is still being tested, and nothing of it is published.
 
 ### Added
 - **`initial`, `locked` and `persist` for `mount`** (`@zh-xx/antu/embed`, #203). `initial` sets how a switch opens (the reader can change it); `locked` forces it and hides its control; `persist` (`true`, `false`, or a list of names) says which of the reader's choices reach the prefs store. Order, highest first: `locked`, the reader's change in this mount, `initial`, a preset (viewer page), the stored choice, the default; `initial` wins over a stored choice, as `initial.headerFolded` already did. Covered so far: theme, language, the label card fold, the dock fold, and every switch of the flowchart and the route map; the other types come next. An unknown key or a wrong value makes `mount` throw and name what is allowed. `initial.headerFolded` still works. Types: `AntuViewState` in `antu-embed.d.ts`; the whole list is in `spec/embed.md`.
 - **A foldable dock.** A chevron at the right end of the dock folds it into one "Display" button at the same place; the minimap comes back while it is folded. It opens expanded unless a host asks for `initial: { shell: { dockFolded: true } }`.
-- **`describe(type)`** in `@zh-xx/antu/validate`: the field table of a type, the text `antu_schema` serves.
-- **The DeepSeek Harness plugin** `@zh-xx/antu-dsh` (#201; built with `npm run build:dsh`, not on npm yet). Host tools `antu_validate`, `antu_layout`, `antu_render` and the reference tools `antu_schema`, `antu_guide`, `antu_examples`; a picture-only card in the chat, drawn after the turn so DSH's fold does not hide it, that opens a full view in the right panel. See `tools/dsh/README.md` and `spec/dsh-plugin.md`.
+- **`describe(type)`** in `@zh-xx/antu/validate`: the field table of a type, as data (the same text the MCP tool `antu_schema` serves).
 - **`cardUi`**, exported by `@zh-xx/antu/embed`: the `ui` a chat card spreads into `mount(…, { ui: { ...cardUi } })` (no header, dock, minimap or zoom, and the wheel scrolls the host page instead of panning). `ui` also takes `panOnScroll` and `panOnDrag`.
 
 ## 0.14.0
