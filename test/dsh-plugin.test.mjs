@@ -939,6 +939,77 @@ test('built client card: a click opens the full view, fullscreen, with the HTML 
   assert.deepEqual(toggled[1], { paneId: 'p1', host: 'dock' })
 })
 
+test('built client page: a bare Esc exits the full view once, from focus outside the panel', async () => {
+  const { embed } = fakeEmbed()
+  const toggled = []
+  const sidebarRight = {
+    openTab() {},
+    commandTarget: () => ({ paneId: 'p1', host: 'dock' }),
+    toggleFullscreen: (target) => toggled.push(target),
+  }
+
+  // A tiny document: only what the plugin touches (the style tag and the Esc effect), so the
+  // handler can be dispatched for real.
+  const listeners = new Map()
+  const body = { tagName: 'BODY', getAttribute: () => null, matches: () => false }
+  const fakeDocument = {
+    body,
+    activeElement: null,
+    querySelector: () => null,
+    createElement: () => ({ dataset: {}, textContent: '' }),
+    head: { appendChild() {} },
+    addEventListener: (type, fn) => listeners.set(type, fn),
+    removeEventListener: (type, fn) => { if (listeners.get(type) === fn) listeners.delete(type) },
+  }
+  const hadDocument = 'document' in globalThis
+  const previousDocument = globalThis.document
+  globalThis.document = fakeDocument
+  try {
+    const { Page, mount } = loadBuiltCard({ requireAsync: async () => embed, sidebarRight })
+    const params = { spec: { type: 'fact', title: '案情' }, kind: 'scale', path: '/w/a.html', title: '案情', wantFullscreen: true }
+    const page = mount(Page, {
+      useTabInfo: () => ({ sidebar: { expanded: true, fullscreen: true }, tab: { navigation: { params, revision: 1 } } }),
+    })
+    await page.flush()
+    assert.equal(toggled.length, 0, 'already fullscreen: opening the page does not toggle')
+    assert.ok(buttonLabelled(page.tree(), '← Back to chat (Esc)'), 'the back button is shown while fullscreen')
+
+    const handler = listeners.get('keydown')
+    assert.equal(typeof handler, 'function', 'the full view listens for keydown while fullscreen')
+
+    // The reader clicked the chat card's cover earlier: focus is a button in the conversation, outside the panel.
+    const cover = { tagName: 'BUTTON', getAttribute: () => null, matches: () => false }
+    const keydown = () => ({
+      type: 'keydown',
+      key: 'Escape',
+      ctrlKey: false, altKey: false, metaKey: false, shiftKey: false,
+      repeat: false, isComposing: false, defaultPrevented: false,
+      composedPath: () => [cover, body, fakeDocument, globalThis],
+      prevented: 0,
+      stopped: 0,
+      preventDefault() { this.prevented += 1 },
+      stopPropagation() { this.stopped += 1 },
+    })
+
+    const first = keydown()
+    handler(first)
+    assert.equal(toggled.length, 1, 'Esc exits through the controller pane target')
+    assert.deepEqual(toggled[0], { paneId: 'p1', host: 'dock' })
+    assert.equal(first.prevented, 1)
+    assert.equal(first.stopped, 1)
+
+    // A second Esc before the sidebar re-renders must not toggle again (exitingRef holds the exit).
+    const second = keydown()
+    handler(second)
+    assert.equal(toggled.length, 1, 'a repeat Esc before the re-render does nothing')
+    assert.equal(second.prevented, 0)
+    assert.equal(second.stopped, 0)
+  } finally {
+    if (hadDocument) globalThis.document = previousDocument
+    else delete globalThis.document
+  }
+})
+
 test('built client card: says what is wrong instead of crashing (mount fails, truncated arguments, DSH 0.1.x)', async () => {
   // The engine refuses the spec: the card keeps its mount host and shows the reason
   const bad = fakeEmbed({ failMount: true })

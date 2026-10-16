@@ -15,6 +15,7 @@ import {
   antuDiagramsUpdate,
   isAntuRenderName,
   isAppendSurfaceEvent,
+  isFullViewEscape,
 } from '../tools/dsh/src/card-model.mjs'
 
 /** One `tool/call` session event; `args` is a value (stringified) or the raw string. */
@@ -30,6 +31,27 @@ const resultEvent = (turn, callId, message = {}, data = {}) => ({
   seq: 2,
   surfaceOp: 'append',
   data: { turn, step: 1, message: { source: { callId }, isError: false, content: [], ...message }, ...data },
+})
+
+/** A duck-typed element stand-in: only what isFullViewEscape reads. */
+const fakeEl = (tagName = 'DIV', attrs = {}) => ({
+  tagName,
+  getAttribute: (name) => (name in attrs ? attrs[name] : null),
+  matches: () => false,
+})
+
+/** A keydown stand-in: `path` is its composedPath (target first, ancestors after). */
+const keyEvent = (path, extra = {}) => ({
+  key: 'Escape',
+  ctrlKey: false,
+  altKey: false,
+  metaKey: false,
+  shiftKey: false,
+  repeat: false,
+  isComposing: false,
+  defaultPrevented: false,
+  composedPath: () => path,
+  ...extra,
 })
 
 test('antu-diagrams: a call and its result settle to the written path', () => {
@@ -138,4 +160,64 @@ test('antu-diagrams: the definition matches its events and publishes turn data',
   assert.equal(antuDiagramsDefinition.buildLocationData({ state: next }, 'step', null), null)
   // Nothing changed: the previous Location value comes back by reference so React does not re-render.
   assert.equal(antuDiagramsDefinition.buildLocationData({ state: next }, 'turn', location), location)
+})
+
+test('isFullViewEscape: a bare Escape exits even when focus never entered the panel', () => {
+  const panel = fakeEl()
+  // The chat card's cover button keeps focus in the conversation: the panel is not in the path at all.
+  const cover = fakeEl('BUTTON')
+  assert.equal(isFullViewEscape(keyEvent([cover, fakeEl('BODY')]), panel), true)
+  // Clicking the diagram canvas leaves focus on body (or nowhere).
+  assert.equal(isFullViewEscape(keyEvent([fakeEl('BODY')]), panel), true)
+  // An event with no composedPath at all still exits (duck typing).
+  assert.equal(isFullViewEscape({ key: 'Escape' }, panel), true)
+})
+
+test('isFullViewEscape: only a bare Escape exits', () => {
+  const panel = fakeEl()
+  const outside = fakeEl('BUTTON')
+  const path = [outside, fakeEl('BODY')]
+  assert.equal(isFullViewEscape(keyEvent(path), panel), true)
+  assert.equal(isFullViewEscape(keyEvent(path, { key: 'a' }), panel), false)
+  assert.equal(isFullViewEscape(keyEvent(path, { ctrlKey: true }), panel), false)
+  assert.equal(isFullViewEscape(keyEvent(path, { altKey: true }), panel), false)
+  assert.equal(isFullViewEscape(keyEvent(path, { metaKey: true }), panel), false)
+  assert.equal(isFullViewEscape(keyEvent(path, { shiftKey: true }), panel), false)
+  assert.equal(isFullViewEscape(keyEvent(path, { repeat: true }), panel), false)
+  assert.equal(isFullViewEscape(keyEvent(path, { isComposing: true }), panel), false)
+  assert.equal(isFullViewEscape(keyEvent(path, { defaultPrevented: true }), panel), false)
+  assert.equal(isFullViewEscape(null, panel), false)
+})
+
+test('isFullViewEscape: an editable target keeps Escape for itself', () => {
+  const panel = fakeEl()
+  assert.equal(isFullViewEscape(keyEvent([fakeEl('INPUT'), panel]), panel), false)
+  assert.equal(isFullViewEscape(keyEvent([fakeEl('TEXTAREA'), panel]), panel), false)
+  assert.equal(isFullViewEscape(keyEvent([fakeEl('SELECT'), panel]), panel), false)
+  // contenteditable is seen through matches() or getAttribute()
+  const matchesEditable = { matches: (selector) => selector === 'input, textarea, select, [contenteditable]' }
+  assert.equal(isFullViewEscape(keyEvent([matchesEditable, panel]), panel), false)
+  assert.equal(isFullViewEscape(keyEvent([fakeEl('DIV', { contenteditable: 'true' }), panel]), panel), false)
+  // An explicit contenteditable="false" is not editable
+  assert.equal(isFullViewEscape(keyEvent([fakeEl('DIV', { contenteditable: 'false' }), panel]), panel), true)
+})
+
+test('isFullViewEscape: an open menu inside the panel gets the first Esc, one outside does not', () => {
+  const panel = fakeEl()
+  const outside = fakeEl('BUTTON')
+  // aria-expanded="true" on a node before the panel (inside it): the full view stays
+  assert.equal(
+    isFullViewEscape(keyEvent([outside, fakeEl('DIV', { 'aria-expanded': 'true' }), panel, fakeEl('BODY')]), panel),
+    false,
+  )
+  // role="menu" inside the panel: same
+  assert.equal(isFullViewEscape(keyEvent([fakeEl('DIV', { role: 'menu' }), panel, fakeEl('BODY')]), panel), false)
+  assert.equal(isFullViewEscape(keyEvent([fakeEl('DIV', { role: 'listbox' }), panel, fakeEl('BODY')]), panel), false)
+  // role="dialog" is no longer a gate: DSH's own fullscreen chrome can carry it
+  assert.equal(isFullViewEscape(keyEvent([fakeEl('DIV', { role: 'dialog' }), panel, fakeEl('BODY')]), panel), true)
+  // The same expanded node after the panel (outside it) does not hold the full view back
+  assert.equal(
+    isFullViewEscape(keyEvent([outside, panel, fakeEl('DIV', { 'aria-expanded': 'true' }), fakeEl('BODY')]), panel),
+    true,
+  )
 })

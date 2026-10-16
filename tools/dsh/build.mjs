@@ -104,6 +104,7 @@ const INLINED = [
       'antuDiagramsUpdate',
       'isAntuRenderName',
       'isAppendSurfaceEvent',
+      'isFullViewEscape',
     ],
   ],
   ['/*@@INJECT_REQUIRE_ASYNC@@*/', 'require-async.mjs', ['resolveRequireAsync', 'beginLoadEmbed']],

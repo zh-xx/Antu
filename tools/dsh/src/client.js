@@ -209,12 +209,14 @@ window.__ModuleLoader__.load({
       const openFile = path ? fullView.files.get(path) : null
 
       const exitFull = () => {
-        if (typeof fullView.exitFullscreen === 'function') fullView.exitFullscreen(sideRef.current)
+        if (typeof fullView.exitFullscreen === 'function') return fullView.exitFullscreen(sideRef.current)
+        return false
       }
 
       // Esc leaves the full view. The listener is on `document` in the capture phase: focus inside the
       // embed's open shadow root retargets the event to its host, which would hide a bubble-phase
-      // listener on the panel. `exitingRef` keeps repeated keys from toggling twice before re-render.
+      // listener on the panel. `exitingRef` keeps repeated keys from toggling twice before re-render;
+      // it is only set once the exit really was asked for, so a failed exit can be retried.
       useEffect(() => {
         if (!fullscreen) {
           exitingRef.current = false
@@ -222,25 +224,12 @@ window.__ModuleLoader__.load({
         }
         if (typeof document === 'undefined') return undefined
         const onKeyDown = (e) => {
-          if (e.key !== 'Escape' || e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return
-          if (e.repeat || e.isComposing || e.defaultPrevented) return
-          const path = e.composedPath ? e.composedPath() : []
-          const el = sideRef.current
-          const active = document.activeElement
-          if (!el || !(path.includes(el) || el.contains(active) || active === document.body || !active)) return
-          // An open dropdown / menu / dialog inside the panel gets Esc first.
-          const panelAt = path.indexOf(el)
-          const inner = panelAt >= 0 ? path.slice(0, panelAt) : path
-          for (const node of inner) {
-            if (!node || typeof node.getAttribute !== 'function') continue
-            const role = node.getAttribute('role')
-            if (node.getAttribute('aria-expanded') === 'true' || role === 'menu' || role === 'listbox' || role === 'dialog') return
+          if (!isFullViewEscape(e, sideRef.current) || exitingRef.current) return
+          if (exitFull()) {
+            exitingRef.current = true
+            e.preventDefault()
+            e.stopPropagation()
           }
-          if (exitingRef.current) return
-          exitingRef.current = true
-          e.preventDefault()
-          e.stopPropagation()
-          exitFull()
         }
         document.addEventListener('keydown', onKeyDown, true)
         return () => document.removeEventListener('keydown', onKeyDown, true)

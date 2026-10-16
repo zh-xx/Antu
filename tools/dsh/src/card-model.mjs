@@ -92,6 +92,65 @@ export function titleOf(spec, fallback) {
   return spec && typeof spec.title === 'string' && spec.title.trim() ? spec.title.trim() : fallback
 }
 
+// ---- The full view's Esc (pure: no React, no DOM; inlined into the client entry) ----
+
+/** The first Element of a composed path; document, window and plain objects are skipped. */
+function firstElementOf(path) {
+  for (const node of path) {
+    if (!node || typeof node !== 'object') continue
+    if (typeof node.getAttribute === 'function' || typeof node.matches === 'function' || typeof node.tagName === 'string') return node
+  }
+  return null
+}
+
+/** A text field or a contenteditable host: Esc belongs to it, not to the full view. */
+function isEditable(node) {
+  if (!node || typeof node !== 'object') return false
+  const tag = typeof node.tagName === 'string' ? node.tagName.toLowerCase() : ''
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') return true
+  if (typeof node.matches === 'function') {
+    try {
+      if (node.matches('input, textarea, select, [contenteditable]')) return true
+    } catch {
+      /* a stand-in without selector support: fall through to getAttribute */
+    }
+  }
+  if (typeof node.getAttribute === 'function') {
+    const editable = node.getAttribute('contenteditable')
+    if (editable !== null && editable !== undefined && editable !== 'false') return true
+  }
+  return false
+}
+
+/** An open menu / listbox / expanded control inside the panel gets the first Esc. */
+function panelOwnsEscape(path, panelEl) {
+  const panelAt = path.indexOf(panelEl)
+  if (panelAt < 0) return false
+  for (const node of path.slice(0, panelAt)) {
+    if (!node || typeof node.getAttribute !== 'function') continue
+    const role = node.getAttribute('role')
+    if (node.getAttribute('aria-expanded') === 'true' || role === 'menu' || role === 'listbox') return true
+  }
+  return false
+}
+
+/**
+ * Should a keydown leave the Antu full view? True for a bare Escape (no modifiers, not a repeat, not
+ * composing, not already handled) whose target is not editable and that has no open menu/listbox inside
+ * the panel. `path.indexOf(panelEl) < 0` means the event came from outside the panel, so no inner node
+ * is checked (and the focus left on the chat cover button no longer hides the panel). Duck-typed so it
+ * can be tested without a DOM.
+ */
+export function isFullViewEscape(event, panelEl) {
+  if (!event || event.key !== 'Escape') return false
+  if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return false
+  if (event.repeat || event.isComposing || event.defaultPrevented) return false
+  const raw = typeof event.composedPath === 'function' ? event.composedPath() : []
+  const path = Array.isArray(raw) ? raw : []
+  if (isEditable(firstElementOf(path))) return false
+  return !panelOwnsEscape(path, panelEl)
+}
+
 // ---- Per-turn diagram calls (the turn tail reads this; the folded tool row stays compact) ----
 
 /** The Turn data key of the per-turn diagram calls. */
