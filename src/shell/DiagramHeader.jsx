@@ -27,7 +27,7 @@ import { useLang } from './LangContext.jsx'
 import KindIcon from './KindIcon.jsx'
 import { useTheme, THEME_IDS } from '../theme/ThemeContext.jsx'
 import { themeOf } from '../theme/themes.js'
-import { isInside, useEnv } from './env.js'
+import { isInside, useEnv, useViewValue } from './env.js'
 
 export default function DiagramHeader({ title, typeLabel, info = [], kinds = [], kind, onSelectKind }) {
   const { t } = useLang()
@@ -38,14 +38,15 @@ export default function DiagramHeader({ title, typeLabel, info = [], kinds = [],
   // With only one rendering kind there is nothing to pick
   const multi = kinds.length > 1
   const [open, setOpen] = useState(false)
-  // a host's `initial.headerFolded` wins over the stored choice when the diagram opens (issue 165)
-  const [folded, setFolded] = useState(() =>
-    typeof env.initial?.headerFolded === 'boolean' ? env.initial.headerFolded : prefs.read().headerFolded === true,
-  )
+  // the label card fold goes through the view state (issue 200): `initial` wins over the stored choice,
+  // a host may lock it, and a reader's click in this mount wins over both
+  const foldView = useViewValue('shell.headerFolded', prefs.read().headerFolded === true, false)
+  const [folded, setFolded] = useState(foldView.value === true)
   const toggleFold = () => {
     const next = !folded
     setFolded(next)
     setOpen(false)
+    foldView.touch()
     prefs.write({ headerFolded: next })
   }
   const rootRef = useRef(null)
@@ -98,13 +99,13 @@ export default function DiagramHeader({ title, typeLabel, info = [], kinds = [],
         <div className="antu-header-card is-folded">
           <span className="antu-header-type">{typeLabel}</span>
           <h1 className="antu-header-title">{title}</h1>
-          <FoldButton folded onClick={toggleFold} label={t('header.unfold')} />
+          {!foldView.locked && <FoldButton folded onClick={toggleFold} label={t('header.unfold')} />}
         </div>
       ) : (
         <div className="antu-header-card">
           <div className="antu-header-top">
             <h1 className="antu-header-title">{title}</h1>
-            <FoldButton folded={false} onClick={toggleFold} label={t('header.fold')} />
+            {!foldView.locked && <FoldButton folded={false} onClick={toggleFold} label={t('header.fold')} />}
           </div>
 
           <div className="antu-header-row">

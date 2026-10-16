@@ -67,8 +67,66 @@ shadow root 是开放的，正为此。
 | `lang` | 浏览器的 | `zh` 或 `en`：页面自身文字的语言。案件内容不翻译 |
 | `ui` | 全部 `true` | `{ header, capsule, minimap, zoom, panOnScroll, panOnDrag }`：去掉页面上的哪些部件（左上角标签卡、底部控制胶囊、缩略图、缩放按钮）。`panOnScroll: false` 时滚轮不再平移图，宿主页面（如聊天卡片）仍可滚动；`panOnDrag: false` 时按住拖拽不再平移；捏合缩放仍可用。聊天卡片请优先展开 [`cardUi`](#卡片-ui) |
 | `prefs` | `'none'` | 读者的选择（画法、字段、方向……）存在哪：`'none'` 只在挂载期间保留；`'local'` 存进 viewer 页面的 `localStorage` 键（`antu.prefs`）；或宿主自己的存储 `{ read(): object, write(patch) }` |
-| `initial` | 无 | 打开时的样子，先于读者保存的选择：`{ headerFolded }`（标签卡折叠成一行，或展开）。打开时它压过保存的选择，与 `theme` 相同；之后读者仍可改，改动按 `prefs` 保存。键不在其中、或值不是布尔值，`mount` 抛错 |
+| `initial` | 无 | 打开时的样子，先于读者保存的选择（`AntuViewState`，见下）；`headerFolded` 是 `shell.headerFolded` 的旧别名。键不在其中、类型不对、或值不在枚举内，`mount` 抛错 |
+| `locked` | 无 | 本次挂载强制的值（`AntuViewState`，见下）；对应的控件被隐藏，而不是禁用。键不在其中、类型不对、或值不在枚举内，`mount` 抛错 |
+| `persist` | `true` | 读者的改动哪些能写进 prefs 存储：`true`（全部）、`false`（都不写，只在挂载期间保留），或下表中名字组成的数组。名字不认识时 `mount` 抛错 |
 | `onEvent` | 无 | `(event) => void`；处理函数抛错只会打印在控制台，不影响图 |
+
+### 配置读者看到的样子
+
+`initial` 与 `locked` 用同一套视图状态；`persist` 决定读者的改动哪些保存下来。
+
+```ts
+interface AntuViewState {
+  theme?: 'document' | 'modern' | 'legal'
+  lang?: 'zh' | 'en'
+  shell?: { headerFolded?: boolean; dockFolded?: boolean }
+  view?: {
+    flow?: { states?: boolean; conditions?: boolean; detail?: boolean; mainLine?: boolean; stages?: boolean; rules?: boolean;
+             orientation?: 'vertical' | 'horizontal'; linkStyle?: 'straight' | 'curved' }
+    route?: { labels?: boolean; states?: boolean }
+  }
+}
+```
+
+- **`initial`** 是打开时的值。它压过保存的偏好（`initial.headerFolded` 一直如此），而读者在本次挂载里的点击又压过它。`initial.theme`、`initial.lang` 与顶层的 `theme`、`lang` 含义相同；两者都给时以顶层为准。
+- **`locked`** 强制一个值并隐藏对应控件（不是禁用）。`shell.dockFolded: true` 会把整个控制胶囊藏起来，无法再打开；`false` 表示胶囊展开且没有收起按钮。`shell.headerFolded` 会去掉标签卡的折叠按钮。`locked.theme` 固定主题并隐藏主题切换；`locked.lang` 固定语言并隐藏语言切换。`view.flow.*`／`view.route.*` 锁定后，对应的开关不再渲染。
+- **`persist`** 为 `true`（默认，与今天相同）、`false`（读者的改动只在挂载期间保留，绝不写进 prefs 存储），或允许写入的名字组成的数组。
+
+每一项的取值依次来自（从高到低）：
+
+1. `locked`
+2. 本次挂载中读者的改动
+3. `initial`
+4. 页面 preset（仅 viewer 页面，与今天相同）
+5. 保存的偏好
+6. 内置默认值（状态开关为 `statesByDefault(theme)`）
+
+`prefs.write` 的每次写入按其 prefs 键对应的名字判断是否允许。名字不在允许列表里的写入只留在内存中供本次挂载使用，`read()` 返回存储中的值并在其上叠加这些改动。名字如下：
+
+| 名字 | 覆盖的 prefs 键 |
+| --- | --- |
+| `theme` | `theme` |
+| `lang` | `lang` |
+| `kind` | `kinds` |
+| `shell.headerFolded` | `headerFolded` |
+| `shell.dockFolded` | `dockFolded` |
+| `view.flow` | `flowFieldsByDiagram`、`orientations`、`linkStyle`（后两者目前与其他图类型共用；第一阶段把它们算作流程图的） |
+| `view.route` | `procedureRouteFieldsByDiagram` |
+
+第一阶段只覆盖下面这些项；给其他类型写 `view.flow`／`view.route` 会被忽略，不算错误，其他图类型还没有视图状态。
+
+| 项 | `initial` / `locked` 路径 | prefs 键 |
+| --- | --- | --- |
+| 主题 | `theme` | `theme` |
+| 语言 | `lang` | `lang` |
+| 标签卡折叠 | `shell.headerFolded`（别名 `headerFolded`） | `headerFolded` |
+| 控制胶囊收起 | `shell.dockFolded` | `dockFolded` |
+| 流程图开关 | `view.flow.states` · `.conditions` · `.detail` · `.mainLine` · `.stages` · `.rules` | `flowFieldsByDiagram` |
+| 流程图方向 | `view.flow.orientation` | `orientations` |
+| 流程图连线样式 | `view.flow.linkStyle` | `linkStyle` |
+| 路线图条件标签 | `view.route.labels` | `procedureRouteFieldsByDiagram` |
+| 路线图状态 | `view.route.states` | `procedureRouteFieldsByDiagram` |
 
 ### 句柄
 
@@ -168,7 +226,8 @@ mount(el, spec, {
 - `test/embed.test.mjs`：钉住的卡片对应哪个条目（所有示例 × 所有画法）；样式表搬进 shadow root；挂载图的环境；两个
   Node 入口；类型声明与代码一致；包的 `exports`。
 - `tools/verify/embed.mjs`（`npm run verify` 的一节）：在真实浏览器里，一个带敌意 CSS 的宿主页面并排挂两张图，用的是
-  包里发布的那份 bundle。双向隔离、全局不受影响、每个选项、每种事件、句柄的每个函数、再次挂载。
+  包里发布的那份 bundle。双向隔离、全局不受影响、每个选项、视图状态（`initial`、`locked`、`persist`）、每种事件、
+  句柄的每个函数、再次挂载。
 
 ## 7. 不在这里
 

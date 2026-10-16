@@ -12,6 +12,33 @@ export interface AntuSpec {
 export type AntuTheme = 'document' | 'modern' | 'legal'
 export type AntuLang = 'zh' | 'en'
 
+/**
+ * How a mounted diagram opens and what it shows (issue 200). Every value a reader can change may be set here:
+ * the theme and language, the label card and dock folds, and every switch of the flowchart and route map.
+ * Unknown keys, wrong types and values outside an enum make `mount` throw.
+ */
+export interface AntuViewState {
+  theme?: AntuTheme
+  lang?: AntuLang
+  shell?: { headerFolded?: boolean; dockFolded?: boolean }
+  view?: {
+    flow?: {
+      states?: boolean
+      conditions?: boolean
+      detail?: boolean
+      mainLine?: boolean
+      stages?: boolean
+      rules?: boolean
+      orientation?: 'vertical' | 'horizontal'
+      linkStyle?: 'straight' | 'curved'
+    }
+    route?: { labels?: boolean; states?: boolean }
+  }
+}
+
+/** The names `persist` may list: one per prefs key whose write may reach the host's store */
+export type AntuPersistName = 'theme' | 'lang' | 'kind' | 'shell.headerFolded' | 'shell.dockFolded' | 'view.flow' | 'view.route'
+
 /** A source as written in the spec's `sources` (`loc` is shaped by the source's `type`, e.g. a contract's { file, clause, page }) */
 export interface AntuSource {
   id: string
@@ -66,8 +93,12 @@ export interface MountOptions {
   }
   /** Where the reader's choices are kept: 'none' (default) while mounted only, 'local' in the viewer page's localStorage key, or the host's store */
   prefs?: 'none' | 'local' | AntuPrefsStore
-  /** How it opens, ahead of the reader's stored choices (the reader can still change it). An unknown key or a wrong value: `mount` throws. */
-  initial?: { headerFolded?: boolean }
+  /** How it opens, ahead of the reader's stored choices (the reader can still change it). `headerFolded` is the old alias of `shell.headerFolded`. An unknown key or a wrong value: `mount` throws. */
+  initial?: AntuViewState & { headerFolded?: boolean }
+  /** Values forced for this mount; their controls are hidden (a locked `shell.dockFolded: true` hides the dock). An unknown key or a wrong value: `mount` throws. */
+  locked?: AntuViewState
+  /** Which of the reader's changes reach the prefs store: true (all, the default), false (none, kept while mounted), or a list of names. An unknown name or a wrong type: `mount` throws. */
+  persist?: boolean | AntuPersistName[]
   onEvent?: (event: AntuEvent) => void
 }
 

@@ -173,6 +173,59 @@
 /* 必须排在 .is-on 后面：两者特异性一样，写前面的话按下去毫无反应 */
 .antu-dock-seg-item:active { background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.08); }
 
+/* ===== 控制胶囊的收起／展开（issue 200） =========================
+   收起时渲染器自己的 bar 不画，换成这一个按钮；展开时在胶囊右端画一个小箭头。
+   按钮由 Canvas 画（每个渲染器的 bar 是它自己的），所以绝对定位在 .antu-dock-capsule 里，
+   用 .has-fold 给 bar 留出右边的空档。 */
+.antu-dock-capsule.has-fold .antu-dock-bar { padding-right: 34px; }
+.antu-dock-fold-wrap {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+/* 分隔线在胶囊里比在 bar 内更靠近箭头一点 */
+.antu-dock-fold-wrap .antu-dock-sep { margin: 0 4px; }
+.antu-dock-fold {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--antu-text-3);
+  cursor: pointer;
+}
+.antu-dock-fold:hover { background: rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.06); color: var(--antu-text); }
+.antu-dock-fold:focus-visible { outline: 2px solid var(--antu-text); outline-offset: 2px; }
+/* 收起后那一个按钮：与 .antu-dock-bar 同一套底、边框、毛玻璃和阴影，只是里面只有一个动作 */
+.antu-dock-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: var(--antu-capsule-radius, 999px);
+  background: var(--antu-chrome-bg, rgba(255, 255, 255, 0.72));
+  -webkit-backdrop-filter: var(--antu-chrome-blur, blur(16px) saturate(1.8));
+  backdrop-filter: var(--antu-chrome-blur, blur(16px) saturate(1.8));
+  border: var(--antu-chrome-border, 1px solid rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.07));
+  box-shadow: var(--antu-chrome-shadow, 0 4px 18px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.10));
+  color: var(--antu-text-2);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.antu-dock-open:hover { color: var(--antu-text); }
+.antu-dock-open:focus-visible { outline: 2px solid var(--antu-text); outline-offset: 2px; }
+
 .antu-error-title { font-weight: 600; color: var(--antu-bad); margin-bottom: 6px; }
 .antu-error-hint { color: var(--antu-text-3); }
 /* 出错时的堆栈：等宽、可横向滚、限高，别把整页撑开 */

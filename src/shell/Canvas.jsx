@@ -19,7 +19,7 @@ import { useLang } from './LangContext.jsx'
 import { useTheme, themeVars } from '../theme/ThemeContext.jsx'
 import { FIT_PADDING, fitWidthZoom, fitZoom } from '../core/canvas.js'
 import { EXPORT_CLASS, exportPng as runExportPng, renderPng } from './exportPng.js'
-import { ShownSpecContext, useEnv, useUi } from './env.js'
+import { ShownSpecContext, useEnv, useUi, useViewValue } from './env.js'
 import { nodesOfItem, pinTargetOf } from '../core/items.js'
 import { placeDock } from './dockPlace.js'
 
@@ -91,7 +91,7 @@ export default function Canvas({
   // Nodes must live in writable state: React Flow writes the measured sizes back onto
   // the nodes via onNodesChange, and everything that depends on size (the MiniMap and
   // the like) relies on that write-back.
-  const { ariaLabels } = useLang()
+  const { ariaLabels, t } = useLang()
   // The decoration layers are declared 1×1 (see fact/timeline/nodes.js), so the minimap saw nothing of a picture drawn
   // only by layers (the route map, the relation path): one empty node as large as the picture gives it its extent
   const allNodeTypes = useMemo(() => ({ ...nodeTypes, miniGhost: MiniGhost }), [nodeTypes])
@@ -325,22 +325,40 @@ export default function Canvas({
   const panOnScroll = useUi('panOnScroll')
   const panOnDrag = useUi('panOnDrag')
 
+  // The dock fold (issue 200): resolved like every other view state, so a host may open it folded or lock it.
+  // A reader's click writes `dockFolded`; a locked one has no control, so a locked-folded dock is hidden whole.
+  const { prefs } = useEnv()
+  const dockFold = useViewValue('shell.dockFolded', prefs.read().dockFolded === true, false)
+  const [dockFolded, setDockFolded] = useState(dockFold.value === true)
+  const dockLocked = dockFold.locked
+  const canFold = !dockLocked
+  const dockVisible = showCapsule && !(dockLocked && dockFolded)
+  const toggleDockFold = () => {
+    const next = !dockFolded
+    setDockFolded(next)
+    dockFold.touch()
+    prefs.write({ dockFolded: next })
+  }
+
   // Where the capsule goes on this width, and whether the minimap gives way to it (shell/dockPlace.js)
   const [dock, setDock] = useState({ left: null, maxWidth: null, hideMinimap: false })
   const minimapWidthRef = useRef(MINIMAP_WIDTH)
   useLayoutEffect(() => {
     const el = canvasRef.current
-    if (!el || !showCapsule) return undefined
+    if (!el || !dockVisible) return undefined
     const place = () => {
+      // folded, the bar is not rendered: measure the one open button instead, so the minimap can come back
       const bar = el.querySelector('.antu-dock-capsule .antu-dock-bar')
-      if (!bar || !el.clientWidth) return
+      const open = el.querySelector('.antu-dock-capsule .antu-dock-open')
+      const natural = bar ? oneLineWidth(bar) : open ? Math.ceil(open.getBoundingClientRect().width) : 0
+      if (!natural || !el.clientWidth) return
       const box = el.getBoundingClientRect()
       const zoom = showZoom ? el.querySelector('.react-flow__controls') : null
       const mini = el.querySelector('.react-flow__minimap')
       if (mini?.offsetWidth) minimapWidthRef.current = mini.offsetWidth
       const next = placeDock({
         width: el.clientWidth,
-        natural: oneLineWidth(bar),
+        natural,
         zoomRight: zoom ? zoom.getBoundingClientRect().right - box.left : null,
         minimapWidth: showMinimap ? minimapWidthRef.current : null,
       })
@@ -349,13 +367,13 @@ export default function Canvas({
     place()
     const ro = new ResizeObserver(place)
     ro.observe(el)
-    const bar = el.querySelector('.antu-dock-capsule .antu-dock-bar')
-    if (bar) ro.observe(bar)
+    const target = el.querySelector('.antu-dock-capsule .antu-dock-bar') || el.querySelector('.antu-dock-capsule .antu-dock-open')
+    if (target) ro.observe(target)
     return () => ro.disconnect()
     // Not on `children`: it is a new element on every render (a hover re-renders), and measuring again then
     // cost some forty style reads each time. The observer already sees the capsule change size when its
-    // content does.
-  }, [showCapsule, showZoom, showMinimap])
+    // content does. `dockFolded` is on the list because the bar unmounts then and the button takes its place.
+  }, [dockVisible, showZoom, showMinimap, dockFolded])
   const dockStyle = dock.left == null
     ? undefined
     // (a React Flow panel has a margin of its own; `left` is already measured from the canvas edge)
@@ -424,12 +442,40 @@ export default function Canvas({
         {/* The padding must match the initial fit, or clicking the button once makes the zoom jump */}
         {showZoom && <Controls showInteractive={false} onFitView={() => fit(300)} />}
         {/* The display controls float centred below the canvas: the zoom controls are bottom left and the minimap bottom right, so the three do not collide */}
-        {showCapsule && (
-          <Panel position="bottom-center" className={`antu-dock-capsule${dock.maxWidth != null ? ' is-wrapped' : ''}`} style={dockStyle}>
-            {children}
+        {dockVisible && (
+          <Panel position="bottom-center" className={`antu-dock-capsule${canFold && !dockFolded ? ' has-fold' : ''}${dock.maxWidth != null ? ' is-wrapped' : ''}`} style={dockStyle}>
+            {dockFolded ? (
+              // Folded: the renderer's bar is not drawn; one capsule-styled button at the same spot opens it again
+              <button className="antu-dock-open" onClick={toggleDockFold} aria-expanded={false} title={t('dock.display')} aria-label={t('dock.display')}>
+                {/* sliders: the usual "display options" mark, kept beside the words */}
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                  <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" />
+                  <circle cx="6" cy="4.5" r="1.5" fill="currentColor" />
+                  <circle cx="10.5" cy="8" r="1.5" fill="currentColor" />
+                  <circle cx="5.5" cy="11.5" r="1.5" fill="currentColor" />
+                </svg>
+                {t('dock.display')}
+              </button>
+            ) : (
+              <>
+                {children}
+                {/* The renderer's bar is its own, so the fold control is drawn here: absolutely at the right
+                    inside the capsule, with `has-fold` giving the bar room for it */}
+                {canFold && (
+                  <span className="antu-dock-fold-wrap">
+                    <span className="antu-dock-sep" />
+                    <button className="antu-dock-fold" onClick={toggleDockFold} aria-expanded title={t('dock.fold')} aria-label={t('dock.fold')}>
+                      <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M3.5 5.5 8 10.5l4.5-5" />
+                      </svg>
+                    </button>
+                  </span>
+                )}
+              </>
+            )}
           </Panel>
         )}
-        {showMinimap && !dock.hideMinimap && <MiniMap pannable zoomable nodeColor={miniColor} />}
+        {showMinimap && !(dockVisible && dock.hideMinimap) && <MiniMap pannable zoomable nodeColor={miniColor} />}
       </ReactFlow>
     </main>
   )

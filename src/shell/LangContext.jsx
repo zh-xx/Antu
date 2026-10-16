@@ -27,8 +27,10 @@ export function LangProvider({ children, lang: forcedLang }) {
   // beats detecting from the browser. See core/i18n.js. Where it is stored is the
   // environment's business (shell/env.js): the viewer's own key, or the host's store.
   const env = useEnv()
+  // A host locking the language (`mount(…, { locked: { lang } })`) forces it for this mount (issue 200)
+  const locked = env.locked?.lang
   const [lang, setLangState] = useState(
-    () => (forcedLang ? normalizeLang(forcedLang) : null) ?? env.lang.read() ?? detectLang(),
+    () => (locked ? normalizeLang(locked) : null) ?? (forcedLang ? normalizeLang(forcedLang) : null) ?? env.lang.read() ?? detectLang(),
   )
 
   // Keep the document language in step with the interface language.
@@ -44,11 +46,13 @@ export function LangProvider({ children, lang: forcedLang }) {
 
   const setLang = useCallback(
     (next) => {
+      // a locked language has no switch and does not follow `setLang()` either
+      if (locked) return
       const normalized = normalizeLang(next)
       setLangState(normalized)
       env.lang.write(normalized)
     },
-    [env.lang],
+    [env.lang, locked],
   )
 
   const value = useMemo(() => {

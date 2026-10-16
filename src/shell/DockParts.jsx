@@ -11,6 +11,7 @@
 // ============================================================
 
 import { useLang } from './LangContext.jsx'
+import { useEnv } from './env.js'
 
 /** Language switch. Each language name is written in its own language, so you recognise your entry even in the wrong language. */
 const LANGS = [
@@ -39,6 +40,9 @@ export function DockSegmented({ options, value, onChange, title }) {
 /** Language affects interface text only: switching reloads no data and changes no geometry */
 export function DockLangSwitch() {
   const { t, lang, setLang } = useLang()
+  // a host can lock the language (`mount(…, { locked: { lang } })`): then there is no switch to offer (issue 200)
+  const { locked } = useEnv()
+  if (locked?.lang) return null
   return <DockSegmented options={LANGS} value={lang} onChange={setLang} title={t('dock.lang')} />
 }
 

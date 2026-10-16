@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { usePrefs, usePreset } from '../../../shell/env.js'
+import { usePrefs, useViewValue } from '../../../shell/env.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch } from '../../../shell/DockParts.jsx'
@@ -30,13 +30,18 @@ export default function ProcedureRoute({ spec }) {
   const specKey = `proc:${spec?.title || ''}`
   const { t, lang } = useLang()
   const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().procedureRouteFieldsByDiagram || {})
-  const showLabels = fieldPrefs[specKey]?.labels ?? true
-  // The four states in colour (issue 187), as on the flowchart: off in the document theme, on in the others, unless
-  // switched for this diagram
-  const PRESET = usePreset()
+  const storedFields = fieldPrefs[specKey] || {}
   const { id: themeId } = useTheme()
-  const showStates = PRESET?.fields?.states ?? fieldPrefs[specKey]?.states ?? statesByDefault(themeId)
+  // Both switches go through the view state (issue 200): a host's initial/locked/persist, the page's preset and
+  // the reader's click are resolved in one place. The four states in colour (issue 187) are off in the document
+  // theme and on in the others, unless switched for this diagram; `statesByDefault` stays the fallback.
+  const labelsView = useViewValue('view.route.labels', storedFields.labels, true)
+  const statesView = useViewValue('view.route.states', storedFields.states, statesByDefault(themeId))
+  const showLabels = labelsView.value
+  const showStates = statesView.value
+  const views = { labels: labelsView, states: statesView }
   const setField = (key, v) => {
+    views[key].touch()
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], [key]: v } }
     setFieldPrefs(map)
     prefs.write({ procedureRouteFieldsByDiagram: map })
@@ -49,12 +54,17 @@ export default function ProcedureRoute({ spec }) {
       <Canvas ref={canvasRef} graph={graph} fitKey={layout} fitSelf fitMinZoom={OPEN_MIN_ZOOM} nodeTypes={nodeTypes}>
         <div className="antu-dock">
           <div className="antu-dock-bar">
-            <button className={`antu-dock-chip${showLabels ? ' is-on' : ''}`} onClick={() => setField('labels', !showLabels)}>
-              {t('proc.route.labels')}
-            </button>
-            <button className={`antu-dock-chip${showStates ? ' is-on' : ''}`} onClick={() => setField('states', !showStates)}>
-              {t('flow.states')}
-            </button>
+            {/* a locked switch has no control at all */}
+            {!labelsView.locked && (
+              <button className={`antu-dock-chip${showLabels ? ' is-on' : ''}`} onClick={() => setField('labels', !showLabels)}>
+                {t('proc.route.labels')}
+              </button>
+            )}
+            {!statesView.locked && (
+              <button className={`antu-dock-chip${showStates ? ' is-on' : ''}`} onClick={() => setField('states', !showStates)}>
+                {t('flow.states')}
+              </button>
+            )}
             <span className="antu-dock-sep" />
             <DockLangSwitch />
             <span className="antu-dock-sep" />

@@ -73,8 +73,66 @@ What is drawn lives in the element's **shadow root**, not among its children: `e
 | `lang` | the browser's | `zh` or `en`: the language of the page's own words. The case is never translated |
 | `ui` | all `true` | `{ header, capsule, minimap, zoom, panOnScroll, panOnDrag }`: pieces of the page's chrome to leave out (the label card at the top left, the control capsule at the bottom, the minimap, the zoom buttons). `panOnScroll: false` stops the wheel from panning the diagram so a host page (a chat card) can still scroll; `panOnDrag: false` stops press-and-drag from panning; pinch-zoom stays on. For a chat card, prefer spreading [`cardUi`](#card-ui) |
 | `prefs` | `'none'` | where the reader's choices (kind, fields, orientation …) are kept: `'none'` while mounted only; `'local'` in the viewer page's `localStorage` key (`antu.prefs`); or the host's store `{ read(): object, write(patch) }` |
-| `initial` | none | how it opens, ahead of the reader's stored choices: `{ headerFolded }` (the label card folded to one line, or unfolded). It wins over a stored choice when the diagram opens, as `theme` does; after that the reader can change it and the choice is kept as `prefs` says. A key that is not one of these, or a value that is not a boolean, makes `mount` throw |
+| `initial` | none | how it opens, ahead of the reader's stored choices (`AntuViewState`, below); `headerFolded` is the old alias of `shell.headerFolded`. An unknown key, a wrong type or a value outside an enum makes `mount` throw |
+| `locked` | none | values forced for this mount (`AntuViewState`, below); their controls are hidden, not disabled. An unknown key, a wrong type or a value outside an enum makes `mount` throw |
+| `persist` | `true` | which of the reader's changes reach the prefs store: `true` (all), `false` (none: kept while mounted), or an array of the names below. An unknown name makes `mount` throw |
 | `onEvent` | none | `(event) => void`; a handler that throws is reported on the console and does not stop the diagram |
+
+### Configuring what a reader sees
+
+`initial` and `locked` take the same view state; `persist` says which of the reader's changes are kept.
+
+```ts
+interface AntuViewState {
+  theme?: 'document' | 'modern' | 'legal'
+  lang?: 'zh' | 'en'
+  shell?: { headerFolded?: boolean; dockFolded?: boolean }
+  view?: {
+    flow?: { states?: boolean; conditions?: boolean; detail?: boolean; mainLine?: boolean; stages?: boolean; rules?: boolean;
+             orientation?: 'vertical' | 'horizontal'; linkStyle?: 'straight' | 'curved' }
+    route?: { labels?: boolean; states?: boolean }
+  }
+}
+```
+
+- **`initial`** sets the opening value. It wins over the stored preferences (as `initial.headerFolded` already did), and the reader's click in this mount still wins over it. `initial.theme` and `initial.lang` mean the same as the top-level `theme`/`lang` options; if both are given, the top-level option wins.
+- **`locked`** forces a value and hides its control (not disabled). A locked `shell.dockFolded: true` hides the dock whole, with no way to open it; a locked `false` means the dock is open with no fold button. A locked `shell.headerFolded` removes the label card's fold toggle. `locked.theme` forces the theme and hides the theme switch; `locked.lang` forces the language and hides the language switch. A locked `view.flow.*` / `view.route.*` leaves out that switch.
+- **`persist`** is `true` (the default: as today), `false` (the reader's changes are kept while mounted but never reach the prefs store), or a list of the names that may be written.
+
+The value of every configurable item comes from, highest first:
+
+1. `locked`
+2. the reader's change made during this mount
+3. `initial`
+4. the page's preset (the viewer page only, as today)
+5. the stored preferences
+6. the built-in default (for the States switch, `statesByDefault(theme)`)
+
+A write through `prefs.write` is allowed by the name of its prefs key. A write whose name is not allowed stays in memory for this mount, and `read()` returns the stored values with those on top. The names:
+
+| Name | The prefs keys it covers |
+| --- | --- |
+| `theme` | `theme` |
+| `lang` | `lang` |
+| `kind` | `kinds` |
+| `shell.headerFolded` | `headerFolded` |
+| `shell.dockFolded` | `dockFolded` |
+| `view.flow` | `flowFieldsByDiagram`, `orientations`, `linkStyle` (the last two are shared with other diagram types today; phase 1 counts them as the flowchart's) |
+| `view.route` | `procedureRouteFieldsByDiagram` |
+
+Phase 1 covers these items; a `view.flow` or `view.route` entry for a diagram of another type is ignored, not an error, and the other kinds of diagram have no view state yet.
+
+| Item | `initial` / `locked` path | Prefs key |
+| --- | --- | --- |
+| Theme | `theme` | `theme` |
+| Language | `lang` | `lang` |
+| Label card folded | `shell.headerFolded` (alias `headerFolded`) | `headerFolded` |
+| Dock folded | `shell.dockFolded` | `dockFolded` |
+| Flowchart switches | `view.flow.states` · `.conditions` · `.detail` · `.mainLine` · `.stages` · `.rules` | `flowFieldsByDiagram` |
+| Flowchart orientation | `view.flow.orientation` | `orientations` |
+| Flowchart link style | `view.flow.linkStyle` | `linkStyle` |
+| Route map condition labels | `view.route.labels` | `procedureRouteFieldsByDiagram` |
+| Route map states | `view.route.states` | `procedureRouteFieldsByDiagram` |
 
 ### The handle
 
@@ -187,7 +245,8 @@ does not have, a theme that does not exist. Node only: in the package it reads t
   against the code; the package's `exports`.
 - `tools/verify/embed.mjs` (a section of `npm run verify`): a host page with hostile CSS and two diagrams side by
   side, the bundle the package ships, in a real browser. Isolation both ways, the globals untouched, every
-  option, every event, every function of the handle, mounting again.
+  option, the view state (`initial`, `locked`, `persist`), every event, every function of the handle, mounting
+  again.
 
 ## 7. Not here
 

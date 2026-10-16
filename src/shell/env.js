@@ -14,6 +14,7 @@
 import { createContext, useContext } from 'react'
 import { initialLang, writeStoredLang } from '../core/i18n.js'
 import { localPrefs, memoryPrefs } from './prefs.js'
+import { getPath, persistingStore, presetAt, resolveView } from './viewState.js'
 
 const noop = () => {}
 
@@ -85,6 +86,10 @@ export function standaloneEnv({ preset } = {}) {
     highlight: markStore(),
     /** How the diagram opens, ahead of the reader's stored choices (`mount(…, { initial })`); nothing on the page */
     initial: {},
+    /** A host forcing a value and hiding its control (`mount(…, { locked })`); nothing on the page */
+    locked: {},
+    /** The paths the reader has changed during this mount, so `initial` does not win over a click (issue 200) */
+    touched: new Set(),
     /** Called by the canvas once the diagram has been drawn and fitted (a host's `ready`) */
     drawn: noop,
     /** Where the diagram's elements are looked up (the whole document on the viewer page) */
@@ -99,10 +104,15 @@ export function standaloneEnv({ preset } = {}) {
  * @param emit    the host's onEvent
  * @param root    the shadow root (or element) the diagram is drawn in
  * @param ui      which pieces of the page's own chrome show
- * @param initial how it opens, ahead of the stored choices: { headerFolded? }
+ * @param initial how it opens, ahead of the stored choices (`AntuViewState`; shell/viewState.js)
+ * @param locked  values forced for this mount, with their controls hidden
+ * @param persist which writes may reach the store: true, false, or the names in shell/viewState.js
  */
-export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = null, ui = {}, initial = {} } = {}) {
-  const store = prefs === 'local' ? localPrefs : prefs && typeof prefs === 'object' ? prefs : memoryPrefs()
+export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = null, ui = {}, initial = {}, locked = {}, persist = true } = {}) {
+  const raw = prefs === 'local' ? localPrefs : prefs && typeof prefs === 'object' ? prefs : memoryPrefs()
+  // With nothing refused we hand the store straight over, so a host's own store keeps its identity (issue 152);
+  // with something refused, its writes are filtered and the refused ones stay in the wrapper's overlay.
+  const store = persist === true ? raw : persistingStore(raw, persist)
   return {
     embedded: true,
     preset: null,
@@ -113,6 +123,9 @@ export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = 
     commands: commandBus(),
     highlight: markStore(),
     initial,
+    locked,
+    // the reader's changes during this mount, so `initial` wins over stored prefs but not over a click
+    touched: new Set(),
     drawn,
     root,
     ui,
@@ -134,6 +147,29 @@ export const usePreset = () => useContext(EnvContext).preset
 
 /** Whether a piece of the page's chrome (or a canvas behaviour such as `panOnScroll`) is on: on unless the host turned it off */
 export const useUi = (name) => useContext(EnvContext).ui?.[name] !== false
+
+/**
+ * One configurable view value (issue 200), resolved through the precedence in shell/viewState.js:
+ * `locked` > a reader's change in this mount > `initial` > the page's preset > `stored` > `fallback`.
+ * Returns the value, whether a host locked it (the caller hides the control), and `touch()`, which a setter
+ * calls before writing so the reader's own click wins over `initial`.
+ */
+export function useViewValue(path, stored, fallback) {
+  const env = useContext(EnvContext)
+  const locked = getPath(env.locked, path)
+  return {
+    value: resolveView({
+      locked,
+      touched: !!env.touched?.has(path),
+      initial: getPath(env.initial, path),
+      preset: presetAt(env.preset, path),
+      stored,
+      fallback,
+    }),
+    locked: locked !== undefined,
+    touch: () => env.touched?.add(path),
+  }
+}
 
 /**
  * Whether an event happened inside `el`. An event from inside a shadow root reaches a listener on the document

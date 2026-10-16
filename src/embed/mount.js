@@ -18,6 +18,7 @@ import { isTheme } from '../theme/themes.js'
 import { normalizeLang } from '../core/i18n.js'
 import { itemOf } from '../core/items.js'
 import { embeddedEnv } from '../shell/env.js'
+import { normalizeInitial, persistProblem, viewStateProblem } from '../shell/viewState.js'
 import { renderDiagram } from './core.jsx'
 import { toShadowCss } from './shadowCss.js'
 import css from '../styles.css?inline'
@@ -49,19 +50,8 @@ function kindOptionProblem(spec, { kind, kinds }) {
   return ''
 }
 
-/** What can be asked of how a diagram opens (`initial`), each with the test of its value */
-const INITIAL = { headerFolded: (v) => typeof v === 'boolean' }
-
-/** What is wrong with `initial` ('' when nothing is): an unknown key or a wrong value is refused, not ignored (issue 165) */
-function initialProblem(initial) {
-  if (initial === undefined) return ''
-  if (!initial || typeof initial !== 'object' || Array.isArray(initial)) return 'options.initial must be an object'
-  for (const [key, value] of Object.entries(initial)) {
-    if (!INITIAL[key]) return `options.initial.${key} is not an option: ${Object.keys(INITIAL).join(', ')}`
-    if (value !== undefined && !INITIAL[key](value)) return `options.initial.${key} must be a boolean`
-  }
-  return ''
-}
+/** What is wrong with `initial` ('' when nothing is): the full view-state shape plus the old `headerFolded` alias */
+const initialProblem = (initial) => viewStateProblem(initial, 'options.initial', { aliasHeaderFolded: true })
 
 /** Whether `id` is the id of an item of `spec` (a select or focus sent before the diagram is drawn is answered so) */
 const isItem = (spec, id) => itemOf(spec, id)?.item.id === id
@@ -81,13 +71,21 @@ const isItem = (spec, id) => itemOf(spec, id)?.item.id === id
  * @param {'none'|'local'|{read(): object, write(patch: object): void}} [options.prefs]
  *                                      where the reader's choices are kept: 'none' (default) while mounted
  *                                      only, 'local' in the viewer page's localStorage key, or the host's store
- * @param {{headerFolded?: boolean}} [options.initial]  how it opens, ahead of the reader's stored choices
+ * @param {object} [options.initial]   how it opens, ahead of the reader's stored choices (`AntuViewState`;
+ *                                      `headerFolded` is the old alias of `shell.headerFolded`)
+ * @param {object} [options.locked]     values forced for this mount (`AntuViewState`); their controls are hidden
+ * @param {boolean|string[]} [options.persist]  which of the reader's changes reach the prefs store: true (all,
+ *                                      the default), false (none), or the names in spec/embed.md
  * @param {(event: object) => void} [options.onEvent]   select, kindchange, invalid (spec/embed.md)
  */
 export function mount(el, spec, options = {}) {
   if (!el || typeof el.attachShadow !== 'function') throw new TypeError('antu mount: the first argument must be an element')
   // checked before anything is put on the element, so a refused mount leaves nothing behind
-  const optionProblem = kindOptionProblem(spec, options) || initialProblem(options.initial)
+  const optionProblem =
+    kindOptionProblem(spec, options) ||
+    initialProblem(options.initial) ||
+    viewStateProblem(options.locked, 'options.locked') ||
+    persistProblem(options.persist, 'options.persist')
   if (optionProblem) throw new Error(`antu mount: ${optionProblem}`)
   const shadow = el.shadowRoot ?? el.attachShadow({ mode: 'open' })
   if (shadow.querySelector(`.${MOUNTED}`)) throw new Error('antu mount: a diagram is already mounted on this element; destroy it first')
@@ -139,7 +137,9 @@ export function mount(el, spec, options = {}) {
     prefs: options.prefs ?? 'none',
     root: shadow,
     ui: { ...(options.ui || {}) },
-    initial: { ...(options.initial || {}) },
+    initial: normalizeInitial(options.initial ?? {}),
+    locked: options.locked ?? {},
+    persist: options.persist === undefined ? true : options.persist,
     emit: (event) => {
       if (event?.type === 'invalid') {
         drawnNow = false
@@ -168,8 +168,9 @@ export function mount(el, spec, options = {}) {
     spec,
     kind: options.kind ?? null,
     kinds: Array.isArray(options.kinds) ? [...options.kinds] : null,
-    theme: isTheme(options.theme) ? options.theme : undefined,
-    lang: options.lang ? normalizeLang(options.lang) : undefined,
+    // `options.theme`/`initial.theme` are the same opening choice; the top-level option wins when both are given
+    theme: isTheme(options.theme) ? options.theme : isTheme(env.initial.theme) ? env.initial.theme : undefined,
+    lang: options.lang ? normalizeLang(options.lang) : env.initial.lang ? normalizeLang(env.initial.lang) : undefined,
   }
   view.draw(current)
 
