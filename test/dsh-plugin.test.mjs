@@ -768,7 +768,7 @@ const findAll = (node, pred, out = []) => {
 const buttonLabelled = (tree, label) => findAll(tree, (n) => n.type === 'button' && textOf(n) === label)[0]
 
 /** Load the built package/client.js; return the chat card, the turn tail, and the full-view page when a right sidebar is given */
-function loadBuiltCard({ requireAsync, sidebarRight, uiConversation }) {
+function loadBuiltCard({ requireAsync, sidebarRight, uiConversation, locale }) {
   const { React, mount } = miniReact()
   let def
   new Function('window', readFileSync(join(pkgDir, 'client.js'), 'utf8'))({ __ModuleLoader__: { load: (d) => { def = d } } })
@@ -801,6 +801,11 @@ function loadBuiltCard({ requireAsync, sidebarRight, uiConversation }) {
       if (want.has('uiConversation')) {
         if (!uiConversation) return // a DSH without the conversation service (no turn tail)
         fn({ effect: (f) => f(), slots, uiConversation: conversation })
+        return
+      }
+      if (want.has('locale')) {
+        if (!locale) return // a DSH without the locale service: English stays
+        fn({ effect: (f) => f(), locale })
       }
     },
   })
@@ -939,6 +944,38 @@ test('built client card: a click opens the full view, fullscreen, with the HTML 
   assert.deepEqual(toggled[1], { paneId: 'p1', host: 'dock' })
 })
 
+test('built client: the locale service is injected and gets the antuDsh dictionary', async () => {
+  const registered = []
+  const bound = []
+  const onDispose = []
+  const locale = {
+    register: (ns, dict) => {
+      registered.push({ ns, dict })
+      return () => onDispose.push(ns)
+    },
+    bind: (ns) => {
+      bound.push(ns)
+      return (key) => (key === 'fullView.back' ? '← 返回对话（Esc）' : key)
+    },
+  }
+  const card = loadBuiltCard({ requireAsync: async () => fakeEmbed().embed, locale })
+  await card.mount(card.Card, { phase: 'end', toolName: 'antu_render', block: callBlock({ spec: { type: 'fact' } }) }).flush()
+
+  assert.deepEqual(bound, ['antuDsh'])
+  assert.equal(registered.length, 1)
+  assert.equal(registered[0].ns, 'antuDsh')
+  assert.equal(registered[0].dict.zh['fullView.back'], '← 返回对话（Esc）')
+  assert.equal(registered[0].dict.en['fullView.back'], '← Back to chat (Esc)')
+
+  // Without a locale service the plugin keeps the English fallback (the injection never calls back).
+  const sidebarRight = { openTab() {}, commandTarget: () => ({ paneId: 'p1', host: 'dock' }), toggleFullscreen() {} }
+  const without = loadBuiltCard({ requireAsync: async () => fakeEmbed().embed, sidebarRight })
+  const params = { spec: { type: 'fact' } }
+  const page = without.mount(without.Page, { useTabInfo: () => ({ sidebar: { expanded: true, fullscreen: true }, tab: { navigation: { params, revision: 1 } } }) })
+  await page.flush()
+  assert.ok(buttonLabelled(page.tree(), '← Back to chat (Esc)'), 'the English label stays without a locale service')
+})
+
 test('built client page: a bare Esc exits the full view once, from focus outside the panel', async () => {
   const { embed } = fakeEmbed()
   const toggled = []
@@ -996,7 +1033,9 @@ test('built client page: a bare Esc exits the full view once, from focus outside
     assert.equal(toggled.length, 1, 'Esc exits through the controller pane target')
     assert.deepEqual(toggled[0], { paneId: 'p1', host: 'dock' })
     assert.equal(first.prevented, 1)
-    assert.equal(first.stopped, 1)
+    // No stopPropagation: DSH's shortcut dispatcher reads defaultPrevented, and other listeners
+    // (e.g. an open modal) must still see the key.
+    assert.equal(first.stopped, 0)
 
     // A second Esc before the sidebar re-renders must not toggle again (exitingRef holds the exit).
     const second = keydown()

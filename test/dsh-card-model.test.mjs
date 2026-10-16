@@ -202,6 +202,36 @@ test('isFullViewEscape: an editable target keeps Escape for itself', () => {
   assert.equal(isFullViewEscape(keyEvent([fakeEl('DIV', { contenteditable: 'false' }), panel]), panel), true)
 })
 
+test('isFullViewEscape: an open DSH modal outside the panel keeps its Esc', () => {
+  const panel = fakeEl()
+  const path = [fakeEl('BUTTON'), fakeEl('BODY')]
+  /** A fake Document whose querySelectorAll returns `nodes` for the two modal selectors. */
+  const fakeDoc = (nodes) => ({ querySelectorAll: () => nodes })
+  const modal = fakeEl('DIV', { 'aria-modal': 'true' })
+  const dialog = fakeEl('DIALOG', { open: '' })
+
+  // A confirm/settings dialog outside the panel is waiting for this Escape: the full view stays.
+  assert.equal(isFullViewEscape(keyEvent(path), panel, fakeDoc([modal])), false)
+  assert.equal(isFullViewEscape(keyEvent(path), panel, fakeDoc([dialog])), false)
+  // No modal open: the full view still exits.
+  assert.equal(isFullViewEscape(keyEvent(path), panel, fakeDoc([])), true)
+
+  // The panel's own aria-modal/dialog node is not an outside modal: the full view still exits.
+  const inside = {
+    tagName: 'DIV',
+    getAttribute: () => null,
+    matches: () => false,
+    contains: (node) => node === modal || node === dialog,
+  }
+  assert.equal(isFullViewEscape(keyEvent(path), inside, fakeDoc([modal, dialog])), true)
+
+  // No doc at all (a DOM-less run, or an explicit null) behaves as before: no modal gate.
+  assert.equal(isFullViewEscape(keyEvent(path), panel, null), true)
+  assert.equal(isFullViewEscape(keyEvent(path), panel, undefined), true)
+  // A doc stand-in without querySelectorAll is skipped too.
+  assert.equal(isFullViewEscape(keyEvent(path), panel, {}), true)
+})
+
 test('isFullViewEscape: an open menu inside the panel gets the first Esc, one outside does not', () => {
   const panel = fakeEl()
   const outside = fakeEl('BUTTON')

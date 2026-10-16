@@ -122,6 +122,18 @@ function isEditable(node) {
   return false
 }
 
+/** An open DSH modal outside the panel (confirm / settings dialog) owns its Escape. */
+function modalOwnsEscape(doc, panelEl) {
+  if (!doc || typeof doc.querySelectorAll !== 'function') return false
+  const nodes = doc.querySelectorAll('[aria-modal="true"], dialog[open]')
+  if (!nodes || typeof nodes[Symbol.iterator] !== 'function') return false
+  for (const node of nodes) {
+    if (panelEl && typeof panelEl.contains === 'function' && panelEl.contains(node)) continue
+    return true
+  }
+  return false
+}
+
 /** An open menu / listbox / expanded control inside the panel gets the first Esc. */
 function panelOwnsEscape(path, panelEl) {
   const panelAt = path.indexOf(panelEl)
@@ -136,18 +148,20 @@ function panelOwnsEscape(path, panelEl) {
 
 /**
  * Should a keydown leave the Antu full view? True for a bare Escape (no modifiers, not a repeat, not
- * composing, not already handled) whose target is not editable and that has no open menu/listbox inside
- * the panel. `path.indexOf(panelEl) < 0` means the event came from outside the panel, so no inner node
- * is checked (and the focus left on the chat cover button no longer hides the panel). Duck-typed so it
- * can be tested without a DOM.
+ * composing, not already handled) whose target is not editable, that has no open menu/listbox inside
+ * the panel, and that no DSH modal outside the panel is waiting for. `path.indexOf(panelEl) < 0` means
+ * the event came from outside the panel, so no inner node is checked (and the focus left on the chat
+ * cover button no longer hides the panel). `doc` is the owner document; it defaults to the global one
+ * and a missing `doc` (no DOM) skips the modal check. Duck-typed so it can be tested without a DOM.
  */
-export function isFullViewEscape(event, panelEl) {
+export function isFullViewEscape(event, panelEl, doc = typeof globalThis.document !== 'undefined' ? globalThis.document : undefined) {
   if (!event || event.key !== 'Escape') return false
   if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return false
   if (event.repeat || event.isComposing || event.defaultPrevented) return false
   const raw = typeof event.composedPath === 'function' ? event.composedPath() : []
   const path = Array.isArray(raw) ? raw : []
   if (isEditable(firstElementOf(path))) return false
+  if (modalOwnsEscape(doc, panelEl)) return false
   return !panelOwnsEscape(path, panelEl)
 }
 

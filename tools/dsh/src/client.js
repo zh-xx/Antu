@@ -224,11 +224,14 @@ window.__ModuleLoader__.load({
         }
         if (typeof document === 'undefined') return undefined
         const onKeyDown = (e) => {
-          if (!isFullViewEscape(e, sideRef.current) || exitingRef.current) return
+          if (!isFullViewEscape(e, sideRef.current, document) || exitingRef.current) return
           if (exitFull()) {
             exitingRef.current = true
             e.preventDefault()
-            e.stopPropagation()
+            // No stopPropagation: DSH 0.2.0-rc.2 binds no Escape to panel fullscreen and its shortcut
+            // dispatcher (a window bubble keydown) honors gesture.defaultPrevented, so preventDefault
+            // alone stops its double-Esc "stop response" from also counting this key. Stopping
+            // propagation would only hide Esc from other listeners, such as open modals.
           }
         }
         document.addEventListener('keydown', onKeyDown, true)
@@ -467,14 +470,22 @@ window.__ModuleLoader__.load({
       inject: ['slots'],
       apply(ctx) {
         ensureStyles()
-        // Optional: DSH with a locale service gets our dictionary; older DSH (no ctx.locale) keeps English.
+        // Optional: DSH's `locale` is a cordis service (provided by dsh-client-locale), so it is only
+        // on the context while injected. Each injected context is a separate plugin scope, hence the
+        // `locCtx` name. Older DSH without it (or a broken one) keeps the English fallback.
         try {
-          if (ctx.locale && typeof ctx.locale.register === 'function') {
-            ctx.effect(() => ctx.locale.register('antuDsh', LOCALE), 'antu-dsh: dictionaries')
-            t = ctx.locale.bind('antuDsh')
-          }
+          ctx.inject(['locale'], (locCtx) => {
+            locCtx.effect(() => {
+              const dispose = locCtx.locale.register('antuDsh', LOCALE)
+              t = locCtx.locale.bind('antuDsh')
+              return () => {
+                if (typeof dispose === 'function') dispose()
+                t = (key) => LOCALE.en[key] || key
+              }
+            }, 'antu-dsh: dictionaries')
+          })
         } catch {
-          /* no locale seat (or a broken one): the English fallback stays */
+          /* no locale seat: the English fallback stays */
         }
         ctx.slots.inject('tool.call.toolview', () => {
           for (const key of WIRE_NAMES) {
