@@ -173,6 +173,7 @@ mount(el, spec, {
 | --- | --- | --- |
 | `select` | `id`、`collection`、`sourceIds`、`sources` | 读者钉住一张卡片（`id` 是条目的 id；`collection` 是它所在的 JSON 数组：`nodes`、`rules`、`events`、`entities`……；`sources` 是它的来源，照 `sources` 原样，含 `loc`），或关上（`id: null`） |
 | `kindchange` | `kind` | 首次画出之后画法变了（读者操作或 `setKind`） |
+| `themechange` | `theme` | 首次画出之后主题变了（读者操作或 `setTheme`）：宿主自己跟随明暗时，可以拿 `theme` 和自己刚设的值比较，分清是自己改的还是读者改的 |
 | `invalid` | `errors` | spec（`mount` 或 `update` 时）不合法；图的位置上列出问题，与 viewer 页面相同 |
 
 不是 JSON 里一个条目的卡片（时间比例轴上聚在一起的一串事件）以画布上的 id 告知，`collection` 为 `null`。宿主忽略

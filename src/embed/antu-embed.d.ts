@@ -61,6 +61,7 @@ export type AntuEvent =
       sources: AntuSource[]
     }
   | { type: 'kindchange'; kind: string }
+  | { type: 'themechange'; theme: AntuTheme }
   | { type: 'invalid'; errors: string[] }
 
 export interface AntuPrefsStore {
