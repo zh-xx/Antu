@@ -13,6 +13,20 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const { useEffect, useLayoutEffect, useMemo, useRef, useState } = React
 
+    // DSH's shared atoms are an optional sync require: a host that cannot resolve them keeps
+    // the hand-written row below. Do not import any other DSH client package.
+    let primitives = null
+    try {
+      primitives = require('@deepseek-ai/dsh-client-ui-primitives') || null
+    } catch {
+      /* no primitives: fall back to the row we own */
+    }
+    // DisclosureRow and the icons are memo / forwardRef exotic components: objects, not functions.
+    const isComponent = (c) => typeof c === 'function' || (typeof c === 'object' && c !== null && '$$typeof' in c)
+    const DisclosureRow = primitives && isComponent(primitives.DisclosureRow) ? primitives.DisclosureRow : null
+    const DiagramIcon = primitives && isComponent(primitives.IconShareOutlineRegular) ? primitives.IconShareOutlineRegular : null
+    const noop = () => {}
+
     const WIRE_NAMES = ['antu_render', 'mcp__antu__antu_render']
     const TAB_ID = '@zh-xx/antu-dsh'
     const TAB_KIND = 'antu-diagram'
@@ -23,6 +37,28 @@ window.__ModuleLoader__.load({
     const fullView = { open: null, files: new Map() }
     /** Set once the conversation service is there: the turn tail draws finished diagrams, so the tool row stays compact. */
     let hasTurnTail = false
+    /** The code require-async.mjs gives the upgrade error; the component localizes the message at render. */
+    const REQUIRE_ASYNC_CODE = 'ANTU_DSH_REQUIRE_ASYNC'
+
+    /** Plain English lookup for a host without the optional locale service (same `{name}` placeholders). */
+    function lookupEnglish(key, params) {
+      const template = typeof en[key] === 'string' ? en[key] : key
+      if (!params) return template
+      return template.replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match))
+    }
+
+    /** The active translator: DSH's stable bound function when locale is present, else our English lookup. */
+    let activeT = lookupEnglish
+
+    /** A slot-injected `t` (it re-renders on a language switch) or the current one from `apply`. */
+    function translator(injected) {
+      return typeof injected === 'function' ? injected : activeT
+    }
+
+    /** card-model's fallback reason is a sentinel, not copy: translate it, keep real reasons. */
+    function failureText(reason, t) {
+      return reason === 'Render failed' ? t('tool.failed') : reason
+    }
 
     function destroyHandle(handle) {
       if (!handle) return
@@ -33,8 +69,11 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // Inlined by build.mjs (do not edit the marker bodies by hand): card-model.mjs, then require-async.mjs.
+    // Inlined by build.mjs (do not edit the marker bodies by hand): card-model.mjs, locale.mjs,
+    // then require-async.mjs.
     /*@@INJECT_CARD_MODEL@@*/
+
+    /*@@INJECT_LOCALE@@*/
 
     /*@@INJECT_REQUIRE_ASYNC@@*/
 
@@ -54,13 +93,22 @@ window.__ModuleLoader__.load({
             if (!cancelled) setState({ embed, loadError: null })
           })
           .catch((err) => {
-            if (!cancelled) setState({ embed: null, loadError: err?.message || String(err) })
+            if (!cancelled) {
+              // Keep the code, not the message: the upgrade text follows a language switch at render.
+              setState({ embed: null, loadError: err?.code === REQUIRE_ASYNC_CODE ? REQUIRE_ASYNC_CODE : err?.message || String(err) })
+            }
           })
         return () => {
           cancelled = true
         }
       }, [])
       return state
+    }
+
+    /** A load error as the reader sees it: the upgrade notice is localized now, other errors stay technical. */
+    function embedErrorMessage(loadError, mountError, t) {
+      if (loadError) return loadError === REQUIRE_ASYNC_CODE ? t('error.upgrade') : loadError
+      return mountError
     }
 
     /**
@@ -86,7 +134,7 @@ window.__ModuleLoader__.load({
           if (aborted()) return
           const target = parseAntuAddress(address)
           if (target === undefined) {
-            yield { ok: false, error: antuResourceError('antu/invalid-address', 'Invalid Antu resource address.') }
+            yield { ok: false, error: antuResourceError('antu/invalid-address', activeT('error.invalidAddress')) }
             return
           }
           const sessionAddress = target.session
@@ -100,7 +148,7 @@ window.__ModuleLoader__.load({
             }
             if (aborted()) return
             if (snapshot === undefined) {
-              throw antuResourceError('antu/unavailable', 'Session history ended before the diagram could be read.')
+              throw antuResourceError('antu/unavailable', activeT('error.historyEnded'))
             }
             let page = { records: snapshot.records, hasMore: snapshot.hasMore }
             // Keep what earlier pages held: the result is newer than its call, so it may sit on a page
@@ -123,7 +171,7 @@ window.__ModuleLoader__.load({
               }
               page = next.value
             }
-            yield { ok: false, error: antuResourceError('antu/not-found', 'The diagram was not found in this Session.') }
+            yield { ok: false, error: antuResourceError('antu/not-found', activeT('error.notFound')) }
           } catch (error) {
             if (!aborted()) {
               yield {
@@ -211,7 +259,7 @@ window.__ModuleLoader__.load({
     }
 
     /** The fitted whole diagram with the cover that opens the full view (the tool row and the tail share it). */
-    function diagramCard({ hostRef, title, embedError, canOpenFull, onOpenFull }) {
+    function diagramCard({ hostRef, title, embedError, canOpenFull, onOpenFull, t }) {
       return h(
         'div',
         { className: 'antuDsh_card', 'data-antu-dsh': 'render' },
@@ -233,8 +281,8 @@ window.__ModuleLoader__.load({
               {
                 type: 'button',
                 className: 'antuDsh_cover',
-                title: 'Open full view',
-                'aria-label': `Open full view: ${title}`,
+                title: t('card.openFull'),
+                'aria-label': t('card.openFullNamed', { title }),
                 onClick: onOpenFull,
               },
               h('span', { className: 'antuDsh_coverIcon', 'aria-hidden': true }, '⤢'),
@@ -244,7 +292,8 @@ window.__ModuleLoader__.load({
     }
 
     /** Full-size diagram in the right Sidebar, read from the tab's resource address (no cardUi, no private cache). */
-    function AntuSidebarBody({ useTabInfo, useResource }) {
+    function AntuSidebarBody({ useTabInfo, useResource, t: injectedT }) {
+      const t = translator(injectedT)
       const hostRef = useRef(null)
       const handleRef = useRef(null)
       const { embed, loadError } = useEmbed()
@@ -257,7 +306,7 @@ window.__ModuleLoader__.load({
       const spec = value?.spec && typeof value.spec === 'object' ? value.spec : null
       // Full page chrome in the sidebar — no cardUi.
       const mountError = useDiagram(hostRef, handleRef, embed, spec, value?.kind, value?.theme, undefined, revision)
-      const embedError = loadError || mountError
+      const embedError = embedErrorMessage(loadError, mountError, t)
       const path = typeof value?.path === 'string' ? value.path : null
       const openFile = path ? fullView.files.get(path) : null
 
@@ -275,13 +324,13 @@ window.__ModuleLoader__.load({
       const notice =
         embedError ||
         (resource.status === 'loading'
-          ? 'Loading diagram…'
+          ? t('sidebar.loading')
           : resource.status === 'none'
-            ? 'No diagram in this tab.'
+            ? t('sidebar.none')
             : resource.status === 'failed'
-              ? 'Could not load this diagram.'
-              : failure || (!spec ? 'No diagram in this tab.' : null))
-      const label = titleOf(spec, 'Antu')
+              ? t('sidebar.failed')
+              : failureText(failure, t) || (!spec ? t('sidebar.none') : null))
+      const label = titleOf(spec, t('tab.title'))
       return h(
         'div',
         { className: 'antuDsh_side' },
@@ -304,22 +353,24 @@ window.__ModuleLoader__.load({
           ? h(
               'button',
               { type: 'button', className: 'antuDsh_btn antuDsh_sideFile', title: path, onClick: () => openFile(path) },
-              'Open HTML',
+              t('sidebar.openHtml'),
             )
           : null,
       )
     }
 
     /** The tab title, recovered from the same resource address (PlanTitle is the worked example). */
-    function AntuTitle({ useTabInfo, useResource }) {
+    function AntuTitle({ useTabInfo, useResource, t: injectedT }) {
+      const t = translator(injectedT)
       const { tab } = useTabInfo()
       const resource = useResource(tab?.navigation?.address)
       const value = resource?.value && typeof resource.value === 'object' ? resource.value : null
-      return value?.title || tab?.title || 'Antu'
+      return value?.title || tab?.title || t('tab.title')
     }
 
     function AntuRenderCard(props) {
       const { phase, block, openFile, toolName, sessionId, callId } = props
+      const t = translator(props.t)
       const hostRef = useRef(null)
       const handleRef = useRef(null)
       const { embed, loadError } = useEmbed()
@@ -331,15 +382,15 @@ window.__ModuleLoader__.load({
       const status = statusOf(phase, block)
       // antu_render returned ok: false (bad spec, outPath outside the workspace, a write error): say why, draw nothing
       const failure = renderFailure(block)
-      const title = titleOf(spec, toolName === 'mcp__antu__antu_render' ? 'Antu (MCP)' : 'Antu')
+      const title = titleOf(spec, toolName === 'mcp__antu__antu_render' ? t('title.mcp') : t('tab.title'))
       // The whole diagram, fitted; no chrome (cardUi). Reading happens in the full view.
       const ui = useMemo(() => (embed ? { ...embed.cardUi } : undefined), [embed])
       const mountError = useDiagram(hostRef, handleRef, embed, spec, args?.kind, args?.theme, ui, argsRaw)
-      const embedError = loadError || mountError
+      const embedError = embedErrorMessage(loadError, mountError, t)
 
       const openFull = () => {
         if (typeof fullView.open !== 'function' || !spec || !sessionId || callId == null) return
-        // The card's openFile is only alive while the card is: keep it for the full view's "Open HTML".
+        // The card's openFile is only alive while the card is: keep it for the full view's file button.
         if (path && typeof openFile === 'function') fullView.files.set(path, openFile)
         fullView.open({ sessionId, callId: String(callId) })
       }
@@ -352,39 +403,62 @@ window.__ModuleLoader__.load({
         const error = status === 'error' || !!failure
         const label =
           status === 'preparing' || (!spec && !argsRaw)
-            ? 'Preparing…'
+            ? t('tool.preparing')
             : error
-              ? failure || 'Render failed'
+              ? failureText(failure, t) || t('tool.failed')
               : status === 'running'
-                ? 'Running…'
+                ? t('tool.running')
                 : status === 'stopped'
-                  ? 'Stopped'
+                  ? t('tool.stopped')
                   : !spec
-                    ? 'Could not parse tool arguments'
-                    : 'Done'
+                    ? t('tool.badArgs')
+                    : t('tool.done')
+        const openButton =
+          canOpenFull && status === 'ok'
+            ? h('button', { type: 'button', className: 'antuDsh_btn', onClick: openFull }, t('card.openFull'))
+            : null
+        // DSH's own 24px disclosure row when the shared atoms resolve; otherwise the hand-written row.
+        if (DisclosureRow && DiagramIcon) {
+          return h(
+            'div',
+            { className: 'antuDsh_toolrow', 'data-antu-dsh': 'render' },
+            h(DisclosureRow, {
+              icon: h(DiagramIcon, { size: 14 }),
+              title,
+              open: false,
+              expandable: false,
+              onToggle: noop,
+              running: status === 'running' || status === 'preparing',
+              collapsedContent: h(
+                'span',
+                { className: 'antuDsh_toolRowSummary' },
+                h('span', { className: 'antuDsh_toolStatus' + (error ? ' antuDsh_noticeError' : '') }, label),
+                openButton,
+              ),
+            }),
+          )
+        }
         return h(
           'div',
           { className: 'antuDsh_toolrow', 'data-antu-dsh': 'render' },
           h('span', { className: 'antuDsh_toolTitle' }, title),
           h('span', { className: 'antuDsh_toolStatus' + (error ? ' antuDsh_noticeError' : '') }, label),
-          canOpenFull && status === 'ok'
-            ? h('button', { type: 'button', className: 'antuDsh_btn', onClick: openFull }, 'Open full view')
-            : null,
+          openButton,
         )
       }
 
       // Before the diagram can be drawn, or when it cannot: one quiet line, no picture.
       const notice =
         status === 'preparing' || (!spec && !argsRaw)
-          ? 'Preparing diagram…'
+          ? t('notice.preparing')
           : status === 'error'
-            ? 'Render failed'
+            ? t('tool.failed')
             : failure
-              ? failure
+              ? failureText(failure, t)
               : status === 'stopped'
-                ? 'Stopped'
+                ? t('tool.stopped')
                 : !spec
-                  ? 'Could not parse tool arguments; open the HTML file when the call finishes.'
+                  ? t('notice.badArgs')
                   : null
 
       if (notice) {
@@ -401,24 +475,25 @@ window.__ModuleLoader__.load({
         )
       }
 
-      return diagramCard({ hostRef, title, embedError, canOpenFull, onOpenFull: openFull })
+      return diagramCard({ hostRef, title, embedError, canOpenFull, onOpenFull: openFull, t })
     }
 
     /** One finished call's card in the turn tail; `call` is a record of the turn's diagram data. */
-    function AntuTailDiagram({ call, openFile, sessionId }) {
+    function AntuTailDiagram({ call, openFile, sessionId, t: injectedT }) {
+      const t = translator(injectedT)
       const hostRef = useRef(null)
       const handleRef = useRef(null)
       const { embed, loadError } = useEmbed()
       const args = call.args && typeof call.args === 'object' ? call.args : null
       const spec = args ? args.spec : null
-      const title = titleOf(spec, call.name === 'mcp__antu__antu_render' ? 'Antu (MCP)' : 'Antu')
+      const title = titleOf(spec, call.name === 'mcp__antu__antu_render' ? t('title.mcp') : t('tab.title'))
       const ui = useMemo(() => (embed ? { ...embed.cardUi } : undefined), [embed])
       const mountError = useDiagram(hostRef, handleRef, embed, spec, args?.kind, args?.theme, ui, call.argsRaw)
-      const embedError = loadError || mountError
+      const embedError = embedErrorMessage(loadError, mountError, t)
 
       const openFull = () => {
         if (typeof fullView.open !== 'function' || !spec || !sessionId || call.callId == null) return
-        // The tail's openFile is the chat's, so the full view's "Open HTML" reaches the written file.
+        // The tail's openFile is the chat's, so the full view's file button reaches the written file.
         if (call.path && typeof openFile === 'function') fullView.files.set(call.path, openFile)
         fullView.open({ sessionId, callId: String(call.callId) })
       }
@@ -430,6 +505,7 @@ window.__ModuleLoader__.load({
         canOpenFull:
           typeof fullView.open === 'function' && !!spec && !embedError && !!sessionId && call.callId != null,
         onOpenFull: openFull,
+        t,
       })
     }
 
@@ -437,7 +513,8 @@ window.__ModuleLoader__.load({
      * The finished turn's diagrams, drawn in `conversation.chat.turnTail` after DSH folds the turn's
      * tool steps. Running calls show nothing; a failure is one quiet line; a success is the card.
      */
-    function AntuTurnTail({ turn, openFile, sessionId }) {
+    function AntuTurnTail({ turn, openFile, sessionId, t: injectedT }) {
+      const t = translator(injectedT)
       const data = turn && turn.data ? turn.data.get(ANTU_DIAGRAMS_KIND) : undefined
       const calls = data && Array.isArray(data.calls) ? data.calls : []
       if (calls.length === 0) return null
@@ -450,7 +527,7 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { key: call.callId, className: 'antuDsh_notice antuDsh_noticeError', 'data-antu-dsh': 'render' },
-              call.failure || 'Render failed',
+              failureText(call.failure, t) || t('tool.failed'),
             ),
           )
           continue
@@ -461,12 +538,12 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { key: call.callId, className: 'antuDsh_notice', 'data-antu-dsh': 'render' },
-              'Could not parse tool arguments; open the HTML file when the call finishes.',
+              t('notice.badArgs'),
             ),
           )
           continue
         }
-        rows.push(h(AntuTailDiagram, { key: call.callId, call, openFile, sessionId }))
+        rows.push(h(AntuTailDiagram, { key: call.callId, call, openFile, sessionId, t }))
       }
 
       return rows.length === 0 ? null : h('div', { className: 'antuDsh_tail', 'data-antu-dsh': 'turn-tail' }, rows)
@@ -493,6 +570,7 @@ window.__ModuleLoader__.load({
 .antuDsh_toolrow{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}
 .antuDsh_toolTitle{color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .antuDsh_toolStatus{color:var(--dsw-alias-label-tertiary)}
+.antuDsh_toolRowSummary{display:inline-flex;align-items:center;gap:8px;min-width:0;margin-left:8px}
 .antuDsh_tail{display:flex;flex-direction:column;gap:8px}
 @media (prefers-reduced-motion:reduce){.antuDsh_coverIcon{transition:none}}
 `
@@ -509,9 +587,25 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots'],
+      // `locale` is a core DSH service every official UI plugin injects; apply still copes without it.
+      inject: ['slots', 'locale'],
       apply(ctx) {
         ensureStyles()
+        // Optional like the other services: without locale the English dictionary above is the fallback,
+        // and registration only carries `locale` when the service is really there (a missing face throws).
+        let slotLocale = {}
+        try {
+          if (ctx.locale && typeof ctx.locale.register === 'function' && typeof ctx.locale.bind === 'function') {
+            ctx.effect(() => ctx.locale.register(ANTU_NS, { zh, en }), 'antu-dsh: dictionaries')
+            // `bind` returns one stable function that reads the active locale, so components follow a switch.
+            activeT = ctx.locale.bind(ANTU_NS)
+            slotLocale = { locale: ANTU_NS }
+          }
+        } catch {
+          /* no locale service: English through lookupEnglish */
+          activeT = lookupEnglish
+          slotLocale = {}
+        }
         // 0.14/0.15 builds kept a private tab cache; remove its keys once. Only for those users — may be deleted later.
         try {
           const store = window.localStorage
@@ -525,7 +619,10 @@ window.__ModuleLoader__.load({
         }
         ctx.slots.inject('tool.call.toolview', () => {
           for (const key of WIRE_NAMES) {
-            ctx.slots.register({ name: 'tool.call.toolview', key, inject: (sessionId) => ({ sessionId }) }, AntuRenderCard)
+            ctx.slots.register(
+              { name: 'tool.call.toolview', key, ...slotLocale, inject: (sessionId) => ({ sessionId }) },
+              AntuRenderCard,
+            )
           }
         })
         // Optional: without the right Sidebar or the resource/session services the chat card stays and
@@ -545,21 +642,27 @@ window.__ModuleLoader__.load({
                   patterns: ['dsh-resource://antu/**'],
                   canOpen: (address) => parseAntuAddress(address) !== undefined,
                   priority: 'extension',
-                  title: () => 'Antu',
+                  title: () => activeT('tab.title'),
                 }),
               'antu-dsh: sidebar tab type',
             )
             sideCtx.effect(
               () =>
                 sideCtx.slots.inject('sidebar.right.pane.tab', () =>
-                  sideCtx.slots.register({ name: 'sidebar.right.pane.tab', key: TAB_ID }, AntuSidebarBody),
+                  sideCtx.slots.register(
+                    { name: 'sidebar.right.pane.tab', key: TAB_ID, ...slotLocale },
+                    AntuSidebarBody,
+                  ),
                 ),
               'antu-dsh: sidebar tab body',
             )
             sideCtx.effect(
               () =>
                 sideCtx.slots.inject('sidebar.right.pane.tab.title', () =>
-                  sideCtx.slots.register({ name: 'sidebar.right.pane.tab.title', key: TAB_ID }, AntuTitle),
+                  sideCtx.slots.register(
+                    { name: 'sidebar.right.pane.tab.title', key: TAB_ID, ...slotLocale },
+                    AntuTitle,
+                  ),
                 ),
               'antu-dsh: sidebar tab title',
             )
@@ -589,7 +692,7 @@ window.__ModuleLoader__.load({
           )
           convCtx.slots.inject('conversation.chat.turnTail', () =>
             convCtx.slots.register(
-              { name: 'conversation.chat.turnTail', id: TAB_ID, inject: (sessionId) => ({ sessionId }) },
+              { name: 'conversation.chat.turnTail', id: TAB_ID, ...slotLocale, inject: (sessionId) => ({ sessionId }) },
               AntuTurnTail,
             ),
           )

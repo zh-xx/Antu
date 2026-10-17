@@ -36,15 +36,17 @@
 
 ## 4. 插件现状（0.15.0 + main）
 
-| 规则 | 状态                                                                                                                                                                                                                                        |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1, 2 | 已由“从资源地址恢复大图”修好（本文这个 PR）。大图现在由 provider 从它的资源地址（`dsh-resource://antu/…`）恢复，私有缓存已经删掉。在这之前，`antu-dsh:tab:*` 下的一份私有 `localStorage` 副本（#207）能在刷新后恢复图：它有效，但属于偏离。 |
-| 3    | 还没有 Antu 快捷键。一个“Esc 离开大图”的提案（#206）在 `document` 上监听 `keydown`；已关闭。如果以后又想要按键，必须遵守规则 3（而且裸 `Escape` 已被占用，所以先拿 `registerFixed` 对照 `response.stop` 检查）。                            |
-| 4    | 大图通过 `sidebarRight.commandTarget` 和 `toggleFullscreen` 请求全屏。                                                                                                                                                                      |
-| 5    | 尚未使用：插件的文案只有英文（卡片、提示）。等需要第一份中文文案时再做。                                                                                                                                                                    |
-| 6, 7 | 已遵守：工具行、回合末尾、标签页类型和正文都注册在各自有文档的席位里，且位于 `ctx.effect` 内。                                                                                                                                              |
-| 8    | 已验证：manifest 列了 `ui-tool`、`ui-sidebar-right`、`ui-chat`、`ui-conversation`。资源 provider 增加了 `client-resources`、`api-session-controller` 和 `api-remotes`；等规则 5 做完再加入 locale。                                         |
-| 9    | 卡片和标签页已遵守；已对照 #201 里 DSH 的工具行检查过。                                                                                                                                                                                     |
-| 10   | 已遵守。                                                                                                                                                                                                                                    |
+| 规则 | 状态                                                                                                                                                                                                                                                                                                                       |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1, 2 | 已由“从资源地址恢复大图”修好（本文这个 PR）。大图现在由 provider 从它的资源地址（`dsh-resource://antu/…`）恢复，私有缓存已经删掉。在这之前，`antu-dsh:tab:*` 下的一份私有 `localStorage` 副本（#207）能在刷新后恢复图：它有效，但属于偏离。                                                                                |
+| 3    | 还没有 Antu 快捷键。一个“Esc 离开大图”的提案（#206）在 `document` 上监听 `keydown`；已关闭。如果以后又想要按键，必须遵守规则 3（而且裸 `Escape` 已被占用，所以先拿 `registerFixed` 对照 `response.stop` 检查）。                                                                                                           |
+| 4    | 大图通过 `sidebarRight.commandTarget` 和 `toggleFullscreen` 请求全屏。                                                                                                                                                                                                                                                     |
+| 5    | 已遵守：插件文案来自 `antuDsh` 命名空间（`zh` 与 `en`），在 `ctx.effect` 中注册；slot 注册项带上该命名空间，语言切换会重新渲染已打开的卡片，locale 服务缺失时回退到英文字典。                                                                                                                                              |
+| 6, 7 | 已遵守：工具行、回合末尾、标签页类型和正文都注册在各自有文档的席位里，且位于 `ctx.effect` 内。                                                                                                                                                                                                                             |
+| 8    | 已验证：manifest 列了 `ui-tool`、`ui-sidebar-right`、`ui-chat`、`ui-conversation`。资源 provider 增加了 `client-resources`、`api-session-controller` 和 `api-remotes`；locale 与共享组件也已声明（`dsh-client-locale` 和 `dsh-client-ui-primitives` 在 `dsh.client.inject` 中，后者还按官方包的做法列为 dev dependency）。 |
+| 9    | 卡片和标签页已遵守（已对照 #201 里 DSH 的工具行）；紧凑工具行是 `dsh-client-ui-primitives` 里 DSH 自己的 `DisclosureRow`，无法解析共享组件时保留手写行作为回退。                                                                                                                                                           |
+| 10   | 已遵守。                                                                                                                                                                                                                                                                                                                   |
+
+记下的唯一偏离：共享组件和官方 bundle 一样通过 ModuleLoader `require` 取得，手写回退行存在是因为这条解析路径没有对第三方插件作出文档说明。已在真实 DSH（0.2.0-rc.2）中确认：`require` 可以解析；`DisclosureRow` 和图标是 `React.memo` / `forwardRef` 对象而不是函数，所以判断接受任何 React 组件类型。插件必须像官方插件一样把 `locale` 写进自己的 `inject`：否则 `apply` 时 `ctx.locale` 为 undefined，会悄悄退回英文。
 
 DSH 公开面没有覆盖、因此保持原样并列在这里：**刷新后的“Open HTML”。** 聊天卡片的 `openFile` 只在该卡片挂载期间存在，所以恢复后的大图无法打开写出的文件。修法会通过 DSH 自己的 file resource address 打开文件；需要单独设计。

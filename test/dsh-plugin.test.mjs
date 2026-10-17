@@ -39,6 +39,7 @@ import {
   beginLoadEmbed,
   resolveRequireAsync,
 } from '../tools/dsh/src/require-async.mjs'
+import { ANTU_NS, en, zh } from '../tools/dsh/src/locale.mjs'
 import { SKILL } from '../tools/dsh/src/skill.mjs'
 import { validate, layout } from '../tools/api/validate.mjs'
 import { renderHtml } from '../tools/api/html.mjs'
@@ -297,6 +298,8 @@ test('package manifest matches root version and DSH bundle shape', () => {
     '@deepseek-ai/dsh-client-resources',
     '@deepseek-ai/dsh-api-session-controller',
     '@deepseek-ai/dsh-api-remotes',
+    '@deepseek-ai/dsh-client-locale',
+    '@deepseek-ai/dsh-client-ui-primitives',
   ]) {
     assert.ok(pkg.dsh.client.inject.includes(name), name)
   }
@@ -386,6 +389,16 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(client, /\.destroy\(/)
   assert.match(client, /cardUi/)
   assert.match(client, /Open full view/)
+  // The moved words live only in the inlined dictionary, never at a render site.
+  assert.equal((client.match(/'Open full view'/g) || []).length, 1)
+  assert.equal((client.match(/'Open HTML'/g) || []).length, 1)
+  assert.equal((client.match(/'No diagram in this tab\.'/g) || []).length, 1)
+  assert.match(client, new RegExp(`const ANTU_NS = '${ANTU_NS}'`))
+  assert.match(client, /ctx\.locale/)
+  assert.match(client, /locale\.register\(ANTU_NS, \{ zh, en \}\)/)
+  assert.match(client, /locale\.bind\(ANTU_NS\)/)
+  assert.match(client, /@deepseek-ai\/dsh-client-ui-primitives/)
+  assert.match(client, /DisclosureRow/)
   assert.match(client, /antu-diagram/)
   assert.match(client, /conversation\.chat\.turnTail/)
   assert.match(client, /ResizeObserver/)
@@ -755,18 +768,27 @@ const buttonLabelled = (tree, label) => findAll(tree, (n) => n.type === 'button'
  * Load the built package/client.js; return the chat card, the turn tail, and the full-view page + title
  * when a right sidebar is given. `sidebarRight.openResource` is the fake navigation call the cards use.
  */
-function loadBuiltCard({ requireAsync, sidebarRight, uiConversation, subagentAddresses = {} }) {
+function loadBuiltCard({ requireAsync, sidebarRight, uiConversation, subagentAddresses = {}, locale, primitives }) {
   const { React, mount } = miniReact()
   let def
   new Function('window', readFileSync(join(pkgDir, 'client.js'), 'utf8'))({ __ModuleLoader__: { load: (d) => { def = d } } })
-  const req = (id) => { assert.equal(id, 'react'); return React }
+  const req = (id) => {
+    if (id === '@deepseek-ai/dsh-client-ui-primitives') {
+      if (!primitives) throw new Error('no primitives in this profile')
+      return primitives
+    }
+    assert.equal(id, 'react')
+    return React
+  }
   if (requireAsync) req.async = requireAsync
   const cardByKey = {}
   const titleByKey = {}
   const tailById = {}
+  const registrations = []
   const slots = {
     inject: (_n, fn) => fn(),
     register: (spec, comp) => {
+      registrations.push(spec)
       if (spec.name === 'sidebar.right.pane.tab') cardByKey[spec.key] = comp
       else if (spec.name === 'sidebar.right.pane.tab.title') titleByKey[spec.key] = comp
       else if (spec.name === 'tool.call.toolview') cardByKey[spec.key] = comp
@@ -789,6 +811,8 @@ function loadBuiltCard({ requireAsync, sidebarRight, uiConversation, subagentAdd
   const sessions = { subagentAddress: (sessionId) => subagentAddresses[sessionId] }
   def.factory(req).apply({
     slots,
+    locale,
+    effect: (f) => f(),
     inject(names, fn) {
       const want = new Set(names)
       if (want.has('resources') && want.has('sidebarRight')) {
@@ -824,7 +848,24 @@ function loadBuiltCard({ requireAsync, sidebarRight, uiConversation, subagentAdd
     definitions,
     tabTypes,
     resourceProviders,
+    registrations,
     mount,
+  }
+}
+
+/** A locale service stand-in: `bind` reads the active language at call time, as DSH's does. */
+function fakeLocale() {
+  let active = 'en'
+  const dictionaries = { en, zh }
+  const service = {
+    bind: () => (key) => dictionaries[active][key] ?? key,
+    register: () => () => {},
+  }
+  return {
+    service,
+    switchTo(id) {
+      active = id
+    },
   }
 }
 
@@ -1063,6 +1104,57 @@ test('built client tool row: compact row opens the full view', async () => {
   assert.equal(opened.length, 1)
   assert.equal(opened[0].address, 'dsh-resource://antu/s1/c1')
   assert.deepEqual(opened[0].options, { params: { wantFullscreen: true } })
+})
+
+test('built client tool row: uses DSH DisclosureRow when the shared atoms resolve', async () => {
+  const { embed } = fakeEmbed()
+  const primitives = {
+    // In a real DSH these are React.memo / forwardRef objects, not functions (found in a real DSH).
+    DisclosureRow: { $$typeof: Symbol.for('react.memo'), type() {} },
+    IconShareOutlineRegular: { $$typeof: Symbol.for('react.forward_ref'), render() {} },
+  }
+  const { Card, mount } = loadBuiltCard({ requireAsync: async () => embed, uiConversation: true, primitives })
+  const spec = { type: 'fact', title: '案情' }
+
+  const done = mount(Card, { phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec, kind: 'scale' }) })
+  await done.flush()
+  const row = findAll(done.tree(), (n) => n.type === primitives.DisclosureRow)[0]
+  assert.ok(row, 'the compact row is the shared DisclosureRow')
+  assert.equal(row.props.title, '案情')
+  assert.equal(row.props.open, false)
+  assert.equal(row.props.expandable, false)
+  assert.equal(typeof row.props.onToggle, 'function')
+  assert.equal(row.props.running, false)
+  assert.equal(row.props.icon.type, primitives.IconShareOutlineRegular)
+  assert.equal(row.props.icon.props.size, 14)
+  assert.equal(textOf(row.props.collapsedContent), 'Done')
+  const wrapper = findAll(done.tree(), (n) => n.props?.['data-antu-dsh'] === 'render')[0]
+  assert.ok(wrapper, 'the render wrapper keeps its data attribute')
+
+  const running = mount(Card, { phase: 'start', toolName: 'antu_render', openFile() {}, block: { phase: 'start', argsRaw: JSON.stringify({ spec }) } })
+  await running.flush()
+  const runningRow = findAll(running.tree(), (n) => n.type === primitives.DisclosureRow)[0]
+  assert.equal(runningRow.props.running, true)
+})
+
+test('built client tool row follows a language switch', async () => {
+  const { embed } = fakeEmbed()
+  const locale = fakeLocale()
+  const { Card, registrations, mount } = loadBuiltCard({
+    requireAsync: async () => embed,
+    uiConversation: true,
+    locale: locale.service,
+  })
+  // DSH re-renders a slot outlet on a switch only when its entry names a locale namespace.
+  assert.ok(registrations.some((spec) => spec.locale === ANTU_NS))
+
+  const spec = { type: 'fact', title: '案情' }
+  const view = mount(Card, { phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec, kind: 'scale' }) })
+  await view.flush()
+  assert.equal(textOf(view.tree()), '案情Done')
+  locale.switchTo('zh')
+  view.rerender()
+  assert.equal(textOf(view.tree()), '案情完成')
 })
 
 test('built client tail: finished diagrams draw there, failures explain, running calls wait', async () => {
