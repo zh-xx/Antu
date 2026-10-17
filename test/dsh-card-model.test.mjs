@@ -15,10 +15,12 @@ import {
   antuDiagramsStart,
   antuDiagramsUpdate,
   diagramFromRecords,
+  effectiveTheme,
   isAntuRenderName,
   isAppendSurfaceEvent,
   mountOptions,
   parseAntuAddress,
+  readerPick,
 } from '../tools/dsh/src/card-model.mjs'
 
 /** One `tool/call` session event; `args` is a value (stringified) or the raw string. */
@@ -256,6 +258,36 @@ test('diagramFromRecords: other tools, other call ids and malformed arguments gi
   const mcp = diagramFromRecords([{ event: callEvent(1, 'c9', { spec: { type: 'fact' } }, 'mcp__antu__antu_render') }], 'c9')
   assert.equal(mcp.title, 'Antu (MCP)')
   assert.equal(mcp.kind, undefined)
+})
+
+test('effectiveTheme: a dark host wins; a light host keeps the pick or the call', () => {
+  // DSH dark overrides everything, including the call's own theme.
+  assert.equal(effectiveTheme({ dark: true, requested: 'legal', lightPick: 'modern' }), 'dark')
+  assert.equal(effectiveTheme({ dark: true }), 'dark')
+  // Light: the reader's last light-mode pick, else what the call asked for.
+  assert.equal(effectiveTheme({ dark: false, lightPick: 'modern', requested: 'legal' }), 'modern')
+  assert.equal(effectiveTheme({ dark: false, requested: 'legal' }), 'legal')
+  // A reader who picked dark themselves keeps it while the host is light.
+  assert.equal(effectiveTheme({ dark: false, lightPick: 'dark', requested: 'legal' }), 'dark')
+  // Unknown names count as absent and fall through to the next source.
+  assert.equal(effectiveTheme({ dark: false, lightPick: 'neon', requested: 'legal' }), 'legal')
+  assert.equal(effectiveTheme({ dark: false, requested: 'neon' }), undefined)
+  assert.equal(effectiveTheme({ dark: false, lightPick: 'dark' }), 'dark')
+  assert.equal(effectiveTheme({ dark: false }), undefined)
+  assert.equal(effectiveTheme(), undefined)
+})
+
+test('readerPick: only a known themechange while the host is light is remembered', () => {
+  assert.equal(readerPick({ type: 'themechange', theme: 'modern' }, false), 'modern')
+  assert.equal(readerPick({ type: 'themechange', theme: 'dark' }, false), 'dark')
+  // A pick made in a dark host is the host's mode talking, not the reader's light-mode choice.
+  assert.equal(readerPick({ type: 'themechange', theme: 'modern' }, true), undefined)
+  // Unknown events and themes are ignored.
+  assert.equal(readerPick({ type: 'kindchange', theme: 'modern' }, false), undefined)
+  assert.equal(readerPick({ type: 'themechange', theme: 'neon' }, false), undefined)
+  assert.equal(readerPick({ type: 'themechange' }, false), undefined)
+  assert.equal(readerPick(null, false), undefined)
+  assert.equal(readerPick(undefined, false), undefined)
 })
 
 test('mountOptions: passes the language only when it is one Antu speaks', () => {

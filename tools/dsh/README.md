@@ -75,6 +75,7 @@ DSH's plugin log does not include pnpm's error text.
 | Client | Words follow DSH's language: the `antuDsh` locale namespace ships English and 简体中文; a language switch updates open cards without a reload. The embedded page speaks the same language: the dictionary key `embed.lang` (`zh` / `en`) is read through `t`, passed as `mount({ lang })` and applied with `setLang` on a switch |
 | Client | `conversation.chat.turnTail` data `antu-diagrams`: the fitted diagram after DSH's "Completed in Ns" fold; a `ResizeObserver` refits it whenever the fold opens |
 | Client | Right-panel resource type `antu-diagram` (full embed, fullscreen); a click on the card opens its `dsh-resource://antu/…` address, and the tab restores itself from Session history after a reload |
+| Client | The diagram follows DSH's light / dark mode through the theme service: a dark host draws it in the `dark` theme, a light host in the theme the call asked for (or the full view's last pick while light); a switch redraws open cards and the full view without a reload |
 
 The diagram is drawn in the turn tail (`conversation.chat.turnTail`), after DSH collapses a finished turn's tool
 steps into their fold, so it stays visible without opening that fold. The card reads `spec` from the tool-call

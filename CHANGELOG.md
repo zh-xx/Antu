@@ -9,6 +9,7 @@ A fourth theme, `dark`, for a host whose own page is dark (#209). Nothing breaks
 
 ### Added
 - **A `dark` theme** (#209). The modern look (rounded, one ink) on a dark slate ground, for a host whose own page is dark: it is the only theme that also darkens the shell round the diagram (the dock, the label card, the zoom, the minimap, the dot grid and the page ground), while the other three keep the one light shell and only the diagram is themed. The PNG is exported as the picture is on screen: a light theme exports on white, as before, `dark` on its dark ground. Meaning is still carried without colour (weight, dash, outline, shape, words); `dark` draws the same lines as `modern`, and the four procedure states keep their colours, lifted for a dark ground. Accepted by `mount({ theme })`, `initial.theme`, `locked.theme`, the CLI `--theme` and the MCP `theme` argument; the DSH plugin's Host tools do not offer it to the model. See [spec/theme.md](spec/theme.md).
+- **A `themechange` embed event** (`{ type: 'themechange', theme }`, added for a host that follows its own light and dark). Sent after the first drawing when the reader picks another theme or the host calls `setTheme`, and not for a theme the diagram already has; the host can tell its own change from the reader's by comparing `theme` with what it set. See [spec/embed.md](spec/embed.md).
 
 ## 0.15.0
 

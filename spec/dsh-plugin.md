@@ -26,7 +26,7 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 | Full view | A resource type `antu-diagram` in DSH's right panel, presented **fullscreen** (the panel's own fullscreen mode covers the window), with the full chrome: kind, theme, detail cards, export, and **Open HTML**. The tab keeps only its address (`dsh-resource://antu/…`); a provider re-reads the diagram from Session history, so no private cache is kept |
 | Package | Separate **`@zh-xx/antu-dsh`**, version **same number** as `@zh-xx/antu`. Source under `tools/dsh/`; **build output is not committed** |
 | Skill | Shipped with the plugin from the Host-tool phase onward; name **not** bare `antu` (avoid clashing with `skills/antu/`). Text teaches Host tool names, not the command line |
-| Theme in a dark host | Diagram stays on Antu's themes (default `document`, light). Card chrome uses DSH `--dsw-alias-*`. A dark diagram theme is a later issue |
+| Theme in a dark host | The diagram follows DSH's light / dark mode through the optional `theme` service. Dark host: the diagram is drawn in the `dark` theme. Light host: the theme the call asked for (`args.theme`), or in the full view the theme the reader last picked while DSH was light; with neither, no theme option is passed (Antu's default or the reader's stored choice). A switch redraws open cards and the full view at once, no reload. The Host tools still do not offer `dark` to the model |
 | Session truth | The session log is the only source of truth. No plugin-owned `/antu/view/<id>` store. Cards read `argsRaw` of the tool call; do not duplicate `spec` in the tool result |
 
 ## Why not iframe / MCP-only
