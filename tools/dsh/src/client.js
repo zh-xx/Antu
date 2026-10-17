@@ -245,19 +245,26 @@ window.__ModuleLoader__.load({
         }
 
         // React Flow fitted at mount; refit on every later resize (opening DSH's fold grows the host).
+        // One frame later: React Flow tracks its own size with its own observer, and fitting before it has
+        // seen the new width fits the old one (a card narrowed by an open side panel kept its old placement).
         let observer
+        let frame = 0
         if (typeof ResizeObserver !== 'undefined') {
           observer = new ResizeObserver(() => {
-            try {
-              handleRef.current?.fitView()
-            } catch {
-              /* the handle is gone (destroyed): nothing left to fit */
-            }
+            cancelAnimationFrame(frame)
+            frame = requestAnimationFrame(() => {
+              try {
+                handleRef.current?.fitView()
+              } catch {
+                /* the handle is gone (destroyed): nothing left to fit */
+              }
+            })
           })
           observer.observe(el)
         }
 
         return () => {
+          if (observer) cancelAnimationFrame(frame)
           observer?.disconnect()
           destroyHandle(handleRef.current)
           handleRef.current = null

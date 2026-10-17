@@ -892,7 +892,7 @@ const toolResult = (turn, callId, message = {}, data = {}) => ({
 })
 
 function fakeEmbed({ failMount } = {}) {
-  const calls = { mount: [], destroyed: 0, kinds: [], themes: [] }
+  const calls = { mount: [], destroyed: 0, kinds: [], themes: [], fits: 0 }
   const embed = {
     cardUi: { panOnScroll: false, header: false },
     kindsOf: (type) => (type === 'fact' ? ['timeline', 'chronicle', 'scale'] : []),
@@ -901,6 +901,7 @@ function fakeEmbed({ failMount } = {}) {
       if (failMount) throw new Error('mount refused')
       return {
         destroy() { calls.destroyed += 1 },
+        fitView() { calls.fits += 1 },
         setKind(k) { calls.kinds.push(k); return k !== 'scale-not-allowed' },
         setTheme(t) { calls.themes.push(t); return true },
       }
@@ -1216,4 +1217,30 @@ test('built client tail: finished diagrams draw there, failures explain, running
   await page.flush()
   buttonLabelled(page.tree(), 'Open HTML').props.onClick()
   assert.deepEqual(files, ['/w/one.html'])
+})
+
+test('built client card: a resize refits one frame later, after React Flow has seen the new size', async () => {
+  const { embed, calls } = fakeEmbed()
+  const { Card, mount } = loadBuiltCard({ requireAsync: async () => embed })
+  const spec = { type: 'fact', title: '案情' }
+  const observers = []
+  const frames = []
+  const saved = { ro: globalThis.ResizeObserver, raf: globalThis.requestAnimationFrame, caf: globalThis.cancelAnimationFrame }
+  globalThis.ResizeObserver = class { constructor(cb) { this.cb = cb; observers.push(this) } observe() {} disconnect() {} }
+  globalThis.requestAnimationFrame = (fn) => frames.push(fn)
+  globalThis.cancelAnimationFrame = (id) => { frames[id - 1] = () => {} }
+  try {
+    const view = mount(Card, { phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec }) })
+    await view.flush()
+    assert.equal(observers.length, 1)
+    observers[0].cb()
+    assert.equal(calls.fits, 0, 'not in the observer callback: React Flow still holds the old width')
+    frames.at(-1)()
+    assert.equal(calls.fits, 1)
+  } finally {
+    Object.assign(globalThis, { ResizeObserver: saved.ro, requestAnimationFrame: saved.raf, cancelAnimationFrame: saved.caf })
+    if (saved.ro === undefined) delete globalThis.ResizeObserver
+    if (saved.raf === undefined) delete globalThis.requestAnimationFrame
+    if (saved.caf === undefined) delete globalThis.cancelAnimationFrame
+  }
 })
