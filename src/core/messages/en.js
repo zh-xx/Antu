@@ -143,6 +143,7 @@ export const en = {
   'theme.document': 'Document',
   'theme.modern': 'Modern',
   'theme.legal': 'Legal blue',
+  'theme.dark': 'Dark',
   'header.kindOpen': ({ n }) => `All ${n} ways of drawing`,
   'header.kindPrev': 'Previous way of drawing',
   'header.kindNext': 'Next way of drawing',

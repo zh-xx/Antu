@@ -62,7 +62,7 @@ test('a valid view state passes at every level', () => {
 
 test('an unknown key or a wrong value names the field and what is allowed', () => {
   assert.equal(viewStateProblem({ nope: true }, 'options.locked'), 'options.locked.nope is not an option: theme, lang, shell, view')
-  assert.equal(viewStateProblem({ theme: 'neon' }, 'options.locked'), 'options.locked.theme must be one of: document, modern, legal')
+  assert.equal(viewStateProblem({ theme: 'neon' }, 'options.locked'), 'options.locked.theme must be one of: document, modern, legal, dark')
   assert.equal(viewStateProblem({ lang: 'fr' }, 'options.locked'), 'options.locked.lang must be one of: zh, en')
   assert.equal(viewStateProblem({ shell: { headerFolded: 'yes' } }, 'options.locked'), 'options.locked.shell.headerFolded must be a boolean')
   assert.equal(viewStateProblem({ shell: { nope: true } }, 'options.locked'), 'options.locked.shell.nope is not an option: headerFolded, dockFolded')

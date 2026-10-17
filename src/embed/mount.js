@@ -62,7 +62,7 @@ const isItem = (spec, id) => itemOf(spec, id)?.item.id === id
  * @param {object} [options]
  * @param {string} [options.kind]       the kind it opens in, until the reader picks another
  * @param {string[]} [options.kinds]    the kinds the reader may pick from (one: the kind is fixed)
- * @param {'document'|'modern'|'legal'} [options.theme]  the theme it opens in
+ * @param {'document'|'modern'|'legal'|'dark'} [options.theme]  the theme it opens in
  * @param {'zh'|'en'} [options.lang]   the language of the page's own words (the case is never translated)
  * @param {{header?: boolean, capsule?: boolean, minimap?: boolean, zoom?: boolean, panOnScroll?: boolean, panOnDrag?: boolean}} [options.ui]
  *                                      pieces of the page's chrome to leave out (all shown by default);

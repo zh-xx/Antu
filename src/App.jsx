@@ -32,7 +32,7 @@ import { useLang } from './shell/LangContext.jsx'
 import DiagramHeader from './shell/DiagramHeader.jsx'
 import { ShownSpecContext, useEnv, useUi } from './shell/env.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
-import { useTheme } from './theme/ThemeContext.jsx'
+import { useTheme, shellVars } from './theme/ThemeContext.jsx'
 
 /** The fallback explanation when no renderer is available */
 function FallbackInfo({ errors, spec, hasRenderer, t, labelOf, formatNumber }) {
@@ -88,7 +88,7 @@ function diagramInfo(spec, t, formatNumber) {
  */
 export default function App({ spec: given, kind: hostKind = null, kinds: allowed = null }) {
   const { t, lang, setLang, labelOf, formatNumber } = useLang()
-  const { id: themeId, setTheme } = useTheme()
+  const { id: themeId, theme, setTheme } = useTheme()
   const env = useEnv()
   const { prefs, preset, emit, commands } = env
   const [spec, setSpec] = useState(null)
@@ -181,7 +181,7 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
   const showHeader = useUi('header')
 
   return (
-    <div className="antu-app" data-theme={themeId}>
+    <div className="antu-app" data-theme={themeId} style={shellVars(theme)}>
       {/* The label card has no switch of its own on the page. It used to control both
           "whether it shows on screen" and "whether the export carries it"; now the
           export never carries the heading (spec/fact/rendering.md §10.2 changed),
