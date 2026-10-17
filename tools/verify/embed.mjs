@@ -187,6 +187,21 @@ export async function checkEmbed(t) {
     eq('embed: with cardUi a wheel over the pane does not pan the diagram', card.after, card.before)
     eq('embed: with cardUi a wheel over the pane is not cancelled (host page can scroll)', card.wheelOk, true)
 
+    // ---- fit after a host resize: the fit reads the element's own size, not React Flow's observed one ----
+    // The host narrows the element and asks for a fit in the same tick, before React Flow's own observer has run
+    // (a side panel that goes from full screen to a split does the same one frame apart). A fit taken from React
+    // Flow's old width left the picture cut off on the right.
+    const refit = await browser.eval(`(async () => {
+      const el = document.getElementById('d')
+      const root = ${S('d')}
+      const right = () => Math.max(...[...root.querySelectorAll('.antu-pn')].map((n) => n.getBoundingClientRect().right))
+      el.style.width = '300px'
+      window.__h.d.fitView()
+      await new Promise((r) => setTimeout(r, 900))
+      return { over: Math.round(right() - el.getBoundingClientRect().right), nodes: root.querySelectorAll('.antu-pn').length }
+    })()`)
+    truthy('embed: a fit asked in the tick a host narrows the element still shows the whole diagram', refit.nodes > 0 && refit.over <= 0, `${refit.over}px past the right edge`)
+
     // ---- invalid ----
     const invalid = await browser.eval('window.__invalid')
     truthy('embed: an invalid spec refuses `ready` with its problems', Array.isArray(invalid) && invalid.length > 0, JSON.stringify(invalid)?.slice(0, 120))
