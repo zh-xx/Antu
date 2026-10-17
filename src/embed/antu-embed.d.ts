@@ -9,7 +9,7 @@ export interface AntuSpec {
   [field: string]: unknown
 }
 
-export type AntuTheme = 'document' | 'modern' | 'legal'
+export type AntuTheme = 'document' | 'modern' | 'legal' | 'dark'
 export type AntuLang = 'zh' | 'en'
 
 /**

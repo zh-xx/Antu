@@ -69,7 +69,7 @@ What is drawn lives in the element's **shadow root**, not among its children: `e
 | --- | --- | --- |
 | `kind` | the type's first | the kind it opens in, until the reader picks another. A name that is not a kind of the spec's type makes `mount` throw, naming the field, as `renderHtml` and `setKind` refuse it |
 | `kinds` | all of the type's | the kinds the reader may pick from; one fixes the kind. A name in it that is not a kind of the type, or a `kind` not in it, makes `mount` throw. (After `update` to a spec of another type, a `kind` and `kinds` that are not its own are let go, and it opens in its first kind) |
-| `theme` | `document` | the theme it opens in: `document`, `modern`, `legal` (`spec/theme.md`). The reader can still switch, unless the label card is left out |
+| `theme` | `document` | the theme it opens in: `document`, `modern`, `legal`, `dark` (`spec/theme.md`). The reader can still switch, unless the label card is left out |
 | `lang` | the browser's | `zh` or `en`: the language of the page's own words. The case is never translated |
 | `ui` | all `true` | `{ header, capsule, minimap, zoom, panOnScroll, panOnDrag }`: pieces of the page's chrome to leave out (the label card at the top left, the control capsule at the bottom, the minimap, the zoom buttons). `panOnScroll: false` stops the wheel from panning the diagram so a host page (a chat card) can still scroll; `panOnDrag: false` stops press-and-drag from panning; pinch-zoom stays on. For a chat card, prefer spreading [`cardUi`](#card-ui) |
 | `prefs` | `'none'` | where the reader's choices (kind, fields, orientation …) are kept: `'none'` while mounted only; `'local'` in the viewer page's `localStorage` key (`antu.prefs`); or the host's store `{ read(): object, write(patch) }` |
@@ -84,7 +84,7 @@ What is drawn lives in the element's **shadow root**, not among its children: `e
 
 ```ts
 interface AntuViewState {
-  theme?: 'document' | 'modern' | 'legal'
+  theme?: 'document' | 'modern' | 'legal' | 'dark'
   lang?: 'zh' | 'en'
   shell?: { headerFolded?: boolean; dockFolded?: boolean }
   view?: {
@@ -146,7 +146,7 @@ Phase 1 covers these items; a `view.flow` or `view.route` entry for a diagram of
 | `focus(id)` | move the view to centre the item `id`, keeping the zoom unless the item would not fit in the window at it. `false` when it is not drawn in this kind |
 | `highlight(ids)` | ring these items in the theme's colour; `highlight([])` clears. The ring stays through `update` and a change of kind or theme until it is called again, leaves pinning and the reader's hover alone, and is not in `exportPng`. Ids that name no item are passed over |
 | `fitView()` | fit the whole diagram into view again |
-| `exportPng({ pixelRatio })` | a `Promise<Blob>`: the PNG the page's own export makes (no label card, a white margin, 2 device pixels per design pixel by default), not saved anywhere. Waits until the spec now mounted is drawn; refused (with `errors`) while it is not valid |
+| `exportPng({ pixelRatio })` | a `Promise<Blob>`: the PNG the page's own export makes (no label card, a margin in the theme's background, 2 device pixels per design pixel by default), not saved anywhere. Waits until the spec now mounted is drawn; refused (with `errors`) while it is not valid |
 | `destroy()` | take the diagram off; the element can be mounted again. A second `mount` on a mounted element throws |
 
 A call made right after `mount`, before the diagram is drawn, is kept and carried out when it is (`select` and

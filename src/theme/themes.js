@@ -11,12 +11,15 @@
 //    modern     screen first: rounded, pale greys, one ink.
 //    legal      navy as the main colour; red only where it is adverse.
 //
+//    dark       the modern look on a dark slate ground, for a host that is dark (DSH, issue #209). The only theme with
+//               scheme 'dark': it also darkens the shell round the diagram (dock, zoom, minimap), which the others leave alone.
+//
 //  Every theme answers every role (test/theme.test.mjs).
 // ============================================================
 
 import { DASH, LINE } from './scale.js'
 
-export const THEME_IDS = ['document', 'modern', 'legal']
+export const THEME_IDS = ['document', 'modern', 'legal', 'dark']
 export const DEFAULT_THEME = 'document'
 
 /** The kinds of party and of relation the relationship diagrams draw (the roles that have more than one answer) */
@@ -77,6 +80,7 @@ const draw = (line, byRole) => Object.fromEntries(Object.entries(line).map(([k, 
 export const THEMES = {
   document: {
     id: 'document',
+    scheme: 'light',
     shadowRgb: '17, 17, 17',
     chrome: { radius: 2, capsule: 2, chip: 2, bg: '#ffffff', bgPop: '#ffffff', border: '1px solid #111111', shadow: 'none', blur: 'none' },
     labelKey: 'theme.document',
@@ -85,7 +89,7 @@ export const THEMES = {
       body: '"FangSong", "STFangsong", "FangSong_GB2312", "Songti SC", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", serif',
       head: '"SimHei", "Heiti SC", "STHeiti", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
     },
-    color: { ink: '#111111', ink2: '#2b2b2b', ink3: '#4d4d4d', ink4: '#767676', bg: '#ffffff', canvas: '#ffffff', frame: '#111111', line: '#c9c9c9', chip: '#f0f0f0', side1: '#111111', side2: '#555555', axis: '#767676' },
+    color: { ink: '#111111', ink2: '#2b2b2b', ink3: '#4d4d4d', ink4: '#767676', bg: '#ffffff', canvas: '#ffffff', frame: '#111111', line: '#c9c9c9', chip: '#f0f0f0', side1: '#111111', side2: '#555555', axis: '#767676', dots: '#e8ebef', mini: '#cbd5e1', miniGhost: '#eef1f5', exportBg: '#ffffff', labelBg: 'rgba(255, 255, 255, 0.85)' },
     radius: { person: 18, company: 3, organization: 3, government: 3, other: 3, pill: 2, group: 12 },
     entity: {
       person: { stroke: '#111111', fill: '#ffffff', width: 1.3 },
@@ -121,6 +125,7 @@ export const THEMES = {
   },
   modern: {
     id: 'modern',
+    scheme: 'light',
     shadowRgb: '15, 23, 42',
     chrome: { radius: 14, capsule: 999, chip: 999, bg: 'rgba(255, 255, 255, 0.78)', bgPop: 'rgba(255, 255, 255, 0.94)', border: '1px solid rgba(15, 23, 42, 0.07)', shadow: '0 4px 18px rgba(15, 23, 42, 0.10), 0 1px 2px rgba(15, 23, 42, 0.06)', blur: 'blur(16px) saturate(1.8)' },
     labelKey: 'theme.modern',
@@ -128,7 +133,7 @@ export const THEMES = {
       body: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
       head: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
     },
-    color: { ink: '#0f172a', ink2: '#475569', ink3: '#64748b', ink4: '#94a3b8', bg: '#fbfcfd', canvas: '#fbfcfd', frame: '#e2e8f0', line: '#e8ebef', chip: '#f1f4f8', side1: '#475569', side2: '#64748b', axis: '#94a3b8' },
+    color: { ink: '#0f172a', ink2: '#475569', ink3: '#64748b', ink4: '#94a3b8', bg: '#fbfcfd', canvas: '#fbfcfd', frame: '#e2e8f0', line: '#e8ebef', chip: '#f1f4f8', side1: '#475569', side2: '#64748b', axis: '#94a3b8', dots: '#e8ebef', mini: '#cbd5e1', miniGhost: '#eef1f5', exportBg: '#ffffff', labelBg: 'rgba(255, 255, 255, 0.85)' },
     radius: { person: 14, company: 8, organization: 8, government: 6, other: 8, pill: 12, group: 12 },
     entity: {
       person: { stroke: '#94a3b8', fill: '#f1f5f9', width: 1 },
@@ -161,6 +166,7 @@ export const THEMES = {
   },
   legal: {
     id: 'legal',
+    scheme: 'light',
     shadowRgb: '19, 35, 63',
     chrome: { radius: 6, capsule: 6, chip: 4, bg: '#ffffff', bgPop: '#ffffff', border: '1px solid #c7d2e4', shadow: '0 2px 10px rgba(19, 35, 63, 0.10)', blur: 'none' },
     labelKey: 'theme.legal',
@@ -168,7 +174,7 @@ export const THEMES = {
       body: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
       head: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
     },
-    color: { ink: '#13233f', ink2: '#2d4366', ink3: '#5b6f8f', ink4: '#8aa0c4', bg: '#ffffff', canvas: '#ffffff', frame: '#c7d2e4', line: '#dbe3f0', chip: '#eef3fb', side1: '#1f3f7f', side2: '#9a1b1b', axis: '#8aa0c4' },
+    color: { ink: '#13233f', ink2: '#2d4366', ink3: '#5b6f8f', ink4: '#8aa0c4', bg: '#ffffff', canvas: '#ffffff', frame: '#c7d2e4', line: '#dbe3f0', chip: '#eef3fb', side1: '#1f3f7f', side2: '#9a1b1b', axis: '#8aa0c4', dots: '#e8ebef', mini: '#cbd5e1', miniGhost: '#eef1f5', exportBg: '#ffffff', labelBg: 'rgba(255, 255, 255, 0.85)' },
     radius: { person: 14, company: 3, organization: 4, government: 3, other: 4, pill: 4, group: 6 },
     entity: {
       person: { stroke: '#2f5aa8', fill: '#eef3fb', width: 1 },
@@ -208,6 +214,50 @@ export const THEMES = {
       stance: draw(STANCE_LINE, { for: { stroke: '#2d4366' }, against: { stroke: '#9a1b1b' }, basis: { stroke: '#4b3a8c' } }),
     },
     pill: { colored: true, border: '#c7d2e4' },
+  },
+  dark: {
+    id: 'dark',
+    scheme: 'dark',
+    // Light ink as the "shadow" colour: the stylesheet also uses it for hover washes and the lit glow, which must be
+    // light on a dark ground (a real drop shadow is the chrome's own `shadow` below)
+    shadowRgb: '226, 232, 240',
+    chrome: { radius: 14, capsule: 999, chip: 999, bg: 'rgba(24, 29, 37, 0.82)', bgPop: 'rgba(28, 34, 43, 0.96)', border: '1px solid rgba(255, 255, 255, 0.09)', shadow: '0 4px 18px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3)', blur: 'blur(16px) saturate(1.4)' },
+    labelKey: 'theme.dark',
+    font: {
+      body: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
+      head: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
+    },
+    color: { ink: '#e6ebf2', ink2: '#b6c0cf', ink3: '#8b97a9', ink4: '#6b778a', bg: '#14181f', canvas: '#14181f', frame: '#2a3240', line: '#262d38', chip: '#1e2530', side1: '#9fb3d1', side2: '#7f8aa0', axis: '#6b778a', dots: '#232a35', mini: '#4a5568', miniGhost: '#232a35', exportBg: '#14181f', labelBg: 'rgba(20, 24, 31, 0.85)' },
+    radius: { person: 14, company: 8, organization: 8, government: 6, other: 8, pill: 12, group: 12 },
+    entity: {
+      person: { stroke: '#8b97a9', fill: '#1f2733', width: 1 },
+      company: { stroke: '#cbd5e1', fill: '#1a2029', width: 1.25 },
+      organization: { stroke: '#8b97a9', fill: '#161b22', width: 1, dash: DASH.dashed },
+      government: { stroke: '#a3b0c4', fill: '#1c2430', width: 1 },
+      other: { stroke: '#6b778a', fill: '#171c24', width: 0.9, dash: DASH.dotted },
+    },
+    relation: withInk(BW_RELATION, '#a3b0c4'),
+    camp: [{ fill: '#1f2733', stroke: '#6b778a', text: '#d3dbe7' }, { fill: '#161b22', stroke: '#6b778a', text: '#d3dbe7' }, { fill: '#1a2029', stroke: '#2f3846', text: '#8b97a9' }],
+    group: { fill: '#1a2029', stroke: '#2f3846', title: '#b6c0cf' },
+    campBox: { fill: '#1a2029', stroke: '#2f3846', width: 1 },
+    flow: {
+      outcome: draw(OUTCOME_LINE, { neutral: { stroke: '#8b97a9', fill: '#1a2029' }, positive: { stroke: '#d3dbe7', fill: '#1f2733' }, negative: { stroke: '#8b97a9', fill: '#1f2733' } }),
+      start: { stroke: '#d3dbe7', fill: '#2a3240' },
+      // The four states keep the colour a procedure's state carries (with the line style saying it too), lifted for a dark ground
+      state: { warn: { stroke: '#e0a63a', fill: '#2e2410' }, stop: { stroke: '#f0707a', fill: '#33161a' }, done: { stroke: '#4cc38a', fill: '#10281d' } },
+      note: { stroke: 'none', fill: '#1f2733', fold: '#6b778a' },
+      stage: { fill: '#1a2029', stroke: '#2f3846', title: '#b6c0cf' },
+      stageLit: { fill: '#232c3a', stroke: '#8b97a9', title: '#e6ebf2' },
+      link: draw(FLOW_LINK_LINE, { main: { stroke: '#e6ebf2' }, plain: { stroke: '#b6c0cf' }, back: { stroke: '#8b97a9' } }),
+    },
+    justify: {
+      node: draw(NODE_LINE, {
+        conclusion: { stroke: '#e6ebf2', fill: '#1f2733' }, norm: { stroke: '#b6c0cf', fill: '#2a3240' }, element: { stroke: '#8b97a9', fill: '#1a2029' },
+        fact: { stroke: '#6b778a', fill: '#161b22' }, inference: { stroke: '#8b97a9', fill: '#1a2029' }, judgement: { stroke: '#cbd5e1', fill: '#2a3240' },
+      }),
+      stance: draw(STANCE_LINE, { for: { stroke: '#b6c0cf' }, against: { stroke: '#e6ebf2' }, basis: { stroke: '#6b778a' } }),
+    },
+    pill: { colored: false, border: '#3a4455' },
   },
 }
 

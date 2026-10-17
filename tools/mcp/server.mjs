@@ -53,7 +53,7 @@ const specArg = z.looseObject({}).describe('the Antu JSON (envelope + content la
 const themeArg = z
   .enum(THEME_IDS)
   .optional()
-  .describe('the look of the page: document (black and white, for print; the default), modern (rounded, light) or legal (navy). Omit it and the reader chooses in the page; give it and the page is fixed to it')
+  .describe('the look of the page: document (black and white, for print; the default), modern (rounded, light), legal (navy) or dark (the modern look on a dark ground, for a dark host; the whole page is dark). Omit it and the reader chooses in the page; give it and the page is fixed to it')
 
 const kindArg = z
   .string()

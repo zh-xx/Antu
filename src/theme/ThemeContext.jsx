@@ -34,6 +34,7 @@ export function themeVars(theme) {
     '--antu-side2': c.side2,
     '--antu-axis': c.axis,
     '--antu-bg': c.bg,
+    '--antu-label-bg': c.labelBg,
     '--antu-bad': theme.flow.outcome.negative.stroke,
     '--antu-shadow-rgb': theme.shadowRgb,
     '--antu-chrome-radius': `${theme.chrome.radius}px`,
@@ -48,6 +49,18 @@ export function themeVars(theme) {
     '--antu-font': theme.font.body,
     '--antu-font-head': theme.font.head,
   }
+}
+
+/**
+ * The variables of the shell round the diagram (dock, header card, zoom, minimap, page ground). The shell keeps one
+ * light look in every theme (issue #48), so a light theme answers nothing here; only a dark theme darkens it, or a
+ * dark diagram would sit in a pale frame.
+ */
+export function shellVars(theme) {
+  if (theme.scheme !== 'dark') return {}
+  const rest = themeVars(theme)
+  const keep = ['--antu-text', '--antu-text-2', '--antu-text-3', '--antu-text-4', '--antu-canvas', '--antu-line', '--antu-line-soft', '--antu-chip', '--antu-axis', '--antu-bg', '--antu-shadow-rgb', '--antu-chrome-bg', '--antu-chrome-bg-pop', '--antu-chrome-border', '--antu-chrome-shadow', '--antu-chrome-blur']
+  return { colorScheme: 'dark', ...Object.fromEntries(keep.map((k) => [k, rest[k]])) }
 }
 
 export function ThemeProvider({ children, theme: forcedTheme, initialTheme }) {

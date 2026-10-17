@@ -60,7 +60,7 @@ knows is an error. The rules are in `spec/versioning.md`.
 
 ## The look of the page is not for the agent to decide
 
-Nothing in the JSON chooses a theme (`document`, `modern`, `legal`; see `../theme.md`): the same file is shown to
+Nothing in the JSON chooses a theme (`document`, `modern`, `legal`, `dark`; see `../theme.md`): the same file is shown to
 different readers. Leave `theme` out of `antu_render` / `antu_preview` and `--theme` out of the command line unless
 the user asked for a look; then the reader chooses in the page, and the default is black and white. A preview taken
 with a theme shows only that theme.

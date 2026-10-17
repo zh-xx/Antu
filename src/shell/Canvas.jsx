@@ -65,7 +65,7 @@ const miniGhost = ({ width, height }) => ({
   data: {},
   style: { pointerEvents: 'none', visibility: 'hidden' },
 })
-const miniColor = (node) => (node.id === MINI_GHOST_ID ? '#eef1f5' : '#cbd5e1')
+
 
 /** The element an item's node stands at: a canvas node, or a row of the flowchart's rule table (`rule:<id>`) */
 const selectorOf = (id) =>
@@ -96,6 +96,10 @@ export default function Canvas({
   // only by layers (the route map, the relation path): one empty node as large as the picture gives it its extent
   const allNodeTypes = useMemo(() => ({ ...nodeTypes, miniGhost: MiniGhost }), [nodeTypes])
   const { theme } = useTheme()
+  // The shell keeps one light look in every theme; a dark theme darkens it (shellVars in theme/ThemeContext.jsx)
+  const dark = theme.scheme === 'dark'
+  const shell = { dots: dark ? theme.color.dots : '#e8ebef', miniMask: dark ? 'rgba(10, 13, 18, 0.62)' : undefined }
+  const miniColor = (node) => (node.id === MINI_GHOST_ID ? (dark ? theme.color.miniGhost : '#eef1f5') : dark ? theme.color.mini : '#cbd5e1')
   const [nodes, setNodes, onNodesChange] = useNodesState([miniGhost(graph.size), ...graph.nodes])
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges)
 
@@ -251,7 +255,7 @@ export default function Canvas({
   useImperativeHandle(
     ref,
     () => ({
-      exportPng: ({ title } = {}) => runExportPng({ rootEl: canvasRef.current, graph, title }),
+      exportPng: ({ title } = {}) => runExportPng({ rootEl: canvasRef.current, graph, title, background: theme.color.exportBg }),
     }),
     [graph],
   )
@@ -263,7 +267,7 @@ export default function Canvas({
   fitRef.current = fit
   useEffect(() => {
     const offFit = commands.on('fitView', () => fitRef.current(300))
-    const offPng = commands.on('exportPng', ({ pixelRatio } = {}) => renderPng({ rootEl: canvasRef.current, graph, pixelRatio }))
+    const offPng = commands.on('exportPng', ({ pixelRatio } = {}) => renderPng({ rootEl: canvasRef.current, graph, pixelRatio, background: theme.color.exportBg }))
     return () => {
       offFit()
       offPng()
@@ -447,7 +451,7 @@ export default function Canvas({
         maxZoom={MAX_ZOOM}
       >
         {/* The shell (dot grid, zoom, minimap, dock) is not themed: only the diagram is; its variables are set on the viewport below */}
-        <Background gap={20} color="#e8ebef" />
+        <Background gap={20} color={shell.dots} />
         {/* The padding must match the initial fit, or clicking the button once makes the zoom jump */}
         {showZoom && <Controls showInteractive={false} onFitView={() => fit(300)} />}
         {/* The display controls float centred below the canvas: the zoom controls are bottom left and the minimap bottom right, so the three do not collide */}
@@ -484,7 +488,7 @@ export default function Canvas({
             )}
           </Panel>
         )}
-        {showMinimap && !(dockVisible && dock.hideMinimap) && <MiniMap pannable zoomable nodeColor={miniColor} />}
+        {showMinimap && !(dockVisible && dock.hideMinimap) && <MiniMap pannable zoomable nodeColor={miniColor} maskColor={shell.miniMask} />}
       </ReactFlow>
     </main>
   )

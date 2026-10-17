@@ -116,8 +116,8 @@ function toPngBlob(canvas) {
  * **No heading.** The label card at the top left is an on-screen overlay and does not
  * enter the image; the old "heading" switch for the user to choose is gone.
  */
-export async function exportPng({ rootEl, graph, title }) {
-  const { blob, width, height } = await renderPng({ rootEl, graph })
+export async function exportPng({ rootEl, graph, title, background }) {
+  const { blob, width, height } = await renderPng({ rootEl, graph, background })
   download(blob, fileNameOf(title))
   return { width, height }
 }
@@ -127,7 +127,7 @@ export async function exportPng({ rootEl, graph, title }) {
  * @param pixelRatio  device pixels per design pixel (2 by default, spec §10.1)
  * @returns {Promise<{blob: Blob, width: number, height: number}>} the size in device pixels
  */
-export async function renderPng({ rootEl, graph, pixelRatio = PIXEL_RATIO }) {
+export async function renderPng({ rootEl, graph, pixelRatio = PIXEL_RATIO, background = '#ffffff' }) {
   const viewportEl = rootEl?.querySelector('.react-flow__viewport')
   if (!viewportEl) throw new Error('canvas content layer not found; cannot export')
 
@@ -150,7 +150,7 @@ export async function renderPng({ rootEl, graph, pixelRatio = PIXEL_RATIO }) {
       width: contentW,
       height: contentH,
       pixelRatio,
-      backgroundColor: '#ffffff',
+      backgroundColor: background,
       style: {
         width: `${contentW}px`,
         height: `${contentH}px`,
@@ -166,7 +166,7 @@ export async function renderPng({ rootEl, graph, pixelRatio = PIXEL_RATIO }) {
     out.width = Math.round(frame.width * pixelRatio)
     out.height = Math.round(frame.height * pixelRatio)
     const ctx = out.getContext('2d')
-    ctx.fillStyle = '#ffffff'
+    ctx.fillStyle = background
     ctx.fillRect(0, 0, out.width, out.height)
     // Round the offset: a non-integer offset resamples the whole image and blurs the text
     ctx.drawImage(content, Math.round(frame.offsetX * pixelRatio), Math.round(frame.offsetY * pixelRatio))

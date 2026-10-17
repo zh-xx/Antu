@@ -74,7 +74,7 @@ than an empty table (an empty table reads as "this type exists, it is just empty
 diagram is `timeline`, the default, `chronicle` or `scale`; a relationship diagram is `graph`, the default, `focus`, `matrix`, `equity`, `authority`, `related` or `path`; a procedure diagram is `flow`, the default, or `route`). An unknown kind is refused with the list of
 kinds. `antu_render` with a kind makes the page open in it; the reader can still switch.
 
-`antu_render` and `antu_preview` also take an optional `theme`: the look of the page (`document`, black and white for print, the default; `modern`; `legal`, navy). Only the diagram is themed. Without `theme` the reader chooses in the label card and the choice is remembered; with it the page is fixed to that theme. An unknown theme is refused. See [theme.md](theme.md).
+`antu_render` and `antu_preview` also take an optional `theme`: the look of the page (`document`, black and white for print, the default; `modern`; `legal`, navy; `dark`, the modern look on a dark ground for a dark host). Only the diagram is themed; `dark`, the one dark theme, also darkens the shell round it. Without `theme` the reader chooses in the label card and the choice is remembered; with it the page is fixed to that theme. An unknown theme is refused. See [theme.md](theme.md).
 
 **The design is meant to avoid rework when a new type is added.** `antu_schema` used to
 call `describeFactSchema()` directly and `antu_guide` read one fixed file, which amounts

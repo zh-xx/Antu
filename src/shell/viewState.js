@@ -15,7 +15,7 @@
 // ============================================================
 
 /** The theme ids and language codes, repeated here so this pure file stays free of the theme/i18n modules */
-const THEMES = ['document', 'modern', 'legal']
+const THEMES = ['document', 'modern', 'legal', 'dark']
 const LANGS = ['zh', 'en']
 
 /** The flowchart's switches (spec/procedure/schema-draft.md §6.2): whether the value is a boolean, or its enum */
