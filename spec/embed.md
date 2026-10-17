@@ -182,6 +182,7 @@ The host draws its own kind/theme controls with its theme tokens; the diagram ke
 | --- | --- | --- |
 | `select` | `id`, `collection`, `sourceIds`, `sources` | the reader pins a card open (`id` the item's id; `collection` the array of the JSON it is in: `nodes`, `rules`, `events`, `entities` …; `sources` its sources as written in `sources`, with their `loc`), or closes it (`id: null`) |
 | `kindchange` | `kind` | the kind changed after the first drawing (the reader, or `setKind`) |
+| `themechange` | `theme` | the theme changed after the first drawing (the reader, or `setTheme`): a host that follows its own light and dark can tell its own change from the reader's by comparing `theme` with what it set |
 | `invalid` | `errors` | the spec (at `mount` or `update`) is not valid; in place of the diagram the page lists the problems, as the viewer page does |
 
 A card that is not one item of the JSON (a run of events gathered on the time scale) is told with its canvas id

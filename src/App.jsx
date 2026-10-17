@@ -167,6 +167,12 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
     if (toldKind.current !== null && toldKind.current !== kind) emit({ type: 'kindchange', kind })
     toldKind.current = kind
   }, [kind, emit])
+  // Likewise the theme: the host hears every change after the first drawing, whether the reader or its own setTheme made it
+  const toldTheme = useRef(null)
+  useEffect(() => {
+    if (toldTheme.current !== null && toldTheme.current !== themeId) emit({ type: 'themechange', theme: themeId })
+    toldTheme.current = themeId
+  }, [themeId, emit])
   const selectKindRef = useRef(selectKind)
   selectKindRef.current = selectKind
   useEffect(() => {

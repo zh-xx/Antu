@@ -76,7 +76,7 @@ const isItem = (spec, id) => itemOf(spec, id)?.item.id === id
  * @param {object} [options.locked]     values forced for this mount (`AntuViewState`); their controls are hidden
  * @param {boolean|string[]} [options.persist]  which of the reader's changes reach the prefs store: true (all,
  *                                      the default), false (none), or the names in spec/embed.md
- * @param {(event: object) => void} [options.onEvent]   select, kindchange, invalid (spec/embed.md)
+ * @param {(event: object) => void} [options.onEvent]   select, kindchange, themechange, invalid (spec/embed.md)
  */
 export function mount(el, spec, options = {}) {
   if (!el || typeof el.attachShadow !== 'function') throw new TypeError('antu mount: the first argument must be an element')

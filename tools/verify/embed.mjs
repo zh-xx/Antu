@@ -187,6 +187,17 @@ export async function checkEmbed(t) {
     eq('embed: with cardUi a wheel over the pane does not pan the diagram', card.after, card.before)
     eq('embed: with cardUi a wheel over the pane is not cancelled (host page can scroll)', card.wheelOk, true)
 
+    // ---- themechange: told for the host's own setTheme and for the reader's click, not for what did not change ----
+    const themeEvents = () => browser.eval(`window.__events.a.filter((e) => e.type === 'themechange').map((e) => e.theme)`)
+    await browser.eval(`window.__h.a.setTheme('modern'); window.__h.a.setTheme('modern')`)
+    await new Promise((r) => setTimeout(r, 400))
+    const afterHost = await themeEvents()
+    await browser.eval(`(() => { const btn = [...${S('a')}.querySelectorAll('.antu-header-themeopt')].find((b) => b.getAttribute('aria-pressed') === 'false'); btn?.click() })()`)
+    await new Promise((r) => setTimeout(r, 400))
+    const afterReader = await themeEvents()
+    eq('embed: setTheme tells the host once, and a theme it already has tells nothing', afterHost, ['modern'])
+    truthy('embed: the reader picking another theme in the label card tells the host too', afterReader.length === 2 && afterReader[1] !== 'modern', JSON.stringify(afterReader))
+
     // ---- fit after a host resize: the fit reads the element's own size, not React Flow's observed one ----
     // The host narrows the element and asks for a fit in the same tick, before React Flow's own observer has run
     // (a side panel that goes from full screen to a split does the same one frame apart). A fit taken from React
