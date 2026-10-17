@@ -927,7 +927,7 @@ test('built client card: only the whole picture; new arguments remount it', asyn
 
   // Mounted once, with the asked-for kind and theme and the quiet chrome of cardUi (the whole diagram, fitted)
   assert.equal(calls.mount.length, 1)
-  assert.deepEqual(calls.mount[0].options, { kind: 'scale', theme: 'legal', ui: embed.cardUi })
+  assert.deepEqual(calls.mount[0].options, { kind: 'scale', theme: 'legal', lang: 'en', ui: embed.cardUi })
   assert.deepEqual(calls.mount[0].spec, spec)
   // Nothing but the picture: no title row, no buttons (no right sidebar here, so no cover either)
   assert.equal(findAll(view.tree(), (n) => n.type === 'button').length, 0)
@@ -938,7 +938,7 @@ test('built client card: only the whole picture; new arguments remount it', asyn
   assert.equal(calls.destroyed, 1)
   assert.equal(calls.mount.length, 2)
   // An unknown kind or theme is not passed on
-  assert.deepEqual(calls.mount[1].options, { ui: embed.cardUi })
+  assert.deepEqual(calls.mount[1].options, { lang: 'en', ui: embed.cardUi })
 })
 
 test('built client card: a click opens the full view, fullscreen, with the HTML one click away', async () => {
@@ -985,7 +985,7 @@ test('built client card: a click opens the full view, fullscreen, with the HTML 
   }
   const page = mount(Page, { useTabInfo: () => tabInfo, useResource })
   await page.flush()
-  assert.deepEqual(calls.mount.at(-1).options, { kind: 'scale' })
+  assert.deepEqual(calls.mount.at(-1).options, { kind: 'scale', lang: 'en' })
   assert.equal(toggled.length, 1)
   page.rerender()
   assert.equal(toggled.length, 1, 'asked once per opening, not on every render')
@@ -1196,7 +1196,7 @@ test('built client tail: finished diagrams draw there, failures explain, running
   const card = load.mount(diagramEl.type, diagramEl.props)
   await card.flush()
   assert.equal(calls.mount.length, 1)
-  assert.deepEqual(calls.mount[0].options, { kind: 'scale', ui: embed.cardUi })
+  assert.deepEqual(calls.mount[0].options, { kind: 'scale', lang: 'en', ui: embed.cardUi })
   const cover = findAll(card.tree(), (n) => n.type === 'button')[0]
   assert.match(cover.props['aria-label'], /Open full view: 案情/)
   cover.props.onClick()

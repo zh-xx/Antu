@@ -205,10 +205,16 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /** The language the embedded page should speak: DSH's active one, read through our dictionary (`embed.lang`). */
+    function embedLang(t) {
+      const lang = t('embed.lang')
+      return lang === 'zh' || lang === 'en' ? lang : undefined
+    }
+
     /** Mount `spec` into `el` as asked (kind and theme are checked); `ui` is the chat card's quiet chrome */
-    function mountDiagram(embed, el, spec, wantKind, wantTheme, ui) {
+    function mountDiagram(embed, el, spec, wantKind, wantTheme, ui, lang) {
       const opening = pickOpening(knownKinds(embed, spec), wantKind, wantTheme)
-      return { handle: embed.mount(el, spec, mountOptions(opening, ui)), opening }
+      return { handle: embed.mount(el, spec, mountOptions({ ...opening, lang }, ui)), opening }
     }
 
     /**
@@ -216,8 +222,11 @@ window.__ModuleLoader__.load({
      * mounted inside DSH's collapsed fold is 0×0 and would stay blank, so refit on every resize
      * (opening the fold changes the host's size). Returns the mount error, if any.
      */
-    function useDiagram(hostRef, handleRef, embed, spec, kind, theme, ui, revision) {
+    function useDiagram(hostRef, handleRef, embed, spec, kind, theme, ui, revision, lang) {
       const [mountError, setMountError] = useState(null)
+      // Mount with the language of the moment; a later switch goes through setLang, not a remount.
+      const langRef = useRef(lang)
+      langRef.current = lang
 
       useLayoutEffect(() => {
         const el = hostRef.current
@@ -229,7 +238,7 @@ window.__ModuleLoader__.load({
         setMountError(null)
 
         try {
-          handleRef.current = mountDiagram(embed, el, spec, kind, theme, ui).handle
+          handleRef.current = mountDiagram(embed, el, spec, kind, theme, ui, langRef.current).handle
         } catch (err) {
           setMountError(err?.message || String(err))
           return undefined
@@ -254,6 +263,10 @@ window.__ModuleLoader__.load({
           handleRef.current = null
         }
       }, [embed, spec, kind, theme, ui, revision])
+
+      useEffect(() => {
+        if (lang) handleRef.current?.setLang?.(lang)
+      }, [lang, embed, spec, kind, theme, ui, revision])
 
       return mountError
     }
@@ -305,7 +318,7 @@ window.__ModuleLoader__.load({
       const value = resource?.value && typeof resource.value === 'object' ? resource.value : null
       const spec = value?.spec && typeof value.spec === 'object' ? value.spec : null
       // Full page chrome in the sidebar — no cardUi.
-      const mountError = useDiagram(hostRef, handleRef, embed, spec, value?.kind, value?.theme, undefined, revision)
+      const mountError = useDiagram(hostRef, handleRef, embed, spec, value?.kind, value?.theme, undefined, revision, embedLang(t))
       const embedError = embedErrorMessage(loadError, mountError, t)
       const path = typeof value?.path === 'string' ? value.path : null
       const openFile = path ? fullView.files.get(path) : null
@@ -385,7 +398,7 @@ window.__ModuleLoader__.load({
       const title = titleOf(spec, toolName === 'mcp__antu__antu_render' ? t('title.mcp') : t('tab.title'))
       // The whole diagram, fitted; no chrome (cardUi). Reading happens in the full view.
       const ui = useMemo(() => (embed ? { ...embed.cardUi } : undefined), [embed])
-      const mountError = useDiagram(hostRef, handleRef, embed, spec, args?.kind, args?.theme, ui, argsRaw)
+      const mountError = useDiagram(hostRef, handleRef, embed, spec, args?.kind, args?.theme, ui, argsRaw, embedLang(t))
       const embedError = embedErrorMessage(loadError, mountError, t)
 
       const openFull = () => {
@@ -488,7 +501,7 @@ window.__ModuleLoader__.load({
       const spec = args ? args.spec : null
       const title = titleOf(spec, call.name === 'mcp__antu__antu_render' ? t('title.mcp') : t('tab.title'))
       const ui = useMemo(() => (embed ? { ...embed.cardUi } : undefined), [embed])
-      const mountError = useDiagram(hostRef, handleRef, embed, spec, args?.kind, args?.theme, ui, call.argsRaw)
+      const mountError = useDiagram(hostRef, handleRef, embed, spec, args?.kind, args?.theme, ui, call.argsRaw, embedLang(t))
       const embedError = embedErrorMessage(loadError, mountError, t)
 
       const openFull = () => {

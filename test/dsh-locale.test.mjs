@@ -37,3 +37,8 @@ test('the upgrade notice still names the required DSH version in both languages'
   assert.match(en['error.upgrade'], /≥ 0\.2\.0-rc\.2/)
   assert.match(zh['error.upgrade'], /≥ 0\.2\.0-rc\.2/)
 })
+
+test('embed.lang resolves to the language of its own dictionary (the embedded page follows DSH)', () => {
+  assert.equal(zh['embed.lang'], 'zh')
+  assert.equal(en['embed.lang'], 'en')
+})

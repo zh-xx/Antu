@@ -45,6 +45,7 @@ import { checkEmbed } from './embed.mjs'
 // every example would fail instead, loudly.
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
+import { en as dshEn } from '../dsh/src/locale.mjs'
 import { en, zh } from '../../src/core/messages/index.js'
 import { FACT_FIELDS } from '../../src/renderers/fact/schema.js'
 import { textPx } from '../../src/core/canvas.js'
@@ -3122,9 +3123,11 @@ function checkMessages() {
   }
   for (const d of ['src', 'tools']) collect(d)
   truthy('message keys are actually used', used.size > 20, `${used.size} keys found in the source`)
+  // The DSH plugin owns its dictionary (locale service, namespace antuDsh): its keys are not in the app's.
+  const pluginKeys = new Set(Object.keys(dshEn))
   eq(
     'every message key the source asks for exists in the dictionary',
-    [...used].filter((k) => !ek.has(k)).sort(),
+    [...used].filter((k) => !ek.has(k) && !pluginKeys.has(k)).sort(),
     [],
   )
 }

@@ -11,6 +11,8 @@ export const ANTU_NS = 'antuDsh'
 
 /** Simplified Chinese dictionary (same key set as `en`). */
 export const zh = {
+  // The language the embedded page speaks: DSH's active language, read through the dictionary.
+  'embed.lang': 'zh',
   'tab.title': 'Antu',
   'title.mcp': 'Antu (MCP)',
   'card.openFull': '打开大图',
@@ -36,6 +38,7 @@ export const zh = {
 
 /** English dictionary (key-set source of truth and the no-locale fallback). */
 export const en = {
+  'embed.lang': 'en',
   'tab.title': 'Antu',
   'title.mcp': 'Antu (MCP)',
   'card.openFull': 'Open full view',

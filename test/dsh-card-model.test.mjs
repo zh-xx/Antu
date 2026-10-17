@@ -17,6 +17,7 @@ import {
   diagramFromRecords,
   isAntuRenderName,
   isAppendSurfaceEvent,
+  mountOptions,
   parseAntuAddress,
 } from '../tools/dsh/src/card-model.mjs'
 
@@ -255,4 +256,11 @@ test('diagramFromRecords: other tools, other call ids and malformed arguments gi
   const mcp = diagramFromRecords([{ event: callEvent(1, 'c9', { spec: { type: 'fact' } }, 'mcp__antu__antu_render') }], 'c9')
   assert.equal(mcp.title, 'Antu (MCP)')
   assert.equal(mcp.kind, undefined)
+})
+
+test('mountOptions: passes the language only when it is one Antu speaks', () => {
+  assert.equal(mountOptions({ lang: 'zh' }).lang, 'zh')
+  assert.equal(mountOptions({ lang: 'en' }).lang, 'en')
+  assert.equal('lang' in mountOptions({ lang: 'ja' }), false)
+  assert.equal('lang' in mountOptions({}), false)
 })
