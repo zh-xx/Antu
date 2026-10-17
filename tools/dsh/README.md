@@ -1,6 +1,8 @@
 # DSH plugin (`@zh-xx/antu-dsh`)
 
 Plan: [spec/dsh-plugin.md](../../spec/dsh-plugin.md) (中文 [spec/dsh-plugin.zh-CN.md](../../spec/dsh-plugin.zh-CN.md)).
+DSH conventions (resource addresses, providers, seats): [spec/dsh-conventions.md](../../spec/dsh-conventions.md)
+(中文 [spec/dsh-conventions.zh-CN.md](../../spec/dsh-conventions.zh-CN.md)).
 Umbrella issue: [#79](https://github.com/zh-xx/Antu/issues/79).
 
 **Not published yet.** Build with `npm run build:dsh`, then install the **tarball** (preferred) into DSH.
@@ -71,15 +73,16 @@ DSH's plugin log does not include pnpm's error text.
 | Host | Memory skill `antu-diagram` (teaches Host wire names, not the CLI) |
 | Client | `tool.call.toolview` for `antu_render` and `mcp__antu__antu_render` (one compact line: title, status, **Open full view**) when the turn tail is there; the full card otherwise |
 | Client | `conversation.chat.turnTail` data `antu-diagrams`: the fitted diagram after DSH's "Completed in Ns" fold; a `ResizeObserver` refits it whenever the fold opens |
-| Client | Right-panel page `antu-diagram` (full embed, fullscreen); a click on the card opens it |
+| Client | Right-panel resource type `antu-diagram` (full embed, fullscreen); a click on the card opens its `dsh-resource://antu/…` address, and the tab restores itself from Session history after a reload |
 
 The diagram is drawn in the turn tail (`conversation.chat.turnTail`), after DSH collapses a finished turn's tool
 steps into their fold, so it stays visible without opening that fold. The card reads `spec` from the tool-call
 **arguments** (`argsRaw`) and shows only the picture: the whole diagram fitted (`cardUi`), nothing else. A
 `ResizeObserver` calls the embed's `fitView()` when the host grows, so a card mounted while hidden is never blank.
 A click opens the full view, fullscreen in the right panel, with kind and theme switches, detail cards, export and
-**Open HTML** (the card's `openFile`). On a DSH without the conversation service the full card stays in the tool
-row.
+**Open HTML** (the card's `openFile`). The tab is saved by its `dsh-resource://antu/…` address only; a resource
+provider re-reads the `antu_render` call from Session history, so a reload needs no private cache. On a DSH without
+the conversation service the full card stays in the tool row.
 
 ## Interim: MCP on a machine that already has Node
 

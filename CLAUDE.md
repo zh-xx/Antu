@@ -47,3 +47,14 @@ Check free disk first (`df -h /`): DSH needs about 550 MB.
 4. **Ship.** Only Claude commits and pushes, after the review passes.
 5. **Report** to the maintainer briefly: what was delegated, how many rounds it took, what you had to
    fix, and anything the worker got wrong that should change the next brief.
+
+## DSH plugin work: inside DSH's own conventions
+
+Everything under `tools/dsh/` follows [`spec/dsh-conventions.md`](spec/dsh-conventions.md): use DSH's documented
+extension points (resource addresses and providers, the shortcut service, the locale service, the documented
+slots), never a private store, a raw DOM listener or a DSH internal. The sources of truth are the READMEs under
+`node_modules/@deepseek-ai/*/README.md` of the DSH the plugin targets and the official plugins that do the same thing.
+
+- **Plan from the README.** A brief for a DSH worker names the README sections and the official plugin whose pattern to copy.
+- **If DSH does not document it, do not use it.** Ask the maintainer; an unavoidable deviation is written into section 4 of that file.
+- **Test in a real DSH**, including a page reload and closing and reopening: most deviations show only there.

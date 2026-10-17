@@ -292,6 +292,14 @@ test('package manifest matches root version and DSH bundle shape', () => {
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml')
   assert.equal(pkg.dsh.client.platform, 'web')
   assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-tool'))
+  // The resource stack: resources provides the provider seat, sessions the addresses, api-remotes the history stream.
+  for (const name of [
+    '@deepseek-ai/dsh-client-resources',
+    '@deepseek-ai/dsh-api-session-controller',
+    '@deepseek-ai/dsh-api-remotes',
+  ]) {
+    assert.ok(pkg.dsh.client.inject.includes(name), name)
+  }
   assert.equal(pkg.exports['.'], './index.js')
   assert.equal(pkg.exports['./client'], './client.js')
 
@@ -383,6 +391,10 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(client, /ResizeObserver/)
   assert.match(client, /antu-diagrams/)
   assert.match(client, /sidebarRightTabs/)
+  assert.match(client, /dsh-resource:\/\/antu/)
+  // The only localStorage use left is the best-effort cleanup of the 0.14/0.15 private cache (exactly one).
+  assert.equal((client.match(/localStorage/g) || []).length, 1)
+  assert.match(client, /antu-dsh:tabs/)
   // Injected helper + safe call site (not require.async, which is undefined on DSH 0.1.x)
   assert.match(client, /function resolveRequireAsync/)
   assert.match(client, /function beginLoadEmbed/)
@@ -739,35 +751,62 @@ const findAll = (node, pred, out = []) => {
 }
 const buttonLabelled = (tree, label) => findAll(tree, (n) => n.type === 'button' && textOf(n) === label)[0]
 
-/** Load the built package/client.js; return the chat card, the turn tail, and the full-view page when a right sidebar is given */
-function loadBuiltCard({ requireAsync, sidebarRight, uiConversation }) {
+/**
+ * Load the built package/client.js; return the chat card, the turn tail, and the full-view page + title
+ * when a right sidebar is given. `sidebarRight.openResource` is the fake navigation call the cards use.
+ */
+function loadBuiltCard({ requireAsync, sidebarRight, uiConversation, subagentAddresses = {} }) {
   const { React, mount } = miniReact()
   let def
   new Function('window', readFileSync(join(pkgDir, 'client.js'), 'utf8'))({ __ModuleLoader__: { load: (d) => { def = d } } })
   const req = (id) => { assert.equal(id, 'react'); return React }
   if (requireAsync) req.async = requireAsync
-  const byKey = {}
-  const byId = {}
+  const cardByKey = {}
+  const titleByKey = {}
+  const tailById = {}
   const slots = {
     inject: (_n, fn) => fn(),
     register: (spec, comp) => {
-      if (spec.key !== undefined) byKey[spec.key] = comp
-      if (spec.id !== undefined) byId[spec.id] = comp
+      if (spec.name === 'sidebar.right.pane.tab') cardByKey[spec.key] = comp
+      else if (spec.name === 'sidebar.right.pane.tab.title') titleByKey[spec.key] = comp
+      else if (spec.name === 'tool.call.toolview') cardByKey[spec.key] = comp
+      else if (spec.name === 'conversation.chat.turnTail') tailById[spec.id] = comp
     },
   }
   const tabTypes = []
+  const resourceProviders = []
   const definitions = []
   // A minimal conversation service: the plugin's definition is captured so a test can replay events.
   const conversation = {
     events: { register: (definition) => { definitions.push(definition); return () => {} } },
   }
+  const resources = {
+    register: (provider) => {
+      resourceProviders.push(provider)
+      return () => {}
+    },
+  }
+  const sessions = { subagentAddress: (sessionId) => subagentAddresses[sessionId] }
   def.factory(req).apply({
     slots,
     inject(names, fn) {
       const want = new Set(names)
-      if (want.has('sidebarRight') || want.has('sidebarRightTabs')) {
-        if (!sidebarRight) return // a profile without the right sidebar
-        fn({ effect: (f) => f(), slots, sidebarRight, sidebarRightTabs: { register: (t) => tabTypes.push(t) } })
+      if (want.has('resources') && want.has('sidebarRight')) {
+        if (!sidebarRight) return // a profile without the right sidebar or the resource stack
+        fn({
+          effect: (f) => f(),
+          slots,
+          resources,
+          sessions,
+          remote: { session: {} },
+          sidebarRight,
+          sidebarRightTabs: {
+            register: (t) => {
+              tabTypes.push(t)
+              return () => {}
+            },
+          },
+        })
         return
       }
       if (want.has('uiConversation')) {
@@ -777,12 +816,14 @@ function loadBuiltCard({ requireAsync, sidebarRight, uiConversation }) {
     },
   })
   return {
-    Card: byKey.antu_render,
-    McpCard: byKey.mcp__antu__antu_render,
-    Page: byKey['@zh-xx/antu-dsh'],
-    Tail: byId['@zh-xx/antu-dsh'],
+    Card: cardByKey.antu_render,
+    McpCard: cardByKey.mcp__antu__antu_render,
+    Page: cardByKey['@zh-xx/antu-dsh'],
+    Title: titleByKey['@zh-xx/antu-dsh'],
+    Tail: tailById['@zh-xx/antu-dsh'],
     definitions,
     tabTypes,
+    resourceProviders,
     mount,
   }
 }
@@ -864,29 +905,44 @@ test('built client card: a click opens the full view, fullscreen, with the HTML 
   const opened = []
   const toggled = []
   const sidebarRight = {
-    openTab: (kind, options) => opened.push({ kind, options }),
+    openResource: (address, options) => opened.push({ address, options }),
     commandTarget: () => ({ paneId: 'p1', host: 'dock' }),
     toggleFullscreen: (target) => toggled.push(target),
   }
-  const { Card, Page, tabTypes, mount } = loadBuiltCard({ requireAsync: async () => embed, sidebarRight })
+  const { Card, Page, Title, tabTypes, mount } = loadBuiltCard({ requireAsync: async () => embed, sidebarRight })
   assert.deepEqual(tabTypes.map((t) => t.kind), ['antu-diagram'])
+  assert.deepEqual(tabTypes[0].patterns, ['dsh-resource://antu/**'])
+  assert.equal(tabTypes[0].canOpen('dsh-resource://antu/s1/c1'), true)
+  assert.equal(tabTypes[0].canOpen('dsh-resource://plan/s1/c1'), false)
   assert.equal(typeof Page, 'function')
+  assert.equal(typeof Title, 'function')
 
   const files = []
   const spec = { type: 'fact', title: '案情' }
-  const card = mount(Card, { phase: 'end', toolName: 'antu_render', openFile: (p) => files.push(p), block: callBlock({ spec, kind: 'scale' }) })
+  const card = mount(Card, {
+    phase: 'end', toolName: 'antu_render', sessionId: 's1', callId: 'c1',
+    openFile: (p) => files.push(p), block: callBlock({ spec, kind: 'scale' }),
+  })
   await card.flush()
   const cover = findAll(card.tree(), (n) => n.type === 'button')
   assert.equal(cover.length, 1, 'one cover over the picture, nothing else')
   assert.match(cover[0].props['aria-label'], /Open full view: 案情/)
   cover[0].props.onClick()
   assert.equal(opened.length, 1)
-  assert.equal(opened[0].kind, 'antu-diagram')
-  assert.deepEqual(opened[0].options.params, { spec, kind: 'scale', theme: undefined, path: '/w/a.html', title: '案情', wantFullscreen: true })
+  assert.equal(opened[0].address, 'dsh-resource://antu/s1/c1')
+  assert.deepEqual(opened[0].options, { params: { wantFullscreen: true } })
 
-  // The page: the full diagram (no cardUi), the panel asked to go fullscreen once, and the HTML button
-  let tabInfo = { sidebar: { expanded: true, fullscreen: false }, tab: { navigation: { params: opened[0].options.params, revision: 1 } } }
-  const page = mount(Page, { useTabInfo: () => tabInfo })
+  // The page: the full diagram (no cardUi), the panel asked to go fullscreen once, and the HTML button.
+  // Its diagram comes from useResource(address), not from navigation params.
+  const value = { callId: 'c1', spec, kind: 'scale', theme: undefined, title: '案情', path: '/w/a.html', failure: null }
+  const useResource = (address) => (address === 'dsh-resource://antu/s1/c1'
+    ? { status: 'live', value }
+    : { status: 'none', value: undefined })
+  let tabInfo = {
+    sidebar: { expanded: true, fullscreen: false },
+    tab: { navigation: { address: opened[0].address, params: opened[0].options.params, revision: 1 } },
+  }
+  const page = mount(Page, { useTabInfo: () => tabInfo, useResource })
   await page.flush()
   assert.deepEqual(calls.mount.at(-1).options, { kind: 'scale' })
   assert.equal(toggled.length, 1)
@@ -899,10 +955,28 @@ test('built client card: a click opens the full view, fullscreen, with the HTML 
   buttonLabelled(page.tree(), 'Open HTML').props.onClick()
   assert.deepEqual(files, ['/w/a.html'])
 
+  // The tab title recovers the diagram's title from the same address.
+  const title = mount(Title, { useTabInfo: () => tabInfo, useResource })
+  assert.equal(textOf(title.tree()), '案情')
+
   // Already fullscreen: nothing toggled (toggling would leave it)
-  const again = mount(Page, { useTabInfo: () => ({ sidebar: { expanded: true, fullscreen: true }, tab: { navigation: { params: opened[0].options.params, revision: 2 } } }) })
+  const again = mount(Page, {
+    useTabInfo: () => ({
+      sidebar: { expanded: true, fullscreen: true },
+      tab: { navigation: { address: opened[0].address, params: opened[0].options.params, revision: 2 } },
+    }),
+    useResource,
+  })
   await again.flush()
   assert.equal(toggled.length, 1)
+
+  // A tab saved by an older build has no address: the existing notice, not a crash.
+  const legacy = mount(Page, {
+    useTabInfo: () => ({ sidebar: { expanded: true, fullscreen: false }, tab: { navigation: { revision: 1 } } }),
+    useResource: () => ({ status: 'none', value: undefined }),
+  })
+  await legacy.flush()
+  assert.match(textOf(legacy.tree()), /No diagram in this tab\./)
 })
 
 test('built client card: says what is wrong instead of crashing (mount fails, truncated arguments, DSH 0.1.x)', async () => {
@@ -972,19 +1046,23 @@ test('built client tool row: compact row opens the full view', async () => {
   const { embed } = fakeEmbed()
   const opened = []
   const sidebarRight = {
-    openTab: (kind, options) => opened.push({ kind, options }),
+    openResource: (address, options) => opened.push({ address, options }),
     commandTarget: () => ({ paneId: 'p1', host: 'dock' }),
     toggleFullscreen() {},
   }
   const { Card, mount } = loadBuiltCard({ requireAsync: async () => embed, uiConversation: true, sidebarRight })
   const spec = { type: 'fact', title: '案情' }
-  const view = mount(Card, { phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec, kind: 'scale' }) })
+  const view = mount(Card, {
+    phase: 'end', toolName: 'antu_render', sessionId: 's1', callId: 'c1',
+    openFile() {}, block: callBlock({ spec, kind: 'scale' }),
+  })
   await view.flush()
   const button = buttonLabelled(view.tree(), 'Open full view')
   assert.ok(button, 'a done call offers the full view')
   button.props.onClick()
   assert.equal(opened.length, 1)
-  assert.deepEqual(opened[0].options.params, { spec, kind: 'scale', theme: undefined, path: '/w/a.html', title: '案情', wantFullscreen: true })
+  assert.equal(opened[0].address, 'dsh-resource://antu/s1/c1')
+  assert.deepEqual(opened[0].options, { params: { wantFullscreen: true } })
 })
 
 test('built client tail: finished diagrams draw there, failures explain, running calls wait', async () => {
@@ -992,7 +1070,7 @@ test('built client tail: finished diagrams draw there, failures explain, running
   const opened = []
   const files = []
   const sidebarRight = {
-    openTab: (kind, options) => opened.push({ kind, options }),
+    openResource: (address, options) => opened.push({ address, options }),
     commandTarget: () => ({ paneId: 'p1', host: 'dock' }),
     toggleFullscreen() {},
   }
@@ -1002,7 +1080,7 @@ test('built client tail: finished diagrams draw there, failures explain, running
   const turnOf = (data) => ({ data: { get: (key) => (key === ANTU_DIAGRAMS_KIND ? data : undefined) } })
 
   // No antu_render calls: the tail adds nothing.
-  const empty = load.mount(load.Tail, { turn: turnOf(turnWithDiagrams(definition, [])), openFile() {} })
+  const empty = load.mount(load.Tail, { sessionId: 's1', turn: turnOf(turnWithDiagrams(definition, [])), openFile() {} })
   assert.equal(empty.tree(), null)
 
   // One done, one failed, one still running.
@@ -1014,7 +1092,7 @@ test('built client tail: finished diagrams draw there, failures explain, running
     toolResult(1, 'c1', { content: [{ type: 'text', text: 'Written: /w/one.html' }] }),
     toolResult(1, 'c2', { isError: true }),
   ])
-  const view = load.mount(load.Tail, { turn: turnOf(data), openFile: (p) => files.push(p) })
+  const view = load.mount(load.Tail, { sessionId: 's1', turn: turnOf(data), openFile: (p) => files.push(p) })
   const tree = view.tree()
   assert.match(textOf(tree), /Render failed/, 'the failed call leaves one quiet line')
   assert.equal(textOf(tree).includes('三稿'), false, 'a running call shows nothing')
@@ -1031,11 +1109,17 @@ test('built client tail: finished diagrams draw there, failures explain, running
   assert.match(cover.props['aria-label'], /Open full view: 案情/)
   cover.props.onClick()
   assert.equal(opened.length, 1)
-  assert.deepEqual(opened[0].options.params, { spec, kind: 'scale', theme: undefined, path: '/w/one.html', title: '案情', wantFullscreen: true })
+  assert.equal(opened[0].address, 'dsh-resource://antu/s1/c1')
+  assert.deepEqual(opened[0].options, { params: { wantFullscreen: true } })
 
   // The tail passed its openFile through, so the full view can open the written HTML.
+  const value = { callId: 'c1', spec, kind: 'scale', title: '案情', path: '/w/one.html', failure: null }
   const page = load.mount(load.Page, {
-    useTabInfo: () => ({ sidebar: { expanded: true, fullscreen: false }, tab: { navigation: { params: opened[0].options.params, revision: 1 } } }),
+    useTabInfo: () => ({
+      sidebar: { expanded: true, fullscreen: false },
+      tab: { navigation: { address: opened[0].address, params: opened[0].options.params, revision: 1 } },
+    }),
+    useResource: () => ({ status: 'live', value }),
   })
   await page.flush()
   buttonLabelled(page.tree(), 'Open HTML').props.onClick()

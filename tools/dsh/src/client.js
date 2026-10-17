@@ -24,113 +24,6 @@ window.__ModuleLoader__.load({
     /** Set once the conversation service is there: the turn tail draws finished diagrams, so the tool row stays compact. */
     let hasTurnTail = false
 
-    /** True from pagehide/beforeunload on: the tab-scoped cache must survive a reload, so an abort must not drop it. */
-    let pageUnloading = false
-    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      const markPageUnloading = () => {
-        pageUnloading = true
-      }
-      window.addEventListener('pagehide', markPageUnloading)
-      window.addEventListener('beforeunload', markPageUnloading)
-    }
-
-    const TAB_CACHE_PREFIX = 'antu-dsh:tab:'
-    const TAB_CACHE_INDEX = 'antu-dsh:tabs'
-    const TAB_CACHE_LIMIT = 20
-
-    /** localStorage can be absent or throw (private mode, sandboxed iframe): every access goes through here. */
-    function tabCacheStore() {
-      try {
-        return typeof window !== 'undefined' && window.localStorage ? window.localStorage : null
-      } catch {
-        return null
-      }
-    }
-
-    /** The cached tab ids, most recent last; a corrupt index reads as empty. */
-    function readTabCacheIndex(store) {
-      try {
-        const raw = store.getItem(TAB_CACHE_INDEX)
-        if (!raw) return []
-        const parsed = JSON.parse(raw)
-        if (!Array.isArray(parsed)) {
-          store.removeItem(TAB_CACHE_INDEX)
-          return []
-        }
-        return parsed.filter((id) => typeof id === 'string' && id)
-      } catch {
-        try {
-          store.removeItem(TAB_CACHE_INDEX)
-        } catch {
-          /* the store is unusable; nothing else to do */
-        }
-        return []
-      }
-    }
-
-    /** Cache one tab's diagram so a reload can restore it (the layout keeps the tab id, not its params). */
-    function saveTabDiagram(tabId, data) {
-      const store = tabCacheStore()
-      if (!store || !tabId) return
-      try {
-        store.setItem(TAB_CACHE_PREFIX + tabId, JSON.stringify({ ...data, savedAt: Date.now() }))
-      } catch {
-        return
-      }
-      try {
-        const ids = readTabCacheIndex(store).filter((id) => id !== tabId)
-        ids.push(tabId)
-        while (ids.length > TAB_CACHE_LIMIT) {
-          const evicted = ids.shift()
-          if (evicted) store.removeItem(TAB_CACHE_PREFIX + evicted)
-        }
-        store.setItem(TAB_CACHE_INDEX, JSON.stringify(ids))
-      } catch {
-        /* the index is best effort */
-      }
-    }
-
-    /** The cached diagram for `tabId`, or null; corrupt or non-object entries are dropped. */
-    function loadTabDiagram(tabId) {
-      const store = tabCacheStore()
-      if (!store || !tabId) return null
-      let raw
-      try {
-        raw = store.getItem(TAB_CACHE_PREFIX + tabId)
-      } catch {
-        return null
-      }
-      if (raw == null) return null
-      let parsed
-      try {
-        parsed = JSON.parse(raw)
-      } catch {
-        dropTabDiagram(tabId)
-        return null
-      }
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        dropTabDiagram(tabId)
-        return null
-      }
-      return parsed
-    }
-
-    /** Forget a tab's diagram and its index slot (the tab closed, or its cache was unusable). */
-    function dropTabDiagram(tabId) {
-      const store = tabCacheStore()
-      if (!store || !tabId) return
-      try {
-        store.removeItem(TAB_CACHE_PREFIX + tabId)
-      } catch {
-        /* already gone */
-      }
-      try {
-        store.setItem(TAB_CACHE_INDEX, JSON.stringify(readTabCacheIndex(store).filter((id) => id !== tabId)))
-      } catch {
-        /* the index is best effort */
-      }
-    }
-
     function destroyHandle(handle) {
       if (!handle) return
       try {
@@ -168,6 +61,82 @@ window.__ModuleLoader__.load({
         }
       }, [])
       return state
+    }
+
+    /**
+     * One resource failure frame. The plan provider throws RemoteError, but that class is not on our
+     * ModuleLoader face; a plain Error carrying `code` has the same `{ ok: false, error }` shape.
+     */
+    function antuResourceError(code, message) {
+      const error = new Error(message)
+      error.code = code
+      return error
+    }
+
+    /**
+     * The `antu` resource protocol: read one diagram from a Session's history by its call id.
+     * Mirrors dsh-client-ui-plan's planResourceProvider: follow to a snapshot, then page back until
+     * the exact call is found. The tab keeps only the address, so a reload re-reads here.
+     */
+    function antuResourceProvider(remote) {
+      return {
+        protocol: 'antu',
+        async *open(address, { signal }) {
+          const aborted = () => signal.aborted
+          if (aborted()) return
+          const target = parseAntuAddress(address)
+          if (target === undefined) {
+            yield { ok: false, error: antuResourceError('antu/invalid-address', 'Invalid Antu resource address.') }
+            return
+          }
+          const sessionAddress = target.session
+          try {
+            let snapshot
+            for await (const frame of remote.follow({ address: sessionAddress }, signal)) {
+              if (frame.type === 'snapshot') {
+                snapshot = frame
+                break
+              }
+            }
+            if (aborted()) return
+            if (snapshot === undefined) {
+              throw antuResourceError('antu/unavailable', 'Session history ended before the diagram could be read.')
+            }
+            let page = { records: snapshot.records, hasMore: snapshot.hasMore }
+            // Keep what earlier pages held: the result is newer than its call, so it may sit on a page
+            // we already read when the call itself turns up on an older one.
+            const records = []
+            while (true) {
+              records.push(...page.records)
+              const value = diagramFromRecords(records, target.callId)
+              if (value !== undefined) {
+                yield { ok: true, value }
+                return
+              }
+              const beforeSeq = page.records[0]?.event.seq
+              if (!page.hasMore || beforeSeq === undefined) break
+              const next = await remote.page({ address: sessionAddress, throughSeq: snapshot.cursor, beforeSeq }, signal)
+              if (aborted()) return
+              if (!next.ok) {
+                yield next
+                return
+              }
+              page = next.value
+            }
+            yield { ok: false, error: antuResourceError('antu/not-found', 'The diagram was not found in this Session.') }
+          } catch (error) {
+            if (!aborted()) {
+              yield {
+                ok: false,
+                error:
+                  error && typeof error.code === 'string'
+                    ? error
+                    : antuResourceError('antu/read-failed', error instanceof Error ? error.message : String(error)),
+              }
+            }
+          }
+        },
+      }
     }
 
     /**
@@ -274,73 +243,64 @@ window.__ModuleLoader__.load({
       )
     }
 
-    /** Full-size diagram in the right Sidebar (no cardUi chrome reduction). */
-    function AntuSidebarBody({ useTabInfo }) {
+    /** Full-size diagram in the right Sidebar, read from the tab's resource address (no cardUi, no private cache). */
+    function AntuSidebarBody({ useTabInfo, useResource }) {
       const hostRef = useRef(null)
       const handleRef = useRef(null)
       const { embed, loadError } = useEmbed()
       const { tab, sidebar } = useTabInfo()
-      const tabId = tab?.id
+      const address = tab?.navigation?.address
       const params = tab?.navigation?.params && typeof tab.navigation.params === 'object' ? tab.navigation.params : {}
-      const liveSpec = params.spec && typeof params.spec === 'object' ? params.spec : null
       const revision = tab?.navigation?.revision
-      // After a reload the layout keeps only the tab id, so the diagram comes back from the tab cache.
-      // Read once per tab/revision so the restored spec keeps one identity across renders.
-      const cached = useMemo(() => (liveSpec ? null : loadTabDiagram(tabId)), [liveSpec, tabId, revision])
-      const restored = !liveSpec && !!cached
-      const spec = liveSpec || (cached && cached.spec && typeof cached.spec === 'object' ? cached.spec : null)
-      const kind = liveSpec ? params.kind : cached?.kind
-      const theme = liveSpec ? params.theme : cached?.theme
+      const resource = useResource(address)
+      const value = resource?.value && typeof resource.value === 'object' ? resource.value : null
+      const spec = value?.spec && typeof value.spec === 'object' ? value.spec : null
       // Full page chrome in the sidebar — no cardUi.
-      const mountError = useDiagram(hostRef, handleRef, embed, spec, kind, theme, undefined, revision)
+      const mountError = useDiagram(hostRef, handleRef, embed, spec, value?.kind, value?.theme, undefined, revision)
       const embedError = loadError || mountError
-      const path = liveSpec
-        ? typeof params.path === 'string' ? params.path : null
-        : typeof cached?.path === 'string' ? cached.path : null
+      const path = typeof value?.path === 'string' ? value.path : null
       const openFile = path ? fullView.files.get(path) : null
 
-      // Keep the tab cache current while the tab still has live params (they are gone after a reload).
-      useEffect(() => {
-        if (!tabId || !liveSpec) return
-        saveTabDiagram(tabId, { spec: liveSpec, kind: params.kind, theme: params.theme, path: params.path, title: params.title })
-      }, [revision, tabId])
-
-      // The tab closed: forget its cached diagram. A page unload keeps it, so a reload can restore it.
-      useEffect(() => {
-        const signal = tab?.signal
-        if (!signal || typeof signal.addEventListener !== 'function') return undefined
-        const onAbort = () => {
-          if (!pageUnloading) dropTabDiagram(tabId)
-        }
-        signal.addEventListener('abort', onAbort)
-        return () => {
-          if (typeof signal.removeEventListener === 'function') signal.removeEventListener('abort', onAbort)
-        }
-      }, [tabId])
-
       // Opened from a chat card: present the panel fullscreen (once per opening; leaving it is the reader's choice).
+      // `wantFullscreen` is in params only for that opening; a reload drops it, so nothing replays it.
       const askedRevision = useRef(null)
       useEffect(() => {
-        if (restored || !params.wantFullscreen || sidebar?.fullscreen || askedRevision.current === revision) return
+        if (!params.wantFullscreen || sidebar?.fullscreen || askedRevision.current === revision) return
         askedRevision.current = revision
         if (typeof fullView.fullscreen === 'function') fullView.fullscreen()
       }, [revision, params.wantFullscreen, sidebar?.fullscreen])
 
+      const failure = typeof value?.failure === 'string' && value.failure ? value.failure : null
+      // A tab saved by an older build has no address, so its resource is `none`: keep the old notice.
+      const notice =
+        embedError ||
+        (resource.status === 'loading'
+          ? 'Loading diagram…'
+          : resource.status === 'none'
+            ? 'No diagram in this tab.'
+            : resource.status === 'failed'
+              ? 'Could not load this diagram.'
+              : failure || (!spec ? 'No diagram in this tab.' : null))
       const label = titleOf(spec, 'Antu')
       return h(
         'div',
         { className: 'antuDsh_side' },
-        embedError
-          ? h('div', { className: 'antuDsh_fallback' }, embedError)
-          : !spec
-            ? h('div', { className: 'antuDsh_fallback' }, 'No diagram in this tab.')
-            : h('div', {
-                ref: hostRef,
-                className: 'antuDsh_sideCanvas',
-                role: 'img',
-                'aria-label': label,
-              }),
-        !restored && spec && path && typeof openFile === 'function'
+        notice
+          ? h(
+              'div',
+              {
+                className:
+                  'antuDsh_fallback' + (failure || resource.status === 'failed' ? ' antuDsh_noticeError' : ''),
+              },
+              notice,
+            )
+          : h('div', {
+              ref: hostRef,
+              className: 'antuDsh_sideCanvas',
+              role: 'img',
+              'aria-label': label,
+            }),
+        spec && path && typeof openFile === 'function'
           ? h(
               'button',
               { type: 'button', className: 'antuDsh_btn antuDsh_sideFile', title: path, onClick: () => openFile(path) },
@@ -350,8 +310,16 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** The tab title, recovered from the same resource address (PlanTitle is the worked example). */
+    function AntuTitle({ useTabInfo, useResource }) {
+      const { tab } = useTabInfo()
+      const resource = useResource(tab?.navigation?.address)
+      const value = resource?.value && typeof resource.value === 'object' ? resource.value : null
+      return value?.title || tab?.title || 'Antu'
+    }
+
     function AntuRenderCard(props) {
-      const { phase, block, openFile, toolName } = props
+      const { phase, block, openFile, toolName, sessionId, callId } = props
       const hostRef = useRef(null)
       const handleRef = useRef(null)
       const { embed, loadError } = useEmbed()
@@ -370,11 +338,13 @@ window.__ModuleLoader__.load({
       const embedError = loadError || mountError
 
       const openFull = () => {
-        if (typeof fullView.open !== 'function' || !spec) return
+        if (typeof fullView.open !== 'function' || !spec || !sessionId || callId == null) return
+        // The card's openFile is only alive while the card is: keep it for the full view's "Open HTML".
         if (path && typeof openFile === 'function') fullView.files.set(path, openFile)
-        fullView.open({ spec, kind: args?.kind, theme: args?.theme, path: path || undefined, title })
+        fullView.open({ sessionId, callId: String(callId) })
       }
-      const canOpenFull = typeof fullView.open === 'function' && !!spec && !embedError
+      const canOpenFull =
+        typeof fullView.open === 'function' && !!spec && !embedError && !!sessionId && callId != null
 
       // With the turn tail there, the finished diagram is drawn after DSH's fold; the folded tool
       // row only names the diagram and opens the full view, so the reader sees one line, not a blank card.
@@ -435,7 +405,7 @@ window.__ModuleLoader__.load({
     }
 
     /** One finished call's card in the turn tail; `call` is a record of the turn's diagram data. */
-    function AntuTailDiagram({ call, openFile }) {
+    function AntuTailDiagram({ call, openFile, sessionId }) {
       const hostRef = useRef(null)
       const handleRef = useRef(null)
       const { embed, loadError } = useEmbed()
@@ -447,17 +417,18 @@ window.__ModuleLoader__.load({
       const embedError = loadError || mountError
 
       const openFull = () => {
-        if (typeof fullView.open !== 'function' || !spec) return
+        if (typeof fullView.open !== 'function' || !spec || !sessionId || call.callId == null) return
         // The tail's openFile is the chat's, so the full view's "Open HTML" reaches the written file.
         if (call.path && typeof openFile === 'function') fullView.files.set(call.path, openFile)
-        fullView.open({ spec, kind: args?.kind, theme: args?.theme, path: call.path || undefined, title })
+        fullView.open({ sessionId, callId: String(call.callId) })
       }
 
       return diagramCard({
         hostRef,
         title,
         embedError,
-        canOpenFull: typeof fullView.open === 'function' && !!spec && !embedError,
+        canOpenFull:
+          typeof fullView.open === 'function' && !!spec && !embedError && !!sessionId && call.callId != null,
         onOpenFull: openFull,
       })
     }
@@ -466,7 +437,7 @@ window.__ModuleLoader__.load({
      * The finished turn's diagrams, drawn in `conversation.chat.turnTail` after DSH folds the turn's
      * tool steps. Running calls show nothing; a failure is one quiet line; a success is the card.
      */
-    function AntuTurnTail({ turn, openFile }) {
+    function AntuTurnTail({ turn, openFile, sessionId }) {
       const data = turn && turn.data ? turn.data.get(ANTU_DIAGRAMS_KIND) : undefined
       const calls = data && Array.isArray(data.calls) ? data.calls : []
       if (calls.length === 0) return null
@@ -495,7 +466,7 @@ window.__ModuleLoader__.load({
           )
           continue
         }
-        rows.push(h(AntuTailDiagram, { key: call.callId, call, openFile }))
+        rows.push(h(AntuTailDiagram, { key: call.callId, call, openFile, sessionId }))
       }
 
       return rows.length === 0 ? null : h('div', { className: 'antuDsh_tail', 'data-antu-dsh': 'turn-tail' }, rows)
@@ -541,41 +512,73 @@ window.__ModuleLoader__.load({
       inject: ['slots'],
       apply(ctx) {
         ensureStyles()
+        // 0.14/0.15 builds kept a private tab cache; remove its keys once. Only for those users — may be deleted later.
+        try {
+          const store = window.localStorage
+          store.removeItem('antu-dsh:tabs')
+          for (let i = store.length - 1; i >= 0; i -= 1) {
+            const key = store.key(i)
+            if (key && key.startsWith('antu-dsh:tab:')) store.removeItem(key)
+          }
+        } catch {
+          /* no storage (private mode, sandboxed iframe): nothing to clean */
+        }
         ctx.slots.inject('tool.call.toolview', () => {
           for (const key of WIRE_NAMES) {
-            ctx.slots.register({ name: 'tool.call.toolview', key }, AntuRenderCard)
+            ctx.slots.register({ name: 'tool.call.toolview', key, inject: (sessionId) => ({ sessionId }) }, AntuRenderCard)
           }
         })
-        // Optional: profiles without the right Sidebar still get the chat card.
-        ctx.inject(['sidebarRight', 'sidebarRightTabs'], (sideCtx) => {
-          sideCtx.effect(
-            () =>
-              sideCtx.sidebarRightTabs.register({
-                id: TAB_ID,
-                kind: TAB_KIND,
-                priority: 'extension',
-                title: () => 'Antu',
-              }),
-            'antu-dsh: sidebar tab type',
-          )
-          sideCtx.effect(
-            () =>
-              sideCtx.slots.inject('sidebar.right.pane.tab', () =>
-                sideCtx.slots.register({ name: 'sidebar.right.pane.tab', key: TAB_ID }, AntuSidebarBody),
-              ),
-            'antu-dsh: sidebar tab body',
-          )
-          sideCtx.effect(() => {
-            fullView.open = (params) => {
-              sideCtx.sidebarRight.openTab(TAB_KIND, { params: { ...params, wantFullscreen: true } })
-            }
-            fullView.fullscreen = () => tryFullscreen(sideCtx.sidebarRight)
-            return () => {
-              fullView.open = null
-              fullView.fullscreen = null
-            }
-          }, 'antu-dsh: full view opener')
-        })
+        // Optional: without the right Sidebar or the resource/session services the chat card stays and
+        // there is simply no "open full view".
+        ctx.inject(
+          ['resources', 'sessions', 'remote', 'remote.session', 'sidebarRight', 'sidebarRightTabs'],
+          (sideCtx) => {
+            sideCtx.effect(
+              () => sideCtx.resources.register(antuResourceProvider(sideCtx.remote.session)),
+              'antu-dsh: diagram resource provider',
+            )
+            sideCtx.effect(
+              () =>
+                sideCtx.sidebarRightTabs.register({
+                  id: TAB_ID,
+                  kind: TAB_KIND,
+                  patterns: ['dsh-resource://antu/**'],
+                  canOpen: (address) => parseAntuAddress(address) !== undefined,
+                  priority: 'extension',
+                  title: () => 'Antu',
+                }),
+              'antu-dsh: sidebar tab type',
+            )
+            sideCtx.effect(
+              () =>
+                sideCtx.slots.inject('sidebar.right.pane.tab', () =>
+                  sideCtx.slots.register({ name: 'sidebar.right.pane.tab', key: TAB_ID }, AntuSidebarBody),
+                ),
+              'antu-dsh: sidebar tab body',
+            )
+            sideCtx.effect(
+              () =>
+                sideCtx.slots.inject('sidebar.right.pane.tab.title', () =>
+                  sideCtx.slots.register({ name: 'sidebar.right.pane.tab.title', key: TAB_ID }, AntuTitle),
+                ),
+              'antu-dsh: sidebar tab title',
+            )
+            sideCtx.effect(() => {
+              fullView.open = ({ sessionId, callId }) => {
+                const child = sideCtx.sessions.subagentAddress(sessionId)
+                const session = child === undefined ? { kind: 'session', sessionId } : { kind: 'subagent', ...child }
+                sideCtx.sidebarRight.openResource(antuAddress({ session, callId }), {
+                  params: { wantFullscreen: true },
+                })
+              }
+              fullView.fullscreen = () => tryFullscreen(sideCtx.sidebarRight)
+              return () => {
+                fullView.open = null
+                fullView.fullscreen = null
+              }
+            }, 'antu-dsh: full view opener')
+          },
+        )
         // Optional: only DSH with the conversation service has the turn tail. Without it the tool
         // row keeps the full card (older DSH has no folded turn to get lost in).
         ctx.inject(['uiConversation'], (convCtx) => {
@@ -585,7 +588,10 @@ window.__ModuleLoader__.load({
             'antu-dsh: diagram turn data',
           )
           convCtx.slots.inject('conversation.chat.turnTail', () =>
-            convCtx.slots.register({ name: 'conversation.chat.turnTail', id: TAB_ID }, AntuTurnTail),
+            convCtx.slots.register(
+              { name: 'conversation.chat.turnTail', id: TAB_ID, inject: (sessionId) => ({ sessionId }) },
+              AntuTurnTail,
+            ),
           )
         })
       },
