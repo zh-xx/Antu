@@ -71,7 +71,7 @@ agent 和人一样，**看不见自己画出来的东西**。校验全过、几�
 默认，`chronicle` 大事记，或 `scale` 比例时间轴；关系图是 `graph`，默认，`focus` 聚焦图、`matrix` 关系矩阵、`equity` 股权图、`authority` 控制与任职图、`related` 关联方清单，或 `path` 关系路径图；程序图是 `flow` 流程图，默认，或 `route` 路线图）。不认识的画法会被拒绝，并列出有哪些画法。`antu_render` 带画法时，
 页面打开就是那种画法，读者仍可切换。
 
-`antu_render`、`antu_preview` 还可以带一个可选的 `theme`：页面的外观（`document` 文书黑白，适合打印，默认；`modern` 现代简洁；`legal` 法律蓝）。只有图本身受主题影响。不带 `theme` 时，读者在左上角的卡片里自己选，选择会被记住；带了，页面就固定成这个主题。不认识的主题会被拒绝。详见 [theme.md](theme.md)。
+`antu_render`、`antu_preview` 还可以带一个可选的 `theme`：页面的外观（`document` 文书，适合打印，默认；`modern` 现代；`legal` 法律；`dark` 深色，现代的外观配深色底，给页面本身是深色的宿主）。只有图本身受主题影响；`dark` 是唯一也会把图外的外壳调暗的主题。不带 `theme` 时，读者在左上角的卡片里自己选，选择会被记住；带了，页面就固定成这个主题。不认识的主题会被拒绝。详见 [theme.md](theme.md)。
 
 合计 **5.4k token** 就能开工，替掉原先"读 schema 文档 8k + 排布规则 3k + 示例 5k"。
 

@@ -116,7 +116,7 @@ MCP `kind` answer a removed name with an error that names the diagram to use ins
 default (this error is written when the first diagram is removed). A page already made is one file and is not touched.
 
 **Polishing.** Each diagram is worked on through an issue of its own, with a list to go through: the quality of the
-layout, the size of the text, the three themes, printing, the examples and the guide for agents, the tests. Adding a
+layout, the size of the text, the themes, printing, the examples and the guide for agents, the tests. Adding a
 diagram is an addition, so a minor release while the engine is at 0.x.
 
 The list of all types and diagrams with their versions is `spec/versions.md`. It is written from the registry by

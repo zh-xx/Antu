@@ -33,9 +33,10 @@ Relationship diagrams (seven ways of drawing the same JSON) show parties, roles 
 procedure diagrams a procedural path and its branches; justification diagrams a conclusion drawn from norms and facts. The
 relationship and justification schemas are still drafts.
 
-Three looks, called **themes**: `document` (black and white and square, for print and filing; the default), `modern`
-(rounded, pale) and `legal` (navy). The reader switches in the page, or a call fixes a page to one. Only the diagram is
-themed. See [spec/theme.md](spec/theme.md).
+Four looks, called **themes**: `document` (black and white and square, for print and filing; the default), `modern`
+(rounded, pale), `legal` (navy) and `dark` (the modern look on a dark ground, for a dark host). The reader switches in
+the page, or a call fixes a page to one. Only the diagram is themed; `dark` also darkens the shell round it. See
+[spec/theme.md](spec/theme.md).
 
 ## Usage
 

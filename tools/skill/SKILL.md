@@ -108,10 +108,11 @@ check each with `layout` again, and tell the user it is in pieces and why. **Nev
 only says small, you may leave it whole and tell the user they can zoom in.
 
 `--kind K` (for `layout`, `render` and `preview`) picks another way of drawing the same JSON; the guide of each kind
-lists its ways, and the reader can still switch in the page. `--theme document|modern|legal` (for `render` and
+lists its ways, and the reader can still switch in the page. `--theme document|modern|legal|dark` (for `render` and
 `preview`) fixes the look of the picture: `document` is black and white and square, for print and filing (the default when
-nobody chooses); `modern` is rounded and pale; `legal` is navy, with red only for the adverse. Nothing in the JSON chooses
-a way of drawing or a theme.
+nobody chooses); `modern` is rounded and pale; `legal` is navy, with red only for the adverse; `dark` is the modern look on
+a dark ground, for a dark host, and also darkens the shell round the diagram. Nothing in the JSON chooses a way of drawing
+or a theme.
 
 **Without Node**, with Python 3 (standard library only): `python3 <skill-dir>/scripts/make_html.py spec.json -o
 diagram.html` makes the page. It checks only that the JSON parses and that the `type` is known. The page checks the data

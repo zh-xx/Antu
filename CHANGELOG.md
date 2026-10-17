@@ -3,6 +3,13 @@
 The rules for the numbers are in [spec/versioning.md](spec/versioning.md). Newest first. *Breaking* lists
 what breaks a file or a tool call written for the version before, with how to bring it over.
 
+## Unreleased
+
+A fourth theme, `dark`, for a host whose own page is dark (#209). Nothing breaks a file or a tool call: a diagram that does not ask for it opens as before.
+
+### Added
+- **A `dark` theme** (#209). The modern look (rounded, one ink) on a dark slate ground, for a host whose own page is dark: it is the only theme that also darkens the shell round the diagram (the dock, the label card, the zoom, the minimap, the dot grid and the page ground), while the other three keep the one light shell and only the diagram is themed. The PNG is exported as the picture is on screen: a light theme exports on white, as before, `dark` on its dark ground. Meaning is still carried without colour (weight, dash, outline, shape, words); `dark` draws the same lines as `modern`, and the four procedure states keep their colours, lifted for a dark ground. Accepted by `mount({ theme })`, `initial.theme`, `locked.theme`, the CLI `--theme` and the MCP `theme` argument; the DSH plugin's Host tools do not offer it to the model. See [spec/theme.md](spec/theme.md).
+
 ## 0.15.0
 
 A host that embeds a diagram can now decide how it opens and what a reader may change (#203, phase 1 of issue #200). Nothing breaks a file or a tool call: every new option is optional, and with none given a mounted diagram behaves as before.
