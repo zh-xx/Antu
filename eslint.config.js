@@ -56,7 +56,7 @@ export default [
   },
 
   // DSH Client ModuleLoader entry (browser; React comes from the host module table).
-  // The helpers of card-model.mjs and require-async.mjs are inlined into it by tools/dsh/build.mjs.
+  // The helpers of locale.mjs, card-model.mjs and require-async.mjs are inlined into it by tools/dsh/build.mjs.
   {
     files: ['tools/dsh/src/client.js'],
     languageOptions: {
@@ -82,6 +82,9 @@ export default [
         beginLoadEmbed: 'readonly',
         resolveRequireAsync: 'readonly',
         assertEmbedExports: 'readonly',
+        ANTU_NS: 'readonly',
+        zh: 'readonly',
+        en: 'readonly',
       },
     },
     rules: RULES,

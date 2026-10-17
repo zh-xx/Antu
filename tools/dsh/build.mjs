@@ -109,6 +109,7 @@ const INLINED = [
       'isAppendSurfaceEvent',
     ],
   ],
+  ['/*@@INJECT_LOCALE@@*/', 'locale.mjs', ['ANTU_NS', 'zh', 'en']],
   ['/*@@INJECT_REQUIRE_ASYNC@@*/', 'require-async.mjs', ['resolveRequireAsync', 'beginLoadEmbed']],
 ]
 
@@ -166,6 +167,12 @@ function syncPackageJson() {
     '@deepseek-ai/dsh-tools': { optional: true },
     '@deepseek-ai/dsh-skill': { optional: true },
   }
+  // The official bundles require the shared atoms from DSH's module table and declare the package
+  // as a development dependency; the client manifest carries it as an informational inject entry.
+  pkg.devDependencies = {
+    ...(pkg.devDependencies || {}),
+    '@deepseek-ai/dsh-client-ui-primitives': '0.2.0-rc.2',
+  }
   pkg.files = [
     'index.js',
     'client.js',
@@ -189,6 +196,9 @@ function syncPackageJson() {
       '@deepseek-ai/dsh-client-resources',
       '@deepseek-ai/dsh-api-session-controller',
       '@deepseek-ai/dsh-api-remotes',
+      // Words come from the locale service; the compact tool row uses DSH's shared DisclosureRow.
+      '@deepseek-ai/dsh-client-locale',
+      '@deepseek-ai/dsh-client-ui-primitives',
     ],
   }
   writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`)

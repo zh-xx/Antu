@@ -79,10 +79,11 @@ export function pickOpening(known, wantKind, wantTheme) {
 }
 
 /** The mount options for an opening; `ui` is only passed for the compact chat card */
-export function mountOptions({ mountKind, mountTheme }, ui) {
+export function mountOptions({ mountKind, mountTheme, lang }, ui) {
   return {
     ...(mountKind ? { kind: mountKind } : {}),
     ...(mountTheme ? { theme: mountTheme } : {}),
+    ...(lang === 'zh' || lang === 'en' ? { lang } : {}),
     ...(ui ? { ui } : {}),
   }
 }

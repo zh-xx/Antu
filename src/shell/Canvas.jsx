@@ -13,7 +13,7 @@
 // ============================================================
 
 import { useContext, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState, useEdgesState } from '@xyflow/react'
+import { ReactFlow, Background, Controls, MiniMap, Panel, getViewportForBounds, useNodesState, useEdgesState } from '@xyflow/react'
 
 import { useLang } from './LangContext.jsx'
 import { useTheme, themeVars } from '../theme/ThemeContext.jsx'
@@ -177,6 +177,15 @@ export default function Canvas({
         rfRef.current.setViewport({ x: (viewport.width - width * zoom) / 2, y: (viewport.height - height * zoom) / 2, zoom }, { duration })
         return
       }
+    }
+    // The same placement fitBounds makes, but from the element's own size: React Flow measures its container with an
+    // observer of its own that can lag a frame or more behind a host's resize (a panel that goes from full screen to
+    // a split), and fitBounds fitted that old width — the picture came out cut off on the right. No zoom floor here
+    // either: minZoom is state that follows the same resize one render later, and a stale floor would clamp the fit.
+    if (width && height && el?.clientWidth && el?.clientHeight) {
+      const to = getViewportForBounds({ x: 0, y: 0, width, height }, el.clientWidth, el.clientHeight, 0.01, MAX_ZOOM, FIT_PADDING)
+      rfRef.current.setViewport(to, { duration })
+      return
     }
     if (width && height) rfRef.current.fitBounds({ x: 0, y: 0, width, height }, { padding: FIT_PADDING, duration })
     else rfRef.current.fitView({ padding: FIT_PADDING, duration })

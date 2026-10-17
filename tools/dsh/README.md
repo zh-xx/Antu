@@ -72,6 +72,7 @@ DSH's plugin log does not include pnpm's error text.
 | Host | Reference tools `antu_schema` (field table), `antu_guide` (mechanism notes), `antu_examples` (list or fetch one) — read from the installed `@zh-xx/antu` package, so no filesystem search is needed |
 | Host | Memory skill `antu-diagram` (teaches Host wire names, not the CLI) |
 | Client | `tool.call.toolview` for `antu_render` and `mcp__antu__antu_render` (one compact line: title, status, **Open full view**) when the turn tail is there; the full card otherwise |
+| Client | Words follow DSH's language: the `antuDsh` locale namespace ships English and 简体中文; a language switch updates open cards without a reload. The embedded page speaks the same language: the dictionary key `embed.lang` (`zh` / `en`) is read through `t`, passed as `mount({ lang })` and applied with `setLang` on a switch |
 | Client | `conversation.chat.turnTail` data `antu-diagrams`: the fitted diagram after DSH's "Completed in Ns" fold; a `ResizeObserver` refits it whenever the fold opens |
 | Client | Right-panel resource type `antu-diagram` (full embed, fullscreen); a click on the card opens its `dsh-resource://antu/…` address, and the tab restores itself from Session history after a reload |
 
