@@ -4,6 +4,9 @@
 > `npm run build:dsh` 生成可 `install_bundle` 的 `tools/dsh/package/`（尚未发 npm）。
 > 下列决策于 2026-10-14 锁定。本文取代 #79 初稿中已过时的部分（Host 起 HTML 再 iframe、MCP 未发布、
 > `/antu/view/<id>` 存储）。
+>
+> `tools/dsh/` 下的一切遵循 DSH 自己的规则：[dsh-conventions.zh-CN.md](dsh-conventions.zh-CN.md)
+> （English [dsh-conventions.md](dsh-conventions.md)）。
 
 ## 目标
 
@@ -19,7 +22,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 | 线名 | `antu_validate`、`antu_layout`、`antu_render`，以及只读参考工具 `antu_schema`、`antu_guide`、`antu_examples` …（不是 `mcp__antu__…`）。若仍临时挂着 MCP 行，卡片可同时注册 MCP 名 |
 | `antu_render` | **写入**会话**工作区**下的自包含 HTML（绝对路径）。卡片从工具调用的**参数**（`spec`）画图；文件用于归档、转发与 `openFile` |
 | 聊天卡片 | **只有图**，画在回合末尾（`conversation.chat.turnTail`），DSH 把已完成回合的工具步骤折起来后仍看得见，不藏在折层里。整张图缩进卡片（`mount()` 加 `cardUi`），没有标题行、没有按钮；折层打开时用 `ResizeObserver` 重新适配。折起来的工具行只有一行（标题、状态、**打开大图**）。点图任意位置打开大图。滚轮交给聊天。2026-10-15 看过效果图后决定（按可读字号打开只能看到图的一小块）；浏览器测试发现折层里的卡片不可见且空白后，改画在回合末尾 |
-| 大图 | DSH 右侧面板里的页面 `antu-diagram`，以**全屏**方式呈现（面板自带的全屏模式盖住整个窗口），带完整外壳：画法、主题、详情卡片、导出，以及**打开 HTML** |
+| 大图 | DSH 右侧面板里的资源类型 `antu-diagram`，以**全屏**方式呈现（面板自带的全屏模式盖住整个窗口），带完整外壳：画法、主题、详情卡片、导出，以及**打开 HTML**。标签页只保留地址（`dsh-resource://antu/…`）；provider 从会话历史重新读取图，因而不保留私有缓存 |
 | 包 | 独立 **`@zh-xx/antu-dsh`**，版本号与 `@zh-xx/antu` **同号**。源码在 `tools/dsh/`；**构建产物不入库** |
 | Skill | 从有 Host 工具那一期起随插件带；名称**不要**裸用 `antu`（避免与 `skills/antu/` 撞名）。正文教 Host 工具名，不教命令行 |
 | 宿主暗色 | 图仍用案图主题（默认 `document`，浅色）。卡片外壳用 DSH 的 `--dsw-alias-*`。暗色图主题另开 issue |
@@ -53,8 +56,9 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 - Client：小入口 + 懒加载的 embed 块；把 `antu_render` 的按回合数据（`antu-diagrams`）画在回合末尾，有该服务时 `tool.call.toolview` 为 `antu_render`（及必要时的 MCP 名）只留一行。
 - Client 需要 **DSH ≥ 0.2.0-rc.2**（`require.async` 加载包内 `client.embed.js`）。在 0.1.x 上卡片显示升级提示，而不是把 slot 打崩。
 - 内存 skill `antu-diagram`；「在侧栏打开」先用 `openFile` 打开写出的 HTML。
-- **大图**：点聊天里的图，在右侧面板打开页面 `antu-diagram` 并请求全屏，用完整 embed（不用 `cardUi`）画同一份 `argsRaw` 里的 `spec`。
-  DSH 0.2.0-rc.2 公开的 `ctx.sidebarRight` 没有全屏接口；插件在控制器有 `commandTarget` / `toggleFullscreen` 时用它们，否则由面板自己的全屏按钮来切。
+- **大图**：点聊天里的图，把 `dsh-resource://antu/…` 作为资源类型 `antu-diagram` 在右侧面板打开，并请求全屏。它的 provider
+  从会话历史重新读取这次 `antu_render` 调用，所以刷新后只靠地址就能恢复图（不存 `localStorage` 副本）。DSH 0.2.0-rc.2 公开的
+  `ctx.sidebarRight` 没有全屏接口；插件在控制器有 `commandTarget` / `toggleFullscreen` 时用它们，否则由面板自己的全屏按钮来切。
 - 安装：`npm run build:dsh` 同时打出 `zh-xx-antu-dsh-*.tgz`（优先于对裸 `package/` 做 link）。同版本号的新 tgz 会被 pnpm 当成没变，更新时先 `remove` 再 `add`，然后重启 DSH（见 `tools/dsh/README.md`）。
 - CI：`test/dsh-plugin.test.mjs`（helpers、manifest、`build.mjs`、Host `apply` 冒烟）。trusted publisher / 发 npm 仍待做。
 
@@ -77,7 +81,6 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 
 ### P3 — 按需再做
 
-- 能从会话日志重建的侧栏标签（资源类型，或 Host projection + `wire.view`），不只靠最近一次点击传入的 params。
 - 暗色图主题；不离卡片的宿主内 PNG 导出。
 
 ## 验收（P2）

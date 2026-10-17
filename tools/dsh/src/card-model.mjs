@@ -92,6 +92,58 @@ export function titleOf(spec, fallback) {
   return spec && typeof spec.title === 'string' && spec.title.trim() ? spec.title.trim() : fallback
 }
 
+// ---- Resource address (a tab keeps its identity only; the provider recovers the diagram from history) ----
+
+/**
+ * Encode a diagram's durable identity: the Session (or its subagent form) and the `antu_render` call.
+ * Shaped like dsh-client-ui-plan's planAddress so the sidebar can treat it as a resource type.
+ * @param {{ session: object, callId: string }} target
+ * @returns {string} a dsh-resource://antu/… address
+ */
+export function antuAddress({ session, callId }) {
+  const parts =
+    session.kind === 'session'
+      ? [session.sessionId, callId]
+      : ['subagent', session.parentSessionId, session.childSessionId, session.mode, callId]
+  return `dsh-resource://antu/${parts.map(encodeURIComponent).join('/')}`
+}
+
+/**
+ * Decode a saved or caller-supplied diagram address; undefined unless it is exactly a Session or
+ * subagent address this plugin wrote (same rules as parsePlanAddress).
+ * @param {string} address
+ * @returns {object | undefined} the decoded { session, callId }
+ */
+export function parseAntuAddress(address) {
+  const match = /^dsh-resource:\/\/antu\/([^?#]+)$/.exec(address)
+  if (match === null) return undefined
+  try {
+    const parts = match[1].split('/').map(decodeURIComponent)
+    if (parts.some((part) => part === '')) return undefined
+    if (parts.length === 2) {
+      return { session: { kind: 'session', sessionId: parts[0] }, callId: parts[1] }
+    }
+    if (
+      parts.length === 5 &&
+      parts[0] === 'subagent' &&
+      (parts[3] === 'one-shot' || parts[3] === 'continuable' || parts[3] === 'unknown')
+    ) {
+      return {
+        session: {
+          kind: 'subagent',
+          parentSessionId: parts[1],
+          childSessionId: parts[2],
+          mode: parts[3],
+        },
+        callId: parts[4],
+      }
+    }
+    return undefined
+  } catch {
+    return undefined
+  }
+}
+
 // ---- Per-turn diagram calls (the turn tail reads this; the folded tool row stays compact) ----
 
 /** The Turn data key of the per-turn diagram calls. */
@@ -154,6 +206,62 @@ export function antuDiagramsUpdate(state, event) {
     failure,
   }
   return { ...state, calls }
+}
+
+/**
+ * Read one diagram from Session history records (each `{ event }`), for the `antu` resource provider.
+ * The call supplies the spec, kind, theme and title; a later result supplies the written path or the
+ * failure. Returns undefined when the call is absent or its arguments are not the JSON object we wrote.
+ * @param {Array<{ event?: object }>} records
+ * @param {string} callId
+ */
+export function diagramFromRecords(records, callId) {
+  if (!Array.isArray(records) || typeof callId !== 'string' || callId === '') return undefined
+
+  let diagram
+  for (const entry of records) {
+    const event = entry?.event
+    if (!event || event.type !== 'tool/call') continue
+    const data = event.data
+    if (!data || !isAntuRenderName(data.name)) continue
+    if (data.callId == null || String(data.callId) !== callId) continue
+    const argsRaw = typeof data.arguments === 'string' ? data.arguments : null
+    const args = parseArgsRaw(argsRaw)
+    // A truncated or non-object argument string is not a diagram call we can show.
+    if (!args || typeof args !== 'object' || Array.isArray(args)) return undefined
+    const spec = args.spec && typeof args.spec === 'object' && !Array.isArray(args.spec) ? args.spec : null
+    if (!spec) return undefined
+    diagram = {
+      callId,
+      spec,
+      kind: args.kind,
+      theme: args.theme,
+      title: titleOf(spec, data.name === 'mcp__antu__antu_render' ? 'Antu (MCP)' : 'Antu'),
+      path: null,
+      failure: null,
+    }
+    break
+  }
+  if (!diagram) return undefined
+
+  for (const entry of records) {
+    const event = entry?.event
+    if (!event || event.type !== 'tool/result') continue
+    const message = event.data?.message
+    if (message?.source?.callId == null || String(message.source.callId) !== callId) continue
+    const block = {
+      kind: 'result',
+      isError: message.isError === true,
+      // DSH 0.2.0-rc.2 carries the presentation meta on the event; message.meta is the documented fallback.
+      meta: event.data.meta ?? message.meta,
+      content: message.content,
+    }
+    const failure = renderFailure(block) || (block.isError ? 'Render failed' : null)
+    diagram.failure = failure
+    diagram.path = failure ? null : resultPath(block)
+    break
+  }
+  return diagram
 }
 
 /** Turn-scoped accumulator of diagram calls; it publishes no view Node. */

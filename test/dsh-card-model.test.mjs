@@ -10,11 +10,14 @@ import assert from 'node:assert/strict'
 
 import {
   ANTU_DIAGRAMS_KIND,
+  antuAddress,
   antuDiagramsDefinition,
   antuDiagramsStart,
   antuDiagramsUpdate,
+  diagramFromRecords,
   isAntuRenderName,
   isAppendSurfaceEvent,
+  parseAntuAddress,
 } from '../tools/dsh/src/card-model.mjs'
 
 /** One `tool/call` session event; `args` is a value (stringified) or the raw string. */
@@ -138,4 +141,118 @@ test('antu-diagrams: the definition matches its events and publishes turn data',
   assert.equal(antuDiagramsDefinition.buildLocationData({ state: next }, 'step', null), null)
   // Nothing changed: the previous Location value comes back by reference so React does not re-render.
   assert.equal(antuDiagramsDefinition.buildLocationData({ state: next }, 'turn', location), location)
+})
+
+test('antu resource address: session and subagent forms round trip, ids are encoded', () => {
+  const session = { kind: 'session', sessionId: 'session/one ?' }
+  const sessionAddress = antuAddress({ session, callId: 'call #1' })
+  assert.equal(sessionAddress, 'dsh-resource://antu/session%2Fone%20%3F/call%20%231')
+  assert.deepEqual(parseAntuAddress(sessionAddress), { session, callId: 'call #1' })
+
+  const child = {
+    kind: 'subagent',
+    parentSessionId: 'parent/1',
+    childSessionId: 'child 2',
+    mode: 'continuable',
+  }
+  const childAddress = antuAddress({ session: child, callId: 'call/2' })
+  assert.equal(childAddress, 'dsh-resource://antu/subagent/parent%2F1/child%202/continuable/call%2F2')
+  assert.deepEqual(parseAntuAddress(childAddress), { session: child, callId: 'call/2' })
+
+  // Plain ids stay readable, the same shape as the plan plugin's addresses.
+  assert.equal(
+    antuAddress({ session: { kind: 'session', sessionId: 's1' }, callId: 'c1' }),
+    'dsh-resource://antu/s1/c1',
+  )
+})
+
+test('parseAntuAddress: every malformed address is undefined', () => {
+  for (const address of [
+    undefined,
+    null,
+    '',
+    'not an address',
+    'https://antu/s/c',
+    'sidebar://antu/s/c',
+    'dsh-resource://plan/s/c',
+    'dsh-resource://antu/s',
+    'dsh-resource://antu/',
+    'dsh-resource://antu/s/',
+    'dsh-resource://antu//c',
+    'dsh-resource://antu/a/b/c',
+    'dsh-resource://antu/s/c?x=1',
+    'dsh-resource://antu/s/c#frag',
+    'dsh-resource://antu/s/%E0%A4%A',
+    'dsh-resource://antu/subagent/p/c/sideways/k',
+    'dsh-resource://antu/subagent/p/c/one-shot',
+    'dsh-resource://antu/subagent/p/c/one-shot/k/extra',
+  ]) {
+    assert.equal(parseAntuAddress(address), undefined, String(address))
+  }
+})
+
+test('diagramFromRecords: reads the call, then its path from meta or the Written: line', () => {
+  const spec = { type: 'fact', title: '  案情  ' }
+  const records = [
+    { event: callEvent(1, 'c1', { spec, kind: 'scale', theme: 'legal' }) },
+    {
+      event: resultEvent(1, 'c1', {
+        content: [{ type: 'text', text: 'Written: /w/text.html' }],
+        meta: { path: '/w/meta.html' },
+      }),
+    },
+  ]
+  assert.deepEqual(diagramFromRecords(records, 'c1'), {
+    callId: 'c1',
+    spec,
+    kind: 'scale',
+    theme: 'legal',
+    title: '案情',
+    path: '/w/meta.html',
+    failure: null,
+  })
+
+  // meta may arrive on the event (DSH 0.2.0-rc.2) rather than on the message.
+  const onEvent = [
+    { event: callEvent(1, 'c1', { spec }) },
+    { event: resultEvent(1, 'c1', {}, { meta: { path: '/w/on-event.html' } }) },
+  ]
+  assert.equal(diagramFromRecords(onEvent, 'c1').path, '/w/on-event.html')
+
+  // No result yet: the call is still a diagram, but has no path.
+  const waiting = diagramFromRecords([{ event: callEvent(1, 'c1', { spec, kind: 'scale' }) }], 'c1')
+  assert.equal(waiting.path, null)
+  assert.equal(waiting.failure, null)
+  assert.equal(waiting.kind, 'scale')
+})
+
+test('diagramFromRecords: a failure is the quiet line the card shows', () => {
+  const failed = [
+    { event: callEvent(1, 'c1', { spec: { type: 'fact' } }) },
+    { event: resultEvent(1, 'c1', { meta: { ok: false, reason: 'EPERM', errors: ['a', 'b'] } }) },
+  ]
+  const value = diagramFromRecords(failed, 'c1')
+  assert.equal(value.failure, 'EPERM: a (+1 more)')
+  assert.equal(value.path, null)
+
+  const errored = [
+    { event: callEvent(1, 'c1', { spec: { type: 'fact' } }) },
+    { event: resultEvent(1, 'c1', { isError: true }) },
+  ]
+  assert.equal(diagramFromRecords(errored, 'c1').failure, 'Render failed')
+})
+
+test('diagramFromRecords: other tools, other call ids and malformed arguments give undefined', () => {
+  assert.equal(diagramFromRecords(undefined, 'c1'), undefined)
+  assert.equal(diagramFromRecords([], 'c1'), undefined)
+  assert.equal(diagramFromRecords([{ event: callEvent(1, 'c1', { spec: {} }, 'write') }], 'c1'), undefined)
+  assert.equal(diagramFromRecords([{ event: callEvent(1, 'c2', { spec: {} }) }], 'c1'), undefined)
+  assert.equal(diagramFromRecords([{ event: callEvent(1, 'c1', '{"spec":') }], 'c1'), undefined)
+  assert.equal(diagramFromRecords([{ event: callEvent(1, 'c1', {}) }], 'c1'), undefined)
+  assert.equal(diagramFromRecords([{ event: { type: 'tool/result', data: {} } }], 'c1'), undefined)
+
+  // The stopgap MCP wire name is the same call, with the MCP fallback title.
+  const mcp = diagramFromRecords([{ event: callEvent(1, 'c9', { spec: { type: 'fact' } }, 'mcp__antu__antu_render') }], 'c9')
+  assert.equal(mcp.title, 'Antu (MCP)')
+  assert.equal(mcp.kind, undefined)
 })

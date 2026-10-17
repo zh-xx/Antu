@@ -4,6 +4,9 @@
 > build with `npm run build:dsh` (output `tools/dsh/package/`, not published to npm yet).
 > Decisions below were locked 2026-10-14. This document supersedes the outdated parts of #79's first body
 > (iframe of a Host HTML route, unpublished MCP, `/antu/view/<id>` storage).
+>
+> DSH's own rules for everything under `tools/dsh/`: [dsh-conventions.md](dsh-conventions.md)
+> (中文 [dsh-conventions.zh-CN.md](dsh-conventions.zh-CN.md)).
 
 ## Goal
 
@@ -20,7 +23,7 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 | Wire tool names | `antu_validate`, `antu_layout`, `antu_render`, and the read-only reference tools `antu_schema`, `antu_guide`, `antu_examples`, … (not `mcp__antu__…`). A chat card may also register the MCP names while a stopgap MCP row is still in use |
 | `antu_render` | **Writes** a self-contained HTML file under the **session workspace** (absolute path). The card draws from the tool-call **arguments** (`spec`); the file is for archive, forward, and `openFile` |
 | Chat card | **The picture only**, drawn in the turn tail (`conversation.chat.turnTail`) after DSH folds a finished turn's tool steps, so it is not hidden in that fold. The whole diagram is fitted into the card (`mount()` with `cardUi`), no title row, no buttons; a `ResizeObserver` refits it when the fold opens. The folded tool row is one line (title, status, **Open full view**). A click anywhere on the picture opens the full view. The wheel goes on to the conversation. Decided 2026-10-15 after a mock-up (readable text size showed too little of a diagram); moved to the turn tail after the browser test showed the folded card invisible and blank |
-| Full view | A page `antu-diagram` in DSH's right panel, presented **fullscreen** (the panel's own fullscreen mode covers the window), with the full chrome: kind, theme, detail cards, export, and **Open HTML** |
+| Full view | A resource type `antu-diagram` in DSH's right panel, presented **fullscreen** (the panel's own fullscreen mode covers the window), with the full chrome: kind, theme, detail cards, export, and **Open HTML**. The tab keeps only its address (`dsh-resource://antu/…`); a provider re-reads the diagram from Session history, so no private cache is kept |
 | Package | Separate **`@zh-xx/antu-dsh`**, version **same number** as `@zh-xx/antu`. Source under `tools/dsh/`; **build output is not committed** |
 | Skill | Shipped with the plugin from the Host-tool phase onward; name **not** bare `antu` (avoid clashing with `skills/antu/`). Text teaches Host tool names, not the command line |
 | Theme in a dark host | Diagram stays on Antu's themes (default `document`, light). Card chrome uses DSH `--dsw-alias-*`. A dark diagram theme is a later issue |
@@ -57,9 +60,10 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 - Client needs **DSH ≥ 0.2.0-rc.2** (`require.async` for package-local `client.embed.js`). On 0.1.x the card
   shows an upgrade message instead of crashing the slot.
 - Memory skill `antu-diagram`; "open in sidebar" via `openFile` on the written HTML.
-- **Full view**: a click on the card opens the page `antu-diagram` in the right panel and asks for fullscreen. It mounts the full
-  embed (no `cardUi`) from the same `argsRaw` `spec`. DSH 0.2.0-rc.2's public `ctx.sidebarRight` has no fullscreen call; the plugin
-  uses the controller's `commandTarget` / `toggleFullscreen` when present and otherwise leaves the panel to its own fullscreen button.
+- **Full view**: a click on the card opens `dsh-resource://antu/…` as the `antu-diagram` resource type in the right panel and asks
+  for fullscreen. Its provider re-reads the `antu_render` call from Session history, so a reload keeps the diagram from the address
+  alone (no `localStorage` copy). DSH 0.2.0-rc.2's public `ctx.sidebarRight` has no fullscreen call; the plugin uses the controller's
+  `commandTarget` / `toggleFullscreen` when present and otherwise leaves the panel to its own fullscreen button.
 - Install: `npm run build:dsh` also packs `zh-xx-antu-dsh-*.tgz` (preferred over a bare `package/` link). pnpm treats a rebuilt tgz with the same version as unchanged: to update, `remove` then `add`, and restart DSH (see `tools/dsh/README.md`).
 - CI: `test/dsh-plugin.test.mjs` (helpers, manifest, `build.mjs`, Host `apply` smoke). Trusted publisher / npm publish still open.
 
@@ -87,7 +91,6 @@ Not planned here: a hosted service, a second package for another host, a chat-si
 
 ### P3 — later, if wanted
 
-- Sidebar tab that rebuilds from the session log (resource type or Host projection + `wire.view`), not only from the params of the latest click.
 - Dark diagram theme; in-host PNG export without leaving the card.
 
 ## Acceptance (P2)

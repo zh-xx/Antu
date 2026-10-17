@@ -102,6 +102,9 @@ const INLINED = [
       'antuDiagramsDefinition',
       'antuDiagramsStart',
       'antuDiagramsUpdate',
+      'antuAddress',
+      'parseAntuAddress',
+      'diagramFromRecords',
       'isAntuRenderName',
       'isAppendSurfaceEvent',
     ],
@@ -181,6 +184,11 @@ function syncPackageJson() {
       '@deepseek-ai/dsh-client-ui-sidebar-right',
       '@deepseek-ai/dsh-client-ui-chat',
       '@deepseek-ai/dsh-client-ui-conversation',
+      // The full view is a resource: the provider (resources), its Session address (sessions) and
+      // the history stream it pages through (remote.session).
+      '@deepseek-ai/dsh-client-resources',
+      '@deepseek-ai/dsh-api-session-controller',
+      '@deepseek-ai/dsh-api-remotes',
     ],
   }
   writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`)
