@@ -12,6 +12,7 @@ window.__ModuleLoader__.load({
     const React = require('react')
     const h = React.createElement
     const { useEffect, useLayoutEffect, useMemo, useRef, useState } = React
+    const useSyncExternalStore = React.useSyncExternalStore
 
     // DSH's shared atoms are an optional sync require: a host that cannot resolve them keeps
     // the hand-written row below. Do not import any other DSH client package.
@@ -39,6 +40,33 @@ window.__ModuleLoader__.load({
     let hasTurnTail = false
     /** The code require-async.mjs gives the upgrade error; the component localizes the message at render. */
     const REQUIRE_ASYNC_CODE = 'ANTU_DSH_REQUIRE_ASYNC'
+
+    /** DSH's resolved light / dark mode, shared by every card. apply fills it from the optional theme service. */
+    const hostTheme = { dark: false, listeners: new Set() }
+
+    function setHostDark(dark) {
+      if (hostTheme.dark === dark) return
+      hostTheme.dark = dark
+      for (const listener of [...hostTheme.listeners]) listener()
+    }
+
+    function subscribeHostDark(listener) {
+      hostTheme.listeners.add(listener)
+      return () => hostTheme.listeners.delete(listener)
+    }
+
+    /** Re-render when DSH switches mode; without React's external store, subscribe by hand. */
+    function useHostDark() {
+      if (typeof useSyncExternalStore === 'function') {
+        return useSyncExternalStore(subscribeHostDark, () => hostTheme.dark)
+      }
+      const [dark, setDark] = useState(hostTheme.dark)
+      useEffect(() => {
+        setDark(hostTheme.dark)
+        return subscribeHostDark(() => setDark(hostTheme.dark))
+      }, [])
+      return dark
+    }
 
     /** Plain English lookup for a host without the optional locale service (same `{name}` placeholders). */
     function lookupEnglish(key, params) {
@@ -212,9 +240,12 @@ window.__ModuleLoader__.load({
     }
 
     /** Mount `spec` into `el` as asked (kind and theme are checked); `ui` is the chat card's quiet chrome */
-    function mountDiagram(embed, el, spec, wantKind, wantTheme, ui, lang) {
+    function mountDiagram(embed, el, spec, wantKind, wantTheme, ui, lang, onEvent) {
       const opening = pickOpening(knownKinds(embed, spec), wantKind, wantTheme)
-      return { handle: embed.mount(el, spec, mountOptions({ ...opening, lang }, ui)), opening }
+      const options = mountOptions({ ...opening, lang }, ui)
+      // The full view needs the embed's events (the reader's theme pick); mountOptions stays pure.
+      if (typeof onEvent === 'function') options.onEvent = onEvent
+      return { handle: embed.mount(el, spec, options), opening }
     }
 
     /**
@@ -222,11 +253,15 @@ window.__ModuleLoader__.load({
      * mounted inside DSH's collapsed fold is 0×0 and would stay blank, so refit on every resize
      * (opening the fold changes the host's size). Returns the mount error, if any.
      */
-    function useDiagram(hostRef, handleRef, embed, spec, kind, theme, ui, revision, lang) {
+    function useDiagram(hostRef, handleRef, embed, spec, kind, theme, ui, revision, lang, onEvent) {
       const [mountError, setMountError] = useState(null)
       // Mount with the language of the moment; a later switch goes through setLang, not a remount.
       const langRef = useRef(lang)
       langRef.current = lang
+      // The embed keeps the handler it was mounted with; a ref keeps the latest one without a remount.
+      const onEventRef = useRef(onEvent)
+      onEventRef.current = onEvent
+      const dispatchEvent = useRef((event) => onEventRef.current?.(event)).current
 
       useLayoutEffect(() => {
         const el = hostRef.current
@@ -238,7 +273,17 @@ window.__ModuleLoader__.load({
         setMountError(null)
 
         try {
-          handleRef.current = mountDiagram(embed, el, spec, kind, theme, ui, langRef.current).handle
+          const mounted = mountDiagram(
+            embed,
+            el,
+            spec,
+            kind,
+            theme,
+            ui,
+            langRef.current,
+            typeof onEvent === 'function' ? dispatchEvent : undefined,
+          )
+          handleRef.current = mounted.handle
         } catch (err) {
           setMountError(err?.message || String(err))
           return undefined
@@ -324,8 +369,22 @@ window.__ModuleLoader__.load({
       const resource = useResource(address)
       const value = resource?.value && typeof resource.value === 'object' ? resource.value : null
       const spec = value?.spec && typeof value.spec === 'object' ? value.spec : null
+      const dark = useHostDark()
+      // The full view has the theme switch: remember the reader's choice made while DSH is light. A ref, not state:
+      // the pick must not remount the diagram the reader has just changed (the zoom and the pinned card would go);
+      // it only decides which theme to come back to when DSH goes from dark to light again.
+      const lightPickRef = useRef(undefined)
+      const onEvent = (event) => {
+        const picked = readerPick(event, dark)
+        if (picked !== undefined) lightPickRef.current = picked
+      }
+      const requestedTheme = value?.theme
+      const theme = useMemo(
+        () => effectiveTheme({ dark, requested: requestedTheme, lightPick: lightPickRef.current }),
+        [dark, requestedTheme],
+      )
       // Full page chrome in the sidebar — no cardUi.
-      const mountError = useDiagram(hostRef, handleRef, embed, spec, value?.kind, value?.theme, undefined, revision, embedLang(t))
+      const mountError = useDiagram(hostRef, handleRef, embed, spec, value?.kind, theme, undefined, revision, embedLang(t), onEvent)
       const embedError = embedErrorMessage(loadError, mountError, t)
       const path = typeof value?.path === 'string' ? value.path : null
       const openFile = path ? fullView.files.get(path) : null
@@ -394,6 +453,7 @@ window.__ModuleLoader__.load({
       const hostRef = useRef(null)
       const handleRef = useRef(null)
       const { embed, loadError } = useEmbed()
+      const dark = useHostDark()
 
       const argsRaw = argsRawOf(block)
       const args = useMemo(() => parseArgsRaw(argsRaw), [argsRaw])
@@ -405,7 +465,17 @@ window.__ModuleLoader__.load({
       const title = titleOf(spec, toolName === 'mcp__antu__antu_render' ? t('title.mcp') : t('tab.title'))
       // The whole diagram, fitted; no chrome (cardUi). Reading happens in the full view.
       const ui = useMemo(() => (embed ? { ...embed.cardUi } : undefined), [embed])
-      const mountError = useDiagram(hostRef, handleRef, embed, spec, args?.kind, args?.theme, ui, argsRaw, embedLang(t))
+      const mountError = useDiagram(
+        hostRef,
+        handleRef,
+        embed,
+        spec,
+        args?.kind,
+        effectiveTheme({ dark, requested: args?.theme }),
+        ui,
+        argsRaw,
+        embedLang(t),
+      )
       const embedError = embedErrorMessage(loadError, mountError, t)
 
       const openFull = () => {
@@ -504,11 +574,22 @@ window.__ModuleLoader__.load({
       const hostRef = useRef(null)
       const handleRef = useRef(null)
       const { embed, loadError } = useEmbed()
+      const dark = useHostDark()
       const args = call.args && typeof call.args === 'object' ? call.args : null
       const spec = args ? args.spec : null
       const title = titleOf(spec, call.name === 'mcp__antu__antu_render' ? t('title.mcp') : t('tab.title'))
       const ui = useMemo(() => (embed ? { ...embed.cardUi } : undefined), [embed])
-      const mountError = useDiagram(hostRef, handleRef, embed, spec, args?.kind, args?.theme, ui, call.argsRaw, embedLang(t))
+      const mountError = useDiagram(
+        hostRef,
+        handleRef,
+        embed,
+        spec,
+        args?.kind,
+        effectiveTheme({ dark, requested: args?.theme }),
+        ui,
+        call.argsRaw,
+        embedLang(t),
+      )
       const embedError = embedErrorMessage(loadError, mountError, t)
 
       const openFull = () => {
@@ -626,6 +707,25 @@ window.__ModuleLoader__.load({
           activeT = lookupEnglish
           slotLocale = {}
         }
+        // Optional: the theme service tells us DSH's resolved light / dark mode (`system` is already
+        // resolved). Without it the store stays light and the diagram opens as the call asked (rule 10).
+        ctx.inject(['theme'], (themeCtx) => {
+          const readDark = () => {
+            try {
+              return themeCtx.theme.getTheme()?.active?.colorScheme === 'dark'
+            } catch {
+              return false
+            }
+          }
+          themeCtx.effect(() => {
+            setHostDark(readDark())
+            const off = themeCtx.on('theme/change', () => setHostDark(readDark()))
+            return () => {
+              off?.()
+              setHostDark(false)
+            }
+          }, 'antu-dsh: host theme')
+        })
         // 0.14/0.15 builds kept a private tab cache; remove its keys once. Only for those users — may be deleted later.
         try {
           const store = window.localStorage
