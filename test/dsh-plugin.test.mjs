@@ -1372,7 +1372,7 @@ test('built client tail: finished diagrams draw there, failures explain, running
   const { onEvent, ...opening } = calls.mount[0].options
   assert.equal(typeof onEvent, 'function')
   assert.deepEqual(opening, { kind: 'scale', lang: 'en', ui: embed.cardUi })
-  const cover = findAll(card.tree(), (n) => n.type === 'button')[0]
+  const cover = findAll(card.tree(), (n) => n.type === 'button' && String(n.props?.className || '').includes('antuDsh_cover'))[0]
   assert.match(cover.props['aria-label'], /Open full view: 案情/)
   cover.props.onClick()
   assert.equal(opened.length, 1)
