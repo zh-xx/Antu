@@ -36,3 +36,6 @@ Thumbs.db
 
 # Runs of the trial (tools/trial/run.mjs): kept on the machine, not in the repository
 runs/
+
+# Case material drawn with Antu: stays on this machine, never in the repository
+cases/
