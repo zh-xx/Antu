@@ -1,7 +1,7 @@
 # DeepSeek Harness (DSH) plugin
 
 > Status: **P2 in tree** (issue [#79](https://github.com/zh-xx/Antu/issues/79)). Sources under `tools/dsh/`;
-> build with `npm run build:dsh` (output `tools/dsh/package/`, not published to npm yet).
+> build with `npm run build:dsh` (output `tools/dsh/package/`; published to npm as `@zh-xx/antu-dsh` since 0.16.1).
 > Decisions below were locked 2026-10-14. This document supersedes the outdated parts of #79's first body
 > (iframe of a Host HTML route, unpublished MCP, `/antu/view/<id>` storage).
 >
@@ -87,8 +87,9 @@ else has to be installed on the user's machine (no system Node, no `npx`).
    range is `^0.2.0-rc.2 || ^0.2.1-rc.0` (a prerelease only satisfies a range that names a prerelease of the same `x.y.z`); a workflow of its own,
    `.github/workflows/publish-npm-dsh.yml` (npm's trusted publisher is set per package and names one workflow file), with a dry run as the default
    and the `npm` environment's approval before a real publish. The plugin takes the repository's version and the same version of `@zh-xx/antu`,
-   so it goes out with the next release, whose number the maintainer confirms. Its **first** version needs a short-lived token (see the top of the
-   workflow file), then a trusted publisher on npmjs.com.
+   so it goes out with each release. **Done 2026-10-18:** 0.16.1 is on npm (the first version, published with a short-lived token, since deleted);
+   the trusted publisher is set on npmjs.com (it showed "pending validation" until a publish went through it, due before 2026-10-20 11:37 UTC, so 0.16.2
+   was released for that). From 0.16.2 on, a version is published without a token.
 
 Not planned here: a hosted service, a second package for another host, a chat-side editor for the JSON.
 

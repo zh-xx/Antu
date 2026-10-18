@@ -100,7 +100,7 @@ Tools: `antu_schema`, `antu_guide`, `antu_examples`, `antu_validate`, `antu_layo
 
 ### DeepSeek Harness (DSH)
 
-A native DSH plugin (`@zh-xx/antu-dsh`: Host tools + chat card) is **planned** — see [spec/dsh-plugin.md](spec/dsh-plugin.md) and the scaffold under [`tools/dsh/`](tools/dsh/). Until it ships, a profile that already has Node can attach `antu-mcp` with a configuration-only bundle; the recipe and its limits are in [tools/dsh/README.md](tools/dsh/README.md).
+A native DSH plugin, [`@zh-xx/antu-dsh`](https://www.npmjs.com/package/@zh-xx/antu-dsh) (Host tools + a chat card with a picker of the way of drawing), is on npm: `dsh plugin --profile <name> add @zh-xx/antu-dsh`, then restart DSH. It needs DSH 0.2.0-rc.2 or newer. How it works and how it is tested: [spec/dsh-plugin.md](spec/dsh-plugin.md) and [tools/dsh/README.md](tools/dsh/README.md). A profile that cannot use the plugin can still attach `antu-mcp` with a configuration-only bundle; the recipe and its limits are in [tools/dsh/README.md](tools/dsh/README.md).
 
 ## In an Application
 
