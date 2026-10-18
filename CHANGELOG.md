@@ -5,6 +5,13 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+## 0.16.2
+
+Nothing in the engine, the command line, the MCP server or the entries for a host's code changes. The DeepSeek Harness plugin `@zh-xx/antu-dsh` is on npm since 0.16.1; this release is the first one published through npm's trusted publisher (no token), and it brings the documents up to date.
+
+### Changed
+- **Documents**: the readmes and the plugin's design document say that `@zh-xx/antu-dsh` is published and how to install it (`dsh plugin --profile <name> add @zh-xx/antu-dsh`), and the old `0.14.0` examples in `tools/dsh/README.md` now name a current version.
+
 ## 0.16.1
 
 Nothing in the engine, the command line, the MCP server or the entries for a host's code changes: no file and no tool call behaves differently. This release exists so that the DeepSeek Harness plugin `@zh-xx/antu-dsh` can be published to npm for the first time (it takes the repository's version number and depends on exactly the same version of `@zh-xx/antu`).

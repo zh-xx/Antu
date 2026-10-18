@@ -1,7 +1,7 @@
 # DeepSeek Harness（DSH）插件
 
 > 状态：**P2 已在仓库落地**（issue [#79](https://github.com/zh-xx/Antu/issues/79)）。源码在 `tools/dsh/`；
-> `npm run build:dsh` 生成可 `install_bundle` 的 `tools/dsh/package/`（尚未发 npm）。
+> `npm run build:dsh` 生成可 `install_bundle` 的 `tools/dsh/package/`（已发布到 npm：`@zh-xx/antu-dsh`，自 0.16.1 起）。
 > 下列决策于 2026-10-14 锁定。本文取代 #79 初稿中已过时的部分（Host 起 HTML 再 iframe、MCP 未发布、
 > `/antu/view/<id>` 存储）。
 >
@@ -77,7 +77,8 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
    仓库里已有：清单不再是 `private`，带上说明、许可证和第三方声明，peer 范围改为 `^0.2.0-rc.2 || ^0.2.1-rc.0`（预发布版本只匹配
    写明了同一个 `x.y.z` 预发布的范围）；一个单独的工作流 `.github/workflows/publish-npm-dsh.yml`（npm 的 trusted publisher 按包设置、
    只认一个工作流文件），默认演练，真发布前要 `npm` 环境批准。插件沿用仓库的版本号，依赖同版本的 `@zh-xx/antu`，所以随下一个发布一起出，
-   版本号由维护者确认。**第一个**版本要用短期令牌（见工作流文件开头），之后再在 npmjs.com 上设置 trusted publisher。
+   每次发版一起出。**2026-10-18 已完成：** 0.16.1 已在 npm 上（第一个版本，用短期令牌发布，令牌已删）；trusted publisher 已在 npmjs.com 设好
+   （在有一次发布走过它之前，状态是“待验证”，期限是 2026-10-20 11:37 UTC，所以才有 0.16.2）。从 0.16.2 起，发布不再用令牌。
 
 不在计划内：托管服务、给别的宿主的第二个包、在聊天里编辑 JSON。
 

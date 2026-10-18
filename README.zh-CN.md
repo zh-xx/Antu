@@ -94,7 +94,7 @@ MCP 服务是 npm 包 [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu)
 
 ### DeepSeek Harness（DSH）
 
-面向 DSH 的原生插件（`@zh-xx/antu-dsh`：Host 工具 + 聊天卡片）仍在**规划中**——见 [spec/dsh-plugin.zh-CN.md](spec/dsh-plugin.zh-CN.md) 与脚手架 [`tools/dsh/`](tools/dsh/)。在它发布之前，已有 Node 的 profile 可用配置型 bundle 挂上 `antu-mcp`；配方与限制写在 [tools/dsh/README.md](tools/dsh/README.md)。
+面向 DSH 的原生插件 [`@zh-xx/antu-dsh`](https://www.npmjs.com/package/@zh-xx/antu-dsh)（Host 工具 + 带“画法”选择条的聊天卡片）已发布到 npm：`dsh plugin --profile <名> add @zh-xx/antu-dsh`，然后重启 DSH。需要 DSH 0.2.0-rc.2 或更新。原理和测试方法见 [spec/dsh-plugin.zh-CN.md](spec/dsh-plugin.zh-CN.md) 与 [tools/dsh/README.md](tools/dsh/README.md)。用不了插件的 profile，仍可用配置型 bundle 挂上 `antu-mcp`；配方与限制写在 [tools/dsh/README.md](tools/dsh/README.md)。
 
 ## 在应用里使用
 

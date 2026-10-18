@@ -5,8 +5,7 @@ DSH conventions (resource addresses, providers, seats): [spec/dsh-conventions.md
 (中文 [spec/dsh-conventions.zh-CN.md](../../spec/dsh-conventions.zh-CN.md)).
 Umbrella issue: [#79](https://github.com/zh-xx/Antu/issues/79).
 
-**Published as `@zh-xx/antu-dsh`** from the version after 0.16.0 on (the plugin has the same version number as the repository and depends on exactly the same version of `@zh-xx/antu`). Until the first npm version is out, build it and install the **tarball**: `npm run build:dsh`.
-Needs `@zh-xx/antu` at the same version, which is on npm.
+**On npm as `@zh-xx/antu-dsh`** (from 0.16.1; the plugin has the same version number as the repository and depends on exactly the same version of `@zh-xx/antu`): `dsh plugin --profile <name> add @zh-xx/antu-dsh`, then restart DSH. To try a build of your own, use the **tarball** (`npm run build:dsh`, below).
 
 ## Requirements
 
@@ -44,7 +43,7 @@ The peer range lists both: a prerelease only satisfies a range that names a prer
 
 ## Install into DSH
 
-**From npm** (once published): `dsh plugin --profile <name> add @zh-xx/antu-dsh`, then restart DSH.
+**From npm**: `dsh plugin --profile <name> add @zh-xx/antu-dsh`, then restart DSH.
 
 **Or the tarball** (peers resolve inside the DSH profile):
 
@@ -127,7 +126,7 @@ existing MCP server with a **configuration-only** bundle (official template:
         serverName: antu
         transport: stdio
         command: npx
-        args: ['-y', '-p', '@zh-xx/antu@0.14.0', 'antu-mcp']
+        args: ['-y', '-p', '@zh-xx/antu@0.16.2', 'antu-mcp']
         failOnStartupError: true
 ```
 
@@ -136,7 +135,7 @@ Install with DSH's `plugin_manager` → `install_bundle` and the **absolute** pa
 ### Limits of this stopgap (read before relying on it)
 
 - Needs **system Node and network** for `npx` (Desktop's embedded Node is not enough by itself).
-- Pin the package version (`@0.14.0` above); `@latest` drifts per machine.
+- Pin the package version (`@0.16.2` above); `@latest` drifts per machine.
 - Tools appear as `mcp__antu__antu_validate`, … — not the final Host names.
 - For `antu_render`, pass an **absolute `outPath` inside the session workspace**. The default relative path
   follows the MCP process cwd, which is not the session folder.
