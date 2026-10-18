@@ -20,7 +20,7 @@
 
 | 导入 | 运行于 | 提供 | 构建 |
 | --- | --- | --- | --- |
-| `@zh-xx/antu/embed` | 浏览器 | `mount`、`validate`、`normalize`、`kindsOf` | `vite.embed.config.js` → `embed/antu-embed.js` |
+| `@zh-xx/antu/embed` | 浏览器 | `mount`、`validate`、`normalize`、`kindsOf`、`kindIcon`、`kindLabel` | `vite.embed.config.js` → `embed/antu-embed.js` |
 | `@zh-xx/antu/validate` | Node 或浏览器 | `validate`、`normalize`、`layout`、`kinds`、`versions` | `vite.api.config.js` → `lib/validate.mjs` |
 | `@zh-xx/antu/html` | Node | `renderHtml` | `vite.api.config.js` → `lib/html.mjs` |
 
@@ -178,6 +178,16 @@ mount(el, spec, {
 
 不是 JSON 里一个条目的卡片（时间比例轴上聚在一起的一串事件）以画布上的 id 告知，`collection` 为 `null`。宿主忽略
 不认识的事件类型和字段：新增的属于"增加"（`spec/versioning.md`）。
+
+### 宿主自己的画法选择器
+
+宿主想用自己的方式让读者选画法（比如 DSH 聊天卡片旁的一条小示意图），可以向嵌入要每个选项的样子：
+
+- `kindsOf(type)`：这个图种有哪些画法，第一个是默认打开的那个；
+- `kindIcon(kind)`：这种画法的小示意图，一个 `<svg viewBox="0 0 80 48">` 字符串（和页面自己的选择面板是同一幅图）；这种画法没有示意图时是 `null`。颜色是 CSS 变量：在放这段标记的地方设置 `--antu-text-3`（线条色）和 `--antu-line`（方框底色），它就跟着你的主题；
+- `kindLabel(kind, lang)`：这种画法在页面选择器里的名字，`zh` 或 `en`（其它值给英文）；不认识的画法是 `null`。
+
+之后宿主调用 `handle.setKind(kind)`；画法变了会收到 `kindchange`。
 
 ### 代价
 

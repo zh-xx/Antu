@@ -21,7 +21,7 @@ keeps it (`validate`), and makes the self-contained page on its own server or co
 
 | Import | Runs in | What it gives | Built by |
 | --- | --- | --- | --- |
-| `@zh-xx/antu/embed` | the browser | `mount`, `validate`, `normalize`, `kindsOf` | `vite.embed.config.js` → `embed/antu-embed.js` |
+| `@zh-xx/antu/embed` | the browser | `mount`, `validate`, `normalize`, `kindsOf`, `kindIcon`, `kindLabel` | `vite.embed.config.js` → `embed/antu-embed.js` |
 | `@zh-xx/antu/validate` | Node or the browser | `validate`, `normalize`, `layout`, `kinds`, `versions` | `vite.api.config.js` → `lib/validate.mjs` |
 | `@zh-xx/antu/html` | Node | `renderHtml` | `vite.api.config.js` → `lib/html.mjs` |
 
@@ -188,6 +188,16 @@ The host draws its own kind/theme controls with its theme tokens; the diagram ke
 A card that is not one item of the JSON (a run of events gathered on the time scale) is told with its canvas id
 and `collection: null`. A host ignores event types and fields it does not know: new ones are additions
 (`spec/versioning.md`).
+
+### A kind picker of the host's own
+
+A host that wants its own way to choose the kind (the DSH chat card shows a strip of small sketches) can ask the embed for what each choice looks like:
+
+- `kindsOf(type)` the kinds of a type, the first being the one it opens in;
+- `kindIcon(kind)` a small sketch of the kind as one `<svg viewBox="0 0 80 48">` string (the drawing the page's own picker shows), or `null` when the kind has none. Its colours are CSS variables: set `--antu-text-3` (the ink) and `--antu-line` (the tint of the boxes) where you put the markup, and it follows your theme;
+- `kindLabel(kind, lang)` the name of the kind as the picker shows it, in `zh` or `en` (anything else gives English), or `null` for an unknown kind.
+
+The host then calls `handle.setKind(kind)`; `kindchange` tells it the kind changed.
 
 ### What it costs
 
