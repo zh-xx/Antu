@@ -1,5 +1,6 @@
 # Dependencies and build output
-node_modules/
+# no trailing slash: a symlink called node_modules must be ignored too (one was committed by mistake, #215)
+node_modules
 dist/
 dist-engine/
 dist-embed/
