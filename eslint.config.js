@@ -71,6 +71,7 @@ export default [
         renderFailure: 'readonly',
         statusOf: 'readonly',
         knownKinds: 'readonly',
+        kindChoices: 'readonly',
         pickOpening: 'readonly',
         effectiveTheme: 'readonly',
         readerPick: 'readonly',
