@@ -95,6 +95,8 @@ const INLINED = [
     [
       'parseArgsRaw',
       'pickOpening',
+      'effectiveTheme',
+      'readerPick',
       'mountOptions',
       'renderFailure',
       'THEMES',
@@ -169,9 +171,11 @@ function syncPackageJson() {
   }
   // The official bundles require the shared atoms from DSH's module table and declare the package
   // as a development dependency; the client manifest carries it as an informational inject entry.
+  // The theme service is declared the same way: the plugin reads DSH's light / dark mode through it.
   pkg.devDependencies = {
     ...(pkg.devDependencies || {}),
     '@deepseek-ai/dsh-client-ui-primitives': '0.2.0-rc.2',
+    '@deepseek-ai/dsh-client-ui-theme': '0.2.0-rc.2',
   }
   pkg.files = [
     'index.js',
@@ -199,6 +203,8 @@ function syncPackageJson() {
       // Words come from the locale service; the compact tool row uses DSH's shared DisclosureRow.
       '@deepseek-ai/dsh-client-locale',
       '@deepseek-ai/dsh-client-ui-primitives',
+      // The diagram follows DSH's light / dark mode, read through the theme service.
+      '@deepseek-ai/dsh-client-ui-theme',
     ],
   }
   writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`)

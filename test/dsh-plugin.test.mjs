@@ -230,10 +230,12 @@ test('card model: a diagram opens as asked only when the kind and theme exist', 
 
   // Asked for and valid
   assert.deepEqual(pickOpening(known, 'scale', 'legal'), { mountKind: 'scale', mountTheme: 'legal', activeKind: 'scale' })
+  // `dark` is a theme the card may mount with (the host's own mode), even though the Host tools do not offer it.
+  assert.deepEqual(pickOpening(known, 'scale', 'dark'), { mountKind: 'scale', mountTheme: 'dark', activeKind: 'scale' })
   // Not valid: mount with the engine's default, highlight the type's first kind
   assert.deepEqual(pickOpening(known, 'bogus', 'neon'), { mountKind: null, mountTheme: null, activeKind: 'timeline' })
   assert.deepEqual(pickOpening([], undefined, undefined), { mountKind: null, mountTheme: null, activeKind: null })
-  assert.deepEqual(THEMES, ['document', 'modern', 'legal'])
+  assert.deepEqual(THEMES, ['document', 'modern', 'legal', 'dark'])
 
   assert.deepEqual(mountOptions({ mountKind: 'scale', mountTheme: null }, { zoom: false }), { kind: 'scale', ui: { zoom: false } })
   assert.deepEqual(mountOptions({ mountKind: null, mountTheme: 'modern' }), { theme: 'modern' })
@@ -300,6 +302,7 @@ test('package manifest matches root version and DSH bundle shape', () => {
     '@deepseek-ai/dsh-api-remotes',
     '@deepseek-ai/dsh-client-locale',
     '@deepseek-ai/dsh-client-ui-primitives',
+    '@deepseek-ai/dsh-client-ui-theme',
   ]) {
     assert.ok(pkg.dsh.client.inject.includes(name), name)
   }
@@ -399,6 +402,10 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(client, /locale\.bind\(ANTU_NS\)/)
   assert.match(client, /@deepseek-ai\/dsh-client-ui-primitives/)
   assert.match(client, /DisclosureRow/)
+  // The host theme service: its event and the two pure helpers it feeds.
+  assert.match(client, /theme\/change/)
+  assert.match(client, /function effectiveTheme/)
+  assert.match(client, /function readerPick/)
   assert.match(client, /antu-diagram/)
   assert.match(client, /conversation\.chat\.turnTail/)
   assert.match(client, /ResizeObserver/)
@@ -768,7 +775,7 @@ const buttonLabelled = (tree, label) => findAll(tree, (n) => n.type === 'button'
  * Load the built package/client.js; return the chat card, the turn tail, and the full-view page + title
  * when a right sidebar is given. `sidebarRight.openResource` is the fake navigation call the cards use.
  */
-function loadBuiltCard({ requireAsync, sidebarRight, uiConversation, subagentAddresses = {}, locale, primitives }) {
+function loadBuiltCard({ requireAsync, sidebarRight, uiConversation, subagentAddresses = {}, locale, primitives, theme }) {
   const { React, mount } = miniReact()
   let def
   new Function('window', readFileSync(join(pkgDir, 'client.js'), 'utf8'))({ __ModuleLoader__: { load: (d) => { def = d } } })
@@ -836,6 +843,11 @@ function loadBuiltCard({ requireAsync, sidebarRight, uiConversation, subagentAdd
       if (want.has('uiConversation')) {
         if (!uiConversation) return // a DSH without the conversation service (no turn tail)
         fn({ effect: (f) => f(), slots, uiConversation: conversation })
+        return
+      }
+      if (want.has('theme')) {
+        if (!theme) return // a DSH without the theme service: the store stays light
+        fn({ effect: (f) => f(), theme: theme.service, on: (name, listener) => theme.on(name, listener) })
       }
     },
   })
@@ -865,6 +877,25 @@ function fakeLocale() {
     service,
     switchTo(id) {
       active = id
+    },
+  }
+}
+
+/** A theme service stand-in: `getTheme()` carries the resolved scheme, `setDark` emits theme/change. */
+function fakeTheme(dark = false) {
+  let colorScheme = dark ? 'dark' : 'light'
+  const listeners = new Set()
+  const service = { getTheme: () => ({ active: { colorScheme } }) }
+  return {
+    service,
+    on(name, listener) {
+      if (name !== 'theme/change') return () => {}
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    setDark(next) {
+      colorScheme = next ? 'dark' : 'light'
+      for (const listener of [...listeners]) listener(service.getTheme())
     },
   }
 }
@@ -942,6 +973,105 @@ test('built client card: only the whole picture; new arguments remount it', asyn
   assert.deepEqual(calls.mount[1].options, { lang: 'en', ui: embed.cardUi })
 })
 
+test('built client card follows DSH light / dark mode, and degrades without the theme service', async () => {
+  const spec = { type: 'fact', title: '案情' }
+
+  // Light: the theme the call asked for. Dark: the `dark` theme, overriding the call.
+  // Back to light: the call's theme again, without any setTheme on a live handle.
+  const embed = fakeEmbed()
+  const theme = fakeTheme()
+  const load = loadBuiltCard({ requireAsync: async () => embed.embed, theme })
+  const view = load.mount(load.Card, {
+    phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec, theme: 'legal' }),
+  })
+  await view.flush()
+  assert.deepEqual(embed.calls.mount[0].options, { theme: 'legal', lang: 'en', ui: embed.embed.cardUi })
+
+  theme.setDark(true)
+  view.rerender()
+  assert.equal(embed.calls.mount.length, 2, 'a theme/change remounts the diagram')
+  assert.deepEqual(embed.calls.mount[1].options, { theme: 'dark', lang: 'en', ui: embed.embed.cardUi })
+  assert.equal(embed.calls.destroyed, 1)
+
+  theme.setDark(false)
+  view.rerender()
+  assert.equal(embed.calls.mount.length, 3)
+  assert.deepEqual(embed.calls.mount[2].options, { theme: 'legal', lang: 'en', ui: embed.embed.cardUi })
+  assert.equal(embed.calls.destroyed, 2)
+
+  // A call that asked for no theme: none while light, `dark` while dark, none again when light returns.
+  const plainEmbed = fakeEmbed()
+  const plainTheme = fakeTheme()
+  const plain = loadBuiltCard({ requireAsync: async () => plainEmbed.embed, theme: plainTheme })
+  const plainView = plain.mount(plain.Card, { phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec }) })
+  await plainView.flush()
+  assert.deepEqual(plainEmbed.calls.mount[0].options, { lang: 'en', ui: plainEmbed.embed.cardUi })
+  plainTheme.setDark(true)
+  plainView.rerender()
+  assert.deepEqual(plainEmbed.calls.mount[1].options, { theme: 'dark', lang: 'en', ui: plainEmbed.embed.cardUi })
+  plainTheme.setDark(false)
+  plainView.rerender()
+  assert.deepEqual(plainEmbed.calls.mount[2].options, { lang: 'en', ui: plainEmbed.embed.cardUi })
+
+  // No theme service: the card still mounts, and with no dark signal it keeps the call's theme.
+  const oldEmbed = fakeEmbed()
+  const old = loadBuiltCard({ requireAsync: async () => oldEmbed.embed })
+  const oldView = old.mount(old.Card, {
+    phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec, theme: 'legal' }),
+  })
+  await oldView.flush()
+  assert.equal(oldEmbed.calls.mount.length, 1)
+  assert.deepEqual(oldEmbed.calls.mount[0].options, { theme: 'legal', lang: 'en', ui: oldEmbed.embed.cardUi })
+})
+
+test('built client full view: a light-mode theme pick survives a dark trip (without a remount), a dark pick does not', async () => {
+  const { embed, calls } = fakeEmbed()
+  const theme = fakeTheme()
+  const sidebarRight = { openResource() {}, commandTarget: () => null, toggleFullscreen() {} }
+  const { Page, mount } = loadBuiltCard({ requireAsync: async () => embed, sidebarRight, theme })
+  const spec = { type: 'fact', title: '案情' }
+  const value = { callId: 'c1', spec, kind: 'scale', theme: 'legal', title: '案情', path: null, failure: null }
+  const page = mount(Page, {
+    useTabInfo: () => ({
+      sidebar: { expanded: true, fullscreen: true },
+      tab: { navigation: { address: 'dsh-resource://antu/s1/c1', revision: 1 } },
+    }),
+    useResource: () => ({ status: 'live', value }),
+  })
+  await page.flush()
+  // The full view passes onEvent; the rest of the opening is the usual kind, theme and language.
+  const opening = () => {
+    const { onEvent, ...options } = calls.mount.at(-1).options
+    assert.equal(typeof onEvent, 'function')
+    return options
+  }
+  const emit = (event) => calls.mount.at(-1).options.onEvent(event)
+  assert.deepEqual(opening(), { kind: 'scale', theme: 'legal', lang: 'en' })
+
+  // Light: the reader picks modern. The diagram is NOT redrawn for it (that would reset the zoom and the pinned card): the pick is
+  // only remembered, for the way back from dark.
+  const mountsBefore = calls.mount.length
+  emit({ type: 'themechange', theme: 'modern' })
+  page.rerender()
+  await page.flush()
+  assert.equal(calls.mount.length, mountsBefore, 'a pick in the page does not remount the diagram')
+
+  // DSH dark overrides it.
+  theme.setDark(true)
+  page.rerender()
+  assert.deepEqual(opening(), { kind: 'scale', theme: 'dark', lang: 'en' })
+
+  // A pick while DSH is dark is not the reader's light-mode choice.
+  emit({ type: 'themechange', theme: 'document' })
+  page.rerender()
+  assert.deepEqual(opening(), { kind: 'scale', theme: 'dark', lang: 'en' })
+
+  // Back to light: the pick made while light comes back, not the one made while dark.
+  theme.setDark(false)
+  page.rerender()
+  assert.deepEqual(opening(), { kind: 'scale', theme: 'modern', lang: 'en' })
+})
+
 test('built client card: a click opens the full view, fullscreen, with the HTML one click away', async () => {
   const { embed, calls } = fakeEmbed()
   const opened = []
@@ -986,10 +1116,16 @@ test('built client card: a click opens the full view, fullscreen, with the HTML 
   }
   const page = mount(Page, { useTabInfo: () => tabInfo, useResource })
   await page.flush()
-  assert.deepEqual(calls.mount.at(-1).options, { kind: 'scale', lang: 'en' })
+  // The full view also passes onEvent for the reader's theme pick; the rest is the usual opening.
+  const { onEvent: pageOnEvent, ...pageOptions } = calls.mount.at(-1).options
+  assert.equal(typeof pageOnEvent, 'function')
+  assert.deepEqual(pageOptions, { kind: 'scale', lang: 'en' })
   assert.equal(toggled.length, 1)
+  const mounts = calls.mount.length
   page.rerender()
   assert.equal(toggled.length, 1, 'asked once per opening, not on every render')
+  // The handler is new on every render, but the diagram is not remounted for it (the latest one is used).
+  assert.equal(calls.mount.length, mounts)
   // The reader leaves fullscreen: the page does not force it back
   tabInfo = { ...tabInfo, sidebar: { expanded: true, fullscreen: false } }
   page.rerender()

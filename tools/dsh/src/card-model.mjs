@@ -5,8 +5,8 @@
 //  into package/client.js, and the tests import it directly.
 // ============================================================
 
-/** The page looks the card can switch between (same ids as `theme` in the tools). */
-export const THEMES = ['document', 'modern', 'legal']
+/** The page looks a diagram can mount with (same ids as `theme` in the tools; `dark` is the host's own mode). */
+export const THEMES = ['document', 'modern', 'legal', 'dark']
 
 /** Parse tool-call argsRaw JSON; null when truncated or invalid */
 export function parseArgsRaw(argsRaw) {
@@ -76,6 +76,27 @@ export function pickOpening(known, wantKind, wantTheme) {
   const mountKind = typeof wantKind === 'string' && known.includes(wantKind) ? wantKind : null
   const mountTheme = typeof wantTheme === 'string' && THEMES.includes(wantTheme) ? wantTheme : null
   return { mountKind, mountTheme, activeKind: mountKind || known[0] || null }
+}
+
+/**
+ * The theme to mount with: a dark host wins, else the reader's pick while the host is light, else the
+ * theme the call asked for. Unknown names count as absent, so a stale or bogus value passes nothing.
+ * @returns {string | undefined}
+ */
+export function effectiveTheme({ dark, requested, lightPick } = {}) {
+  if (dark) return 'dark'
+  const known = (name) => (typeof name === 'string' && THEMES.includes(name) ? name : undefined)
+  return known(lightPick) || known(requested)
+}
+
+/**
+ * The theme to remember as the reader's light-mode pick, from an embed event: only a known
+ * `themechange` while the host is light. A pick made in a dark host is the host's mode talking.
+ * @returns {string | undefined}
+ */
+export function readerPick(event, dark) {
+  if (dark || !event || event.type !== 'themechange') return undefined
+  return typeof event.theme === 'string' && THEMES.includes(event.theme) ? event.theme : undefined
 }
 
 /** The mount options for an opening; `ui` is only passed for the compact chat card */

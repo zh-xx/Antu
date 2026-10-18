@@ -16,7 +16,7 @@ face of the text.
 | `legal` | the screen, a presentation | navy as the main colour; red only where it is adverse |
 | `dark` | the screen in a dark host | the modern look (rounded, one ink) on a dark slate ground |
 
-`dark` is for a host whose own page is dark: the DeepSeek Harness plugin follows DSH's dark mode with it, later.
+`dark` is for a host whose own page is dark: the DeepSeek Harness plugin follows DSH's light and dark mode with it (dark in a dark DSH; in a light DSH the theme the call asked for, or the reader's last pick).
 
 Every meaning is also carried without colour (weight, dash, double line, outline, shape, a word), so a black-and-white
 print reads the same. `dark` draws the same lines as `modern`, and the four procedure states keep their colours, lifted

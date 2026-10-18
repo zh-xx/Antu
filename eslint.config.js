@@ -72,6 +72,8 @@ export default [
         statusOf: 'readonly',
         knownKinds: 'readonly',
         pickOpening: 'readonly',
+        effectiveTheme: 'readonly',
+        readerPick: 'readonly',
         mountOptions: 'readonly',
         titleOf: 'readonly',
         antuAddress: 'readonly',
