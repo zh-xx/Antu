@@ -5,6 +5,13 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+## 0.16.1
+
+Nothing in the engine, the command line, the MCP server or the entries for a host's code changes: no file and no tool call behaves differently. This release exists so that the DeepSeek Harness plugin `@zh-xx/antu-dsh` can be published to npm for the first time (it takes the repository's version number and depends on exactly the same version of `@zh-xx/antu`).
+
+### Changed
+- **The DeepSeek Harness plugin (`tools/dsh/`) can be published** (#221). Its manifest is no longer `private` and carries a readme, the licence and the notices of the code it bundles; its DSH peer range is `^0.2.0-rc.2 || ^0.2.1-rc.0` (a prerelease only satisfies a range that names a prerelease of the same `x.y.z`, so the old range left out `0.2.1-rc.2`); a workflow of its own, `publish-npm-dsh.yml`, publishes it. The plugin is tested on DSH 0.2.0-rc.2 and 0.2.1-rc.2.
+
 ## 0.16.0
 
 A host whose own page is dark can now follow it: a fourth theme, `dark` (#209), an event that tells the host when the theme changes, and the small sketches of the ways of drawing for a host that draws its own picker (#210). Nothing breaks a file or a tool call: every addition is optional, and a diagram that does not ask for them opens as before.
