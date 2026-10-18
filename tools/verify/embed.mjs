@@ -60,10 +60,10 @@ function hostPage(specs) {
 <div id="a"></div><div id="b"></div><div id="c"></div><div id="d"></div>
 <div id="probe" tabindex="0"></div><input id="host-input">
 <script type="module">
-import { mount, validate, kindsOf, cardUi } from './antu-embed.js'
+import { mount, validate, kindsOf, cardUi, kindIcon, kindLabel } from './antu-embed.js'
 const SPECS = ${JSON.stringify(specs).replace(/</g, '\\u003c')}
 window.__events = { a: [], b: [], c: [], d: [] }
-window.__api = { mount, validate, kindsOf, cardUi, SPECS }
+window.__api = { mount, validate, kindsOf, cardUi, kindIcon, kindLabel, SPECS }
 const on = (k) => (e) => window.__events[k].push(JSON.parse(JSON.stringify(e)))
 const a = mount(document.getElementById('a'), SPECS.flow, { lang: 'zh', onEvent: on('a') })
 const b = mount(document.getElementById('b'), SPECS.other, { lang: 'en', kind: 'route', theme: 'legal', ui: { header: false, minimap: false }, onEvent: on('b') })
@@ -186,6 +186,20 @@ export async function checkEmbed(t) {
     eq('embed: cardUi.panOnScroll is false', card.cardUi?.panOnScroll, false)
     eq('embed: with cardUi a wheel over the pane does not pan the diagram', card.after, card.before)
     eq('embed: with cardUi a wheel over the pane is not cancelled (host page can scroll)', card.wheelOk, true)
+
+    // ---- the host's own kind picker: a sketch and a name for each kind of the type (issue 210) ----
+    const picker = await browser.eval(`(() => {
+      const kinds = window.__api.kindsOf('relationship')
+      return {
+        kinds,
+        icons: kinds.map((k) => /^<svg [^>]*viewBox="0 0 80 48"/.test(window.__api.kindIcon(k) || '')),
+        zh: kinds.map((k) => window.__api.kindLabel(k, 'zh')),
+        en: kinds.map((k) => window.__api.kindLabel(k, 'en')),
+        unknown: [window.__api.kindIcon('nope'), window.__api.kindLabel('nope', 'en')],
+      }
+    })()`)
+    truthy('embed: kindIcon and kindLabel are exported: a sketch and a name, in both languages, for every kind of a type', picker.kinds.length > 1 && picker.icons.every(Boolean) && picker.zh.every(Boolean) && picker.en.every(Boolean) && picker.zh.join() !== picker.en.join(), JSON.stringify(picker).slice(0, 200))
+    eq('embed: an unknown kind gives null for both', picker.unknown, [null, null])
 
     // ---- themechange: told for the host's own setTheme and for the reader's click, not for what did not change ----
     const themeEvents = () => browser.eval(`window.__events.a.filter((e) => e.type === 'themechange').map((e) => e.theme)`)

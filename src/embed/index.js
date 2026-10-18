@@ -14,6 +14,7 @@ import { normalizeSpec } from '../core/normalize.js'
 
 export { mount } from './mount.js'
 export { cardUi } from './cardUi.js'
+export { kindIcon, kindLabel } from './kinds.js'
 
 /**
  * Check a spec the way the diagram checks it before drawing.
