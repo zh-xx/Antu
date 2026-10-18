@@ -68,6 +68,34 @@ export function knownKinds(embed, spec) {
 }
 
 /**
+ * The host's own picker of the kind: one choice per way of drawing, but only when there is a choice to
+ * make. Names and sketches come from the embed; a missing or throwing helper leaves the kind's id and no
+ * sketch, so a host with an older embed still gets a usable strip. Never throws.
+ * @returns {Array<{ kind: string, label: string, icon: string | null }>}
+ */
+export function kindChoices(embed, spec, lang) {
+  const known = knownKinds(embed, spec)
+  if (!Array.isArray(known) || known.length < 2) return []
+  return known.map((kind) => {
+    let label = kind
+    let icon = null
+    try {
+      const named = embed.kindLabel(kind, lang)
+      if (typeof named === 'string' && named) label = named
+    } catch {
+      /* no kindLabel: the id is the label */
+    }
+    try {
+      const drawn = embed.kindIcon(kind)
+      if (typeof drawn === 'string' && drawn) icon = drawn
+    } catch {
+      /* no kindIcon: the label is all there is */
+    }
+    return { kind, label, icon }
+  })
+}
+
+/**
  * What a diagram opens as: the asked-for kind and theme when they exist, else none (the engine's default).
  * `kind` falls back to the type's first kind only for the buttons' highlight, never for mounting.
  * @returns {{ mountKind: string | null, mountTheme: string | null, activeKind: string | null }}

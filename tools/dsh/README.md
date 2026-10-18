@@ -74,13 +74,15 @@ DSH's plugin log does not include pnpm's error text.
 | Client | `tool.call.toolview` for `antu_render` and `mcp__antu__antu_render` (one compact line: title, status, **Open full view**) when the turn tail is there; the full card otherwise |
 | Client | Words follow DSH's language: the `antuDsh` locale namespace ships English and 简体中文; a language switch updates open cards without a reload. The embedded page speaks the same language: the dictionary key `embed.lang` (`zh` / `en`) is read through `t`, passed as `mount({ lang })` and applied with `setLang` on a switch |
 | Client | `conversation.chat.turnTail` data `antu-diagrams`: the fitted diagram after DSH's "Completed in Ns" fold; a `ResizeObserver` refits it whenever the fold opens |
+| Client | A bar of small sketches on top of a turn-tail diagram that has more than one way of drawing, in the same frame as the picture (relationship 7, flowchart 2, fact timeline 3): the current one highlighted, one click redraws the diagram in that kind without remounting it. The choice is memory only, so a reload puts the card back in the call's own kind; **Open full view** opens in the chosen kind. A diagram with one way of drawing has no strip |
 | Client | Right-panel resource type `antu-diagram` (full embed, fullscreen); a click on the card opens its `dsh-resource://antu/…` address, and the tab restores itself from Session history after a reload |
 | Client | The diagram follows DSH's light / dark mode through the theme service: a dark host draws it in the `dark` theme, a light host in the theme the call asked for (or the full view's last pick while light); a switch redraws open cards and the full view without a reload |
 
 The diagram is drawn in the turn tail (`conversation.chat.turnTail`), after DSH collapses a finished turn's tool
 steps into their fold, so it stays visible without opening that fold. The card reads `spec` from the tool-call
-**arguments** (`argsRaw`) and shows only the picture: the whole diagram fitted (`cardUi`), nothing else. A
-`ResizeObserver` calls the embed's `fitView()` when the host grows, so a card mounted while hidden is never blank.
+**arguments** (`argsRaw`) and shows only the picture — plus, for a diagram with more than one way of drawing, the
+kind strip — the whole diagram fitted (`cardUi`). A `ResizeObserver` calls the embed's `fitView()` when the host grows,
+so a card mounted while hidden is never blank.
 A click opens the full view, fullscreen in the right panel, with kind and theme switches, detail cards, export and
 **Open HTML** (the card's `openFile`). The tab is saved by its `dsh-resource://antu/…` address only; a resource
 provider re-reads the `antu_render` call from Session history, so a reload needs no private cache. On a DSH without

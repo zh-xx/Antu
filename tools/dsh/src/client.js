@@ -105,7 +105,7 @@ window.__ModuleLoader__.load({
 
     /*@@INJECT_REQUIRE_ASYNC@@*/
 
-    /** Lazy promise for the ModuleLoader embed chunk (mount + cardUi + kindsOf). */
+    /** Lazy promise for the ModuleLoader embed chunk (mount + cardUi + kindsOf + kindIcon/kindLabel). */
     const embedPromiseCache = { promise: null }
     function loadEmbed(requireFn) {
       return beginLoadEmbed(requireFn, embedPromiseCache)
@@ -239,9 +239,12 @@ window.__ModuleLoader__.load({
       return lang === 'zh' || lang === 'en' ? lang : undefined
     }
 
-    /** Mount `spec` into `el` as asked (kind and theme are checked); `ui` is the chat card's quiet chrome */
-    function mountDiagram(embed, el, spec, wantKind, wantTheme, ui, lang, onEvent) {
-      const opening = pickOpening(knownKinds(embed, spec), wantKind, wantTheme)
+    /**
+     * Mount `spec` into `el` as asked (kind and theme are checked); `ui` is the chat card's quiet chrome.
+     * `kindPickRef` carries the reader's kind through a remount (the host's dark mode, new arguments).
+     */
+    function mountDiagram(embed, el, spec, wantKind, wantTheme, ui, lang, onEvent, kindPickRef) {
+      const opening = pickOpening(knownKinds(embed, spec), kindPickRef?.current || wantKind, wantTheme)
       const options = mountOptions({ ...opening, lang }, ui)
       // The full view needs the embed's events (the reader's theme pick); mountOptions stays pure.
       if (typeof onEvent === 'function') options.onEvent = onEvent
@@ -253,7 +256,7 @@ window.__ModuleLoader__.load({
      * mounted inside DSH's collapsed fold is 0×0 and would stay blank, so refit on every resize
      * (opening the fold changes the host's size). Returns the mount error, if any.
      */
-    function useDiagram(hostRef, handleRef, embed, spec, kind, theme, ui, revision, lang, onEvent) {
+    function useDiagram(hostRef, handleRef, embed, spec, kind, theme, ui, revision, lang, onEvent, kindPickRef) {
       const [mountError, setMountError] = useState(null)
       // Mount with the language of the moment; a later switch goes through setLang, not a remount.
       const langRef = useRef(lang)
@@ -282,6 +285,7 @@ window.__ModuleLoader__.load({
             ui,
             langRef.current,
             typeof onEvent === 'function' ? dispatchEvent : undefined,
+            kindPickRef,
           )
           handleRef.current = mounted.handle
         } catch (err) {
@@ -324,35 +328,69 @@ window.__ModuleLoader__.load({
     }
 
     /** The fitted whole diagram with the cover that opens the full view (the tool row and the tail share it). */
-    function diagramCard({ hostRef, title, embedError, canOpenFull, onOpenFull, t }) {
+    function diagramCard({ hostRef, title, embedError, canOpenFull, onOpenFull, strip, t }) {
+      // Keep the mount host in the tree even when the last mount failed.
+      // If we swap it for the error fallback, hostRef is null on the next
+      // argsRaw change and the layout effect returns early forever.
+      const canvas = h('div', {
+        ref: hostRef,
+        className: 'antuDsh_canvas',
+        role: 'img',
+        'aria-label': title,
+        hidden: !!embedError,
+      })
+      const fallback = embedError ? h('div', { className: 'antuDsh_fallback' }, embedError) : null
+      // A cover over the picture: a click opens the full view, and the wheel goes on to the conversation.
+      const cover = canOpenFull
+        ? h(
+            'button',
+            {
+              type: 'button',
+              className: 'antuDsh_cover',
+              title: t('card.openFull'),
+              'aria-label': t('card.openFullNamed', { title }),
+              onClick: onOpenFull,
+            },
+            h('span', { className: 'antuDsh_coverIcon', 'aria-hidden': true }, '⤢'),
+          )
+        : null
+      if (!strip) {
+        return h('div', { className: 'antuDsh_card', 'data-antu-dsh': 'render' }, canvas, fallback, cover)
+      }
+      // The strip is a bar on top of the picture inside one frame; it is a sibling of the picture, so the cover
+      // stays over the canvas only: a click there changes the kind, it does not leave the card.
       return h(
         'div',
-        { className: 'antuDsh_card', 'data-antu-dsh': 'render' },
-        // Keep the mount host in the tree even when the last mount failed.
-        // If we swap it for the error fallback, hostRef is null on the next
-        // argsRaw change and the layout effect returns early forever.
-        h('div', {
-          ref: hostRef,
-          className: 'antuDsh_canvas',
-          role: 'img',
-          'aria-label': title,
-          hidden: !!embedError,
-        }),
-        embedError ? h('div', { className: 'antuDsh_fallback' }, embedError) : null,
-        // A cover over the picture: a click opens the full view, and the wheel goes on to the conversation.
-        canOpenFull
-          ? h(
+        { className: 'antuDsh_card antuDsh_cardWithStrip', 'data-antu-dsh': 'render' },
+        h(
+          'div',
+          { className: 'antuDsh_strip', role: 'group', 'aria-label': strip.label },
+          h('span', { className: 'antuDsh_stripLabel' }, strip.label),
+          strip.choices.map((choice) => {
+            const active = choice.kind === strip.active
+            return h(
               'button',
               {
+                key: choice.kind,
                 type: 'button',
-                className: 'antuDsh_cover',
-                title: t('card.openFull'),
-                'aria-label': t('card.openFullNamed', { title }),
-                onClick: onOpenFull,
+                className: 'antuDsh_kind' + (active ? ' antuDsh_kindActive' : ''),
+                'aria-pressed': active,
+                title: choice.label,
+                'aria-label': choice.label,
+                onClick: () => strip.onPick(choice.kind),
               },
-              h('span', { className: 'antuDsh_coverIcon', 'aria-hidden': true }, '⤢'),
+              // The sketch is Antu's own static SVG string, drawn in the strip's DSH token colours.
+              choice.icon
+                ? h('span', {
+                    className: 'antuDsh_kindIcon',
+                    'aria-hidden': true,
+                    dangerouslySetInnerHTML: { __html: choice.icon },
+                  })
+                : h('span', { className: 'antuDsh_kindFallback', 'aria-hidden': true }, choice.label),
             )
-          : null,
+          }),
+        ),
+        h('div', { className: 'antuDsh_picture' }, canvas, fallback, cover),
       )
     }
 
@@ -383,8 +421,13 @@ window.__ModuleLoader__.load({
         () => effectiveTheme({ dark, requested: requestedTheme, lightPick: lightPickRef.current }),
         [dark, requestedTheme],
       )
+      // The card's pick rides in the opening's params: use it when it is a kind of this type, else the
+      // call's own kind. Params are transient, so a reload falls back to `value.kind`, as before.
+      const known = knownKinds(embed, spec)
+      const openingKind =
+        typeof params.kind === 'string' && known.includes(params.kind) ? params.kind : value?.kind
       // Full page chrome in the sidebar — no cardUi.
-      const mountError = useDiagram(hostRef, handleRef, embed, spec, value?.kind, theme, undefined, revision, embedLang(t), onEvent)
+      const mountError = useDiagram(hostRef, handleRef, embed, spec, openingKind, theme, undefined, revision, embedLang(t), onEvent)
       const embedError = embedErrorMessage(loadError, mountError, t)
       const path = typeof value?.path === 'string' ? value.path : null
       const openFile = path ? fullView.files.get(path) : null
@@ -579,6 +622,30 @@ window.__ModuleLoader__.load({
       const spec = args ? args.spec : null
       const title = titleOf(spec, call.name === 'mcp__antu__antu_render' ? t('title.mcp') : t('tab.title'))
       const ui = useMemo(() => (embed ? { ...embed.cardUi } : undefined), [embed])
+      const lang = embedLang(t)
+      // Recomputed on a language switch: the kind names are Antu's own words, not our dictionary's.
+      const choices = useMemo(() => kindChoices(embed, spec, lang), [embed, spec, lang])
+      // What the card was opened as: the call's valid kind, else the type's first. Never the mount kind
+      // itself (a click must not remount the diagram), so `args?.kind` stays the dependency below.
+      const opening = pickOpening(knownKinds(embed, spec), args?.kind, args?.theme)
+      const [picked, setPicked] = useState(undefined)
+      // The same pick in a ref: a remount for any other reason (a theme switch, new arguments) mounts in it.
+      const kindPickRef = useRef(undefined)
+      const active = choices.some((choice) => choice.kind === picked) ? picked : opening.activeKind
+      const onEvent = (event) => {
+        // The keyboard can change the kind too; follow it, and keep it across a remount.
+        if (!event || event.type !== 'kindchange' || typeof event.kind !== 'string') return
+        kindPickRef.current = event.kind
+        setPicked(event.kind)
+      }
+      const pickKind = (kind) => {
+        const handle = handleRef.current
+        if (!handle || typeof handle.setKind !== 'function') return
+        // A kind the embed does not take leaves the highlight where it was.
+        if (handle.setKind(kind) === false) return
+        kindPickRef.current = kind
+        setPicked(kind)
+      }
       const mountError = useDiagram(
         hostRef,
         handleRef,
@@ -588,7 +655,9 @@ window.__ModuleLoader__.load({
         effectiveTheme({ dark, requested: args?.theme }),
         ui,
         call.argsRaw,
-        embedLang(t),
+        lang,
+        onEvent,
+        kindPickRef,
       )
       const embedError = embedErrorMessage(loadError, mountError, t)
 
@@ -596,7 +665,11 @@ window.__ModuleLoader__.load({
         if (typeof fullView.open !== 'function' || !spec || !sessionId || call.callId == null) return
         // The tail's openFile is the chat's, so the full view's file button reaches the written file.
         if (call.path && typeof openFile === 'function') fullView.files.set(call.path, openFile)
-        fullView.open({ sessionId, callId: String(call.callId) })
+        fullView.open({
+          sessionId,
+          callId: String(call.callId),
+          ...(typeof picked === 'string' ? { kind: picked } : {}),
+        })
       }
 
       return diagramCard({
@@ -606,6 +679,11 @@ window.__ModuleLoader__.load({
         canOpenFull:
           typeof fullView.open === 'function' && !!spec && !embedError && !!sessionId && call.callId != null,
         onOpenFull: openFull,
+        // One choice is no choice: a diagram with a single way of drawing gets no strip at all.
+        strip:
+          choices.length > 1
+            ? { choices, active, onPick: pickKind, label: t('card.kindStrip') }
+            : undefined,
         t,
       })
     }
@@ -654,6 +732,18 @@ window.__ModuleLoader__.load({
 .antuDsh_card{position:relative;min-width:0}
 .antuDsh_canvas{min-height:220px;height:min(42vh,360px);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-base);overflow:hidden}
 .antuDsh_canvas>*{width:100%;height:100%}
+.antuDsh_cardWithStrip{border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-base);overflow:hidden}
+.antuDsh_cardWithStrip .antuDsh_canvas{border:0;border-radius:0}
+.antuDsh_picture{position:relative;min-width:0}
+.antuDsh_strip{display:flex;align-items:center;gap:6px;box-sizing:border-box;padding:6px 8px;overflow-x:auto;overflow-y:hidden;border-bottom:.5px solid var(--dsw-alias-border-l2);background:color-mix(in srgb,var(--dsw-alias-label-primary) 4%,var(--dsw-alias-bg-base));--antu-text-3:var(--dsw-alias-label-tertiary);--antu-line:var(--dsw-alias-border-l2);--antu-bg:var(--dsw-alias-bg-base)}
+.antuDsh_stripLabel{flex:none;margin-right:4px;font-size:var(--dsh-content-font-size-secondary,13px);line-height:1;color:var(--dsw-alias-label-tertiary)}
+.antuDsh_kind{appearance:none;flex:none;width:44px;box-sizing:border-box;margin:0;padding:1px;border:.5px solid transparent;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);line-height:0;cursor:pointer}
+.antuDsh_kind:hover{background:var(--dsw-alias-interactive-bg-hover-solid)}
+.antuDsh_kind:focus-visible{outline:2px solid var(--dsw-alias-label-secondary);outline-offset:2px}
+.antuDsh_kind[aria-pressed="true"]{border-color:var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-base);--antu-text-3:var(--dsw-alias-label-primary)}
+.antuDsh_kindIcon{display:block}
+.antuDsh_kind svg{display:block;width:100%;height:auto}
+.antuDsh_kindFallback{display:block;font-size:var(--dsh-content-font-size-secondary,13px);line-height:1.2;overflow-wrap:anywhere}
 .antuDsh_cover{position:absolute;inset:0;margin:0;padding:0;border:0;border-radius:var(--dsw-radius-lg,8px);background:transparent;cursor:zoom-in}
 .antuDsh_cover:focus-visible{outline:2px solid var(--dsw-alias-label-secondary);outline-offset:2px}
 .antuDsh_coverIcon{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-base);border:.5px solid var(--dsw-alias-border-l4);opacity:0;transition:opacity .15s}
@@ -787,11 +877,12 @@ window.__ModuleLoader__.load({
               'antu-dsh: sidebar tab title',
             )
             sideCtx.effect(() => {
-              fullView.open = ({ sessionId, callId }) => {
+              fullView.open = ({ sessionId, callId, kind }) => {
                 const child = sideCtx.sessions.subagentAddress(sessionId)
                 const session = child === undefined ? { kind: 'session', sessionId } : { kind: 'subagent', ...child }
+                // `kind` is the card's pick, transient like `wantFullscreen`: a reload drops both.
                 sideCtx.sidebarRight.openResource(antuAddress({ session, callId }), {
-                  params: { wantFullscreen: true },
+                  params: { wantFullscreen: true, ...(typeof kind === 'string' ? { kind } : {}) },
                 })
               }
               fullView.fullscreen = () => tryFullscreen(sideCtx.sidebarRight)
