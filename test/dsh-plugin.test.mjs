@@ -432,6 +432,9 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(chunk, /exports\[["']mount["']\]/)
   assert.match(chunk, /exports\[["']cardUi["']\]/)
   assert.match(chunk, /exports\[["']kindsOf["']\]/)
+  // The kind strip asks the embed for a sketch and a name per kind.
+  assert.match(chunk, /exports\[["']kindIcon["']\]/)
+  assert.match(chunk, /exports\[["']kindLabel["']\]/)
 
   const tgz = readdirSync('tools/dsh').find((n) => n.startsWith('zh-xx-antu-dsh-') && n.endsWith('.tgz'))
   assert.ok(tgz, 'build:dsh should pack zh-xx-antu-dsh-*.tgz')
@@ -770,6 +773,11 @@ const findAll = (node, pred, out = []) => {
   return out
 }
 const buttonLabelled = (tree, label) => findAll(tree, (n) => n.type === 'button' && textOf(n) === label)[0]
+const stripOf = (tree) => findAll(tree, (n) => n.props?.className === 'antuDsh_strip')[0]
+const kindButtons = (tree) =>
+  findAll(tree, (n) => n.type === 'button' && String(n.props?.className || '').split(' ').includes('antuDsh_kind'))
+const coverButton = (tree) =>
+  findAll(tree, (n) => n.type === 'button' && String(n.props?.className || '').includes('antuDsh_cover'))[0]
 
 /**
  * Load the built package/client.js; return the chat card, the turn tail, and the full-view page + title
@@ -922,18 +930,29 @@ const toolResult = (turn, callId, message = {}, data = {}) => ({
   data: { turn, step: 1, message: { source: { callId }, isError: false, content: [], ...message }, ...data },
 })
 
-function fakeEmbed({ failMount } = {}) {
+/** The fake embed's own words for the kinds, so a language test sees `kindLabel` at work. */
+const KIND_NAMES = {
+  timeline: { en: 'Timeline', zh: '时间线' },
+  chronicle: { en: 'Chronicle', zh: '编年' },
+  scale: { en: 'Scale', zh: '刻度' },
+  flow: { en: 'Flow', zh: '流程' },
+}
+
+function fakeEmbed({ failMount, refuseKind } = {}) {
   const calls = { mount: [], destroyed: 0, kinds: [], themes: [], fits: 0 }
   const embed = {
     cardUi: { panOnScroll: false, header: false },
-    kindsOf: (type) => (type === 'fact' ? ['timeline', 'chronicle', 'scale'] : []),
+    // Several ways for `fact`, one for `procedure`: the strip only appears for the first.
+    kindsOf: (type) => (type === 'fact' ? ['timeline', 'chronicle', 'scale'] : type === 'procedure' ? ['flow'] : []),
+    kindIcon: (kind) => (KIND_NAMES[kind] ? `<svg viewBox="0 0 80 48" data-kind="${kind}"></svg>` : null),
+    kindLabel: (kind, lang) => KIND_NAMES[kind]?.[lang === 'zh' ? 'zh' : 'en'] ?? null,
     mount(el, spec, options) {
       calls.mount.push({ spec, options })
       if (failMount) throw new Error('mount refused')
       return {
         destroy() { calls.destroyed += 1 },
         fitView() { calls.fits += 1 },
-        setKind(k) { calls.kinds.push(k); return k !== 'scale-not-allowed' },
+        setKind(k) { calls.kinds.push(k); return k !== refuseKind },
         setTheme(t) { calls.themes.push(t); return true },
       }
     },
@@ -942,6 +961,22 @@ function fakeEmbed({ failMount } = {}) {
 }
 
 const callBlock = (args, extra = {}) => ({ kind: 'result', call: { argsRaw: JSON.stringify(args) }, meta: { path: '/w/a.html' }, ...extra })
+
+/** The tail's one finished diagram card, mounted on its own (miniReact does not descend into child components). */
+function mountTailDiagram(load, args, sessionId = 's1') {
+  const definition = load.definitions[0]
+  const data = turnWithDiagrams(definition, [
+    toolCall(1, 'c1', args),
+    toolResult(1, 'c1', { content: [{ type: 'text', text: 'Written: /w/a.html' }] }),
+  ])
+  const tail = load.mount(load.Tail, {
+    sessionId,
+    turn: { data: { get: (key) => (key === ANTU_DIAGRAMS_KIND ? data : undefined) } },
+    openFile() {},
+  })
+  const element = findAll(tail.tree(), (n) => typeof n.type === 'function' && n.props?.call)[0]
+  return load.mount(element.type, element.props)
+}
 
 test('built client card: only the whole picture; new arguments remount it', async () => {
   if (!existsSync(join(pkgDir, 'client.js'))) {
@@ -1333,7 +1368,10 @@ test('built client tail: finished diagrams draw there, failures explain, running
   const card = load.mount(diagramEl.type, diagramEl.props)
   await card.flush()
   assert.equal(calls.mount.length, 1)
-  assert.deepEqual(calls.mount[0].options, { kind: 'scale', lang: 'en', ui: embed.cardUi })
+  // The tail passes onEvent so a kindchange from the keyboard keeps the strip in step.
+  const { onEvent, ...opening } = calls.mount[0].options
+  assert.equal(typeof onEvent, 'function')
+  assert.deepEqual(opening, { kind: 'scale', lang: 'en', ui: embed.cardUi })
   const cover = findAll(card.tree(), (n) => n.type === 'button')[0]
   assert.match(cover.props['aria-label'], /Open full view: 案情/)
   cover.props.onClick()
@@ -1353,6 +1391,162 @@ test('built client tail: finished diagrams draw there, failures explain, running
   await page.flush()
   buttonLabelled(page.tree(), 'Open HTML').props.onClick()
   assert.deepEqual(files, ['/w/one.html'])
+})
+
+test('built client tail: the kind strip lists the ways of drawing, only where there is a choice', async () => {
+  const { embed } = fakeEmbed()
+  const load = loadBuiltCard({ requireAsync: async () => embed, uiConversation: true })
+  const spec = { type: 'fact', title: '案情' }
+
+  const multi = mountTailDiagram(load, { spec, kind: 'scale' })
+  await multi.flush()
+  const strip = stripOf(multi.tree())
+  assert.ok(strip, 'a diagram with several ways gets a strip')
+  assert.equal(strip.props.role, 'group')
+  assert.equal(strip.props['aria-label'], 'Way of drawing')
+  const buttons = kindButtons(multi.tree())
+  assert.equal(buttons.length, 3, 'one button per way')
+  assert.deepEqual(buttons.map((b) => b.props['aria-label']), ['Timeline', 'Chronicle', 'Scale'])
+  assert.equal(buttons[0].props.title, 'Timeline')
+  assert.deepEqual(buttons.map((b) => b.props['aria-pressed']), [false, false, true], 'the call’s kind is highlighted')
+  assert.match(buttons[1].children[0].props.dangerouslySetInnerHTML.__html, /data-kind="chronicle"/)
+  assert.match(buttons[2].props.className, /antuDsh_kindActive/)
+
+  const single = mountTailDiagram(load, { spec: { type: 'procedure', title: '流程' }, kind: 'flow' })
+  await single.flush()
+  assert.equal(stripOf(single.tree()), undefined, 'one way of drawing: no strip')
+  assert.equal(kindButtons(single.tree()).length, 0)
+
+  // The full in-row card has no strip even when the type has several ways.
+  const sidebarRight = { openResource() {}, commandTarget: () => null, toggleFullscreen() {} }
+  const inRowLoad = loadBuiltCard({ requireAsync: async () => embed, sidebarRight })
+  const inRow = inRowLoad.mount(inRowLoad.Card, {
+    phase: 'end', toolName: 'antu_render', sessionId: 's1', callId: 'c1', openFile() {},
+    block: callBlock({ spec, kind: 'scale' }),
+  })
+  await inRow.flush()
+  assert.ok(findAll(inRow.tree(), (n) => String(n.props?.className || '') === 'antuDsh_canvas')[0], 'it is the whole card')
+  assert.equal(stripOf(inRow.tree()), undefined)
+  assert.equal(kindButtons(inRow.tree()).length, 0)
+
+  // Nor does the compact tool row.
+  const compactLoad = loadBuiltCard({ requireAsync: async () => embed, uiConversation: true })
+  const compact = compactLoad.mount(compactLoad.Card, {
+    phase: 'end', toolName: 'antu_render', openFile() {}, block: callBlock({ spec, kind: 'scale' }),
+  })
+  await compact.flush()
+  assert.equal(textOf(compact.tree()), '案情Done')
+  assert.equal(stripOf(compact.tree()), undefined)
+  assert.equal(kindButtons(compact.tree()).length, 0)
+})
+
+test('built client tail: a click changes the kind in place, and a kindchange moves the highlight', async () => {
+  const { embed, calls } = fakeEmbed()
+  const load = loadBuiltCard({ requireAsync: async () => embed, uiConversation: true })
+  const card = mountTailDiagram(load, { spec: { type: 'fact', title: '案情' }, kind: 'timeline' })
+  await card.flush()
+  const mounts = calls.mount.length
+  assert.deepEqual(kindButtons(card.tree()).map((b) => b.props['aria-pressed']), [true, false, false])
+
+  kindButtons(card.tree()).find((b) => b.props['aria-label'] === 'Chronicle').props.onClick()
+  assert.deepEqual(calls.kinds, ['chronicle'])
+  assert.equal(calls.mount.length, mounts, 'a click redraws in place, it does not remount')
+  await card.flush()
+  assert.deepEqual(kindButtons(card.tree()).map((b) => b.props['aria-pressed']), [false, true, false])
+
+  // The keyboard changes the kind inside the embed: follow it.
+  calls.mount.at(-1).options.onEvent({ type: 'kindchange', kind: 'scale' })
+  await card.flush()
+  assert.deepEqual(kindButtons(card.tree()).map((b) => b.props['aria-pressed']), [false, false, true])
+  assert.deepEqual(calls.kinds, ['chronicle'], 'a kindchange is not a second setKind')
+})
+
+test('built client tail: a kind the embed refuses leaves the highlight where it was', async () => {
+  const { embed, calls } = fakeEmbed({ refuseKind: 'scale' })
+  const load = loadBuiltCard({ requireAsync: async () => embed, uiConversation: true })
+  const card = mountTailDiagram(load, { spec: { type: 'fact', title: '案情' }, kind: 'timeline' })
+  await card.flush()
+
+  kindButtons(card.tree()).find((b) => b.props['aria-label'] === 'Scale').props.onClick()
+  assert.deepEqual(calls.kinds, ['scale'])
+  await card.flush()
+  assert.deepEqual(kindButtons(card.tree()).map((b) => b.props['aria-pressed']), [true, false, false])
+  assert.equal(calls.mount.length, 1)
+})
+
+test('built client tail: the picked kind survives a remount and the full view opens in it', async () => {
+  const { embed, calls } = fakeEmbed()
+  const opened = []
+  const sidebarRight = {
+    openResource: (address, options) => opened.push({ address, options }),
+    commandTarget: () => null,
+    toggleFullscreen() {},
+  }
+  const theme = fakeTheme()
+  const load = loadBuiltCard({ requireAsync: async () => embed, uiConversation: true, sidebarRight, theme })
+  const card = mountTailDiagram(load, { spec: { type: 'fact', title: '案情' }, kind: 'timeline' })
+  await card.flush()
+
+  kindButtons(card.tree()).find((b) => b.props['aria-label'] === 'Scale').props.onClick()
+  await card.flush()
+  assert.equal(opened.length, 0, 'a click on the strip does not open the full view')
+
+  // DSH's dark switch remounts the diagram; it must come back in the reader's kind.
+  theme.setDark(true)
+  card.rerender()
+  assert.equal(calls.mount.length, 2)
+  assert.equal(calls.mount[1].options.kind, 'scale')
+
+  coverButton(card.tree()).props.onClick()
+  assert.equal(opened.length, 1)
+  assert.equal(opened[0].address, 'dsh-resource://antu/s1/c1')
+  assert.deepEqual(opened[0].options.params, { wantFullscreen: true, kind: 'scale' })
+})
+
+test('built client full view: the card’s kind opens when valid, value.kind otherwise', async () => {
+  const { embed, calls } = fakeEmbed()
+  const sidebarRight = { openResource() {}, commandTarget: () => null, toggleFullscreen() {} }
+  const load = loadBuiltCard({ requireAsync: async () => embed, sidebarRight })
+  const spec = { type: 'fact', title: '案情' }
+  const value = { callId: 'c1', spec, kind: 'scale', theme: undefined, title: '案情', path: null, failure: null }
+  const open = async (params) => {
+    const page = load.mount(load.Page, {
+      useTabInfo: () => ({
+        sidebar: { expanded: true, fullscreen: true },
+        tab: { navigation: { address: 'dsh-resource://antu/s1/c1', params, revision: 1 } },
+      }),
+      useResource: () => ({ status: 'live', value }),
+    })
+    await page.flush()
+    return page
+  }
+  await open({ wantFullscreen: true, kind: 'chronicle' })
+  assert.equal(calls.mount.at(-1).options.kind, 'chronicle')
+  await open({ wantFullscreen: true, kind: 'bogus' })
+  assert.equal(calls.mount.at(-1).options.kind, 'scale', 'an unknown kind is ignored')
+  await open({ wantFullscreen: true })
+  assert.equal(calls.mount.at(-1).options.kind, 'scale', 'no kind in the params: the call’s kind')
+})
+
+test('built client tail: the strip label and kind names follow the language switch', async () => {
+  const { embed } = fakeEmbed()
+  const locale = fakeLocale()
+  const load = loadBuiltCard({ requireAsync: async () => embed, uiConversation: true, locale: locale.service })
+  const card = mountTailDiagram(load, { spec: { type: 'fact', title: '案情' }, kind: 'timeline' })
+  await card.flush()
+  assert.equal(stripOf(card.tree()).props['aria-label'], 'Way of drawing')
+  assert.deepEqual(kindButtons(card.tree()).map((b) => b.props.title), ['Timeline', 'Chronicle', 'Scale'])
+
+  locale.switchTo('zh')
+  card.rerender()
+  assert.equal(stripOf(card.tree()).props['aria-label'], '画法')
+  assert.deepEqual(kindButtons(card.tree()).map((b) => b.props.title), ['时间线', '编年', '刻度'])
+})
+
+test('built client: the strip sets all three colour variables a sketch reads (the third one paints route and matrix)', () => {
+  const client = readFileSync(join(pkgDir, 'client.js'), 'utf8')
+  const rule = client.match(/\.antuDsh_strip\{[^}]*\}/)?.[0] ?? ''
+  for (const v of ['--antu-text-3', '--antu-line', '--antu-bg']) assert.ok(rule.includes(`${v}:var(--dsw-`), `${v} comes from a DSH token`)
 })
 
 test('built client card: a resize refits one frame later, after React Flow has seen the new size', async () => {

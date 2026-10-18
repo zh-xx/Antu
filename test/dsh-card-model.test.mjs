@@ -18,6 +18,7 @@ import {
   effectiveTheme,
   isAntuRenderName,
   isAppendSurfaceEvent,
+  kindChoices,
   mountOptions,
   parseAntuAddress,
   readerPick,
@@ -258,6 +259,54 @@ test('diagramFromRecords: other tools, other call ids and malformed arguments gi
   const mcp = diagramFromRecords([{ event: callEvent(1, 'c9', { spec: { type: 'fact' } }, 'mcp__antu__antu_render') }], 'c9')
   assert.equal(mcp.title, 'Antu (MCP)')
   assert.equal(mcp.kind, undefined)
+})
+
+test('kindChoices: only several ways of drawing, with the embed names and sketches', () => {
+  const NAMES = { timeline: 'Timeline', chronicle: 'Chronicle', scale: 'Scale', flow: 'Flow' }
+  const ZH = { timeline: '时间线', chronicle: '编年', scale: '刻度', flow: '流程' }
+  const embed = {
+    kindsOf: (type) => (type === 'fact' ? ['timeline', 'chronicle', 'scale'] : ['flow']),
+    kindLabel: (kind, lang) => (lang === 'zh' ? ZH[kind] : NAMES[kind]) ?? null,
+    kindIcon: (kind) => `<svg data-kind="${kind}"></svg>`,
+  }
+
+  // One way of drawing is no choice at all.
+  assert.deepEqual(kindChoices(embed, { type: 'procedure' }, 'en'), [])
+  assert.deepEqual(kindChoices(embed, { type: 'fact' }, 'en'), [
+    { kind: 'timeline', label: 'Timeline', icon: '<svg data-kind="timeline"></svg>' },
+    { kind: 'chronicle', label: 'Chronicle', icon: '<svg data-kind="chronicle"></svg>' },
+    { kind: 'scale', label: 'Scale', icon: '<svg data-kind="scale"></svg>' },
+  ])
+  assert.equal(kindChoices(embed, { type: 'fact' }, 'zh')[0].label, '时间线')
+
+  // An embed older than kindLabel/kindIcon, or one that throws: the id and no sketch, never a throw.
+  const bare = { kindsOf: () => ['a', 'b'] }
+  const expected = [
+    { kind: 'a', label: 'a', icon: null },
+    { kind: 'b', label: 'b', icon: null },
+  ]
+  assert.deepEqual(kindChoices(bare, { type: 'x' }, 'en'), expected)
+  const throwing = {
+    kindsOf: () => ['a', 'b'],
+    kindLabel() {
+      throw new Error('no names')
+    },
+    kindIcon() {
+      throw new Error('no sketches')
+    },
+  }
+  assert.deepEqual(kindChoices(throwing, { type: 'x' }, 'en'), expected)
+  assert.deepEqual(
+    kindChoices({ kindsOf: () => ['a', 'b'], kindLabel: () => null, kindIcon: () => null }, { type: 'x' }, 'en'),
+    expected,
+  )
+
+  // A missing or odd embed gives no strip.
+  assert.deepEqual(kindChoices({}, { type: 'x' }, 'en'), [])
+  assert.deepEqual(kindChoices(null, { type: 'x' }, 'en'), [])
+  assert.deepEqual(kindChoices({ kindsOf: () => 'nope' }, { type: 'x' }, 'en'), [])
+  assert.deepEqual(kindChoices(embed, null, 'en'), [])
+  assert.deepEqual(kindChoices(embed, { type: 7 }, 'en'), [])
 })
 
 test('effectiveTheme: a dark host wins; a light host keeps the pick or the call', () => {

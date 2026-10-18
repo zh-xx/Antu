@@ -69,8 +69,12 @@ function writeEmbedChunk(embedPath) {
     })
     .join('\n')
 
-  if (!assigns.includes('["cardUi"]') && !assigns.includes("['cardUi']")) {
-    throw new Error('tools/dsh/build.mjs: embed export list has no cardUi')
+  // The card reads cardUi, and its kind strip reads kindsOf/kindIcon/kindLabel; keep them in the chunk
+  // even if the embed's export block moves.
+  for (const name of ['cardUi', 'kindsOf', 'kindIcon', 'kindLabel']) {
+    if (!assigns.includes(`["${name}"]`)) {
+      throw new Error(`tools/dsh/build.mjs: embed export list has no ${name}`)
+    }
   }
 
   const wrapped = `window.__ModuleLoader__.load({
@@ -94,6 +98,7 @@ const INLINED = [
     'card-model.mjs',
     [
       'parseArgsRaw',
+      'kindChoices',
       'pickOpening',
       'effectiveTheme',
       'readerPick',
