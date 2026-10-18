@@ -357,15 +357,15 @@ window.__ModuleLoader__.load({
       if (!strip) {
         return h('div', { className: 'antuDsh_card', 'data-antu-dsh': 'render' }, canvas, fallback, cover)
       }
-      // The strip is a sibling of the picture, so the cover stays over the canvas only: a click there
-      // changes the kind, it does not leave the card.
+      // The strip is a bar on top of the picture inside one frame; it is a sibling of the picture, so the cover
+      // stays over the canvas only: a click there changes the kind, it does not leave the card.
       return h(
         'div',
         { className: 'antuDsh_card antuDsh_cardWithStrip', 'data-antu-dsh': 'render' },
-        h('div', { className: 'antuDsh_picture' }, canvas, fallback, cover),
         h(
           'div',
           { className: 'antuDsh_strip', role: 'group', 'aria-label': strip.label },
+          h('span', { className: 'antuDsh_stripLabel' }, strip.label),
           strip.choices.map((choice) => {
             const active = choice.kind === strip.active
             return h(
@@ -390,6 +390,7 @@ window.__ModuleLoader__.load({
             )
           }),
         ),
+        h('div', { className: 'antuDsh_picture' }, canvas, fallback, cover),
       )
     }
 
@@ -731,10 +732,12 @@ window.__ModuleLoader__.load({
 .antuDsh_card{position:relative;min-width:0}
 .antuDsh_canvas{min-height:220px;height:min(42vh,360px);border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-base);overflow:hidden}
 .antuDsh_canvas>*{width:100%;height:100%}
-.antuDsh_cardWithStrip{display:flex;align-items:flex-start;gap:8px}
-.antuDsh_picture{position:relative;flex:1;min-width:0}
-.antuDsh_strip{display:flex;flex-direction:column;gap:4px;flex:none;width:64px;height:min(42vh,360px);min-height:220px;box-sizing:border-box;padding:2px;overflow-y:auto;overflow-x:hidden;--antu-text-3:var(--dsw-alias-label-tertiary);--antu-line:var(--dsw-alias-border-l2);--antu-bg:var(--dsw-alias-bg-base)}
-.antuDsh_kind{appearance:none;flex:none;width:100%;box-sizing:border-box;margin:0;padding:1px;border:.5px solid transparent;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);line-height:0;cursor:pointer}
+.antuDsh_cardWithStrip{border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-base);overflow:hidden}
+.antuDsh_cardWithStrip .antuDsh_canvas{border:0;border-radius:0}
+.antuDsh_picture{position:relative;min-width:0}
+.antuDsh_strip{display:flex;align-items:center;gap:6px;box-sizing:border-box;padding:6px 8px;overflow-x:auto;overflow-y:hidden;border-bottom:.5px solid var(--dsw-alias-border-l2);background:color-mix(in srgb,var(--dsw-alias-label-primary) 4%,var(--dsw-alias-bg-base));--antu-text-3:var(--dsw-alias-label-tertiary);--antu-line:var(--dsw-alias-border-l2);--antu-bg:var(--dsw-alias-bg-base)}
+.antuDsh_stripLabel{flex:none;margin-right:4px;font-size:var(--dsh-content-font-size-secondary,13px);line-height:1;color:var(--dsw-alias-label-tertiary)}
+.antuDsh_kind{appearance:none;flex:none;width:44px;box-sizing:border-box;margin:0;padding:1px;border:.5px solid transparent;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);line-height:0;cursor:pointer}
 .antuDsh_kind:hover{background:var(--dsw-alias-interactive-bg-hover-solid)}
 .antuDsh_kind:focus-visible{outline:2px solid var(--dsw-alias-label-secondary);outline-offset:2px}
 .antuDsh_kind[aria-pressed="true"]{border-color:var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-base);--antu-text-3:var(--dsw-alias-label-primary)}
