@@ -21,10 +21,19 @@ test('every kind of every type has a sketch and a name in both languages', () =>
   }
 })
 
-test('the sketch takes its colours from the host: variables, not fixed colours', () => {
-  const svg = kindIcon(allKinds[0])
-  assert.match(svg, /var\(--antu-text-3\)/)
-  assert.doesNotMatch(svg, /#[0-9a-f]{3,6}\b/i)
+// The variables a host has to set: the doc says exactly these (spec/embed.md, antu-embed.d.ts). A sketch that reached for a fourth
+// one, or painted a fixed colour, would show up wrong in a dark host.
+const DOCUMENTED = ['--antu-text-3', '--antu-line', '--antu-bg']
+
+test('every sketch takes its colours from the host: only the documented variables, no fixed colour of its own', () => {
+  const used = new Set()
+  for (const kind of allKinds) {
+    const svg = kindIcon(kind)
+    for (const m of svg.matchAll(/var\((--[a-z0-9-]+)/g)) used.add(m[1])
+    // a colour may only appear as the fallback inside a var(...)
+    assert.doesNotMatch(svg.replace(/var\(--[a-z0-9-]+(, *[^)]*)?\)/g, ''), /#[0-9a-f]{3,6}\b|rgba?\(/i, `${kind} paints a fixed colour`)
+  }
+  assert.deepEqual([...used].sort(), [...DOCUMENTED].sort(), 'the variables the sketches use are the ones the doc names')
 })
 
 test('an unknown kind, or something that is not a kind, gives null', () => {

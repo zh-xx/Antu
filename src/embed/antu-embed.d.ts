@@ -151,7 +151,7 @@ export function kindsOf(type: string): string[]
 
 /**
  * A small sketch of a kind as one `<svg viewBox="0 0 80 48">` string, for a host that draws its own picker. Its colours are CSS
- * variables to set where the markup goes: `--antu-text-3` (ink) and `--antu-line` (the tint of the boxes). `null` for a kind with no sketch.
+ * variables to set where the markup goes: `--antu-text-3` (ink), `--antu-line` (the tint of the boxes) and `--antu-bg` (the ground it sits on: a few sketches paint with it and it falls back to white, so a dark host must set it). `null` for a kind with no sketch.
  */
 export function kindIcon(kind: string): string | null
 

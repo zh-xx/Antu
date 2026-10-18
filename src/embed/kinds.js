@@ -11,8 +11,9 @@ import { translate } from '../core/i18n.js'
 
 /**
  * A small sketch of a kind, as one `<svg viewBox="0 0 80 48">` string (the same drawing the page's picker shows).
- * Its colours are CSS variables the host sets where it puts the markup: `--antu-text-3` (the ink) and `--antu-line`
- * (the tint of the boxes). A kind without a sketch gives `null`.
+ * Its colours are CSS variables the host sets where it puts the markup: `--antu-text-3` (the ink), `--antu-line`
+ * (the tint of the boxes) and `--antu-bg` (the ground it sits on; a few sketches paint with it, white if unset).
+ * A kind without a sketch gives `null`.
  * @returns {string | null}
  */
 export function kindIcon(kind) {

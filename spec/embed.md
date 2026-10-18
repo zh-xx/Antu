@@ -194,7 +194,7 @@ and `collection: null`. A host ignores event types and fields it does not know: 
 A host that wants its own way to choose the kind (the DSH chat card shows a strip of small sketches) can ask the embed for what each choice looks like:
 
 - `kindsOf(type)` the kinds of a type, the first being the one it opens in;
-- `kindIcon(kind)` a small sketch of the kind as one `<svg viewBox="0 0 80 48">` string (the drawing the page's own picker shows), or `null` when the kind has none. Its colours are CSS variables: set `--antu-text-3` (the ink) and `--antu-line` (the tint of the boxes) where you put the markup, and it follows your theme;
+- `kindIcon(kind)` a small sketch of the kind as one `<svg viewBox="0 0 80 48">` string (the drawing the page's own picker shows), or `null` when the kind has none. Its colours are CSS variables, **three** of them: set `--antu-text-3` (the ink), `--antu-line` (the tint of the boxes) and `--antu-bg` (the ground the sketch sits on; a few sketches, such as the route map and the matrix, paint with it, and it falls back to white, so a dark host must set it) where you put the markup, and it follows your theme;
 - `kindLabel(kind, lang)` the name of the kind as the picker shows it, in `zh` or `en` (anything else gives English), or `null` for an unknown kind.
 
 The host then calls `handle.setKind(kind)`; `kindchange` tells it the kind changed.
