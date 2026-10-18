@@ -5,14 +5,14 @@ DSH conventions (resource addresses, providers, seats): [spec/dsh-conventions.md
 (中文 [spec/dsh-conventions.zh-CN.md](../../spec/dsh-conventions.zh-CN.md)).
 Umbrella issue: [#79](https://github.com/zh-xx/Antu/issues/79).
 
-**Not published yet.** Build with `npm run build:dsh`, then install the **tarball** (preferred) into DSH.
-Needs a published (or otherwise resolvable) `@zh-xx/antu` at the same version for Host imports.
+**Published as `@zh-xx/antu-dsh`** from the version after 0.16.0 on (the plugin has the same version number as the repository and depends on exactly the same version of `@zh-xx/antu`). Until the first npm version is out, build it and install the **tarball**: `npm run build:dsh`.
+Needs `@zh-xx/antu` at the same version, which is on npm.
 
 ## Requirements
 
 | Side | Needs |
 | --- | --- |
-| Host tools / skill | DSH that can resolve `@deepseek-ai/dsh-tools` / `@deepseek-ai/dsh-skill` (peer `^0.2.0-rc.2`) and `@zh-xx/antu` |
+| Host tools / skill | DSH that can resolve `@deepseek-ai/dsh-tools` / `@deepseek-ai/dsh-skill` (peer `^0.2.0-rc.2 || ^0.2.1-rc.0`) and `@zh-xx/antu` |
 | Client chat card + full view | **DeepSeek Harness ≥ 0.2.0-rc.2** — the lazy embed chunk uses ModuleLoader `require.async('./client.embed.js')`. DSH **0.1.x** has no `require.async` and no Host route for package-local chunks; on those hosts the card shows a clear upgrade message instead of crashing the slot |
 
 Peers are marked optional so a Host-only profile can still install; the Client half will not render a diagram until the host provides `require.async`.
@@ -33,15 +33,26 @@ tools/dsh/
 `package/lib/*`, `package/client.embed.js`, and packs `tools/dsh/zh-xx-antu-dsh-<version>.tgz`.
 Generated files under `package/` and the tarball are not committed (`spec/dsh-plugin.md`).
 
+## Tested on
+
+| DSH | Where | Result |
+| --- | --- | --- |
+| 0.2.0-rc.2 | Linux container, headless Chromium (light and dark, Chinese and English) | all P2 checks and the chat card strip pass |
+| 0.2.1-rc.2 | the maintainer's Mac | passes (reported 2026-10-18, issue #219) |
+
+The peer range lists both: a prerelease only satisfies a range that names a prerelease of the same `x.y.z`, so `^0.2.0-rc.2` alone would leave out `0.2.1-rc.2`.
+
 ## Install into DSH
 
-**Prefer the tarball** (peers resolve inside the DSH profile):
+**From npm** (once published): `dsh plugin --profile <name> add @zh-xx/antu-dsh`, then restart DSH.
+
+**Or the tarball** (peers resolve inside the DSH profile):
 
 ```bash
 npm run build:dsh
-# then install tools/dsh/zh-xx-antu-dsh-0.14.0.tgz
+# then install tools/dsh/zh-xx-antu-dsh-<version>.tgz
 # Desktop: plugin_manager → install_bundle → absolute path of the .tgz
-# CLI:    dsh plugin --profile web add /abs/path/to/zh-xx-antu-dsh-0.14.0.tgz
+# CLI:    dsh plugin --profile web add /abs/path/to/zh-xx-antu-dsh-<version>.tgz
 ```
 
 Installing the bare `tools/dsh/package/` directory with a `link:` style add often fails with
@@ -57,7 +68,7 @@ pnpm: `add` prints `Already up to date` and keeps the old code. To test a new bu
 npm run build:dsh                                  # a failed pack keeps the last good tgz and prints why
 ls tools/dsh/zh-xx-antu-dsh-*.tgz                  # the file must exist before you install it
 dsh plugin --profile <name> remove @zh-xx/antu-dsh
-dsh plugin --profile <name> add /abs/path/to/zh-xx-antu-dsh-0.14.0.tgz
+dsh plugin --profile <name> add /abs/path/to/zh-xx-antu-dsh-<version>.tgz
 ```
 
 Then **restart DSH**: plugins load when it starts, so a running session keeps the old code.

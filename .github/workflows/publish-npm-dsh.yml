@@ -1,0 +1,182 @@
+name: Publish npm (DSH plugin)
+
+# When it runs: only when started by hand (Actions tab -> Publish npm (DSH plugin) -> Run workflow). It is the twin of
+# the Publish npm workflow, for the other package: the DeepSeek Harness plugin @zh-xx/antu-dsh (tools/dsh/). It is a
+# file of its own because npm's "trusted publisher" is set per package and names one workflow file.
+#
+# The plugin has no version of its own: it takes the number of the repository (package.json) and depends on exactly
+# the same version of @zh-xx/antu. So it is published for a version that is already released and already on npm.
+#
+# What it does, in order:
+#   1. check: the commit is on main, its version has a tag v<version> on that very commit, every check on it has
+#      passed, @zh-xx/antu@<version> is on npm (the plugin cannot be installed without it); the plugin is built and
+#      packed, and `npm publish --dry-run` shows what would go out.
+#   2. publish (only when dry_run is off, and only after the maintainer approves the `npm` environment): the plugin,
+#      with a provenance statement. No token is stored anywhere: npm accepts the identity of this workflow (OpenID
+#      Connect).
+#
+# DRY RUN IS THE DEFAULT. Publishing to npm cannot be taken back (a version can only be deprecated, and its number is
+# never free again), so a real publish is a choice made on purpose.
+#
+# One-time setup by the maintainer, not done by this file (the environment `npm` already exists for @zh-xx/antu):
+#   - the FIRST version of a package cannot use the workflow's identity: npm cannot add a trusted publisher to a
+#     package that does not exist yet. Run it with `use_token` on. The token is a granular access token from npmjs.com
+#     (read and write, limited to the @zh-xx scope, expiring in a few days), stored as a secret named NPM_TOKEN of the
+#     `npm` ENVIRONMENT (not of the repository). Delete the token on npmjs.com and the secret as soon as the first
+#     version is out;
+#   - then, on npmjs.com, the package's settings -> Trusted Publisher: GitHub Actions, owner zh-xx, repository Antu,
+#     workflow file publish-npm-dsh.yml, environment npm. From then on every version is published with `use_token`
+#     off, with no token anywhere.
+# Not yet tried end to end: the plugin has not been published from this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'The commit to publish. Default: the latest commit of main. It must be on main and carry the tag v<version>.'
+        required: false
+        default: main
+      dry_run:
+        description: 'Do every check, build and pack the plugin and show what would be published, but publish nothing'
+        type: boolean
+        default: true
+      use_token:
+        description: 'FIRST version only: publish with the short-lived token NPM_TOKEN of the npm environment, not the identity of the workflow'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  checks: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.check.outputs.sha }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check that this commit can be published
+        id: check
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::$sha is not on main; not publishing"
+            exit 1
+          fi
+
+          # Only a released version is published: the tag must exist and point at this very commit
+          git fetch --quiet --tags origin
+          tagged="$(git rev-list -n 1 "refs/tags/${tag}" 2>/dev/null || true)"
+          if [ "$tagged" != "$sha" ]; then
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "::warning::the tag ${tag} is not on this commit ($tagged); a real publish would stop here. Run the Release workflow first."
+            else
+              echo "::error::the tag ${tag} is not on this commit; run the Release workflow first"
+              exit 1
+            fi
+          fi
+
+          # The plugin depends on exactly this version of @zh-xx/antu: it must already be on npm
+          if ! curl -fsS "https://registry.npmjs.org/@zh-xx%2fantu/${version}" >/dev/null 2>&1; then
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "::warning::@zh-xx/antu@${version} is not on npm; a real publish would stop here. Run the Publish npm workflow first."
+            else
+              echo "::error::@zh-xx/antu@${version} is not on npm; run the Publish npm workflow first"
+              exit 1
+            fi
+          fi
+
+          {
+            echo "sha=${sha}"
+            echo "version=${version}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check that CI is green on this commit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          # The gate is the one on main, not the one in the tagged commit (see the Publish npm workflow).
+          # The jobs of this workflow are left out: a failed `publish` of an earlier run stays red on the commit.
+          git fetch --depth 1 origin main
+          git show FETCH_HEAD:tools/verify/ci-green.mjs > "$RUNNER_TEMP/ci-green.mjs"
+          node "$RUNNER_TEMP/ci-green.mjs" "${{ steps.check.outputs.sha }}" --ignore "$GITHUB_JOB" --ignore publish
+
+      - name: The plugin's own tests
+        run: node --test test/dsh-plugin.test.mjs
+
+      - name: Build and pack the plugin
+        run: node tools/dsh/build.mjs
+
+      - name: What would be published (dry run)
+        working-directory: tools/dsh/package
+        run: npm publish --dry-run --access public
+
+  publish:
+    needs: check
+    if: ${{ inputs.dry_run != true }}
+    runs-on: ubuntu-latest
+    # created in the repository settings, with the maintainer as required reviewer: nothing is published before a
+    # person approves it here
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.check.outputs.sha }}
+
+      # No package cache in a job that publishes, and a recent Node (as the Publish npm workflow does)
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      # publishing with the identity of the workflow needs npm 11.5.1 or newer
+      - name: Use a recent npm
+        run: npm install -g npm@^11.5.1
+
+      - name: Build the plugin
+        run: node tools/dsh/build.mjs
+
+      # The first version only: with the short-lived token (see the top of this file)
+      - name: Publish the plugin (first version, with the short-lived token)
+        if: ${{ inputs.use_token }}
+        working-directory: tools/dsh/package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::use_token is on but the secret NPM_TOKEN of the npm environment is empty"
+            exit 1
+          fi
+          npm publish --access public --provenance
+
+      # Every later version: the identity of the workflow, no token
+      - name: Publish the plugin (trusted publisher, no token)
+        if: ${{ !inputs.use_token }}
+        working-directory: tools/dsh/package
+        run: npm publish --access public --provenance

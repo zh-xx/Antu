@@ -309,6 +309,16 @@ test('package manifest matches root version and DSH bundle shape', () => {
   assert.equal(pkg.exports['.'], './index.js')
   assert.equal(pkg.exports['./client'], './client.js')
 
+  // Publishable (decided 2026-10-18): public, with the readme, the licence and the notices of what client.embed.js bundles
+  assert.equal(pkg.private, undefined)
+  assert.equal(pkg.publishConfig.access, 'public')
+  assert.equal(pkg.license, root.license)
+  for (const f of ['README.md', 'LICENSE', 'THIRD-PARTY-NOTICES.md']) assert.ok(pkg.files.includes(f), f)
+  // A prerelease only satisfies a range naming a prerelease of the same x.y.z, so both tested lines are listed
+  for (const peer of ['@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-skill']) {
+    assert.equal(pkg.peerDependencies[peer], '^0.2.0-rc.2 || ^0.2.1-rc.0', peer)
+  }
+
   const patch = readFileSync(join(pkgDir, 'cordis.patch.yml'), 'utf8')
   assert.match(patch, /id:\s*antu-dsh/)
   assert.match(patch, /@zh-xx\/antu-dsh/)
@@ -1573,4 +1583,19 @@ test('built client card: a resize refits one frame later, after React Flow has s
     if (saved.raf === undefined) delete globalThis.requestAnimationFrame
     if (saved.caf === undefined) delete globalThis.cancelAnimationFrame
   }
+})
+
+test('the DSH plugin publish workflow: dry run by default, approval before a real publish, no registry entry', () => {
+  const wf = readFileSync('.github/workflows/publish-npm-dsh.yml', 'utf8')
+  assert.match(wf, /dry_run:[\s\S]*?default: true/)
+  assert.match(wf, /environment: npm/)
+  assert.match(wf, /id-token: write/)
+  // Only a released version, and only after the checks of main
+  assert.match(wf, /is not on main; not publishing/)
+  assert.match(wf, /ci-green\.mjs/)
+  // The plugin depends on exactly this version of @zh-xx/antu
+  assert.match(wf, /registry\.npmjs\.org\/@zh-xx%2fantu\//)
+  // It publishes the plugin, not the MCP server's registry entry (that is the other workflow's job)
+  assert.doesNotMatch(wf, /mcp-publisher/)
+  assert.match(wf, /working-directory: tools\/dsh\/package/)
 })

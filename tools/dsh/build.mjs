@@ -18,6 +18,8 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build as viteBuild } from 'vite'
 
+import { REPO_URL, thirdPartyNotices } from '../lib/notices.mjs'
+
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = join(HERE, '../..')
 const SRC = join(HERE, 'src')
@@ -139,6 +141,13 @@ function writeClientEntry() {
   writeFileSync(join(PKG, 'client.js'), out)
 }
 
+/** What npm shows and what the licence asks for: the readme, the licence and the notices of the code bundled in client.embed.js */
+function writeDocs() {
+  cpSync(join(HERE, 'README.md'), join(PKG, 'README.md'))
+  cpSync(join(REPO, 'LICENSE'), join(PKG, 'LICENSE'))
+  writeFileSync(join(PKG, 'THIRD-PARTY-NOTICES.md'), thirdPartyNotices())
+}
+
 function copyHost() {
   mkdirSync(join(PKG, 'lib'), { recursive: true })
   cpSync(join(SRC, 'tools.mjs'), join(PKG, 'lib', 'tools.mjs'))
@@ -152,12 +161,23 @@ function copyHost() {
   writeClientEntry()
 }
 
+/** The DSH versions the plugin is tested on: 0.2.0-rc.2 and 0.2.1-rc.2, then any release of 0.2 */
+const DSH_RANGE = '^0.2.0-rc.2 || ^0.2.1-rc.0'
+
 function syncPackageJson() {
   const path = join(PKG, 'package.json')
   const pkg = JSON.parse(readFileSync(path, 'utf8'))
   const version = rootVersion()
   pkg.version = version
-  pkg.private = true
+  // Publishable as @zh-xx/antu-dsh (spec/dsh-plugin.md P2.x step 5); the first version goes out with a release.
+  delete pkg.private
+  pkg.publishConfig = { access: 'public' }
+  pkg.license = 'AGPL-3.0-or-later'
+  pkg.author = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).author
+  pkg.homepage = `${REPO_URL}/tree/main/tools/dsh`
+  pkg.repository = { type: 'git', url: `git+${REPO_URL}.git`, directory: 'tools/dsh' }
+  pkg.bugs = { url: `${REPO_URL}/issues` }
+  pkg.keywords = ['deepseek-harness', 'dsh-plugin', 'legal', 'diagram', 'antu']
   pkg.description =
     'Antu diagrams inside DeepSeek Harness: Host tools (antu_validate / antu_layout / antu_render) and an interactive chat card.'
   pkg.dependencies = {
@@ -166,9 +186,11 @@ function syncPackageJson() {
   }
   // Client chat card needs ModuleLoader require.async (package-local chunks) — DSH ≥ 0.2.0-rc.2.
   // Peers stay optional so a Host-only profile can still load the tools without the web Client stack.
+  // A prerelease only satisfies a range that names a prerelease of the same x.y.z, so ^0.2.0-rc.2 alone leaves
+  // out 0.2.1-rc.2 (tested working): the second range takes in the 0.2.1 prereleases.
   pkg.peerDependencies = {
-    '@deepseek-ai/dsh-tools': '^0.2.0-rc.2',
-    '@deepseek-ai/dsh-skill': '^0.2.0-rc.2',
+    '@deepseek-ai/dsh-tools': DSH_RANGE,
+    '@deepseek-ai/dsh-skill': DSH_RANGE,
   }
   pkg.peerDependenciesMeta = {
     '@deepseek-ai/dsh-tools': { optional: true },
@@ -190,6 +212,9 @@ function syncPackageJson() {
     'cordis.patch.yml',
     'locale/',
     'icon.svg',
+    'README.md',
+    'LICENSE',
+    'THIRD-PARTY-NOTICES.md',
   ]
   pkg.dsh = pkg.dsh || {}
   pkg.dsh.client = {
@@ -246,6 +271,7 @@ function packTarball() {
 async function main() {
   copyHost()
   syncPackageJson()
+  writeDocs()
   const embedPath = await ensureEmbed()
   writeEmbedChunk(embedPath)
   const dist = join(PKG, 'dist')
