@@ -6,3 +6,6 @@ package/lib/
 package/dist/
 *.tgz
 .pack-*/
+package/README.md
+package/LICENSE
+package/THIRD-PARTY-NOTICES.md

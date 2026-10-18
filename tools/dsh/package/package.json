@@ -1,7 +1,6 @@
 {
   "name": "@zh-xx/antu-dsh",
   "version": "0.16.0",
-  "private": true,
   "description": "Antu diagrams inside DeepSeek Harness: Host tools (antu_validate / antu_layout / antu_render) and an interactive chat card.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
@@ -18,7 +17,10 @@
     "lib/",
     "cordis.patch.yml",
     "locale/",
-    "icon.svg"
+    "icon.svg",
+    "README.md",
+    "LICENSE",
+    "THIRD-PARTY-NOTICES.md"
   ],
   "dsh": {
     "bundle": {
@@ -45,8 +47,8 @@
     "@zh-xx/antu": "0.16.0"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-tools": "^0.2.0-rc.2",
-    "@deepseek-ai/dsh-skill": "^0.2.0-rc.2"
+    "@deepseek-ai/dsh-tools": "^0.2.0-rc.2 || ^0.2.1-rc.0",
+    "@deepseek-ai/dsh-skill": "^0.2.0-rc.2 || ^0.2.1-rc.0"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh-tools": {
@@ -62,5 +64,25 @@
   "devDependencies": {
     "@deepseek-ai/dsh-client-ui-primitives": "0.2.0-rc.2",
     "@deepseek-ai/dsh-client-ui-theme": "0.2.0-rc.2"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "Ji Cheng",
+  "homepage": "https://github.com/zh-xx/Antu/tree/main/tools/dsh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zh-xx/Antu.git",
+    "directory": "tools/dsh"
+  },
+  "bugs": {
+    "url": "https://github.com/zh-xx/Antu/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "legal",
+    "diagram",
+    "antu"
+  ]
 }

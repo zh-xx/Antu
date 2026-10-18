@@ -73,9 +73,11 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
    写进 `tools/dsh/README.md`。`0.1.x` 按设计只有 Host 工具，卡片显示“需要更高版本”，不抛堆栈。
 4. **界面文字的中文。** 剩下的几处字（“Open HTML”“Preparing diagram…”“Open full view”）现在只有英文。会话给卡片传了本地化入口（`t`，命名空间
    `conversation`）；插件怎么加自己的词典，要先读 DSH 源码再定。在那之前保持英文，不凭猜测写。
-5. **发布。** `@zh-xx/antu-dsh` 目前是 `private`。需要维护者：npm 账号或 trusted publisher、包名；Release 工作流增加“构建、测试、打包、
-   附上 tgz、发布”（与 `@zh-xx/antu` 同一流程）；次版本号由维护者确认。`@deepseek-ai/*` 的 peer 范围按第 3 步的发现复核。
-   第 3 步在真实 DSH 上通过之前，不发布任何东西。
+5. **发布。** 2026-10-18 决定：包名仍是 `@zh-xx/antu-dsh`，发布到 npm。第 3 步已通过（容器里的 0.2.0-rc.2，维护者 Mac 上的 0.2.1-rc.2）。
+   仓库里已有：清单不再是 `private`，带上说明、许可证和第三方声明，peer 范围改为 `^0.2.0-rc.2 || ^0.2.1-rc.0`（预发布版本只匹配
+   写明了同一个 `x.y.z` 预发布的范围）；一个单独的工作流 `.github/workflows/publish-npm-dsh.yml`（npm 的 trusted publisher 按包设置、
+   只认一个工作流文件），默认演练，真发布前要 `npm` 环境批准。插件沿用仓库的版本号，依赖同版本的 `@zh-xx/antu`，所以随下一个发布一起出，
+   版本号由维护者确认。**第一个**版本要用短期令牌（见工作流文件开头），之后再在 npmjs.com 上设置 trusted publisher。
 
 不在计划内：托管服务、给别的宿主的第二个包、在聊天里编辑 JSON。
 

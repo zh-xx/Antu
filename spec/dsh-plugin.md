@@ -82,10 +82,13 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 4. **The words in Chinese.** The few words left ("Open HTML", "Preparing diagram…", "Open full view") are English only. The conversation passes the card a
    locale seat (`t`, namespace `conversation`); how a plugin adds its own dictionary is to be read from the DSH sources first. Until
    then the words stay English rather than guessed.
-5. **Publish.** `@zh-xx/antu-dsh` is `private` today. Needs the maintainer: an npm account or trusted publisher and the package name;
-   the Release workflow gains "build, test, pack, attach the tarball, publish" (same flow as `@zh-xx/antu`); a minor release number
-   confirmed by the maintainer. Peer ranges for `@deepseek-ai/*` are reviewed against what step 3 found. Nothing is published before
-   step 3 has passed on a real DSH.
+5. **Publish.** Decided 2026-10-18: the name stays `@zh-xx/antu-dsh`, published to npm. Step 3 has passed (0.2.0-rc.2 in a container, 0.2.1-rc.2 on the
+   maintainer's Mac). In the tree: the manifest is no longer `private`, carries the readme, the licence and the third-party notices, and its peer
+   range is `^0.2.0-rc.2 || ^0.2.1-rc.0` (a prerelease only satisfies a range that names a prerelease of the same `x.y.z`); a workflow of its own,
+   `.github/workflows/publish-npm-dsh.yml` (npm's trusted publisher is set per package and names one workflow file), with a dry run as the default
+   and the `npm` environment's approval before a real publish. The plugin takes the repository's version and the same version of `@zh-xx/antu`,
+   so it goes out with the next release, whose number the maintainer confirms. Its **first** version needs a short-lived token (see the top of the
+   workflow file), then a trusted publisher on npmjs.com.
 
 Not planned here: a hosted service, a second package for another host, a chat-side editor for the JSON.
 
