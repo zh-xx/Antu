@@ -57,6 +57,7 @@ import { CELL_W, ARROW_EXTENT } from '../../src/renderers/fact/timeline/metrics.
 import { DEFAULT_THEME, themeOf } from '../../src/theme/themes.js'
 import { EXPORT_PAD, exportFrame } from '../../src/shell/exportPng.js'
 import { buildFactGraph } from '../../src/renderers/fact/timeline/layout.js'
+import { specKeyOf } from '../../src/shell/prefs.js'
 import { groupOfEvent } from '../../src/renderers/fact/timeline/grid.js'
 import * as CHR from '../../src/renderers/fact/chronicle/layout.js'
 import { buildChronicleGraph } from '../../src/renderers/fact/chronicle/layout.js'
@@ -2381,6 +2382,7 @@ async function checkRenderProcedure(sampleFile) {
   }
 
   const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
+  const diagramKey = specKeyOf(spec)
   // The page's default presentation: every switch on, vertical (a fresh profile has no preferences)
   const layout = buildProcedureGraph(spec, {}, undefined, 'vertical')
   const html = join(OUT, 'render-procedure.html')
@@ -2390,6 +2392,10 @@ async function checkRenderProcedure(sampleFile) {
   try {
     await browser.open(`file://${html}?lang=zh`)
     const count = (sel) => browser.eval(`document.querySelectorAll(${JSON.stringify(sel)}).length`)
+    const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms))
+    // The rule table is off by default (issue 235); turn it on so the checks below see the whole picture, as before
+    await browser.eval(`document.querySelectorAll('.antu-dock-bar .antu-dock-chip')[5].click()`, { userGesture: true })
+    await settle()
 
     eq('node count', await count('.antu-pn'), spec.nodes.length)
     // Flow links only: rule trunks and scope bars are drawn in the same layer with their own classes
@@ -2497,16 +2503,15 @@ async function checkRenderProcedure(sampleFile) {
     })()`)
     truthy('the flowchart dock is present', dock)
     if (dock) {
-      // conditions · detail · main line · states, plus stages and rules when the data has them
-      eq('the dock has a switch per thing the data has', dock.chips, 4 + (spec.stages?.length ? 1 : 0) + (spec.rules?.length ? 1 : 0))
-      eq('four blocks: switches · orientation · language · export', dock.blocks, 4)
+      // conditions · detail · main line · states, plus stages and rules when the data has them, plus "restore defaults"
+      eq('the dock has a switch per thing the data has', dock.chips, 5 + (spec.stages?.length ? 1 : 0) + (spec.rules?.length ? 1 : 0))
+      eq('five blocks: switches · orientation · language · export · restore', dock.blocks, 5)
       eq('only the export action is solid dark', dock.dark, ['antu-dock-action'])
     }
 
     // Switches do what they say. Clicked by position (the labels change with the language)
     const clickChip = (i) =>
       browser.eval(`document.querySelectorAll('.antu-dock-bar .antu-dock-chip')[${i}].click()`, { userGesture: true })
-    const settle = () => new Promise((r) => setTimeout(r, 400))
 
     await clickChip(0)
     await settle()
@@ -2526,7 +2531,7 @@ async function checkRenderProcedure(sampleFile) {
     eq('the stage switch removes the boxes', await count('.antu-pstage-box'), 0)
     // Issue #22: the choice is kept for this diagram only, not as a global switch
     const saved = await browser.eval(`JSON.parse(localStorage.getItem('antu.prefs') || '{}')`)
-    eq('the stage choice is stored under this diagram', saved.flowFieldsByDiagram?.[spec.title]?.stages, false)
+    eq('the stage choice is stored under this diagram', saved.flowFieldsByDiagram?.[diagramKey]?.stages, false)
     truthy('and no global switch is written', saved.flowFields === undefined)
     await clickChip(4)
     await settle()
@@ -2616,6 +2621,7 @@ async function checkRenderRelationship(sampleFile) {
   }
 
   const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
+  const diagramKey = specKeyOf(spec)
   // The page's default presentation: everything on, vertical, the Chinese interface the page is opened in
   const layout = buildRelationshipGraph(spec, { t: (k, v) => translate('zh', k, v) }, undefined, 'vertical')
   const html = join(OUT, 'render-relationship.html')
@@ -2689,7 +2695,7 @@ async function checkRenderRelationship(sampleFile) {
     eq('the entities are all still there', await count('.antu-rn'), spec.entities.length)
     eq('and nothing moved', await positions(), before)
     const saved = await browser.eval(`JSON.parse(localStorage.getItem('antu.prefs') || '{}')`)
-    truthy('the choice is remembered under this diagram', saved.relationshipFieldsByDiagram?.[`rel:${spec.title}`]?.hiddenKinds?.includes(firstKind), JSON.stringify(saved))
+    truthy('the choice is remembered under this diagram', saved.relationshipFieldsByDiagram?.[diagramKey]?.hiddenKinds?.includes(firstKind), JSON.stringify(saved))
     await browser.eval(kindChip, { userGesture: true })
     await settle()
     eq('switching it on again brings them back', await count('.antu-rlink'), spec.relations.length)
@@ -2904,6 +2910,7 @@ async function checkRenderJustification(sampleFile) {
   }
 
   const spec = JSON.parse(readFileSync(join(REPO, sampleFile), 'utf8'))
+  const diagramKey = specKeyOf(spec)
   // The page's default presentation: horizontal, everything on, the Chinese interface the page is opened in
   const layout = buildJustificationGraph(spec, {}, undefined, 'horizontal')
   const html = join(OUT, 'render-justification.html')
@@ -2922,7 +2929,7 @@ async function checkRenderJustification(sampleFile) {
     const openedAs = buildJustificationGraph(spec, { collapsed: dflt.issues }, undefined, 'horizontal')
     eq(`it opens ${dflt.issues.length ? 'with every issue folded' : 'whole'} (the text is ${dflt.issues.length ? 'under 9 px unfolded' : 'readable as it is'})`, await count('.antu-jn'), openedAs.nodes.length)
     eq('the dock chip for folding shows the state it opened in', await count('.antu-dock-chip.is-on') >= (dflt.issues.length ? 1 : 0), true)
-    await browser.eval(`localStorage.setItem('antu.prefs', JSON.stringify({ ...JSON.parse(localStorage.getItem('antu.prefs') || '{}'), justificationFolded: { ['jus:' + ${JSON.stringify(spec.title)}]: [] } })); 1`)
+    await browser.eval(`localStorage.setItem('antu.prefs', JSON.stringify({ ...JSON.parse(localStorage.getItem('antu.prefs') || '{}'), justificationFolded: { [${JSON.stringify(diagramKey)}]: [] } })); 1`)
     await browser.open(`file://${html}?lang=zh`)
 
     eq('node count (the data, plus the copies of shared facts)', await count('.antu-jn'), layout.nodes.length)
@@ -3005,7 +3012,7 @@ async function checkRenderJustification(sampleFile) {
     truthy('folded: every node, box and title is inside the canvas', inside >= 0, `nearest edge: ${Math.round(inside)}px`)
     eq('and the chip shows it is on', await count('.antu-dock-chip.is-on'), 1 + (spec.links.some((k) => k.label) ? 1 : 0))
     const savedFold = await browser.eval(`JSON.parse(localStorage.getItem('antu.prefs') || '{}')`)
-    truthy('the fold is remembered under this diagram', savedFold.justificationFolded?.[`jus:${spec.title}`]?.length === issueIds.length, JSON.stringify(savedFold.justificationFolded))
+    truthy('the fold is remembered under this diagram', savedFold.justificationFolded?.[diagramKey]?.length === issueIds.length, JSON.stringify(savedFold.justificationFolded))
     await browser.eval(`[...document.querySelectorAll('.antu-dock-bar .antu-dock-chip')].find((b) => b.textContent.includes('收起争点')).click()`, { userGesture: true })
     await settle(900)
     eq('the dock opens them all again', await count('.antu-jn'), layout.nodes.length)

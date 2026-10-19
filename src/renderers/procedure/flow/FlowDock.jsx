@@ -11,7 +11,7 @@
 // ============================================================
 
 import { useLang } from '../../../shell/LangContext.jsx'
-import { DockExportButton, DockLangSwitch, DockSegmented } from '../../../shell/DockParts.jsx'
+import { DockExportButton, DockLangSwitch, DockResetButton, DockSegmented } from '../../../shell/DockParts.jsx'
 
 /** The switches, in display order. Message keys are stored and resolved per language on use. */
 const SWITCHES = [
@@ -76,6 +76,8 @@ export default function FlowDock({
         <span className="antu-dock-sep" />
 
         <DockExportButton exporting={exporting} onExport={onExport} />
+
+        <DockResetButton />
       </div>
     </div>
   )

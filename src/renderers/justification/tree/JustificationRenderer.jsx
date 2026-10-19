@@ -23,6 +23,7 @@ import { useMemo, useRef, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { usePreset, usePrefs } from '../../../shell/env.js'
+import { specKeyOf } from '../../../shell/prefs.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import IssueBoxNode from './IssueBoxNode.jsx'
@@ -33,6 +34,7 @@ import JustificationDock from './JustificationDock.jsx'
 import { buildJustificationGraph } from './layout.js'
 import { chainOf } from './chain.js'
 import { useSelectEvent } from '../../../shell/useSelectEvent.js'
+import { useSpecPref } from '../../relationship/useSpecPref.js'
 
 /** Node types used by the tree. Adding one means registering one line here. */
 const nodeTypes = {
@@ -57,9 +59,8 @@ export default function JustificationTree({ spec }) {
   // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
   const PRESET = usePreset()
   const prefs = usePrefs()
-  // Namespaced: the other diagrams key their remembered choices by title too, and two diagrams of
-  // different types may share a title
-  const specKey = `jus:${spec?.title || ''}`
+  // The content key (shell/prefs.js) already includes the type, so a title shared with another diagram cannot collide
+  const specKey = specKeyOf(spec)
   const hasLabels = Array.isArray(spec?.links) && spec.links.some((k) => k?.label)
 
   // Labels: remembered per diagram, on to begin with (a first look should show what the data says)
@@ -80,12 +81,9 @@ export default function JustificationTree({ spec }) {
     prefs.write({ orientations: map })
   }
 
-  // Link style: curved (the default) or straight, one choice for every diagram, remembered
-  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || prefs.read().linkStyle || 'curved')
-  const toggleLinkStyle = (next) => {
-    setLinkStyle(next)
-    prefs.write({ linkStyle: next })
-  }
+  // Link style: curved (the default) or straight, remembered per diagram (issue 236)
+  const [linkStyle, setLinkStyle] = useSpecPref('linkStyle', specKey, (stored) => PRESET?.linkStyle ?? stored ?? 'curved')
+  const toggleLinkStyle = (next) => setLinkStyle(next)
 
   // Issues folded up: remembered per diagram. They change the geometry, so they go into layout and re-fit the view.
   const issueIds = useMemo(() => (Array.isArray(spec?.groups) ? spec.groups.map((g) => g?.id).filter(Boolean) : []), [spec])

@@ -12,7 +12,9 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { useEnv, usePreset, usePrefs } from '../../../shell/env.js'
+import { useEnv, usePreset } from '../../../shell/env.js'
+import { specKeyOf } from '../../../shell/prefs.js'
+import { useSpecPref } from '../../relationship/useSpecPref.js'
 import { useExport } from '../../../shell/useExport.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import EntryNode from './EntryNode.jsx'
@@ -56,16 +58,12 @@ export default function FactChronicle({ spec }) {
   // External preset for screenshots (antu_preview, the skill's preview); see the timeline renderer
   // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
   const PRESET = usePreset()
-  const prefs = usePrefs()
-  const [fields, setFields] = useState(() => ({
-    ...FIELD_DEFAULTS,
-    ...prefs.read().fields,
-    ...(PRESET?.fields || {}),
-  }))
-  const toggleField = (key, value) => {
-    setFields((f) => ({ ...f, [key]: value }))
-    prefs.write({ fields: { ...prefs.read().fields, [key]: value } })
-  }
+  // The card fields are remembered per diagram, by the spec's content key (shell/prefs.js), and shared with the
+  // timeline: the same diagram means the same fields in either way of drawing it.
+  const specKey = specKeyOf(spec)
+  const [storedFields, setStoredFields] = useSpecPref('fields', specKey, (stored) => stored || {})
+  const fields = { ...FIELD_DEFAULTS, ...storedFields, ...(PRESET?.fields || {}) }
+  const toggleField = (key, value) => setStoredFields({ ...storedFields, [key]: value })
 
   const { root } = useEnv()
   const measure = useMemo(() => makeMeasure(root), [root])

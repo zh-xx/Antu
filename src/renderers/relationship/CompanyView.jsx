@@ -12,11 +12,13 @@ import { usePreset } from '../../shell/env.js'
 import { useLang } from '../../shell/LangContext.jsx'
 import LevelledView from './LevelledView.jsx'
 import { useSpecPref } from './useSpecPref.js'
+import { specKeyOf } from '../../shell/prefs.js'
 
 export default function CompanyView({ spec, build, className, kind }) {
   const PRESET = usePreset()
   const { t } = useLang()
-  const key = `rel:${spec?.title || ''}:${kind}`
+  // The content key plus the way of drawing it: the company picked in one kind does not move the other
+  const key = `${specKeyOf(spec)}:${kind}`
   const [asked, pick] = useSpecPref('relationshipCompanies', key, (was) => PRESET?.company ?? was)
   return (
     <LevelledView

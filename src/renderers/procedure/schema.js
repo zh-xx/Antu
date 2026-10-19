@@ -211,7 +211,8 @@ export const procedureKnowledge = {
     const byOrientation = {}
     let g
     for (const o of ['vertical', 'horizontal']) {
-      g = layout(spec, {}, undefined, o)
+      // what the page opens with: the rule table is off until the reader turns it on (issue 235)
+      g = layout(spec, { rules: false }, undefined, o)
       byOrientation[o] = { size: g.size, fit: Number(fitZoom(g.size, canvas).toFixed(3)) }
     }
     const v = byOrientation.vertical

@@ -28,8 +28,9 @@ import KindIcon from './KindIcon.jsx'
 import { useTheme, THEME_IDS } from '../theme/ThemeContext.jsx'
 import { themeOf } from '../theme/themes.js'
 import { isInside, useEnv, useViewValue } from './env.js'
+import { readSpecPref, writeSpecPref } from './prefs.js'
 
-export default function DiagramHeader({ title, typeLabel, info = [], kinds = [], kind, onSelectKind }) {
+export default function DiagramHeader({ specKey = '', title, typeLabel, info = [], kinds = [], kind, onSelectKind, onPrefsChanged = () => {} }) {
   const { t } = useLang()
   const { id: themeId, setTheme, forced: themeForced } = useTheme()
   const env = useEnv()
@@ -39,15 +40,17 @@ export default function DiagramHeader({ title, typeLabel, info = [], kinds = [],
   const multi = kinds.length > 1
   const [open, setOpen] = useState(false)
   // the label card fold goes through the view state (issue 200): `initial` wins over the stored choice,
-  // a host may lock it, and a reader's click in this mount wins over both
-  const foldView = useViewValue('shell.headerFolded', prefs.read().headerFolded === true, false)
+  // a host may lock it, and a reader's click in this mount wins over both. It is remembered per diagram
+  // (issue 236), in a map from the diagram's content key to the fold.
+  const foldView = useViewValue('shell.headerFolded', readSpecPref(prefs, 'headerFolded', specKey) === true, false)
   const [folded, setFolded] = useState(foldView.value === true)
   const toggleFold = () => {
     const next = !folded
     setFolded(next)
     setOpen(false)
     foldView.touch()
-    prefs.write({ headerFolded: next })
+    writeSpecPref(prefs, 'headerFolded', specKey, next)
+    onPrefsChanged()
   }
   const rootRef = useRef(null)
   const index = Math.max(0, kinds.findIndex((k) => k.kind === kind))

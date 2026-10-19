@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { usePreset } from '../../../shell/env.js'
+import { specKeyOf } from '../../../shell/prefs.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
@@ -40,8 +41,8 @@ export default function RelationshipFocus({ spec }) {
   // External preset (antu_preview, the skill's preview): `centre` names the party in the middle
   // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
   const PRESET = usePreset()
-  // The same key as the graph's: which kinds are hidden and whether labels show carry over between the two
-  const specKey = `rel:${spec?.title || ''}`
+  // The same content key as the graph's: which kinds are hidden and whether labels show carry over between the two
+  const specKey = specKeyOf(spec)
   const { t, lang } = useLang()
 
   const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey, (was) => (PRESET?.fields ? { ...was, ...PRESET.fields } : was))

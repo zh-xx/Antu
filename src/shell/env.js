@@ -137,7 +137,14 @@ export const EnvContext = createContext(standaloneEnv())
 /** The spec now drawn (App provides it), so the canvas can find the nodes of an item a host names */
 export const ShownSpecContext = createContext(null)
 
+/**
+ * Clears the open diagram's remembered choices and opens it again (App provides it, the dock calls it). A
+ * no-op outside App, where no diagram is mounted.
+ */
+export const ResetSpecContext = createContext(() => {})
+
 export const useEnv = () => useContext(EnvContext)
+export const useResetSpec = () => useContext(ResetSpecContext)
 
 /** The reader's preferences of this diagram: { read(), write(patch) } */
 export const usePrefs = () => useContext(EnvContext).prefs

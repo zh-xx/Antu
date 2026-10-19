@@ -220,7 +220,7 @@ Structural errors (rules 1 to 12, 17 and 18) stop the drawing; hints (13 to 16) 
 | Group boxes | toggle | available when `groups` is written |
 | Export image | action | reuses the shared export |
 
-The remembering rules are procedure's (§6.2 there): orientation and the toggles are remembered per diagram, link style once for all. A preset (the `--kind` and `--focus`/`--from`/`--to` choices a render or preview is asked for) is only the **first** value: it seeds what the reader sees when nothing is remembered yet, the dock's controls still change it afterwards, and the remembered choices are re-read at every write, so two views of one diagram never overwrite each other's choices with stale ones.
+The remembering rules are procedure's (§6.2 there): orientation, link style and the toggles are remembered per diagram. A preset (the `--kind` and `--focus`/`--from`/`--to` choices a render or preview is asked for) is only the **first** value: it seeds what the reader sees when nothing is remembered yet, the dock's controls still change it afterwards, and the remembered choices are re-read at every write, so two views of one diagram never overwrite each other's choices with stale ones.
 
 ### 6.3 Scale
 

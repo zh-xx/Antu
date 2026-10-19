@@ -23,6 +23,7 @@ import { buildProcedureGraph } from '../../src/renderers/procedure/flow/layout.j
 import { buildRouteGraph } from '../../src/renderers/procedure/route/layout.js'
 import { exportFrame } from '../../src/shell/exportPng.js'
 import { translate } from '../../src/core/i18n.js'
+import { specKeyOf } from '../../src/shell/prefs.js'
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -99,6 +100,7 @@ export async function checkEmbed(t) {
   const read = (rel) => JSON.parse(readFileSync(join(REPO, rel), 'utf8'))
   // a flowchart with rules and sources whose loc names clauses, and a second diagram to sit beside it
   const flow = read('examples/procedure/01-software-development-contract.zh-CN.json')
+  const flowKey = specKeyOf(flow)
   const other = read('examples/procedure/02-purchase-contract.en.json')
   const renamed = { ...flow, title: `${flow.title} (v2)` }
   const page = hostPage({ flow, other, renamed })
@@ -290,6 +292,9 @@ export async function checkEmbed(t) {
     await wait(200)
     eq('embed: clicking the empty canvas tells the host nothing is pinned', await browser.eval(`(() => { const e = window.__events.a.filter((e) => e.type === 'select').at(-1); return e ? e.id : 'no event' })()`), null)
     if (Array.isArray(flow.rules) && flow.rules.length) {
+      // the rule table is off by default (issue 235): switch it on in this diagram first
+      await browser.eval(`[...${S('a')}.querySelectorAll('.antu-dock-chip')].find((c) => c.textContent.trim() === ${JSON.stringify(translate('zh', 'flow.rules'))})?.click()`, { userGesture: true })
+      await wait(300)
       await browser.eval(`${S('a')}.querySelector('.antu-rtable-row')?.click()`)
       await wait(200)
       const rule = await browser.eval(`window.__events.a.filter((e) => e.type === 'select').at(-1) ?? null`)
@@ -299,7 +304,7 @@ export async function checkEmbed(t) {
     // ---- what the host asks for: select, focus, highlight (issue 164), initial (issue 165) ----
     // on a diagram of its own, so the counts of the checks above and below stay as they are
     const ruleAt = Array.isArray(flow.rules) && flow.rules.length ? 0 : -1
-    const asked = await browser.eval(`(async (at, ruleAt) => {
+    const asked = await browser.eval(`(async (at, ruleAt, key) => {
       const pause = (ms) => new Promise((r) => setTimeout(r, ms))
       const host = document.createElement('div')
       host.style.cssText = 'width: 1000px; height: 640px'
@@ -309,8 +314,8 @@ export async function checkEmbed(t) {
       const events = []
       const refuse = (initial) => { try { window.__api.mount(host, flow, { initial }).destroy(); return 'mounted' } catch (e) { return e.message } }
       const refused = [refuse({ folded: true }), refuse({ headerFolded: 'yes' }), refuse([])]
-      // the host's store says unfolded; initial says folded and wins
-      const h = window.__api.mount(host, flow, { initial: { headerFolded: true }, prefs: { read: () => ({ headerFolded: false }), write: () => {} }, onEvent: (e) => events.push(e) })
+      // the host's store says unfolded; initial says folded and wins (and the rule table is asked for, issue 235)
+      const h = window.__api.mount(host, flow, { initial: { headerFolded: true, view: { flow: { rules: true } } }, prefs: { read: () => ({ headerFolded: { [key]: false } }), write: () => {} }, onEvent: (e) => events.push(e) })
       const early = h.select(id)
       await h.ready
       await pause(300)
@@ -356,7 +361,7 @@ export async function checkEmbed(t) {
       h.destroy()
       host.remove()
       return out
-    })(${Number(at)}, ${Number(ruleAt)})`, { awaitPromise: true })
+    })(${Number(at)}, ${Number(ruleAt)}, ${JSON.stringify(flowKey)})`, { awaitPromise: true })
     truthy('embed: initial refuses an unknown key, a value that is not a boolean, and a non-object', asked.refused.every((m) => m.includes('options.initial')), asked.refused.join(' | '))
     truthy('embed: initial.headerFolded opens the label card folded, over the stored choice', asked.folded)
     eq('embed: select before the diagram is drawn is kept, answered from the spec, then pins the card', [asked.early, ...asked.earlyPinned], [true, true, 'true'])
@@ -455,7 +460,7 @@ export async function checkEmbed(t) {
 
       // initial wins over the stored choice
       {
-        const it = start({ initial: { view: { flow: { states: true } } }, prefs: { read: () => ({ flowFieldsByDiagram: { [flow.title]: { states: false } } }), write: () => {} } })
+        const it = start({ initial: { view: { flow: { states: true } } }, prefs: { read: () => ({ flowFieldsByDiagram: { [${JSON.stringify(flowKey)}]: { states: false } } }), write: () => {} } })
         await it.h.ready; await pause(200)
         out.initialOn = !!chip(it.host, ${JSON.stringify(translate('en', 'flow.states'))})?.classList.contains('is-on')
         off(it)
@@ -486,9 +491,28 @@ export async function checkEmbed(t) {
         const writes = []
         const it = start({ persist: false, prefs: { read: () => ({}), write: (p) => writes.push(p) } })
         await it.h.ready; await pause(200)
-        chip(it.host, ${JSON.stringify(translate('en', 'flow.states'))})?.click()
+        // the rule table is off by default (issue 235), so the click turns it on
+        chip(it.host, ${JSON.stringify(translate('en', 'flow.rules'))})?.click()
         await pause(200)
-        out.persist = [writes.length, !!chip(it.host, ${JSON.stringify(translate('en', 'flow.states'))})?.classList.contains('is-on')]
+        out.persist = [writes.length, !!chip(it.host, ${JSON.stringify(translate('en', 'flow.rules'))})?.classList.contains('is-on')]
+        off(it)
+      }
+
+      // "restore this diagram's defaults" (issue 236): it appears once the reader has changed something, forgets
+      // the change, shows the built-in default again, and disappears
+      {
+        const it = start({})
+        await it.h.ready; await pause(200)
+        const restoreLabel = ${JSON.stringify(translate('en', 'dock.restore'))}
+        const restore = () => [...it.host.shadowRoot.querySelectorAll('.antu-dock-chip')].find((c) => c.textContent.trim() === restoreLabel)
+        const rules = () => chip(it.host, ${JSON.stringify(translate('en', 'flow.rules'))})
+        const before = [!!restore(), !!rules()?.classList.contains('is-on')]
+        rules()?.click()
+        await pause(300)
+        const changed = [!!restore(), !!rules()?.classList.contains('is-on')]
+        restore()?.click()
+        await pause(800)
+        out.restore = [before, changed, [!!restore(), !!rules()?.classList.contains('is-on')]]
         off(it)
       }
 
@@ -506,6 +530,7 @@ export async function checkEmbed(t) {
     eq('embed: a locked switch renders no control', viewState.lockedHidden, true)
     eq('embed: `initial` opens the dock folded (one button, no bar), and the button brings the bar back', [viewState.folded, viewState.unfolded], [[true, false], [false, true]])
     eq('embed: `persist: false` keeps the reader\'s change on screen and off the host\'s store', viewState.persist, [0, true])
+    eq('embed: "restore defaults" shows once a choice is made, forgets it, and goes away', viewState.restore, [[false, false], [true, true], [false, false]])
     truthy('embed: an unknown `locked` key makes mount throw, naming options.locked', viewState.badLocked.includes('options.locked'), viewState.badLocked)
 
     // ---- destroy, and mount again on the same element ----

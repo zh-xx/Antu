@@ -66,7 +66,7 @@ shadow root 是开放的，正为此。
 | `theme` | `document` | 打开时的主题：`document`、`modern`、`legal`、`dark`（`spec/theme.md`）。读者仍可切换，除非去掉了标签卡 |
 | `lang` | 浏览器的 | `zh` 或 `en`：页面自身文字的语言。案件内容不翻译 |
 | `ui` | 全部 `true` | `{ header, capsule, minimap, zoom, panOnScroll, panOnDrag }`：去掉页面上的哪些部件（左上角标签卡、底部控制胶囊、缩略图、缩放按钮）。`panOnScroll: false` 时滚轮不再平移图，宿主页面（如聊天卡片）仍可滚动；`panOnDrag: false` 时按住拖拽不再平移；捏合缩放仍可用。聊天卡片请优先展开 [`cardUi`](#卡片-ui) |
-| `prefs` | `'none'` | 读者的选择（画法、字段、方向……）存在哪：`'none'` 只在挂载期间保留；`'local'` 存进 viewer 页面的 `localStorage` 键（`antu.prefs`）；或宿主自己的存储 `{ read(): object, write(patch) }` |
+| `prefs` | `'none'` | 读者的选择（画法、字段、方向……）存在哪：`'none'` 只在挂载期间保留；`'local'` 存进 viewer 页面的 `localStorage` 键（`antu.prefs`）；或宿主自己的存储 `{ read(): object, write(patch) }`。每张图的选择按图的内容作键；只有主题和语言是共用的 |
 | `initial` | 无 | 打开时的样子，先于读者保存的选择（`AntuViewState`，见下）；`headerFolded` 是 `shell.headerFolded` 的旧别名。键不在其中、类型不对、或值不在枚举内，`mount` 抛错 |
 | `locked` | 无 | 本次挂载强制的值（`AntuViewState`，见下）；对应的控件被隐藏，而不是禁用。键不在其中、类型不对、或值不在枚举内，`mount` 抛错 |
 | `persist` | `true` | 读者的改动哪些能写进 prefs 存储：`true`（全部）、`false`（都不写，只在挂载期间保留），或下表中名字组成的数组。名字不认识时 `mount` 抛错 |
@@ -100,7 +100,7 @@ interface AntuViewState {
 3. `initial`
 4. 页面 preset（仅 viewer 页面，与今天相同）
 5. 保存的偏好
-6. 内置默认值（状态开关为 `statesByDefault(theme)`）
+6. 内置默认值（状态开关在每种主题下都默认打开，见 `statesByDefault`；条款表默认关闭）
 
 `prefs.write` 的每次写入按其 prefs 键对应的名字判断是否允许。名字不在允许列表里的写入只留在内存中供本次挂载使用，`read()` 返回存储中的值并在其上叠加这些改动。名字如下：
 
@@ -111,7 +111,7 @@ interface AntuViewState {
 | `kind` | `kinds` |
 | `shell.headerFolded` | `headerFolded` |
 | `shell.dockFolded` | `dockFolded` |
-| `view.flow` | `flowFieldsByDiagram`、`orientations`、`linkStyle`（后两者目前与其他图类型共用；第一阶段把它们算作流程图的） |
+| `view.flow` | `flowFieldsByDiagram`、`orientations`、`linkStyle`（每个都是按图的内容作键的映射） |
 | `view.route` | `procedureRouteFieldsByDiagram` |
 
 第一阶段只覆盖下面这些项；给其他类型写 `view.flow`／`view.route` 会被忽略，不算错误，其他图类型还没有视图状态。
@@ -133,7 +133,7 @@ interface AntuViewState {
 | | |
 | --- | --- |
 | `ready` | Promise：图画好并适配后兑现；spec 不合法时拒绝，问题在 `error.errors` |
-| `update(spec)` | 在原处画另一份 spec；读者的选择按标题保存，与 viewer 页面相同 |
+| `update(spec)` | 在原处画另一份 spec；读者的选择按图的内容保存，与 viewer 页面相同 |
 | `setKind(kind)` | 不是该类型（或 `kinds`）的画法时返回 `false` |
 | `setTheme(theme)`、`setLang(lang)` | 值不存在时返回 `false` |
 | `select(id)` | 钉住 spec 中条目 `id` 的卡片，如同读者点了它：宿主照常收到 `select`。`select(null)` 取消钉住。该画法里没有画出这个条目的卡片（或该画法不能钉住任何东西，如路线图）时返回 `false` |

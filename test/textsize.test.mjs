@@ -62,9 +62,10 @@ test('every kind reports it, with its own body font, in the geometry report and 
 })
 
 test('the real cases that are too small say so, the fact diagram too (it used to say nothing; it is small now, not too small)', () => {
-  // (05 zh-CN used to be the one: after the roomier layout it opens at 11.3 px and is no longer too small; the English
-  // ones, whose words are wider, still are)
-  const tooSmall = ['examples/procedure/05-premises-lease.en.json']
+  // (05 used to be the one: after the roomier layout 05 zh-CN opened at 11.3 px, and since the rule table opens off
+  // (issue 235) 05 en opens at 10.1 px, small and no longer too small; the share acquisition agreement, with the
+  // widest words, still is)
+  const tooSmall = ['examples/procedure/07-share-acquisition-agreement.en.json']
   for (const file of tooSmall) assert.match(layoutMessage(spec(file)).text, /too small to read without zooming in/, file)
   // the Fang Yuan timeline opens staggered (spec/fact/rendering.md §8.1): small, no longer too small, and still told to split
   assert.match(layoutMessage(spec('examples/fact/fang-yuan-loan-and-conflict.zh-CN.json')).text, /the text is small \(under 11 px\).*Splitting the timeline into periods/)

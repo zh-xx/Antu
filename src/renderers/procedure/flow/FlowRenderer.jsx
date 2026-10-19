@@ -20,6 +20,8 @@ import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { usePrefs, useViewValue } from '../../../shell/env.js'
+import { specKeyOf } from '../../../shell/prefs.js'
+import { useSpecPref } from '../../relationship/useSpecPref.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import FlowNode from './FlowNode.jsx'
@@ -29,7 +31,6 @@ import StageBoxNode from './StageBoxNode.jsx'
 import FlowDock from './FlowDock.jsx'
 import { buildProcedureGraph } from './layout.js'
 import { useSelectEvent } from '../../../shell/useSelectEvent.js'
-import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 /** Node types used by the flowchart. Adding one means registering one line here. */
 const nodeTypes = {
@@ -40,13 +41,14 @@ const nodeTypes = {
 }
 
 /**
- * Defaults for the switches. All on: a first look should show everything the data says.
- * Stored under their own preference key, apart from the timeline's card fields: the two
- * sets share no switch, and one key for both would make each overwrite the other.
+ * Defaults for the switches. Most are on: a first look should show everything the data says. The rule table
+ * opens off (issue 235), one click away when the data has rules. Stored under their own preference key, apart
+ * from the timeline's card fields: the two sets share no switch, and one key for both would make each overwrite
+ * the other.
  */
-const FIELD_DEFAULTS = { conditions: true, detail: true, mainLine: true, stages: true, rules: true }
-/** The States switch starts off in the black-and-white document theme, on in the others (issue 187) */
-export const statesByDefault = (themeId) => themeId !== 'document'
+const FIELD_DEFAULTS = { conditions: true, detail: true, mainLine: true, stages: true, rules: false }
+/** The States switch starts on in every theme (issue 235); kept as a function so a caller's shape does not change */
+export const statesByDefault = () => true
 
 /** Attributes shared by decoration nodes; for why 1×1, see cellsNode in fact/timeline/nodes.js */
 const DECORATION = {
@@ -61,7 +63,7 @@ const DECORATION = {
 
 export default function ProcedureFlow({ spec }) {
   const prefs = usePrefs()
-  const specKey = spec?.title || ''
+  const specKey = specKeyOf(spec)
   const hasStages = Array.isArray(spec?.stages) && spec.stages.length > 0
   const hasRules = Array.isArray(spec?.rules) && spec.rules.length > 0
 
@@ -70,14 +72,13 @@ export default function ProcedureFlow({ spec }) {
   // them off everywhere (issue #22)
   const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().flowFieldsByDiagram || {})
   const storedFields = fieldPrefs[specKey] || {}
-  const { id: themeId } = useTheme()
 
   // Every switch goes through the view state (issue 200): a host's `initial`/`locked`/`persist`, the page's
   // preset and the reader's own click are resolved in one place; `statesByDefault` stays the fallback
   const conditionsView = useViewValue('view.flow.conditions', storedFields.conditions, FIELD_DEFAULTS.conditions)
   const detailView = useViewValue('view.flow.detail', storedFields.detail, FIELD_DEFAULTS.detail)
   const mainLineView = useViewValue('view.flow.mainLine', storedFields.mainLine, FIELD_DEFAULTS.mainLine)
-  const statesView = useViewValue('view.flow.states', storedFields.states, statesByDefault(themeId))
+  const statesView = useViewValue('view.flow.states', storedFields.states, statesByDefault())
   const stagesView = useViewValue('view.flow.stages', storedFields.stages, FIELD_DEFAULTS.stages)
   const rulesView = useViewValue('view.flow.rules', storedFields.rules, FIELD_DEFAULTS.rules)
   const fieldView = { conditions: conditionsView, detail: detailView, mainLine: mainLineView, states: statesView, stages: stagesView, rules: rulesView }
@@ -101,15 +102,14 @@ export default function ProcedureFlow({ spec }) {
     prefs.write({ orientations: map })
   }
 
-  // Link style: curved (the default, the reader's choice: it reads softer, like Mermaid) or
-  // straight (orthogonal). Both draw the same route. One choice for every diagram, remembered.
-  const [linkStyle, setLinkStyle] = useState(() => prefs.read().linkStyle || 'straight')
+  // Link style: curved (the reader's choice: it reads softer, like Mermaid) or straight (orthogonal). Both draw
+  // the same route. Remembered per diagram now (issue 236), in the same map every renderer uses.
+  const [linkStyle, setLinkStyle] = useSpecPref('linkStyle', specKey)
   const linkStyleView = useViewValue('view.flow.linkStyle', linkStyle, 'straight')
   const linkStyleValue = linkStyleView.value
   const toggleLinkStyle = (next) => {
     linkStyleView.touch()
     setLinkStyle(next)
-    prefs.write({ linkStyle: next })
   }
 
   // Only the switches that move geometry go into layout: detail changes what a node shows,

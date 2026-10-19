@@ -18,6 +18,8 @@ import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { usePreset, usePrefs } from '../../../shell/env.js'
+import { specKeyOf } from '../../../shell/prefs.js'
+import { useSpecPref } from '../../relationship/useSpecPref.js'
 import { useExport } from '../../../shell/useExport.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import EventNode from '../EventNode.jsx'
@@ -50,28 +52,19 @@ export default function FactTimeline({ spec }) {
   // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
   const PRESET = usePreset()
   const prefs = usePrefs()
-  // Per-diagram preferences use the **title** as key: it is written in the data, so it exists in
-  // development and in the built page alike, and it does not depend on a file name (the built
-  // page has no file name at all).
-  const specKey = spec?.title || ''
+  // Per-diagram preferences are keyed by the spec's content (shell/prefs.js `specKeyOf`), so two
+  // diagrams with the same title, or none, never share a record.
+  const specKey = specKeyOf(spec)
 
-  // Which optional fields the card shows. Only the ones the user actually touched are stored.
-  const [fields, setFields] = useState(() => ({
-    ...FIELD_DEFAULTS,
-    ...prefs.read().fields,
-    ...(PRESET?.fields || {}),
-  }))
-  const toggleField = (key, value) => {
-    setFields((f) => ({ ...f, [key]: value }))
-    prefs.write({ fields: { ...prefs.read().fields, [key]: value } })
-  }
+  // Which optional fields the card shows, remembered per diagram. Only the fields the user actually
+  // touched are stored, and the preset only supplies the first values.
+  const [storedFields, setStoredFields] = useSpecPref('fields', specKey, (stored) => stored || {})
+  const fields = { ...FIELD_DEFAULTS, ...storedFields, ...(PRESET?.fields || {}) }
+  const toggleField = (key, value) => setStoredFields({ ...storedFields, [key]: value })
 
-  // Underlying grid lines: a global preference
-  const [showGrid, setShowGrid] = useState(() => prefs.read().showGrid === true)
-  const toggleGrid = (value) => {
-    setShowGrid(value)
-    prefs.write({ showGrid: value })
-  }
+  // Underlying grid lines: also a choice about this diagram now (issue 236)
+  const [showGrid, setShowGrid] = useSpecPref('showGrid', specKey, (stored) => stored === true)
+  const toggleGrid = (value) => setShowGrid(value)
 
   // Staggered rows (vertical only, see rowTopsOf in metrics.js): on by default, and what the reader set is remembered
   // per diagram, like the orientation, so turning it off in one diagram does not change how another opens.

@@ -61,6 +61,8 @@ export const zh = {
   // 控制胶囊的收起／展开（issue 200）
   'dock.fold': '收起',
   'dock.display': '显示选项',
+  'dock.restore': '恢复本图默认',
+  'dock.restoreTitle': '清除这张图记住的选择，按内置默认值重新打开；主题和语言不变。',
   'export.failed': ({ message }) => `导出失败：${message}`,
   'dock.langEn': 'EN',
   'dock.langZh': '中文',

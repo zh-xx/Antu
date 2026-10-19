@@ -40,7 +40,6 @@ const CLI = 'scripts/antu.mjs'
  * releases (`checkSkill({ strict: false })`, the unit test) lets it be missing, the release workflow's check
  * (`--check`) does not. The release pull request empties this list.
  */
-const skillExamples = (type, names) => names.flatMap((n) => ['en', 'zh-CN'].map((lang) => `examples/${type}-${n}.${lang}.json`))
 export const ADDED_SINCE_RELEASE = []
 
 /** The other way round: files the sources dropped after the last release, still in the folder until it is rebuilt. Emptied by the release pull request too. */

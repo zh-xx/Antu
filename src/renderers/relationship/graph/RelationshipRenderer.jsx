@@ -24,6 +24,7 @@ import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { useEnv, usePreset, usePrefs } from '../../../shell/env.js'
+import { specKeyOf, writeSpecPref } from '../../../shell/prefs.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
@@ -63,9 +64,8 @@ export default function RelationshipGraph({ spec }) {
   // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
   const PRESET = usePreset()
   const prefs = usePrefs()
-  // Namespaced: the flowchart keys its remembered choices by title too, and two diagrams of
-  // different types may share a title
-  const specKey = `rel:${spec?.title || ''}`
+  // The content key (shell/prefs.js) already includes the type, so a title shared with another diagram cannot collide
+  const specKey = specKeyOf(spec)
   const hasGroups = Array.isArray(spec?.groups) && spec.groups.length > 0
   const { t, lang } = useLang()
 
@@ -83,12 +83,9 @@ export default function RelationshipGraph({ spec }) {
   const [orientationPref, toggleOrientation] = useSpecPref('orientations', specKey, (was) => PRESET?.orientation || was)
   const orientation = orientationPref || 'vertical'
 
-  // Link style: curved (the default) or straight, one choice for every diagram, remembered
-  const [linkStyle, setLinkStyle] = useState(() => PRESET?.linkStyle || prefs.read().linkStyle || 'curved')
-  const toggleLinkStyle = (next) => {
-    setLinkStyle(next)
-    prefs.write({ linkStyle: next })
-  }
+  // Link style: curved (the default) or straight, remembered per diagram (issue 236)
+  const [linkStyle, setLinkStyle] = useSpecPref('linkStyle', specKey, (stored) => PRESET?.linkStyle ?? stored ?? 'curved')
+  const toggleLinkStyle = (next) => setLinkStyle(next)
 
   // Only the switches that move geometry go into layout: the group boxes turn camps into columns;
   // the interface language changes the default text on a relation and so the size of its label
@@ -110,7 +107,7 @@ export default function RelationshipGraph({ spec }) {
       pin: (id) => setPinnedId(id),
       unpin: () => setPinnedId(null),
       focusOn: (id) => {
-        prefs.write({ relationshipCentres: { ...(prefs.read().relationshipCentres || {}), [specKey]: id } })
+        writeSpecPref(prefs, 'relationshipCentres', specKey, id)
         setPinnedId(null)
         commands.run('setKind', 'focus')
       },

@@ -623,20 +623,20 @@ The main line as one line, left to right, like a route map; where the process lo
 | Control | Form | Notes |
 |---|---|---|
 | Orientation | segmented | vertical / horizontal |
-| Link style | segmented | straight (default; right-angle turns, settled with the maintainer) / curved; remembered for every diagram |
+| Link style | segmented | straight (default; right-angle turns, settled with the maintainer) / curved; remembered per diagram |
 | Condition labels | toggle | show / hide the `condition` on edges |
 | Node detail | toggle | whether to show the `detail` line |
 | Main-line highlight | toggle | bolden the main edges |
-| States | toggle | off by default in the document theme (black and white), on in the others: paint each node by its state (below); off, by `outcome` as before |
+| States | toggle | on by default in every theme (issue 235): paint each node by its state (below); off, by `outcome` as before |
 | Stage boxes | toggle | available when `stages` is written |
-| Rule table | toggle | available when `rules` is written; hides the table and the "N rules" badges together |
+| Rule table | toggle | available when `rules` is written; off by default (issue 235); hides the table and the "N rules" badges together |
 | Export image | action | reuses the export the canvas shell already has |
 
 **What is remembered.** Orientation and the six toggles (condition labels, node detail, main-line
-highlight, states, stage boxes, rule table) are remembered **per diagram**, keyed by the title: what to show is a
-choice about this data (many diagrams have no stages at all), so turning stages off on one diagram
-must not turn them off on every other. Link style is one choice for every diagram. A toggle whose content
-the diagram does not have is not shown.
+highlight, states, stage boxes, rule table) are remembered **per diagram**, keyed by the diagram's content:
+what to show is a choice about this data (many diagrams have no stages at all), so turning stages off on one
+diagram must not turn them off on every other. Link style is remembered per diagram too. A toggle whose
+content the diagram does not have is not shown.
 
 **States (issue 187).** With the switch on, a node is painted by the state it stands for, read from what the file
 already says, so no file changes: an `end` whose `outcome` is negative is a **termination** (red); any other `end`, an
@@ -644,7 +644,7 @@ outcome written positive or none at all, is a **normal end** (green); a node on 
 **something gone wrong** (yellow); every other node is **performance as it should be**, in the theme's own paint (a
 positive step stays ordinary: only an end is an ending). Every theme has its own yellow, red and green (`flow.state` in
 `src/theme/themes.js`), and keeps the line that says the same in black and white: dashed for gone wrong and terminated,
-heavy for a normal end. This is the one place the document theme may carry meaning by colour, so there the switch starts off.
+heavy for a normal end. This is the one place the document theme may carry meaning by colour; the switch starts on in every theme and can be turned off.
 The route map has the same switch, for its hanging boxes and its stations.
 
 The rules for the four control forms (menu / toggle / segmented / action) follow §4.2 of

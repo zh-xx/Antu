@@ -5,6 +5,11 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+### Changed
+- **A diagram's remembered choices are its own** (#236). Everything except the theme and the interface language is now remembered per diagram, keyed by its content (the title plus a hash of the whole spec) rather than by its title, so two diagrams with the same or no title no longer share a record. The five switches that were one choice for the whole site — the label card fold, the dock fold, link style, the grid lines and the card fields — are per diagram too; their old global values are ignored once, with no migration.
+- **"Restore this diagram's defaults"** in the dock, shown when the open diagram has a remembered choice: it forgets them and opens the diagram again with the built-in defaults. The theme and the language are not changed.
+- **The procedure flowchart opens with States on and Rules off** (#235). States are on in every theme, the document theme included; the rule table is one click away when the data has rules. Fact stagger (on in vertical) and the PNG export ratio (2×) are unchanged.
+
 ### Fixed
 - **The skill package is two folders deep at most** (#234). A host that takes a skill package only as root / folder / file refused the whole package, because the examples were filed one level deeper (`examples/fact/1-minimal.en.json`). They are now flat, with the kind in the file name: `examples/fact-1-minimal.en.json`. `SKILL.md` says so. Nothing else of the package moves, and the examples of the repository itself (`examples/agent/<kind>/`) keep their place.
 

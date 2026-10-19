@@ -15,7 +15,7 @@
 // ============================================================
 
 import { useLang } from '../../shell/LangContext.jsx'
-import { DockExportButton, DockLangSwitch, DockSegmented } from '../../shell/DockParts.jsx'
+import { DockExportButton, DockLangSwitch, DockResetButton, DockSegmented } from '../../shell/DockParts.jsx'
 
 /** Optional card fields (title and time are always shown and not listed here). Message keys are stored and resolved per language on use. */
 const OPTIONAL_FIELDS = ['sources', 'actors', 'summary']
@@ -97,6 +97,8 @@ export default function ControlDock({
         <span className="antu-dock-sep" />
 
         <DockExportButton exporting={exporting} onExport={onExport} />
+
+        <DockResetButton />
       </div>
     </div>
   )

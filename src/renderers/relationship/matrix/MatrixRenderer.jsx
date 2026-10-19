@@ -12,6 +12,7 @@ import { useMemo } from 'react'
 import Canvas from '../../../shell/Canvas.jsx'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
+import { specKeyOf } from '../../../shell/prefs.js'
 import FocusDock from '../focus/FocusDock.jsx'
 import MatrixLayerNode from './MatrixLayerNode.jsx'
 import { buildMatrixGraph } from './layout.js'
@@ -20,7 +21,7 @@ import { useSpecPref } from '../useSpecPref.js'
 const nodeTypes = { matrixLayer: MatrixLayerNode }
 
 export default function RelationshipMatrix({ spec }) {
-  const specKey = `rel:${spec?.title || ''}`
+  const specKey = specKeyOf(spec)
   const { t, lang } = useLang()
 
   // The labels switch is shared with the graph and the other kinds (same key)
