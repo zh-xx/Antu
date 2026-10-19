@@ -43,3 +43,11 @@ test('the skill names only tools the MCP server registers, and all four types', 
   for (const t of named) assert.ok(registered.has(t), `${t} is not a tool of the server`)
   for (const type of ['fact', 'procedure', 'relationship', 'justification']) assert.ok(skill.includes(`\`${type}\``), type)
 })
+
+test('the market names are the project\'s own: 案图 Antu in Chinese, Antu in English', () => {
+  const meta = JSON.parse(readFileSync(join(dir, 'connector-meta.json'), 'utf8'))
+  assert.equal(meta.name_zh, '案图 Antu')
+  assert.equal(meta.name_en, 'Antu')
+  const skill = readFileSync(join(dir, 'skills/antu/SKILL.md'), 'utf8')
+  assert.match(skill, /^display_name: 案图 Antu$/m)
+})
