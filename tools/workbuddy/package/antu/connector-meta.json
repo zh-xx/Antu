@@ -7,7 +7,7 @@
   "description_en": "Legal diagrams from JSON: case timelines, procedures, party relationships and court reasoning, as one offline HTML file.",
   "source": "antu",
   "type": "mcp",
-  "version": "0.16.3",
+  "version": "0.16.4",
   "minWorkbuddyVersion": "5.0.0",
   "examples_zh": [
     "把这个案件的经过画成事实时间线",
