@@ -442,6 +442,15 @@ window.__ModuleLoader__.load({
       }, [revision, params.wantFullscreen, sidebar?.fullscreen])
 
       const failure = typeof value?.failure === 'string' && value.failure ? value.failure : null
+      // #229: `none` is the one state with no visible cause — an empty address, or no provider for the
+      // scheme. Name it in the console so the next report carries the reason, not just the symptom.
+      useEffect(() => {
+        if (resource.status !== 'none') return
+        console.warn(
+          '[antu-dsh] cannot show this tab:',
+          typeof address === 'string' && address ? address : '(tab has no resource address)',
+        )
+      }, [resource.status, address])
       // A tab saved by an older build has no address, so its resource is `none`: keep the old notice.
       const notice =
         embedError ||
@@ -781,6 +790,20 @@ window.__ModuleLoader__.load({
       // `locale` is a core DSH service every official UI plugin injects; apply still copes without it.
       inject: ['slots', 'locale'],
       apply(ctx) {
+        // #229: a second application in the same page (HMR, a double loader entry) makes the resource
+        // provider registration throw ("already has a provider"); whichever instance is disposed first
+        // then leaves NO provider, and the full view opens onto `sidebar.none`. Apply once per page.
+        if (globalThis.__antuDshApplied) {
+          console.warn('[antu-dsh] already applied in this page; skipping the second application')
+          return
+        }
+        globalThis.__antuDshApplied = true
+        ctx.effect(
+          () => () => {
+            globalThis.__antuDshApplied = false
+          },
+          'antu-dsh: apply guard',
+        )
         ensureStyles()
         // Optional like the other services: without locale the English dictionary above is the fallback,
         // and registration only carries `locale` when the service is really there (a missing face throws).
@@ -835,15 +858,25 @@ window.__ModuleLoader__.load({
             )
           }
         })
-        // Optional: without the right Sidebar or the resource/session services the chat card stays and
-        // there is simply no "open full view".
+        // #229: the provider is the one piece the full view cannot do without, so it is registered on
+        // its own — a missing sidebar service, or a throw in a neighbouring registration, must not leave
+        // a tab type that opens onto nothing (`sidebar.none` means exactly "no provider for this scheme").
+        ctx.inject(['resources', 'remote', 'remote.session'], (resCtx) => {
+          resCtx.effect(() => {
+            try {
+              return resCtx.resources.register(antuResourceProvider(resCtx.remote.session))
+            } catch (error) {
+              // A duplicate registration is survivable (the other instance serves the address); any
+              // other cause is not, and silence would only resurface as an empty tab.
+              console.error('[antu-dsh] antu resource provider not registered:', error)
+              return () => {}
+            }
+          }, 'antu-dsh: diagram resource provider')
+        })
+        // Optional: without the right Sidebar the chat card stays and there is no "open full view".
         ctx.inject(
-          ['resources', 'sessions', 'remote', 'remote.session', 'sidebarRight', 'sidebarRightTabs'],
+          ['sessions', 'sidebarRight', 'sidebarRightTabs'],
           (sideCtx) => {
-            sideCtx.effect(
-              () => sideCtx.resources.register(antuResourceProvider(sideCtx.remote.session)),
-              'antu-dsh: diagram resource provider',
-            )
             sideCtx.effect(
               () =>
                 sideCtx.sidebarRightTabs.register({
