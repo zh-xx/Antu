@@ -102,7 +102,7 @@ server.registerTool(
       file: z
         .string()
         .optional()
-        .describe('the one to fetch, e.g. examples/agent/fact/1-minimal.en.json. Omit to list them'),
+        .describe('the one to fetch: the path the list shows (examples/agent/relationship/3-guarantee.en.json) or just its name (3-guarantee.en.json, with type). Omit to list them'),
       group: z
         .enum(['agent', 'real', 'raw'])
         .optional()
@@ -119,7 +119,10 @@ server.registerTool(
       return FAIL(`no examples for type "${type}" yet. Available: ${known || '(none)'}.`)
     }
     if (file) {
-      const one = readExample(file)
+      // A bare name ("3-guarantee.en.json") is the common slip: look for it among the small examples, the asked type first
+      const bare = !String(file).includes('/')
+      const types = [type, ...listKnowledgeTypes().map((t) => t.type).filter((t) => t !== type)]
+      const one = readExample(file) ?? (bare ? types.map((t) => readExample(`agent/${t}/${file}`)).find(Boolean) : null)
       if (!one) return FAIL(`example not found: ${file}. Call antu_examples with no arguments to see the list.`)
       return OK(`# ${file}\n\n\`\`\`json\n${one.text}\n\`\`\``)
     }
