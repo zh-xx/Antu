@@ -448,7 +448,9 @@ window.__ModuleLoader__.load({
         (resource.status === 'loading'
           ? t('sidebar.loading')
           : resource.status === 'none'
-            ? t('sidebar.none')
+            ? parseAntuAddress(address || '') && !browserReadsResourceHost(address)
+              ? t('sidebar.oldBrowser')
+              : t('sidebar.none')
             : resource.status === 'failed'
               ? t('sidebar.failed')
               : failureText(failure, t) || (!spec ? t('sidebar.none') : null))

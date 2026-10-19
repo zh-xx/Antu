@@ -159,6 +159,21 @@ export function antuAddress({ session, callId }) {
 }
 
 /**
+ * Whether this browser reads the host out of a `dsh-resource://` address. DSH finds a resource's provider by
+ * that host; an old browser engine (e.g. a 360 browser on a Kylin desktop) returns '' for a custom scheme,
+ * so DSH sees no provider and reports "no resource" for an address that is fine.
+ * @param {string} address
+ * @returns {boolean}
+ */
+export function browserReadsResourceHost(address) {
+  try {
+    return new URL(address).hostname === 'antu'
+  } catch {
+    return false
+  }
+}
+
+/**
  * Decode a saved or caller-supplied diagram address; undefined unless it is exactly a Session or
  * subagent address this plugin wrote (same rules as parsePlanAddress).
  * @param {string} address
