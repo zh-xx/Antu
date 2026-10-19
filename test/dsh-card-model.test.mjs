@@ -21,6 +21,7 @@ import {
   kindChoices,
   mountOptions,
   parseAntuAddress,
+  browserReadsResourceHost,
   readerPick,
 } from '../tools/dsh/src/card-model.mjs'
 
@@ -344,4 +345,21 @@ test('mountOptions: passes the language only when it is one Antu speaks', () => 
   assert.equal(mountOptions({ lang: 'en' }).lang, 'en')
   assert.equal('lang' in mountOptions({ lang: 'ja' }), false)
   assert.equal('lang' in mountOptions({}), false)
+})
+
+test('browserReadsResourceHost: true when the host survives, false on an old engine or a bad address', () => {
+  assert.equal(browserReadsResourceHost('dsh-resource://antu/s1/c1'), true)
+  assert.equal(browserReadsResourceHost('not a url'), false)
+  assert.equal(browserReadsResourceHost('dsh-resource://other/s1/c1'), false)
+  const real = globalThis.URL
+  globalThis.URL = class {
+    constructor() {
+      this.hostname = ''
+    }
+  }
+  try {
+    assert.equal(browserReadsResourceHost('dsh-resource://antu/s1/c1'), false)
+  } finally {
+    globalThis.URL = real
+  }
 })

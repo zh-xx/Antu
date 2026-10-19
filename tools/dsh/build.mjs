@@ -113,6 +113,7 @@ const INLINED = [
       'antuDiagramsUpdate',
       'antuAddress',
       'parseAntuAddress',
+      'browserReadsResourceHost',
       'diagramFromRecords',
       'isAntuRenderName',
       'isAppendSurfaceEvent',

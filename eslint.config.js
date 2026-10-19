@@ -79,6 +79,7 @@ export default [
         titleOf: 'readonly',
         antuAddress: 'readonly',
         parseAntuAddress: 'readonly',
+        browserReadsResourceHost: 'readonly',
         diagramFromRecords: 'readonly',
         ANTU_DIAGRAMS_KIND: 'readonly',
         antuDiagramsDefinition: 'readonly',
