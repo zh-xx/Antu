@@ -5,7 +5,7 @@ WorkBuddy's open platform ([docs](https://open.workbuddy.cn/docs/connector)) tak
 
 - the program is the published package `@zh-xx/antu`; `mcp.json` starts its `antu-mcp` over stdio with
   `npx -y -p @zh-xx/antu@<version> antu-mcp`, on the Node runtime WorkBuddy manages (needs WorkBuddy 5.0.0 or newer);
-- the skill (`src/skills/antu/SKILL.md`) is light and has no script: it says which type to choose, the order of the
+- the skill (`tools/workbuddy/src/skills/antu/SKILL.md`) is light and has no script: it says which type to choose, the order of the
   `antu_*` tools and the rules about not inventing; the MCP server sends the same rules in its own `instructions`, so the
   connector still works if the client does not load the skill.
 
