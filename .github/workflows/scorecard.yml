@@ -1,0 +1,50 @@
+name: Scorecard
+
+# OpenSSF Scorecard: a public, automatic review of how the repository is run (branch rule, pinned actions, signed
+# releases, a security policy, ...). The result goes to the repository's Security tab and, because `publish_results`
+# is on, to the public Scorecard page and the badge in the readme.
+# When it runs: every Monday, when the branch rule changes, and by hand. Not on every push: a result for a commit
+# nobody reads is noise, and a push to main would add a check to every commit that the release has to wait for.
+# It only reports. tools/verify/ci-green.mjs does not let the job `scorecard` stop a release.
+# The actions below are pinned by commit, as Scorecard asks of its own workflow (the tag is in the comment).
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: '17 5 * * 1' # every Monday, 05:17 UTC
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  scorecard:
+    name: scorecard
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # upload the result to the Security tab
+      id-token: write # publish the result to the public Scorecard page
+      contents: read
+      actions: read
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Keep the result with the run
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: scorecard-sarif
+          path: results.sarif
+          retention-days: 5
+
+      - name: Show it in the Security tab
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: results.sarif

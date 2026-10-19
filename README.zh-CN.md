@@ -2,6 +2,7 @@
 
 [![验证](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
 [![CodeQL](https://github.com/zh-xx/Antu/actions/workflows/codeql.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/zh-xx/Antu/badge)](https://scorecard.dev/viewer/?uri=github.com/zh-xx/Antu)
 [![版本](https://img.shields.io/github/v/release/zh-xx/Antu)](https://github.com/zh-xx/Antu/releases)
 [![npm](https://img.shields.io/npm/v/@zh-xx/antu?label=npm)](https://www.npmjs.com/package/@zh-xx/antu)
 [![许可证: AGPL-3.0-or-later](https://img.shields.io/github/license/zh-xx/Antu)](LICENSE)
@@ -114,6 +115,12 @@ const diagram = mount(element, spec, { lang: 'zh', onEvent: (e) => console.log(e
 - [CHANGELOG.md](CHANGELOG.md)，版本号的规则见 [spec/versioning.md](spec/versioning.md)。
 - 已知问题与需求记录在 [GitHub issues](https://github.com/zh-xx/Antu/issues)。参与贡献前，请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+## 安全
+
+- 报告漏洞请用 [SECURITY.zh-CN.md](SECURITY.zh-CN.md) 里说的私密报告，请不要为此公开提 issue。
+- npm 上 `@zh-xx/antu` 和 `@zh-xx/antu-dsh` 的每个版本，都由 GitHub Actions 通过 npm 的受信任发布者发布，并带来源证明（provenance）：npm 上该版本的页面会指回做出它的提交和工作流运行。[deps.dev](https://deps.dev/npm/%40zh-xx%2Fantu) 上有同一份记录，还有已知安全公告（写这段时没有）和许可证。
+- 用案图做出的页面离线可用，不会往任何地方发送东西；命令行每天最多问一次有没有新版本，不发送任何图的内容（`ANTU_NO_UPDATE_NOTIFIER=1` 可关掉）。
+
 ## 许可证
 
 Copyright (C) 2026 Ji Cheng。
@@ -121,6 +128,7 @@ Copyright (C) 2026 Ji Cheng。
 案图是自由软件，采用 **GNU Affero 通用公共许可证第 3 版，或（由你选择）任何更新的版本**（[`LICENSE`](LICENSE)，SPDX 标识 `AGPL-3.0-or-later`）。简单说：你可以使用、研究、修改和分享它，包括商业用途。如果你发布了修改后的版本，或者让别人通过网络使用它（例如做成在线服务），就必须用同一许可证公开你的修改、保留版权和许可声明，并提供源代码。不提供任何担保。这段话只是概括，以许可证原文为准。
 
 - **附加许可（AGPL 第 7 条）。** 用案图生成的页面里，既有案图的代码，也有你提供的图的数据。图的数据，以及你用自己的材料画出的图的内容，不属于案图，不受这个许可证约束：你可以保密、公开或出售，条件由你定。许可证约束的是页面里案图的代码，页面里的声明必须保留。同样的文字（英文）放在每一份生成的页面里和命令行的开头。
+- **如果你的公司或某个应用市场不接受 AGPL 软件**，或要求先做额外声明才肯上架、安装，那是它们自己的规定，不是本项目能单方面改变的。请在 issue 里说明你的需要；你用案图做出的页面和数据归你（见上面的附加许可）。
 - 仓库里的一切（代码、示例、规范和指南），除下面点名的以外，都在同一许可证之下。
 - 页面和命令行里包含的其他项目的代码，保留各自的许可证。它们的声明在 [`skills/antu/THIRD-PARTY-NOTICES.md`](skills/antu/THIRD-PARTY-NOTICES.md)，也放在每一份生成的页面里和命令行的开头，连同案图的许可证和该版本源码的位置。
 - `examples/` 里的案例和 `examples/raw/` 里的判决书都是虚构的：人物、公司、日期、金额和条款均为编造，不对应任何真实案件，适用同一许可证。

@@ -47,3 +47,8 @@ test('a check that ran again counts by its latest run: an earlier red one that w
   const again = [{ id: 1, ...run('verify') }, { id: 2, ...run('release', 'completed', 'success') }, { id: 9, ...run('release', 'completed', 'failure') }]
   assert.match(judge(again).join('\n'), /release: failure/)
 })
+
+test('the Scorecard job only reports: red or still running, it does not stop a release', () => {
+  assert.deepEqual(judge([run('verify'), run('scorecard', 'completed', 'failure')]), [])
+  assert.deepEqual(judge([run('verify'), run('scorecard', 'in_progress', null)]), [])
+})

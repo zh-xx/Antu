@@ -1,0 +1,44 @@
+name: Audit
+
+# Known vulnerabilities in what the project depends on, and whether the installed packages are the ones the npm
+# registry signed. It runs on a pull request that changes the dependencies (package.json, the lock file) or this file,
+# and by hand; a high or critical advisory, or a package whose signature does not check, fails it.
+# Not on every push, and not on a schedule: a new advisory against an old dependency would then turn red a commit that
+# changed nothing, and the release has to wait for every check of its commit (tools/verify/ci-green.mjs). New
+# advisories come through Dependabot alerts instead (a repository setting, Settings -> Code security).
+# Add the job `audit` to the branch rule on main if a failure here should stop a merge; until then it informs.
+on:
+  pull_request:
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/audit.yml
+  workflow_dispatch:
+
+concurrency:
+  group: audit-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # Nothing runs from the packages here: only their metadata is read.
+      - name: Install dependencies without running their scripts
+        run: npm ci --ignore-scripts
+
+      - name: Known vulnerabilities (high and critical)
+        run: npm audit --audit-level=high
+
+      - name: Registry signatures and provenance of the installed packages
+        run: npm audit signatures
