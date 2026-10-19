@@ -10,7 +10,7 @@ test('there is a security policy in both languages, each pointing at the other a
     assert.ok(existsSync(file), file)
     const text = read(file)
     assert.ok(text.includes(`](${other})`), `${file} links to ${other}`)
-    assert.ok(text.includes('https://github.com/zh-xx/Antu/security/advisories/new'), `${file} names the private report`)
+    assert.match(text, /\(<?https:\/\/github\.com\/zh-xx\/Antu\/security\/advisories\/new>?\)|<https:\/\/github\.com\/zh-xx\/Antu\/security\/advisories\/new>/, `${file} names the private report`)
     assert.doesNotMatch(text, /@(foxmail|qq|gmail)\.com/, `${file} holds no personal address`)
   }
 })
