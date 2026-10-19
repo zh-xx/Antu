@@ -211,7 +211,7 @@ and the text gets small (the Fang Yuan example opened at 7.0 px). Vertical timel
   how high a card stands.
 
 On by default (the maintainer's ruling, 2026-10): it only ever makes a vertical timeline shorter or leaves it as it is.
-What a reader sets is **remembered per diagram** (`staggers` in the preferences, keyed by title, like the orientation), so
+What a reader sets is **remembered per diagram** (`staggers` in the preferences, keyed by the diagram's content, like the orientation), so
 turning it off in one diagram does not change how another opens. The grid lines assume rows of one height, so the grid
 chip is offered only while it is off. Horizontal ignores it. `layout` reports the vertical size staggered, as the page
 opens, and the size with the switch off beside it; the text size and the advice to split are judged on the staggered size.

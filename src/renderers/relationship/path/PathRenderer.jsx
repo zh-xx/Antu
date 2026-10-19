@@ -9,6 +9,7 @@
 
 import { usePreset } from '../../../shell/env.js'
 import { useLang } from '../../../shell/LangContext.jsx'
+import { specKeyOf } from '../../../shell/prefs.js'
 import LevelledView from '../LevelledView.jsx'
 import { buildPathGraph } from './layout.js'
 import { useSpecPref } from '../useSpecPref.js'
@@ -20,7 +21,7 @@ export default function RelationshipPath({ spec }) {
   // External preset (antu_preview, the skill's preview): `from` and `to` name the two ends
   // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
   const PRESET = usePreset()
-  const specKey = `rel:${spec?.title || ''}`
+  const specKey = specKeyOf(spec)
   const { t } = useLang()
   // The two ends, remembered per diagram; a preview's preset gives the first values
   const [stored, setStored] = useSpecPref('relationshipPaths', specKey, (was) => (PRESET?.from || PRESET?.to ? { ...was, ...(PRESET.from ? { from: PRESET.from } : {}), ...(PRESET.to ? { to: PRESET.to } : {}) } : was))

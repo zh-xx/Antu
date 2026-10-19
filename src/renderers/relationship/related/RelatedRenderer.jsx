@@ -11,12 +11,13 @@ import { useLang } from '../../../shell/LangContext.jsx'
 import LevelledView from '../LevelledView.jsx'
 import { buildRelatedGraph } from './layout.js'
 import { useSpecPref } from '../useSpecPref.js'
+import { specKeyOf } from '../../../shell/prefs.js'
 
 export default function RelationshipRelated({ spec }) {
   // External preset (antu_preview, the skill's preview): `centre` names the party
   // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
   const PRESET = usePreset()
-  const specKey = `rel:${spec?.title || ''}`
+  const specKey = specKeyOf(spec)
   const { t } = useLang()
   // The centre is shared with the focus view: picking one party there picks it here
   const [chosen, setChosen] = useSpecPref('relationshipCentres', specKey, (was) => PRESET?.centre ?? was)

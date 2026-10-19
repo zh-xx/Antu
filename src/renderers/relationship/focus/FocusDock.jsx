@@ -9,7 +9,7 @@
 // ============================================================
 
 import { useLang } from '../../../shell/LangContext.jsx'
-import { DockExportButton, DockLangSwitch } from '../../../shell/DockParts.jsx'
+import { DockExportButton, DockLangSwitch, DockResetButton } from '../../../shell/DockParts.jsx'
 import { RELATION_KINDS } from '../graph/rules.js'
 
 export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, showLabels = true, onToggleLabels, parties = [], centre = null, onPickCentre, isDefaultCentre = true, onResetCentre, exporting = false, onExport, extra = null }) {
@@ -57,6 +57,8 @@ export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, 
         <span className="antu-dock-sep" />
 
         <DockExportButton exporting={exporting} onExport={onExport} />
+
+        <DockResetButton />
       </div>
     </div>
   )

@@ -8,7 +8,7 @@
 // ============================================================
 
 import { useLang } from '../../../shell/LangContext.jsx'
-import { DockExportButton, DockLangSwitch } from '../../../shell/DockParts.jsx'
+import { DockExportButton, DockLangSwitch, DockResetButton } from '../../../shell/DockParts.jsx'
 
 const OPTIONAL_FIELDS = ['sources', 'actors', 'summary']
 const FIELD_KEYS = { sources: 'dock.sources', actors: 'dock.actors', summary: 'dock.summary' }
@@ -35,6 +35,8 @@ export default function ChronicleDock({ fields = {}, onToggleField, exporting = 
         <span className="antu-dock-sep" />
 
         <DockExportButton exporting={exporting} onExport={onExport} />
+
+        <DockResetButton />
       </div>
     </div>
   )

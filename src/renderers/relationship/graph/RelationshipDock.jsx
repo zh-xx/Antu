@@ -13,7 +13,7 @@
 // ============================================================
 
 import { useLang } from '../../../shell/LangContext.jsx'
-import { DockExportButton, DockLangSwitch, DockSegmented } from '../../../shell/DockParts.jsx'
+import { DockExportButton, DockLangSwitch, DockResetButton, DockSegmented } from '../../../shell/DockParts.jsx'
 import { RELATION_KINDS } from './rules.js'
 
 const ORIENTATIONS = [
@@ -86,6 +86,8 @@ export default function RelationshipDock({
         <span className="antu-dock-sep" />
 
         <DockExportButton exporting={exporting} onExport={onExport} />
+
+        <DockResetButton />
       </div>
     </div>
   )

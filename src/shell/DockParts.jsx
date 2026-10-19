@@ -10,8 +10,11 @@
 //  so a second copy in another dock would be a second thing to keep in step.
 // ============================================================
 
+import { useContext } from 'react'
+
 import { useLang } from './LangContext.jsx'
-import { useEnv } from './env.js'
+import { ShownSpecContext, useEnv, usePrefs, useResetSpec } from './env.js'
+import { hasSpecPrefs, specKeyOf } from './prefs.js'
 
 /** Language switch. Each language name is written in its own language, so you recognise your entry even in the wrong language. */
 const LANGS = [
@@ -70,5 +73,27 @@ export function DockExportButton({ exporting = false, onExport }) {
       </svg>
       {exporting ? t('dock.exporting') : t('dock.exportImage')}
     </button>
+  )
+}
+
+/**
+ * "Restore this diagram's defaults": shown only when this diagram has a remembered choice. It forgets them
+ * (`clearSpecPrefs`) and App mounts the diagram again, so every control reads its default at mount. Theme and
+ * language are global choices and are deliberately left alone.
+ */
+export function DockResetButton() {
+  const { t } = useLang()
+  const prefs = usePrefs()
+  const reset = useResetSpec()
+  const spec = useContext(ShownSpecContext)
+  const key = specKeyOf(spec)
+  if (!hasSpecPrefs(prefs, key)) return null
+  return (
+    <>
+      <span className="antu-dock-sep" />
+      <button className="antu-dock-chip antu-dock-reset" onClick={reset} title={t('dock.restoreTitle')} aria-label={t('dock.restoreTitle')}>
+        {t('dock.restore')}
+      </button>
+    </>
   )
 }

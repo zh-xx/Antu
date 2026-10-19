@@ -182,7 +182,7 @@ export function mount(el, spec, options = {}) {
   return {
     /** Resolves once the diagram is drawn and fitted; refused (with `.errors`) when the spec is not valid */
     ready,
-    /** Draw another spec in the same place; the reader's choices for it are kept by its title */
+    /** Draw another spec in the same place; the reader's choices are kept per diagram content */
     update(next) {
       alive('update')
       // the old spec's problems are not the new one's: wait for its drawing or its own `invalid`

@@ -72,7 +72,7 @@ What is drawn lives in the element's **shadow root**, not among its children: `e
 | `theme` | `document` | the theme it opens in: `document`, `modern`, `legal`, `dark` (`spec/theme.md`). The reader can still switch, unless the label card is left out |
 | `lang` | the browser's | `zh` or `en`: the language of the page's own words. The case is never translated |
 | `ui` | all `true` | `{ header, capsule, minimap, zoom, panOnScroll, panOnDrag }`: pieces of the page's chrome to leave out (the label card at the top left, the control capsule at the bottom, the minimap, the zoom buttons). `panOnScroll: false` stops the wheel from panning the diagram so a host page (a chat card) can still scroll; `panOnDrag: false` stops press-and-drag from panning; pinch-zoom stays on. For a chat card, prefer spreading [`cardUi`](#card-ui) |
-| `prefs` | `'none'` | where the reader's choices (kind, fields, orientation …) are kept: `'none'` while mounted only; `'local'` in the viewer page's `localStorage` key (`antu.prefs`); or the host's store `{ read(): object, write(patch) }` |
+| `prefs` | `'none'` | where the reader's choices (kind, fields, orientation …) are kept: `'none'` while mounted only; `'local'` in the viewer page's `localStorage` key (`antu.prefs`); or the host's store `{ read(): object, write(patch) }`. Each diagram's choices are keyed by its content; only the theme and the language are shared |
 | `initial` | none | how it opens, ahead of the reader's stored choices (`AntuViewState`, below); `headerFolded` is the old alias of `shell.headerFolded`. An unknown key, a wrong type or a value outside an enum makes `mount` throw |
 | `locked` | none | values forced for this mount (`AntuViewState`, below); their controls are hidden, not disabled. An unknown key, a wrong type or a value outside an enum makes `mount` throw |
 | `persist` | `true` | which of the reader's changes reach the prefs store: `true` (all), `false` (none: kept while mounted), or an array of the names below. An unknown name makes `mount` throw |
@@ -106,7 +106,7 @@ The value of every configurable item comes from, highest first:
 3. `initial`
 4. the page's preset (the viewer page only, as today)
 5. the stored preferences
-6. the built-in default (for the States switch, `statesByDefault(theme)`)
+6. the built-in default (the States switch is on in every theme, `statesByDefault`; the rule table is off)
 
 A write through `prefs.write` is allowed by the name of its prefs key. A write whose name is not allowed stays in memory for this mount, and `read()` returns the stored values with those on top. The names:
 
@@ -117,7 +117,7 @@ A write through `prefs.write` is allowed by the name of its prefs key. A write w
 | `kind` | `kinds` |
 | `shell.headerFolded` | `headerFolded` |
 | `shell.dockFolded` | `dockFolded` |
-| `view.flow` | `flowFieldsByDiagram`, `orientations`, `linkStyle` (the last two are shared with other diagram types today; phase 1 counts them as the flowchart's) |
+| `view.flow` | `flowFieldsByDiagram`, `orientations`, `linkStyle` (each is a map keyed by the diagram's content) |
 | `view.route` | `procedureRouteFieldsByDiagram` |
 
 Phase 1 covers these items; a `view.flow` or `view.route` entry for a diagram of another type is ignored, not an error, and the other kinds of diagram have no view state yet.
@@ -139,7 +139,7 @@ Phase 1 covers these items; a `view.flow` or `view.route` entry for a diagram of
 | | |
 | --- | --- |
 | `ready` | a promise: resolves once the diagram is drawn and fitted; rejects, with `error.errors`, when the spec is not valid |
-| `update(spec)` | draw another spec in the same place; the reader's choices are kept per title, as on the viewer page |
+| `update(spec)` | draw another spec in the same place; the reader's choices are kept per diagram content, as on the viewer page |
 | `setKind(kind)` | `false` when it is not a kind of the type (or not in `kinds`) |
 | `setTheme(theme)`, `setLang(lang)` | `false` when it is not one |
 | `select(id)` | pin the card of the item `id` of the spec, as if the reader had clicked it: the host hears `select` as usual. `select(null)` unpins. `false` when no card of that item is drawn in this kind (or the kind pins nothing, as the route map) |

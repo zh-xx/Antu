@@ -20,11 +20,12 @@ import FocusDock from './focus/FocusDock.jsx'
 import LineLayerNode from './LineLayerNode.jsx'
 import { useSelectEvent } from '../../shell/useSelectEvent.js'
 import { useSpecPref } from './useSpecPref.js'
+import { specKeyOf } from '../../shell/prefs.js'
 
 const nodeTypes = { rnode: EntityNode, lineLayer: LineLayerNode }
 
 export default function LevelledView({ spec, build, className, options = {}, onParty = null, dockExtra = null, fitWidth = true, decorate = null, fitMaxZoom = 0 }) {
-  const specKey = `rel:${spec?.title || ''}`
+  const specKey = specKeyOf(spec)
   const { t, lang } = useLang()
 
   const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey)

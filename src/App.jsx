@@ -30,7 +30,8 @@ import { getRenderer, knowledgeOf, listKinds, listTypes } from './core/registry.
 import { GRAPH_TYPE_KEYS } from './core/labels.js'
 import { useLang } from './shell/LangContext.jsx'
 import DiagramHeader from './shell/DiagramHeader.jsx'
-import { ShownSpecContext, useEnv, useUi } from './shell/env.js'
+import { ResetSpecContext, ShownSpecContext, useEnv, useUi } from './shell/env.js'
+import { clearSpecPrefs, specKeyOf } from './shell/prefs.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
 import { useTheme, shellVars } from './theme/ThemeContext.jsx'
 
@@ -119,12 +120,19 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
     else if (listKinds(given.type).length === 0) emit({ type: 'invalid', errors: [`no renderer is registered for type "${given.type}"`] })
   }, [given])
 
-  // The per-diagram preference is keyed by **title**: the title is written in the
-  // data, so both dev and the product have it, and it does not depend on a file
-  // name (the product has no file name at all).
-  // (Read from the data as given, so a kind a host sets right after mounting, before the
-  // validation has run, is kept under the same key.)
-  const specKey = (typeof given?.title === 'string' && given.title) || ''
+  // The per-diagram preference is keyed by the diagram's **content**, not its title (issue 236): two
+  // diagrams with the same title must not share a record, and a title may be empty. (Read from the data as
+  // given, so a kind a host sets right after mounting, before the validation has run, is kept under the same key.)
+  const specKey = specKeyOf(given)
+
+  // "Restore this diagram's defaults": forget every per-diagram choice, then remount the parts that read one
+  // at mount. Theme and language are global and stay as they are.
+  const [resetCount, setResetCount] = useState(0)
+  // The label card writes its fold outside the canvas tree; this only makes the dock notice that there is now
+  // something to restore, without remounting anything.
+  const [, bumpPrefs] = useState(0)
+  // Remounting on a new spec as well keeps each diagram's choices its own when a host sends another one
+  const partKey = `${specKey}:${resetCount}`
 
   // The kind is a choice of the rendering layer, not part of the data: look up
   // from the registry which kinds the type has.
@@ -151,6 +159,15 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
     const map = { ...kindPrefs, [specKey]: next }
     setKindPrefs(map)
     prefs.write({ kinds: map })
+  }
+  const resetSpecPrefs = () => {
+    // what the reader changed in this mount wins over everything (shell/viewState.js), so forget that too, or a
+    // switch whose default is on would stay off once its stored choice is gone
+    env.touched?.clear()
+    clearSpecPrefs(prefs, specKey)
+    // the kind is App's own state too: after the cleared record it falls back to the host's or the default kind
+    setKindPrefs(prefs.read().kinds || {})
+    setResetCount((n) => n + 1)
   }
   // A page made with a preset that names the kind (a screenshot, antu_preview) has that kind fixed, and its label card
   // names it instead of offering a switch that would do nothing (issue 180)
@@ -194,23 +211,29 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
           so the switch has no meaning. A host that draws its own title may leave it out. */}
       {showHeader && (
         <DiagramHeader
+          key={resetCount}
+          specKey={specKey}
           title={spec?.title || t('common.untitled')}
           typeLabel={spec ? labelOf(GRAPH_TYPE_KEYS, spec.type) : ''}
           info={diagramInfo(spec, t, formatNumber)}
           kinds={kindFixed ? kinds.filter((k) => k.kind === kind) : kinds}
           kind={kind}
           onSelectKind={selectKind}
+          onPrefsChanged={() => bumpPrefs((n) => n + 1)}
         />
       )}
 
       {ready ? (
-        <ErrorBoundary lang={lang}>
-          <ShownSpecContext.Provider value={spec}>
-            <Renderer spec={spec} />
-          </ShownSpecContext.Provider>
-        </ErrorBoundary>
+        <ResetSpecContext.Provider key={partKey} value={resetSpecPrefs}>
+          <ErrorBoundary lang={lang}>
+            <ShownSpecContext.Provider value={spec}>
+              <Renderer spec={spec} />
+            </ShownSpecContext.Provider>
+          </ErrorBoundary>
+        </ResetSpecContext.Provider>
       ) : (
         <FallbackInfo
+          key={partKey}
           errors={errors}
           spec={spec}
           hasRenderer={!!Renderer}

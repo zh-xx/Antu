@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { useEnv, usePrefs, usePreset } from '../../../shell/env.js'
+import { specKeyOf } from '../../../shell/prefs.js'
 import { useExport } from '../../../shell/useExport.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import ScaleLayerNode from './ScaleLayerNode.jsx'
@@ -48,7 +49,7 @@ export default function FactScale({ spec }) {
   // (the preset is MCP's antu_preview's, the prefs the page's or the host's; shell/env.js)
   const PRESET = usePreset()
   const prefs = usePrefs()
-  const specKey = spec?.title || ''
+  const specKey = specKeyOf(spec)
   const crowded = useMemo(() => {
     const actors = Array.isArray(spec?.actors) ? spec.actors : []
     if (actors.length < 2) return false

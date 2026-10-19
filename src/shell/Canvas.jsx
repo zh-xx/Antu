@@ -22,6 +22,7 @@ import { EXPORT_CLASS, exportPng as runExportPng, renderPng } from './exportPng.
 import { ShownSpecContext, useEnv, useUi, useViewValue } from './env.js'
 import { nodesOfItem, pinTargetOf } from '../core/items.js'
 import { placeDock } from './dockPlace.js'
+import { readSpecPref, specKeyOf, writeSpecPref } from './prefs.js'
 
 /** React Flow's minimap width plus its border, until one has been measured */
 const MINIMAP_WIDTH = 202
@@ -92,6 +93,8 @@ export default function Canvas({
   // the nodes via onNodesChange, and everything that depends on size (the MiniMap and
   // the like) relies on that write-back.
   const { ariaLabels, t } = useLang()
+  // The spec now drawn (App provides it through ShownSpecContext), so the shell can key its own per-diagram choices
+  const shownSpec = useContext(ShownSpecContext)
   // The decoration layers are declared 1×1 (see fact/timeline/nodes.js), so the minimap saw nothing of a picture drawn
   // only by layers (the route map, the relation path): one empty node as large as the picture gives it its extent
   const allNodeTypes = useMemo(() => ({ ...nodeTypes, miniGhost: MiniGhost }), [nodeTypes])
@@ -277,7 +280,6 @@ export default function Canvas({
   // A host names items of its spec (issue 164): `select` pins the card of one as a click would, `focus` brings it
   // into view, `highlight` rings them. An item is found among the canvas nodes the way `select` events name them
   // back (core/items.js); a rule of the flowchart is a row of its table, found by its `data-pin-id`.
-  const shownSpec = useContext(ShownSpecContext)
   const { highlight } = useEnv()
   const latestRef = useRef(null)
   latestRef.current = { spec: shownSpec, graph, minZoom }
@@ -341,7 +343,9 @@ export default function Canvas({
   // The dock fold (issue 200): resolved like every other view state, so a host may open it folded or lock it.
   // A reader's click writes `dockFolded`; a locked one has no control, so a locked-folded dock is hidden whole.
   const { prefs } = useEnv()
-  const dockFold = useViewValue('shell.dockFolded', prefs.read().dockFolded === true, false)
+  const specKey = specKeyOf(shownSpec)
+  // The fold is remembered per diagram (issue 236), in a map from the diagram's content key to the fold.
+  const dockFold = useViewValue('shell.dockFolded', readSpecPref(prefs, 'dockFolded', specKey) === true, false)
   const [dockFolded, setDockFolded] = useState(dockFold.value === true)
   const dockLocked = dockFold.locked
   const canFold = !dockLocked
@@ -350,7 +354,7 @@ export default function Canvas({
     const next = !dockFolded
     setDockFolded(next)
     dockFold.touch()
-    prefs.write({ dockFolded: next })
+    writeSpecPref(prefs, 'dockFolded', specKey, next)
   }
 
   // Where the capsule goes on this width, and whether the minimap gives way to it (shell/dockPlace.js)

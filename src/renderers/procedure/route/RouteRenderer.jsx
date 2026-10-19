@@ -12,12 +12,12 @@ import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { usePrefs, useViewValue } from '../../../shell/env.js'
+import { specKeyOf } from '../../../shell/prefs.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
-import { DockExportButton, DockLangSwitch } from '../../../shell/DockParts.jsx'
+import { DockExportButton, DockLangSwitch, DockResetButton } from '../../../shell/DockParts.jsx'
 import RouteLayerNode from './RouteLayerNode.jsx'
 import { buildRouteGraph } from './layout.js'
-import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { statesByDefault } from '../flow/FlowRenderer.jsx'
 
 const nodeTypes = { routeLayer: RouteLayerNode }
@@ -27,16 +27,15 @@ const OPEN_MIN_ZOOM = 0.7
 
 export default function ProcedureRoute({ spec }) {
   const prefs = usePrefs()
-  const specKey = `proc:${spec?.title || ''}`
+  const specKey = specKeyOf(spec)
   const { t, lang } = useLang()
   const [fieldPrefs, setFieldPrefs] = useState(() => prefs.read().procedureRouteFieldsByDiagram || {})
   const storedFields = fieldPrefs[specKey] || {}
-  const { id: themeId } = useTheme()
   // Both switches go through the view state (issue 200): a host's initial/locked/persist, the page's preset and
-  // the reader's click are resolved in one place. The four states in colour (issue 187) are off in the document
-  // theme and on in the others, unless switched for this diagram; `statesByDefault` stays the fallback.
+  // the reader's click are resolved in one place. The four states in colour (issue 187) are on by default in every
+  // theme (issue 235); `statesByDefault` stays the fallback.
   const labelsView = useViewValue('view.route.labels', storedFields.labels, true)
-  const statesView = useViewValue('view.route.states', storedFields.states, statesByDefault(themeId))
+  const statesView = useViewValue('view.route.states', storedFields.states, statesByDefault())
   const showLabels = labelsView.value
   const showStates = statesView.value
   const views = { labels: labelsView, states: statesView }
@@ -69,6 +68,7 @@ export default function ProcedureRoute({ spec }) {
             <DockLangSwitch />
             <span className="antu-dock-sep" />
             <DockExportButton exporting={exporting} onExport={onExport} />
+            <DockResetButton />
           </div>
         </div>
       </Canvas>
