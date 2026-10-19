@@ -38,8 +38,8 @@ numbers, an org chart of a firm), say that Antu does not draw it.
 
 1. Read the guide for the kind, then its field table `references/fields-<kind>.md`: every field, whether it is
    required, and what it means.
-2. Open one example of that kind in `examples/<kind>/` and follow its shape: `1-minimal` is the smallest, the others
-   each add one idea.
+2. Open one example of that kind in `examples/` (the files are named `<kind>-<name>.<lang>.json`, for example
+   `examples/fact-1-minimal.zh-CN.json`) and follow its shape: `1-minimal` is the smallest, the others each add one idea.
    **Fact diagram**: count the parties first. With two or more, each party carries `groupId` (its side, the 1st or
    the 2nd group) and the events carry none: an event goes to its party's side, and one of several parties goes on
    the axis (see `3-sides`, `4-one-side-several`). With one party, the groups sort its acts and go on the events

@@ -45,7 +45,7 @@ try {
   check('--version', v.status === 0 && v.stdout.trim() === `antu ${version}`, `${v.stdout.trim()} ${v.stderr.trim()}`)
 
   for (const type of TYPES) {
-    const spec = join(work, `antu/examples/${type}/1-minimal.zh-CN.json`)
+    const spec = join(work, `antu/examples/${type}-1-minimal.zh-CN.json`)
     const val = run('validate', spec)
     check(`${type}: validate passes`, val.status === 0 && val.stdout.startsWith('Validation passed'), val.stderr.trim() || val.stdout.trim())
     const lay = run('layout', spec)
@@ -66,7 +66,7 @@ try {
       const b = existsSync(file) ? readFileSync(file) : Buffer.alloc(0)
       return b.length > 24 && b.toString('latin1', 1, 4) === 'PNG' ? `${b.readUInt32BE(16)}×${b.readUInt32BE(20)}` : null
     }
-    const noBrowser = runWith({ ANTU_CHROME: join(work, 'no-such-browser') }, 'preview', join(work, 'antu/examples/fact/1-minimal.zh-CN.json'), '-o', join(work, 'x.png'))
+    const noBrowser = runWith({ ANTU_CHROME: join(work, 'no-such-browser') }, 'preview', join(work, 'antu/examples/fact-1-minimal.zh-CN.json'), '-o', join(work, 'x.png'))
     check('preview: an ANTU_CHROME that points at nothing is said so, exit code 3', noBrowser.status === 3 && /ANTU_CHROME/.test(noBrowser.stderr), `${noBrowser.status} ${noBrowser.stderr.trim()}`)
 
     // Node below 22 has no WebSocket and takes the browser's own screenshot; 22 and newer drive the browser, and
@@ -76,7 +76,7 @@ try {
     for (const [way, env] of ways) {
       for (const type of ['fact', 'justification']) {
         const out = join(work, `${type}-${env.ANTU_PREVIEW_VIA || 'cdp'}.png`)
-        const r = runWith(env, 'preview', join(work, `antu/examples/${type}/1-minimal.zh-CN.json`), '-o', out)
+        const r = runWith(env, 'preview', join(work, `antu/examples/${type}-1-minimal.zh-CN.json`), '-o', out)
         if (r.status === 3 && /no Chromium-based browser found/.test(r.stderr)) {
           missing = true
           continue
@@ -95,14 +95,14 @@ try {
 
   // --kind (#85): the same JSON drawn another way. A command line from an earlier release has none.
   if (run('--help').stdout.includes('--kind')) {
-    const spec = join(work, 'antu/examples/fact/1-minimal.zh-CN.json')
+    const spec = join(work, 'antu/examples/fact-1-minimal.zh-CN.json')
     const lay = run('layout', spec, '--kind', 'chronicle')
     check('fact: layout --kind chronicle reports the chronicle', lay.status === 0 && /^Kind: chronicle/m.test(lay.stdout), lay.stderr.trim() || lay.stdout.trim())
     const wrong = run('layout', spec, '--kind', 'swimlane')
     check('an unknown kind is named, exit code 2', wrong.status === 2 && /timeline, chronicle/.test(wrong.stderr), `${wrong.status} ${wrong.stderr.trim()}`)
     // The relationship focus view, where this command line has it
     if (run('--help').stdout.includes('focus')) {
-      const rel = join(work, 'antu/examples/relationship/1-minimal.zh-CN.json')
+      const rel = join(work, 'antu/examples/relationship-1-minimal.zh-CN.json')
       const f = run('layout', rel, '--kind', 'focus')
       check('relationship: layout --kind focus reports the focus view', f.status === 0 && /^Kind: focus/m.test(f.stdout), f.stderr.trim() || f.stdout.trim())
       if (run('--help').stdout.includes('matrix')) {
@@ -118,7 +118,7 @@ try {
         }
       }
       if (run('--help').stdout.includes('route')) {
-        const proc = join(work, 'antu/examples/procedure/1-minimal.zh-CN.json')
+        const proc = join(work, 'antu/examples/procedure-1-minimal.zh-CN.json')
         const rt = run('layout', proc, '--kind', 'route')
         check('procedure: layout --kind route reports the route map', rt.status === 0 && /^Kind: route/m.test(rt.stdout), rt.stderr.trim() || rt.stdout.trim())
         const wrongProc = run('layout', proc, '--kind', 'swimlane')
@@ -154,7 +154,7 @@ try {
   })
   if (python) {
     for (const type of TYPES) {
-      const spec = join(work, `antu/examples/${type}/1-minimal.zh-CN.json`)
+      const spec = join(work, `antu/examples/${type}-1-minimal.zh-CN.json`)
       const out = join(work, `${type}-py.html`)
       const r = spawnSync(python, [join(work, 'antu/scripts/make_html.py'), spec, '-o', out], { encoding: 'utf8', cwd: work })
       const html = existsSync(out) ? readFileSync(out, 'utf8') : ''
@@ -167,7 +167,7 @@ try {
   }
 
   // a diagram with a problem: named, exit code 1, and render writes nothing
-  const bad = JSON.parse(readFileSync(join(work, 'antu/examples/justification/3-issues.zh-CN.json'), 'utf8'))
+  const bad = JSON.parse(readFileSync(join(work, 'antu/examples/justification-3-issues.zh-CN.json'), 'utf8'))
   bad.links[0].from = 'nowhere'
   writeFileSync(join(work, 'bad.json'), JSON.stringify(bad))
   const vb = run('validate', 'bad.json')
