@@ -3,7 +3,7 @@
     "antu": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "-p", "@zh-xx/antu@0.16.3", "antu-mcp"],
+      "args": ["-y", "-p", "@zh-xx/antu@0.16.4", "antu-mcp"],
       "runtime": {
         "type": "node",
         "version": "20"

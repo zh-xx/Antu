@@ -5,13 +5,25 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+## 0.16.4
+
+No file and no tool call that worked before stops working. What changes is what a reader sees when a diagram opens, what the skill package looks like inside, and what an agent that has only the MCP server is told. Nothing in the format of any diagram changes.
+
 ### Changed
 - **A diagram's remembered choices are its own** (#236). Everything except the theme and the interface language is now remembered per diagram, keyed by its content (the title plus a hash of the whole spec) rather than by its title, so two diagrams with the same or no title no longer share a record. The five switches that were one choice for the whole site — the label card fold, the dock fold, link style, the grid lines and the card fields — are per diagram too; their old global values are ignored once, with no migration.
 - **"Restore this diagram's defaults"** in the dock, shown when the open diagram has a remembered choice: it forgets them and opens the diagram again with the built-in defaults. The theme and the language are not changed.
 - **The procedure flowchart opens with States on and Rules off** (#235). States are on in every theme, the document theme included; the rule table is one click away when the data has rules. Fact stagger (on in vertical) and the PNG export ratio (2×) are unchanged.
+- **React 19.3.1** (#244), a patch release (its notes name only the server components, which Antu does not use).
 
 ### Fixed
 - **The skill package is two folders deep at most** (#234). A host that takes a skill package only as root / folder / file refused the whole package, because the examples were filed one level deeper (`examples/fact/1-minimal.en.json`). They are now flat, with the kind in the file name: `examples/fact-1-minimal.en.json`. `SKILL.md` says so. Nothing else of the package moves, and the examples of the repository itself (`examples/agent/<kind>/`) keep their place.
+
+### Added
+- **The MCP server tells an agent how to use it** (#237). The server now sends `instructions` (which type to choose, the order of the tools, and the rules about not inventing a date, an article number, a case number or a name), so it works without the skill; the descriptions of `antu_schema` and `antu_guide` no longer say that only two types exist; `antu_render` asks for an absolute `outPath` and `antu_validate` says that a pass is not proof that the content is true; `antu_examples` takes a bare example name.
+- **A connector for WorkBuddy's open platform** (#239, #245): `tools/workbuddy/` builds the folder and the zip the platform takes ("MCP + Skill": the published `@zh-xx/antu` is started over stdio on the Node WorkBuddy manages, with a light skill that carries no script), and checks it against the platform's rules. Named 案图 Antu / Antu. It is a build for the maintainer to submit: nothing in a release depends on it.
+
+### A note for a host that gives `mount` its own `prefs` store
+The keys `headerFolded`, `dockFolded`, `linkStyle`, `showGrid` and `fields` now hold a map from a diagram to its choice (they held one value for every diagram). A value of the old shape is ignored, not read, so nothing fails; the choice made under it is made again once.
 
 ## 0.16.3
 
