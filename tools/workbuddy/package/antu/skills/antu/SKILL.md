@@ -1,7 +1,7 @@
 ---
 name: antu
-display_name: Antu 法律图
-display_name_en: Antu Legal Diagrams
+display_name: 案图 Antu
+display_name_en: Antu
 description: Draw legal diagrams (fact timeline, procedure flowchart, party relationship diagram, judgment reasoning tree) as one offline HTML file, using the Antu tools. Use when the user asks to draw, chart, map or visualise a case, a contract flow, the parties or a judgment's reasoning. 事实时间线、程序流程图、主体关系图、股权结构、担保关系、证成图、说理树。
 description_zh: 用 Antu 工具把案情、程序、主体关系、裁判说理画成可离线打开的单个 HTML 图。
 description_en: Draw case timelines, procedures, party relationships and court reasoning as one offline HTML file.
@@ -9,7 +9,7 @@ version: "0.16.3"
 author: zh-xx
 ---
 
-# Antu：用 JSON 画法律图
+# 案图 Antu：用 JSON 画法律图
 
 你写 JSON，Antu 的工具负责检查和画图。结果是**一个 HTML 文件**，用任何浏览器双击就能打开，不联网，可打印、可转发。
 

@@ -1,7 +1,7 @@
 {
   "name": "Antu",
-  "name_zh": "Antu 法律图",
-  "name_en": "Antu Legal Diagrams",
+  "name_zh": "案图 Antu",
+  "name_en": "Antu",
   "description": "Draw legal diagrams from JSON as one offline HTML file.",
   "description_zh": "用结构化 JSON 画法律图：事实时间线、程序流程图、主体关系图、裁判说理证成图，生成可离线打开的单个 HTML 文件。",
   "description_en": "Legal diagrams from JSON: case timelines, procedures, party relationships and court reasoning, as one offline HTML file.",
