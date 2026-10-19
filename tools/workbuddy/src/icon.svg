@@ -1,5 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B8DEF"/><stop offset="1" stop-color="#2B4FCB"/></linearGradient></defs>
-<rect x="2" y="2" width="60" height="60" rx="15" fill="url(#g)"/>
-<g transform="translate(32 33) scale(0.7) translate(-32 -32)"><g stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M32 10L13 52M32 10L51 52M21.5 33.1H42.5"/></g>
-<circle cx="32" cy="10" r="7" fill="#FFC857"/><circle cx="13" cy="52" r="6" fill="#fff"/><circle cx="51" cy="52" r="6" fill="#fff"/>
-<circle cx="21.5" cy="33.1" r="4" fill="#fff"/><circle cx="42.5" cy="33.1" r="4" fill="#fff"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect x="2.5" y="2.5" width="59" height="59" rx="15" fill="#1B2750" stroke="#4C7DF0" stroke-width="2"/>
+  <g stroke="#8FB0FF" stroke-width="2.4" stroke-linecap="round" fill="none">
+    <path d="M15 42L26 23L40 31L49 14M40 31L47 49"/>
+  </g>
+  <circle cx="15" cy="42" r="4" fill="#fff"/><circle cx="26" cy="23" r="4" fill="#fff"/>
+  <circle cx="40" cy="31" r="5" fill="#F2A93B"/><circle cx="49" cy="14" r="4" fill="#fff"/><circle cx="47" cy="49" r="4" fill="#fff"/>
+</svg>
