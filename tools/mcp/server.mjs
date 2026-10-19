@@ -44,7 +44,26 @@ import { formatVersions, versionsReport } from '../lib/versions.mjs'
 import { screenshot, findChrome } from './preview.mjs'
 
 // The version is written once, in package.json (spec/versioning.md)
-const server = new McpServer({ name: 'antu', version: engineVersion() })
+// What an agent needs when it has only this server and no skill: which diagram to choose, the order of the tools, and
+// the rules about not inventing. The skill (skills/antu/SKILL.md) says the same in its own words.
+const INSTRUCTIONS = `Antu draws legal diagrams as one offline HTML file from JSON that you write. The server draws; it never writes the JSON.
+
+Choose the type from what the user wants to show (if it fits two, make two diagrams and say so; if it fits none, say Antu does not draw it):
+- fact: what happened, in order, and who did it (a timeline of a case).
+- procedure: the steps of a process, with branches (contract performance, litigation or arbitration).
+- relationship: who the parties are and how they are tied (shareholding, loans, guarantees, control, regulators).
+- justification: why a court decided as it did (conclusion, issues, norms, elements, facts).
+Always pass this type to antu_schema, antu_guide and antu_examples: without it they answer for fact.
+
+Order of work: antu_schema (fields) -> antu_guide (how the data becomes the picture) -> antu_examples (start with 1-minimal) -> write the JSON in the user's language -> antu_validate until it passes -> antu_layout (size and orientation; split the diagram if it says the text is too small) -> antu_render, and give the user the full path of the file it wrote. antu_preview needs Chrome on the machine; if it is missing, say that you could not look at the result.
+
+What goes into the diagram comes from the user's material, not from you:
+- Never invent a date, a time, an article number, a version of a statute, a case number or a name. If the material does not say, leave the field out or ask the user.
+- Something you are not sure of, or the user is unsure of: leave it out, say so, and offer to add it once confirmed.
+- An event with no date: leave date out. Do not borrow another event's date.
+- Never drop facts to make a diagram fit; split it instead.`
+
+const server = new McpServer({ name: 'antu', version: engineVersion() }, { instructions: INSTRUCTIONS })
 
 /** The JSON in the spec is an arbitrarily nested structure; the schema is not redefined here: validation is the engine's job */
 const specArg = z.looseObject({}).describe('the Antu JSON (envelope + content layer; see the spec resources)')
@@ -83,12 +102,12 @@ server.registerTool(
       file: z
         .string()
         .optional()
-        .describe('the one to fetch, e.g. examples/agent/fact/1-minimal.en.json. Omit to list them'),
+        .describe('the one to fetch: the path the list shows (examples/agent/relationship/3-guarantee.en.json) or just its name (3-guarantee.en.json, with type). Omit to list them'),
       group: z
         .enum(['agent', 'real', 'raw'])
         .optional()
         .describe('which batch to list: agent (default, small examples) / real (real cases) / raw (source material, not examples)'),
-      type: z.string().optional().describe('which diagram type, fact by default (fact diagram)'),
+      type: z.string().optional().describe('fact, procedure, relationship or justification (fact if omitted)'),
     },
   },
   async ({ file, group = 'agent', type = 'fact' }) => {
@@ -100,7 +119,10 @@ server.registerTool(
       return FAIL(`no examples for type "${type}" yet. Available: ${known || '(none)'}.`)
     }
     if (file) {
-      const one = readExample(file)
+      // A bare name ("3-guarantee.en.json") is the common slip: look for it among the small examples, the asked type first
+      const bare = !String(file).includes('/')
+      const types = [type, ...listKnowledgeTypes().map((t) => t.type).filter((t) => t !== type)]
+      const one = readExample(file) ?? (bare ? types.map((t) => readExample(`agent/${t}/${file}`)).find(Boolean) : null)
       if (!one) return FAIL(`example not found: ${file}. Call antu_examples with no arguments to see the list.`)
       return OK(`# ${file}\n\n\`\`\`json\n${one.text}\n\`\`\``)
     }
@@ -143,9 +165,9 @@ server.registerTool(
       'about 1.9k tokens. Then call antu_guide (where an event is drawn) and antu_examples (how one is written). ' +
       'Cross-field rules (dangling references, a span running backwards, and so on) are not in this table: ' +
       'call antu_validate after writing and it will report each one.\n' +
-      'Types built so far: fact (timeline) and procedure (flowchart). Omit type and you get fact.',
+      'Pass type: fact, procedure, relationship or justification. Omit it and you get fact, which is wrong for the other three.',
     inputSchema: {
-      type: z.string().optional().describe('which diagram type, fact by default (fact diagram)'),
+      type: z.string().optional().describe('fact, procedure, relationship or justification (fact if omitted)'),
     },
   },
   async ({ type = 'fact' }) => {
@@ -179,11 +201,12 @@ server.registerTool(
       'One page on how the data becomes the picture. fact: slots set the row; with two or more parties each party\'s groupId ' +
       'sets its side and an event\'s actorIds place it, with one party the event\'s groupId sets the side; and the ' +
       '"one event per cell" limit with its three ways out. procedure: nodes, edges and ' +
-      'rules, what the main line is, and when a clause is a rule rather than a branch. Read it once before writing JSON ' +
+      'rules, what the main line is, and when a clause is a rule rather than a branch. relationship: the parties, ' +
+      'the ties and the ways of drawing them. justification: conclusion, issues, norms, elements and facts. Read it once before writing JSON ' +
       'and it saves a few rounds of validation. The field list is antu_schema, real examples to copy from are antu_examples.\n' +
-      'Types built so far: fact and procedure. Omit type and you get fact.',
+      'Pass type: fact, procedure, relationship or justification. Omit it and you get fact, which is wrong for the other three.',
     inputSchema: {
-      type: z.string().optional().describe('which diagram type, fact by default (fact diagram)'),
+      type: z.string().optional().describe('fact, procedure, relationship or justification (fact if omitted)'),
     },
   },
   async ({ type = 'fact' }) => {
@@ -204,7 +227,8 @@ server.registerTool(
     description:
       'Check whether an Antu JSON is valid. Returns each problem (with its field path and event id, e.g. slots[0].events[1] (ev-2)). ' +
       'When it passes it may still add notes (for a fact diagram: a slot whose date is wholly earlier than the one before). ' +
-      '**Run this right after writing the JSON; do not render first.** It is pure computation, needs no browser, and is fast.',
+      '**Run this right after writing the JSON; do not render first.** It is pure computation, needs no browser, and is fast. ' +
+      'A passing check says the JSON is well formed, not that it is true: every date, article number and name must come from the user\'s material.',
     inputSchema: { spec: specArg },
   },
   async ({ spec }) => {
@@ -251,10 +275,11 @@ server.registerTool(
     description:
       'Turn the JSON into one self-contained HTML: the engine and the data both live in the file, with no network and no server. ' +
       'Double-click to open it, and send it to someone or archive it as it is (about 2.3 MB). ' +
-      '**It validates first**, and produces no file if that fails.',
+      '**It validates first**, and produces no file if that fails. Pass outPath (an absolute path in the folder the user works in) ' +
+      'and tell the user the full path it returns; keep the JSON next to the HTML, as the same name with .json.',
     inputSchema: {
       spec: specArg,
-      outPath: z.string().optional().describe('output path. Omit it and the file goes to dist-html/<title>.html'),
+      outPath: z.string().optional().describe('output path; pass an absolute one. Omit it and the file goes to a default place (dist-html/<title>.html in a checkout, else the current folder)'),
       theme: themeArg,
       kind: kindArg.describe('which way of drawing the page opens in (fact: timeline, chronicle or scale; relationship: graph, focus, matrix, equity, authority, related or path; procedure: flow or route); the reader can still switch. Omit it for the default, the first'),
     },

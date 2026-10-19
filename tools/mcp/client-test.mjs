@@ -80,6 +80,12 @@ try {
   notify('notifications/initialized')
   console.log('  server:', init.serverInfo?.name, init.serverInfo?.version)
   console.log('  protocol version:', init.protocolVersion)
+  // An agent with only this server (no skill) gets its working rules from here
+  const ins = init.instructions ?? ''
+  for (const need of ['fact', 'procedure', 'relationship', 'justification', 'antu_validate', 'Never invent']) {
+    if (!ins.includes(need)) throw new Error(`server instructions miss "${need}"`)
+  }
+  console.log(`  instructions: ${ins.length} chars (types, tool order, no-inventing rules present)`)
 
   step(2, 'List tools')
   const tools = await rpc('tools/list', {})
@@ -107,12 +113,13 @@ try {
   const ex = await rpc('tools/call', { name: 'antu_examples', arguments: {} })
   console.log('  ' + textOf(ex).split('\n').slice(0, 6).join('\n  '))
 
-  step(8, 'Validate a bad JSON (fields deliberately missing)')
+  step(8, 'Validate a bad JSON (no slots; an event without a date is allowed, so it is not the fault here)')
   const bad = await rpc('tools/call', {
     name: 'antu_validate',
-    arguments: { spec: { type: 'fact', title: 'bad', slots: [{ events: [{ id: 'e1', label: 'no time' }] }] } },
+    arguments: { spec: { type: 'fact', title: 'bad' } },
   })
   console.log('  isError =', bad.isError)
+  if (!bad.isError) throw new Error('a spec without slots must fail validation')
   console.log('  ' + textOf(bad).split('\n').slice(0, 5).join('\n  '))
 
   step(9, 'Validate a real JSON')
