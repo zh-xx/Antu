@@ -5,6 +5,13 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+## 0.16.3
+
+Nothing in the engine, the command line, the MCP server or the entries for a host's code changes. One fix in the DeepSeek Harness plugin `@zh-xx/antu-dsh`.
+
+### Fixed
+- **Old browsers in the DSH full view** (#231, #232): an old browser engine (found with a 360 browser on a Kylin desktop) does not read the host out of a `dsh-resource://` address, so DSH finds no provider and the full view said "no diagram in this tab". The sidebar now says the browser is too old and points to a newer browser or "Open HTML".
+
 ## 0.16.2
 
 Nothing in the engine, the command line, the MCP server or the entries for a host's code changes. The DeepSeek Harness plugin `@zh-xx/antu-dsh` is on npm since 0.16.1; this release is the first one published through npm's trusted publisher (no token), and it brings the documents up to date.
