@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "antu": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "-p", "@zh-xx/antu@0.16.3", "antu-mcp"],
+      "runtime": {
+        "type": "node",
+        "version": "20"
+      },
+      "npmRegistries": ["https://registry.npmmirror.com", "https://registry.npmjs.org"],
+      "timeout": 60000
+    }
+  }
+}

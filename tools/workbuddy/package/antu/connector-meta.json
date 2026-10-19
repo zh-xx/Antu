@@ -1,0 +1,24 @@
+{
+  "name": "Antu",
+  "name_zh": "Antu 法律图",
+  "name_en": "Antu Legal Diagrams",
+  "description": "Draw legal diagrams from JSON as one offline HTML file.",
+  "description_zh": "用结构化 JSON 画法律图：事实时间线、程序流程图、主体关系图、裁判说理证成图，生成可离线打开的单个 HTML 文件。",
+  "description_en": "Legal diagrams from JSON: case timelines, procedures, party relationships and court reasoning, as one offline HTML file.",
+  "source": "antu",
+  "type": "mcp",
+  "version": "0.16.3",
+  "minWorkbuddyVersion": "5.0.0",
+  "examples_zh": [
+    "把这个案件的经过画成事实时间线",
+    "画出这几家公司之间的股权和担保关系",
+    "把这份合同的履行流程画成流程图",
+    "把这份判决书的说理画成证成图"
+  ],
+  "examples_en": [
+    "Draw the course of this case as a fact timeline",
+    "Draw the shareholding and guarantee ties between these companies",
+    "Turn this contract's performance steps into a flowchart",
+    "Draw how this judgment reasoned from facts to its conclusion"
+  ]
+}

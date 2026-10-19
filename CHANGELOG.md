@@ -5,6 +5,9 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+### Fixed
+- **The skill package is two folders deep at most** (#234). A host that takes a skill package only as root / folder / file refused the whole package, because the examples were filed one level deeper (`examples/fact/1-minimal.en.json`). They are now flat, with the kind in the file name: `examples/fact-1-minimal.en.json`. `SKILL.md` says so. Nothing else of the package moves, and the examples of the repository itself (`examples/agent/<kind>/`) keep their place.
+
 ## 0.16.3
 
 Nothing in the engine, the command line, the MCP server or the entries for a host's code changes. One fix in the DeepSeek Harness plugin `@zh-xx/antu-dsh`.

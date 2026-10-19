@@ -40,7 +40,7 @@ test('the tools read the skill, the material and the working folder, and nothing
 test('a folder can be listed, inside the same limits', () => {
   const { root, tools } = sandbox()
   try {
-    assert.match(tools.list_files({ path: 'skill/examples' }), /fact\//)
+    assert.match(tools.list_files({ path: 'skill/examples' }), /fact-1-minimal/)
     assert.match(tools.list_files({ path: 'material' }), /case\.md/)
     assert.match(tools.list_files({ path: '.' }), /^$/)
     assert.match(tools.list_files({ path: 'nope' }), /no such folder/)

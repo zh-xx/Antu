@@ -16,6 +16,7 @@ name: Release
 #   - every check on the commit has finished and passed (tools/verify/ci-green.mjs);
 #   - skills/antu/ is the build of this version (node tools/build-skill.mjs --check): the skill is the state of the
 #     last release and is rebuilt in the release PR, so forgetting that stops here;
+#   - the zip it just packed has no file deeper than root / folder / file (some hosts refuse the whole package, #234);
 #   - the zip it just packed, unpacked into an empty folder, passes the skill's own checks
 #     (tools/verify/skill-cli.mjs --skill): what users download is what was tested.
 # What it does not do: change any file, publish anywhere else, delete anything.
@@ -117,6 +118,20 @@ jobs:
           set -euo pipefail
           cd skills
           zip -qr "../antu-skill-${{ steps.check.outputs.version }}.zip" antu
+
+      # Some hosts take a skill package only as root / folder / file and refuse the whole package for one file deeper
+      # (#234). Count them in the zip itself, not in the folder it was packed from.
+      - name: Check the packed zip is two folders deep at most
+        run: |
+          set -euo pipefail
+          zip="antu-skill-${{ steps.check.outputs.version }}.zip"
+          deep="$(unzip -Z1 "$zip" | sed 's|^antu/||' | grep -v '/$' | awk -F/ 'NF>2' || true)"
+          if [ -n "$deep" ]; then
+            echo "These files are deeper than root / folder / file:" >&2
+            echo "$deep" >&2
+            exit 1
+          fi
+          echo "No file in $zip is deeper than root / folder / file ($(unzip -Z1 "$zip" | grep -vc '/$') files)."
 
       # Test the thing users download, not the folder it was packed from: a file missing from the zip, or a wrong
       # path inside it, shows up here and nowhere else.

@@ -40,11 +40,11 @@ const CLI = 'scripts/antu.mjs'
  * releases (`checkSkill({ strict: false })`, the unit test) lets it be missing, the release workflow's check
  * (`--check`) does not. The release pull request empties this list.
  */
-const skillExamples = (type, names) => names.flatMap((n) => ['en', 'zh-CN'].map((lang) => `examples/${type}/${n}.${lang}.json`))
-export const ADDED_SINCE_RELEASE = skillExamples('fact', ['3-sides', '4-one-side-several'])
+const skillExamples = (type, names) => names.flatMap((n) => ['en', 'zh-CN'].map((lang) => `examples/${type}-${n}.${lang}.json`))
+export const ADDED_SINCE_RELEASE = []
 
 /** The other way round: files the sources dropped after the last release, still in the folder until it is rebuilt. Emptied by the release pull request too. */
-export const REMOVED_SINCE_RELEASE = skillExamples('fact', ['3-groups', '4-views'])
+export const REMOVED_SINCE_RELEASE = []
 
 /** The licence notes of the skill: what an agent may say when asked, written from the same text as the pages and the notices */
 export function licenseNotes() {
@@ -80,7 +80,8 @@ export function skillFiles() {
 
     const dir = join(REPO, 'examples/agent', type)
     for (const f of readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
-      files.set(`examples/${type}/${f}`, readFileSync(join(dir, f), 'utf8'))
+      // flat, the type in the file name: some hosts take a skill package only two folders deep (root / folder / file)
+      files.set(`examples/${type}-${f}`, readFileSync(join(dir, f), 'utf8'))
     }
   }
   files.set('VERSION', `${version}\n`)
