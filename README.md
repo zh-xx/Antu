@@ -2,6 +2,7 @@
 
 [![Verify](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
 [![CodeQL](https://github.com/zh-xx/Antu/actions/workflows/codeql.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/zh-xx/Antu/badge)](https://scorecard.dev/viewer/?uri=github.com/zh-xx/Antu)
 [![Release](https://img.shields.io/github/v/release/zh-xx/Antu)](https://github.com/zh-xx/Antu/releases)
 [![npm](https://img.shields.io/npm/v/@zh-xx/antu?label=npm)](https://www.npmjs.com/package/@zh-xx/antu)
 [![License: AGPL-3.0-or-later](https://img.shields.io/github/license/zh-xx/Antu)](LICENSE)
@@ -120,6 +121,12 @@ const diagram = mount(element, spec, { lang: 'en', onEvent: (e) => console.log(e
 - [CHANGELOG.md](CHANGELOG.md) and the versioning rules in [spec/versioning.md](spec/versioning.md).
 - Known problems and requests are tracked as [GitHub issues](https://github.com/zh-xx/Antu/issues). Working rules for contributors are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Security
+
+- To report a vulnerability, use the private report described in [SECURITY.md](SECURITY.md); please do not open a public issue for it.
+- Every version of `@zh-xx/antu` and `@zh-xx/antu-dsh` on npm is published by GitHub Actions through npm's trusted publisher, with provenance: the page of the version on npm links back to the commit and the workflow run that made it. [deps.dev](https://deps.dev/npm/%40zh-xx%2Fantu) shows the same record, with the known advisories (none at the time of writing) and the licence.
+- A page made with Antu works offline and sends nothing anywhere; the command line asks once a day whether a newer version exists and sends nothing of a diagram (`ANTU_NO_UPDATE_NOTIFIER=1` turns that off).
+
 ## License
 
 Copyright (C) 2026 Ji Cheng.
@@ -127,6 +134,7 @@ Copyright (C) 2026 Ji Cheng.
 Antu is free software, licensed under the **GNU Affero General Public License, version 3 or any later version** ([`LICENSE`](LICENSE), SPDX `AGPL-3.0-or-later`). In short: you may use, study, change and share it, including for commercial purposes. If you distribute a changed version, or let others use it over a network (for example as a hosted service), you must release your changes under the same licence, keep the copyright and licence notices, and make the source available. There is no warranty. This summary is not the licence; the licence text is.
 
 - **Additional permission (AGPL section 7).** A page made with Antu contains Antu's code together with the diagram data you gave it. The diagram data, and the content of the diagram you drew from your material, are not part of Antu and are not covered by this licence: you may keep them private, publish them, or sell them on any terms you like. The licence covers Antu's code in the page, and the notices in the page must stay with it. The same text is in every page and at the top of the command line.
+- **If your company or an app store does not take AGPL software**, or asks for an extra statement before it will list or install something under it, that is a policy of theirs and not something this project can change by itself. Tell us in an issue what you need; the page and the data you make with Antu are yours (see the additional permission above).
 - Everything in the repository (the code, the examples, the specifications and the guides) is under the same licence, except what is named below.
 - Code of other projects inside the pages and the command line keeps its own licence. Its notices are in [`skills/antu/THIRD-PARTY-NOTICES.md`](skills/antu/THIRD-PARTY-NOTICES.md), and also inside every page and at the top of the command line, together with the licence of Antu and the place of the source of that version.
 - The cases in `examples/` and the judgment texts in `examples/raw/` are fictional: the people, companies, dates, amounts and provisions are made up for Antu and match no real case. They are under the same licence.

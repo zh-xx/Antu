@@ -5,6 +5,10 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+### Added
+- **A security policy** (#238): `SECURITY.md` (and `SECURITY.zh-CN.md`) says how to report a vulnerability privately, which versions are supported, what counts, and how the packages are made. The readmes have a Security section, an OpenSSF Scorecard badge, and a line for companies and app stores that do not take AGPL software.
+- **Two workflows that watch the repository**: `scorecard.yml` (OpenSSF Scorecard, weekly, results published; its actions are pinned by commit) and `audit.yml` (`npm audit --audit-level=high` and `npm audit signatures` on a pull request that changes the dependencies). Neither runs on a push to main, and `tools/verify/ci-green.mjs` lets the Scorecard job report without stopping a release.
+
 ## 0.16.4
 
 No file and no tool call that worked before stops working. What changes is what a reader sees when a diagram opens, what the skill package looks like inside, and what an agent that has only the MCP server is told. Nothing in the format of any diagram changes.

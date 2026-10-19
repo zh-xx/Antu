@@ -18,6 +18,8 @@ import { fileURLToPath } from 'node:url'
 
 const REQUIRED = 'verify'
 const PASSING = new Set(['success', 'skipped', 'neutral'])
+/** Checks that report and never stop a release: the weekly OpenSSF Scorecard run (.github/workflows/scorecard.yml) */
+const ADVISORY = ['scorecard']
 
 /**
  * @param {Array<{id?: number, name: string, status: string, conclusion: string|null}>} runs the commit's check runs
@@ -25,7 +27,7 @@ const PASSING = new Set(['success', 'skipped', 'neutral'])
  * @returns {string[]} what stops the release, empty when everything is green
  */
 export function judge(runs, { ignore = [] } = {}) {
-  const left = [ignore].flat()
+  const left = [...[ignore].flat(), ...ADVISORY]
   const latest = new Map()
   for (const r of runs) {
     const before = latest.get(r.name)
