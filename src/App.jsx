@@ -161,6 +161,9 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
     prefs.write({ kinds: map })
   }
   const resetSpecPrefs = () => {
+    // what the reader changed in this mount wins over everything (shell/viewState.js), so forget that too, or a
+    // switch whose default is on would stay off once its stored choice is gone
+    env.touched?.clear()
     clearSpecPrefs(prefs, specKey)
     // the kind is App's own state too: after the cleared record it falls back to the host's or the default kind
     setKindPrefs(prefs.read().kinds || {})

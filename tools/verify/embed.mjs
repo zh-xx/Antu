@@ -506,13 +506,18 @@ export async function checkEmbed(t) {
         const restoreLabel = ${JSON.stringify(translate('en', 'dock.restore'))}
         const restore = () => [...it.host.shadowRoot.querySelectorAll('.antu-dock-chip')].find((c) => c.textContent.trim() === restoreLabel)
         const rules = () => chip(it.host, ${JSON.stringify(translate('en', 'flow.rules'))})
-        const before = [!!restore(), !!rules()?.classList.contains('is-on')]
+        // one switch that opens off (rules) and one that opens on (conditions): both must come back to their default
+        const conditions = () => chip(it.host, ${JSON.stringify(translate('en', 'flow.conditions'))})
+        const on = (c) => !!c?.classList.contains('is-on')
+        const before = [!!restore(), on(rules()), on(conditions())]
         rules()?.click()
         await pause(300)
-        const changed = [!!restore(), !!rules()?.classList.contains('is-on')]
+        conditions()?.click()
+        await pause(300)
+        const changed = [!!restore(), on(rules()), on(conditions())]
         restore()?.click()
         await pause(800)
-        out.restore = [before, changed, [!!restore(), !!rules()?.classList.contains('is-on')]]
+        out.restore = [before, changed, [!!restore(), on(rules()), on(conditions())]]
         off(it)
       }
 
@@ -530,7 +535,7 @@ export async function checkEmbed(t) {
     eq('embed: a locked switch renders no control', viewState.lockedHidden, true)
     eq('embed: `initial` opens the dock folded (one button, no bar), and the button brings the bar back', [viewState.folded, viewState.unfolded], [[true, false], [false, true]])
     eq('embed: `persist: false` keeps the reader\'s change on screen and off the host\'s store', viewState.persist, [0, true])
-    eq('embed: "restore defaults" shows once a choice is made, forgets it, and goes away', viewState.restore, [[false, false], [true, true], [false, false]])
+    eq('embed: "restore defaults" shows once a choice is made, forgets it, and goes away', viewState.restore, [[false, false, true], [true, true, false], [false, false, true]])
     truthy('embed: an unknown `locked` key makes mount throw, naming options.locked', viewState.badLocked.includes('options.locked'), viewState.badLocked)
 
     // ---- destroy, and mount again on the same element ----
