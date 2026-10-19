@@ -95,8 +95,13 @@ test('SKILL.md is a valid skill: name = folder, a description within the limit, 
   for (const type of ['fact', 'procedure', 'relationship', 'justification']) {
     assert.ok(files.has(`references/guide-${type}.md`), type)
     assert.ok(files.has(`references/fields-${type}.md`), type)
-    assert.ok(files.has(`examples/${type}/1-minimal.zh-CN.json`), type)
+    assert.ok(files.has(`examples/${type}-1-minimal.zh-CN.json`), type)
   }
+})
+
+test('the skill package is two levels deep at most: root / folder / file (hosts that refuse more reject the whole package)', () => {
+  const deep = [...skillFiles().keys(), 'assets/viewer.html', 'scripts/antu.mjs'].filter((path) => path.split('/').length > 2)
+  assert.deepEqual(deep, [])
 })
 
 test('the Python filler makes a page whose data is the JSON it was given, and refuses what is not a diagram', (t) => {
