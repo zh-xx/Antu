@@ -252,3 +252,12 @@ test('fillViewer: a preset is written right after the data, in the same script, 
   assert.deepEqual(window.__ANTU_PRESET__, { orientation: 'horizontal' })
   assert.ok(page.indexOf('__ANTU_PRESET__') < page.indexOf('engine()'), 'the preset is there before the engine runs')
 })
+
+test('the skill source and the MCP instructions both forbid inventing a party\'s role (#243)', () => {
+  const skill = readFileSync(new URL('../tools/skill/SKILL.md', import.meta.url), 'utf8')
+  const mcp = readFileSync(new URL('../tools/mcp/server.mjs', import.meta.url), 'utf8')
+  assert.match(skill, /identity, a role or a side the material does not state/)
+  assert.match(skill, /Leave `role` out/)
+  assert.match(mcp, /identity, role or side the material does not state/)
+  assert.match(mcp, /do not infer one from a verb/)
+})

@@ -10,6 +10,13 @@ what breaks a file or a tool call written for the version before, with how to br
 Nothing in the engine, the command line, the MCP server or the entries for a host's code changes, and no diagram looks different. This release makes the WorkBuddy skill package small enough for the platform.
 
 ### Fixed
+- **The skill and the MCP instructions now forbid inventing a party's identity** (#243): lender or borrower, plaintiff or defendant, guarantor and the like are not written unless the material states them, and not inferred from a verb; `role` is optional, so it is left out, or the user is asked. A model had written 出借人 / 借款人 for two parties from "乙放款" and contradicted itself.
+
+## 0.16.6
+
+Nothing in the engine, the command line, the MCP server or the entries for a host's code changes, and no diagram looks different. This release makes the WorkBuddy skill package small enough for the platform.
+
+### Fixed
 - **The WorkBuddy skill package is under the platform's 3 MB** (it was 4.3 MB unzipped, and the platform counts the unzipped size). The viewer page is shipped compressed in that package (`assets/viewer.html.gz`); the command line and `scripts/make_html.py` read either the plain or the compressed page, so every other client is unchanged. The build stops if the package grows past 2.9 MB.
 - **A slim WorkBuddy skill, kept in reserve** (`antu-workbuddy-skill-slim-<version>.zip`, built by `tools/workbuddy/build.mjs`, not attached to the release): the skill without the bundled command line, running `npx -y -p @zh-xx/antu@<version> antu …` instead (about 0.9 MB).
 
