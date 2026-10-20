@@ -6,7 +6,7 @@ description: Draw legal diagrams (fact timeline, procedure flowchart, party rela
 description_zh: 用 Antu 工具把案情、程序、主体关系、裁判说理画成可离线打开的单个 HTML 图。
 description_en: Draw case timelines, procedures, party relationships and court reasoning as one offline HTML file.
 version: "0.16.4"
-author: zh-xx
+author: Jicheng
 ---
 
 # 案图 Antu：用 JSON 画法律图

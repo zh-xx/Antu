@@ -125,7 +125,7 @@ ${description
 description_zh: 用 Antu 把案情时间线、程序流程、主体关系、裁判说理画成可离线打开的单个 HTML 图。需要 Node 18 以上，没有时退到 Python 简化版。
 description_en: Draw case timelines, procedures, party relationships and court reasoning as one offline HTML file. Needs Node 18+, or Python 3 for a reduced version.
 version: "${version}"
-author: zh-xx
+author: Jicheng
 license: AGPL-3.0-or-later
 ---
 `

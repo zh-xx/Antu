@@ -59,7 +59,7 @@ test('the skill package is the general skill with WorkBuddy\'s header and sectio
   assert.deepEqual(checkSkillFolder(skillDir, version), [])
   const text = readFileSync(join(skillDir, 'SKILL.md'), 'utf8')
   assert.match(text, /^display_name: 案图 Antu（技能版）$/m)
-  assert.match(text, /^author: zh-xx$/m)
+  assert.match(text, /^author: Jicheng$/m)
   // the same guides, field tables and examples as every other client: one place for the content
   const general = readFileSync('skills/antu/SKILL.md', 'utf8')
   assert.ok(text.includes('## 2. Write the JSON'), 'the body of the general skill is kept')
@@ -88,4 +88,9 @@ test('the skill package checks catch a missing field, a nested header, a deeper 
     writeFileSync(file, good)
     rmSync(join(skillDir, 'examples/deep'), { recursive: true, force: true })
   }
+})
+
+test('both packages carry the developer name registered on the platform (Jicheng)', () => {
+  assert.match(readFileSync(join(dir, 'skills/antu/SKILL.md'), 'utf8'), /^author: Jicheng$/m)
+  assert.match(readFileSync(join(buildSkillFolder(), 'SKILL.md'), 'utf8'), /^author: Jicheng$/m)
 })
