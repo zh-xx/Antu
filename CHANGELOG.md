@@ -10,6 +10,7 @@ what breaks a file or a tool call written for the version before, with how to br
 - **The DSH full view has no Open HTML button any more** (#224). It depended on a function the chat card held in memory and vanished after a reload; the written file's path is in the `antu_render` result in the chat. The button, its `openHtml` words and the recorded deviation in `spec/dsh-conventions.md` are gone.
 
 ### Fixed
+- **The home page's three copy buttons work over plain http**: the browser only offers its Clipboard API on https, so on `http://antu.nervonly.cn` none of them copied anything; they now fall back to select-and-copy. The top bar's start button is no longer cut off on a phone.
 - **The skill and the MCP instructions now forbid inventing a party's identity** (#243): lender or borrower, plaintiff or defendant, guarantor and the like are not written unless the material states them, and not inferred from a verb; `role` is optional, so it is left out, or the user is asked. A model had written 出借人 / 借款人 for two parties from "乙放款" and contradicted itself.
 
 ## 0.16.6

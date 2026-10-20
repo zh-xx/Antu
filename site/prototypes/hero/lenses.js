@@ -606,7 +606,20 @@ $$('.lang button').forEach((b) => (b.onclick = () => {
 }))
 $$('.copy').forEach((b) => (b.onclick = async () => {
   const done = $('.lang').dataset.on === 'en' ? 'Copied' : '已复制'
-  try { await navigator.clipboard.writeText($('#' + b.dataset.for).textContent) } catch { return }
+  const text = $('#' + b.dataset.for).textContent
+  try { await navigator.clipboard.writeText(text) } catch {
+    // no Clipboard API (a page served over plain http is not a secure context) or it was refused: select-and-copy
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'
+    document.body.appendChild(ta)
+    ta.select()
+    let ok = false
+    try { ok = document.execCommand('copy') } catch { /* refused */ }
+    ta.remove()
+    if (!ok) return
+  }
   const before = b.textContent
   b.textContent = done
   setTimeout(() => { b.textContent = before }, 1500)
