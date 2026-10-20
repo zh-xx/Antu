@@ -447,7 +447,7 @@ ${read(`${HERE}lenses.css`)}</style>
   <div class="panel" role="tabpanel" id="panel-dsh" aria-labelledby="tab-dsh" hidden>
    <p class="way-d" data-i18n="dshT">在 DeepSeek Harness 里，打开「Plugins」→「Add plugin」，粘贴下面的包名，点 Install</p>
    <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">package</span><button class="copy" data-for="dshText" data-i18n="copy">复制</button></div><pre id="dshText">@zh-xx/antu-dsh</pre></div>
-   <p class="way-d way-n" data-i18n="dshN">装好后，在 Plugins 页的 Installed 里把「Antu diagrams」打开。需要 DSH 0.2.0-rc.2 或更新（已在 0.2.0-rc.2 和 0.2.1-rc.2 上测过）。插件给 DSH 画图工具（校验、排版、渲染），图直接显示在聊天里，上方有一条选择画法的小图条；点图可在右侧打开大图。</p>
+   <p class="way-d way-n" data-i18n="dshN">装好后，在 Installed 里打开「Antu diagrams」。需要 DSH 0.2.0-rc.2 或更新。</p>
    <p class="way-d way-n"><a href="https://github.com/zh-xx/Antu/blob/main/tools/dsh/README.md" data-i18n="dshL1">使用说明</a> · <a href="https://www.npmjs.com/package/@zh-xx/antu-dsh">npm</a></p>
   </div>
  </div>

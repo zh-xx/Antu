@@ -578,7 +578,7 @@ const EN = {
   skillText: 'Please install the Antu skill: run npx skills add zh-xx/Antu -g -y, then use it to draw diagrams from my case material.',
   mcpT: 'Add this configuration to your MCP client',
   dshT: 'In DeepSeek Harness, open Plugins → Add plugin, paste this package name, and click Install',
-  dshN: 'Then switch on "Antu diagrams" under Installed on the Plugins page. Needs DSH 0.2.0-rc.2 or newer (tested on 0.2.0-rc.2 and 0.2.1-rc.2). The plugin gives DSH the drawing tools (check, lay out, render) and shows the diagram right in the chat, with a small strip above it to pick the way of drawing; click the diagram to open it large in the right panel.',
+  dshN: 'Then switch on "Antu diagrams" under Installed. Needs DSH 0.2.0-rc.2 or newer.',
   dshL1: 'Guide',
   motto1: 'Legal documents, ', motto2: 'at a glance', 'k-fact': 'Facts', 'k-relationship': 'Relations', 'k-procedure': 'Procedure', 'k-justification': 'Reasoning',
   lblJ: 'Judgment · fictional', lblC: 'Contract · fictional', n1: '1', n2: '2', n3: '3', n4: '4', n5: '5',
