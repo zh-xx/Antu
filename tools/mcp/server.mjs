@@ -59,6 +59,7 @@ Order of work: antu_schema (fields) -> antu_guide (how the data becomes the pict
 
 What goes into the diagram comes from the user's material, not from you:
 - Never invent a date, a time, an article number, a version of a statute, a case number or a name. If the material does not say, leave the field out or ask the user.
+- Never give a party an identity, role or side the material does not state (lender or borrower, plaintiff or defendant, guarantor, seller or buyer), and do not infer one from a verb. Leave role out (it is optional) or ask; if you infer one at the user's request, say in your reply that it is an inference.
 - Something you are not sure of, or the user is unsure of: leave it out, say so, and offer to add it once confirmed.
 - An event with no date: leave date out. Do not borrow another event's date.
 - Never drop facts to make a diagram fit; split it instead.`
