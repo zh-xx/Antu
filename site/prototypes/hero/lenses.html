@@ -188,6 +188,7 @@ html[data-theme="light"] .mode .sun{transform:none;opacity:1}
 .lx .hero{height:calc(100vh - 84px);padding-top:3vh;transition:background .4s}
 body.lx{transition:background .4s,color .4s}
 @media(max-width:900px){.links a:not(.gh),.gh span,.sep{display:none}.lx .nav{padding:0 16px;height:68px}.links{gap:12px}.brand b{font-size:24px}.lx .hero{height:calc(100vh - 68px)}}
+@media(max-width:520px){.lx .nav{padding:0 12px}.brand{gap:0}.brand span{display:none}.links{gap:8px}.lang button{width:38px}.mode{width:36px;height:36px}.links .start{padding:11px 14px;font-size:13.5px;white-space:nowrap;box-shadow:0 4px 14px rgba(232,69,44,.3)}}
 
 /* light mode: the same page on warm white */
 html[data-theme="light"]{--bg:#f5f3ee;--panel:#ffffff;--panel-rgb:255,255,255;--txt:#1c1b18;--mut:#6e6a62;--mut2:#9a958b;--hair:rgba(0,0,0,.1);
@@ -1092,7 +1093,20 @@ $$('.lang button').forEach((b) => (b.onclick = () => {
 }))
 $$('.copy').forEach((b) => (b.onclick = async () => {
   const done = $('.lang').dataset.on === 'en' ? 'Copied' : '已复制'
-  try { await navigator.clipboard.writeText($('#' + b.dataset.for).textContent) } catch { return }
+  const text = $('#' + b.dataset.for).textContent
+  try { await navigator.clipboard.writeText(text) } catch {
+    // no Clipboard API (a page served over plain http is not a secure context) or it was refused: select-and-copy
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'
+    document.body.appendChild(ta)
+    ta.select()
+    let ok = false
+    try { ok = document.execCommand('copy') } catch { /* refused */ }
+    ta.remove()
+    if (!ok) return
+  }
   const before = b.textContent
   b.textContent = done
   setTimeout(() => { b.textContent = before }, 1500)
