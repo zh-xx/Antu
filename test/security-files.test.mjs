@@ -33,3 +33,30 @@ test('the audit workflow runs only on a dependency change or by hand, and never 
   assert.doesNotMatch(wf, /^\s*schedule:/m)
   assert.doesNotMatch(wf, /^\s*push:/m)
 })
+
+// ---- Scorecard: Token-Permissions and Pinned-Dependencies (#248) ----
+
+import { readdirSync } from 'node:fs'
+const workflows = readdirSync('.github/workflows').filter((f) => f.endsWith('.yml'))
+
+test('every action in every workflow is pinned by its full commit, with the version in a comment', () => {
+  assert.ok(workflows.length >= 8)
+  for (const f of workflows) {
+    const uses = [...read(`.github/workflows/${f}`).matchAll(/^[ \t]*(?:-[ \t]+)?uses:[ \t]*(.+)$/gm)].map((m) => m[1])
+    for (const u of uses) assert.match(u, /^[\w.-]+\/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$/, `${f}: ${u}`)
+  }
+})
+
+test('no workflow gives the token a write permission for the whole workflow', () => {
+  for (const f of workflows) {
+    const top = /^permissions:[^\n]*\n((?:[ \t]+.*\n|\n)*)/m.exec(read(`.github/workflows/${f}`))
+    assert.ok(top, `${f} has a permissions block at the top`)
+    assert.doesNotMatch(top[0], /write/, `${f}: a write permission belongs in the job that needs it`)
+  }
+})
+
+test('the release job asks for write itself, and verify only reads', () => {
+  assert.match(read('.github/workflows/release.yml'), /^ {4}permissions:\n {6}contents: write/m)
+  assert.match(read('.github/workflows/verify.yml'), /^permissions:\n {2}contents: read\n/m)
+  assert.match(read('.github/workflows/codeql.yml'), /^ {4}permissions:\n(?: {6}.*\n)*? {6}security-events: write/m)
+})
