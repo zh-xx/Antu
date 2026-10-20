@@ -2,9 +2,9 @@
 // tools the MCP server really has.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { buildFolder, checkFolder, repoVersion } from '../tools/workbuddy/build.mjs'
+import { buildFolder, buildSkillFolder, checkFolder, checkSkillFolder, repoVersion } from '../tools/workbuddy/build.mjs'
 
 const dir = buildFolder()
 const version = repoVersion()
@@ -50,4 +50,42 @@ test('the market names are the project\'s own: 案图 Antu in Chinese, Antu in E
   assert.equal(meta.name_en, 'Antu')
   const skill = readFileSync(join(dir, 'skills/antu/SKILL.md'), 'utf8')
   assert.match(skill, /^display_name: 案图 Antu$/m)
+})
+
+// ---- the skill package (no connector) ----
+
+test('the skill package is the general skill with WorkBuddy\'s header and section, and passes its checks', () => {
+  const skillDir = buildSkillFolder()
+  assert.deepEqual(checkSkillFolder(skillDir, version), [])
+  const text = readFileSync(join(skillDir, 'SKILL.md'), 'utf8')
+  assert.match(text, /^display_name: 案图 Antu（技能版）$/m)
+  assert.match(text, /^author: zh-xx$/m)
+  // the same guides, field tables and examples as every other client: one place for the content
+  const general = readFileSync('skills/antu/SKILL.md', 'utf8')
+  assert.ok(text.includes('## 2. Write the JSON'), 'the body of the general skill is kept')
+  assert.ok(general.includes('## 2. Write the JSON'))
+  for (const f of ['references/guide-fact.md', 'references/fields-relationship.md', 'examples/justification-1-minimal.en.json']) {
+    assert.equal(readFileSync(join(skillDir, f), 'utf8'), readFileSync(join('skills/antu', f), 'utf8'), f)
+  }
+})
+
+test('the skill package checks catch a missing field, a nested header, a deeper folder and the old update command', () => {
+  const skillDir = buildSkillFolder()
+  const file = join(skillDir, 'SKILL.md')
+  const good = readFileSync(file, 'utf8')
+  try {
+    writeFileSync(file, good.replace(/^author: .*\n/m, ''))
+    assert.ok(checkSkillFolder(skillDir, version).some((p) => p.includes('author')))
+    writeFileSync(file, good.replace('license: AGPL-3.0-or-later', 'metadata:\n  version: "1"'))
+    assert.ok(checkSkillFolder(skillDir, version).some((p) => p.includes('metadata')))
+    writeFileSync(file, good + '\n`npx skills update antu -g`\n')
+    assert.ok(checkSkillFolder(skillDir, version).some((p) => p.includes('npx skills update')))
+    writeFileSync(file, good)
+    mkdirSync(join(skillDir, 'examples/deep'), { recursive: true })
+    writeFileSync(join(skillDir, 'examples/deep/x.json'), '{}')
+    assert.ok(checkSkillFolder(skillDir, version).some((p) => p.includes('deeper than')))
+  } finally {
+    writeFileSync(file, good)
+    rmSync(join(skillDir, 'examples/deep'), { recursive: true, force: true })
+  }
 })
