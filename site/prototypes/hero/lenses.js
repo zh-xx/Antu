@@ -573,10 +573,13 @@ const start = () => play(FIRST)
 // switch (the top bar's labels and the notice only, in this draft); light / dark, remembered in this browser
 $('#startBtn').onclick = () => $('#start').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
 const EN = {
-  examples: 'Examples', start: 'Get started', startT: 'Get started', startS: 'Choose either', chip1: 'One sentence', chip2: 'One configuration',
+  examples: 'Examples', start: 'Get started', startT: 'Get started', startS: 'Choose any of three', chip1: 'One sentence', chip2: 'One configuration', chip3: 'Plugin',
   skillT: 'Send this sentence to your Agent',
   skillText: 'Please install the Antu skill: run npx skills add zh-xx/Antu -g -y, then use it to draw diagrams from my case material.',
   mcpT: 'Add this configuration to your MCP client',
+  dshT: 'Install it into a DeepSeek Harness profile from a terminal, then restart DSH',
+  dshN: 'Replace <profile> with your own profile name. Needs DSH 0.2.0-rc.2 or newer (tested on 0.2.0-rc.2 and 0.2.1-rc.2). The plugin gives DSH the drawing tools (check, lay out, render) and shows the diagram right in the chat, with a small strip above it to pick the way of drawing; click the diagram to open it large in the right panel.',
+  dshL1: 'Guide',
   motto1: 'Legal documents, ', motto2: 'at a glance', 'k-fact': 'Facts', 'k-relationship': 'Relations', 'k-procedure': 'Procedure', 'k-justification': 'Reasoning',
   lblJ: 'Judgment · fictional', lblC: 'Contract · fictional', n1: '1', n2: '2', n3: '3', n4: '4', n5: '5',
   foot: 'Antu · open source (AGPL-3.0-or-later) · early 0.x version, still changing',

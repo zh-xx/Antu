@@ -422,11 +422,12 @@ ${read(`${HERE}lenses.css`)}</style>
 <section class="gs" id="start" aria-labelledby="startT">
  <p class="eyebrow">GET STARTED</p>
  <h2 class="gs-t" id="startT" data-i18n="startT">开始使用</h2>
- <p class="gs-s" data-i18n="startS">任选其一</p>
+ <p class="gs-s" data-i18n="startS">三选一</p>
  <div class="way">
   <div class="tabs" role="tablist">
    <button class="tab" role="tab" id="tab-skill" aria-selected="true" aria-controls="panel-skill" data-tab="skill">Skill<i data-i18n="chip1">一句话</i></button>
    <button class="tab" role="tab" id="tab-mcp" aria-selected="false" aria-controls="panel-mcp" data-tab="mcp">MCP<i data-i18n="chip2">一段配置</i></button>
+   <button class="tab" role="tab" id="tab-dsh" aria-selected="false" aria-controls="panel-dsh" data-tab="dsh">DSH<i data-i18n="chip3">插件</i></button>
   </div>
   <div class="panel" role="tabpanel" id="panel-skill" aria-labelledby="tab-skill">
    <p class="way-d" data-i18n="skillT">把下面这句话发给你的 Agent</p>
@@ -442,6 +443,12 @@ ${read(`${HERE}lenses.css`)}</style>
     }
   }
 }</pre></div>
+  </div>
+  <div class="panel" role="tabpanel" id="panel-dsh" aria-labelledby="tab-dsh" hidden>
+   <p class="way-d" data-i18n="dshT">在终端里装进 DeepSeek Harness 的配置，然后重启 DSH</p>
+   <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">shell</span><button class="copy" data-for="dshText" data-i18n="copy">复制</button></div><pre id="dshText">dsh plugin --profile &lt;profile&gt; add @zh-xx/antu-dsh</pre></div>
+   <p class="way-d way-n" data-i18n="dshN">把 &lt;profile&gt; 换成你自己的 DSH 配置名。需要 DSH 0.2.0-rc.2 或更新（已在 0.2.0-rc.2 和 0.2.1-rc.2 上测过）。插件给 DSH 画图工具（校验、排版、渲染），图直接显示在聊天里，上方有一条选择画法的小图条；点图可在右侧打开大图。</p>
+   <p class="way-d way-n"><a href="https://github.com/zh-xx/Antu/blob/main/tools/dsh/README.md" data-i18n="dshL1">使用说明</a> · <a href="https://www.npmjs.com/package/@zh-xx/antu-dsh">npm</a></p>
   </div>
  </div>
 </section>

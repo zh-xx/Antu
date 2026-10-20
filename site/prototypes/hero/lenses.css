@@ -293,6 +293,8 @@ html{scroll-behavior:smooth}
 .panel{padding:22px 24px 26px}
 .panel[hidden]{display:none}
 .way-d{margin:0 0 14px;color:var(--mut);font-size:14px}
+.way-n{margin:14px 0 0;font-size:13px;line-height:1.7}.way-n a{color:var(--red);text-underline-offset:3px}
+@media(max-width:520px){.tab{font-size:17px;padding:14px 6px}.tab i{display:none}}
 .copybox{border:1px solid rgba(232,69,44,.35);border-radius:10px;overflow:hidden;background:var(--labbg)}
 .cb-bar{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-bottom:1px solid rgba(232,69,44,.25);background:var(--redsoft)}
 .cb-dots{display:flex;gap:6px}.cb-dots i{width:8px;height:8px;border-radius:50%;background:var(--red);opacity:.7}
