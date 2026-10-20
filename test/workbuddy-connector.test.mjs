@@ -142,3 +142,47 @@ test('the command line and the Python fallback make the page from the compressed
     rmSync(out, { recursive: true, force: true })
   }
 })
+
+// ---- the slim skill (kept in reserve): no command line inside, it is fetched with npx ----
+
+test('the slim skill carries no command line, runs the pinned npm package with npx, and passes its checks', () => {
+  const slim = buildSkillFolder(version, { slim: true })
+  assert.deepEqual(checkSkillFolder(slim, version, { slim: true }), [])
+  assert.throws(() => statSync(join(slim, 'scripts/antu.mjs')))
+  assert.ok(bytesOf(slim) < 1_500_000, `${bytesOf(slim)} bytes`)
+  const text = readFileSync(join(slim, 'SKILL.md'), 'utf8')
+  assert.match(text, /^display_name: 案图 Antu（技能版·精简）$/m)
+  assert.ok(text.includes(`npx -y -p @zh-xx/antu@${version} antu validate`))
+  assert.ok(!/node <skill-dir>\/scripts\/antu\.mjs/.test(text))
+  // the full package is not affected by the slim build
+  assert.ok(statSync(join(buildSkillFolder(), 'scripts/antu.mjs')).size > 1_000_000)
+})
+
+test('the slim checks catch a command line left inside and a command that is not pinned', () => {
+  const slim = buildSkillFolder(version, { slim: true })
+  const file = join(slim, 'SKILL.md')
+  const good = readFileSync(file, 'utf8')
+  try {
+    writeFileSync(join(slim, 'scripts/antu.mjs'), 'x')
+    assert.ok(checkSkillFolder(slim, version, { slim: true }).some((p) => p.includes('carries no command line')))
+    rmSync(join(slim, 'scripts/antu.mjs'))
+    writeFileSync(file, good.replaceAll(`@zh-xx/antu@${version}`, '@zh-xx/antu'))
+    assert.ok(checkSkillFolder(slim, version, { slim: true }).some((p) => p.includes('with npx')))
+  } finally {
+    writeFileSync(file, good)
+    rmSync(join(slim, 'scripts/antu.mjs'), { force: true })
+  }
+})
+
+test('the slim skill still makes a page with the Python fallback, from its compressed viewer', () => {
+  const slim = buildSkillFolder(version, { slim: true })
+  const out = mkdtempSync(join(tmpdir(), 'antu-wb-slim-'))
+  try {
+    const py = spawnSync('python3', ['-I', join(slim, 'scripts/make_html.py'), join(slim, 'examples/fact-1-minimal.zh-CN.json'), '-o', join(out, 'p.html')], { encoding: 'utf8' })
+    if (py.error) return
+    assert.equal(py.status, 0, py.stderr)
+    assert.match(readFileSync(join(out, 'p.html'), 'utf8'), /content="antu \d+\.\d+\.\d+"/)
+  } finally {
+    rmSync(out, { recursive: true, force: true })
+  }
+})

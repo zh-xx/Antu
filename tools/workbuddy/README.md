@@ -14,7 +14,7 @@ node tools/workbuddy/build.mjs            # both packages below, as folders and 
 node tools/workbuddy/build.mjs --check    # build the folders and check them against the platform's rules
 ```
 
-## Two packages, in case the connector is not accepted
+## Three packages, in case the connector is not accepted
 
 1. **The connector** (`antu-workbuddy-<version>.zip`, above).
 2. **The skill alone** (`antu-workbuddy-skill-<version>.zip`, "案图 Antu（技能版）"): the general skill (`skills/antu/`,
@@ -29,9 +29,16 @@ node tools/workbuddy/build.mjs --check    # build the folders and check them aga
 So this package ships `assets/viewer.html` compressed (`viewer.html.gz`, 0.7 MB instead of 2.3 MB); the command line and
 `make_html.py` read either form. The build stops if the package passes 2.9 MB, and the size is asserted in the tests,
 so the next growth of the engine is caught here and not by the platform. The command line itself (1.8 MB) is the rest;
-if it grows too much, the next step is to build it smaller or to fetch it with `npx` instead of carrying it.
+if it grows too much, the slim skill above (fetching it with `npx`) is the next step.
 
-Both are listed under different names so a user can tell them apart.
+3. **The slim skill** (`antu-workbuddy-skill-slim-<version>.zip`, "案图 Antu（技能版·精简）"), **kept in reserve**: the same
+   skill without the 1.8 MB command line (about 0.9 MB unzipped). Its commands run the pinned npm package instead,
+   `npx -y -p @zh-xx/antu@<version> antu validate|layout|render|preview`, so it needs Node 18+, npm and network access
+   the first time (mirror: `--registry https://registry.npmmirror.com`); without them it falls back to `scripts/make_html.py`,
+   then says so. Use it only if the platform's size limit becomes a problem or the platform allows downloading at run
+   time. It is built with the other two by `node tools/workbuddy/build.mjs`, but the release does **not** attach it.
+
+The packages are listed under different names so a user can tell them apart.
 
 The version in `connector-meta.json`, `mcp.json` (the pin) and the skill is always the one in `package.json`, so a
 release of the package must be on npm before the zip of the same number is submitted.

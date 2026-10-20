@@ -15,7 +15,8 @@
 //  Usage: node tools/workbuddy/build.mjs [--check]
 //    --check   build, check the results against the platform's rules, and stop (no zip)
 //  Output (not committed): tools/workbuddy/package/antu/ + antu-workbuddy-<version>.zip (the connector),
-//                          tools/workbuddy/package-skill/antu/ + antu-workbuddy-skill-<version>.zip (the skill)
+//                          tools/workbuddy/package-skill/antu/ + antu-workbuddy-skill-<version>.zip (the skill),
+//                          tools/workbuddy/package-skill-slim/antu/ + antu-workbuddy-skill-slim-<version>.zip (in reserve, see README)
 // ============================================================
 
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
@@ -30,6 +31,8 @@ const OUT = join(HERE, 'package')
 const ROOT = join(OUT, 'antu')
 const SKILL_OUT = join(HERE, 'package-skill')
 const SKILL_ROOT = join(SKILL_OUT, 'antu')
+const SLIM_OUT = join(HERE, 'package-skill-slim')
+const SLIM_ROOT = join(SLIM_OUT, 'antu')
 const SKILL_SOURCE = join(HERE, '../../skills/antu')
 /**
  * WorkBuddy takes a skill of 3 MB at most (the platform's answer to the first upload: the unzipped size counted, a 1.3 MB
@@ -119,17 +122,17 @@ export function checkFolder(dir, version = repoVersion()) {
 // The skill package (no connector)
 // ---------------------------------------------------------------------------
 
-const SKILL_HEADER = (version, description) => `---
+const SKILL_HEADER = (version, description, slim) => `---
 name: antu
-display_name: 案图 Antu（技能版）
-display_name_en: Antu (skill)
+display_name: ${slim ? '案图 Antu（技能版·精简）' : '案图 Antu（技能版）'}
+display_name_en: ${slim ? 'Antu (skill, slim)' : 'Antu (skill)'}
 description: >-
 ${description
   .split('\n')
   .map((line) => `  ${line}`)
   .join('\n')}
-description_zh: 用 Antu 把案情时间线、程序流程、主体关系、裁判说理画成可离线打开的单个 HTML 图。需要 Node 18 以上，没有时退到 Python 简化版。
-description_en: Draw case timelines, procedures, party relationships and court reasoning as one offline HTML file. Needs Node 18+, or Python 3 for a reduced version.
+description_zh: ${slim ? '用 Antu 把案情时间线、程序流程、主体关系、裁判说理画成可离线打开的单个 HTML 图。命令行从 npm 取（需要 Node 18 以上、npm 和网络），没有时退到 Python 简化版。' : '用 Antu 把案情时间线、程序流程、主体关系、裁判说理画成可离线打开的单个 HTML 图。需要 Node 18 以上，没有时退到 Python 简化版。'}
+description_en: ${slim ? 'Draw case timelines, procedures, party relationships and court reasoning as one offline HTML file. The command line comes from npm (Node 18+, npm and a network), or Python 3 for a reduced version.' : 'Draw case timelines, procedures, party relationships and court reasoning as one offline HTML file. Needs Node 18+, or Python 3 for a reduced version.'}
 version: "${version}"
 author: Jicheng
 license: AGPL-3.0-or-later
@@ -145,19 +148,39 @@ const IN_WORKBUDDY = `## In WorkBuddy
 
 `
 
-/** The skill package folder: skills/antu/ with WorkBuddy's header fields and the section above */
-export function buildSkillFolder(version = repoVersion()) {
+/**
+ * The slim variant: no command line in the package, the model fetches it from npm with npx (pinned to this version).
+ * Kept in reserve for the day the full package no longer fits the platform's 3 MB; see README.md.
+ */
+const slimWorkBuddy = (version) => `## In WorkBuddy
+
+- **If you can call the tools \`antu_validate\`, \`antu_layout\` and \`antu_render\`** (the 案图 Antu connector is installed), use them and ignore the commands below: they do the same.
+- **Otherwise the command line comes from npm**, so it needs Node 18 or newer, npm, and a network the first time (it is cached afterwards). Check once with \`node --version\` and \`npm --version\`. The commands of step 3 are written \`npx -y -p @zh-xx/antu@${version} antu <command> …\`. If the download is slow or fails, add \`--registry https://registry.npmmirror.com\` after \`npx\` (the mirror can lag a few minutes behind a new version; then try \`--registry https://registry.npmjs.org\`).
+- **If Node, npm or the network is missing but \`python3\` works**, use the Python fallback of step 3 (\`scripts/make_html.py\`, which is in this folder): it only makes the page and cannot check the data. If nothing works, tell the user plainly that Antu cannot run here, and that installing Node.js (LTS) or the 案图 Antu connector fixes it. Never claim a diagram was made when it was not.
+- \`<skill-dir>\` is the folder this \`SKILL.md\` is in; WorkBuddy keeps installed skills in \`~/.workbuddy/skills/antu/\` (or the \`.workbuddy/skills/antu/\` of a project). Write the user's JSON and the page in the folder they work in, never in the skill folder.
+- Updates come through WorkBuddy's market: do not run \`npx skills update\`.
+
+`
+
+/**
+ * The skill package folder: skills/antu/ with WorkBuddy's header fields and a section on what to do there.
+ * `slim`: without scripts/antu.mjs (see slimWorkBuddy above).
+ */
+export function buildSkillFolder(version = repoVersion(), { slim = false } = {}) {
   if (!existsSync(join(SKILL_SOURCE, 'SKILL.md'))) throw new Error('skills/antu/ is missing: run npm run build:skill first')
   const built = readFileSync(join(SKILL_SOURCE, 'VERSION'), 'utf8').trim()
   if (built !== version) throw new Error(`skills/antu/ is a build of ${built}, not ${version}: run npm run build:skill`)
+  const out = slim ? SLIM_OUT : SKILL_OUT
+  const root = slim ? SLIM_ROOT : SKILL_ROOT
 
-  rmSync(SKILL_OUT, { recursive: true, force: true })
-  mkdirSync(SKILL_OUT, { recursive: true })
-  cpSync(SKILL_SOURCE, SKILL_ROOT, { recursive: true })
+  rmSync(out, { recursive: true, force: true })
+  mkdirSync(out, { recursive: true })
+  cpSync(SKILL_SOURCE, root, { recursive: true })
   // The viewer page is 2.3 MB of the 4.3: ship it compressed. The command line and make_html.py read either form.
-  const viewer = join(SKILL_ROOT, 'assets/viewer.html')
+  const viewer = join(root, 'assets/viewer.html')
   writeFileSync(`${viewer}.gz`, gzipSync(readFileSync(viewer), { level: 9 }))
   rmSync(viewer)
+  if (slim) rmSync(join(root, 'scripts/antu.mjs'))
 
   const text = readFileSync(join(SKILL_SOURCE, 'SKILL.md'), 'utf8')
   const match = /^---\n([\s\S]*?)\n---\n/.exec(text)
@@ -168,16 +191,25 @@ export function buildSkillFolder(version = repoVersion()) {
   let body = text.slice(match[0].length)
   const anchor = '## 1. Choose the kind of diagram'
   if (!body.includes(anchor)) throw new Error('skills/antu/SKILL.md: the first section was not found')
-  body = body.replace(anchor, IN_WORKBUDDY + anchor)
+  body = body.replace(anchor, (slim ? slimWorkBuddy(version) : IN_WORKBUDDY) + anchor)
   const notice = 'with the command the notice gives (`npx skills update antu -g`)'
   if (!body.includes(notice)) throw new Error('skills/antu/SKILL.md: the update notice was not found')
   body = body.replace(notice, "and that a newer version is in WorkBuddy's market")
-  writeFileSync(join(SKILL_ROOT, 'SKILL.md'), SKILL_HEADER(version, description) + body)
-  return SKILL_ROOT
+  if (slim) {
+    // the commands of step 3 run the package from npm instead of scripts/antu.mjs
+    const intro = '`scripts/antu.mjs` (Node 18 or newer, nothing to install).'
+    if (!body.includes(intro)) throw new Error('skills/antu/SKILL.md: the introduction of step 3 was not found')
+    body = body.replace(intro, `\`npx -y -p @zh-xx/antu@${version} antu\` (Node 18 or newer and npm; the first run downloads it).`)
+    const before = body
+    body = body.replaceAll('node <skill-dir>/scripts/antu.mjs ', `npx -y -p @zh-xx/antu@${version} antu `)
+    if (body === before) throw new Error('skills/antu/SKILL.md: the commands of step 3 were not found')
+  }
+  writeFileSync(join(root, 'SKILL.md'), SKILL_HEADER(version, description, slim) + body)
+  return root
 }
 
 /** Check a built skill folder against what the platform's documentation asks of a skill; the problems (empty: ok) */
-export function checkSkillFolder(dir, version = repoVersion()) {
+export function checkSkillFolder(dir, version = repoVersion(), { slim = false } = {}) {
   const bad = []
   const skillFile = join(dir, 'SKILL.md')
   if (!existsSync(skillFile)) return ['SKILL.md: missing']
@@ -196,8 +228,13 @@ export function checkSkillFolder(dir, version = repoVersion()) {
     readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name), depth + 1) : [depth]))
   const deep = walk(dir).filter((depth) => depth > 2).length
   if (deep) bad.push(`${deep} file(s) deeper than root / folder / file`)
-  for (const f of ['scripts/antu.mjs', 'scripts/make_html.py', 'assets/viewer.html.gz', 'references/guide-fact.md', 'examples/fact-1-minimal.zh-CN.json']) {
+  for (const f of [...(slim ? [] : ['scripts/antu.mjs']), 'scripts/make_html.py', 'assets/viewer.html.gz', 'references/guide-fact.md', 'examples/fact-1-minimal.zh-CN.json']) {
     if (!existsSync(join(dir, f))) bad.push(`${f}: missing`)
+  }
+  if (slim) {
+    if (existsSync(join(dir, 'scripts/antu.mjs'))) bad.push('scripts/antu.mjs: the slim package carries no command line')
+    if (/node <skill-dir>\/scripts\/antu\.mjs/.test(text)) bad.push('SKILL.md: still runs scripts/antu.mjs')
+    if (!text.includes(`npx -y -p @zh-xx/antu@${version} antu `)) bad.push(`SKILL.md: the commands must run @zh-xx/antu@${version} with npx`)
   }
   if (existsSync(join(dir, 'assets/viewer.html'))) bad.push('assets/viewer.html: the page must ship compressed (assets/viewer.html.gz)')
 
@@ -222,15 +259,22 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const version = repoVersion()
   const dir = buildFolder(version)
   const skillDir = buildSkillFolder(version)
-  const bad = [...checkFolder(dir, version).map((b) => `connector: ${b}`), ...checkSkillFolder(skillDir, version).map((b) => `skill: ${b}`)]
+  const slimDir = buildSkillFolder(version, { slim: true })
+  const bad = [
+    ...checkFolder(dir, version).map((b) => `connector: ${b}`),
+    ...checkSkillFolder(skillDir, version).map((b) => `skill: ${b}`),
+    ...checkSkillFolder(slimDir, version, { slim: true }).map((b) => `skill (slim): ${b}`),
+  ]
   if (bad.length) {
     console.error(bad.map((b) => `✗ ${b}`).join('\n'))
     process.exit(1)
   }
   console.log(`connector folder ok: ${dir}`)
   console.log(`skill folder ok: ${skillDir}`)
+  console.log(`skill (slim) folder ok: ${slimDir}`)
   if (!process.argv.includes('--check')) {
     zipOf(OUT, join(HERE, `antu-workbuddy-${version}.zip`))
     zipOf(SKILL_OUT, join(HERE, `antu-workbuddy-skill-${version}.zip`))
+    zipOf(SLIM_OUT, join(HERE, `antu-workbuddy-skill-slim-${version}.zip`))
   }
 }
