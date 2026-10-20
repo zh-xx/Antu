@@ -5,6 +5,10 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+## 0.16.5
+
+Nothing in the engine, the command line, the MCP server or the entries for a host's code changes, and no diagram looks different. This release brings the packages for WorkBuddy's open platform to the release page, and the security documents and checks.
+
 ### Added
 - **The release attaches the two WorkBuddy packages** (`antu-workbuddy-<version>.zip`, the connector, and `antu-workbuddy-skill-<version>.zip`, the skill alone) beside `antu-skill-<version>.zip`: the release workflow builds them, checks the skill zip for depth, and tests it unpacked, like the skill zip. Their author is the developer name registered on the platform, Jicheng.
 - **A skill-only package for WorkBuddy** (`tools/workbuddy/`, "案图 Antu（技能版）"), for the case that the connector is not accepted: the general skill with the header fields the platform asks of a skill and a short section on what to do there (Node 18+, else the Python fallback, else say so). Built from `skills/antu/`, so its content is the same as every other client's. Nothing in a release depends on it.
