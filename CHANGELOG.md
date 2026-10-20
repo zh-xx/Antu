@@ -6,6 +6,7 @@ what breaks a file or a tool call written for the version before, with how to br
 ## Unreleased
 
 ### Added
+- **A skill-only package for WorkBuddy** (`tools/workbuddy/`, "案图 Antu（技能版）"), for the case that the connector is not accepted: the general skill with the header fields the platform asks of a skill and a short section on what to do there (Node 18+, else the Python fallback, else say so). Built from `skills/antu/`, so its content is the same as every other client's. Nothing in a release depends on it.
 - **A security policy** (#238): `SECURITY.md` (and `SECURITY.zh-CN.md`) says how to report a vulnerability privately, which versions are supported, what counts, and how the packages are made. The readmes have a Security section, an OpenSSF Scorecard badge, and a line for companies and app stores that do not take AGPL software.
 - **Two workflows that watch the repository**: `scorecard.yml` (OpenSSF Scorecard, weekly, results published; its actions are pinned by commit) and `audit.yml` (`npm audit --audit-level=high` and `npm audit signatures` on a pull request that changes the dependencies). Neither runs on a push to main, and `tools/verify/ci-green.mjs` lets the Scorecard job report without stopping a release.
 

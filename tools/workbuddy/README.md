@@ -10,9 +10,22 @@ WorkBuddy's open platform ([docs](https://open.workbuddy.cn/docs/connector)) tak
   connector still works if the client does not load the skill.
 
 ```
-node tools/workbuddy/build.mjs            # tools/workbuddy/package/antu/ and antu-workbuddy-<version>.zip (needs `zip`)
-node tools/workbuddy/build.mjs --check    # build the folder and check it against the platform's rules
+node tools/workbuddy/build.mjs            # both packages below, as folders and zips (needs `zip`)
+node tools/workbuddy/build.mjs --check    # build the folders and check them against the platform's rules
 ```
+
+## Two packages, in case the connector is not accepted
+
+1. **The connector** (`antu-workbuddy-<version>.zip`, above).
+2. **The skill alone** (`antu-workbuddy-skill-<version>.zip`, "案图 Antu（技能版）"): the general skill (`skills/antu/`,
+   built by `npm run build:skill`) with the header fields the platform asks of a skill (`description_zh`,
+   `description_en`, `version`, `author`) and a short section "In WorkBuddy". Its content is not copied by hand: the
+   guides, field tables, examples and scripts are the ones of every other client, so there is one place to keep them.
+   It needs **Node 18 or newer** on the user's machine (a skill has no way to ask WorkBuddy for a managed runtime; only a
+   connector has); with only Python 3 it falls back to `scripts/make_html.py` (it makes the page and checks nothing);
+   with neither it says so. If the connector is installed too, the skill tells the model to use the `antu_*` tools.
+
+Both are listed under different names so a user can tell them apart.
 
 The version in `connector-meta.json`, `mcp.json` (the pin) and the skill is always the one in `package.json`, so a
 release of the package must be on npm before the zip of the same number is submitted.
@@ -25,6 +38,9 @@ minutes after approval).
 
 ## Not verified yet (needs a real WorkBuddy client)
 
+- **whether WorkBuddy has Node or Python for a skill's scripts** (the documents say nothing, and tutorials advise installing
+  Node yourself): in a chat, ask it to run `node --version` and `python3 --version`;
+- whether a skill package of this size (about 4.3 MB, 1.3 MB zipped) is accepted;
 - the zip layout: the docs show the files inside a folder named after the connector; the zip has one top folder `antu/`;
 - whether the skill loads with the connector, whether `references/` would be allowed in it (the skill has none);
 - where `antu_render` writes and how the HTML shows in the conversation (the skill tells the model to pass an absolute
