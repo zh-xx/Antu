@@ -1,6 +1,6 @@
 {
   "name": "@zh-xx/antu-dsh",
-  "version": "0.16.4",
+  "version": "0.16.5",
   "description": "Antu diagrams inside DeepSeek Harness: Host tools (antu_validate / antu_layout / antu_render) and an interactive chat card.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
@@ -44,7 +44,7 @@
     }
   },
   "dependencies": {
-    "@zh-xx/antu": "0.16.4"
+    "@zh-xx/antu": "0.16.5"
   },
   "peerDependencies": {
     "@deepseek-ai/dsh-tools": "^0.2.0-rc.2 || ^0.2.1-rc.0",
