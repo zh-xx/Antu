@@ -50,4 +50,3 @@
 
 记下的唯一偏离：共享组件和官方 bundle 一样通过 ModuleLoader `require` 取得，手写回退行存在是因为这条解析路径没有对第三方插件作出文档说明。已在真实 DSH（0.2.0-rc.2）中确认：`require` 可以解析；`DisclosureRow` 和图标是 `React.memo` / `forwardRef` 对象而不是函数，所以判断接受任何 React 组件类型。插件必须像官方插件一样把 `locale` 写进自己的 `inject`：否则 `apply` 时 `ctx.locale` 为 undefined，会悄悄退回英文。
 
-DSH 公开面没有覆盖、因此保持原样并列在这里：**刷新后的“Open HTML”。** 聊天卡片的 `openFile` 只在该卡片挂载期间存在，所以恢复后的大图无法打开写出的文件。修法会通过 DSH 自己的 file resource address 打开文件；需要单独设计。

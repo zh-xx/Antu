@@ -404,7 +404,7 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
   assert.match(client, /Open full view/)
   // The moved words live only in the inlined dictionary, never at a render site.
   assert.equal((client.match(/'Open full view'/g) || []).length, 1)
-  assert.equal((client.match(/'Open HTML'/g) || []).length, 1)
+  assert.equal((client.match(/'Open HTML'/g) || []).length, 0, 'the Open HTML button is gone (#224)')
   assert.equal((client.match(/'No diagram in this tab\.'/g) || []).length, 1)
   assert.match(client, new RegExp(`const ANTU_NS = '${ANTU_NS}'`))
   assert.match(client, /ctx\.locale/)
@@ -1134,11 +1134,10 @@ test('built client card: a click opens the full view, fullscreen, with the HTML 
   assert.equal(typeof Page, 'function')
   assert.equal(typeof Title, 'function')
 
-  const files = []
   const spec = { type: 'fact', title: '案情' }
   const card = mount(Card, {
     phase: 'end', toolName: 'antu_render', sessionId: 's1', callId: 'c1',
-    openFile: (p) => files.push(p), block: callBlock({ spec, kind: 'scale' }),
+    block: callBlock({ spec, kind: 'scale' }),
   })
   await card.flush()
   const cover = findAll(card.tree(), (n) => n.type === 'button')
@@ -1149,7 +1148,7 @@ test('built client card: a click opens the full view, fullscreen, with the HTML 
   assert.equal(opened[0].address, 'dsh-resource://antu/s1/c1')
   assert.deepEqual(opened[0].options, { params: { wantFullscreen: true } })
 
-  // The page: the full diagram (no cardUi), the panel asked to go fullscreen once, and the HTML button.
+  // The page: the full diagram (no cardUi), the panel asked to go fullscreen once.
   // Its diagram comes from useResource(address), not from navigation params.
   const value = { callId: 'c1', spec, kind: 'scale', theme: undefined, title: '案情', path: '/w/a.html', failure: null }
   const useResource = (address) => (address === 'dsh-resource://antu/s1/c1'
@@ -1175,8 +1174,7 @@ test('built client card: a click opens the full view, fullscreen, with the HTML 
   tabInfo = { ...tabInfo, sidebar: { expanded: true, fullscreen: false } }
   page.rerender()
   assert.equal(toggled.length, 1)
-  buttonLabelled(page.tree(), 'Open HTML').props.onClick()
-  assert.deepEqual(files, ['/w/a.html'])
+  assert.equal(buttonLabelled(page.tree(), 'Open HTML'), undefined, 'the full view has no Open HTML button (#224)')
 
   // The tab title recovers the diagram's title from the same address.
   const title = mount(Title, { useTabInfo: () => tabInfo, useResource })
@@ -1342,7 +1340,6 @@ test('built client tool row follows a language switch', async () => {
 test('built client tail: finished diagrams draw there, failures explain, running calls wait', async () => {
   const { embed, calls } = fakeEmbed()
   const opened = []
-  const files = []
   const sidebarRight = {
     openResource: (address, options) => opened.push({ address, options }),
     commandTarget: () => ({ paneId: 'p1', host: 'dock' }),
@@ -1366,7 +1363,7 @@ test('built client tail: finished diagrams draw there, failures explain, running
     toolResult(1, 'c1', { content: [{ type: 'text', text: 'Written: /w/one.html' }] }),
     toolResult(1, 'c2', { isError: true }),
   ])
-  const view = load.mount(load.Tail, { sessionId: 's1', turn: turnOf(data), openFile: (p) => files.push(p) })
+  const view = load.mount(load.Tail, { sessionId: 's1', turn: turnOf(data) })
   const tree = view.tree()
   assert.match(textOf(tree), /Render failed/, 'the failed call leaves one quiet line')
   assert.equal(textOf(tree).includes('三稿'), false, 'a running call shows nothing')
@@ -1389,7 +1386,7 @@ test('built client tail: finished diagrams draw there, failures explain, running
   assert.equal(opened[0].address, 'dsh-resource://antu/s1/c1')
   assert.deepEqual(opened[0].options, { params: { wantFullscreen: true } })
 
-  // The tail passed its openFile through, so the full view can open the written HTML.
+  // The full view has no Open HTML button: the picture is what it is for (#224).
   const value = { callId: 'c1', spec, kind: 'scale', title: '案情', path: '/w/one.html', failure: null }
   const page = load.mount(load.Page, {
     useTabInfo: () => ({
@@ -1399,8 +1396,7 @@ test('built client tail: finished diagrams draw there, failures explain, running
     useResource: () => ({ status: 'live', value }),
   })
   await page.flush()
-  buttonLabelled(page.tree(), 'Open HTML').props.onClick()
-  assert.deepEqual(files, ['/w/one.html'])
+  assert.equal(buttonLabelled(page.tree(), 'Open HTML'), undefined)
 })
 
 test('built client tail: the kind strip lists the ways of drawing, only where there is a choice', async () => {

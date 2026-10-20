@@ -5,9 +5,8 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
-## 0.16.6
-
-Nothing in the engine, the command line, the MCP server or the entries for a host's code changes, and no diagram looks different. This release makes the WorkBuddy skill package small enough for the platform.
+### Changed
+- **The DSH full view has no Open HTML button any more** (#224). It depended on a function the chat card held in memory and vanished after a reload; the written file's path is in the `antu_render` result in the chat. The button, its `openHtml` words and the recorded deviation in `spec/dsh-conventions.md` are gone.
 
 ### Fixed
 - **The skill and the MCP instructions now forbid inventing a party's identity** (#243): lender or borrower, plaintiff or defendant, guarantor and the like are not written unless the material states them, and not inferred from a verb; `role` is optional, so it is left out, or the user is asked. A model had written 出借人 / 借款人 for two parties from "乙放款" and contradicted itself.

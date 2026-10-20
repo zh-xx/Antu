@@ -50,4 +50,3 @@ In order of authority:
 
 One recorded deviation: the primitives are obtained through the ModuleLoader `require` like the official bundles do, and the hand-written fallback row exists because that resolution is not documented for third-party plugins. Confirmed in a real DSH (0.2.0-rc.2): the `require` resolves, and `DisclosureRow` and the icons are `React.memo` / `forwardRef` objects, not functions, so the check accepts any React component type. The plugin must list `locale` in its own `inject` (as the official plugins do): without it `ctx.locale` is undefined at `apply` and the English fallback silently wins.
 
-Not covered by DSH's public face, so left as is and listed here: **"Open HTML" after a reload.** The chat card's `openFile` exists only while that card is mounted, so a restored full view has no way to open the written file. A fix would open the file through DSH's own file resource address; it needs its own design.

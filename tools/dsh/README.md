@@ -93,8 +93,9 @@ steps into their fold, so it stays visible without opening that fold. The card r
 **arguments** (`argsRaw`) and shows only the picture — plus, for a diagram with more than one way of drawing, the
 kind strip — the whole diagram fitted (`cardUi`). A `ResizeObserver` calls the embed's `fitView()` when the host grows,
 so a card mounted while hidden is never blank.
-A click opens the full view, fullscreen in the right panel, with kind and theme switches, detail cards, export and
-**Open HTML** (the card's `openFile`). The tab is saved by its `dsh-resource://antu/…` address only; a resource
+A click opens the full view, fullscreen in the right panel, with kind and theme switches, detail cards and export.
+It has no **Open HTML** button: the file path is in the `antu_render` result in the chat, and the button used to
+vanish after a reload (#224). The tab is saved by its `dsh-resource://antu/…` address only; a resource
 provider re-reads the `antu_render` call from Session history, so a reload needs no private cache. On a DSH without
 the conversation service the full card stays in the tool row.
 
