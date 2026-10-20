@@ -18,7 +18,8 @@
 //                          tools/workbuddy/package-skill/antu/ + antu-workbuddy-skill-<version>.zip (the skill)
 // ============================================================
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { gzipSync } from 'node:zlib'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
@@ -30,6 +31,11 @@ const ROOT = join(OUT, 'antu')
 const SKILL_OUT = join(HERE, 'package-skill')
 const SKILL_ROOT = join(SKILL_OUT, 'antu')
 const SKILL_SOURCE = join(HERE, '../../skills/antu')
+/**
+ * WorkBuddy takes a skill of 3 MB at most (the platform's answer to the first upload: the unzipped size counted, a 1.3 MB
+ * zip of 4.3 MB was refused). A bit under it, so that the build stops before the platform does.
+ */
+export const SKILL_MAX_BYTES = 2_900_000
 
 export const repoVersion = () => JSON.parse(readFileSync(join(HERE, '../../package.json'), 'utf8')).version
 
@@ -148,6 +154,10 @@ export function buildSkillFolder(version = repoVersion()) {
   rmSync(SKILL_OUT, { recursive: true, force: true })
   mkdirSync(SKILL_OUT, { recursive: true })
   cpSync(SKILL_SOURCE, SKILL_ROOT, { recursive: true })
+  // The viewer page is 2.3 MB of the 4.3: ship it compressed. The command line and make_html.py read either form.
+  const viewer = join(SKILL_ROOT, 'assets/viewer.html')
+  writeFileSync(`${viewer}.gz`, gzipSync(readFileSync(viewer), { level: 9 }))
+  rmSync(viewer)
 
   const text = readFileSync(join(SKILL_SOURCE, 'SKILL.md'), 'utf8')
   const match = /^---\n([\s\S]*?)\n---\n/.exec(text)
@@ -186,9 +196,15 @@ export function checkSkillFolder(dir, version = repoVersion()) {
     readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name), depth + 1) : [depth]))
   const deep = walk(dir).filter((depth) => depth > 2).length
   if (deep) bad.push(`${deep} file(s) deeper than root / folder / file`)
-  for (const f of ['scripts/antu.mjs', 'scripts/make_html.py', 'assets/viewer.html', 'references/guide-fact.md', 'examples/fact-1-minimal.zh-CN.json']) {
+  for (const f of ['scripts/antu.mjs', 'scripts/make_html.py', 'assets/viewer.html.gz', 'references/guide-fact.md', 'examples/fact-1-minimal.zh-CN.json']) {
     if (!existsSync(join(dir, f))) bad.push(`${f}: missing`)
   }
+  if (existsSync(join(dir, 'assets/viewer.html'))) bad.push('assets/viewer.html: the page must ship compressed (assets/viewer.html.gz)')
+
+  // The size the platform counts: every file, unzipped
+  const size = (d) => readdirSync(d, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? size(join(d, e.name)) : statSync(join(d, e.name)).size), 0)
+  const total = size(dir)
+  if (total > SKILL_MAX_BYTES) bad.push(`the package is ${total} bytes unzipped; WorkBuddy takes 3 MB at most, and this build allows ${SKILL_MAX_BYTES}`)
   return bad
 }
 

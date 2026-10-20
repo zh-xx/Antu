@@ -25,6 +25,12 @@ node tools/workbuddy/build.mjs --check    # build the folders and check them aga
    connector has); with only Python 3 it falls back to `scripts/make_html.py` (it makes the page and checks nothing);
    with neither it says so. If the connector is installed too, the skill tells the model to use the `antu_*` tools.
 
+**Size.** WorkBuddy refuses a skill over **3 MB unzipped** (the first upload, 4.3 MB unzipped and 1.3 MB zipped, was refused).
+So this package ships `assets/viewer.html` compressed (`viewer.html.gz`, 0.7 MB instead of 2.3 MB); the command line and
+`make_html.py` read either form. The build stops if the package passes 2.9 MB, and the size is asserted in the tests,
+so the next growth of the engine is caught here and not by the platform. The command line itself (1.8 MB) is the rest;
+if it grows too much, the next step is to build it smaller or to fetch it with `npx` instead of carrying it.
+
 Both are listed under different names so a user can tell them apart.
 
 The version in `connector-meta.json`, `mcp.json` (the pin) and the skill is always the one in `package.json`, so a

@@ -2,9 +2,12 @@
 // tools the MCP server really has.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { spawnSync } from 'node:child_process'
+import { gunzipSync } from 'node:zlib'
 import { join } from 'node:path'
-import { buildFolder, buildSkillFolder, checkFolder, checkSkillFolder, repoVersion } from '../tools/workbuddy/build.mjs'
+import { buildFolder, buildSkillFolder, checkFolder, checkSkillFolder, repoVersion, SKILL_MAX_BYTES } from '../tools/workbuddy/build.mjs'
 
 const dir = buildFolder()
 const version = repoVersion()
@@ -93,4 +96,49 @@ test('the skill package checks catch a missing field, a nested header, a deeper 
 test('both packages carry the developer name registered on the platform (Jicheng)', () => {
   assert.match(readFileSync(join(dir, 'skills/antu/SKILL.md'), 'utf8'), /^author: Jicheng$/m)
   assert.match(readFileSync(join(buildSkillFolder(), 'SKILL.md'), 'utf8'), /^author: Jicheng$/m)
+})
+
+// ---- under the platform's 3 MB (the unzipped size counts) ----
+
+const bytesOf = (d) => readdirSync(d, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? bytesOf(join(d, e.name)) : statSync(join(d, e.name)).size), 0)
+
+test('the skill package is under what the platform takes unzipped, with its viewer page compressed', () => {
+  const skillDir = buildSkillFolder()
+  assert.ok(bytesOf(skillDir) <= SKILL_MAX_BYTES, `${bytesOf(skillDir)} bytes`)
+  assert.ok(SKILL_MAX_BYTES < 3_000_000, 'below the strictest reading of "3 MB"')
+  const gz = readFileSync(join(skillDir, 'assets/viewer.html.gz'))
+  assert.equal(gunzipSync(gz).toString('utf8'), readFileSync('skills/antu/assets/viewer.html', 'utf8'), 'the page is the same, only compressed')
+  assert.throws(() => statSync(join(skillDir, 'assets/viewer.html')), 'no plain copy beside it')
+})
+
+test('the size check names a package that grew past the limit, and one that kept the plain page', () => {
+  const skillDir = buildSkillFolder()
+  const big = join(skillDir, 'references/big.bin')
+  try {
+    writeFileSync(big, Buffer.alloc(SKILL_MAX_BYTES))
+    assert.ok(checkSkillFolder(skillDir, version).some((p) => p.includes('WorkBuddy takes 3 MB at most')))
+    rmSync(big)
+    writeFileSync(join(skillDir, 'assets/viewer.html'), 'x')
+    assert.ok(checkSkillFolder(skillDir, version).some((p) => p.includes('must ship compressed')))
+  } finally {
+    rmSync(big, { force: true })
+    rmSync(join(skillDir, 'assets/viewer.html'), { force: true })
+  }
+})
+
+test('the command line and the Python fallback make the page from the compressed viewer', () => {
+  const skillDir = buildSkillFolder()
+  const out = mkdtempSync(join(tmpdir(), 'antu-wb-'))
+  try {
+    const spec = join(skillDir, 'examples/fact-1-minimal.zh-CN.json')
+    const node = spawnSync(process.execPath, [join(skillDir, 'scripts/antu.mjs'), 'render', spec, '-o', join(out, 'node.html')], { encoding: 'utf8' })
+    assert.equal(node.status, 0, node.stderr)
+    assert.match(readFileSync(join(out, 'node.html'), 'utf8'), /content="antu \d+\.\d+\.\d+"/)
+    const py = spawnSync('python3', ['-I', join(skillDir, 'scripts/make_html.py'), spec, '-o', join(out, 'py.html')], { encoding: 'utf8' })
+    if (py.error) return // no Python here: the node half is the check
+    assert.equal(py.status, 0, py.stderr)
+    assert.match(readFileSync(join(out, 'py.html'), 'utf8'), /content="antu \d+\.\d+\.\d+"/)
+  } finally {
+    rmSync(out, { recursive: true, force: true })
+  }
 })
