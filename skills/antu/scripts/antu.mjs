@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Antu 0.16.5
+// Antu 0.16.6
 // Copyright (C) 2026 Ji Cheng
 //
 // Antu is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public
@@ -13,9 +13,9 @@
 // publish them, or sell them on any terms you like. This licence covers Antu's code in the page, and the notices in
 // the page must stay with it.
 //
-// Corresponding Source of this version: https://github.com/zh-xx/Antu/tree/v0.16.5
-// The licence: https://github.com/zh-xx/Antu/blob/v0.16.5/LICENSE
-// Third-party notices: https://github.com/zh-xx/Antu/blob/v0.16.5/skills/antu/THIRD-PARTY-NOTICES.md
+// Corresponding Source of this version: https://github.com/zh-xx/Antu/tree/v0.16.6
+// The licence: https://github.com/zh-xx/Antu/blob/v0.16.6/LICENSE
+// Third-party notices: https://github.com/zh-xx/Antu/blob/v0.16.6/skills/antu/THIRD-PARTY-NOTICES.md
 //
 // === The licence of Antu ===
 //
@@ -1480,7 +1480,7 @@ import{execFileSync as e,spawn as t,spawnSync as n}from"node:child_process";impo
       })()`);if(!r)throw Error(`Cannot hover element: ${e}`);let{x:i,y:a}=JSON.parse(r);await _.send(`Input.dispatchMouseEvent`,{type:`mouseMoved`,x:i+t,y:a+n})},get requests(){return v.slice()},get errors(){return y.slice()},async close(){_.close(),await Go(f),await qo(h)}};return b}async function Yo(e,{width:t=1600,height:n=900,settleMs:r=800}={}){let i=Date.now(),a=await Jo({width:t,height:n});try{await a.open(g(e).href,{settleMs:r});let o=await a.eval(`document.querySelectorAll(${JSON.stringify(Po)}).length`);return{data:await a.screenshotData(),mimeType:`image/png`,width:t,height:n,cards:o,ms:Date.now()-i}}finally{await a.close()}}var Xo=`@zh-xx/antu`,Zo=`https://registry.npmjs.org/${Xo.replace(/\//g,`%2f`)}/latest`,Qo=1500;function $o(e,t){let n=e=>/^(\d+)\.(\d+)\.(\d+)$/.exec(String(e))?.slice(1).map(Number),r=n(e),i=n(t);if(!r||!i)return null;for(let e=0;e<3;e+=1)if(r[e]!==i[e])return r[e]<i[e]?-1:1;return 0}function es(e=h(import.meta.url)){let t=f(e);return d(t)===`scripts`&&r(p(t,`..`,`SKILL.md`))?`skill`:e.split(/[\\/]/).includes(`node_modules`)?`npm`:`source`}function ts({current:e,latest:t,where:n}){return $o(e,t)===-1?n===`skill`?[`Notice: Antu ${t} is out; this skill is ${e}.`,`When the request is done, tell the user in a sentence or two that the skill can be updated with:`,`  npx skills update antu -g`,`Do not run it unless the user agrees.`].join(`
 `):n===`npm`?[`Notice: Antu ${t} is out; this is ${e}.`,`When the request is done, tell the user in a sentence or two that it can be updated with:`,`  npm update -g ${Xo}   (or run it with: npx -y ${Xo}@latest)`,`Do not run it unless the user agrees.`].join(`
 `):``:``}async function ns({url:e,cacheFile:t,now:n}){try{let e=JSON.parse(a(t,`utf8`));if(typeof e.latest==`string`&&n-e.checkedAt<864e5)return e.latest}catch{}let r=new AbortController,i=setTimeout(()=>r.abort(),Qo);try{let i=await fetch(e,{signal:r.signal,headers:{accept:`application/json`}});if(!i.ok)return null;let a=(await i.json())?.version;if(typeof a!=`string`)return null;try{c(t,JSON.stringify({checkedAt:n,latest:a}))}catch{}return a}catch{return null}finally{clearTimeout(i)}}async function rs({current:e,where:t=es(),env:n=process.env,now:r=Date.now()}={}){try{if(n.ANTU_NO_UPDATE_NOTIFIER||t===`source`||$o(e,e)===null)return``;let i=n.ANTU_REGISTRY_URL||Zo,a=await ns({url:i,cacheFile:p(l(),`antu-update-check-${_(`sha1`).update(i).digest(`hex`).slice(0,16)}.json`),now:r});return a?ts({current:e,latest:a,where:t}):``}catch{return``}}function Wne(e,t){return{release:e,types:Te().map(e=>e.type).filter(e=>!t||e===t).map(e=>({type:e,specVersion:we(e).specVersion,diagrams:Ce(e).map(({kind:e,version:t,status:n,since:r})=>({kind:e,version:t,status:n,since:r}))}))}}function Gne(e){let t=[`Antu ${e.release}`,``];for(let n of e.types){t.push(`${n.type}: format generation ${n.specVersion}`);let e=Math.max(...n.diagrams.map(e=>e.kind.length));n.diagrams.forEach((n,r)=>t.push(`  ${n.kind.padEnd(e)}  v${n.version}  ${n.status}  since ${n.since}${r===0?`  (default)`:``}`))}return t.join(`
-`)}var is=`0.16.5`,as=`Antu ${is}: check and draw an Antu diagram (JSON)
+`)}var is=`0.16.6`,as=`Antu ${is}: check and draw an Antu diagram (JSON)
 
   node antu.mjs validate <spec.json>                       is the JSON valid? (each problem, with its field path)
   node antu.mjs layout   <spec.json> [--orientation vertical|horizontal] [--kind K]
