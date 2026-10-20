@@ -33,9 +33,8 @@ window.__ModuleLoader__.load({
     const TAB_KIND = 'antu-diagram'
     /**
      * The full view (a page in DSH's right panel). `open` is filled when sidebar-right is available.
-     * `files` maps a written path to the card's `openFile`, so the full view can open the HTML.
      */
-    const fullView = { open: null, files: new Map() }
+    const fullView = { open: null }
     /** Set once the conversation service is there: the turn tail draws finished diagrams, so the tool row stays compact. */
     let hasTurnTail = false
     /** The code require-async.mjs gives the upgrade error; the component localizes the message at render. */
@@ -429,8 +428,6 @@ window.__ModuleLoader__.load({
       // Full page chrome in the sidebar — no cardUi.
       const mountError = useDiagram(hostRef, handleRef, embed, spec, openingKind, theme, undefined, revision, embedLang(t), onEvent)
       const embedError = embedErrorMessage(loadError, mountError, t)
-      const path = typeof value?.path === 'string' ? value.path : null
-      const openFile = path ? fullView.files.get(path) : null
 
       // Opened from a chat card: present the panel fullscreen (once per opening; leaving it is the reader's choice).
       // `wantFullscreen` is in params only for that opening; a reload drops it, so nothing replays it.
@@ -473,13 +470,6 @@ window.__ModuleLoader__.load({
               role: 'img',
               'aria-label': label,
             }),
-        spec && path && typeof openFile === 'function'
-          ? h(
-              'button',
-              { type: 'button', className: 'antuDsh_btn antuDsh_sideFile', title: path, onClick: () => openFile(path) },
-              t('sidebar.openHtml'),
-            )
-          : null,
       )
     }
 
@@ -493,7 +483,7 @@ window.__ModuleLoader__.load({
     }
 
     function AntuRenderCard(props) {
-      const { phase, block, openFile, toolName, sessionId, callId } = props
+      const { phase, block, toolName, sessionId, callId } = props
       const t = translator(props.t)
       const hostRef = useRef(null)
       const handleRef = useRef(null)
@@ -503,7 +493,6 @@ window.__ModuleLoader__.load({
       const argsRaw = argsRawOf(block)
       const args = useMemo(() => parseArgsRaw(argsRaw), [argsRaw])
       const spec = args && typeof args === 'object' ? args.spec : null
-      const path = resultPath(block)
       const status = statusOf(phase, block)
       // antu_render returned ok: false (bad spec, outPath outside the workspace, a write error): say why, draw nothing
       const failure = renderFailure(block)
@@ -525,8 +514,6 @@ window.__ModuleLoader__.load({
 
       const openFull = () => {
         if (typeof fullView.open !== 'function' || !spec || !sessionId || callId == null) return
-        // The card's openFile is only alive while the card is: keep it for the full view's file button.
-        if (path && typeof openFile === 'function') fullView.files.set(path, openFile)
         fullView.open({ sessionId, callId: String(callId) })
       }
       const canOpenFull =
@@ -614,7 +601,7 @@ window.__ModuleLoader__.load({
     }
 
     /** One finished call's card in the turn tail; `call` is a record of the turn's diagram data. */
-    function AntuTailDiagram({ call, openFile, sessionId, t: injectedT }) {
+    function AntuTailDiagram({ call, sessionId, t: injectedT }) {
       const t = translator(injectedT)
       const hostRef = useRef(null)
       const handleRef = useRef(null)
@@ -665,8 +652,6 @@ window.__ModuleLoader__.load({
 
       const openFull = () => {
         if (typeof fullView.open !== 'function' || !spec || !sessionId || call.callId == null) return
-        // The tail's openFile is the chat's, so the full view's file button reaches the written file.
-        if (call.path && typeof openFile === 'function') fullView.files.set(call.path, openFile)
         fullView.open({
           sessionId,
           callId: String(call.callId),
@@ -694,7 +679,7 @@ window.__ModuleLoader__.load({
      * The finished turn's diagrams, drawn in `conversation.chat.turnTail` after DSH folds the turn's
      * tool steps. Running calls show nothing; a failure is one quiet line; a success is the card.
      */
-    function AntuTurnTail({ turn, openFile, sessionId, t: injectedT }) {
+    function AntuTurnTail({ turn, sessionId, t: injectedT }) {
       const t = translator(injectedT)
       const data = turn && turn.data ? turn.data.get(ANTU_DIAGRAMS_KIND) : undefined
       const calls = data && Array.isArray(data.calls) ? data.calls : []
@@ -724,7 +709,7 @@ window.__ModuleLoader__.load({
           )
           continue
         }
-        rows.push(h(AntuTailDiagram, { key: call.callId, call, openFile, sessionId, t }))
+        rows.push(h(AntuTailDiagram, { key: call.callId, call, sessionId, t }))
       }
 
       return rows.length === 0 ? null : h('div', { className: 'antuDsh_tail', 'data-antu-dsh': 'turn-tail' }, rows)
@@ -759,7 +744,6 @@ window.__ModuleLoader__.load({
 .antuDsh_side{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;padding:8px;box-sizing:border-box}
 .antuDsh_sideCanvas{flex:auto;min-height:0;border:.5px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-lg,8px);background:var(--dsw-alias-bg-base);overflow:hidden}
 .antuDsh_sideCanvas>*{width:100%;height:100%}
-.antuDsh_sideFile{position:absolute;right:16px;bottom:16px}
 .antuDsh_toolrow{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:var(--dsh-content-font-size-secondary,13px);line-height:calc(24px + var(--dsh-content-font-delta,0px))}
 .antuDsh_toolTitle{color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .antuDsh_toolStatus{color:var(--dsw-alias-label-tertiary)}
