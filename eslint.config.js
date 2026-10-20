@@ -139,6 +139,7 @@ export default [
       // build output of tools/workbuddy/build.mjs (a copy of the skill, with its bundled scripts)
       'tools/workbuddy/package/**',
       'tools/workbuddy/package-skill/**',
+      'tools/workbuddy/package-skill-slim/**',
       'node_modules/**',
       'tools/dsh/package/index.js',
       'tools/dsh/package/client.js',

@@ -8,6 +8,7 @@ The same page `node tools/make-html.mjs` would make. The one difference is the s
 page sets the tab's title itself from the data when it opens (src/App.jsx), so both ways give the same tab.
 """
 import argparse
+import gzip
 import json
 import pathlib
 import sys
@@ -32,8 +33,18 @@ def main() -> int:
         print(f'"type" must be one of {", ".join(TYPES)}; got {spec.get("type")!r}' if isinstance(spec, dict) else "the JSON must be an object", file=sys.stderr)
         return 1
 
-    viewer = pathlib.Path(__file__).resolve().parent.parent / "assets" / "viewer.html"
-    html = viewer.read_text(encoding="utf-8")
+    assets = pathlib.Path(__file__).resolve().parent.parent / "assets"
+    viewer = assets / "viewer.html"
+    if viewer.exists():
+        html = viewer.read_text(encoding="utf-8")
+    else:
+        # a package that has to stay small ships the page compressed (WorkBuddy takes a skill of 3 MB at most)
+        viewer = assets / "viewer.html.gz"
+        try:
+            html = gzip.decompress(viewer.read_bytes()).decode("utf-8")
+        except OSError as e:
+            print(f"cannot find the viewer page in {assets} (viewer.html or viewer.html.gz): {e}", file=sys.stderr)
+            return 1
     if html.count(MARKER) != 1:
         print(f"{viewer} does not hold exactly one {MARKER}; it is not a viewer template", file=sys.stderr)
         return 1

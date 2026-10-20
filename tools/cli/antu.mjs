@@ -26,6 +26,7 @@
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { gunzipSync } from 'node:zlib'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -83,13 +84,21 @@ function readSpec(file) {
   }
 }
 
-/** The viewer page beside this file in the skill folder (assets/viewer.html) */
+/**
+ * The viewer page beside this file in the skill folder: assets/viewer.html, or assets/viewer.html.gz for a package
+ * that has to stay small (WorkBuddy takes a skill of 3 MB at most, and the page alone is 2.3 MB)
+ */
 function readViewer() {
-  const viewerPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'viewer.html')
+  const assets = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets')
   try {
-    return readFileSync(viewerPath, 'utf8')
+    return readFileSync(join(assets, 'viewer.html'), 'utf8')
   } catch {
-    return fail(`cannot find the viewer page at ${viewerPath}: this file is meant to run from its place in the skill folder (scripts/antu.mjs)`, 2)
+    /* not there as plain text: try the compressed one */
+  }
+  try {
+    return gunzipSync(readFileSync(join(assets, 'viewer.html.gz'))).toString('utf8')
+  } catch {
+    return fail(`cannot find the viewer page at ${join(assets, 'viewer.html')} (or viewer.html.gz): this file is meant to run from its place in the skill folder (scripts/antu.mjs)`, 2)
   }
 }
 
