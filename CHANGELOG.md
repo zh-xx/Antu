@@ -6,7 +6,7 @@ what breaks a file or a tool call written for the version before, with how to br
 ## Unreleased
 
 ### Changed
-- **The home page's "Get started" has a third way: the DSH plugin** (#226): the `dsh plugin --profile <profile> add @zh-xx/antu-dsh` command with a copy button, the tested DSH versions, what the plugin gives, and links to its guide and npm page; "choose either" became "choose any of three" (Chinese and English).
+- **The home page's "Get started" has a third way: the DSH plugin** (#226): the package name `@zh-xx/antu-dsh` with a copy button and the steps in DSH's own Plugins page (Add plugin, Install, switch on "Antu diagrams"), the tested DSH versions, what the plugin gives, and links to its guide and npm page; "choose either" became "choose any of three" (Chinese and English).
 - **The DSH full view has no Open HTML button any more** (#224). It depended on a function the chat card held in memory and vanished after a reload; the written file's path is in the `antu_render` result in the chat. The button, its `openHtml` words and the recorded deviation in `spec/dsh-conventions.md` are gone.
 
 ### Fixed
