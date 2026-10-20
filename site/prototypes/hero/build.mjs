@@ -422,11 +422,12 @@ ${read(`${HERE}lenses.css`)}</style>
 <section class="gs" id="start" aria-labelledby="startT">
  <p class="eyebrow">GET STARTED</p>
  <h2 class="gs-t" id="startT" data-i18n="startT">开始使用</h2>
- <p class="gs-s" data-i18n="startS">任选其一</p>
+ <p class="gs-s" data-i18n="startS">三选一</p>
  <div class="way">
   <div class="tabs" role="tablist">
    <button class="tab" role="tab" id="tab-skill" aria-selected="true" aria-controls="panel-skill" data-tab="skill">Skill<i data-i18n="chip1">一句话</i></button>
    <button class="tab" role="tab" id="tab-mcp" aria-selected="false" aria-controls="panel-mcp" data-tab="mcp">MCP<i data-i18n="chip2">一段配置</i></button>
+   <button class="tab" role="tab" id="tab-dsh" aria-selected="false" aria-controls="panel-dsh" data-tab="dsh">DSH<i data-i18n="chip3">插件</i></button>
   </div>
   <div class="panel" role="tabpanel" id="panel-skill" aria-labelledby="tab-skill">
    <p class="way-d" data-i18n="skillT">把下面这句话发给你的 Agent</p>
@@ -442,6 +443,12 @@ ${read(`${HERE}lenses.css`)}</style>
     }
   }
 }</pre></div>
+  </div>
+  <div class="panel" role="tabpanel" id="panel-dsh" aria-labelledby="tab-dsh" hidden>
+   <p class="way-d" data-i18n="dshT">在 DeepSeek Harness 里，打开“插件”→“添加插件”，粘贴下面的包名，点“安装”</p>
+   <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">package</span><button class="copy" data-for="dshText" data-i18n="copy">复制</button></div><pre id="dshText">@zh-xx/antu-dsh</pre></div>
+   <p class="way-d way-n" data-i18n="dshN">装好后，在“已安装”里打开“案图 Antu”。需要 DSH 0.2.0-rc.2 或更新。</p>
+   <p class="way-d way-n"><a href="https://github.com/zh-xx/Antu/blob/main/tools/dsh/README.md" data-i18n="dshL1">使用说明</a> · <a href="https://www.npmjs.com/package/@zh-xx/antu-dsh">npm</a></p>
   </div>
  </div>
 </section>
