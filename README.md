@@ -8,7 +8,7 @@
 [![License: AGPL-3.0-or-later](https://img.shields.io/github/license/zh-xx/Antu)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-339933)](package.json)
 [![Status: 0.x](https://img.shields.io/badge/status-0.x%20draft-orange)](CHANGELOG.md)
-[![Demo](https://img.shields.io/badge/demo-online-blue)](https://zh-xx.github.io/Antu/)
+[![Demo](https://img.shields.io/badge/demo-online-blue)](https://antu.nervonly.cn/)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
 [中文](README.zh-CN.md) | **English**
