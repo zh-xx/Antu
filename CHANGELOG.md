@@ -12,6 +12,9 @@ what breaks a file or a tool call written for the version before, with how to br
 - **The DSH full view has no Open HTML button any more** (#224). It depended on a function the chat card held in memory and vanished after a reload; the written file's path is in the `antu_render` result in the chat. The button, its `openHtml` words and the recorded deviation in `spec/dsh-conventions.md` are gone.
 
 ### Fixed
+- **A JSON file with a byte-order mark is read** by the command line and the Python filler (Windows Notepad writes one; it was "not valid JSON").
+- **`render` and `preview` make the output folder** when `-o` names one that does not exist yet, as the MCP server already did; the command line printed a stack trace and the Python filler a traceback. A folder that cannot be made is now a plain message.
+- **The home page's "Examples" link opens the gallery** of every way of drawing; it went to "Get started".
 - **The home page's three copy buttons work over plain http**: the browser only offers its Clipboard API on https, so on `http://antu.nervonly.cn` none of them copied anything; they now fall back to select-and-copy. The top bar's start button is no longer cut off on a phone.
 - **The skill and the MCP instructions now forbid inventing a party's identity** (#243): lender or borrower, plaintiff or defendant, guarantor and the like are not written unless the material states them, and not inferred from a verb; `role` is optional, so it is left out, or the user is asked. A model had written 出借人 / 借款人 for two parties from "乙放款" and contradicted itself.
 
