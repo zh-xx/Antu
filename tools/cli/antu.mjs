@@ -24,7 +24,7 @@
 // ============================================================
 
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { gunzipSync } from 'node:zlib'
 import { dirname, join, resolve } from 'node:path'
@@ -70,6 +70,17 @@ const fail = (text, code = 1) => {
   process.exit(code)
 }
 
+/** The absolute output path, with its folder made if it is not there yet (as the MCP server does) */
+function outPath(path) {
+  const out = resolve(path)
+  try {
+    mkdirSync(dirname(out), { recursive: true })
+  } catch (e) {
+    return fail(`cannot make the folder for ${out}: ${e.message}`, 2)
+  }
+  return out
+}
+
 function readSpec(file) {
   let text
   try {
@@ -78,7 +89,8 @@ function readSpec(file) {
     return fail(`cannot read ${file}: ${e.message}`, 2)
   }
   try {
-    return JSON.parse(text)
+    // a byte-order mark (Windows Notepad writes one) is not part of the JSON
+    return JSON.parse(text.replace(/^\uFEFF/, ''))
   } catch (e) {
     return fail(`${file} is not valid JSON: ${e.message}`, 2)
   }
@@ -171,7 +183,7 @@ async function preview(spec, file, option, kind, theme) {
     return fail('no Chromium-based browser found (Chrome, Edge or Chromium), so no picture: install one, or set ANTU_CHROME to it. Say that you did not see the page.', 3)
   }
 
-  const out = resolve(option('-o', '--out') ?? file.replace(/\.json$/i, '') + '.png')
+  const out = outPath(option('-o', '--out') ?? file.replace(/\.json$/i, '') + '.png')
   const dir = mkdtempSync(join(tmpdir(), 'antu-preview-'))
   try {
     const page = join(dir, 'preview.html')
@@ -250,7 +262,7 @@ async function run(argv) {
   const errors = validate(spec)
   if (errors.length) return fail(validationMessage(spec).text)
   const viewer = readViewer()
-  const out = resolve(option('-o', '--out') ?? file.replace(/\.json$/i, '') + '.html')
+  const out = outPath(option('-o', '--out') ?? file.replace(/\.json$/i, '') + '.html')
   writeFileSync(out, fillViewer(viewer, spec, { preset: kind || theme ? { ...(kind && { defaultKind: kind }), ...(theme && { theme }) } : undefined }))
   say(out)
   const size = sizeLines(spec, kind)

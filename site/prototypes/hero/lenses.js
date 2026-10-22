@@ -569,7 +569,7 @@ const asked = (location.hash.match(/kind=(\w+)/) || [])[1]
 const FIRST = ['fact', 'relationship', 'procedure', 'justification'].includes(asked) ? asked : 'fact'
 const start = () => play(FIRST)
 
-// the top bar: the start button and Examples go to the under-construction notice for now; the language
+// the top bar: the start button goes to Get started and Examples to the site's gallery of every way; the language
 // switch (the top bar's labels and the notice only, in this draft); light / dark, remembered in this browser
 $('#startBtn').onclick = () => $('#start').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
 const EN = {
