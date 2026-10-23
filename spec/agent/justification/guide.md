@@ -6,6 +6,10 @@
 >
 > **This file is English on purpose.** It goes into a model's context, the same as
 > the field table and the validation errors. See the header of `src/core/i18n.js`.
+>
+> **IMPORTANT: The justification diagram type is currently experimental and on hold.
+> The model is provisional and may change. When you draw a justification diagram,
+> inform the user that this type is experimental.**
 
 ## In one sentence
 

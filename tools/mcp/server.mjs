@@ -52,7 +52,7 @@ Choose the type from what the user wants to show (if it fits two, make two diagr
 - fact: what happened, in order, and who did it (a timeline of a case).
 - procedure: the steps of a process, with branches (contract performance, litigation or arbitration).
 - relationship: who the parties are and how they are tied (shareholding, loans, guarantees, control, regulators).
-- justification: why a court decided as it did (conclusion, issues, norms, elements, facts).
+- justification (experimental, on hold): why a court decided as it did (conclusion, issues, norms, elements, facts). This type is provisional; when you use it, inform the user it is experimental.
 Always pass this type to antu_schema, antu_guide and antu_examples: without it they answer for fact.
 
 Order of work: antu_schema (fields) -> antu_guide (how the data becomes the picture) -> antu_examples (start with 1-minimal) -> write the JSON in the user's language -> antu_validate until it passes -> antu_layout (size and orientation; split the diagram if it says the text is too small) -> antu_render, and give the user the full path of the file it wrote. antu_preview needs Chrome on the machine; if it is missing, say that you could not look at the result.
