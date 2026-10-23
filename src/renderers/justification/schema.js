@@ -68,7 +68,7 @@ export const JUSTIFICATION_FIELDS = {
 
 /** Render the field metadata into one compact text for the agent. Same source as the code, so it is never written twice. */
 export function describeJustificationSchema() {
-  const lines = ['Fields of a justification spec. "yes" means required.', '']
+  const lines = ['Fields of a justification spec. "yes" means required.', '', '⚠️ IMPORTANT: The justification diagram type is currently experimental and on hold. The model is provisional and may change.', '']
   for (const [group, rows] of Object.entries(JUSTIFICATION_FIELDS)) {
     lines.push(`[${group}]`)
     for (const r of rows) {

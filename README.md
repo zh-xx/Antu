@@ -27,12 +27,12 @@ Four types of legal content, each drawn in several ways. A selector in the page 
 <tr><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/authority.svg" width="88" alt="authority chart"><br>authority chart</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/related.svg" width="88" alt="related-party list"><br>related-party list</a></td><td align="center"><a href="examples/relationship/marketplace-parties.en.json"><img src="assets/kinds/path.svg" width="88" alt="relation path"><br>relation path</a></td></tr>
 <tr><th rowspan="1" align="left" valign="middle">Fact</th><td align="center"><a href="examples/fact/neighbour-corridor-charging.en.json"><img src="assets/kinds/timeline.svg" width="88" alt="timeline"><br>timeline</a></td><td align="center"><a href="examples/fact/neighbour-corridor-charging.en.json"><img src="assets/kinds/chronicle.svg" width="88" alt="chronicle"><br>chronicle</a></td><td align="center"><a href="examples/fact/neighbour-corridor-charging.en.json"><img src="assets/kinds/scale.svg" width="88" alt="time scale"><br>time scale</a></td></tr>
 <tr><th rowspan="1" align="left" valign="middle">Procedure</th><td align="center"><a href="examples/procedure/05-premises-lease.en.json"><img src="assets/kinds/flow.svg" width="88" alt="flowchart"><br>flowchart</a></td><td align="center"><a href="examples/procedure/05-premises-lease.en.json"><img src="assets/kinds/route.svg" width="88" alt="route map"><br>route map</a></td></tr>
-<tr><th rowspan="1" align="left" valign="middle">Justification</th><td align="center"><a href="examples/justification/fang-yuan-defense-excess.en.json"><img src="assets/kinds/tree.svg" width="88" alt="reasoning tree"><br>reasoning tree</a></td></tr>
+<tr><th rowspan="1" align="left" valign="middle">Justification<br><em>(experimental)</em></th><td align="center"><a href="examples/justification/fang-yuan-defense-excess.en.json"><img src="assets/kinds/tree.svg" width="88" alt="reasoning tree"><br>reasoning tree</a></td></tr>
 </table>
 
 Relationship diagrams (seven ways of drawing the same JSON) show parties, roles and legal relationships; fact diagrams the time, the participants and how events went;
 procedure diagrams a procedural path and its branches; justification diagrams a conclusion drawn from norms and facts. The
-relationship and justification schemas are still drafts.
+relationship and justification schemas are still drafts, and **justification is currently experimental and on hold**.
 
 Four looks, called **themes**: `document` (black and white and square, for print and filing; the default), `modern`
 (rounded, pale), `legal` (navy) and `dark` (the modern look on a dark ground, for a dark host). The reader switches in

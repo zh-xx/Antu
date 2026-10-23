@@ -186,7 +186,7 @@ export const en = {
   'graphType.fact': 'Fact',
   'graphType.relationship': 'Relationship',
   'graphType.procedure': 'Procedure',
-  'graphType.justification': 'Justification',
+  'graphType.justification': 'Justification (experimental)',
 
   // ---------- validation errors: fixed English, they do not follow the interface language ----------
   // Errors mostly land in the agent's context: English costs fewer tokens and matches MCP ecosystem convention.

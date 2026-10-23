@@ -260,7 +260,7 @@ export const zh = {
   'graphType.fact': '事实图',
   'graphType.relationship': '关系图',
   'graphType.procedure': '程序图',
-  'graphType.justification': '证成图',
+  'graphType.justification': '证成图（实验性质）',
 
   'rel.kind.equity': '股权',
   'rel.kind.control': '控制',

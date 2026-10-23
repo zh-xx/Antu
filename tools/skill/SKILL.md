@@ -29,7 +29,7 @@ beside it). Commands are written with it so that they run from any directory: pu
 | what happened, in order, who did it (a timeline of a case) | `fact` | `references/guide-fact.md` |
 | the steps of a process: contract performance, a litigation or arbitration procedure, with branches | `procedure` | `references/guide-procedure.md` |
 | who the parties are and how they are tied: shareholding, loans, guarantees, control, regulators | `relationship` | `references/guide-relationship.md` |
-| why a court decided as it did: conclusion, issues, norms, elements, facts | `justification` | `references/guide-justification.md` |
+| why a court decided as it did: conclusion, issues, norms, elements, facts | `justification` **(experimental)** | `references/guide-justification.md` |
 
 If the request fits two, make two diagrams rather than one overloaded one, and say so. If it fits none (a chart of
 numbers, an org chart of a firm), say that Antu does not draw it.
