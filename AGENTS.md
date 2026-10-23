@@ -5,11 +5,9 @@
 
 ## 权威位置
 - 代码：https://github.com/zh-xx/Antu （主分支 main）
-npm：@zh-xx/antu ；DSH 插件：@zh-xx/antu-dsh
-- 成品/素材：Google Drive「莫克莫克-资产主家」/「安图」 https://drive.google.com/drive/folders/1SPrXtqRnGz0Tyn24jaKGYRGXYvA_D4xh
-- 密钥：不进仓库；密钥与隐私不进 Drive 明文
+- npm：@zh-xx/antu ；DSH 插件：@zh-xx/antu-dsh
+- 密钥：不进仓库
 - 深度说明：README.zh-CN.md、CLAUDE.md、spec/
-- 资产总约定：https://docs.google.com/document/d/1Yg9yHB4Yd_Y6KZaLv3cQoVA9bpAhAKAF9tO2gGc-tpg/edit
 
 ## 怎么跑
 - Node ≥ 18；npm install
@@ -23,9 +21,5 @@ npm：@zh-xx/antu ；DSH 插件：@zh-xx/antu-dsh
 
 ## 禁忌
 - 不把密钥写进仓库
-- 云端电脑只作临时通道；定稿代码推回本仓库，成品进上述 Drive 文件夹
 - 引擎不写 JSON、Agent 不画图——保持该边界
 - 公开安全问题走 SECURITY.zh-CN.md 私密报告，不公开提漏洞 issue
-
-## 负责 Bot
-- 安图安图；DSH 插件相关：Antu DSH 插件；协调可用莫克莫克
