@@ -70,6 +70,9 @@ other        a standing tie none of the above fits (a lease, a licence); never a
 `directed: true/false` overrides the kind's default arrowhead. A loan usually needs **two**
 relations on the same pair: the `contract` (what was agreed) and the `debt` (who owes whom).
 
+A **sale or purchase contract** is usually **one** `contract` relation. Add a separate `debt` only when
+the materials clearly show unpaid goods payment or an outstanding purchase price owed.
+
 ## A guarantee says which claim it secures
 
 A guarantee secures **one particular claim**, not the debtor in general. Put the id of the `debt`
@@ -81,6 +84,10 @@ tell which of two loans the guarantee is for.
 `kind` is `person` / `company` / `organization` / `government` / `other` and fixes the shape only.
 `label` is the name; `role` is the role **in this case** on one short line ("Lender", "Guarantor").
 Keep labels short; put registered capital and the like in `detail` (its full text shows on click).
+
+**Banks and financial institutions** use kind `company`; put their case-specific identity (creditor,
+debtor, guarantor, or whatever the facts say) in `role`. Do not hardcode banks as creditors;
+`role` follows what the case materials show.
 
 **Two names are two parties** unless the material says they are one. A judgment that hides names writes
 "Fang X" for one person and "Fang Yuan" for another; do not merge them because they look alike, and do
@@ -108,7 +115,8 @@ render      the self-contained HTML
 - **Referenced ids must exist**: `from` / `to`, `groupId`, `sourceIds`, `secures`.
 - **`share` is only for `equity`, `amount` only for `debt` and `contract`, `secures` only for `guarantee`.**
 - **An entity nothing relates to floats beside the diagram** (a hint): relate it or leave it out.
-- **`amount` is a string**, written the way it should be read, with the currency.
+- **`amount` is a string**, written the way it should be read, with the currency. If the amount
+  is unknown, omit `amount`; do not invent a figure.
 
 ## The examples
 
