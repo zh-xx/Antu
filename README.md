@@ -1,4 +1,4 @@
-# Antu 案图
+# Antu
 
 [![Verify](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
 [![CodeQL](https://github.com/zh-xx/Antu/actions/workflows/codeql.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/codeql.yml)
@@ -11,7 +11,7 @@
 [![Demo](https://img.shields.io/badge/demo-online-blue)](https://antu.nervonly.cn/)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
-[中文](README.zh-CN.md) | **English**
+[Chinese](README.zh-CN.md) | **English**
 
 Antu turns one JSON document into one self-contained HTML legal diagram. The page is one file of about 2.3 MB that makes no network request and needs no server; it opens offline and can be archived,
 printed or sent as an attachment. An AI Agent can read the case materials and write the JSON; the engine then draws the
