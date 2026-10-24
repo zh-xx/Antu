@@ -9,14 +9,16 @@
 //  Components are .jsx and only a browser can load them; MCP needs the rules and cannot load components.
 //  Once the two are apart, MCP no longer hand-writes a dispatch table of its own.
 //
-//  Note: **the validation rules are not here**. There is only one copy, in timeline/grid.js (errors are collected along the way while laying out),
-//  and this file only wraps it in a public interface, repeating not one line.
+//  Note: **the validation rules are not here**. There is only one copy, in timeline/rules.js (data
+//  errors only); timeline/grid.js reports the placement/capacity failures separately (issue #26),
+//  and this file only wraps the rule layer in a public interface, repeating not one line.
 // ============================================================
 
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { dateOrderNotes } from './dateOrder.js'
 import { partyNotes } from './partyNotes.js'
 import { buildGrid } from './timeline/grid.js'
+import { validateFact } from './timeline/rules.js'
 import { buildFactGraph } from './timeline/layout.js'
 import { buildChronicleGraph, TITLE_FONT as CHRONICLE_TITLE_FONT } from './chronicle/layout.js'
 import { buildScaleGraph, TITLE_FONT as SCALE_TITLE_FONT } from './scale/layout.js'
@@ -194,11 +196,12 @@ export const factKnowledge = {
   describe: describeFactSchema,
 
   /**
-   * Validate a fact spec and return the array of errors.
-   * The rules live in timeline/grid.js: **validation and layout share one computation**,
-   * so the two can never tell different stories.
+   * Validate a fact spec and return the array of data errors.
+   * The rules live in timeline/rules.js: **validation answers only "is the data correct"**, and
+   * placement/capacity failures (more than three groups, two events in one cell) stay on the
+   * layout path in timeline/grid.js (issue #26), so the two no longer tell one story.
    */
-  validate: (spec) => buildGrid(spec).errors,
+  validate: (spec) => validateFact(spec),
 
   /** What validation cannot call an error: the slot order against the dates (a note, never a reorder; see dateOrder.js) */
   notes: (spec) => [
