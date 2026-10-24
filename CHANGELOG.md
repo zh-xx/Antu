@@ -29,6 +29,7 @@ This is a **minor** release: the command line gains four subcommands, `schema`, 
 - **The home page's "Examples" link opens the gallery** of every way of drawing; it went to "Get started".
 - **The home page's three copy buttons work over plain http**: the browser only offers its Clipboard API on https, so on `http://antu.nervonly.cn` none of them copied anything; they now fall back to select-and-copy. The top bar's start button is no longer cut off on a phone.
 - **The skill and the MCP instructions now forbid inventing a party's identity** (#243): lender or borrower, plaintiff or defendant, guarantor and the like are not written unless the material states them, and not inferred from a verb; `role` is optional, so it is left out, or the user is asked. A model had written 出借人 / 借款人 for two parties from "乙放款" and contradicted itself.
+- **Dependency advisories are cleared**: `npm audit fix` moves `body-parser` to 2.4.0, `zod` to 4.6.7, `fast-uri` to 3.1.9 and `ip-address` to 10.7.4, all reached through `@modelcontextprotocol/sdk`; `npm audit` no longer reports the high `body-parser` / `zod` advisories or the moderate `fast-uri` / `ip-address` ones.
 
 ## 0.16.6
 
