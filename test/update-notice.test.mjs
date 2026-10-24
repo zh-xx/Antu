@@ -7,7 +7,16 @@ import { createServer } from 'node:http'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { DAY_MS, compareVersions, noticeText, updateNotice, whereRuns } from '../tools/lib/update-notice.mjs'
+import {
+  DAY_MS,
+  compareVersions,
+  noticeObject,
+  noticeText,
+  skillNoticeObject,
+  updateNotice,
+  updateNoticeObject,
+  whereRuns,
+} from '../tools/lib/update-notice.mjs'
 
 /** A registry that answers with `body` and counts the requests */
 async function registry(body, status = 200) {
@@ -41,6 +50,66 @@ test('the notice names the version and the one command to give, for the skill an
   assert.equal(noticeText({ current: '0.10.0', latest: '0.10.0', where: 'skill' }), '')
   assert.equal(noticeText({ current: '0.11.0', latest: '0.10.0', where: 'skill' }), '')
   assert.equal(noticeText({ current: '0.9.0', latest: '0.10.0', where: 'source' }), '')
+})
+
+test('the structured notice is small and stable: kind, current, latest, one line, and the one command', () => {
+  assert.deepEqual(noticeObject({ current: '0.16.6', latest: '0.17.0', where: 'skill' }), {
+    kind: 'update',
+    current: '0.16.6',
+    latest: '0.17.0',
+    message: 'Antu 0.17.0 is out; this skill is 0.16.6.',
+    command: 'npx skills update antu -g',
+  })
+  assert.equal(noticeObject({ current: '0.16.6', latest: '0.17.0', where: 'npm' }).command, 'npm update -g @zh-xx/antu')
+  assert.equal(noticeObject({ current: '0.17.0', latest: '0.17.0', where: 'skill' }), null)
+  assert.equal(noticeObject({ current: '0.16.6', latest: '0.17.0', where: 'source' }), null)
+})
+
+test('a skill folder whose VERSION differs from the program gives a skill notice, even when npm has nothing newer', async () => {
+  assert.deepEqual(skillNoticeObject({ current: '0.16.6', skillVersion: '0.16.5', where: 'skill' }), {
+    kind: 'skill',
+    current: '0.16.6',
+    latest: '0.16.5',
+    message: 'This skill folder says 0.16.5, but the command line beside it is 0.16.6.',
+    command: 'npx skills update antu -g',
+  })
+  assert.equal(skillNoticeObject({ current: '0.16.6', skillVersion: '0.16.6', where: 'skill' }), null)
+  assert.equal(skillNoticeObject({ current: '0.16.6', skillVersion: '0.16.5', where: 'npm' }), null)
+
+  const reg = await registry({ version: '0.16.6' })
+  try {
+    const root = mkdtempSync(join(tmpdir(), 'antu-skill-version-'))
+    mkdirSync(join(root, 'skill/scripts'), { recursive: true })
+    writeFileSync(join(root, 'skill/SKILL.md'), '')
+    writeFileSync(join(root, 'skill/VERSION'), '0.16.5\n')
+    const file = join(root, 'skill/scripts/antu.mjs')
+    const env = { ANTU_REGISTRY_URL: reg.url }
+    const n = await updateNoticeObject({ current: '0.16.6', file, env, now: 30_000_000 })
+    assert.equal(n.kind, 'skill')
+    assert.equal(n.latest, '0.16.5')
+    // the text path keeps the familiar Notice: lines
+    const text = await updateNotice({ current: '0.16.6', file, env, now: 30_000_000 })
+    assert.match(text, /^Notice: This skill folder says 0\.16\.5/)
+    assert.match(text, /npx skills update antu -g/)
+    assert.match(text, /Do not run it unless the user agrees/)
+  } finally {
+    await reg.close()
+  }
+})
+
+test('a newer npm version wins over a stale skill folder', async () => {
+  const reg = await registry({ version: '0.17.0' })
+  try {
+    const root = mkdtempSync(join(tmpdir(), 'antu-skill-version-'))
+    mkdirSync(join(root, 'skill/scripts'), { recursive: true })
+    writeFileSync(join(root, 'skill/SKILL.md'), '')
+    writeFileSync(join(root, 'skill/VERSION'), '0.16.5\n')
+    const n = await updateNoticeObject({ current: '0.16.6', file: join(root, 'skill/scripts/antu.mjs'), env: { ANTU_REGISTRY_URL: reg.url }, now: 40_000_000 })
+    assert.equal(n.kind, 'update')
+    assert.equal(n.latest, '0.17.0')
+  } finally {
+    await reg.close()
+  }
 })
 
 test('where the file runs from is told by its place', () => {

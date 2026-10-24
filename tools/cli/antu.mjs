@@ -11,6 +11,11 @@
 //                                                         validates first, and refuses a diagram with problems
 //    node antu.mjs preview spec.json [-o shot.png]        validates, makes the page, takes a screenshot of it in a
 //                                                         headless Chromium-based browser (Chrome, Edge, Chromium)
+//    node antu.mjs schema [type] [--json]                 the field table of a type (fact if omitted), as antu_schema
+//    node antu.mjs guide [type] [--json]                  how the data becomes the picture, as antu_guide
+//    node antu.mjs examples [--type T] [--group G] [--lang L] [name]
+//                                                         list the small examples, or fetch one in full, as antu_examples
+//    node antu.mjs version [--json]                       the version of this program
 //    node antu.mjs versions [--json]                      the types and the diagrams, and the version of each
 //    node antu.mjs --version
 //
@@ -24,18 +29,20 @@
 // ============================================================
 
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { gunzipSync } from 'node:zlib'
-import { dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { knowledgeOf } from '../../src/core/registry.js'
 import { THEME_IDS, isTheme } from '../../src/theme/themes.js'
 import { PREVIEW_CHECK, kindProblem, layoutMessage, notesOf, validate, validationMessage } from '../lib/report.mjs'
 import { fillViewer } from '../lib/fill.mjs'
 import { findChrome, screenshotPage } from '../lib/chrome.mjs'
-import { updateNotice } from '../lib/update-notice.mjs'
+import { updateNotice, updateNoticeObject } from '../lib/update-notice.mjs'
 import { formatVersions, versionsReport } from '../lib/versions.mjs'
+import { describeSchema, listExamples, listKnowledgeTypes, readAgentGuide, readExample } from '../mcp/engine.mjs'
 
 // set by the bundler (vite.cli.config.js); a run from the source has none
 // eslint-disable-next-line no-undef
@@ -43,6 +50,11 @@ const VERSION = typeof __ANTU_VERSION__ === 'undefined' ? 'dev' : __ANTU_VERSION
 
 const USAGE = `Antu ${VERSION}: check and draw an Antu diagram (JSON)
 
+  node antu.mjs schema   [type] [--json]                   the field table of a type (fact if omitted): what is
+                                                           required, of what type, and one line of what it means
+  node antu.mjs guide    [type] [--json]                   how the data becomes the picture (the mechanism notes)
+  node antu.mjs examples [--type T] [--group agent|real|raw] [--lang en|zh-CN] [name]
+                                                           the small examples (start with 1-minimal), or one in full
   node antu.mjs validate <spec.json>                       is the JSON valid? (each problem, with its field path)
   node antu.mjs layout   <spec.json> [--orientation vertical|horizontal] [--kind K]
                                                            how big is the picture, which orientation fits
@@ -52,9 +64,14 @@ const USAGE = `Antu ${VERSION}: check and draw an Antu diagram (JSON)
   node antu.mjs preview  <spec.json> [-o <out.png>] [--orientation vertical|horizontal] [--kind K] [--theme T] [--width 1600] [--height 900]
                                                            validate, make the page, and take a screenshot of it to look at
                                                            (needs Chrome, Edge or Chromium; ANTU_CHROME points at one)
+  node antu.mjs version  [--json]                          the version of this program
   node antu.mjs versions [--json]                          the types and the diagrams (the ways of drawing), and the
                                                            version and status of each
   node antu.mjs --version
+
+  schema, guide and examples are the same texts and lists the MCP tools antu_schema, antu_guide and antu_examples
+  give. A --json output may carry one small "_notice" object (a newer release, or a skill folder that does not match
+  this program); the plain output ends with the same notice as "Notice: ...".
 
   Once a day the command asks the npm registry for the newest version number and, if there is a newer one, ends with a
   notice. Nothing of the diagram is sent. ANTU_NO_UPDATE_NOTIFIER=1 turns it off.
@@ -68,6 +85,122 @@ const say = (text) => process.stdout.write(`${text}\n`)
 const fail = (text, code = 1) => {
   process.stderr.write(`${text}\n`)
   process.exit(code)
+}
+
+// ---- schema / guide / examples: the same reference material the MCP tools give (tools/mcp/engine.mjs) ----
+
+const CLI_FILE = fileURLToPath(import.meta.url)
+const TYPES = () => listKnowledgeTypes().map((t) => t.type)
+
+/** The skill folder this file runs from (scripts/ beside SKILL.md), or null from a checkout or the npm package */
+function skillFolder() {
+  const dir = dirname(CLI_FILE)
+  return basename(dir) === 'scripts' && existsSync(join(dir, '..', 'SKILL.md')) ? resolve(dir, '..') : null
+}
+
+/** The one non-option argument, skipping the values of options that take one */
+function positional(rest, valued) {
+  return rest.find((a, i) => !a.startsWith('-') && !valued.includes(rest[i - 1]))
+}
+
+/** The value of an option, or undefined */
+function optionOf(rest, names) {
+  const i = rest.findIndex((a) => names.includes(a))
+  return i >= 0 ? rest[i + 1] : undefined
+}
+
+/** The type asked for, defaulting to fact as MCP does; an unknown type exits 2 with the list */
+function typeOf(rest, valued = ['--type', '--group', '--lang']) {
+  const type = optionOf(rest, ['--type']) ?? positional(rest, valued) ?? 'fact'
+  if (!TYPES().includes(type)) return fail(`no reference material for type "${type}" yet. Available: ${TYPES().join(', ')}.`, 2)
+  return type
+}
+
+/** The guide: the repository/package copy first, then references/guide-<type>.md beside the skill */
+function guideText(type) {
+  const text = readAgentGuide(type)
+  if (text) return text
+  const dir = skillFolder()
+  if (dir) {
+    const file = join(dir, 'references', `guide-${type}.md`)
+    if (existsSync(file)) return readFileSync(file, 'utf8')
+  }
+  return null
+}
+
+/** One example from a skill folder: examples/<type>-<name>.<lang>.json is the build's flat layout */
+function readSkillExample(name, { type: _type, lang }) {
+  const dir = join(skillFolder(), 'examples')
+  const raw = String(name).replace(/^examples\//, '')
+  const bases = raw.includes('/') ? [raw] : [raw, ...TYPES().map((t) => `${t}-${raw}`)]
+  const candidates = bases.flatMap((base) => {
+    if (base.endsWith('.json')) return [base]
+    const langs = lang === 'zh-CN' ? ['zh-CN', 'en'] : ['en', 'zh-CN']
+    return [...langs.map((l) => `${base}.${l}.json`), base]
+  })
+  const root = resolve(dir)
+  for (const rel of candidates) {
+    const file = resolve(root, rel)
+    if (!file.startsWith(`${root}${sep}`)) continue
+    if (existsSync(file) && statSync(file).isFile()) return { file: `examples/${rel}`, path: file, text: readFileSync(file, 'utf8') }
+  }
+  return null
+}
+
+/** The small examples in a skill folder, in the same row shape listExamples gives */
+function skillExamples({ type, group, lang }) {
+  if (group !== 'agent') return []
+  const dir = join(skillFolder(), 'examples')
+  const zh = lang === 'zh-CN'
+  return readdirSync(dir)
+    .filter((f) => f.startsWith(`${type}-`) && f.endsWith('.json'))
+    .filter((f) => (zh ? f.endsWith('.zh-CN.json') : !f.endsWith('.zh-CN.json')))
+    .sort()
+    .map((f) => {
+      const path = join(dir, f)
+      const spec = JSON.parse(readFileSync(path, 'utf8'))
+      return {
+        file: `examples/${f}`,
+        path,
+        title: spec.title,
+        bytes: statSync(path).size,
+        ...(knowledgeOf(spec.type)?.summarize?.(spec) ?? { line: '' }),
+      }
+    })
+}
+
+/** The list, in the words antu_examples uses, so an agent hears the same thing from either side */
+function examplesText(rows, { type, group }) {
+  if (rows.length === 0 && group === 'agent') return `no small examples for type "${type}" yet. Try --group real.`
+  if (rows.length === 0) return `no ${group} examples for type "${type}" here.`
+  const head =
+    group === 'real'
+      ? `Real cases: ${rows.length} (4-8 KB each, for reference, write your data from the default small examples first):`
+      : group === 'raw'
+        ? `Raw judgments: ${rows.length} (**not examples**, never use them as a template; the source material these examples came from):`
+        : `Small examples: ${rows.length} (about 1 KB each, start with 1-minimal):`
+  const lines = rows.map((r) => `- ${r.file}  (${(r.bytes / 1024).toFixed(1)} KB)\n    ${r.title}\n    ${r.line ?? ''}`)
+  const tail =
+    group === 'agent'
+      ? '\n\nThere are also real cases (--group real) and source material (--group raw).'
+      : '\n\nTo write data, use the default small examples (no arguments).'
+  return `${head}\n\n${lines.join('\n')}${tail}`
+}
+
+/** One example from a checkout or the npm package, as antu_examples reads it (a bare name is looked for by type) */
+function repoExample(name, { type: _type, lang }) {
+  const engineLang = lang === 'zh-CN' ? 'zh' : 'en'
+  const bare = !String(name).includes('/')
+  const one =
+    readExample(name, { lang: engineLang }) ??
+    (bare ? TYPES().map((t) => readExample(`agent/${t}/${name}`, { lang: engineLang })).find(Boolean) : null)
+  return one ? { file: String(name), ...one } : null
+}
+
+/** Print JSON, adding the structured notice only when there is one (never `_notice: null`) */
+async function printJson(value, notice) {
+  const n = notice ? await notice : null
+  say(JSON.stringify(n ? { ...value, _notice: n } : value, null, 2))
 }
 
 /** The absolute output path, with its folder made if it is not there yet (as the MCP server does) */
@@ -212,10 +345,57 @@ async function preview(spec, file, option, kind, theme) {
   }
 }
 
-async function run(argv) {
+async function schema(rest, notice) {
+  const type = typeOf(rest)
+  const r = describeSchema(type)
+  if (!r.ok) return fail(r.reason, 2)
+  if (rest.includes('--json')) return printJson({ type, text: r.text }, notice)
+  say(r.text)
+}
+
+async function guide(rest, notice) {
+  const type = typeOf(rest)
+  const text = guideText(type)
+  if (!text) return fail(`no mechanism notes for type "${type}" yet. Available: ${TYPES().join(', ')}.`, 2)
+  if (rest.includes('--json')) return printJson({ type, text }, notice)
+  say(text)
+}
+
+async function examples(rest, notice) {
+  const type = optionOf(rest, ['--type']) ?? 'fact'
+  if (!TYPES().includes(type)) return fail(`no examples for type "${type}" yet. Available: ${TYPES().join(', ')}.`, 2)
+  const group = optionOf(rest, ['--group']) ?? 'agent'
+  if (!['agent', 'real', 'raw'].includes(group)) return fail('--group is agent, real or raw', 2)
+  const lang = optionOf(rest, ['--lang']) ?? 'en'
+  if (!['en', 'zh-CN'].includes(lang)) return fail('--lang is en or zh-CN', 2)
+  const asked = positional(rest, ['--type', '--group', '--lang'])
+  const skill = skillFolder()
+
+  if (asked) {
+    const one = skill ? readSkillExample(asked, { type, lang }) : repoExample(asked, { type, lang })
+    if (!one) return fail(`example not found: ${asked}. Run "examples --type ${type}" to see the list.`, 2)
+    if (rest.includes('--json')) return printJson({ file: one.file, text: one.text }, notice)
+    return say(`# ${one.file}\n\n\`\`\`json\n${one.text}\n\`\`\``)
+  }
+
+  const rows = skill ? skillExamples({ type, group, lang }) : listExamples({ type, group, lang: lang === 'zh-CN' ? 'zh' : 'en' })
+  if (rest.includes('--json')) return printJson({ type, group, lang, examples: rows.map(({ path: _path, ...r }) => r) }, notice)
+  say(examplesText(rows, { type, group }))
+}
+
+async function version(rest, notice) {
+  if (rest.includes('--json')) return printJson({ version: VERSION }, notice)
+  say(`antu ${VERSION}`)
+}
+
+async function run(argv, notice = null) {
   const [command, ...rest] = argv
   if (!command || command === '--help' || command === '-h') return say(USAGE)
   if (command === '--version' || command === '-v') return say(`antu ${VERSION}`)
+  if (command === 'version') return version(rest, notice)
+  if (command === 'schema') return schema(rest, notice)
+  if (command === 'guide') return guide(rest, notice)
+  if (command === 'examples') return examples(rest, notice)
   if (command === 'versions') {
     const r = versionsReport(VERSION)
     return say(rest.includes('--json') ? JSON.stringify(r, null, 2) : formatVersions(r))
@@ -275,10 +455,15 @@ async function main(argv) {
   // asks (at most once a day) whether a newer Antu is out, while the command works; says so at the end of a command that
   // finished (a command that fails exits at once and says nothing of it). tools/lib/update-notice.mjs
   const command = argv[0]
-  const asking = ['validate', 'layout', 'render', 'preview'].includes(command) ? updateNotice({ current: VERSION }) : Promise.resolve('')
-  await run(argv)
-  const notice = await asking
-  if (notice) say(`\n${notice}`)
+  const json = ['schema', 'guide', 'examples', 'version'].includes(command) && argv.includes('--json')
+  const asks = ['validate', 'layout', 'render', 'preview', 'schema', 'guide', 'examples', 'version'].includes(command)
+  // a JSON output carries the notice inside itself (_notice); the text output ends with the Notice: lines
+  const asking = asks ? (json ? updateNoticeObject({ current: VERSION }) : updateNotice({ current: VERSION })) : null
+  await run(argv, json ? asking : null)
+  if (!json && asking) {
+    const notice = await asking
+    if (notice) say(`\n${notice}`)
+  }
 }
 
 await main(process.argv.slice(2))

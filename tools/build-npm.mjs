@@ -2,7 +2,8 @@
 //  tools/build-npm.mjs — build the npm package (dist-npm/)
 //
 //  One package, @zh-xx/antu, gives two commands: `antu` (the command line of the skill: validate, layout, render,
-//  preview) and `antu-mcp` (the MCP server, started over stdio by a client). Both are one bundled file each, with
+//  preview, and schema/guide/examples/version from the same reference material the MCP server serves) and `antu-mcp`
+//  (the MCP server, started over stdio by a client). Both are one bundled file each, with
 //  every dependency inside (vite.cli.config.js, vite.mcp.config.js), so `npx` downloads a small package and no tree
 //  of others, and nothing is built on the user's machine. Beside them: the viewer page (the engine with the place
 //  for the data left empty), the agent guides and the examples the server serves, the licence and the notices.
@@ -161,7 +162,7 @@ function readme() {
 Antu draws legal diagrams (fact timelines, procedure flowcharts, relationship diagrams, justification trees) from JSON,
 as one HTML page that opens offline. This package holds its two commands.
 
-- \`antu\`: the command line (\`validate\`, \`layout\`, \`render\`, \`preview\`; \`antu --version\`).
+- \`antu\`: the command line (\`validate\`, \`layout\`, \`render\`, \`preview\`, \`schema\`, \`guide\`, \`examples\`, \`version\`; \`antu --version\`).
 - \`antu-mcp\`: the MCP server, started by an MCP client over stdio.
 
 And three entries for an application's own code (each one file, everything inside):

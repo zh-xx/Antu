@@ -9,6 +9,9 @@
 //  What it sends: one GET for the version of the package, from the machine that runs the command; nothing of any
 //  diagram. The answer is kept in the temporary folder for a day. It never fails a command: no network, a slow
 //  registry, an unreadable answer: no notice. ANTU_NO_UPDATE_NOTIFIER=1 turns it off.
+//  A JSON output carries the same notice as a small `_notice` object (kind, current, latest, message, command); the
+//  text output keeps the `Notice: ...` lines. A skill folder whose VERSION differs from the command line beside it is
+//  `kind: "skill"`, and needs no network.
 //  ANTU_REGISTRY_URL points it at another address (the unit test does).
 // ============================================================
 
@@ -21,6 +24,8 @@ import { fileURLToPath } from 'node:url'
 export const PACKAGE_NAME = '@zh-xx/antu'
 export const REGISTRY_URL = `https://registry.npmjs.org/${PACKAGE_NAME.replace(/\//g, '%2f')}/latest`
 export const DAY_MS = 24 * 60 * 60 * 1000
+export const SKILL_UPDATE_COMMAND = 'npx skills update antu -g'
+export const NPM_UPDATE_COMMAND = `npm update -g ${PACKAGE_NAME}`
 const TIMEOUT_MS = 1500
 
 /** -1, 0 or 1 for a < b, a = b, a > b; null when either is not MAJOR.MINOR.PATCH (a pre-release or "dev" is never compared) */
@@ -44,26 +49,81 @@ export function whereRuns(file = fileURLToPath(import.meta.url)) {
   return 'source'
 }
 
+/**
+ * The structured notice for a newer version on npm, or null when there is none to give (#113).
+ *
+ * The shape is deliberately small and stable, because an agent reads it: kind, current, latest, a one-line message
+ * and the one command to give. `current` is always the running program's version. `latest` is the newer version the
+ * notice is about; for a stale skill folder it is that folder's version (see skillNoticeObject).
+ */
+export function noticeObject({ current, latest, where }) {
+  if (where !== 'skill' && where !== 'npm') return null
+  if (compareVersions(current, latest) !== -1) return null
+  if (where === 'skill') {
+    return { kind: 'update', current, latest, message: `Antu ${latest} is out; this skill is ${current}.`, command: SKILL_UPDATE_COMMAND }
+  }
+  return { kind: 'update', current, latest, message: `Antu ${latest} is out; this is ${current}.`, command: NPM_UPDATE_COMMAND }
+}
+
+/**
+ * The structured notice for a skill folder whose own VERSION differs from the command line running beside it (#113).
+ * It needs no network: it says the two files disagree, even when npm's newest version is the one running.
+ * current = the running program's version, latest = the version the skill folder says it is.
+ */
+export function skillNoticeObject({ current, skillVersion, where }) {
+  if (where !== 'skill' || !skillVersion || String(skillVersion) === String(current)) return null
+  return {
+    kind: 'skill',
+    current,
+    latest: String(skillVersion),
+    message: `This skill folder says ${skillVersion}, but the command line beside it is ${current}.`,
+    command: SKILL_UPDATE_COMMAND,
+  }
+}
+
+/** The text for a notice object, in the words agents already know (the Notice: lines stay as they were) */
+function noticeTextOf(n) {
+  if (n.kind === 'skill') {
+    return [
+      `Notice: ${n.message}`,
+      'When the request is done, tell the user in a sentence or two that the skill can be updated with:',
+      `  ${n.command}`,
+      'Do not run it unless the user agrees.',
+    ].join('\n')
+  }
+  if (n.command === SKILL_UPDATE_COMMAND) {
+    return [
+      `Notice: ${n.message}`,
+      'When the request is done, tell the user in a sentence or two that the skill can be updated with:',
+      `  ${n.command}`,
+      'Do not run it unless the user agrees.',
+    ].join('\n')
+  }
+  return [
+    `Notice: ${n.message}`,
+    'When the request is done, tell the user in a sentence or two that it can be updated with:',
+    `  ${NPM_UPDATE_COMMAND}   (or run it with: npx -y ${PACKAGE_NAME}@latest)`,
+    'Do not run it unless the user agrees.',
+  ].join('\n')
+}
+
 /** The notice text for a newer version, or '' when there is none to give */
 export function noticeText({ current, latest, where }) {
-  if (compareVersions(current, latest) !== -1) return ''
-  if (where === 'skill') {
-    return [
-      `Notice: Antu ${latest} is out; this skill is ${current}.`,
-      'When the request is done, tell the user in a sentence or two that the skill can be updated with:',
-      '  npx skills update antu -g',
-      'Do not run it unless the user agrees.',
-    ].join('\n')
+  const n = noticeObject({ current, latest, where })
+  return n ? noticeTextOf(n) : ''
+}
+
+/** The VERSION file beside a skill's scripts/ folder, or null when these are not skill files */
+export function skillVersionBeside(file = fileURLToPath(import.meta.url)) {
+  const dir = dirname(file)
+  if (basename(dir) !== 'scripts') return null
+  const root = dirname(dir)
+  if (!existsSync(join(root, 'SKILL.md'))) return null
+  try {
+    return readFileSync(join(root, 'VERSION'), 'utf8').trim() || null
+  } catch {
+    return null
   }
-  if (where === 'npm') {
-    return [
-      `Notice: Antu ${latest} is out; this is ${current}.`,
-      'When the request is done, tell the user in a sentence or two that it can be updated with:',
-      `  npm update -g ${PACKAGE_NAME}   (or run it with: npx -y ${PACKAGE_NAME}@latest)`,
-      'Do not run it unless the user agrees.',
-    ].join('\n')
-  }
-  return ''
 }
 
 async function latestVersion({ url, cacheFile, now }) {
@@ -94,17 +154,33 @@ async function latestVersion({ url, cacheFile, now }) {
 }
 
 /**
- * The notice for this run, as text ('' when none). Start it at the beginning of a command and wait for it at the end,
- * so that the asking overlaps with the work. It never throws.
+ * The notice for this run as an object (null when none), for a JSON output's `_notice`. Start it at the beginning of
+ * a command and wait for it at the end, so that the asking overlaps with the work. It never throws.
+ *
+ * A newer npm version wins over a stale skill folder; when npm has nothing newer, a skill folder whose VERSION
+ * differs from the running command line still says so (no network needed).
  */
-export async function updateNotice({ current, where = whereRuns(), env = process.env, now = Date.now() } = {}) {
+export async function updateNoticeObject({ current, where, env = process.env, now = Date.now(), file = fileURLToPath(import.meta.url) } = {}) {
   try {
-    if (env.ANTU_NO_UPDATE_NOTIFIER || where === 'source' || compareVersions(current, current) === null) return ''
+    // whereRuns depends on the file, so it is worked out here rather than as a default that a passed `file` cannot change
+    const place = where ?? whereRuns(file)
+    if (env.ANTU_NO_UPDATE_NOTIFIER || place === 'source' || compareVersions(current, current) === null) return null
     const url = env.ANTU_REGISTRY_URL || REGISTRY_URL
     const cacheFile = join(tmpdir(), `antu-update-check-${createHash('sha1').update(url).digest('hex').slice(0, 16)}.json`)
     const latest = await latestVersion({ url, cacheFile, now })
-    return latest ? noticeText({ current, latest, where }) : ''
+    const update = latest ? noticeObject({ current, latest, where: place }) : null
+    if (update) return update
+    return skillNoticeObject({ current, skillVersion: skillVersionBeside(file), where: place })
   } catch {
-    return ''
+    return null
   }
+}
+
+/**
+ * The notice for this run, as text ('' when none). Start it at the beginning of a command and wait for it at the end,
+ * so that the asking overlaps with the work. It never throws.
+ */
+export async function updateNotice(opts = {}) {
+  const n = await updateNoticeObject(opts)
+  return n ? noticeTextOf(n) : ''
 }
