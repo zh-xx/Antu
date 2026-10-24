@@ -3,7 +3,13 @@
 //
 //  Validation is this project's first gate, and its messages are read by an agent.
 //  Three things are pinned here: **it catches bad data, it points at the right
-//  place, and there is only one copy of the rules**.
+//  place, and the data rules have one copy**.
+//
+//  Since issue #26 the two questions are answered on two paths:
+//    · `validateFact` / `factKnowledge.validate` — is the data correct?
+//    · `buildGrid(spec).errors`              — will the placement fit?
+//  A layout-only failure (4 groups, two events in one cell) must not appear in
+//  validation; a data error must not be reported as a placement failure.
 // ============================================================
 
 import { test } from 'node:test'
@@ -11,6 +17,9 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 import { buildGrid } from '../src/renderers/fact/timeline/grid.js'
+import { validateFact } from '../src/renderers/fact/timeline/rules.js'
+import { buildFactGraph } from '../src/renderers/fact/timeline/layout.js'
+import { factKnowledge } from '../src/renderers/fact/schema.js'
 // Envelope validation lives in core/validate.js. It dispatches by type through a
 // table, so **the knowledge must be registered first** (renderers/index.js). That is
 // the "registration is a side effect; forget it and things fail silently" trap, and a
@@ -22,16 +31,23 @@ import { notesOf } from '../tools/mcp/engine.mjs'
 
 const base = () => JSON.parse(readFileSync('examples/fact/neighbour-corridor-charging.zh-CN.json', 'utf8'))
 const errorsOf = (spec) => buildGrid(spec).errors
+/** Data-only errors: the same array `factKnowledge.validate` returns. */
+const validateOf = (spec) => validateFact(spec)
 const some = (errs, re) => errs.some((e) => re.test(e))
 
-test('valid data produces no errors', () => {
+const LAYOUT_KEY = /at most 3 groups|one cell holds one event/
+const layoutErrors = (errs) => errs.filter((e) => LAYOUT_KEY.test(e))
+
+test('valid data produces no errors on either path', () => {
+  assert.deepEqual(validateOf(base()), [])
+  assert.deepEqual(factKnowledge.validate(base()), [])
   assert.deepEqual(errorsOf(base()), [])
 })
 
 test('missing required fields: the error carries the field path and the event id', () => {
   const spec = base()
   delete spec.slots[0].events[0].label
-  const errs = errorsOf(spec)
+  const errs = validateOf(spec)
   assert.ok(errs.length > 0)
   assert.ok(some(errs, /slots\[0\]/), 'must say which slot')
   assert.ok(some(errs, /label/), 'must say which field is missing')
@@ -40,35 +56,70 @@ test('missing required fields: the error carries the field path and the event id
 
 test('dangling references: actorIds / groupId / sourceIds must all be reported', () => {
   const a = base(); a.slots[0].events[0].actorIds = ['no-such-actor']
-  assert.ok(some(errorsOf(a), /no-such-actor/))
+  assert.ok(some(validateOf(a), /no-such-actor/))
   const g = base(); g.actors[0].groupId = 'no-such-group'
-  assert.ok(some(errorsOf(g), /no-such-group/))
+  assert.ok(some(validateOf(g), /no-such-group/))
   const gym = () => JSON.parse(readFileSync('examples/fact/gym-membership-face-scan.zh-CN.json', 'utf8'))
   const e = gym(); e.slots[0].events[0].groupId = 'no-such-group'
-  assert.ok(some(errorsOf(e), /no-such-group/), 'with one party the group is on the event, and checked there')
+  assert.ok(some(validateOf(e), /no-such-group/), 'with one party the group is on the event, and checked there')
   const s = base(); s.slots[0].events[0].sourceIds = ['no-such-source']
-  assert.ok(some(errorsOf(s), /no-such-source/))
+  assert.ok(some(validateOf(s), /no-such-source/))
 })
 
-test('one event per cell: two events in the same lane of one slot must be reported', () => {
+test('one event per cell is a layout error, not a data error (#26)', () => {
   const spec = base()
-  // copy an event into the same slot without naming a party (both land on the axis)
-  const dup = { ...spec.slots[0].events[0], id: 'ev-dup', actorIds: [] }
-  spec.slots[0].events = [{ ...spec.slots[0].events[0], actorIds: [] }, dup]
-  assert.ok(errorsOf(spec).length > 0, 'two events in one cell must be blocked')
+  // copy an event into the same slot under the same party (same lane of the same time point)
+  const dup = { ...spec.slots[0].events[0], id: 'ev-dup' }
+  spec.slots[0].events = [spec.slots[0].events[0], dup]
+  assert.deepEqual(validateOf(spec), [], 'two events in one cell is not bad data')
+  assert.deepEqual(factKnowledge.validate(spec), [])
+  const layout = errorsOf(spec)
+  assert.ok(some(layout, /one cell holds one event/), 'buildGrid must still block the collision')
+  assert.ok(some(layout, /slots\[0\]/))
 })
 
 test('a time span must not run backwards', () => {
   const spec = base()
   const ev = spec.slots[1].events[0]
   ev.dateEnd = '2000-01-01'
-  assert.ok(some(errorsOf(spec), /earlier than/))
+  assert.ok(some(validateOf(spec), /earlier than/))
 })
 
-test('at most three groups', () => {
+test('at most three groups is a layout error, not a data error (#26)', () => {
   const spec = base()
   spec.groups = [...(spec.groups || []), { id: 'g-x', label: '第四组' }, { id: 'g-y', label: '第五组' }]
-  assert.ok(errorsOf(spec).length > 0, 'more than three groups must be reported')
+  assert.deepEqual(validateOf(spec), [], 'the group count is a capacity rule, not bad data')
+  assert.deepEqual(factKnowledge.validate(spec), [])
+  const layout = errorsOf(spec)
+  assert.ok(some(layout, /at most 3 groups/), 'buildGrid must still report the capacity limit')
+})
+
+test('issue #26 repro: a data error and layout errors stay on their own paths', () => {
+  // The shape of /workspace/antu-issue26/bad-fact.json, inline so the suite is self-contained:
+  // a party with no name (data), four groups and two events in one cell (layout).
+  const spec = base()
+  delete spec.actors[0].name
+  spec.groups = [...spec.groups, { id: 'g-4', label: '溢出第四组' }]
+  const dup = { ...spec.slots[0].events[0], id: 'ev-dup' }
+  spec.slots[0].events = [spec.slots[0].events[0], dup]
+
+  const data = factKnowledge.validate(spec)
+  assert.ok(some(data, /missing required field `name`/), 'the missing name is a data error')
+  assert.deepEqual(layoutErrors(data), [], 'no layout error may leak into validate')
+
+  const layout = errorsOf(spec)
+  assert.ok(some(layout, /at most 3 groups/))
+  assert.ok(some(layout, /one cell holds one event/))
+  assert.notDeepEqual(data, layout, 'the two paths must not be one computation again')
+})
+
+test('a data-only bad spec reports no layout key on either path (#26)', () => {
+  const spec = base()
+  delete spec.actors[0].name
+  const data = validateOf(spec)
+  assert.ok(data.length > 0)
+  assert.deepEqual(layoutErrors(data), [], 'a missing name is not a placement failure')
+  assert.deepEqual(errorsOf(spec), [], 'and buildGrid is layout-only, so it has nothing to add')
 })
 
 test('envelope: a non-string title is reported (by validateSpec, not buildGrid)', () => {
@@ -111,13 +162,16 @@ test('a way of drawing written as the type is an error that names its type', () 
   }
 })
 
-test('validation is layout: a grid is still returned on error so the caller can show the problem', () => {
+test('buildGrid still returns a grid for data errors, but keeps its own errors layout-only', () => {
   const spec = base()
   delete spec.slots[0].events[0].label
+  assert.ok(validateOf(spec).length > 0)
   const g = buildGrid(spec)
-  assert.ok(g.errors.length > 0)
+  assert.deepEqual(g.errors, [], 'a missing label is not a placement failure')
   assert.ok(Array.isArray(g.rows) && g.rows.length > 0, 'an error must not mean no grid')
   assert.ok(Array.isArray(g.columns))
+  // The renderer's entry point still carries both layers, so the page can show the data problem.
+  assert.ok(some(buildFactGraph(spec).errors, /missing required field `label`/))
 })
 
 // ---- placement rules v1: what the groups split depends on how many parties there are ----
@@ -137,11 +191,11 @@ test('2 or more parties: each party names its side, and an event goes where its 
 
 test('2 or more parties: a party without a side, a party on the axis group, and a group on an event are errors', () => {
   const a = base(); delete a.actors[1].groupId
-  assert.ok(some(errorsOf(a), /actors\[1\] \(a-2\).*write `groupId`/))
+  assert.ok(some(validateOf(a), /actors\[1\] \(a-2\).*write `groupId`/))
   const b = base(); b.actors[0].groupId = 'g-3'
-  assert.ok(some(errorsOf(b), /3rd group, the axis/))
+  assert.ok(some(validateOf(b), /3rd group, the axis/))
   const c = base(); c.slots[0].events[0].groupId = 'g-1'
-  assert.ok(some(errorsOf(c), /delete the event's `groupId`/))
+  assert.ok(some(validateOf(c), /delete the event's `groupId`/))
 })
 
 test('2 or more parties acting together on one side land on the axis, not on the side', () => {
@@ -158,13 +212,13 @@ test('one party: the groups split the events, and a party carries no group', () 
   assert.equal(g.byActor, false)
   assert.deepEqual(g.errors, [])
   const bad = gym(); bad.actors[0].groupId = 'g-1'
-  assert.ok(some(errorsOf(bad), /only when the diagram has 2 or more parties/))
+  assert.ok(some(validateOf(bad), /only when the diagram has 2 or more parties/))
 })
 
 test('views are gone: a file that still has them is told to delete them', () => {
   const spec = base()
   spec.views = [{ label: 'x', splitBy: 'group' }]
-  assert.ok(some(errorsOf(spec), /`views` is no longer part of the format/))
+  assert.ok(some(validateOf(spec), /`views` is no longer part of the format/))
 })
 
 test('notes: nothing to say for the examples, and for types without notes', () => {
@@ -190,11 +244,11 @@ test('date is optional: an event the material gives no date for is valid, and do
 test('a date that is written must still be valid, and dateEnd needs a date', () => {
   const bad = base()
   bad.slots[0].events[0].date = 'yesterday'
-  assert.ok(some(errorsOf(bad), /date/), 'a bad date is reported')
+  assert.ok(some(validateOf(bad), /date/), 'a bad date is reported')
   const span = base()
   delete span.slots[0].events[0].date
   span.slots[0].events[0].dateEnd = '2023-12-31'
-  const errs = errorsOf(span)
+  const errs = validateOf(span)
   assert.ok(some(errs, /dateEnd/) && some(errs, /needs its start|date/), 'dateEnd without date is reported')
   assert.ok(some(errs, new RegExp(span.slots[0].events[0].id)), 'and names the event')
 })

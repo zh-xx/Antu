@@ -16,6 +16,7 @@
 // ============================================================
 
 import { buildGrid } from './grid.js'
+import { validateFact } from './rules.js'
 import { makeMetrics } from './metrics.js'
 import { axisNode, cellsNode, headerNodes, linksNode, placeCard } from './nodes.js'
 
@@ -50,9 +51,10 @@ export function buildFactGraph(spec, fields = {}, _unused, orientation = 'vertic
   nodes.push(...cards)
 
   return {
-    // Events that cannot be placed end up here (for instance two in one lane at one time point). They must be carried out: otherwise events would be dropped
-    // silently and the interface would show nothing missing.
-    errors: grid.errors,
+    // The layout path carries both layers: a data error from rules.js, and a placement failure from
+    // grid.js (for instance two events in one lane at one time point). They must be carried out:
+    // otherwise events would be dropped silently and the interface would show nothing missing.
+    errors: [...validateFact(spec), ...grid.errors],
     sideLabels: grid.sideLabels,
     nodes,
     edges: [],

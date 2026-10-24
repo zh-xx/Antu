@@ -1,9 +1,10 @@
 // ============================================================
-//  src/renderers/fact/timeline/grid.js — the single source of truth for fact layout
+//  src/renderers/fact/timeline/grid.js — fact placement (the layout side)
 //
 //  Turns a fact spec into "which row and which column each event falls in".
-//  The validation layer (validate.js) and the rendering layer (the fact renderer) both call it,
-//  guaranteeing that "the rules checked" and "what is drawn" use one and the same logic.
+//  **The data checks are in rules.js** (issue #26): this file asks that layer for
+//  the field tables, then reports only what needs cell occupancy or column
+//  capacity — more than three groups, two events in one cell.
 //
 //  Rules in spec/fact/timeline-rules.md:
 //   - row = slot (index into the slots array)
@@ -16,10 +17,10 @@
 //   - there are no views: one diagram, one placement
 // ============================================================
 
-import { SUMMARY_MAX, SUMMARY_MAX_EM, textEm } from '../cardGeometry.js'
 import { tEn } from '../../../core/i18n.js'
+import { analyzeFact, SIDE } from './rules.js'
 
-export const SIDE = { SIDE1: 'side1', AXIS: 'axis', SIDE2: 'side2' }
+export { SIDE }
 
 /** Group limit: the axis has only two sides plus the middle, three positions */
 const MAX_GROUPS = 3
@@ -42,23 +43,6 @@ export function groupOfEvent(spec) {
   }
 }
 
-const ISO_RE = /^\d{4}(-\d{2}(-\d{2}(T\d{2}(:\d{2}(:\d{2})?)?)?)?)?$/
-
-/**
- * Which of two ISO times comes first.
- * Compare only up to the length the two share: ISO 8601 strings compare as times when compared
- * lexicographically, but the precision may differ (one to the second, one only to the day), and
- * comparing just the shared part avoids a false verdict. For example "2017-05-02" and
- * "2017-05-02T09:24:16" share the same prefix, so neither counts as earlier.
- */
-function isBefore(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string') return false
-  const n = Math.min(a.length, b.length)
-  return a.slice(0, n) < b.slice(0, n)
-}
-
-const SIDE_BY_GROUP_INDEX = [SIDE.SIDE1, SIDE.SIDE2, SIDE.AXIS]
-
 function isPlainObject(v) {
   return v && typeof v === 'object' && !Array.isArray(v)
 }
@@ -71,244 +55,47 @@ function isPlainObject(v) {
  *   eventCount: number }}
  */
 export function buildGrid(spec) {
+  // The rule layer reads the spec and collects **data** errors; this file keeps only the placement
+  // failures in its own `errors`, so validate and layout no longer return one mixed list (issue #26).
+  // The renderer's entry point (layout.js) asks both layers, so it still reports every problem.
+  const analysis = analyzeFact(spec)
+  const {
+    actors,
+    groups,
+    slots,
+    actorById,
+    groupById,
+    groupIndexById,
+    sourceById,
+    byActor,
+    sideOfActor,
+    seenActorsOnSide,
+    flat,
+  } = analysis
   const errors = []
-  const actors = Array.isArray(spec?.actors) ? spec.actors : []
-  const groups = Array.isArray(spec?.groups) ? spec.groups : []
-  const sources = Array.isArray(spec?.sources) ? spec.sources : []
-  const slots = spec?.slots
 
   const empty = {
     errors,
-    byActor: false,
+    byActor,
     sideLabels: { [SIDE.SIDE1]: '', [SIDE.SIDE2]: '', [SIDE.AXIS]: '' },
     columns: [],
     rows: [],
     placements: new Map(),
     axisColumnIndex: 0,
-    actorById: new Map(),
-    groupById: new Map(),
-    groupIndexById: new Map(),
-    sourceById: new Map(),
+    actorById,
+    groupById,
+    groupIndexById,
+    sourceById,
     eventCount: 0,
   }
 
-  // ---------- party list ----------
-  const actorById = new Map()
-  actors.forEach((a, i) => {
-    if (!isPlainObject(a)) {
-      errors.push(tEn('err.notObject', { at: `actors[${i}]` }))
-      return
-    }
-    if (!a.id) {
-      errors.push(tEn('err.required', { at: `actors[${i}]`, field: 'id' }))
-      return
-    }
-    if (actorById.has(a.id)) errors.push(tEn('err.duplicateId', { at: `actors[${i}]`, id: a.id }))
-    actorById.set(a.id, a)
-    if (!a.name) errors.push(tEn('err.required', { at: `actors[${i}] (${a.id})`, field: 'name' }))
-  })
-
-  // ---------- views: gone in placement rules v1 (spec/fact/timeline-rules.md) ----------
-  if (spec?.views !== undefined) errors.push(tEn('err.viewsRemoved'))
-
-  // ---------- group list ----------
-  const groupById = new Map()
-  const groupIndexById = new Map()
+  // ---------- capacity: the axis has only two sides plus the middle ----------
   if (groups.length > MAX_GROUPS) {
     errors.push(tEn('err.tooManyGroups', { at: 'groups', max: MAX_GROUPS, actual: groups.length }))
   }
-  groups.forEach((g, i) => {
-    if (!isPlainObject(g)) {
-      errors.push(tEn('err.notObject', { at: `groups[${i}]` }))
-      return
-    }
-    if (!g.id) {
-      errors.push(tEn('err.required', { at: `groups[${i}]`, field: 'id' }))
-      return
-    }
-    if (groupIndexById.has(g.id)) errors.push(tEn('err.duplicateId', { at: `groups[${i}]`, id: g.id }))
-    groupById.set(g.id, g)
-    groupIndexById.set(g.id, i)
-    if (!g.label) errors.push(tEn('err.required', { at: `groups[${i}] (${g.id})`, field: 'label' }))
-  })
 
-  // ---------- which side each party is on (2 or more parties) ----------
-  // With two or more parties the groups split the parties: each names its own side, and an event
-  // is placed by its parties. With one party (or none) there is no "who is on which side"; the
-  // groups split the events instead, and a party carries no group.
-  const byActor = actorById.size >= 2
-  const sideOfActor = new Map()
-  actors.forEach((a, i) => {
-    if (!isPlainObject(a) || !a.id) return
-    const at = `actors[${i}] (${a.id})`
-    const has = a.groupId !== undefined && a.groupId !== null && a.groupId !== ''
-    if (!byActor) {
-      if (has) errors.push(tEn('err.actorGroupOneParty', { at }))
-      return
-    }
-    if (!has) {
-      errors.push(tEn('err.actorNeedsGroup', { at, n: actorById.size }))
-      return
-    }
-    if (!groupIndexById.has(a.groupId)) {
-      errors.push(tEn('err.missingRef', { at, field: 'groupId', kind: 'group', id: a.groupId }))
-      return
-    }
-    const gi = groupIndexById.get(a.groupId)
-    if (gi > 1) {
-      errors.push(tEn('err.actorGroupNotSide', { at, groupId: a.groupId }))
-      return
-    }
-    sideOfActor.set(a.id, gi === 0 ? SIDE.SIDE1 : SIDE.SIDE2)
-  })
-
-  // ---------- source table ----------
-  const sourceById = new Map()
-  sources.forEach((s, i) => {
-    if (!isPlainObject(s)) {
-      errors.push(tEn('err.notObject', { at: `sources[${i}]` }))
-      return
-    }
-    if (!s.id) {
-      errors.push(tEn('err.required', { at: `sources[${i}]`, field: 'id' }))
-      return
-    }
-    if (sourceById.has(s.id)) errors.push(tEn('err.duplicateId', { at: `sources[${i}]`, id: s.id }))
-    sourceById.set(s.id, s)
-    if (!s.type) errors.push(tEn('err.required', { at: `sources[${i}] (${s.id})`, field: 'type' }))
-    if (!s.name) errors.push(tEn('err.required', { at: `sources[${i}] (${s.id})`, field: 'name' }))
-  })
-
-  // ---------- slots ----------
-  if (!Array.isArray(slots)) {
-    errors.push(tEn('err.slotNotArray'))
-    return { ...empty, actorById, groupById, groupIndexById, sourceById }
-  }
-  if (slots.length === 0) errors.push(tEn('err.slotsEmpty'))
-
-  const eventIds = new Set()
-  const seenActorsOnSide = { [SIDE.SIDE1]: new Set(), [SIDE.SIDE2]: new Set() }
-  /** Flattened events: { slotIndex, event, side, actorId|null } */
-  const flat = []
-
-  slots.forEach((slot, si) => {
-    const at = `slots[${si}]`
-    if (!isPlainObject(slot)) {
-      errors.push(tEn('err.slotShape', { at }))
-      return
-    }
-    if (!Array.isArray(slot.events)) {
-      errors.push(tEn('err.eventsNotArray', { at }))
-      return
-    }
-    if (slot.events.length === 0) errors.push(tEn('err.slotEventsEmpty', { at }))
-
-    slot.events.forEach((e, ei) => {
-      const eAt = `${at}.events[${ei}]${e?.id ? ` (${e.id})` : ''}`
-      if (!isPlainObject(e)) {
-        errors.push(tEn('err.notObject', { at: eAt }))
-        return
-      }
-      if (!e.id) errors.push(tEn('err.required', { at: eAt, field: 'id' }))
-      else if (eventIds.has(e.id)) errors.push(tEn('err.duplicateId', { at: eAt, id: e.id }))
-      else eventIds.add(e.id)
-
-      // date is optional (#50): the order is the slots array and date is only shown, so an event the material gives no
-      // date for is left without one (the card says the date is unknown) rather than given a made-up one. Once
-      // written, it must be valid.
-      if (e.date && !ISO_RE.test(e.date)) {
-        errors.push(tEn('err.badDate', { at: eAt, field: 'date', value: e.date }))
-      }
-      if (!e.label) errors.push(tEn('err.required', { at: eAt, field: 'label' }))
-
-      // dateEnd is optional, but once written it must be valid, or the time line on the card shows garbage
-      if (e.dateEnd !== undefined && e.dateEnd !== null) {
-        if (typeof e.dateEnd !== 'string' || !ISO_RE.test(e.dateEnd)) {
-          errors.push(
-            tEn('err.badDate', { at: eAt, field: 'dateEnd', value: e.dateEnd }),
-          )
-        } else if (!e.date) {
-          errors.push(tEn('err.dateEndNeedsDate', { at: eAt }))
-        } else if (isBefore(e.dateEnd, e.date)) {
-          errors.push(tEn('err.dateEndBeforeDate', { at: eAt, end: e.dateEnd, start: e.date }))
-        }
-      }
-
-      // summary is one supplementary line on the card; more than one line does not fit
-      if (e.summary !== undefined && e.summary !== null) {
-        if (typeof e.summary !== 'string') {
-          errors.push(tEn('err.mustBeString', { at: eAt, field: 'summary' }))
-        } else if (textEm(e.summary) > SUMMARY_MAX_EM) {
-          // Judged by **drawn width**, not by character count: an English sentence has nearly
-          // twice the characters of the Chinese one, so counting characters would reject valid
-          // text (see textEm in cardGeometry.js).
-          errors.push(
-            tEn('err.summaryTooLong', {
-              at: eAt,
-              max: SUMMARY_MAX,
-              actual: Math.ceil(textEm(e.summary)),
-            }),
-          )
-        }
-      }
-
-      const ids = Array.isArray(e.actorIds) ? e.actorIds : []
-      ids.forEach((id) => {
-        if (!actorById.has(id)) errors.push(tEn('err.missingRef', { at: eAt, field: 'actorIds', kind: 'actor', id }))
-      })
-      const eventGroup = e.groupId !== undefined && e.groupId !== null && e.groupId !== ''
-      if (byActor && eventGroup) errors.push(tEn('err.eventGroupWithParties', { at: eAt }))
-      else if (eventGroup && !groupIndexById.has(e.groupId)) {
-        errors.push(tEn('err.missingRef', { at: eAt, field: 'groupId', kind: 'group', id: e.groupId }))
-      }
-      const srcIds = Array.isArray(e.sourceIds) ? e.sourceIds : []
-      srcIds.forEach((id) => {
-        if (!sourceById.has(id)) errors.push(tEn('err.missingRef', { at: eAt, field: 'sourceIds', kind: 'source', id }))
-      })
-
-      // ---------- side ----------
-      //   2 or more parties in the diagram: the event's parties decide. One party → that party's
-      //     side; several (across the sides or on one side together) or none → the axis
-      //   0 or 1 party: groupId decides, the 1st group side 1, the 2nd side 2, the 3rd or none the axis
-      const gi = eventGroup ? groupIndexById.get(e.groupId) : undefined
-      let side
-      let actorId = null
-
-      if (byActor) {
-        if (ids.length === 1 && sideOfActor.has(ids[0])) {
-          side = sideOfActor.get(ids[0])
-          actorId = ids[0]
-        } else {
-          side = SIDE.AXIS
-        }
-      } else if (ids.length >= 2) {
-        side = SIDE.AXIS // several parties → the axis automatically
-        if (gi === 0 || gi === 1) {
-          errors.push(
-            tEn('err.multiActorNeedsAxis', { at: eAt, n: ids.length, groupId: e.groupId }),
-          )
-        }
-      } else if (!eventGroup) {
-        side = SIDE.AXIS // no group written → the axis
-      } else if (gi === undefined) {
-        return // unknown group, already reported above
-      } else {
-        side = SIDE_BY_GROUP_INDEX[gi] ?? SIDE.AXIS // the 3rd group and beyond → the axis
-      }
-
-      if (!byActor && side !== SIDE.AXIS && ids.length !== 1) {
-        errors.push(
-          tEn('err.groupNeedsOneActor', { at: eAt, groupId: e.groupId, n: ids.length }),
-        )
-        return
-      }
-
-      if (!byActor && side !== SIDE.AXIS && ids.length === 1) actorId = ids[0]
-      if (actorId && actorById.has(actorId)) seenActorsOnSide[side].add(actorId)
-
-      flat.push({ slotIndex: si, event: e, side, actorId })
-    })
-  })
+  // Without an array of slots there is nowhere to place anything; the data error is already reported.
+  if (!Array.isArray(slots)) return empty
 
   // ---------- build the columns ----------
   // **The order of the columns is always decided by the diagram-level actors list** (earlier
@@ -323,7 +110,14 @@ export function buildGrid(spec) {
     const ids = columnsFor(side)
     // A side of two or more parties names the party over each column, even when only one of them is left
     const named = byActor && actorOrder.filter((id) => sideOfActor.get(id) === side).length > 1
-    if (ids.length || !byActor) return ids.map((actorId) => ({ key: `${side}:${actorId}`, side, actorId, actorName: actorById.get(actorId)?.name, named }))
+    if (ids.length || !byActor)
+      return ids.map((actorId) => ({
+        key: `${side}:${actorId}`,
+        side,
+        actorId,
+        actorName: actorById.get(actorId)?.name,
+        named,
+      }))
     return [{ key: side, side, actorId: null }]
   }
 
@@ -346,15 +140,13 @@ export function buildGrid(spec) {
   flat.forEach(({ slotIndex, event, side, actorId }) => {
     const key = side === SIDE.AXIS ? SIDE.AXIS : `${side}:${actorId}`
     const col = colIndexByKey.get(key)
-    if (col === undefined) return // bad data, already reported above
+    if (col === undefined) return // bad data, already reported by rules.js
 
     eventCount += 1
     const row = rows[slotIndex]
     if (row.cells.has(key)) {
       const other = row.cells.get(key)
-      errors.push(
-        tEn('err.oneEventPerCell', { at: `slots[${slotIndex}]`, a: other.id, b: event.id }),
-      )
+      errors.push(tEn('err.oneEventPerCell', { at: `slots[${slotIndex}]`, a: other.id, b: event.id }))
     } else {
       row.cells.set(key, event)
     }
