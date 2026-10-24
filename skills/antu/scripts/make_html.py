@@ -25,7 +25,7 @@ def main() -> int:
 
     spec_path = pathlib.Path(args.spec)
     try:
-        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        spec = json.loads(spec_path.read_text(encoding="utf-8-sig"))  # utf-8-sig: a byte-order mark is dropped
     except (OSError, ValueError) as e:
         print(f"cannot read {spec_path} as JSON: {e}", file=sys.stderr)
         return 1
@@ -55,7 +55,12 @@ def main() -> int:
     data = data.replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
     out = pathlib.Path(args.out) if args.out else spec_path.with_suffix(".html")
-    out.write_text(html.replace(MARKER, data), encoding="utf-8")
+    try:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(html.replace(MARKER, data), encoding="utf-8")
+    except OSError as e:
+        print(f"cannot write {out}: {e}", file=sys.stderr)
+        return 1
     print(out)
     return 0
 

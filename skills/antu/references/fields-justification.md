@@ -3,6 +3,8 @@
 ```
 Fields of a justification spec. "yes" means required.
 
+⚠️ IMPORTANT: The justification diagram type is currently experimental and on hold. The model is provisional and may change.
+
 [envelope]
   type       yes string     always "justification"
   specVersion no integer    which generation of this format the file follows (now 1); omit = the current one. Write it: it is how an older file is recognised after a breaking change

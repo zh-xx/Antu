@@ -7,7 +7,9 @@ import { defineConfig } from 'vite'
 const version = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
 
 export default defineConfig({
-  define: { __ANTU_VERSION__: JSON.stringify(version) },
+  // __ANTU_PACKAGE__ makes the files this bundle reads (guides, examples) resolve from one level up: the skill
+  // folder beside scripts/, the npm package root beside bin/, or the repository root beside dist-cli/.
+  define: { __ANTU_VERSION__: JSON.stringify(version), __ANTU_PACKAGE__: 'true' },
   ssr: { noExternal: true },
   logLevel: 'warn',
   build: {
