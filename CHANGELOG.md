@@ -6,12 +6,24 @@ what breaks a file or a tool call written for the version before, with how to br
 ## Unreleased
 
 ### Changed
+
+### Fixed
+
+## 0.17.0
+
+This is a **minor** release: the command line gains four subcommands, `schema`, `guide`, `examples` and `version` (#113), which is a contract addition, and fact data validation is split from layout (#26), so a file that only fails layout no longer fails validation as if the data were wrong. The fixes and documents that gathered in *Unreleased* since 0.16.6 are released with them. Nothing breaks a file or a tool call written for 0.16.x: the subcommands are new, and no field, rule or tool parameter changes.
+
+### Added
+- **CLI `schema` / `guide` / `examples` / `version`** (#113): the command line reuses the same text as the MCP tools; JSON output may carry a stable `_notice` (skill VERSION mismatch etc.). The agent skill is thinner: it tells the agent to ask the program for fields and to prefer `npx -y @zh-xx/antu@latest` before the bundled script.
+
+### Changed
 - **The workflows are tighter** (#248, for the Scorecard): every action is pinned by its full commit (with the version in a comment; Dependabot keeps them current), `verify.yml` has an explicit read-only token, and the write permissions of `release.yml` and `codeql.yml` moved from the whole workflow into the one job that needs them. A test keeps all three true.
 - **The readmes' demo badge points to `https://antu.nervonly.cn/`** (the site is on https now) instead of the github.io address that redirected to it.
 - **The home page's "Get started" has a third way: the DSH plugin** (#226): the package name `@zh-xx/antu-dsh` with a copy button and the steps in DSH's own Plugins page (Add plugin, Install, switch on "Antu diagrams"), the minimum DSH version, and links to its guide and npm page; "choose either" became "choose any of three" (Chinese and English).
 - **The DSH full view has no Open HTML button any more** (#224). It depended on a function the chat card held in memory and vanished after a reload; the written file's path is in the `antu_render` result in the chat. The button, its `openHtml` words and the recorded deviation in `spec/dsh-conventions.md` are gone.
 
 ### Fixed
+- **Fact: data validation is separate from layout** (#26): `validateFact` / `analyzeFact` in `timeline/rules.js` report data errors only; capacity/placement stay on the layout path (`buildGrid`). A file that only fails layout no longer fails validation as if the data were wrong.
 - **A JSON file with a byte-order mark is read** by the command line and the Python filler (Windows Notepad writes one; it was "not valid JSON").
 - **`render` and `preview` make the output folder** when `-o` names one that does not exist yet, as the MCP server already did; the command line printed a stack trace and the Python filler a traceback. A folder that cannot be made is now a plain message.
 - **The home page's "Examples" link opens the gallery** of every way of drawing; it went to "Get started".

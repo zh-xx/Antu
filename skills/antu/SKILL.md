@@ -9,14 +9,14 @@ description: >-
   contract flow, the parties, or a judgment's reasoning.
 license: AGPL-3.0-or-later
 metadata:
-  version: "0.16.6"
+  version: "0.17.0"
 ---
 
 # Antu: legal diagrams from JSON
 
 You write the JSON; the engine draws it. The result is **one HTML file** that opens in any browser with no install and
-no network, prints, and can be forwarded. Nothing is uploaded anywhere. This skill is Antu **0.16.6**; the pages it
-makes say so: `<meta name="generator" content="antu 0.16.6">`.
+no network, prints, and can be forwarded. Nothing is uploaded anywhere. This skill is Antu **0.17.0**; the pages it
+makes say so: `<meta name="generator" content="antu 0.17.0">`.
 
 **`<skill-dir>`** is the folder that holds this `SKILL.md` (`scripts/`, `references/`, `examples/` and `assets/` are
 beside it). Keep your own files (the JSON and the page) where the user works, never inside the skill folder.
