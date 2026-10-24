@@ -392,7 +392,7 @@ html{scroll-behavior:smooth}
 </style>
 <script>try { const t = localStorage.getItem('antu.site.theme'); if (t) document.documentElement.dataset.theme = t } catch {}</script></head><body class="lx">
 <header class="nav">
- <a class="brand" href="#"><b>案图</b><span>Antu</span></a>
+ <a class="brand" href="#"><b data-i18n="brand">案图</b><span style="display:none;">Antu</span></a>
  <p class="motto"><span data-i18n="motto1">法律文书，</span><em data-i18n="motto2">一眼看清</em></p>
  <nav class="links">
   <a href="gallery.html" data-i18n="examples">示例</a>
@@ -1060,6 +1060,7 @@ const start = () => play(FIRST)
 // switch (the top bar's labels and the notice only, in this draft); light / dark, remembered in this browser
 $('#startBtn').onclick = () => $('#start').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
 const EN = {
+  brand: 'Antu',
   examples: 'Examples', start: 'Get started', startT: 'Get started', startS: 'Choose any of three', chip1: 'One sentence', chip2: 'One configuration', chip3: 'Plugin',
   skillT: 'Send this sentence to your Agent',
   skillText: 'Please install the Antu skill: run npx skills add zh-xx/Antu -g -y, then use it to draw diagrams from my case material.',
@@ -1079,6 +1080,7 @@ const EN = {
   caveat: 'Antu checks for a new version once a day, carrying none of your material; this can be turned off. When an Agent reads your material, it goes to the model service that Agent uses. Antu cannot control that, so use it according to the data policy of the Agent you use.',
 }
 const ZH = Object.fromEntries($$('[data-i18n]').map((e) => [e.dataset.i18n, e.textContent]))
+ZH.brand = '案图'
 $$('.lang button').forEach((b) => (b.onclick = () => {
   const lang = b.dataset.lang
   $('.lang').dataset.on = lang
