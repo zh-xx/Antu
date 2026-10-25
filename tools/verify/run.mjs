@@ -2485,7 +2485,7 @@ async function checkRenderProcedure(sampleFile) {
     )
 
     // The dock: four switches (the stage one because the sample has stages), orientation,
-    // language, export; and the export is still the only solid dark control
+    // language, print + export; and the export is still the only solid dark control
     const dock = await browser.eval(`(() => {
       const bar = document.querySelector('.antu-dock-bar')
       if (!bar) return null
@@ -2497,14 +2497,17 @@ async function checkRenderProcedure(sampleFile) {
       }
       return {
         chips: bar.querySelectorAll('.antu-dock-chip').length,
+        print: !!bar.querySelector('.antu-dock-print'),
         blocks: kids.filter((e) => e.classList.contains('antu-dock-sep')).length + 1,
         dark: [...bar.querySelectorAll('button')].filter((b) => lum(b) < 128).map((b) => b.className.split(' ')[0]),
       }
     })()`)
     truthy('the flowchart dock is present', dock)
     if (dock) {
-      // conditions · detail · main line · states, plus stages and rules when the data has them, plus "restore defaults"
-      eq('the dock has a switch per thing the data has', dock.chips, 5 + (spec.stages?.length ? 1 : 0) + (spec.rules?.length ? 1 : 0))
+      // conditions · detail · main line · states, plus stages and rules when the data has them,
+      // plus "restore defaults", plus Print (viewer only; sits beside export as a chip, issue 123)
+      eq('the dock has a switch per thing the data has', dock.chips, 6 + (spec.stages?.length ? 1 : 0) + (spec.rules?.length ? 1 : 0))
+      truthy('the dock has a Print chip on the viewer page', dock.print)
       eq('five blocks: switches · orientation · language · export · restore', dock.blocks, 5)
       eq('only the export action is solid dark', dock.dark, ['antu-dock-action'])
     }
@@ -2672,6 +2675,7 @@ async function checkRenderRelationship(sampleFile) {
       return {
         kindChips: bar.querySelectorAll('.antu-rkind').length,
         chips: bar.querySelectorAll('.antu-dock-chip').length,
+        print: !!bar.querySelector('.antu-dock-print'),
         dark: [...bar.querySelectorAll('button')].filter((b) => lum(b) < 128).map((b) => b.className.split(' ')[0]),
       }
     })()`)
@@ -2679,7 +2683,9 @@ async function checkRenderRelationship(sampleFile) {
     if (dock) {
       const kinds = new Set(spec.relations.map((r) => r.kind)).size
       eq('one chip per kind of relation the data uses', dock.kindChips, kinds)
-      eq('the dock has those, plus labels and groups', dock.chips, kinds + 2)
+      // kinds + labels + groups + Print (viewer only; beside export as a chip, issue 123)
+      eq('the dock has those, plus labels and groups', dock.chips, kinds + 3)
+      truthy('the dock has a Print chip on the viewer page', dock.print)
       eq('only the export action is solid dark', dock.dark, ['antu-dock-action'])
     }
 

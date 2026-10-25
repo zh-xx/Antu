@@ -3,9 +3,10 @@
 //
 //  Each rendering kind has its own control dock, because what can be switched is its own
 //  business (the timeline has views and card fields, the flowchart has condition labels and
-//  stage bands). Two controls are the same everywhere, though, and live here once:
+//  stage bands). Three controls are the same everywhere, though, and live here once:
 //    the language switch  interface text only, never data
-//    the export action    the one action in the dock, set apart from the states
+//    the print chip       viewer page only; lays the diagram on paper (issue 123)
+//    the export action    the one solid action in the dock, set apart from the states
 //  Their markup and class names are what the verifier measures (spec/fact/rendering.md §4.2),
 //  so a second copy in another dock would be a second thing to keep in step.
 // ============================================================
