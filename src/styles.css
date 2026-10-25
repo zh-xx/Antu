@@ -955,6 +955,14 @@
    再打开浏览器自己的打印预览。完整的纸张级别（screen|a4l|a4p）先不做。
    ============================================================== */
 @media print {
+  /* 图自己有一部分是用 CSS 背景画的（时间轴那条线、大事记的圆点）。浏览器打印默认**不打背景**，
+     纸上的图就会缺这些细节（issue 123，实测轴线消失）。打印时对画布内强制保留图形。 */
+  .antu-canvas,
+  .antu-canvas * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
   .antu-header,
   .antu-dock-capsule,
   .antu-dock,
