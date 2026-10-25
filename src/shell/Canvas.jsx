@@ -22,6 +22,8 @@ import { EXPORT_CLASS, exportPng as runExportPng, renderPng } from './exportPng.
 import { ShownSpecContext, useEnv, useUi, useViewValue } from './env.js'
 import { nodesOfItem, pinTargetOf } from '../core/items.js'
 import { placeDock } from './dockPlace.js'
+import { frames } from './printPaper.js'
+import { usePrintHost } from './printHost.js'
 import { readSpecPref, specKeyOf, writeSpecPref } from './prefs.js'
 
 /** React Flow's minimap width plus its border, until one has been measured */
@@ -268,6 +270,38 @@ export default function Canvas({
   // the latest fit, read when the command comes
   const fitRef = useRef(fit)
   fitRef.current = fit
+
+  // The Print action (src/shell/printHost.js) needs the diagram's size and the way back to a
+  // fitted picture. Print only exists on the viewer page, and this is where the canvas registers.
+  const printHost = usePrintHost()
+  useEffect(() => {
+    if (!printHost) return undefined
+    printHost.attach({
+      size: graph.size,
+      // The sheet's printable area is set on the app root (styles.css), then the canvas is fitted
+      // to it: one frame for the CSS to land, another for the resize to be measured.
+      prepare: async (area) => {
+        const app = canvasRef.current?.closest('.antu-app')
+        if (!app) return
+        app.style.setProperty('--antu-print-w', `${area.width}px`)
+        app.style.setProperty('--antu-print-h', `${area.height}px`)
+        app.dataset.printPrep = ''
+        await frames(2)
+        fitRef.current(0)
+      },
+      finish: () => {
+        const app = canvasRef.current?.closest('.antu-app')
+        if (app) {
+          delete app.dataset.printPrep
+          app.style.removeProperty('--antu-print-w')
+          app.style.removeProperty('--antu-print-h')
+        }
+        frames(1).then(() => fitRef.current(0))
+      },
+    })
+    return () => printHost.attach(null)
+  }, [printHost, graph])
+
   useEffect(() => {
     const offFit = commands.on('fitView', () => fitRef.current(300))
     const offPng = commands.on('exportPng', ({ pixelRatio } = {}) => renderPng({ rootEl: canvasRef.current, graph, pixelRatio, background: theme.color.exportBg }))

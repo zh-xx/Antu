@@ -14,6 +14,7 @@ import { useContext } from 'react'
 
 import { useLang } from './LangContext.jsx'
 import { ShownSpecContext, useEnv, usePrefs, useResetSpec } from './env.js'
+import { usePrintHost } from './printHost.js'
 import { hasSpecPrefs, specKeyOf } from './prefs.js'
 
 /** Language switch. Each language name is written in its own language, so you recognise your entry even in the wrong language. */
@@ -49,11 +50,37 @@ export function DockLangSwitch() {
   return <DockSegmented options={LANGS} value={lang} onChange={setLang} title={t('dock.lang')} />
 }
 
+/**
+ * Print: the diagram on paper, through the browser's own print preview. Only the viewer
+ * page has it (an embedded diagram lives inside a host page, where `window.print()` would
+ * print that page); the chip sits beside the export action, and the export action stays the
+ * one solid block in the dock.
+ */
+export function DockPrintButton() {
+  const { t } = useLang()
+  const { embedded } = useEnv()
+  const host = usePrintHost()
+  if (embedded || !host) return null
+  return (
+    <button
+      className="antu-dock-chip antu-dock-print"
+      onClick={() => host.print()}
+      disabled={host.printing}
+      title={t('dock.printTitle')}
+      aria-label={t('dock.printTitle')}
+    >
+      {host.printing ? t('dock.printing') : t('dock.print')}
+    </button>
+  )
+}
+
 /** The export action: the only solid block in the dock, with a download symbol */
 export function DockExportButton({ exporting = false, onExport }) {
   const { t } = useLang()
   return (
-    <button className="antu-dock-action" onClick={onExport} disabled={exporting} title={t('dock.exportTitle')}>
+    <>
+      <DockPrintButton />
+      <button className="antu-dock-action" onClick={onExport} disabled={exporting} title={t('dock.exportTitle')}>
       {/* The conventional download mark (an arrow down onto a line). This cell is an action
           while the others are states, and giving an action a symbol is standard toolbar
           practice: four words alone on a dark background read more like a label than
@@ -73,6 +100,7 @@ export function DockExportButton({ exporting = false, onExport }) {
       </svg>
       {exporting ? t('dock.exporting') : t('dock.exportImage')}
     </button>
+    </>
   )
 }
 

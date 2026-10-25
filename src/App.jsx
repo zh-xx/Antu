@@ -33,7 +33,9 @@ import DiagramHeader from './shell/DiagramHeader.jsx'
 import { ResetSpecContext, ShownSpecContext, useEnv, useUi } from './shell/env.js'
 import { clearSpecPrefs, specKeyOf } from './shell/prefs.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
-import { useTheme, shellVars } from './theme/ThemeContext.jsx'
+import { useTheme, shellVars, ThemeOverrideProvider } from './theme/ThemeContext.jsx'
+import { themeOf } from './theme/themes.js'
+import { PrintHostProvider, usePrintController } from './shell/printHost.js'
 
 /** The fallback explanation when no renderer is available */
 function FallbackInfo({ errors, spec, hasRenderer, t, labelOf, formatNumber }) {
@@ -90,6 +92,11 @@ function diagramInfo(spec, t, formatNumber) {
 export default function App({ spec: given, kind: hostKind = null, kinds: allowed = null }) {
   const { t, lang, setLang, labelOf, formatNumber } = useLang()
   const { id: themeId, theme, setTheme } = useTheme()
+  // The Print action (issue 123): a printed sheet is paper, so the diagram is laid out in the
+  // document theme whatever the page is in. The canvas registers the rest (src/shell/printHost.js).
+  const printHost = usePrintController(themeId)
+  const printedTheme = printHost.printLight ? 'document' : themeId
+  const shellTheme = printHost.printLight ? themeOf('document') : theme
   const env = useEnv()
   const { prefs, preset, emit, commands } = env
   const [spec, setSpec] = useState(null)
@@ -204,7 +211,9 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
   const showHeader = useUi('header')
 
   return (
-    <div className="antu-app" data-theme={themeId} style={shellVars(theme)}>
+    <PrintHostProvider value={printHost.value}>
+      <ThemeOverrideProvider value={printHost.printLight ? 'document' : null}>
+        <div className="antu-app" data-theme={printedTheme} style={shellVars(shellTheme)}>
       {/* The label card has no switch of its own on the page. It used to control both
           "whether it shows on screen" and "whether the export carries it"; now the
           export never carries the heading (spec/fact/rendering.md §10.2 changed),
@@ -242,6 +251,8 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
           formatNumber={formatNumber}
         />
       )}
-    </div>
+        </div>
+      </ThemeOverrideProvider>
+    </PrintHostProvider>
   )
 }

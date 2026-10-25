@@ -9,6 +9,8 @@
    ============================================================== */
 
 :root {
+  /* 纸张的颜色：打印与「打印准备」用它，不跟主题走（纸是白的，深色主题也一样） */
+  --antu-paper: #fff;
   --antu-line: #e8ebef;
   --antu-line-soft: #e8ebef;
   --antu-text: #0f172a;
@@ -948,8 +950,9 @@
    点阵底纹。跟上面的 .is-exporting 正好相反：导出只藏视口内的
    .antu-preview，其余几样天然不进图；打印则把视口外的外壳全藏掉。
 
-   **这里只是 issue 123 的最小切片**：一个 @media print + 一个 @page。
-   完整的纸张级别（screen|a4l|a4p）先不做，留到后面。
+   底栏的「打印」按钮会先把画布临时改成纸张可打印区的大小（见下面的
+   .antu-app[data-print-prep]），fit 按这个尺寸重算，整张图落在一页里，
+   再打开浏览器自己的打印预览。完整的纸张级别（screen|a4l|a4p）先不做。
    ============================================================== */
 @media print {
   .antu-header,
@@ -965,7 +968,30 @@
   }
 }
 
-/* issue 123 打印切片：A4、四边 12mm。完整纸张级别（screen|a4l|a4p）先不做。 */
+/* 打印准备（issue 123）：App 把纸张可打印区写成两个变量，画布缩到这个尺寸。
+   屏幕上也会生效一小会儿——那是点「打印」到打印预览打开之间的那一帧，
+   正好让人看见"这就是要印的样子"。 */
+.antu-app[data-print-prep] {
+  width: var(--antu-print-w, 100vw);
+  height: var(--antu-print-h, 100vh);
+  background: var(--antu-paper);
+}
+@media print {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--antu-paper);
+  }
+  .antu-app[data-print-prep] {
+    width: var(--antu-print-w);
+    height: var(--antu-print-h);
+  }
+}
+
+/* issue 123 打印切片：A4、四边 12mm。完整纸张级别（screen|a4l|a4p）先不做。
+   图宽大于高时（关系图、横向流程图）「打印」会把这张纸换成横向，见
+   src/shell/printHost.js。 */
 @page {
   size: A4;
   margin: 12mm;

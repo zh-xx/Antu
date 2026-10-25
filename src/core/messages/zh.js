@@ -57,6 +57,9 @@ export const zh = {
   'dock.exportImage': '导出图片',
   'dock.exporting': '正在导出…',
   'dock.exportTitle': '将整张图导出为 PNG（2 倍分辨率）',
+  'dock.print': '打印',
+  'dock.printing': '正在准备…',
+  'dock.printTitle': '把图按纸张排好，打开浏览器的打印预览',
   'dock.lang': '语言',
   // 控制胶囊的收起／展开（issue 200）
   'dock.fold': '收起',

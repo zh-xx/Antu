@@ -9,6 +9,7 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ### Fixed
 - **Browser print / Save as PDF hides the chrome and sets an A4 page** (#123): an `@media print` block hides the label card, the bottom dock, the zoom controls, the minimap, the preview popovers and the React Flow attribution, and `@page` sets A4 with 12 mm margins. Full paper levels (`screen|a4l|a4p`) stay deferred.
+- **Print button** (#123): the dock has a **Print** action. It lays the diagram out on paper first (A4 portrait or landscape by the diagram's own shape, in the document theme whatever the page is in, fitted to the printable area so nothing is cropped), then opens the browser's print preview, and puts the page back afterwards. It is offered on the viewer page only: an embedded diagram lives in a host's page, where printing would print that page. Full paper levels (`screen|a4l|a4p`) stay deferred.
 
 ## 0.17.0
 
