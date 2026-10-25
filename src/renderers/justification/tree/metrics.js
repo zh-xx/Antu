@@ -11,9 +11,10 @@
 
 // The same text measure the fact cards and the other diagrams use, so a CJK character counts the same everywhere
 import { textEm } from '../../fact/cardGeometry.js'
+import { TYPE } from '../../../theme/scale.js'
 
 /** Node text: the sentence, and the line above it that names the kind */
-export const NODE_FONT = 13
+export const NODE_FONT = TYPE.node.size
 export const NODE_LINE = 19
 export const TAG_LINE = 16
 export const NODE_MAX_LINES = 6
@@ -35,7 +36,7 @@ export const TOP_GAP = 60
 /** An issue box: room at the top for its title, and around its nodes */
 export const GROUP_PAD_TOP = 32
 export const GROUP_PAD = 18
-export const GROUP_TITLE_FONT = 13
+export const GROUP_TITLE_FONT = TYPE.node.size
 
 /** What a folded issue's title needs beyond the issue's name: " · N folded", in either language, and the arrow */
 export const FOLD_NOTE_W = 140
@@ -44,7 +45,7 @@ export const FOLD_NOTE_W = 140
 export const PAD = 32
 
 /** Link labels */
-export const LABEL_FONT = 12
+export const LABEL_FONT = TYPE.label.size
 export const LABEL_LINE = 16
 export const LABEL_PAD_X = 6
 export const LABEL_MAX_W = 150

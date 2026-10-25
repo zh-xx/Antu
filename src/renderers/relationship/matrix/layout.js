@@ -22,13 +22,14 @@ import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { wrapLineCount } from '../../fact/cardGeometry.js'
 import { makePartyData } from '../partyData.js'
 import { tEn } from '../../../core/i18n.js'
+import { TYPE } from '../../../theme/scale.js'
 
 // ---------- geometry ----------
 export const CELL_W = 136
 export const MIN_CELL_H = 44
-const HEAD_FONT = 13
+const HEAD_FONT = TYPE.node.size
 const HEAD_LH = 18
-const CHIP_FONT = 11.5
+const CHIP_FONT = TYPE.meta.size
 const CHIP_LH = 15
 const CHIP_PAD_Y = 4
 const CHIP_PAD_X = 8

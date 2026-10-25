@@ -3,13 +3,16 @@
 //
 //  Every number about card size is collected here, in one place only:
 //    · the validation layer uses it to work out "how many characters fit on one summary line"
-//    · the rendering layer uses it for card height and position, and hands padding and font
-//      sizes to the styles through CSS variables
+//    · the rendering layer uses it for card height and position, and hands the padding to the
+//      styles through CSS variables. Font sizes are type steps (theme/scale.js), the same ones
+//      the stylesheet reads as --antu-type-*
 //
 //  Why it must be collected: change either of these two numbers (card width, summary font size)
 //  on its own and the character limit goes wrong, the symptom being only "some summaries are
 //  inexplicably truncated" — very hard to track down.
 // ============================================================
+
+import { TYPE } from '../../theme/scale.js'
 
 /** Card outer width. Fixed at 288: inner width 262, about 22 characters per line at an 11.5px font. */
 export const CARD_W = 288
@@ -27,9 +30,9 @@ const ROW_GAP = 6
 const FOOT_H = 16
 
 /** Title font size. Width is estimated in em below: inner width ÷ font size = how wide one line can be. */
-export const LABEL_FONT = 13
+export const LABEL_FONT = TYPE.node.size
 /** Summary font size, as above */
-export const SNIPPET_FONT = 11.5
+export const SNIPPET_FONT = TYPE.meta.size
 
 /**
  * How many em one character takes.
@@ -82,7 +85,7 @@ export const SUMMARY_MAX_EM = CARD_INNER_W / SNIPPET_FONT
 export const SUMMARY_MAX = Math.floor(SUMMARY_MAX_EM)
 
 /** Typesetting parameters for party tags: used to estimate how many lines the tags take (tags wrap, so one line is not enough) */
-export const ACTOR_FONT = 10
+export const ACTOR_FONT = TYPE.tag.size
 export const ACTOR_TAG_PAD = 14 // 7px padding on each side
 export const ACTOR_TAG_GAP = 4
 

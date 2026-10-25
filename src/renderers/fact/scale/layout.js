@@ -28,6 +28,7 @@ import { formatTimeText } from '../dateText.js'
 import { translate } from '../../../core/i18n.js'
 import { gapOfMs, parseIso } from '../chronicle/layout.js'
 import { groupOfEvent } from '../timeline/grid.js'
+import { TYPE } from '../../../theme/scale.js'
 
 // ---------- geometry ----------
 
@@ -35,15 +36,15 @@ import { groupOfEvent } from '../timeline/grid.js'
 export const LABEL_W = 132
 export const LABEL_W_MAX = 196
 /** The lane names: 12px, bold; the dot and the gaps beside the name take this much */
-const LANE_FONT = 12
+const LANE_FONT = TYPE.label.size
 const LANE_NAME_PAD = 40
 /** Card size: two title lines at most, then the time */
 export const CARD_W = 196
 export const PAD_X = 10
 export const PAD_Y = 8
-export const TITLE_FONT = 12.5
+export const TITLE_FONT = TYPE.body.size
 export const TITLE_LH = 17
-export const TIME_FONT = 11
+export const TIME_FONT = TYPE.caption.size
 export const TIME_LH = 15
 export const MAX_TITLE_LINES = 2
 export const CARD_INNER_W = CARD_W - PAD_X * 2

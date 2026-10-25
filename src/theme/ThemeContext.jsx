@@ -14,6 +14,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import { useEnv, usePrefs, usePreset } from '../shell/env.js'
+import { typeVars } from './scale.js'
 import { DEFAULT_THEME, THEME_IDS, isTheme, themeOf } from './themes.js'
 
 const ThemeContext = createContext({ id: DEFAULT_THEME, theme: themeOf(DEFAULT_THEME), setTheme: () => {}, forced: false })
@@ -21,7 +22,11 @@ const ThemeContext = createContext({ id: DEFAULT_THEME, theme: themeOf(DEFAULT_T
 /** The CSS variables of a theme (the stylesheet's :root holds the defaults these replace) */
 export function themeVars(theme) {
   const c = theme.color
+  // Type sizes sit with the colours: the viewport (the layer an export copies) carries them, and they
+  // are the same in every theme. `:root` holds the same defaults, so the shell outside the viewport
+  // reads them too (scale.js `typeVars`).
   return {
+    ...typeVars(),
     '--antu-text': c.ink,
     '--antu-text-2': c.ink2,
     '--antu-text-3': c.ink3,

@@ -16,11 +16,12 @@
 
 // The same text measure the fact cards use, so a CJK character counts the same everywhere
 import { textEm } from '../../fact/cardGeometry.js'
+import { TYPE } from '../../../theme/scale.js'
 
 /** Node text: the label, and one line of detail under it */
-export const NODE_FONT = 14
+export const NODE_FONT = TYPE.title.size
 export const NODE_LINE = 20
-export const DETAIL_FONT = 12
+export const DETAIL_FONT = TYPE.label.size
 export const DETAIL_LINE = 16
 /** A note: how many lines of its detail it shows, and the strip its tag (a small word in the corner) takes */
 export const NOTE_DETAIL_LINES = 2
@@ -47,7 +48,7 @@ export const NODE_GAP = 44
 /** A stage box: room at the top for its title, and around its nodes */
 export const STAGE_PAD_TOP = 44
 export const STAGE_PAD = 28
-export const STAGE_TITLE_FONT = 13
+export const STAGE_TITLE_FONT = TYPE.node.size
 
 /**
  * The column layout (columns.js): the gap between two stage columns (the channel links between
@@ -63,7 +64,7 @@ export const PAD = 32
  * Condition labels: ELK is given a box per label and keeps it clear of every node. The box is
  * computed from these, and the stylesheet draws the text with the same numbers.
  */
-export const LABEL_FONT = 12
+export const LABEL_FONT = TYPE.label.size
 export const LABEL_LINE = 16
 export const LABEL_PAD_X = 6
 export const LABEL_MAX_W = 150
@@ -209,7 +210,7 @@ export function sizeOf(node) {
 // its text with these numbers, and the stylesheet sets the text with the same ones.
 
 /** Text in the cells, the padding of a cell, and the indent of a listed trigger */
-export const TABLE_FONT = 13
+export const TABLE_FONT = TYPE.node.size
 export const TABLE_LINE = 20
 export const TABLE_PAD_X = 12
 export const TABLE_PAD_Y = 9

@@ -28,7 +28,7 @@ import ColumnHeaderNode from './ColumnHeaderNode.jsx'
 import AxisLineNode from './AxisLineNode.jsx'
 import LinkLayerNode from './LinkLayerNode.jsx'
 import CellLayerNode from './CellLayerNode.jsx'
-import { CARD_PAD_X, CARD_PAD_Y, LABEL_FONT, SNIPPET_FONT } from '../cardGeometry.js'
+import { CARD_PAD_X, CARD_PAD_Y } from '../cardGeometry.js'
 import { buildFactGraph } from './layout.js'
 import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
@@ -125,15 +125,11 @@ export default function FactTimeline({ spec }) {
           nodeTypes={nodeTypes}
           // The grid lines assume rows of one height; staggered rows have none to show
           showGrid={showGrid && !graph.staggered}
-          // Card padding and summary font size come from cardGeometry.js alone, and the styles take
-          // them through CSS variables. Otherwise "card width / font size" and "the summary
-          // character limit" would each have their own copy, and changing one would silently throw
-          // the other off.
+          // Card padding comes from cardGeometry.js alone, through CSS variables. The type sizes
+          // are the shared steps (theme/scale.js): the same numbers the character limit divides by.
           style={{
             '--antu-card-pad-x': `${CARD_PAD_X}px`,
             '--antu-card-pad-y': `${CARD_PAD_Y}px`,
-            '--antu-label-font': `${LABEL_FONT}px`,
-            '--antu-snippet-font': `${SNIPPET_FONT}px`,
           }}
           onNodeMouseEnter={(_, n) => {
             if (n.type === 'card') setHoveredId(n.id)

@@ -18,7 +18,7 @@ import ScaleCardNode from './ScaleCardNode.jsx'
 import ScaleRunNode from './ScaleRunNode.jsx'
 import ScaleRunListNode from './ScaleRunListNode.jsx'
 import ScaleDock from './ScaleDock.jsx'
-import { buildScaleGraph, PAD_X, PAD_Y, TIME_FONT, TIME_LH, TITLE_FONT, TITLE_LH } from './layout.js'
+import { buildScaleGraph, PAD_X, PAD_Y, TIME_LH, TITLE_FONT, TITLE_LH } from './layout.js'
 import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
 const nodeTypes = { scaleLayer: ScaleLayerNode, scaleCard: ScaleCardNode, scaleRun: ScaleRunNode, scaleRunList: ScaleRunListNode }
@@ -86,9 +86,7 @@ export default function FactScale({ spec }) {
           style={{
             '--antu-sc-pad-x': `${PAD_X}px`,
             '--antu-sc-pad-y': `${PAD_Y}px`,
-            '--antu-sc-title-font': `${TITLE_FONT}px`,
             '--antu-sc-title-lh': `${TITLE_LH}px`,
-            '--antu-sc-time-font': `${TIME_FONT}px`,
             '--antu-sc-time-lh': `${TIME_LH}px`,
           }}
           onNodeMouseEnter={(_, n) => {

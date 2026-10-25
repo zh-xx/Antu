@@ -21,7 +21,7 @@ import EntryNode from './EntryNode.jsx'
 import SpineNode from './SpineNode.jsx'
 import LegendNode from './LegendNode.jsx'
 import ChronicleDock from './ChronicleDock.jsx'
-import { buildChronicleGraph, PAD_X, PAD_Y, SUMMARY_FONT, SUMMARY_LH, TAG_FONT, TAG_LH, TITLE_FONT, TITLE_LH, WHEN_LH } from './layout.js'
+import { buildChronicleGraph, PAD_X, PAD_Y, SUMMARY_FONT, SUMMARY_LH, TAG_LH, TITLE_FONT, TITLE_LH, WHEN_LH } from './layout.js'
 import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 
 const nodeTypes = { entry: EntryNode, spine: SpineNode, legend: LegendNode }
@@ -102,16 +102,13 @@ export default function FactChronicle({ spec }) {
           graph={graph}
           fitWidth
           nodeTypes={nodeTypes}
-          // Every number the styles need comes from layout.js, so the height the layout computed
-          // and the height the text takes cannot drift apart
+          // Padding and line heights come from layout.js, so the height the layout computed
+          // and the height the text takes cannot drift apart. Type sizes are the shared steps.
           style={{
             '--antu-chr-pad-x': `${PAD_X}px`,
             '--antu-chr-pad-y': `${PAD_Y}px`,
-            '--antu-chr-title-font': `${TITLE_FONT}px`,
             '--antu-chr-title-lh': `${TITLE_LH}px`,
-            '--antu-chr-summary-font': `${SUMMARY_FONT}px`,
             '--antu-chr-summary-lh': `${SUMMARY_LH}px`,
-            '--antu-chr-tag-font': `${TAG_FONT}px`,
             '--antu-chr-tag-lh': `${TAG_LH}px`,
             '--antu-chr-when-lh': `${WHEN_LH}px`,
           }}

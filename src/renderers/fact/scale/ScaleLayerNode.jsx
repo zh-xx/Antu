@@ -11,6 +11,7 @@ import { memo } from 'react'
 import { useLang } from '../../../shell/LangContext.jsx'
 import { BREAK_W } from './layout.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
+import { TYPE } from '../../../theme/scale.js'
 
 export const runMark = (n) => (n <= 20 ? String.fromCodePoint(0x2460 + n - 1) : `(${n})`)
 
@@ -50,7 +51,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
                 <rect x={b.x + 6} y={0} width={b.w - 12} height={axisY} fill={c0.chip} />
                 <line x1={b.x + 6} x2={b.x + 6} y1={0} y2={axisY} stroke={c0.line} strokeDasharray="3 4" />
                 <line x1={b.x + b.w - 6} x2={b.x + b.w - 6} y1={0} y2={axisY} stroke={c0.line} strokeDasharray="3 4" />
-                <text x={b.x + BREAK_W / 2} y={axisY + 5} textAnchor="middle" fontSize={14} fontWeight={700} fill={INK}>
+                <text x={b.x + BREAK_W / 2} y={axisY + 5} textAnchor="middle" fontSize={TYPE.title.size} fontWeight={700} fill={INK}>
                   {'//'}
                 </text>
               </g>
@@ -88,7 +89,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
                 ) : (
                   <circle cx={m.x} cy={m.y} r={5} fill={c0.bg} stroke={c} strokeWidth={1.8} />
                 )}
-                <text x={left ? m.x - 10 : m.x + 10} y={m.y + 4} textAnchor={left ? 'end' : 'start'} fontSize={11} fill={c}>
+                <text x={left ? m.x - 10 : m.x + 10} y={m.y + 4} textAnchor={left ? 'end' : 'start'} fontSize={TYPE.caption.size} fill={c}>
                   {words}
                 </text>
               </g>
@@ -103,7 +104,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
         {brackets.map((b) => (
           <g key={`r${b.run}`}>
             <path d={`M${b.x0} ${b.y - 4} V${b.y} H${b.x1} V${b.y - 4}`} fill="none" stroke={INK} strokeWidth={1.2} />
-            <text x={(b.x0 + b.x1) / 2} y={b.y + 13} textAnchor="middle" fontSize={11} fill={INK}>
+            <text x={(b.x0 + b.x1) / 2} y={b.y + 13} textAnchor="middle" fontSize={TYPE.caption.size} fill={INK}>
               {runMark(b.run)}
             </text>
           </g>
@@ -114,7 +115,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
         {ticks.map((k, i) => (
           <g key={`t${i}`}>
             <line x1={k.x} x2={k.x} y1={axisY} y2={axisY + 5} stroke={c0.axis} />
-            <text x={k.x} y={axisY + 17} textAnchor="middle" fontSize={10.5} fill={INK}>
+            <text x={k.x} y={axisY + 17} textAnchor="middle" fontSize={TYPE.fine.size} fill={INK}>
               {k.label}
             </text>
           </g>

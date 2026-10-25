@@ -22,7 +22,7 @@ Every meaning is also carried without colour (weight, dash, double line, outline
 print reads the same. `dark` draws the same lines as `modern`, and the four procedure states keep their colours, lifted
 for a dark ground. The `document` theme draws nothing but greys; `tools/verify` fails if any of the 15 ways of drawing a diagram
 shows a colour in it, and `test/theme-lock.test.mjs` fails if a view or the stylesheet writes a
-colour of its own. The tests that apply to every theme include `dark`, and `test/theme.test.mjs` checks the contrast of
+colour or a type size of its own. The tests that apply to every theme include `dark`, and `test/theme.test.mjs` checks the contrast of
 ink, ink2 and the procedure states on the dark ground.
 
 The colours of the two sides (`side1`, `side2`) are also written as text: column headings, lane names, legends, camps.
@@ -53,7 +53,10 @@ exports on its dark ground.
 ## The scale (`src/theme/scale.js`)
 
 - An 8 px grid; node heights 40 / 48 / 64, widths in steps of 40 from 120.
-- Five type sizes: 11, 12.5, 14, 16, 20; line height 1.4.
+- Type sizes, the same in every theme. The reading ramp is caption 11, body 12.5, title 14, heading 16, display 20. The line height of a reading size is 1.4 of it, rounded to 2 px.
+- Steps the pictures and the shell already draw at, named so a layout built on one of them does not move and so nothing else invents a size: tag 10, fine 10.5, meta 11.5, label 12, node 13, card 13.5 (the label card's title), lead 15 (a rule table's title), mark 17 (a shell glyph: the close mark and the step arrows, not reading text).
+- The stylesheet reads them as `--antu-type-*`. The defaults sit on `:root` (and so on `:host` in a mounted diagram). The same variables are set on the viewport with the theme's colours, so an exported picture carries them. A view's layout constants are these steps. `test/theme-lock.test.mjs` fails if a view or the stylesheet writes a type size of its own. The shell uses the same tokens. It is not an exception the way colour is: the page ground and the export paper may keep their own colours, in `src/shell/Canvas.jsx` and `src/shell/exportPng.js`.
+- A lane's side line on the time scale was `0.82em` of the 12 px name (about 9.8 px). It is the tag step (10 px). The column is still measured at the name's size, so the picture does not reflow.
 - Four line weights: 0.75 (hair), 1.1 (normal), 1.75 (strong), 2.5 (heavy).
 - Four line styles: solid, dashed, dotted, double.
 
@@ -76,5 +79,4 @@ Add one entry to `THEMES` in `src/theme/themes.js` with the same keys as the oth
 
 ## Not yet
 
-- Bundled fonts (the themes name system fonts and keep a place for bundled ones).
-- Locking sizes the way colours are locked: node sizes come from the scale, but type sizes in the stylesheet are still written there.
+- Bundled fonts (the themes name system fonts and keep a place for bundled ones). Type sizes are locked; fonts are the piece still open on issue #97.

@@ -21,6 +21,20 @@
   --antu-side1: #2f6fed;
   --antu-side2: #e5484d;
   --antu-axis: #94a3b8;
+  /* Type sizes: src/theme/scale.js TYPE, the same in every theme (test/theme-lock.test.mjs). */
+  --antu-type-tag: 10px;
+  --antu-type-fine: 10.5px;
+  --antu-type-caption: 11px;
+  --antu-type-meta: 11.5px;
+  --antu-type-label: 12px;
+  --antu-type-body: 12.5px;
+  --antu-type-node: 13px;
+  --antu-type-card: 13.5px;
+  --antu-type-title: 14px;
+  --antu-type-lead: 15px;
+  --antu-type-heading: 16px;
+  --antu-type-mark: 17px;
+  --antu-type-display: 20px;
 }
 
 * { box-sizing: border-box; }
@@ -67,7 +81,7 @@
   background: transparent;
   color: var(--antu-text-2);
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   line-height: 1.5;
   white-space: nowrap;
   cursor: pointer;
@@ -102,7 +116,7 @@
   background: var(--antu-text);
   color: var(--antu-bg, #fff);
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   font-weight: 500;
   line-height: 1.5;
   white-space: nowrap;
@@ -158,7 +172,7 @@
   background: transparent;
   color: var(--antu-text-2);
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   line-height: 1.5;
   white-space: nowrap;
   cursor: pointer;
@@ -217,7 +231,7 @@
   box-shadow: var(--antu-chrome-shadow, 0 4px 18px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.10));
   color: var(--antu-text-2);
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   font-weight: 500;
   line-height: 1.5;
   white-space: nowrap;
@@ -239,7 +253,7 @@
   background: var(--antu-bg, #fff);
   color: var(--antu-text-2);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
+  font-size: var(--antu-type-caption);
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -334,9 +348,9 @@
   text-align: right;
   padding: 0 12px 0 0;
 }
-.antu-colhead-side { font-size: 14px; font-weight: 700; color: var(--antu-text-2); line-height: 1.4; }
+.antu-colhead-side { font-size: var(--antu-type-title); font-weight: 700; color: var(--antu-text-2); line-height: 1.4; }
 /* A side of several parties: the side title once, then one party name per column, as each column's heading */
-.antu-colhead-actor { font-size: 13px; font-weight: 600; color: var(--antu-text-2); margin-top: 4px; line-height: 1.35; }
+.antu-colhead-actor { font-size: var(--antu-type-node); font-weight: 600; color: var(--antu-text-2); margin-top: 4px; line-height: 1.35; }
 .antu-colhead.is-span { padding: 8px 0; }
 .antu-colhead.is-span .antu-colhead-side { padding: 0 16px 4px; margin: 0 16px; border-bottom: 1px solid var(--antu-line); }
 .antu-colhead-actors { display: flex; }
@@ -415,7 +429,7 @@
 
 /* 底部一行：左边时间，右边来源的有无 */
 .antu-card-time {
-  font-size: 11.5px;
+  font-size: var(--antu-type-meta);
   color: var(--antu-text-3);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -438,7 +452,7 @@
   background: var(--antu-chip);
   color: var(--antu-text-3);
   border-radius: var(--antu-chip-radius, 999px);
-  font-size: 10px;
+  font-size: var(--antu-type-tag);
 }
 
 
@@ -460,7 +474,7 @@
      卡片才是图里的主角。 */
   border: 1.5px solid var(--antu-axis);
   border-radius: var(--antu-radius);
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   color: var(--antu-text);
   cursor: pointer;
   transition: box-shadow .15s ease-out, transform .15s ease-out, border-color .15s ease-out;
@@ -496,8 +510,8 @@
   outline-offset: 2px;
 }
 .antu-card-label {
-  /* 字号来自 core/cardGeometry.js：它是算「一行放几个字」的除数 */
-  font-size: var(--antu-label-font, 13px);
+  /* 字号是字号阶的 node（theme/scale.js）。cardGeometry.js 用同一个数算「一行放几个字」，两边不能各写一个。 */
+  font-size: var(--antu-type-node);
   font-weight: 600;
   line-height: 1.45;
   color: var(--antu-text);
@@ -508,8 +522,8 @@
 }
 /* 详情摘要（一行截断）与主体标签（可开关的两块） */
 .antu-card-snippet {
-  /* 字号来自 core/cardGeometry.js：它就是算字数上限的除数 */
-  font-size: var(--antu-snippet-font, 11.5px);
+  /* 字号是字号阶的 meta（theme/scale.js）。cardGeometry.js 用同一个数算摘要一行的字数上限。 */
+  font-size: var(--antu-type-meta);
   line-height: 1.55;
   color: var(--antu-text-2);
   white-space: nowrap;
@@ -527,7 +541,7 @@
   gap: 8px;
 }
 .antu-card-time {
-  font-size: 11.5px;
+  font-size: var(--antu-type-meta);
   color: var(--antu-text-3);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -543,7 +557,7 @@
   align-items: center;
   gap: 4px;
   flex: 0 0 auto;
-  font-size: 10.5px;
+  font-size: var(--antu-type-fine);
   color: var(--antu-text-3);
   white-space: nowrap;
 }
@@ -574,7 +588,7 @@
   box-shadow:
     0 2px 8px rgba(var(--antu-shadow-rgb, 15, 23, 42), .10),
     0 14px 34px rgba(var(--antu-shadow-rgb, 15, 23, 42), .18);
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   line-height: 1.65;
   color: var(--antu-text-2);
   z-index: 20;
@@ -620,19 +634,19 @@
   right: 8px;
   border: none;
   background: transparent;
-  font-size: 17px;
+  font-size: var(--antu-type-mark);
   line-height: 1;
   color: var(--antu-text-4);
   cursor: pointer;
 }
 .antu-preview-close:hover { color: var(--antu-text-2); }
 .antu-preview-time {
-  font-size: 11px;
+  font-size: var(--antu-type-caption);
   font-weight: 600;
   color: var(--antu-text-3);
   font-variant-numeric: tabular-nums;
 }
-.antu-preview-title { margin: 2px 22px 6px 0; font-size: 13px; font-weight: 650; line-height: 1.4; color: var(--antu-text); }
+.antu-preview-title { margin: 2px 22px 6px 0; font-size: var(--antu-type-node); font-weight: 650; line-height: 1.4; color: var(--antu-text); }
 .antu-preview-actors { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
 .antu-preview-text { color: var(--antu-text-2); }
 .antu-preview-note {
@@ -640,7 +654,7 @@
   padding: 6px 8px;
   background: var(--antu-chip);
   border-radius: 6px;
-  font-size: 11px;
+  font-size: var(--antu-type-caption);
   line-height: 1.55;
   color: var(--antu-text-2);
 }
@@ -649,7 +663,7 @@
   margin-top: 8px;
   padding-top: 7px;
   border-top: 1px solid var(--antu-line);
-  font-size: 11px;
+  font-size: var(--antu-type-caption);
   color: var(--antu-text-3);
   white-space: nowrap;
   overflow: hidden;
@@ -657,10 +671,10 @@
 }
 .antu-preview-src.is-none { color: var(--antu-text-4); }
 /* 时段：点开后写清持续多久，卡片那行放不下 */
-.antu-preview-duration { font-size: 11px; color: var(--antu-text-3); margin-top: 1px; }
+.antu-preview-duration { font-size: var(--antu-type-caption); color: var(--antu-text-3); margin-top: 1px; }
 
-.antu-preview-sub { margin: 10px 0 6px; font-size: 11px; font-weight: 700; color: var(--antu-text-2); }
-.antu-preview-hint { margin-top: 6px; font-size: 10.5px; color: var(--antu-text-4); }
+.antu-preview-sub { margin: 10px 0 6px; font-size: var(--antu-type-caption); font-weight: 700; color: var(--antu-text-2); }
+.antu-preview-hint { margin-top: 6px; font-size: var(--antu-type-fine); color: var(--antu-text-4); }
 /* 卡片浮层里的来源条目。
    注意：这几个类名和"左栏来源清单"曾经重名，清左栏时被误删过。
    现在左栏没有了，这里是唯一的用处。 */
@@ -671,17 +685,17 @@
   border: 1px solid var(--antu-line);
   border-radius: var(--antu-radius);
 }
-.antu-source-name { font-size: 12px; font-weight: 600; color: var(--antu-text); }
+.antu-source-name { font-size: var(--antu-type-label); font-weight: 600; color: var(--antu-text); }
 .antu-source-type {
   margin-left: 6px;
   padding: 1px 6px;
   background: var(--antu-chip);
   border-radius: var(--antu-chip-radius, 999px);
-  font-size: 10px;
+  font-size: var(--antu-type-tag);
   font-weight: 400;
   color: var(--antu-text-3);
 }
-.antu-source-quote { margin-top: 4px; font-size: 12px; line-height: 1.65; color: var(--antu-text-2); }
+.antu-source-quote { margin-top: 4px; font-size: var(--antu-type-label); line-height: 1.65; color: var(--antu-text-2); }
 
 /* ---------- 无障碍：关了动效就不过渡 ---------- */
 @media (prefers-reduced-motion: reduce) {
@@ -751,7 +765,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13.5px;
+  font-size: var(--antu-type-card);
   font-weight: 600;
   line-height: 1.4;
   color: var(--antu-text);
@@ -766,7 +780,7 @@
 
 /* 大类：事实图 / 关系图…… 只说明这张图归哪一类 */
 .antu-header-type {
-  font-size: 11.5px;
+  font-size: var(--antu-type-meta);
   line-height: 1.5;
   color: var(--antu-text-3);
 }
@@ -784,7 +798,7 @@
   background: var(--antu-chip);
   color: var(--antu-text-3);
   font-family: inherit;
-  font-size: 11px;
+  font-size: var(--antu-type-caption);
   line-height: 1.7;
   white-space: nowrap;
 }
@@ -799,7 +813,7 @@
 
 .antu-header-info {
   margin: 6px 0 0;
-  font-size: 11px;
+  font-size: var(--antu-type-caption);
   line-height: 1.5;
   color: var(--antu-text-4);
 }
@@ -814,7 +828,7 @@
   background: transparent;
   color: var(--antu-text-3);
   font-family: inherit;
-  font-size: 17px;
+  font-size: var(--antu-type-mark);
   line-height: 1;
   cursor: pointer;
 }
@@ -832,7 +846,7 @@
   background: var(--antu-bg, #fff);
   color: var(--antu-text);
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: var(--antu-type-body);
   font-weight: 650;
   line-height: 1.6;
   white-space: nowrap;
@@ -840,7 +854,7 @@
   box-shadow: 0 1px 2px rgba(var(--antu-shadow-rgb, 15, 23, 42), .12);
 }
 .antu-header-current-name { overflow: hidden; text-overflow: ellipsis; }
-.antu-header-count { flex: none; color: var(--antu-text-4); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.antu-header-count { flex: none; color: var(--antu-text-4); font-size: var(--antu-type-caption); font-weight: 500; font-variant-numeric: tabular-nums; }
 .antu-header-panel {
   position: absolute;
   top: calc(100% + 8px);
@@ -869,7 +883,7 @@
   background: var(--antu-bg, #fff);
   color: var(--antu-text-2);
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   line-height: 1.4;
   text-align: center;
   cursor: pointer;
@@ -891,7 +905,7 @@
   border-radius: 14px;
   background: var(--antu-bg, #fff);
   box-shadow: 0 6px 24px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.12);
-  font-size: 12.5px;
+  font-size: var(--antu-type-body);
   line-height: 1.7;
   color: var(--antu-text-2);
 }
@@ -909,7 +923,7 @@
   background: var(--antu-bg, #fff);
   color: var(--antu-text-2);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
+  font-size: var(--antu-type-caption);
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -966,7 +980,7 @@
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: 14px;
+  font-size: var(--antu-type-title);
   font-weight: 600;
   line-height: 20px;
   color: var(--antu-text);
@@ -975,19 +989,19 @@
 .antu-pn.k-decision .antu-pn-label { -webkit-line-clamp: 3; line-clamp: 3; }
 .antu-pn-word { display: inline-block; white-space: pre-wrap; }
 /* 节点只显示了一部分文字（其余在浮层里）：右下角一个小标记 */
-.antu-pn-more { position: absolute; right: 8px; bottom: 2px; font-size: 12px; line-height: 12px; color: var(--antu-text-3, #767676); pointer-events: none; }
+.antu-pn-more { position: absolute; right: 8px; bottom: 2px; font-size: var(--antu-type-label); line-height: 12px; color: var(--antu-text-3, #767676); pointer-events: none; }
 .antu-pn.k-decision .antu-pn-more { display: none; }
 .antu-pn.k-note .antu-pn-label { font-weight: 400; font-style: italic; color: var(--antu-text-2); }
 .antu-pn.k-note .antu-pn-body { margin-top: 12px; }
 .antu-pn.k-note .antu-pn-detail { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; text-overflow: clip; font-style: italic; }
 /* 旁注左上角的小标签：一眼看出它是说明，不是流程里的一步 */
-.antu-pn-tag { position: absolute; left: 10px; top: 6px; font-size: 10px; line-height: 12px; letter-spacing: .06em; color: var(--antu-text-3, #767676); pointer-events: none; }
+.antu-pn-tag { position: absolute; left: 10px; top: 6px; font-size: var(--antu-type-tag); line-height: 12px; letter-spacing: .06em; color: var(--antu-text-3, #767676); pointer-events: none; }
 .antu-pn-detail {
   margin-top: 2px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   line-height: 16px;
   color: var(--antu-text-2);
 }
@@ -1008,7 +1022,7 @@
   padding: 1px 6px;
   border-radius: min(4px, var(--antu-pill-radius, 4px));
   background: var(--antu-label-bg, rgba(255, 255, 255, .85));
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   line-height: 16px;
   color: var(--antu-text);
   text-align: center;
@@ -1037,7 +1051,7 @@
    这里只管样式，不自己决定尺寸：表的高度和画布对得上，导出图片不会截掉。 */
 .antu-rtable {
   box-sizing: border-box;
-  font-size: 13px;
+  font-size: var(--antu-type-node);
   line-height: 20px;
   color: var(--antu-text-2);
   cursor: default;
@@ -1050,15 +1064,15 @@
   white-space: nowrap;
   overflow: hidden;
 }
-.antu-rtable-title b { font-size: 15px; color: var(--antu-text); margin-right: 10px; }
-.antu-rtable-title span { font-size: 12.5px; color: var(--antu-text-3); }
+.antu-rtable-title b { font-size: var(--antu-type-lead); color: var(--antu-text); margin-right: 10px; }
+.antu-rtable-title span { font-size: var(--antu-type-body); color: var(--antu-text-3); }
 .antu-rtable-head {
   display: grid;
   box-sizing: border-box;
   height: 32px;
   align-items: end;
   border-bottom: 1px solid var(--antu-text-4);
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   font-weight: 600;
   color: var(--antu-text-3);
 }
@@ -1068,7 +1082,7 @@
   height: 40px;
   padding: 16px 12px 0;
   border-bottom: 1px solid var(--antu-line);
-  font-size: 12.5px;
+  font-size: var(--antu-type-body);
   font-weight: 700;
   color: var(--antu-text-2);
   white-space: nowrap;
@@ -1104,7 +1118,7 @@
   border: 1px solid var(--antu-line);
   border-radius: 8px;
   background: var(--antu-bg, #fff);
-  font-size: 11px;
+  font-size: var(--antu-type-caption);
   line-height: 16px;
   color: var(--antu-bad);
   white-space: nowrap;
@@ -1148,7 +1162,7 @@
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: 14px;
+  font-size: var(--antu-type-title);
   font-weight: 600;
   line-height: 20px;
   color: var(--antu-text);
@@ -1159,7 +1173,7 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   line-height: 16px;
   color: var(--antu-text-2);
 }
@@ -1170,9 +1184,9 @@
 .antu-rn .antu-preview.left { left: auto; }
 /* 浮层里"这个当事方和谁有什么关系" */
 .antu-rn-relations { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
-.antu-rn-focus { display: inline-block; margin: 8px 0 4px; padding: 3px 10px; font: inherit; font-size: 12px; line-height: 18px; color: var(--antu-text); background: var(--antu-bg, #fff); border: 1px solid var(--antu-text-3); border-radius: var(--antu-pill-radius, 6px); cursor: pointer; }
+.antu-rn-focus { display: inline-block; margin: 8px 0 4px; padding: 3px 10px; font: inherit; font-size: var(--antu-type-label); line-height: 18px; color: var(--antu-text); background: var(--antu-bg, #fff); border: 1px solid var(--antu-text-3); border-radius: var(--antu-pill-radius, 6px); cursor: pointer; }
 .antu-rn-focus:hover { border-color: var(--antu-text); }
-.antu-rn-relation { display: flex; gap: 6px; align-items: baseline; font-size: 12px; line-height: 16px; color: var(--antu-text-2); }
+.antu-rn-relation { display: flex; gap: 6px; align-items: baseline; font-size: var(--antu-type-label); line-height: 16px; color: var(--antu-text-2); }
 .antu-rn-relation-arrow { flex: none; width: 14px; text-align: center; color: var(--antu-text-3); }
 .antu-rn-relation-other { flex: none; font-weight: 600; color: var(--antu-text); }
 .antu-rn-relation-text { min-width: 0; overflow-wrap: anywhere; }
@@ -1186,7 +1200,7 @@
   padding: 1px 6px;
   border-radius: 4px;
   background: var(--antu-label-bg, rgba(255, 255, 255, .85));
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   line-height: 16px;
   color: var(--antu-text);
   text-align: center;
@@ -1239,7 +1253,7 @@
   height: 16px;
   overflow: hidden;
   white-space: nowrap;
-  font-size: 10.5px;
+  font-size: var(--antu-type-fine);
   line-height: 16px;
   color: var(--antu-text-3);
 }
@@ -1256,7 +1270,7 @@
   line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  font-size: 13px;
+  font-size: var(--antu-type-node);
   line-height: 19px;
   color: var(--antu-text);
   overflow-wrap: anywhere;
@@ -1270,8 +1284,8 @@
 .antu-jn .antu-preview.left { left: auto; }
 /* 浮层里"它依据什么、指向什么" */
 .antu-jn-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
-.antu-jn-rows-title { font-size: 11px; font-weight: 600; color: var(--antu-text-3); letter-spacing: .04em; }
-.antu-jn-row { display: flex; gap: 8px; align-items: baseline; font-size: 12px; line-height: 16px; color: var(--antu-text-2); }
+.antu-jn-rows-title { font-size: var(--antu-type-caption); font-weight: 600; color: var(--antu-text-3); letter-spacing: .04em; }
+.antu-jn-row { display: flex; gap: 8px; align-items: baseline; font-size: var(--antu-type-label); line-height: 16px; color: var(--antu-text-2); }
 .antu-jn-row-stance { flex: none; min-width: 44px; font-weight: 600; color: var(--antu-text); }
 .antu-jn-row.is-against .antu-jn-row-stance { color: var(--antu-bad); }
 .antu-jn-row.is-basis .antu-jn-row-stance { color: var(--antu-text-2); }
@@ -1287,16 +1301,17 @@
   text-align: left;
 }
 .antu-jissue-toggle:hover { color: var(--antu-side1) !important; }
-.antu-jissue-arrow { display: inline-block; width: 12px; margin-right: 2px; font-size: 11px; }
+.antu-jissue-arrow { display: inline-block; width: 12px; margin-right: 2px; font-size: var(--antu-type-caption); }
 .antu-jissue-toggle.is-folded { font-style: italic; }
 .antu-jlinks { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
 .antu-jlinks-svg { position: absolute; left: 0; top: 0; overflow: visible; }
 .antu-jlink { transition: opacity .15s; }
 
 /* ---------- fact chronicle (fact/chronicle) ----------
-   Every size here comes from chronicle/layout.js through CSS variables (ChronicleRenderer.jsx):
+   Padding and line heights come from chronicle/layout.js through CSS variables (ChronicleRenderer.jsx):
    the card height is computed from these line heights, so a second copy of a number would let
-   the text and the card disagree. */
+   the text and the card disagree. Type sizes are the shared steps (--antu-type-*), the same
+   numbers layout.js measures with. */
 .react-flow__node-entry:hover { z-index: 10 !important; }
 .antu-chr-entry { position: relative; }
 .antu-chr-when {
@@ -1304,13 +1319,13 @@
   left: 0;
   top: var(--antu-chr-pad-y, 10px);
   text-align: right;
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   line-height: var(--antu-chr-when-lh, 18px);
   color: var(--antu-text-3);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.antu-chr-when .is-date { font-size: 13px; font-weight: 650; color: var(--antu-text); }
+.antu-chr-when .is-date { font-size: var(--antu-type-node); font-weight: 650; color: var(--antu-text); }
 .antu-chr-when.is-unknown { font-style: italic; color: var(--antu-text-4); }
 /* A neutral card: a grey border all round, no coloured edge (the colour is on the dot and the tag) */
 .antu-chr-card {
@@ -1330,14 +1345,14 @@
 .antu-chr-card:focus-visible { outline: 2px solid var(--antu-side1); outline-offset: 2px; }
 .react-flow__node.selected .antu-chr-card { border-color: var(--antu-side1); box-shadow: 0 0 0 3px rgba(var(--antu-shadow-rgb, 15, 23, 42), .16); }
 .antu-chr-title {
-  font-size: var(--antu-chr-title-font, 14px);
+  font-size: var(--antu-type-title);
   line-height: var(--antu-chr-title-lh, 20px);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 .antu-chr-summary {
   margin-top: 4px;
-  font-size: var(--antu-chr-summary-font, 12.5px);
+  font-size: var(--antu-type-body);
   line-height: var(--antu-chr-summary-lh, 18px);
   color: var(--antu-text-2);
   overflow-wrap: anywhere;
@@ -1350,7 +1365,7 @@
   column-gap: 10px;
   min-height: var(--antu-chr-tag-lh, 20px);
   line-height: var(--antu-chr-tag-lh, 20px);
-  font-size: var(--antu-chr-tag-font, 11.5px);
+  font-size: var(--antu-type-meta);
   color: var(--antu-text-3);
 }
 .antu-chr-tags .antu-actor-tag { line-height: 16px; }
@@ -1379,7 +1394,7 @@
   border-radius: var(--antu-chip-radius, 999px);
   background: var(--antu-chip);
   color: var(--antu-text-3);
-  font-size: 11.5px;
+  font-size: var(--antu-type-meta);
   line-height: 18px;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -1389,7 +1404,8 @@
 .antu-chr-legend { display: flex; gap: 16px; height: 20px; align-items: center; white-space: nowrap; }
 
 /* ---------- fact time scale (fact/scale) ----------
-   Sizes come from scale/layout.js through CSS variables (ScaleRenderer.jsx), as for the chronicle. */
+   Padding and line heights come from scale/layout.js through CSS variables (ScaleRenderer.jsx),
+   as for the chronicle. Type sizes are the shared steps (--antu-type-*). */
 .react-flow__node-scaleCard:hover,
 .react-flow__node-scaleRun:hover { z-index: 10 !important; }
 .react-flow__node-scaleCard.selected,
@@ -1402,12 +1418,14 @@
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   font-weight: 600;
   line-height: 16px;
 }
 .antu-sc-lane span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
-.antu-sc-lane-side { display: block; font-style: normal; font-size: 0.82em; font-weight: 400; opacity: 0.8; }
+/* The side under a lane name. It was 0.82em of the 12px name (about 9.8px); the tag step is 10px.
+   The column is still measured at the name's size, so the picture does not reflow. */
+.antu-sc-lane-side { display: block; font-style: normal; font-size: var(--antu-type-tag); font-weight: 400; opacity: 0.8; }
 .antu-sc-lane i { flex: none; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: currentColor; }
 .antu-sc-lane.g0 { color: var(--antu-side1); }
 .antu-sc-lane.g1 { color: var(--antu-side2); }
@@ -1416,7 +1434,7 @@
 .antu-sc-seg {
   position: absolute;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--antu-type-caption);
   color: var(--antu-text-3);
   white-space: nowrap;
   overflow: hidden;
@@ -1425,7 +1443,7 @@
 .antu-sc-break {
   position: absolute;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--antu-type-caption);
   font-weight: 600;
   color: var(--antu-text-2);
   white-space: normal;
@@ -1453,7 +1471,7 @@
 .antu-sc-run { border-style: dashed; background: var(--antu-chip); }
 .antu-sc-title {
   flex: none;
-  font-size: var(--antu-sc-title-font, 12.5px);
+  font-size: var(--antu-type-body);
   line-height: var(--antu-sc-title-lh, 17px);
   font-weight: 600;
   display: -webkit-box;
@@ -1463,7 +1481,7 @@
 }
 .antu-sc-time {
   flex: none;
-  font-size: var(--antu-sc-time-font, 11px);
+  font-size: var(--antu-type-caption);
   line-height: var(--antu-sc-time-lh, 15px);
   color: var(--antu-text-3);
   font-variant-numeric: tabular-nums;
@@ -1473,9 +1491,9 @@
 }
 .antu-sc-time.is-wrap { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .antu-sc .antu-preview { width: 300px; }
-.antu-sc-run-row { display: flex; gap: 8px; font-size: 12px; line-height: 18px; color: var(--antu-text-2); }
+.antu-sc-run-row { display: flex; gap: 8px; font-size: var(--antu-type-label); line-height: 18px; color: var(--antu-text-2); }
 .antu-sc-run-time { flex: none; color: var(--antu-text-3); font-variant-numeric: tabular-nums; }
-.antu-sc-list { font-size: 12px; line-height: var(--antu-sc-list-lh, 18px); color: var(--antu-text-2); }
+.antu-sc-list { font-size: var(--antu-type-label); line-height: var(--antu-sc-list-lh, 18px); color: var(--antu-text-2); }
 .antu-sc-list-head { font-weight: 600; color: var(--antu-text); }
 .antu-sc-list-row { display: flex; gap: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 18px; }
 
@@ -1488,7 +1506,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10.5px;
+  font-size: var(--antu-type-fine);
   line-height: 14px;
   white-space: nowrap;
   color: var(--antu-text-3);
@@ -1506,18 +1524,18 @@
 /* The party in the middle: a stronger outline */
 .antu-rn.is-centre .antu-rn-shape { stroke-width: 3; }
 .antu-rf .antu-rn { cursor: pointer; }
-.antu-rf-note { font-size: 12px; font-weight: 600; color: var(--antu-text-3); white-space: nowrap; line-height: 24px; }
+.antu-rf-note { font-size: var(--antu-type-label); font-weight: 600; color: var(--antu-text-3); white-space: nowrap; line-height: 24px; }
 
 /* ===== relation matrix (issue #91) ===== */
 .antu-mx-layer { position: relative; }
 .antu-mx-svg { position: absolute; left: 0; top: 0; overflow: visible; }
-.antu-mx-band { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; line-height: 16px; overflow: hidden; }
+.antu-mx-band { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: var(--antu-type-label); font-weight: 700; line-height: 16px; overflow: hidden; }
 .antu-mx-band.is-side span { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
 .antu-mx-band.is-side.is-cjk span { writing-mode: horizontal-tb; transform: none; display: block; width: 1.2em; white-space: normal; word-break: break-all; line-height: 15px; text-align: center; }
-.antu-mx-head, .antu-mx-rowhead { position: absolute; box-sizing: border-box; display: flex; align-items: center; padding: 4px 6px; font-size: 13px; line-height: 18px; font-weight: 650; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-mx-head, .antu-mx-rowhead { position: absolute; box-sizing: border-box; display: flex; align-items: center; padding: 4px 6px; font-size: var(--antu-type-node); line-height: 18px; font-weight: 650; color: var(--antu-text); overflow-wrap: anywhere; }
 .antu-mx-head { justify-content: center; text-align: center; align-items: flex-end; }
 .antu-mx-rowhead { justify-content: flex-end; text-align: right; }
-.antu-mx-chip { position: absolute; box-sizing: border-box; display: flex; align-items: flex-start; justify-content: flex-start; padding: 3px 8px; font-size: 12px; line-height: 15px; text-align: left; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-mx-chip { position: absolute; box-sizing: border-box; display: flex; align-items: flex-start; justify-content: flex-start; padding: 3px 8px; font-size: var(--antu-type-label); line-height: 15px; text-align: left; color: var(--antu-text); overflow-wrap: anywhere; }
 
 /* ===== equity tree (issue #91) ===== */
 .antu-ln-layer { position: relative; }
@@ -1532,7 +1550,7 @@
   background: var(--antu-bg, #fff);
   border: 1px solid var(--antu-side1);
   border-radius: var(--antu-pill-radius, 12px);
-  font-size: 12px;
+  font-size: var(--antu-type-label);
   font-weight: 700;
   line-height: 18px;
   text-align: center;
@@ -1542,35 +1560,35 @@
 .antu-ln-pill.is-ink { border-color: var(--antu-text-4); color: var(--antu-text-2); font-weight: 600; }
 .antu-ln-pill.is-unknown { border: 1px dashed var(--antu-text-4); color: var(--antu-text-3); font-weight: 500; }
 .antu-ln-pill.is-back { border-style: dashed; }
-.antu-ln-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-ln-text { position: absolute; font-size: var(--antu-type-body); line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
 .antu-ln-text-sub { color: var(--antu-text-3); }
-.antu-ln-text.is-title { text-align: center; font-size: 20px; line-height: 28px; font-weight: 700; }
-.antu-ln-text.is-title .antu-ln-text-sub { margin-top: 2px; font-size: 13px; line-height: 19px; font-weight: 400; }
-.antu-ln-text.is-row { font-size: 12px; font-weight: 700; color: var(--antu-text-3); }
+.antu-ln-text.is-title { text-align: center; font-size: var(--antu-type-display); line-height: 28px; font-weight: 700; }
+.antu-ln-text.is-title .antu-ln-text-sub { margin-top: 2px; font-size: var(--antu-type-node); line-height: 19px; font-weight: 400; }
+.antu-ln-text.is-row { font-size: var(--antu-type-label); font-weight: 700; color: var(--antu-text-3); }
 .antu-ln-text.is-note { color: var(--antu-text-3); font-style: italic; }
 
 /* related-party list (issue #93): the table's cells, over the line layer's grid */
-.antu-ln-cell { position: absolute; box-sizing: border-box; padding: 8px 10px; font-size: 13px; line-height: 19px; color: var(--antu-text); overflow: hidden; overflow-wrap: anywhere; }
+.antu-ln-cell { position: absolute; box-sizing: border-box; padding: 8px 10px; font-size: var(--antu-type-node); line-height: 19px; color: var(--antu-text); overflow: hidden; overflow-wrap: anywhere; }
 .antu-ln-cell.is-head { display: flex; align-items: center; font-weight: 700; color: var(--antu-text-3); }
 .antu-ln-cell.is-first { font-weight: 650; }
-.antu-ln-cell-sub { font-weight: 400; font-size: 12px; color: var(--antu-text-3); }
+.antu-ln-cell-sub { font-weight: 400; font-size: var(--antu-type-label); color: var(--antu-text-3); }
 
 /* ===== procedure route map (issue #95) ===== */
 .antu-rt-layer { position: relative; }
 .antu-rt-svg { position: absolute; left: 0; top: 0; overflow: visible; }
-.antu-rt-label { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; text-align: center; font-size: 12px; line-height: 15px; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-rt-label { position: absolute; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; text-align: center; font-size: var(--antu-type-label); line-height: 15px; color: var(--antu-text); overflow-wrap: anywhere; }
 .antu-rt-label.is-decision { font-weight: 650; }
-.antu-rt-actor { font-size: 10.5px; line-height: 14px; color: var(--antu-text-4); }
-.antu-rt-band { position: absolute; text-align: center; font-size: 13px; font-weight: 700; line-height: 20px; color: var(--antu-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.antu-rt-box { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 3px 8px; font-size: 11.5px; line-height: 14px; text-align: center; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-rt-actor { font-size: var(--antu-type-fine); line-height: 14px; color: var(--antu-text-4); }
+.antu-rt-band { position: absolute; text-align: center; font-size: var(--antu-type-node); font-weight: 700; line-height: 20px; color: var(--antu-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.antu-rt-box { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 3px 8px; font-size: var(--antu-type-meta); line-height: 14px; text-align: center; color: var(--antu-text); overflow-wrap: anywhere; }
 .antu-rt-box.is-end { font-weight: 700; }
-.antu-rt-more { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 11.5px; color: var(--antu-text-3); }
-.antu-rt-cond { position: absolute; transform: translate(-50%, -50%); box-sizing: border-box; max-width: 190px; padding: 1px 9px; background: var(--antu-bg, #fff); border: 1px solid var(--antu-text-2); border-radius: 11px; font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; color: var(--antu-text-2); overflow-wrap: anywhere; }
+.antu-rt-more { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: var(--antu-type-meta); color: var(--antu-text-3); }
+.antu-rt-cond { position: absolute; transform: translate(-50%, -50%); box-sizing: border-box; max-width: 190px; padding: 1px 9px; background: var(--antu-bg, #fff); border: 1px solid var(--antu-text-2); border-radius: 11px; font-size: var(--antu-type-label); font-weight: 700; line-height: 18px; text-align: center; color: var(--antu-text-2); overflow-wrap: anywhere; }
 .antu-rt-cond.is-loop { border-color: var(--antu-bad); color: var(--antu-bad); }
 .antu-rt-cond.is-hang { max-width: 120px; }
 .antu-eq-pill.is-unknown { border: 1px dashed var(--antu-text-4); color: var(--antu-text-3); font-weight: 500; }
 .antu-eq-pill.is-back { border-style: dashed; }
-.antu-eq-text { position: absolute; font-size: 12.5px; line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
+.antu-eq-text { position: absolute; font-size: var(--antu-type-body); line-height: 19px; color: var(--antu-text); overflow-wrap: anywhere; }
 .antu-eq-text-sub { color: var(--antu-text-3); }
 .antu-eq-text.is-note { color: var(--antu-text-3); font-style: italic; }
 
@@ -1581,7 +1599,7 @@
 .antu-chr-mark { display: inline-block; width: 8px; height: 8px; background: currentColor; border-radius: 50%; }
 .antu-chr-mark.s-square { border-radius: 2px; }
 .antu-chr-mark.s-diamond { border-radius: 1px; transform: rotate(45deg) scale(0.85); }
-.antu-chr-legend-item { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border: 1px solid transparent; border-radius: var(--antu-chip-radius, 999px); background: transparent; font-family: inherit; font-size: 12px; line-height: 18px; white-space: nowrap; cursor: pointer; }
+.antu-chr-legend-item { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border: 1px solid transparent; border-radius: var(--antu-chip-radius, 999px); background: transparent; font-family: inherit; font-size: var(--antu-type-label); line-height: 18px; white-space: nowrap; cursor: pointer; }
 .antu-chr-legend-item:hover { background: var(--antu-chip); }
 .antu-chr-legend-item.is-on { border-color: currentColor; background: var(--antu-bg, #fff); font-weight: 650; }
 .antu-chr-legend-item.is-off { opacity: 0.45; }
@@ -1592,7 +1610,7 @@
 
 /* the theme switch in the label card: three choices in a row */
 .antu-header-theme { display: flex; gap: 2px; margin-top: 8px; }
-.antu-header-themeopt { flex: 1 1 0; padding: 2px 6px; border: 1px solid var(--antu-line); border-radius: 6px; background: transparent; color: var(--antu-text-3); font-family: inherit; font-size: 11px; line-height: 1.6; white-space: nowrap; cursor: pointer; }
+.antu-header-themeopt { flex: 1 1 0; padding: 2px 6px; border: 1px solid var(--antu-line); border-radius: 6px; background: transparent; color: var(--antu-text-3); font-family: inherit; font-size: var(--antu-type-caption); line-height: 1.6; white-space: nowrap; cursor: pointer; }
 .antu-header-themeopt:hover { color: var(--antu-text-2); border-color: var(--antu-text-4); }
 .antu-header-themeopt.is-on { color: var(--antu-text); border-color: var(--antu-text); font-weight: 600; }
 

@@ -8,11 +8,12 @@
 
 import { wrapLineCount } from '../fact/cardGeometry.js'
 import { PAD } from './graph/metrics.js'
+import { TYPE } from '../../theme/scale.js'
 
 export const SECTION_GAP = 28
 const SECTION_PAD = 20
 const SECTION_HEAD_H = 34
-const LINE_FONT = 12.5
+const LINE_FONT = TYPE.body.size
 const LINE_LH = 19
 const SCALE = { latin: 1.2, cjk: 1.06 }
 export const EMPTY_H = 84
