@@ -8,6 +8,7 @@ what breaks a file or a tool call written for the version before, with how to br
 ### Changed
 
 ### Fixed
+- **Browser print / Save as PDF hides the chrome and sets an A4 page** (#123): an `@media print` block hides the label card, the bottom dock, the zoom controls, the minimap, the preview popovers and the React Flow attribution, and `@page` sets A4 with 12 mm margins. Full paper levels (`screen|a4l|a4p`) stay deferred.
 
 ## 0.17.0
 

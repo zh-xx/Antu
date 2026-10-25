@@ -942,6 +942,35 @@
    ============================================================== */
 .is-exporting .antu-preview { display: none !important; }
 
+/* ===== 打印 / 存为 PDF（#123） ==================================
+   浏览器打印时只留画布本身：把画布**之外**的"外壳"全藏掉——标签卡、
+   底部胶囊、缩放控件、缩略图、悬停详情浮层、React Flow 的署名，以及
+   点阵底纹。跟上面的 .is-exporting 正好相反：导出只藏视口内的
+   .antu-preview，其余几样天然不进图；打印则把视口外的外壳全藏掉。
+
+   **这里只是 #123 的最小切片**：一个 @media print + 一个 @page。
+   完整的纸张级别（screen|a4l|a4p）先不做，留到后面。
+   ============================================================== */
+@media print {
+  .antu-header,
+  .antu-dock-capsule,
+  .antu-dock,
+  .antu-dock-open,
+  .react-flow__controls,
+  .react-flow__minimap,
+  .antu-preview,
+  .react-flow__attribution,
+  .react-flow__background {
+    display: none !important;
+  }
+}
+
+/* #123 打印切片：A4、四边 12mm。完整纸张级别（screen|a4l|a4p）先不做。 */
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
 /* ===== 程序图 · 流程图（procedure/flow） =========================
    形状由 kind 定（SVG 画轮廓），颜色由 outcome 定，两件事不混。
    **SVG 的填充与描边不写在这里**，写在 flow/palette.js、以属性挂上去：
