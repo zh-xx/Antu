@@ -20,12 +20,13 @@ import { wrapLineCount } from '../../fact/cardGeometry.js'
 import { makePartyData } from '../partyData.js'
 import { defaultCentre } from '../focus/layout.js'
 import { tEn } from '../../../core/i18n.js'
+import { TYPE } from '../../../theme/scale.js'
 
 // ---------- geometry ----------
 export const COLS = [190, 130, 400, 200]
 const TOP_H = 70
 const HEAD_H = 34
-const FONT = 13
+const FONT = TYPE.node.size
 const LH = 19
 const CELL_PAD_X = 10
 const CELL_PAD_Y = 8

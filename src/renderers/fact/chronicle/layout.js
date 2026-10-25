@@ -24,6 +24,7 @@
 
 import { groupOfEvent } from '../timeline/grid.js'
 import { ACTOR_FONT, ACTOR_TAG_PAD, textWidth, wrapLineCount, wrapLinesBy } from '../cardGeometry.js'
+import { TYPE } from '../../../theme/scale.js'
 import { whenLines } from '../dateText.js'
 
 /** Horizontal geometry. The time column ends at WHEN_W, its text right-aligned against the spine. */
@@ -33,14 +34,14 @@ export const CARD_X = 198
 export const CARD_W = 560
 export const CONTENT_W = CARD_X + CARD_W
 
-/** Card padding and text metrics. The styles take these through CSS variables, never a second copy. */
+/** Card padding and text metrics. Font sizes are type steps; line heights still reach the styles as variables. */
 export const PAD_X = 14
 export const PAD_Y = 10
-export const TITLE_FONT = 14
+export const TITLE_FONT = TYPE.title.size
 export const TITLE_LH = 20
-export const SUMMARY_FONT = 12.5
+export const SUMMARY_FONT = TYPE.body.size
 export const SUMMARY_LH = 18
-export const TAG_FONT = 11.5
+export const TAG_FONT = TYPE.meta.size
 export const TAG_LH = 20
 const BLOCK_GAP = 4
 const TAGS_GAP = 6

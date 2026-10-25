@@ -7,7 +7,8 @@
 //    grid     8 px: every size and gap is a multiple of it
 //    node     heights snap up to the grid (40 / 48 / 64 are the common ones), widths to 40 from 120
 //             (120 / 160 / 200)
-//    type     five sizes, line height 1.4
+//    type     the reading ramp (caption / body / title / heading / display, line height 1.4) and the
+//             steps the pictures and the shell already use; a view does not invent a size of its own
 //    line     four weights (0.75 / 1.1 / 1.75 / 2.5; made finer after the first look), four styles
 // ============================================================
 
@@ -29,15 +30,47 @@ export const NODE = {
   padY: 6,
 }
 
-/** The five type sizes (px) and their weights; the line height is 1.4 of the size, rounded to 2 px */
+/**
+ * Type sizes, in px, the same in every theme (a theme changes the face and the colour, never these).
+ *
+ * The reading ramp is caption, body, title, heading, display. `lineHeight` is 1.4 of one of those,
+ * rounded to 2 px. The other names are steps the pictures and the shell already draw at. They stay
+ * named so a layout built on one of them does not move, and so a view cannot invent another:
+ *
+ *   tag    10     a chip: a party on a card, a note's corner, a source kind
+ *   fine   10.5   a tick, a hint, the small line under a name
+ *   meta   11.5   a snippet, a time under a title, a chip in a matrix or a route box
+ *   label  12     the secondary line on a node
+ *   node   13     the words in a node, a stage or group title
+ *   card   13.5   the label card's title (the shell)
+ *   lead   15     a rule table's title
+ *   mark   17     a shell glyph (the close mark, the step arrows), not reading text
+ *
+ * A new size is added here. The stylesheet reads `--antu-type-*` (`typeVars`); the layout constants
+ * are these steps. test/theme-lock.test.mjs fails if either writes a size of its own.
+ * `weight` is the usual weight of that step; a view may still set its own.
+ */
 export const TYPE = {
+  tag: { size: 10, weight: 400 },
+  fine: { size: 10.5, weight: 400 },
   caption: { size: 11, weight: 400 },
+  meta: { size: 11.5, weight: 400 },
+  label: { size: 12, weight: 400 },
   body: { size: 12.5, weight: 400 },
+  node: { size: 13, weight: 600 },
+  card: { size: 13.5, weight: 600 },
   title: { size: 14, weight: 600 },
+  lead: { size: 15, weight: 600 },
   heading: { size: 16, weight: 700 },
+  mark: { size: 17, weight: 400 },
   display: { size: 20, weight: 700 },
 }
 export const lineHeight = (size) => Math.round((size * 1.4) / 2) * 2
+
+/** `--antu-type-<name>` for every step, in px. Sizes do not change with the theme. */
+export function typeVars() {
+  return Object.fromEntries(Object.entries(TYPE).map(([name, step]) => [`--antu-type-${name}`, `${step.size}px`]))
+}
 
 /** Line weights: hairline, normal, emphasis, heavy */
 export const LINE = { hair: 0.75, normal: 1.1, strong: 1.75, heavy: 2.5 }

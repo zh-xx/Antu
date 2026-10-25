@@ -25,13 +25,14 @@ import { validateProcedure, hintsOfProcedure, ruleEndIds } from '../flow/rules.j
 import { PAD } from '../flow/metrics.js'
 import { wrapLineCount } from '../../fact/cardGeometry.js'
 import { tEn } from '../../../core/i18n.js'
+import { TYPE } from '../../../theme/scale.js'
 
 // ---------- geometry ----------
 /** The least distance between two stations, and the width of a hanging box */
 export const STATION_GAP = 128
 export const HANG_W = 120
 const HANG_GAP = 14
-const LABEL_FONT = 12
+const LABEL_FONT = TYPE.label.size
 const LABEL_LH = 15
 const LABEL_MAX_LINES = 4
 const ACTOR_H = 14
@@ -40,7 +41,7 @@ const BAND_TITLE_H = 42
 const BAND_REACH = STATION_GAP / 2 + 6
 const BAND_GAP = 28
 const LINE_TOP_GAP = 26
-const BOX_FONT = 11.5
+const BOX_FONT = TYPE.meta.size
 const BOX_LH = 14
 /** A hanging box grows with its text (English wraps into more lines than Chinese); this only stops a runaway */
 const BOX_MAX_LINES = 8

@@ -11,6 +11,7 @@
 import { memo } from 'react'
 import { relationPaint } from './graph/palette.js'
 import { useTheme } from '../../theme/ThemeContext.jsx'
+import { TYPE } from '../../theme/scale.js'
 
 const LineLayerNode = memo(function LineLayerNode({ data }) {
   const { theme } = useTheme()
@@ -42,7 +43,7 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
         {frames.map((f, i) => (
           <g key={`f${i}`}>
             <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={theme.radius.group} fill={theme.color.bg} stroke={theme.color.line} />
-            <text x={f.titleAt[0]} y={f.titleAt[1]} fontSize={14} fontWeight={700} fill={theme.color.ink3}>
+            <text x={f.titleAt[0]} y={f.titleAt[1]} fontSize={TYPE.title.size} fontWeight={700} fill={theme.color.ink3}>
               {f.title}
             </text>
           </g>
@@ -50,10 +51,10 @@ const LineLayerNode = memo(function LineLayerNode({ data }) {
         {empties.map((e, i) => (
           <g key={`e${i}`}>
             <rect x={e.x} y={e.y} width={e.w} height={e.h} rx={theme.radius.group} fill={theme.color.chip} stroke={theme.color.ink4} strokeDasharray="4 4" />
-            <text x={e.x + e.w / 2} y={e.y + e.h / 2 - 2} textAnchor="middle" fontSize={16} fontWeight={650} fill={theme.color.ink3}>
+            <text x={e.x + e.w / 2} y={e.y + e.h / 2 - 2} textAnchor="middle" fontSize={TYPE.heading.size} fontWeight={650} fill={theme.color.ink3}>
               {e.text}
             </text>
-            <text x={e.x + e.w / 2} y={e.y + e.h / 2 + 22} textAnchor="middle" fontSize={12.5} fill={theme.color.ink4}>
+            <text x={e.x + e.w / 2} y={e.y + e.h / 2 + 22} textAnchor="middle" fontSize={TYPE.body.size} fill={theme.color.ink4}>
               {e.sub}
             </text>
           </g>

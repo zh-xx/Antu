@@ -12,12 +12,12 @@
 
 // The same text measure the fact cards and the procedure nodes use, so a CJK character counts the same everywhere
 import { textEm } from '../../fact/cardGeometry.js'
-import { nodeHeight, nodeWidth } from '../../../theme/scale.js'
+import { TYPE, nodeHeight, nodeWidth } from '../../../theme/scale.js'
 
 /** Entity text: the name, and the role under it */
-export const ENTITY_FONT = 14
+export const ENTITY_FONT = TYPE.title.size
 export const ENTITY_LINE = 20
-export const ROLE_FONT = 12
+export const ROLE_FONT = TYPE.label.size
 export const ROLE_LINE = 16
 export const ENTITY_MAX_LINES = 2
 /** Inner padding of a box */
@@ -43,13 +43,13 @@ export const LABEL_MARGIN = 20
 /** A group box: room at the top for its title, and around its entities */
 export const GROUP_PAD_TOP = 32
 export const GROUP_PAD = 18
-export const GROUP_TITLE_FONT = 13
+export const GROUP_TITLE_FONT = TYPE.node.size
 
 /** Padding around the content */
 export const PAD = 32
 
 /** Relation labels: ELK is given a box per label and keeps it clear of every entity */
-export const LABEL_FONT = 12
+export const LABEL_FONT = TYPE.label.size
 export const LABEL_LINE = 16
 export const LABEL_PAD_X = 6
 export const LABEL_MAX_W = 150
