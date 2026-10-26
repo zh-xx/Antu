@@ -59,7 +59,14 @@ export default function FactTimeline({ spec }) {
   // Which optional fields the card shows, remembered per diagram. Only the fields the user actually
   // touched are stored, and the preset only supplies the first values.
   const [storedFields, setStoredFields] = useSpecPref('fields', specKey, (stored) => stored || {})
-  const fields = { ...FIELD_DEFAULTS, ...storedFields, ...(PRESET?.fields || {}) }
+  // Memoised: an object rebuilt on every render sat in the graph memo's dependencies, so every re-render
+  // (a hover, a pin) rebuilt the whole graph and re-fitted the viewport, throwing a zoomed-in reader back
+  // to the overview (issue 273; the same failure #21 fixed for the other renderers with `fitKey`).
+  const presetFields = PRESET?.fields || null
+  const fields = useMemo(
+    () => ({ ...FIELD_DEFAULTS, ...storedFields, ...(presetFields || {}) }),
+    [storedFields, presetFields],
+  )
   const toggleField = (key, value) => setStoredFields({ ...storedFields, [key]: value })
 
   // Underlying grid lines: also a choice about this diagram now (issue 236)
@@ -96,6 +103,13 @@ export default function FactTimeline({ spec }) {
     [spec, fields, orientation, stagger],
   )
 
+  // `fitKey` says when the *layout* changed: the canvas re-fits on it, not on every new graph object, so a
+  // rebuild that only changes paint leaves the viewport where the reader put it (issue 273, as #21).
+  const layoutKey = useMemo(
+    () => ({ spec, fields, orientation, stagger }),
+    [spec, fields, orientation, stagger],
+  )
+
   // Overlay state: hoveredId is the card the mouse passed over, pinnedId is the card clicked open
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
@@ -122,6 +136,7 @@ export default function FactTimeline({ spec }) {
         <Canvas
           ref={canvasRef}
           graph={graph}
+          fitKey={layoutKey}
           nodeTypes={nodeTypes}
           // The grid lines assume rows of one height; staggered rows have none to show
           showGrid={showGrid && !graph.staggered}

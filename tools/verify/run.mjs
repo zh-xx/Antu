@@ -2140,6 +2140,39 @@ async function checkHoverKeepsNodesVisible() {
   }
 }
 
+async function checkHoverKeepsViewport() {
+  section('hover: hovering a fact card does not re-fit the view (issue 273)')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  // A fact diagram rebuilt its graph on every render (the field switches object was made inline and sat in the
+  // memo's dependencies) and its canvas had no `fitKey`, so any paint-only change re-fitted the viewport and
+  // animated the reader back to the overview. Pan first: at the opening fit a re-fit is invisible.
+  const spec = JSON.parse(readFileSync(join(REPO, 'examples/fact/fang-yuan-loan-and-conflict.zh-CN.json'), 'utf8'))
+  const html = join(OUT, 'hover-fact-viewport.html')
+  renderToFile(spec, { outPath: html, quiet: true })
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  const viewport = () => browser.eval(`document.querySelector('.react-flow__viewport').style.transform`)
+  try {
+    await browser.open(`file://${html}?lang=zh`)
+    const opening = await viewport()
+    await browser.eval(`(() => {
+      const pane = document.querySelector('.react-flow__pane')
+      const r = pane.getBoundingClientRect()
+      pane.dispatchEvent(new WheelEvent('wheel', { deltaY: 300, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }))
+    })()`, { userGesture: true })
+    await new Promise((r) => setTimeout(r, 700))
+    const panned = await viewport()
+    truthy('the wheel moved the picture away from the opening fit', panned !== opening)
+    await browser.hoverAt(`document.querySelector('.react-flow__node:has(.antu-card)')`)
+    await new Promise((r) => setTimeout(r, 1200))
+    eq('a hover leaves the viewport exactly where the reader put it', await viewport(), panned)
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderLevelledViews() {
   section('render: relationship authority chart, related-party list, relation path')
   if (!findChrome()) {
@@ -3163,6 +3196,7 @@ if (!shotOnly && !skipBrowser) {
   await checkDocumentThemeIsGrey()
   await checkMinimapShowsExtent()
   await checkHoverKeepsNodesVisible()
+  await checkHoverKeepsViewport()
   await checkDockClearance()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)
