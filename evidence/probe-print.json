@@ -1,0 +1,30 @@
+{
+  ".antu-header": {
+    "display": "none",
+    "visibility": "visible"
+  },
+  ".antu-dock-capsule": {
+    "display": "none",
+    "visibility": "visible"
+  },
+  ".react-flow__controls": {
+    "display": "none",
+    "visibility": "visible"
+  },
+  ".react-flow__minimap": {
+    "display": "none",
+    "visibility": "visible"
+  },
+  ".react-flow__attribution": {
+    "display": "none",
+    "visibility": "visible"
+  },
+  ".react-flow__background": {
+    "display": "none",
+    "visibility": "visible"
+  },
+  ".react-flow__node": {
+    "display": "block",
+    "visibility": "hidden"
+  }
+}

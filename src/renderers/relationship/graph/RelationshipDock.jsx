@@ -6,7 +6,7 @@
 //    one chip per kind of relation the data uses      independent switches → chips
 //    relation labels / group boxes                    independent switches → chips
 //    orientation, link style (straight / curved)      two exclusive options → segmented
-//    language, export image                           shared with every dock (shell/DockParts.jsx)
+//    language, print, export image                    shared with every dock (shell/DockParts.jsx)
 //  A chip is on when that kind is drawn. The kind chips are the relationship diagram's answer to
 //  the fact diagram's views: the same data, one family of relations at a time. The group switch
 //  only appears when the data has groups: a switch that can change nothing is noise.

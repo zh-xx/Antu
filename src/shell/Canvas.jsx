@@ -22,6 +22,8 @@ import { EXPORT_CLASS, exportPng as runExportPng, renderPng } from './exportPng.
 import { ShownSpecContext, useEnv, useUi, useViewValue } from './env.js'
 import { nodesOfItem, pinTargetOf } from '../core/items.js'
 import { placeDock } from './dockPlace.js'
+import { frames } from './printPaper.js'
+import { usePrintHost } from './printHost.js'
 import { readSpecPref, specKeyOf, writeSpecPref } from './prefs.js'
 
 /** React Flow's minimap width plus its border, until one has been measured */
@@ -244,11 +246,29 @@ export default function Canvas({
   // window surrounded by blank space.
   // It is computed with the same function as fitView so the two numbers cannot drift
   // apart (see core/canvas.js).
+  // On paper the reader cannot scroll: the whole diagram has to be inside the printable area,
+  // so the readable zoom floor the kinds use on screen does not apply while printing (issue 123).
+  const [printing, setPrinting] = useState(false)
   const minZoom = useMemo(() => {
+    if (printing) return 0.01
     const { width, height } = canvasSize
     if (!width || !height) return 0.1
     return Math.max(fitZoom(graph.size, { width, height }), 0.05)
-  }, [canvasSize, graph])
+  }, [printing, canvasSize, graph])
+
+  // The whole picture into the sheet, ignoring the kind's own fit rules: a route map opens at a
+  // readable zoom on screen and the reader scrolls sideways, but that would crop the paper.
+  const fitPaper = (area) => {
+    const rf = rfRef.current
+    if (!rf || !area) return
+    const { width, height } = graph.size
+    if (width && height) {
+      const to = getViewportForBounds({ x: 0, y: 0, width, height }, area.width, area.height, 0.01, MAX_ZOOM, FIT_PADDING)
+      rf.setViewport(to, { duration: 0 })
+      return
+    }
+    rf.fitView({ padding: FIT_PADDING, duration: 0 })
+  }
 
   // Why export lives here: it has to grab the .react-flow__viewport node, and this is
   // the only place in the project that knows what the canvas DOM looks like and how
@@ -268,6 +288,40 @@ export default function Canvas({
   // the latest fit, read when the command comes
   const fitRef = useRef(fit)
   fitRef.current = fit
+
+  // The Print action (src/shell/printHost.js) needs the diagram's size and the way back to a
+  // fitted picture. Print only exists on the viewer page, and this is where the canvas registers.
+  const printHost = usePrintHost()
+  useEffect(() => {
+    if (!printHost) return undefined
+    printHost.attach({
+      size: graph.size,
+      // The sheet's printable area is set on the app root (styles.css), then the canvas is fitted
+      // to it: one frame for the CSS to land, another for the resize to be measured.
+      prepare: async (area) => {
+        const app = canvasRef.current?.closest('.antu-app')
+        if (!app) return
+        setPrinting(true)
+        app.style.setProperty('--antu-print-w', `${area.width}px`)
+        app.style.setProperty('--antu-print-h', `${area.height}px`)
+        app.dataset.printPrep = ''
+        await frames(2)
+        fitPaper(area)
+      },
+      finish: () => {
+        const app = canvasRef.current?.closest('.antu-app')
+        if (app) {
+          delete app.dataset.printPrep
+          app.style.removeProperty('--antu-print-w')
+          app.style.removeProperty('--antu-print-h')
+        }
+        setPrinting(false)
+        frames(1).then(() => fitRef.current(0))
+      },
+    })
+    return () => printHost.attach(null)
+  }, [printHost, graph])
+
   useEffect(() => {
     const offFit = commands.on('fitView', () => fitRef.current(300))
     const offPng = commands.on('exportPng', ({ pixelRatio } = {}) => renderPng({ rootEl: canvasRef.current, graph, pixelRatio, background: theme.color.exportBg }))

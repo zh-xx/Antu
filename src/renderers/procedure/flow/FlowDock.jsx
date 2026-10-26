@@ -5,7 +5,7 @@
 //  of spec/fact/rendering.md §4.2 (no new shapes invented):
 //    condition labels / node detail / main line / states / stage bands / rules   independent switches → chips
 //    orientation, link style (straight / curved)                         two exclusive options → segmented
-//    language, export image                                              shared with every dock (shell/DockParts.jsx)
+//    language, print, export image                                       shared with every dock (shell/DockParts.jsx)
 //  The stage-band and rule switches only appear when the data has stages / rules: a switch
 //  that can change nothing is noise.
 // ============================================================

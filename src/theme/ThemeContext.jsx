@@ -19,6 +19,14 @@ import { DEFAULT_THEME, THEME_IDS, isTheme, themeOf } from './themes.js'
 
 const ThemeContext = createContext({ id: DEFAULT_THEME, theme: themeOf(DEFAULT_THEME), setTheme: () => {}, forced: false })
 
+/**
+ * A theme read-only override for one subtree: the Print action lays a diagram out on paper, and a
+ * printed sheet is always the document theme (issue 123). It overrides what `useTheme` reads and
+ * nothing else, so the page keeps one theme state (no second provider, no lost switch).
+ */
+const ThemeOverrideContext = createContext(null)
+export const ThemeOverrideProvider = ThemeOverrideContext.Provider
+
 /** The CSS variables of a theme (the stylesheet's :root holds the defaults these replace) */
 export function themeVars(theme) {
   const c = theme.color
@@ -92,7 +100,12 @@ export function ThemeProvider({ children, theme: forcedTheme, initialTheme }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
 
-/** { id, theme, setTheme, forced } */
-export const useTheme = () => useContext(ThemeContext)
+/** { id, theme, setTheme, forced }; a theme override wins for reading only */
+export const useTheme = () => {
+  const base = useContext(ThemeContext)
+  const override = useContext(ThemeOverrideContext)
+  if (!isTheme(override) || override === base.id) return base
+  return { ...base, id: override, theme: themeOf(override) }
+}
 
 export { THEME_IDS }

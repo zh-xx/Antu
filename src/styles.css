@@ -9,6 +9,8 @@
    ============================================================== */
 
 :root {
+  /* 纸张的颜色：打印与「打印准备」用它，不跟主题走（纸是白的，深色主题也一样） */
+  --antu-paper: #fff;
   --antu-line: #e8ebef;
   --antu-line-soft: #e8ebef;
   --antu-text: #0f172a;
@@ -941,6 +943,67 @@
    选项改在克隆体上，屏幕上那份一动不动。
    ============================================================== */
 .is-exporting .antu-preview { display: none !important; }
+
+/* ===== 打印 / 存为 PDF（issue 123） ==================================
+   浏览器打印时只留画布本身：把画布**之外**的"外壳"全藏掉——标签卡、
+   底部胶囊、缩放控件、缩略图、悬停详情浮层、React Flow 的署名，以及
+   点阵底纹。跟上面的 .is-exporting 正好相反：导出只藏视口内的
+   .antu-preview，其余几样天然不进图；打印则把视口外的外壳全藏掉。
+
+   底栏的「打印」按钮会先把画布临时改成纸张可打印区的大小（见下面的
+   .antu-app[data-print-prep]），fit 按这个尺寸重算，整张图落在一页里，
+   再打开浏览器自己的打印预览。完整的纸张级别（screen|a4l|a4p）先不做。
+   ============================================================== */
+@media print {
+  /* 图自己有一部分是用 CSS 背景画的（时间轴那条线、大事记的圆点）。浏览器打印默认**不打背景**，
+     纸上的图就会缺这些细节（issue 123，实测轴线消失）。打印时对画布内强制保留图形。 */
+  .antu-canvas,
+  .antu-canvas * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .antu-header,
+  .antu-dock-capsule,
+  .antu-dock,
+  .antu-dock-open,
+  .react-flow__controls,
+  .react-flow__minimap,
+  .antu-preview,
+  .react-flow__attribution,
+  .react-flow__background {
+    display: none !important;
+  }
+}
+
+/* 打印准备（issue 123）：App 把纸张可打印区写成两个变量，画布缩到这个尺寸。
+   屏幕上也会生效一小会儿——那是点「打印」到打印预览打开之间的那一帧，
+   正好让人看见"这就是要印的样子"。 */
+.antu-app[data-print-prep] {
+  width: var(--antu-print-w, 100vw);
+  height: var(--antu-print-h, 100vh);
+  background: var(--antu-paper);
+}
+@media print {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--antu-paper);
+  }
+  .antu-app[data-print-prep] {
+    width: var(--antu-print-w);
+    height: var(--antu-print-h);
+  }
+}
+
+/* issue 123 打印切片：A4、四边 12mm。完整纸张级别（screen|a4l|a4p）先不做。
+   图宽大于高时（关系图、横向流程图）「打印」会把这张纸换成横向，见
+   src/shell/printHost.js。 */
+@page {
+  size: A4;
+  margin: 12mm;
+}
 
 /* ===== 程序图 · 流程图（procedure/flow） =========================
    形状由 kind 定（SVG 画轮廓），颜色由 outcome 定，两件事不混。

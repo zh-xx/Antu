@@ -59,6 +59,9 @@ export const en = {
   'dock.exportImage': 'Export image',
   'dock.exporting': 'Exporting…',
   'dock.exportTitle': 'Export the whole diagram as a PNG (2× resolution)',
+  'dock.print': 'Print',
+  'dock.printing': 'Preparing…',
+  'dock.printTitle': 'Lay the diagram out on paper and open the browser print preview',
   'dock.lang': 'Language',
   // The dock fold (issue 200): "Fold" on the small chevron, "Display" on the one button the folded dock shows
   'dock.fold': 'Fold',
