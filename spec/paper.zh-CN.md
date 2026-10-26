@@ -74,11 +74,11 @@ HTML viewer 与 `mount` 可以一打开就按纸张档位排，不必点「打�
 
 | 方式 | 位置 |
 | --- | --- |
-| viewer 页面 | `window.__ANTU_PRESET__.paper`（与 `renderHtml` / `renderToFile` 已有的 preset 相同） |
+| viewer 页面 | `window.__ANTU_PRESET__.paper`（与 `renderHtml` / `renderToFile` 已有的 preset 相同）；非法值拒绝打开页面 |
 | `mount(el, spec, { paper })` | 选项；非法值拒绝挂载 |
 
 - `screen`（默认）：画布铺满窗口，与以前一样。
-- `a4l` / `a4p`：App 设置 `data-paper` 与 `--antu-paper-w` / `--antu-paper-h`；`.antu-canvas` 为该尺寸并在页面居中。Fit 按测到的纸框算，所见与 `layoutReport(..., { paper })` 一致。
+- `a4l` / `a4p`：App 设置 `data-paper` 与 `--antu-paper-w` / `--antu-paper-h`；`.antu-canvas` 为该尺寸，在类型根上居中（`safe center` + `margin: auto`——窗口比纸矮时仍能滚到起始边）。Fit 按测到的纸框算，所见与 `layoutReport(..., { paper })` 一致。
 - 打印：若页面已是 A4 档，Print 沿用该纸；否则仍按图的宽高比选方向。
 
 尚无 dock 控件：档位由 preset / mount 选项决定（下一步才是 CLI `--paper`）。

@@ -35,7 +35,7 @@ import { clearSpecPrefs, specKeyOf } from './shell/prefs.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
 import { useTheme, shellVars, ThemeOverrideProvider } from './theme/ThemeContext.jsx'
 import { themeOf } from './theme/themes.js'
-import { isPaperLevel, paperOf } from './core/paper.js'
+import { paperOf } from './core/paper.js'
 import { PrintHostProvider, usePrintController } from './shell/printHost.js'
 
 /** The fallback explanation when no renderer is available */
@@ -94,8 +94,9 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
   const { t, lang, setLang, labelOf, formatNumber } = useLang()
   const { id: themeId, theme, setTheme } = useTheme()
   const env = useEnv()
-  // Paper level for the preview viewport (issue 123 Layout-B): from the page preset or mount options.
-  const paperLevel = isPaperLevel(env.paper) ? env.paper : 'screen'
+  // Paper level for the preview viewport (issue 123 Layout-B): from the page preset or mount options
+  // (already resolved strictly on the env).
+  const paperLevel = env.paper ?? 'screen'
   const paperPage = paperOf(paperLevel)
   // The Print action (issue 123): a printed sheet is paper, so the diagram is laid out in the
   // document theme whatever the page is in. When the page already chose an A4 level, Print uses

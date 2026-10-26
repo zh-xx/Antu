@@ -23,22 +23,30 @@ test('standaloneEnv takes paper from the page preset', () => {
   assert.equal(standaloneEnv({ preset: {} }).paper, 'screen')
   assert.equal(standaloneEnv({ preset: { paper: 'a4p' } }).paper, 'a4p')
   assert.equal(standaloneEnv({ preset: { paper: 'a4l' } }).paper, 'a4l')
-  // a bad preset value must not crash the viewer page
-  assert.equal(standaloneEnv({ preset: { paper: 'letter' } }).paper, 'screen')
+  // same strictness as mount: a mistyped preset must not silently become screen
+  assert.throws(() => standaloneEnv({ preset: { paper: 'letter' } }), /letter/)
 })
 
 test('embeddedEnv takes paper from the mount option', () => {
   assert.equal(embeddedEnv().paper, 'screen')
   assert.equal(embeddedEnv({ paper: 'a4l' }).paper, 'a4l')
-  assert.equal(embeddedEnv({ paper: 'nope' }).paper, 'screen')
+  assert.throws(() => embeddedEnv({ paper: 'nope' }), /nope/)
 })
 
-test('the stylesheet sizes the canvas for a4 paper levels', () => {
+test('the stylesheet centres the canvas on the type root, with safe overflow', () => {
   const css = readFileSync(join(REPO, 'src/styles.css'), 'utf8')
   assert.match(css, /\[data-paper='a4l'\]/)
   assert.match(css, /\[data-paper='a4p'\]/)
   assert.match(css, /--antu-paper-w/)
   assert.match(css, /--antu-paper-h/)
+  // Centring targets the type roots (canvas is not a direct child of .antu-app).
+  assert.match(css, /\[data-paper='a4l'\] > \.antu-fact/)
+  assert.match(css, /\[data-paper='a4l'\] > \.antu-procedure/)
+  assert.match(css, /\[data-paper='a4l'\] > \.antu-relationship/)
+  assert.match(css, /\[data-paper='a4l'\] > \.antu-justification/)
+  assert.match(css, /justify-content:\s*safe center/)
+  assert.match(css, /align-items:\s*safe center/)
+  assert.match(css, /\.antu-canvas[\s\S]*?margin:\s*auto/)
   for (const level of ['a4l', 'a4p']) {
     const { width, height } = paperOf(level).canvas
     assert.ok(width > 0 && height > 0)

@@ -13,14 +13,9 @@
 
 import { createContext, useContext } from 'react'
 import { initialLang, writeStoredLang } from '../core/i18n.js'
-import { isPaperLevel } from '../core/paper.js'
+import { resolvePaperLevel } from '../core/paper.js'
 import { localPrefs, memoryPrefs } from './prefs.js'
 import { getPath, persistingStore, presetAt, resolveView } from './viewState.js'
-
-/** Paper from a viewer preset or a mount option: unknown values fall back to screen (issue 123). */
-function paperFrom(value) {
-  return isPaperLevel(value) ? value : 'screen'
-}
 
 const noop = () => {}
 
@@ -86,8 +81,9 @@ export function standaloneEnv({ preset } = {}) {
   return {
     embedded: false,
     preset: resolved,
-    /** Paper level for layout preview (`screen` | `a4l` | `a4p`); from the page preset (issue 123) */
-    paper: paperFrom(resolved?.paper),
+    /** Paper level for layout preview (`screen` | `a4l` | `a4p`); from the page preset (issue 123).
+     *  Unknown values throw, same as `mount({ paper })` — a mistyped preset must not silently become screen. */
+    paper: resolvePaperLevel(resolved?.paper),
     prefs: localPrefs,
     lang: { read: initialLang, write: writeStoredLang },
     emit: noop,
@@ -126,7 +122,7 @@ export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = 
   return {
     embedded: true,
     preset: null,
-    paper: paperFrom(paper),
+    paper: resolvePaperLevel(paper),
     prefs: store,
     // the interface language is one more preference of the host's store, not the viewer's own key
     lang: { read: () => store.read().lang ?? null, write: (lang) => store.write({ lang }) },

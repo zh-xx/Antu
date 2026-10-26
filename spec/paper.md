@@ -74,11 +74,11 @@ The HTML viewer and `mount` can open already laid out for a paper level, without
 
 | How | Where |
 | --- | --- |
-| Viewer page | `window.__ANTU_PRESET__.paper` (same preset object `renderHtml` / `renderToFile` already write) |
+| Viewer page | `window.__ANTU_PRESET__.paper` (same preset object `renderHtml` / `renderToFile` already write); a bad value refuses the page |
 | `mount(el, spec, { paper })` | option; a bad value refuses the mount |
 
 - `screen` (default): canvas fills the window, as before.
-- `a4l` / `a4p`: the app sets `data-paper` and `--antu-paper-w` / `--antu-paper-h`; `.antu-canvas` is that size, centred on the page. Fit uses the measured paper box, so what you see matches `layoutReport(..., { paper })`.
+- `a4l` / `a4p`: the app sets `data-paper` and `--antu-paper-w` / `--antu-paper-h`; `.antu-canvas` is that size, centred on the type root (`safe center` + `margin: auto` — when the window is smaller than the sheet, the start edge stays reachable by scroll). Fit uses the measured paper box, so what you see matches `layoutReport(..., { paper })`.
 - Print: if the page is already on an A4 level, Print keeps that sheet; otherwise it still picks orientation from the diagram's shape.
 
 There is no dock control yet: the level is chosen by preset / mount option (CLI `--paper` comes next).
