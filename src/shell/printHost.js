@@ -22,7 +22,8 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 
-import { frames, pageSize, paperFor, printableArea, showPrintDialog } from './printPaper.js'
+import { PRINT_MARGIN_MM, levelForOrientation, paperOf } from '../core/paper.js'
+import { frames, paperFor, showPrintDialog } from './printPaper.js'
 
 const PrintHostContext = createContext(null)
 
@@ -33,12 +34,19 @@ export const usePrintHost = () => useContext(PrintHostContext)
 const PAGE_STYLE_ID = 'antu-print-page'
 
 /** The `@page` rule for this sheet. The stylesheet carries a portrait A4 fallback; a
- *  landscape diagram needs its own sheet, and one id owns that override. */
-function setPageRule(orientation) {
+ *  landscape diagram needs its own sheet, and one id owns that override. Margins come
+ *  from `PRINT_MARGIN_MM` in `src/core/paper.js`, the same number the printable area uses.
+ *  Only an A4 `paperOf` result has `pageSize`; `screen` must not reach here. */
+function setPageRule(page) {
+  if (!page?.pageSize) {
+    throw new Error(
+      `setPageRule needs an A4 paperOf result with pageSize (got level ${JSON.stringify(page?.level)})`,
+    )
+  }
   document.getElementById(PAGE_STYLE_ID)?.remove()
   const style = document.createElement('style')
   style.id = PAGE_STYLE_ID
-  style.textContent = `@page { size: ${pageSize(orientation)}; margin: 12mm; }`
+  style.textContent = `@page { size: ${page.pageSize}; margin: ${PRINT_MARGIN_MM}mm; }`
   document.head.appendChild(style)
 }
 
@@ -74,9 +82,11 @@ export function usePrintController(themeId) {
         setPrintLight(true)
         await frames(2)
       }
-      const orientation = paperFor(cap.size?.width, cap.size?.height)
-      setPageRule(orientation)
-      await cap.prepare?.(printableArea(orientation))
+      // Orientation follows the diagram's shape; the sheet itself is the matching A4 level
+      // from `paperOf` (issue 123), so print CSS and the fit area share one quantity.
+      const page = paperOf(levelForOrientation(paperFor(cap.size?.width, cap.size?.height)))
+      setPageRule(page)
+      await cap.prepare?.(page.canvas)
       await frames(2)
       await showPrintDialog()
     } finally {

@@ -997,7 +997,8 @@
   }
 }
 
-/* issue 123 打印切片：A4、四边 12mm。完整纸张级别（screen|a4l|a4p）先不做。
+/* issue 123：A4、四边 12mm（与 src/core/paper.js 的 PRINT_MARGIN_MM 一致）。
+   档位 screen|a4l|a4p 的数量在 paper.js；layout/CLI 的 paper 输入仍延后。
    图宽大于高时（关系图、横向流程图）「打印」会把这张纸换成横向，见
    src/shell/printHost.js。 */
 @page {

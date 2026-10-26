@@ -1,24 +1,21 @@
 // ============================================================
 //  src/shell/printPaper.js — the paper a printed diagram lands on
 //
-//  The browser gives a printed page the size the print CSS asks for (`@page`). A4 is
-//  210 × 297 mm, and the page's own margins take PRINT_MARGIN_MM off every edge, so the
-//  area the diagram may use is what is left. CSS pixels in print are 96 to the inch, so
-//  millimetres turn into pixels with one factor, kept here and nowhere else.
-//
-//  Which way up the sheet goes is decided from the diagram's own shape: a picture wider
-//  than it is tall has more room on a landscape sheet, a taller one on a portrait sheet.
-//  The reading stays right either way; the diagram is fitted to the paper, not cropped.
+//  The quantities (A4, margins, mm→px, the three paper levels) live in
+//  `src/core/paper.js`. This file keeps what is specific to the browser print path:
+//  picking an orientation from the diagram's shape, waiting for frames, and opening
+//  the print dialog. `printableArea` / `pageSize` stay as thin wrappers so existing
+//  callers and tests keep the same names.
 // ============================================================
 
-/** The page margins the print CSS asks for (`@page { margin: 12mm }`), in millimetres */
-export const PRINT_MARGIN_MM = 12
+import {
+  A4_MM,
+  PRINT_MARGIN_MM,
+  levelForOrientation,
+  paperOf,
+} from '../core/paper.js'
 
-/** A4, in millimetres (portrait: the long side is the height) */
-export const A4_MM = Object.freeze({ width: 210, height: 297 })
-
-/** CSS pixels per millimetre: print lays out at 96 dpi */
-const PX_PER_MM = 96 / 25.4
+export { A4_MM, PRINT_MARGIN_MM }
 
 /**
  * The area a diagram may use on the printed sheet, in CSS pixels.
@@ -26,13 +23,8 @@ const PX_PER_MM = 96 / 25.4
  * @returns {{width: number, height: number}}
  */
 export function printableArea(orientation = 'portrait') {
-  const short = (A4_MM.width - PRINT_MARGIN_MM * 2) * PX_PER_MM
-  const long = (A4_MM.height - PRINT_MARGIN_MM * 2) * PX_PER_MM
-  const landscape = orientation === 'landscape'
-  return {
-    width: Math.round(landscape ? long : short),
-    height: Math.round(landscape ? short : long),
-  }
+  // Default only when the argument is omitted; an explicit bad value fails via levelForOrientation.
+  return { ...paperOf(levelForOrientation(orientation)).canvas }
 }
 
 /**
@@ -50,11 +42,12 @@ export function paperFor(width, height) {
 
 /**
  * The `size` the `@page` rule needs for this orientation.
- * @param {'portrait'|'landscape'} orientation
+ * Omitting the argument keeps the old default (portrait A4); an explicit bad value still throws.
+ * @param {'portrait'|'landscape'} [orientation='portrait']
  * @returns {string}
  */
-export function pageSize(orientation) {
-  return orientation === 'landscape' ? 'A4 landscape' : 'A4 portrait'
+export function pageSize(orientation = 'portrait') {
+  return paperOf(levelForOrientation(orientation)).pageSize
 }
 
 /** Wait a given number of animation frames: a resize and a fit each need one to settle. */
