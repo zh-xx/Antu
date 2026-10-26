@@ -1,6 +1,6 @@
 # Paper size as a layout input
 
-Status: **draft** (issue #123; first slice in review after 0.17.0). Status line checked against 0.17.0.
+Status: **draft** (issue #123; quantities + layout report wired after 0.17.0). Status line checked against 0.17.0.
 
 English is authoritative; Chinese: [paper.zh-CN.md](./paper.zh-CN.md).
 
@@ -8,7 +8,7 @@ English is authoritative; Chinese: [paper.zh-CN.md](./paper.zh-CN.md).
 
 The `document` theme is for print and filing, and comments next to `PIXEL_RATIO = 2` named A4 as the reason that resolution is clear enough. **A4 was nowhere as a number.** Layout and `antu_layout` judged fit against a screen canvas (`REFERENCE_CANVAS`, 1600×900). The browser decided page breaks and scale only at print time, so the same JSON was one picture on screen and another on paper.
 
-The print slice (#271) hid the chrome under `@media print`, set `@page` to A4 with 12 mm margins, and added a Print action that fits the diagram to the printable area before opening the dialog. That path introduced millimetres and CSS-pixel sizes; this document and `src/core/paper.js` make those sizes the shared **paper levels** layout and tools will eventually take as an input.
+The print slice (#271) hid the chrome under `@media print`, set `@page` to A4 with 12 mm margins, and added a Print action that fits the diagram to the printable area before opening the dialog. That path introduced millimetres and CSS-pixel sizes; `src/core/paper.js` makes those sizes the shared **paper levels**. The layout report now takes the same levels as an optional input.
 
 ## Paper is not a theme
 
@@ -52,28 +52,42 @@ paperOf('a4p')
 
 The viewer Print button still chooses portrait vs landscape from the diagram's own shape (`paperFor` in `printPaper.js`), then resolves that orientation to `a4p` or `a4l` through `paperOf`. That is a convenience for the button; it is not a fourth level.
 
-## Default when nothing asks for paper
+## Layout report (`paper` on `layoutReport`)
 
-Callers that do not pass a paper level behave as before  this slice: layout and reports use the screen canvas. Wiring an optional `paper` argument on `layout` / `render` / `preview` / MCP is **not in this slice**.
+`tools/lib/report.mjs`:
 
-## This slice / not yet
+```js
+layoutReport(spec)                    // paper defaults to screen
+layoutReport(spec, { paper: 'a4l' })  // fit / text size judged on 1032×703
+```
 
-**Done here**
+- `CANVAS` exported from the report module is `paperOf('screen').canvas`.
+- A bad `paper` fails softly (`{ ok: false, reason }`), like a bad `kind`.
+- The success payload includes `paper` and `canvas` so callers can see which level was used.
+- `layoutMessage` passes `paper` through. **CLI / MCP do not yet expose a flag**; callers that import the engine can already pass it.
+
+Default when nothing asks for paper: same numbers as before this work (screen canvas).
+
+## Done / not yet
+
+**Done**
 
 - Spec + `src/core/paper.js` (`screen` \| `a4l` \| `a4p`).
-- Print path shares those quantities (margins, printable CSS px, `@page` size strings).
+- Print path shares those quantities.
+- **Layout-A**: `layoutReport` / `layoutMessage` take optional `paper`; fold-on-open for justification uses `paperOf('screen')`.
 
-**Deferred** (still issue #123), in this order:
+**Next** (still issue #123), in this order:
 
-1. **Layout** — `CANVAS` / `fitZoom` / `textSizeLines` take a level so HTML preview lays out *as* A4 without pressing Print. This is when `paperOf('screen')` gains a real caller beyond tests (today only `a4l` / `a4p` are used, by the Print path).
+1. **Layout-B** — HTML preview / `mount` lay out *as* the chosen paper level without pressing Print (paper-shaped viewport).
 2. **CLI** — optional `paper` on `layout` / `render` / `preview`.
 3. **MCP** — the same `paper` argument; `antu_layout` reporting page count and smallest type size on that level.
 4. Then: `PIXEL_RATIO` derived from the paper level; multi-page break when content does not fit; suggestions for which kinds fit at a level.
 
 When content does not fit one sheet, the intended direction (not implemented yet) is to **break and report the page count**, not to scale everything onto one page and push type under the readable floor.
 
-## Acceptance for this slice
+## Acceptance for the slices so far
 
 - `paperOf('a4p'|'a4l'|'screen')` returns the table above; a bad level throws.
 - `printableArea` / Print preparation use the same CSS-pixel sizes as `paperOf`.
-- Without any new `paper` argument, existing layout and tool calls are unchanged.
+- `layoutReport(spec, { paper: 'a4l' })` judges fit on 1032×703; omitting `paper` matches the old screen report.
+- Without any new CLI/MCP `paper` flag, existing tool calls are unchanged.

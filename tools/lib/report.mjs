@@ -11,14 +11,34 @@ import { knowledgeOf, layoutOf as layoutFromRegistry, layoutKindsOf } from '../.
 // come from the registry.
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
-import { REFERENCE_CANVAS } from '../../src/core/canvas.js'
+import { PAPER_LEVELS, isPaperLevel, paperOf } from '../../src/core/paper.js'
 
-/** The default assumption for canvas size: used to compute the "fit zoom". The same size the verify script uses */
-export const CANVAS = REFERENCE_CANVAS
+/**
+ * The default assumption for canvas size: used to compute the "fit zoom".
+ * Comes from `paperOf('screen')` (issue 123): the same quantity print and future CLI/MCP share.
+ */
+export const CANVAS = paperOf('screen').canvas
 
 // The layout functions no longer keep their own list: they go through the registry
 // (registered in renderers/index.js). There used to be a hand-written LAYOUTS here
 // duplicating the registry, so adding a sub-type meant changing two places.
+
+/**
+ * Resolve an optional paper level to the canvas the geometry report uses.
+ * Omitting `paper` (or passing undefined) is `screen`. A bad level is a soft failure like a bad kind.
+ * @param {'screen'|'a4l'|'a4p'|undefined} paper
+ * @returns {{ ok: true, paper: 'screen'|'a4l'|'a4p', canvas: { width: number, height: number } } | { ok: false, reason: string }}
+ */
+function canvasForPaper(paper) {
+  const level = paper === undefined || paper === null || paper === '' ? 'screen' : paper
+  if (!isPaperLevel(level)) {
+    return {
+      ok: false,
+      reason: `unknown paper level ${JSON.stringify(paper)}: use one of ${PAPER_LEVELS.join(', ')}`,
+    }
+  }
+  return { ok: true, paper: level, canvas: paperOf(level).canvas }
+}
 
 /** Validation. Returns errors one by one (already in Chinese, for humans and agents) */
 export function validate(spec) {
@@ -50,8 +70,11 @@ export function notesOf(spec) {
  * layers and rules for a procedure), so the report itself comes from the type's knowledge
  * (renderers/<type>/schema.js); this only dispatches. It used to count fact's slots for
  * every type, and a procedure came back as "0 events / 0 time slots".
+ *
+ * `paper` (issue 123): optional `screen` | `a4l` | `a4p`. Default `screen` — same canvas as before.
+ * CLI/MCP flags that pass this through are a later slice; the engine accepts it now.
  */
-export function layoutReport(spec, { orientation, fields, kind: asked } = {}) {
+export function layoutReport(spec, { orientation, fields, kind: asked, paper } = {}) {
   const type = spec?.type
   // Ask the registry which rendering kinds this type has: the one asked for, else the first (the default).
   // (This used to read spec?.kindHint, a field the schema does not have.)
@@ -59,13 +82,22 @@ export function layoutReport(spec, { orientation, fields, kind: asked } = {}) {
   if (asked && !kinds.includes(asked)) {
     return { ok: false, reason: `"${asked}" is not a kind of ${type}: ${kinds.join(', ') || 'it has none'}` }
   }
+  const sheet = canvasForPaper(paper)
+  if (!sheet.ok) return sheet
   const kind = asked ?? kinds[0] ?? null
   const layout = layoutFromRegistry(type, kind)
   const k = knowledgeOf(type)
   if (!layout || !k?.report) {
     return { ok: false, reason: `no geometry computation for type="${type}" kind="${kind}" yet` }
   }
-  return { ok: true, type, kind, ...k.report(spec, layout, { orientation, fields, kind, canvas: CANVAS }) }
+  return {
+    ok: true,
+    type,
+    kind,
+    ...k.report(spec, layout, { orientation, fields, kind, canvas: sheet.canvas }),
+    paper: sheet.paper,
+    canvas: sheet.canvas,
+  }
 }
 
 /** Why `kind` cannot be drawn for this spec ('' when it can, or when none was asked for) */
@@ -98,12 +130,12 @@ export function validationMessage(spec) {
 }
 
 /** The text of `antu_layout`: the geometry report, or why there is none yet */
-export function layoutMessage(spec, { orientation, fields, kind } = {}) {
+export function layoutMessage(spec, { orientation, fields, kind, paper } = {}) {
   const errors = validate(spec)
   if (errors.length > 0) {
     return { ok: false, text: `Validation has not passed yet; fix these before looking at the geometry:\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}` }
   }
-  const report = layoutReport(spec, { orientation, fields, kind })
+  const report = layoutReport(spec, { orientation, fields, kind, paper })
   return report.ok ? { ok: true, text: formatLayoutReport(report) } : { ok: false, text: report.reason }
 }
 
