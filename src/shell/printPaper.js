@@ -42,10 +42,11 @@ export function paperFor(width, height) {
 
 /**
  * The `size` the `@page` rule needs for this orientation.
- * @param {'portrait'|'landscape'} orientation
+ * Omitting the argument keeps the old default (portrait A4); an explicit bad value still throws.
+ * @param {'portrait'|'landscape'} [orientation='portrait']
  * @returns {string}
  */
-export function pageSize(orientation) {
+export function pageSize(orientation = 'portrait') {
   return paperOf(levelForOrientation(orientation)).pageSize
 }
 

@@ -31,7 +31,7 @@
 - 打印里的 CSS 像素：每英寸 96，故 1 mm = `96 / 25.4` CSS px，用 `Math.round`。
 - 纵向可印宽 = `(210 − 2×12) × (96/25.4)` → **703**；高 → **273 mm → 1032**。横向对调。
 
-这些数只写在一处：`src/core/paper.js`。`src/shell/printPaper.js` 里的打印辅助只再导出或包装，不得另写一套换算。
+这些数以 `src/core/paper.js` 为**权威来源**。`src/shell/printPaper.js` 里的打印辅助只再导出或包装，不得另写一套换算。样式表仍须把 `margin: 12mm` 写成 CSS 字面量（CSS 读不到 JS 常量）；单测保证该字面量与 `PRINT_MARGIN_MM` 一致。
 
 ## `paperOf`
 

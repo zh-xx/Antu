@@ -31,7 +31,7 @@ Only these three exist for now (no A3, no Letter).
 - CSS pixels in print: 96 per inch, so one millimetre is `96 / 25.4` CSS px. Rounded with `Math.round`.
 - Printable width (portrait) = `(210 − 2×12) × (96/25.4)` → **703**; height → **273 mm → 1032**. Landscape swaps the two.
 
-These numbers live in **one place**: `src/core/paper.js`. The print helpers in `src/shell/printPaper.js` re-export or wrap them; they must not invent a second conversion.
+`src/core/paper.js` is the **authoritative source** for these quantities. The print helpers in `src/shell/printPaper.js` re-export or wrap them and must not invent a second conversion. The stylesheet still has to write `margin: 12mm` as a CSS literal (CSS cannot import the JS constant); a unit test keeps that literal equal to `PRINT_MARGIN_MM`.
 
 ## `paperOf`
 

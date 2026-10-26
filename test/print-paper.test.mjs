@@ -34,4 +34,11 @@ test("the sheet turns to the diagram's own shape", () => {
 test('the @page size names the sheet and which way up it goes', () => {
   assert.equal(pageSize('portrait'), 'A4 portrait')
   assert.equal(pageSize('landscape'), 'A4 landscape')
+  // Omitting the argument keeps the pre-refactor default (portrait A4).
+  assert.equal(pageSize(), 'A4 portrait')
+})
+
+test('an explicit bad orientation still fails on pageSize and printableArea', () => {
+  assert.throws(() => pageSize('Landscape'))
+  assert.throws(() => printableArea('Landscape'))
 })
