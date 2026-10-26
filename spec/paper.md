@@ -1,6 +1,6 @@
 # Paper size as a layout input
 
-Status: **draft** (issue #123; first slice landed after 0.17.0). Status line checked against 0.17.0.
+Status: **draft** (issue #123; first slice in review after 0.17.0). Status line checked against 0.17.0.
 
 English is authoritative; Chinese: [paper.zh-CN.md](./paper.zh-CN.md).
 
@@ -63,12 +63,12 @@ Callers that do not pass a paper level behave as before  this slice: layout and 
 - Spec + `src/core/paper.js` (`screen` \| `a4l` \| `a4p`).
 - Print path shares those quantities (margins, printable CSS px, `@page` size strings).
 
-**Deferred** (still issue #123)
+**Deferred** (still issue #123), in this order:
 
-- `CANVAS` / `fitZoom` / `textSizeLines` taking a level so HTML preview lays out *as* A4 without pressing Print.
-- Optional `paper` on CLI and MCP; `antu_layout` reporting page count and smallest type size on that level.
-- `PIXEL_RATIO` derived from the paper level instead of the hard-coded 2.
-- Multi-page break when content does not fit; suggestions for which kinds fit at a level.
+1. **Layout** — `CANVAS` / `fitZoom` / `textSizeLines` take a level so HTML preview lays out *as* A4 without pressing Print. This is when `paperOf('screen')` gains a real caller beyond tests (today only `a4l` / `a4p` are used, by the Print path).
+2. **CLI** — optional `paper` on `layout` / `render` / `preview`.
+3. **MCP** — the same `paper` argument; `antu_layout` reporting page count and smallest type size on that level.
+4. Then: `PIXEL_RATIO` derived from the paper level; multi-page break when content does not fit; suggestions for which kinds fit at a level.
 
 When content does not fit one sheet, the intended direction (not implemented yet) is to **break and report the page count**, not to scale everything onto one page and push type under the readable floor.
 

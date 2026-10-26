@@ -23,6 +23,7 @@ export { A4_MM, PRINT_MARGIN_MM }
  * @returns {{width: number, height: number}}
  */
 export function printableArea(orientation = 'portrait') {
+  // Default only when the argument is omitted; an explicit bad value fails via levelForOrientation.
   return { ...paperOf(levelForOrientation(orientation)).canvas }
 }
 

@@ -1,4 +1,7 @@
 // Paper levels (issue 123): screen | a4l | a4p share one quantity with the print path.
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
@@ -12,6 +15,8 @@ import {
   paperOf,
 } from '../src/core/paper.js'
 import { printableArea } from '../src/shell/printPaper.js'
+
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 test('the three paper levels are the only ones', () => {
   assert.deepEqual([...PAPER_LEVELS], ['screen', 'a4l', 'a4p'])
@@ -68,7 +73,30 @@ test('orientation maps onto the A4 levels', () => {
   assert.equal(levelForOrientation('landscape'), 'a4l')
 })
 
+test('a bad orientation fails the same way a bad paper level does', () => {
+  for (const bad of [undefined, 'Landscape', 'portrait ', 'letter']) {
+    assert.throws(
+      () => levelForOrientation(bad),
+      (err) => {
+        assert.match(String(err.message), /orientation/)
+        assert.match(String(err.message), /portrait/)
+        assert.match(String(err.message), /landscape/)
+        return true
+      },
+    )
+  }
+})
+
 test('the print helpers keep the same printable area as paperOf', () => {
   assert.deepEqual(printableArea('portrait'), paperOf('a4p').canvas)
   assert.deepEqual(printableArea('landscape'), paperOf('a4l').canvas)
+})
+
+test('the stylesheet @page margin is the same millimetres as PRINT_MARGIN_MM', () => {
+  const css = readFileSync(join(REPO, 'src/styles.css'), 'utf8')
+  assert.match(
+    css,
+    new RegExp(`@page\\s*\\{[\\s\\S]*?margin:\\s*${PRINT_MARGIN_MM}mm`),
+    `styles.css @page must use margin: ${PRINT_MARGIN_MM}mm (the number in src/core/paper.js)`,
+  )
 })

@@ -35,8 +35,14 @@ const PAGE_STYLE_ID = 'antu-print-page'
 
 /** The `@page` rule for this sheet. The stylesheet carries a portrait A4 fallback; a
  *  landscape diagram needs its own sheet, and one id owns that override. Margins come
- *  from `PRINT_MARGIN_MM` in `src/core/paper.js`, the same number the printable area uses. */
+ *  from `PRINT_MARGIN_MM` in `src/core/paper.js`, the same number the printable area uses.
+ *  Only an A4 `paperOf` result has `pageSize`; `screen` must not reach here. */
 function setPageRule(page) {
+  if (!page?.pageSize) {
+    throw new Error(
+      `setPageRule needs an A4 paperOf result with pageSize (got level ${JSON.stringify(page?.level)})`,
+    )
+  }
   document.getElementById(PAGE_STYLE_ID)?.remove()
   const style = document.createElement('style')
   style.id = PAGE_STYLE_ID

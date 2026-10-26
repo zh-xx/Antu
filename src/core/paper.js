@@ -35,11 +35,17 @@ export function isPaperLevel(level) {
 
 /**
  * Map a sheet orientation to the A4 paper level that matches it.
+ * Only `'portrait'` and `'landscape'` are accepted — same strictness as `paperOf`
+ * (a typo must not silently become portrait).
  * @param {'portrait'|'landscape'} orientation
  * @returns {'a4p'|'a4l'}
  */
 export function levelForOrientation(orientation) {
-  return orientation === 'landscape' ? 'a4l' : 'a4p'
+  if (orientation === 'landscape') return 'a4l'
+  if (orientation === 'portrait') return 'a4p'
+  throw new Error(
+    `unknown sheet orientation ${JSON.stringify(orientation)}: use "portrait" or "landscape"`,
+  )
 }
 
 /**
