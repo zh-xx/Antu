@@ -35,6 +35,7 @@ import { clearSpecPrefs, specKeyOf } from './shell/prefs.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
 import { useTheme, shellVars, ThemeOverrideProvider } from './theme/ThemeContext.jsx'
 import { themeOf } from './theme/themes.js'
+import { isPaperLevel, paperOf } from './core/paper.js'
 import { PrintHostProvider, usePrintController } from './shell/printHost.js'
 
 /** The fallback explanation when no renderer is available */
@@ -92,12 +93,16 @@ function diagramInfo(spec, t, formatNumber) {
 export default function App({ spec: given, kind: hostKind = null, kinds: allowed = null }) {
   const { t, lang, setLang, labelOf, formatNumber } = useLang()
   const { id: themeId, theme, setTheme } = useTheme()
+  const env = useEnv()
+  // Paper level for the preview viewport (issue 123 Layout-B): from the page preset or mount options.
+  const paperLevel = isPaperLevel(env.paper) ? env.paper : 'screen'
+  const paperPage = paperOf(paperLevel)
   // The Print action (issue 123): a printed sheet is paper, so the diagram is laid out in the
-  // document theme whatever the page is in. The canvas registers the rest (src/shell/printHost.js).
-  const printHost = usePrintController(themeId)
+  // document theme whatever the page is in. When the page already chose an A4 level, Print uses
+  // that sheet; otherwise it still picks orientation from the diagram's shape.
+  const printHost = usePrintController(themeId, paperLevel)
   const printedTheme = printHost.printLight ? 'document' : themeId
   const shellTheme = printHost.printLight ? themeOf('document') : theme
-  const env = useEnv()
   const { prefs, preset, emit, commands } = env
   const [spec, setSpec] = useState(null)
   const [errors, setErrors] = useState([])
@@ -210,10 +215,23 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
 
   const showHeader = useUi('header')
 
+  const paperStyle =
+    paperLevel === 'screen'
+      ? undefined
+      : {
+          '--antu-paper-w': `${paperPage.canvas.width}px`,
+          '--antu-paper-h': `${paperPage.canvas.height}px`,
+        }
+
   return (
     <PrintHostProvider value={printHost.value}>
       <ThemeOverrideProvider value={printHost.printLight ? 'document' : null}>
-        <div className="antu-app" data-theme={printedTheme} style={shellVars(shellTheme)}>
+        <div
+          className="antu-app"
+          data-theme={printedTheme}
+          data-paper={paperLevel === 'screen' ? undefined : paperLevel}
+          style={{ ...shellVars(shellTheme), ...paperStyle }}
+        >
       {/* The label card has no switch of its own on the page. It used to control both
           "whether it shows on screen" and "whether the export carries it"; now the
           export never carries the heading (spec/fact/rendering.md §10.2 changed),

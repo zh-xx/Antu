@@ -7,7 +7,8 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ### Added
 - **Paper levels `screen` \| `a4l` \| `a4p`** (#123): `spec/paper.md` (and `.zh-CN.md`) and `src/core/paper.js` (`paperOf`) fix the millimetre→CSS-pixel quantities in one place. The print path shares them.
-- **`layoutReport` / `layoutMessage` take optional `paper`** (#123): fit and text-size lines are judged on `paperOf(level).canvas` (`screen` by default). `CANVAS` is `paperOf('screen').canvas`. CLI/MCP flags, HTML preview as paper, page-count reports, and deriving `PIXEL_RATIO` stay deferred.
+- **`layoutReport` / `layoutMessage` take optional `paper`** (#123): fit and text-size lines are judged on `paperOf(level).canvas` (`screen` by default). `CANVAS` is `paperOf('screen').canvas`.
+- **Paper preview viewport** (#123): `preset.paper` on the viewer page and `mount({ paper })` size `.antu-canvas` to `a4l` / `a4p` (centred sheet). Print keeps that A4 level when set. CLI/MCP `--paper` flags, page-count reports, and deriving `PIXEL_RATIO` stay deferred.
 
 ### Changed
 

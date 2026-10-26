@@ -77,6 +77,23 @@ function a4Canvas(orientation) {
  *   marginMm?: number,
  * }}
  */
+/**
+ * Resolve a caller-supplied paper value to a level.
+ * Empty / missing → `fallback` (default `screen`). A non-empty unknown value throws.
+ * @param {unknown} value
+ * @param {{ fallback?: 'screen'|'a4l'|'a4p' }} [opts]
+ * @returns {'screen'|'a4l'|'a4p'}
+ */
+export function resolvePaperLevel(value, { fallback = 'screen' } = {}) {
+  if (value === undefined || value === null || value === '') return fallback
+  if (!isPaperLevel(value)) {
+    throw new Error(
+      `unknown paper level ${JSON.stringify(value)}: use one of ${PAPER_LEVELS.join(', ')}`,
+    )
+  }
+  return value
+}
+
 export function paperOf(level) {
   if (!isPaperLevel(level)) {
     throw new Error(

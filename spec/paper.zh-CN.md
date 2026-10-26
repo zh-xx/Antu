@@ -1,6 +1,6 @@
 # 纸张尺寸作为布局输入
 
-状态：**草案**（issue #123；数量与布局报告已在 0.17.0 之后接线）。状态行对照 0.17.0。
+状态：**草案**（issue #123；数量、布局报告与纸张预览视口已在 0.17.0 之后接线）。状态行对照 0.17.0。
 
 英文版 [paper.md](./paper.md) 为准。
 
@@ -68,6 +68,21 @@ layoutReport(spec, { paper: 'a4l' })  // 按 1032×703 判断 fit / 字号
 
 未指定纸张时：与改动前相同（屏幕画布）。
 
+## 预览视口（Layout-B）
+
+HTML viewer 与 `mount` 可以一打开就按纸张档位排，不必点「打印」。
+
+| 方式 | 位置 |
+| --- | --- |
+| viewer 页面 | `window.__ANTU_PRESET__.paper`（与 `renderHtml` / `renderToFile` 已有的 preset 相同） |
+| `mount(el, spec, { paper })` | 选项；非法值拒绝挂载 |
+
+- `screen`（默认）：画布铺满窗口，与以前一样。
+- `a4l` / `a4p`：App 设置 `data-paper` 与 `--antu-paper-w` / `--antu-paper-h`；`.antu-canvas` 为该尺寸并在页面居中。Fit 按测到的纸框算，所见与 `layoutReport(..., { paper })` 一致。
+- 打印：若页面已是 A4 档，Print 沿用该纸；否则仍按图的宽高比选方向。
+
+尚无 dock 控件：档位由 preset / mount 选项决定（下一步才是 CLI `--paper`）。
+
 ## 已做 / 尚未做
 
 **已做**
@@ -75,13 +90,13 @@ layoutReport(spec, { paper: 'a4l' })  // 按 1032×703 判断 fit / 字号
 - 规格 + `src/core/paper.js`（`screen` \| `a4l` \| `a4p`）。
 - 打印路径共用这些量。
 - **Layout-A**：`layoutReport` / `layoutMessage` 接受可选 `paper`；说理图的默认折叠按 `paperOf('screen')` 判断。
+- **Layout-B**：viewer preset + `mount({ paper })` 把画布收成纸张尺寸。
 
 **下一步**（仍属 issue #123），按这个顺序：
 
-1. **Layout-B** — HTML 预览 / `mount` 按所选纸张档位排（纸形视口），不必点「打印」。
-2. **命令行** — `layout` / `render` / `preview` 上可选的 `paper`。
-3. **MCP** — 同样的 `paper` 参数；`antu_layout` 按该档位报告页数与最小字号。
-4. 然后：`PIXEL_RATIO` 由纸张档位推导；一页装不下时的分页打断；哪些画法在该档位装得下的建议。
+1. **命令行** — `layout` / `render` / `preview` 上可选的 `paper`（写入 viewer 的 preset）。
+2. **MCP** — 同样的 `paper` 参数；`antu_layout` 按该档位报告页数与最小字号。
+3. 然后：`PIXEL_RATIO` 由纸张档位推导；一页装不下时的分页打断；哪些画法在该档位装得下的建议；可选的 dock 控件。
 
 一页装不下时，既定方向（尚未实现）是 **分页并报告页数**，而不是缩到一页把字压到可读线以下。
 
@@ -90,4 +105,5 @@ layoutReport(spec, { paper: 'a4l' })  // 按 1032×703 判断 fit / 字号
 - `paperOf('a4p'|'a4l'|'screen')` 返回上表；错误档位抛错。
 - `printableArea` / 打印准备使用的 CSS 像素与 `paperOf` 相同。
 - `layoutReport(spec, { paper: 'a4l' })` 按 1032×703 判断 fit；省略 `paper` 与旧的屏幕报告一致。
+- `preset: { paper: 'a4l' }`（或 `mount(..., { paper: 'a4l' })`）时，预览画布为 1032×703 CSS px。
 - 没有新的 CLI/MCP `paper` 旗标时，既有工具调用不变。
