@@ -1,6 +1,6 @@
 # Paper size as a layout input
 
-Status: **draft** (issue #123; quantities + layout report wired after 0.17.0). Status line checked against 0.17.0.
+Status: **draft** (issue #123; quantities, layout report, and paper preview viewport after 0.17.0). Status line checked against 0.17.0.
 
 English is authoritative; Chinese: [paper.zh-CN.md](./paper.zh-CN.md).
 
@@ -68,6 +68,21 @@ layoutReport(spec, { paper: 'a4l' })  // fit / text size judged on 1032×703
 
 Default when nothing asks for paper: same numbers as before this work (screen canvas).
 
+## Preview viewport (Layout-B)
+
+The HTML viewer and `mount` can open already laid out for a paper level, without pressing Print.
+
+| How | Where |
+| --- | --- |
+| Viewer page | `window.__ANTU_PRESET__.paper` (same preset object `renderHtml` / `renderToFile` already write); a bad value refuses the page |
+| `mount(el, spec, { paper })` | option; a bad value refuses the mount |
+
+- `screen` (default): canvas fills the window, as before.
+- `a4l` / `a4p`: the app sets `data-paper` and `--antu-paper-w` / `--antu-paper-h`; `.antu-canvas` is that size, centred on the type root (`safe center` + `margin: auto` — when the window is smaller than the sheet, the start edge stays reachable by scroll). Fit uses the measured paper box, so what you see matches `layoutReport(..., { paper })`.
+- Print: if the page is already on an A4 level, Print keeps that sheet; otherwise it still picks orientation from the diagram's shape.
+
+There is no dock control yet: the level is chosen by preset / mount option (CLI `--paper` comes next).
+
 ## Done / not yet
 
 **Done**
@@ -75,13 +90,13 @@ Default when nothing asks for paper: same numbers as before this work (screen ca
 - Spec + `src/core/paper.js` (`screen` \| `a4l` \| `a4p`).
 - Print path shares those quantities.
 - **Layout-A**: `layoutReport` / `layoutMessage` take optional `paper`; fold-on-open for justification uses `paperOf('screen')`.
+- **Layout-B**: viewer preset + `mount({ paper })` size the canvas to the paper level.
 
 **Next** (still issue #123), in this order:
 
-1. **Layout-B** — HTML preview / `mount` lay out *as* the chosen paper level without pressing Print (paper-shaped viewport).
-2. **CLI** — optional `paper` on `layout` / `render` / `preview`.
-3. **MCP** — the same `paper` argument; `antu_layout` reporting page count and smallest type size on that level.
-4. Then: `PIXEL_RATIO` derived from the paper level; multi-page break when content does not fit; suggestions for which kinds fit at a level.
+1. **CLI** — optional `paper` on `layout` / `render` / `preview` (writes the preset for the viewer).
+2. **MCP** — the same `paper` argument; `antu_layout` reporting page count and smallest type size on that level.
+3. Then: `PIXEL_RATIO` derived from the paper level; multi-page break when content does not fit; suggestions for which kinds fit at a level; optional dock control.
 
 When content does not fit one sheet, the intended direction (not implemented yet) is to **break and report the page count**, not to scale everything onto one page and push type under the readable floor.
 
@@ -90,4 +105,5 @@ When content does not fit one sheet, the intended direction (not implemented yet
 - `paperOf('a4p'|'a4l'|'screen')` returns the table above; a bad level throws.
 - `printableArea` / Print preparation use the same CSS-pixel sizes as `paperOf`.
 - `layoutReport(spec, { paper: 'a4l' })` judges fit on 1032×703; omitting `paper` matches the old screen report.
+- With `preset: { paper: 'a4l' }` (or `mount(..., { paper: 'a4l' })`), the preview canvas is 1032×703 CSS px.
 - Without any new CLI/MCP `paper` flag, existing tool calls are unchanged.

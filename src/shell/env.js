@@ -13,6 +13,7 @@
 
 import { createContext, useContext } from 'react'
 import { initialLang, writeStoredLang } from '../core/i18n.js'
+import { resolvePaperLevel } from '../core/paper.js'
 import { localPrefs, memoryPrefs } from './prefs.js'
 import { getPath, persistingStore, presetAt, resolveView } from './viewState.js'
 
@@ -76,9 +77,13 @@ function markStore() {
 /** The viewer page: the window is the diagram's own */
 export function standaloneEnv({ preset } = {}) {
   const fromWindow = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
+  const resolved = preset === undefined ? fromWindow : preset
   return {
     embedded: false,
-    preset: preset === undefined ? fromWindow : preset,
+    preset: resolved,
+    /** Paper level for layout preview (`screen` | `a4l` | `a4p`); from the page preset (issue 123).
+     *  Unknown values throw, same as `mount({ paper })` — a mistyped preset must not silently become screen. */
+    paper: resolvePaperLevel(resolved?.paper),
     prefs: localPrefs,
     lang: { read: initialLang, write: writeStoredLang },
     emit: noop,
@@ -107,8 +112,9 @@ export function standaloneEnv({ preset } = {}) {
  * @param initial how it opens, ahead of the stored choices (`AntuViewState`; shell/viewState.js)
  * @param locked  values forced for this mount, with their controls hidden
  * @param persist which writes may reach the store: true, false, or the names in shell/viewState.js
+ * @param paper   paper level for layout preview (`screen` | `a4l` | `a4p`); issue 123
  */
-export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = null, ui = {}, initial = {}, locked = {}, persist = true } = {}) {
+export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = null, ui = {}, initial = {}, locked = {}, persist = true, paper = 'screen' } = {}) {
   const raw = prefs === 'local' ? localPrefs : prefs && typeof prefs === 'object' ? prefs : memoryPrefs()
   // With nothing refused we hand the store straight over, so a host's own store keeps its identity (issue 152);
   // with something refused, its writes are filtered and the refused ones stay in the wrapper's overlay.
@@ -116,6 +122,7 @@ export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = 
   return {
     embedded: true,
     preset: null,
+    paper: resolvePaperLevel(paper),
     prefs: store,
     // the interface language is one more preference of the host's store, not the viewer's own key
     lang: { read: () => store.read().lang ?? null, write: (lang) => store.write({ lang }) },

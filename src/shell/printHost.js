@@ -22,7 +22,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 
-import { PRINT_MARGIN_MM, levelForOrientation, paperOf } from '../core/paper.js'
+import { PRINT_MARGIN_MM, isPaperLevel, levelForOrientation, paperOf } from '../core/paper.js'
 import { frames, paperFor, showPrintDialog } from './printPaper.js'
 
 const PrintHostContext = createContext(null)
@@ -57,9 +57,10 @@ function clearPageRule() {
 /**
  * The host App provides. `themeId` decides whether the page has to be re-drawn for paper.
  * @param {string} themeId the theme the page is in now
+ * @param {'screen'|'a4l'|'a4p'} [paperLevel='screen'] preview paper; an A4 level is also the print sheet
  * @returns {{value: {printing: boolean, print: () => Promise<void>, attach: (cap: object|null) => void}, printLight: boolean}}
  */
-export function usePrintController(themeId) {
+export function usePrintController(themeId, paperLevel = 'screen') {
   const [printing, setPrinting] = useState(false)
   const [printLight, setPrintLight] = useState(false)
   const capRef = useRef(null)
@@ -82,9 +83,12 @@ export function usePrintController(themeId) {
         setPrintLight(true)
         await frames(2)
       }
-      // Orientation follows the diagram's shape; the sheet itself is the matching A4 level
-      // from `paperOf` (issue 123), so print CSS and the fit area share one quantity.
-      const page = paperOf(levelForOrientation(paperFor(cap.size?.width, cap.size?.height)))
+      // A page that already chose a4l/a4p keeps that sheet; otherwise orientation follows
+      // the diagram's shape (issue 123 Layout-B).
+      const page =
+        isPaperLevel(paperLevel) && paperLevel !== 'screen'
+          ? paperOf(paperLevel)
+          : paperOf(levelForOrientation(paperFor(cap.size?.width, cap.size?.height)))
       setPageRule(page)
       await cap.prepare?.(page.canvas)
       await frames(2)
@@ -96,7 +100,7 @@ export function usePrintController(themeId) {
       setPrinting(false)
       busyRef.current = false
     }
-  }, [themeId])
+  }, [themeId, paperLevel])
 
   const value = useMemo(() => ({ printing, print, attach }), [printing, print, attach])
   return { value, printLight }

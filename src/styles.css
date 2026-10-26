@@ -976,6 +976,36 @@
   }
 }
 
+/* Layout-B（issue 123）：预览按纸张档位排。App 写 data-paper 与 --antu-paper-w/h；
+   画布固定为该档可印区。DOM 是 app → 类型根(.antu-fact 等) → .antu-canvas，所以居中
+   必须落在类型根上（不是 app）；safe center + margin:auto：窗口装得下时居中，装不下时
+   贴起始边并可滚到顶部（普通 center 会把上缘裁掉且滚不回来）。 */
+.antu-app[data-paper='a4l'],
+.antu-app[data-paper='a4p'] {
+  overflow: auto;
+  background: var(--antu-bg, #fff);
+}
+.antu-app[data-paper='a4l'] > .antu-fact,
+.antu-app[data-paper='a4p'] > .antu-fact,
+.antu-app[data-paper='a4l'] > .antu-procedure,
+.antu-app[data-paper='a4p'] > .antu-procedure,
+.antu-app[data-paper='a4l'] > .antu-relationship,
+.antu-app[data-paper='a4p'] > .antu-relationship,
+.antu-app[data-paper='a4l'] > .antu-justification,
+.antu-app[data-paper='a4p'] > .antu-justification {
+  justify-content: safe center;
+  align-items: safe center;
+}
+.antu-app[data-paper='a4l'] .antu-canvas,
+.antu-app[data-paper='a4p'] .antu-canvas {
+  flex: 0 0 auto;
+  margin: auto;
+  width: var(--antu-paper-w);
+  height: var(--antu-paper-h);
+  border: 1px solid var(--antu-frame, var(--antu-line));
+  background: var(--antu-canvas, var(--antu-paper, #fff));
+}
+
 /* 打印准备（issue 123）：App 把纸张可打印区写成两个变量，画布缩到这个尺寸。
    屏幕上也会生效一小会儿——那是点「打印」到打印预览打开之间的那一帧，
    正好让人看见"这就是要印的样子"。 */
@@ -983,6 +1013,13 @@
   width: var(--antu-print-w, 100vw);
   height: var(--antu-print-h, 100vh);
   background: var(--antu-paper);
+}
+/* 打印准备优先于纸张预览框：临时铺满可印区，去掉预览时的居中边框。 */
+.antu-app[data-print-prep] .antu-canvas {
+  flex: 1 1 auto;
+  width: auto;
+  height: auto;
+  border: 0;
 }
 @media print {
   html,
