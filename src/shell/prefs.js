@@ -28,8 +28,9 @@ export const PREFS_KEY = 'antu.prefs'
  * neither is `lang` (it has its own key, core/i18n.js). Restoring a diagram's defaults walks this list.
  */
 export const PER_DIAGRAM_PREF_NAMES = [
-  // the label card tells which kind each diagram opens in
-  'kinds',
+  // `kinds` is deliberately absent: it says which picture of this diagram you are looking at (时间图 / 大事记 / …),
+  // not a setting *of* that picture. Restoring this diagram's defaults therefore leaves you where you are instead
+  // of throwing you back to the first kind (reported against the fact diagram).
   // choices a renderer keeps for one diagram
   'orientations',
   'staggers',

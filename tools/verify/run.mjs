@@ -2214,6 +2214,44 @@ async function checkBadPresetExplainsItself() {
   }
 }
 
+async function checkResetKeepsChosenKind() {
+  section('prefs: restoring this diagram\'s defaults keeps the picture you are looking at')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  // The chosen kind (时间图 / 大事记 / …) says which picture of this diagram you are on, not a setting of that
+  // picture. It used to be cleared with everything else, so "restore this diagram's defaults" threw the reader
+  // back to the first kind. Toggling the summary chip gives the reset something real to do.
+  const spec = JSON.parse(readFileSync(join(REPO, 'examples/fact/fang-yuan-loan-and-conflict.zh-CN.json'), 'utf8'))
+  const html = join(OUT, 'reset-kind.html')
+  renderToFile(spec, { outPath: html, quiet: true })
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  const count = () => browser.eval(`(document.querySelector('.antu-header-count') || {}).textContent?.trim() || ''`)
+  const chip = (label) => `[...document.querySelectorAll('.antu-dock-chip')].find((e) => e.textContent.trim() === '${label}')`
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+  try {
+    await browser.open(`file://${html}?lang=zh`)
+    const first = await count()
+    await browser.clickAt(`[...document.querySelectorAll('.antu-header-step')].at(-1)`)
+    await wait(900)
+    const second = await count()
+    truthy('the label card moved to another picture', second !== '' && second !== first)
+
+    await browser.clickAt(chip('摘要'))
+    await wait(700)
+    eq('the summary chip is off', await browser.eval(`${chip('摘要')}.classList.contains('is-on')`), false)
+    truthy('restore now offers itself', await browser.eval(`!!document.querySelector('.antu-dock-reset')`))
+
+    await browser.clickAt(`document.querySelector('.antu-dock-reset')`)
+    await wait(1300)
+    eq('the picture you were looking at is unchanged', await count(), second)
+    eq('the summary chip is back to its default', await browser.eval(`${chip('摘要')}?.classList.contains('is-on')`), true)
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderLevelledViews() {
   section('render: relationship authority chart, related-party list, relation path')
   if (!findChrome()) {
@@ -3239,6 +3277,7 @@ if (!shotOnly && !skipBrowser) {
   await checkHoverKeepsNodesVisible()
   await checkHoverKeepsViewport()
   await checkBadPresetExplainsItself()
+  await checkResetKeepsChosenKind()
   await checkDockClearance()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)

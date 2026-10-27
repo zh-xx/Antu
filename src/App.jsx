@@ -178,7 +178,8 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
     // switch whose default is on would stay off once its stored choice is gone
     env.touched?.clear()
     clearSpecPrefs(prefs, specKey)
-    // the kind is App's own state too: after the cleared record it falls back to the host's or the default kind
+    // the kind is App's own state too, and it is *not* one of the prefs cleared above: which picture you are looking
+    // at stays as it is. Re-read anyway, so this stays correct if that ever changes.
     setKindPrefs(prefs.read().kinds || {})
     setResetCount((n) => n + 1)
   }
