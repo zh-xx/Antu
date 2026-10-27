@@ -92,15 +92,15 @@ const SHOT = join(OUT, 'screenshot.png')
 const FACT_AGENT_SAMPLE = join(REPO, 'examples/agent/fact/1-minimal.en.json')
 
 /**
- * Every message prefix whose entries are **fixed English** and therefore copied into zh.js,
- * never translated: validation errors and hints, which are read by the agent.
- * A new major type's keys get their own prefix, and that prefix belongs in this list
- * (zh.js spreads them; see the note at the end of that file).
+ * Message prefixes that stay **fixed English** in both dictionaries (copied into zh.js).
+ * `norm.*` (what `normalize` changed) stays English for agents. Validation / notes
+ * (`err.` / `perr.` / …) may be Chinese when a host calls `validate(spec, { lang: 'zh' })`
+ * (issue 166); default validate / MCP still use English via `withValidateLang`.
  *
  * Declared up here on purpose: the main flow below calls checkMessages() before this point in
  * file order, and a `const` further down would still be in its temporal dead zone.
  */
-const FIXED_ENGLISH_PREFIXES = ['err.', 'perr.', 'phint.', 'norm.']
+const FIXED_ENGLISH_PREFIXES = ['norm.']
 
 // ---------------------------------------------------------------
 // Minimal assertions and reporting
@@ -3217,11 +3217,11 @@ function checkMessages() {
   const missingInEn = [...zk].filter((k) => !ek.has(k))
   eq('zh and en keys correspond one to one (nothing missing in zh)', missingInZh, [])
   eq('zh and en keys correspond one to one (nothing missing in en)', missingInEn, [])
-  // Error messages are fixed in English: the same value in both dictionaries, never written twice
+  // `norm.*` stays fixed English in both dictionaries; validation may differ (zh for hosts, issue 166)
   const drift = [...ek]
     .filter((k) => FIXED_ENGLISH_PREFIXES.some((p) => k.startsWith(p)))
     .filter((k) => en[k] !== zh[k])
-  eq('validation errors are identical in both dictionaries (errors are fixed English, they do not follow the interface language)', drift, [])
+  eq('normalize change strings are identical in both dictionaries (fixed English for agents)', drift, [])
   truthy('the number of message keys is sensible', ek.size > 40, `${ek.size} entries`)
 
   // Every key the source asks for has to exist. A key that does not raises no error anywhere:
@@ -3239,7 +3239,7 @@ function checkMessages() {
       }
       if (!/\.(js|jsx|mjs)$/.test(e.name)) continue
       const text = readFileSync(join(REPO, p), 'utf8')
-      for (const m of text.matchAll(/\b(?:tEn|t)\(\s*'([A-Za-z][\w.]*)'/g)) used.add(m[1])
+      for (const m of text.matchAll(/\b(?:tEn|tVal|t)\(\s*'([A-Za-z][\w.]*)'/g)) used.add(m[1])
       for (const m of text.matchAll(/\btranslate\(\s*[^,()]+,\s*'([A-Za-z][\w.]*)'/g)) used.add(m[1])
     }
   }
