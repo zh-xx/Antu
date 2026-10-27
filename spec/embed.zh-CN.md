@@ -70,6 +70,7 @@ shadow root 是开放的，正为此。
 | `initial` | 无 | 打开时的样子，先于读者保存的选择（`AntuViewState`，见下）；`headerFolded` 是 `shell.headerFolded` 的旧别名。键不在其中、类型不对、或值不在枚举内，`mount` 抛错 |
 | `locked` | 无 | 本次挂载强制的值（`AntuViewState`，见下）；对应的控件被隐藏，而不是禁用。键不在其中、类型不对、或值不在枚举内，`mount` 抛错 |
 | `persist` | `true` | 读者的改动哪些能写进 prefs 存储：`true`（全部）、`false`（都不写，只在挂载期间保留），或下表中名字组成的数组。名字不认识时 `mount` 抛错 |
+| `fitInsets` | 自动躲开控件 | `{ top?, right?, bottom?, left? }`，适应视图时留出的空白（CSS 像素，issue #166）。默认已躲开标签卡与底部胶囊；你写明的边会覆盖该边的自动测量 |
 | `onEvent` | 无 | `(event) => void`；处理函数抛错只会打印在控制台，不影响图 |
 
 ### 配置读者看到的样子
@@ -200,7 +201,7 @@ mount(el, spec, {
 
 | | |
 | --- | --- |
-| `validate(spec)` | `{ ok, errors, notes }`。每条错误开头写明字段：``nodes[2] (n-3): `kind` is "bogus", …``，原样交还给模型修改即可。`notes` 不是错误（只在没有错误时给出） |
+| `validate(spec, { lang }?)` | `{ ok, errors, notes }`。每条错误开头写明字段：``nodes[2] (n-3): `kind` is "bogus", …``，原样交还给模型修改即可。`notes` 不是错误（只在没有错误时给出）。默认英文（给 agent / MCP）；宿主面向读者时可传 `{ lang: 'zh' }` 得到中文（issue #166） |
 | `normalize(spec)` | `{ spec, changes }`：修正了“标记有误、内容无误”之处的副本，以及做了什么（见下文）。不修改传入的对象 |
 | `layout(spec, { kind, orientation })` | `antu layout` 的几何报告：`{ ok: true, type, kind, text, … }`，或 `{ ok: false, reason, errors? }` |
 | `kinds()` | `{ 类型: [画法, …] }`，第一种是默认画法 |

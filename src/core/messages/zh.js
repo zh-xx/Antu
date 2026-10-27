@@ -4,13 +4,12 @@
 //  The keys must match en.js exactly. A mismatch is reported by build/verify
 //  (tools/verify/run.mjs has a key-consistency check).
 //
-//  Note: **validation errors (err.*) are not translated in the Chinese dictionary.**
-//  Errors are fixed in English; see the i18n.js header and spec/mcp-server.md.
-//  The same-named keys are kept here so that key consistency can be checked mechanically;
-//  the values are always English.
+//  Validation / notes: Chinese lives in zh-validate.js for host UI
+//  (`validate(spec, { lang: 'zh' })`, issue 166). Default validate / MCP stay English.
 // ============================================================
 
 import { en } from './en.js'
+import { zhValidate } from './zh-validate.js'
 
 export const zh = {
   // ---------- common ----------
@@ -330,17 +329,13 @@ export const zh = {
   'rel.auto.agency': '代理',
   'rel.auto.other': '关联',
 
-  // ---------- validation errors and hints: fixed English, not translated here, taken straight from the English dictionary ----------
-  // The spread rather than rewriting each entry makes "there is only one English copy of the errors" obvious in the code.
-  //
-  // One prefix per major type: err. (fact field rules), perr. (procedure errors), phint. (procedure hints),
-  // note. (what validation passes but the author should see, e.g. a view that does not fit),
-  // rerr. / rhint. (relationship errors and hints), norm. (what `normalize` changed, issue 163).
-  // Validation error keys for a new major type get their own prefix, and **that prefix must be added here too**,
-  // or the key-consistency check reports "zh is missing a key", which is exactly its job.
+  // ---------- validation / notes: Chinese for hosts (`validate(spec, { lang: 'zh' })`, issue 166) ----------
+  // Agent / MCP default stays English via tEn / withValidateLang. `norm.*` (normalize change log) stays English.
+  // A new major type's validation prefix must be added to zh-validate.js and listed here, or key-consistency fails.
+  ...zhValidate,
   ...Object.fromEntries(
     Object.keys(en)
-      .filter((k) => k.startsWith('err.') || k.startsWith('perr.') || k.startsWith('phint.') || k.startsWith('note.') || k.startsWith('rerr.') || k.startsWith('rhint.') || k.startsWith('jerr.') || k.startsWith('jhint.') || k.startsWith('norm.'))
+      .filter((k) => k.startsWith('norm.'))
       .map((k) => [k, en[k]]),
   ),
 }

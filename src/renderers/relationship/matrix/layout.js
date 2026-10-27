@@ -21,7 +21,7 @@ import { validateRelationship, hintsOfRelationship, isDirected } from '../graph/
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { wrapLineCount } from '../../fact/cardGeometry.js'
 import { makePartyData } from '../partyData.js'
-import { tEn } from '../../../core/i18n.js'
+import { tEn, tVal } from '../../../core/i18n.js'
 import { TYPE } from '../../../theme/scale.js'
 
 // ---------- geometry ----------
@@ -89,7 +89,7 @@ export function buildMatrixGraph(spec, fields = {}) {
   const t = typeof fields?.t === 'function' ? fields.t : tEn
   const entities = spec.entities
   const relations = spec.relations
-  if (entities.length > SCALE_HINT_ENTITIES) hints.push(tEn('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
+  if (entities.length > SCALE_HINT_ENTITIES) hints.push(tVal('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
   const party = makePartyData(spec, t)
   const textIndex = new Map(relations.map((r, i) => [r.id, i]))
   const textOf = (r) => party.labelTexts[textIndex.get(r.id)]

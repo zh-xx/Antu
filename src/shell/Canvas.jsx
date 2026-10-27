@@ -17,7 +17,7 @@ import { ReactFlow, Background, Controls, MiniMap, Panel, getViewportForBounds, 
 
 import { useLang } from './LangContext.jsx'
 import { useTheme, themeVars } from '../theme/ThemeContext.jsx'
-import { FIT_PADDING, fitWidthZoom, fitZoom } from '../core/canvas.js'
+import { FIT_PADDING, fitWidthZoom, fitZoom, insetViewport, mergeInsets } from '../core/canvas.js'
 import { EXPORT_CLASS, exportPng as runExportPng, renderPng } from './exportPng.js'
 import { ShownSpecContext, useEnv, useUi, useViewValue } from './env.js'
 import { nodesOfItem, pinTargetOf } from '../core/items.js'
@@ -25,6 +25,7 @@ import { placeDock } from './dockPlace.js'
 import { frames } from './printPaper.js'
 import { usePrintHost } from './printHost.js'
 import { readSpecPref, specKeyOf, writeSpecPref } from './prefs.js'
+import { measureChromeInsets } from './chromeInsets.js'
 
 /** React Flow's minimap width plus its border, until one has been measured */
 const MINIMAP_WIDTH = 202
@@ -148,6 +149,13 @@ export default function Canvas({
   // viewport, only centred by the pan limits (a long chronicle opened at its very top, with no margin). onInit runs the
   // first fit when that happened.
   const fittedRef = useRef(false)
+  const { drawn, fitInsets: hostFitInsets } = useEnv()
+  // Fit clears the label card and the dock (issue 166): measure chrome, then let a host's fitInsets replace sides
+  const fitArea = (el) => {
+    if (!el?.clientWidth || !el?.clientHeight) return null
+    const insets = mergeInsets(measureChromeInsets(el), hostFitInsets)
+    return insetViewport(el.clientWidth, el.clientHeight, insets)
+  }
   const fit = (duration = 300) => {
     const { width, height } = graph.size
     if (!rfRef.current) return
@@ -155,35 +163,44 @@ export default function Canvas({
     // A diagram read top to bottom (fitWidth) opens at the zoom that fits its width (never above
     // 1:1), scrolled to the top; one shorter than the screen is centred instead.
     const el = canvasRef.current
-    if (fitWidth && width && height && el?.clientWidth && el?.clientHeight) {
-      const viewport = { width: el.clientWidth, height: el.clientHeight }
-      const zoom = fitWidthZoom(graph.size, viewport)
-      const top = (viewport.height * FIT_PADDING) / 4
-      const y = height * zoom + top * 2 <= viewport.height ? (viewport.height - height * zoom) / 2 : top
-      rfRef.current.setViewport({ x: (viewport.width - width * zoom) / 2, y, zoom }, { duration })
+    const area = fitArea(el)
+    if (fitWidth && width && height && area) {
+      const zoom = fitWidthZoom(graph.size, area)
+      const pad = (area.height * FIT_PADDING) / 4
+      const y =
+        height * zoom + pad * 2 <= area.height ? area.top + (area.height - height * zoom) / 2 : area.top + pad
+      rfRef.current.setViewport({ x: area.left + (area.width - width * zoom) / 2, y, zoom }, { duration })
       return
     }
-    // A wide picture read left to right (fitMinZoom: the procedure route map) does not shrink below a readable
-    // zoom: it opens at that zoom from the left, centred up and down, and the reader scrolls sideways
-    if (fitMinZoom && width && height && el?.clientWidth && el?.clientHeight) {
-      const viewport = { width: el.clientWidth, height: el.clientHeight }
-      const whole = fitZoom(graph.size, viewport)
+    // A wide picture read left to right (fitMinZoom: the procedure route map and flowchart) does not shrink
+    // below a readable zoom: it opens at that zoom from the left, centred up and down, and the reader scrolls
+    if (fitMinZoom && width && height && area) {
+      const whole = fitZoom(graph.size, area)
       if (whole < fitMinZoom) {
         const zoom = fitMinZoom
-        const x = (viewport.width * FIT_PADDING) / 4
-        const y = height * zoom + 16 <= viewport.height ? (viewport.height - height * zoom) / 2 : (viewport.height * FIT_PADDING) / 4
+        const x = area.left + (area.width * FIT_PADDING) / 4
+        const y =
+          height * zoom + 16 <= area.height
+            ? area.top + (area.height - height * zoom) / 2
+            : area.top + (area.height * FIT_PADDING) / 4
         rfRef.current.setViewport({ x, y, zoom }, { duration })
         return
       }
     }
     // A small picture does not open enlarged to fill the screen (fitMaxZoom: the relationship graph and focus view):
     // the text stays about the size it was drawn at, centred, and the rest of the screen is left empty
-    if (fitMaxZoom && width && height && el?.clientWidth && el?.clientHeight) {
-      const viewport = { width: el.clientWidth, height: el.clientHeight }
-      const whole = Math.min(viewport.width / (width * (1 + FIT_PADDING)), viewport.height / (height * (1 + FIT_PADDING)))
+    if (fitMaxZoom && width && height && area) {
+      const whole = Math.min(area.width / (width * (1 + FIT_PADDING)), area.height / (height * (1 + FIT_PADDING)))
       if (whole > fitMaxZoom) {
         const zoom = fitMaxZoom
-        rfRef.current.setViewport({ x: (viewport.width - width * zoom) / 2, y: (viewport.height - height * zoom) / 2, zoom }, { duration })
+        rfRef.current.setViewport(
+          {
+            x: area.left + (area.width - width * zoom) / 2,
+            y: area.top + (area.height - height * zoom) / 2,
+            zoom,
+          },
+          { duration },
+        )
         return
       }
     }
@@ -191,16 +208,16 @@ export default function Canvas({
     // observer of its own that can lag a frame or more behind a host's resize (a panel that goes from full screen to
     // a split), and fitBounds fitted that old width — the picture came out cut off on the right. No zoom floor here
     // either: minZoom is state that follows the same resize one render later, and a stale floor would clamp the fit.
-    if (width && height && el?.clientWidth && el?.clientHeight) {
-      const to = getViewportForBounds({ x: 0, y: 0, width, height }, el.clientWidth, el.clientHeight, 0.01, MAX_ZOOM, FIT_PADDING)
-      rfRef.current.setViewport(to, { duration })
+    // Insets keep the fitted picture clear of the label card and the dock capsule (issue 166).
+    if (width && height && area) {
+      const to = getViewportForBounds({ x: 0, y: 0, width, height }, area.width, area.height, 0.01, MAX_ZOOM, FIT_PADDING)
+      rfRef.current.setViewport({ ...to, x: to.x + area.left, y: to.y + area.top }, { duration })
       return
     }
     if (width && height) rfRef.current.fitBounds({ x: 0, y: 0, width, height }, { padding: FIT_PADDING, duration })
     else rfRef.current.fitView({ padding: FIT_PADDING, duration })
   }
   const firstFitRef = useRef(true)
-  const { drawn } = useEnv()
   // whether the first fit has run: a host's select and focus wait for it (held by the command bus till then)
   const [placed, setPlaced] = useState(false)
   useEffect(() => {
@@ -253,8 +270,10 @@ export default function Canvas({
     if (printing) return 0.01
     const { width, height } = canvasSize
     if (!width || !height) return 0.1
-    return Math.max(fitZoom(graph.size, { width, height }), 0.05)
-  }, [printing, canvasSize, graph])
+    // Same clear area fit() uses, so the floor cannot leave content under the chrome
+    const area = fitArea(canvasRef.current) || { width, height }
+    return Math.max(fitZoom(graph.size, area), 0.05)
+  }, [printing, canvasSize, graph, hostFitInsets])
 
   // The whole picture into the sheet, ignoring the kind's own fit rules: a route map opens at a
   // readable zoom on screen and the reader scrolls sideways, but that would crop the paper.

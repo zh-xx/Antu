@@ -10,7 +10,7 @@
 //  `approx` is given one unit of its own precision of room on each side.
 // ============================================================
 
-import { tEn } from '../../core/i18n.js'
+import { tVal } from '../../core/i18n.js'
 
 const FORM = /^(\d{4})(?:-(\d{2})(?:-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?)?)?$/
 
@@ -73,7 +73,7 @@ export function dateOrderNotes(spec) {
     if (previous && span.to <= previous.span.from) {
       const here = dated.find((e) => e.span.to <= previous.span.from) ?? dated[0]
       notes.push(
-        tEn('note.dateOrder', {
+        tVal('note.dateOrder', {
           at: `slots[${si}].events[${here.ei}]`,
           id: here.event.id,
           date: here.event.date,

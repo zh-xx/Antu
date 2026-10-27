@@ -12,9 +12,9 @@
 //       of the interface language. Paired examples: examples/fact/*.zh-CN.json
 //       and *.en.json.
 //
-//  Why validation errors are fixed in English: errors mainly go into the
-//  agent's context. English costs fewer tokens and matches MCP ecosystem
-//  convention. See spec/mcp-server.md.
+//  Validation errors default to English (agent / MCP context: fewer tokens, ecosystem
+//  convention — see spec/mcp-server.md). A host that shows "why no diagram" to readers
+//  may pass `validate(spec, { lang: 'zh' })` (issue 166); that uses `tVal` below.
 // ============================================================
 
 import { MESSAGES } from './messages/index.js'
@@ -22,6 +22,9 @@ import { MESSAGES } from './messages/index.js'
 /** Supported languages. The first is the fallback language. */
 export const LANGS = ['en', 'zh']
 export const FALLBACK_LANG = 'en'
+
+/** Language of the current `validate` / `notes` call; default English for agents */
+let validateLang = FALLBACK_LANG
 
 /** The interface language has its own storage key, not mixed into antu.prefs (which records only rendering preferences the user actually changed) */
 export const LANG_KEY = 'antu.lang'
@@ -124,8 +127,27 @@ export function translate(lang, key, vars) {
 /**
  * A fixed-English word retriever.
  *
- * For the validation layer: errors go into the agent's context and do not follow
- * the interface language. This is **deliberate**, not a missing parameter. See
- * the file header.
+ * Default for agents / MCP. Hosts that need Chinese call `validate(spec, { lang: 'zh' })`,
+ * which runs under `withValidateLang` so validators use `tVal` instead.
  */
 export const tEn = (key, vars) => translate('en', key, vars)
+
+/**
+ * Run `fn` so validation / notes messages use `lang` (issue 166). Nested calls restore the previous lang.
+ * @template T
+ * @param {string | undefined} lang
+ * @param {() => T} fn
+ * @returns {T}
+ */
+export function withValidateLang(lang, fn) {
+  const prev = validateLang
+  validateLang = lang ? normalizeLang(lang) : FALLBACK_LANG
+  try {
+    return fn()
+  } finally {
+    validateLang = prev
+  }
+}
+
+/** Validation / notes text: follows `withValidateLang`, otherwise English */
+export const tVal = (key, vars) => translate(validateLang, key, vars)

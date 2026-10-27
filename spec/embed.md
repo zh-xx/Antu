@@ -76,6 +76,7 @@ What is drawn lives in the element's **shadow root**, not among its children: `e
 | `initial` | none | how it opens, ahead of the reader's stored choices (`AntuViewState`, below); `headerFolded` is the old alias of `shell.headerFolded`. An unknown key, a wrong type or a value outside an enum makes `mount` throw |
 | `locked` | none | values forced for this mount (`AntuViewState`, below); their controls are hidden, not disabled. An unknown key, a wrong type or a value outside an enum makes `mount` throw |
 | `persist` | `true` | which of the reader's changes reach the prefs store: `true` (all), `false` (none: kept while mounted), or an array of the names below. An unknown name makes `mount` throw |
+| `fitInsets` | auto chrome | `{ top?, right?, bottom?, left? }` in CSS pixels kept clear when fitting (issue #166). Fit already clears the label card and the dock capsule; each side you set replaces that auto measure for that side |
 | `onEvent` | none | `(event) => void`; a handler that throws is reported on the console and does not stop the diagram |
 
 ### Configuring what a reader sees
@@ -211,7 +212,7 @@ The checks, notes and geometry report of the command line and the MCP server (`t
 
 | | |
 | --- | --- |
-| `validate(spec)` | `{ ok, errors, notes }`. Each error names its field: ``nodes[2] (n-3): `kind` is "bogus", …`` — give them back to the model as they are. `notes` are not errors (given only when there are none) |
+| `validate(spec, { lang }?)` | `{ ok, errors, notes }`. Each error names its field: ``nodes[2] (n-3): `kind` is "bogus", …`` — give them back to the model as they are. `notes` are not errors (given only when there are none). Default English (agents / MCP); pass `{ lang: 'zh' }` for Chinese host UI messages (issue #166) |
 | `normalize(spec)` | `{ spec, changes }`: a copy with what is wrong in the marks but not in the content repaired, and what was done (below). The input is not modified |
 | `layout(spec, { kind, orientation })` | the geometry report of `antu layout`: `{ ok: true, type, kind, text, … }`, or `{ ok: false, reason, errors? }` |
 | `kinds()` | `{ type: [kind, …] }`, the first kind being the one a diagram opens in |

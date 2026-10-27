@@ -17,7 +17,7 @@
 //   - there are no views: one diagram, one placement
 // ============================================================
 
-import { tEn } from '../../../core/i18n.js'
+import { tVal } from '../../../core/i18n.js'
 import { analyzeFact, SIDE } from './rules.js'
 
 export { SIDE }
@@ -91,7 +91,7 @@ export function buildGrid(spec) {
 
   // ---------- capacity: the axis has only two sides plus the middle ----------
   if (groups.length > MAX_GROUPS) {
-    errors.push(tEn('err.tooManyGroups', { at: 'groups', max: MAX_GROUPS, actual: groups.length }))
+    errors.push(tVal('err.tooManyGroups', { at: 'groups', max: MAX_GROUPS, actual: groups.length }))
   }
 
   // Without an array of slots there is nowhere to place anything; the data error is already reported.
@@ -146,7 +146,7 @@ export function buildGrid(spec) {
     const row = rows[slotIndex]
     if (row.cells.has(key)) {
       const other = row.cells.get(key)
-      errors.push(tEn('err.oneEventPerCell', { at: `slots[${slotIndex}]`, a: other.id, b: event.id }))
+      errors.push(tVal('err.oneEventPerCell', { at: `slots[${slotIndex}]`, a: other.id, b: event.id }))
     } else {
       row.cells.set(key, event)
     }

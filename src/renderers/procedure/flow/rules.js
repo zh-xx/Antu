@@ -33,7 +33,7 @@ export const DOMAINS = [
   'other',
 ]
 
-import { tEn } from '../../../core/i18n.js'
+import { tVal } from '../../../core/i18n.js'
 import { labelCut } from './metrics.js'
 import { textEm } from '../../fact/cardGeometry.js'
 
@@ -58,19 +58,19 @@ export function ruleEndIds(spec) {
  */
 export function validateProcedure(spec) {
   const errors = []
-  if (!isObj(spec)) return [tEn('err.specNotObject')]
+  if (!isObj(spec)) return [tVal('err.specNotObject')]
 
   if (spec.domain !== undefined && !DOMAINS.includes(spec.domain)) {
-    errors.push(tEn('perr.domainNotInEnum', { value: spec.domain, allowed: DOMAINS.join(' / ') }))
+    errors.push(tVal('perr.domainNotInEnum', { value: spec.domain, allowed: DOMAINS.join(' / ') }))
   }
 
   const rawNodes = spec.nodes
   const rawEdges = spec.edges
   if (!Array.isArray(rawNodes) || rawNodes.length === 0) {
-    errors.push(tEn('perr.nodesEmpty'))
+    errors.push(tVal('perr.nodesEmpty'))
   }
   if (!Array.isArray(rawEdges) || rawEdges.length === 0) {
-    errors.push(tEn('perr.edgesEmpty'))
+    errors.push(tVal('perr.edgesEmpty'))
   }
   if (errors.length) return errors
 
@@ -78,28 +78,28 @@ export function validateProcedure(spec) {
   const byId = new Map()
   rawNodes.forEach((n, i) => {
     if (!isObj(n)) {
-      errors.push(tEn('perr.notObject', { at: `nodes[${i}]` }))
+      errors.push(tVal('perr.notObject', { at: `nodes[${i}]` }))
       return
     }
     const at = `nodes[${i}]` + (n.id ? ` (${n.id})` : '')
     if (!n.id || typeof n.id !== 'string') {
-      errors.push(tEn('perr.required', { at, field: 'id' }))
+      errors.push(tVal('perr.required', { at, field: 'id' }))
       return
     }
-    if (byId.has(n.id)) errors.push(tEn('perr.duplicateNodeId', { at, id: n.id }))
+    if (byId.has(n.id)) errors.push(tVal('perr.duplicateNodeId', { at, id: n.id }))
     else byId.set(n.id, n)
 
     if (!KINDS.includes(n.kind)) {
-      errors.push(tEn('perr.badKind', { at, value: n.kind, allowed: KINDS.join(' / ') }))
+      errors.push(tVal('perr.badKind', { at, value: n.kind, allowed: KINDS.join(' / ') }))
     }
     if (!n.label || typeof n.label !== 'string') {
-      errors.push(tEn('perr.required', { at, field: 'label' }))
+      errors.push(tVal('perr.required', { at, field: 'label' }))
     }
     if (n.outcome !== undefined && !OUTCOMES.includes(n.outcome)) {
-      errors.push(tEn('perr.badOutcome', { at, value: n.outcome, allowed: OUTCOMES.join(' / ') }))
+      errors.push(tVal('perr.badOutcome', { at, value: n.outcome, allowed: OUTCOMES.join(' / ') }))
     }
     if (n.detail !== undefined && typeof n.detail !== 'string') {
-      errors.push(tEn('perr.mustBeString', { at, field: 'detail' }))
+      errors.push(tVal('perr.mustBeString', { at, field: 'detail' }))
     }
   })
 
@@ -110,14 +110,14 @@ export function validateProcedure(spec) {
   for (const n of byId.values()) {
     for (const id of list(n.actorIds)) {
       if (!actorIds.has(id))
-        errors.push(tEn('perr.badRef', { at: `nodes (${n.id})`, field: 'actorIds', kind: 'actor', id }))
+        errors.push(tVal('perr.badRef', { at: `nodes (${n.id})`, field: 'actorIds', kind: 'actor', id }))
     }
     for (const id of list(n.sourceIds)) {
       if (!sourceIds.has(id))
-        errors.push(tEn('perr.badRef', { at: `nodes (${n.id})`, field: 'sourceIds', kind: 'source', id }))
+        errors.push(tVal('perr.badRef', { at: `nodes (${n.id})`, field: 'sourceIds', kind: 'source', id }))
     }
     if (n.stageId !== undefined && !stageIds.has(n.stageId)) {
-      errors.push(tEn('perr.badRef', { at: `nodes (${n.id})`, field: 'stageId', kind: 'stage', id: n.stageId }))
+      errors.push(tVal('perr.badRef', { at: `nodes (${n.id})`, field: 'stageId', kind: 'stage', id: n.stageId }))
     }
   }
 
@@ -127,35 +127,35 @@ export function validateProcedure(spec) {
   // only a rule that ends the contract names the end it leads to (`endId`).
   if (spec.rules !== undefined) {
     if (!Array.isArray(spec.rules)) {
-      errors.push(tEn('perr.rulesNotArray'))
+      errors.push(tVal('perr.rulesNotArray'))
     } else {
       const ruleIds = new Set()
       spec.rules.forEach((r, i) => {
         if (!isObj(r)) {
-          errors.push(tEn('perr.notObject', { at: `rules[${i}]` }))
+          errors.push(tVal('perr.notObject', { at: `rules[${i}]` }))
           return
         }
         const at = `rules[${i}]` + (r.id ? ` (${r.id})` : '')
-        if (!r.id || typeof r.id !== 'string') errors.push(tEn('perr.required', { at, field: 'id' }))
-        else if (ruleIds.has(r.id) || byId.has(r.id)) errors.push(tEn('perr.duplicateRuleId', { at, id: r.id }))
+        if (!r.id || typeof r.id !== 'string') errors.push(tVal('perr.required', { at, field: 'id' }))
+        else if (ruleIds.has(r.id) || byId.has(r.id)) errors.push(tVal('perr.duplicateRuleId', { at, id: r.id }))
         else ruleIds.add(r.id)
         const whens = Array.isArray(r.when) ? r.when : [r.when]
         if (whens.length === 0 || whens.some((w) => typeof w !== 'string' || !w.trim())) {
-          errors.push(tEn('perr.ruleWhen', { at }))
+          errors.push(tVal('perr.ruleWhen', { at }))
         }
-        if (!r.then || typeof r.then !== 'string') errors.push(tEn('perr.required', { at, field: 'then' }))
+        if (!r.then || typeof r.then !== 'string') errors.push(tVal('perr.required', { at, field: 'then' }))
         if (r.outcome !== undefined && !OUTCOMES.includes(r.outcome)) {
-          errors.push(tEn('perr.badOutcome', { at, value: r.outcome, allowed: OUTCOMES.join(' / ') }))
+          errors.push(tVal('perr.badOutcome', { at, value: r.outcome, allowed: OUTCOMES.join(' / ') }))
         }
         for (const id of list(r.stageIds)) {
-          if (!stageIds.has(id)) errors.push(tEn('perr.badRef', { at, field: 'stageIds', kind: 'stage', id }))
+          if (!stageIds.has(id)) errors.push(tVal('perr.badRef', { at, field: 'stageIds', kind: 'stage', id }))
         }
         for (const id of list(r.sourceIds)) {
-          if (!sourceIds.has(id)) errors.push(tEn('perr.badRef', { at, field: 'sourceIds', kind: 'source', id }))
+          if (!sourceIds.has(id)) errors.push(tVal('perr.badRef', { at, field: 'sourceIds', kind: 'source', id }))
         }
         if (r.endId !== undefined) {
-          if (!byId.has(r.endId)) errors.push(tEn('perr.badRef', { at, field: 'endId', kind: 'node', id: r.endId }))
-          else if (byId.get(r.endId).kind !== 'end') errors.push(tEn('perr.ruleEndNotEnd', { at, id: r.endId }))
+          if (!byId.has(r.endId)) errors.push(tVal('perr.badRef', { at, field: 'endId', kind: 'node', id: r.endId }))
+          else if (byId.get(r.endId).kind !== 'end') errors.push(tVal('perr.ruleEndNotEnd', { at, id: r.endId }))
         }
       })
     }
@@ -171,20 +171,20 @@ export function validateProcedure(spec) {
   const seenEdge = new Set()
   rawEdges.forEach((e, i) => {
     if (!isObj(e)) {
-      errors.push(tEn('perr.notObject', { at: `edges[${i}]` }))
+      errors.push(tVal('perr.notObject', { at: `edges[${i}]` }))
       return
     }
     const at = `edges[${i}]`
     const from = e.from
     const to = e.to
-    if (!byId.has(from)) errors.push(tEn('perr.badFrom', { at, id: from }))
-    if (!byId.has(to)) errors.push(tEn('perr.badTo', { at, id: to }))
-    if (from !== undefined && from === to) errors.push(tEn('perr.selfLoop', { at, id: from }))
+    if (!byId.has(from)) errors.push(tVal('perr.badFrom', { at, id: from }))
+    if (!byId.has(to)) errors.push(tVal('perr.badTo', { at, id: to }))
+    if (from !== undefined && from === to) errors.push(tVal('perr.selfLoop', { at, id: from }))
     if (!byId.has(from) || !byId.has(to)) return
 
     const key = `${from}|${to}|${e.condition ?? ''}`
     if (seenEdge.has(key)) {
-      errors.push(tEn('perr.duplicateEdge', { at, from, to }))
+      errors.push(tVal('perr.duplicateEdge', { at, from, to }))
     }
     seenEdge.add(key)
     out.get(from).push({ ...e, index: i })
@@ -205,7 +205,7 @@ export function validateProcedure(spec) {
   if (sources.length === 0) {
     // With no entry, the later rules (reachability, ends) cannot be computed at
     // all, and there is no point flooding the output with them
-    errors.push(tEn('perr.noEntry'))
+    errors.push(tVal('perr.noEntry'))
     return errors
   }
   // The entries are the start nodes. A node with no incoming edge that is not a start is not a
@@ -228,23 +228,23 @@ export function validateProcedure(spec) {
     return seen
   }
   const reach = flood([...entries, ...ruleEnds])
-  for (const id of orphans) errors.push(tEn('perr.orphan', { id, label: byId.get(id).label }))
+  for (const id of orphans) errors.push(tVal('perr.orphan', { id, label: byId.get(id).label }))
   // What hangs off a floating node is not reported once more, node by node: fixing the one
   // above fixes them all
   const hanging = flood(orphans)
   for (const id of byId.keys()) {
     if (!reach.has(id) && !hanging.has(id) && !isNote(id)) {
-      errors.push(tEn('perr.unreachable', { id }))
+      errors.push(tVal('perr.unreachable', { id }))
     }
   }
 
   if (![...byId.values()].some((n) => n.kind === 'end')) {
-    errors.push(tEn('perr.noEnd'))
+    errors.push(tVal('perr.noEnd'))
   }
   for (const n of byId.values()) {
     if (n.kind === 'end' || n.kind === 'note') continue
     if (out.get(n.id).length === 0) {
-      errors.push(tEn('perr.deadEnd', { id: n.id, label: n.label }))
+      errors.push(tVal('perr.deadEnd', { id: n.id, label: n.label }))
     }
   }
 
@@ -253,11 +253,11 @@ export function validateProcedure(spec) {
     if (n.kind !== 'decision') continue
     const outs = out.get(n.id)
     if (outs.length < 2) {
-      errors.push(tEn('perr.decisionTooFewOut', { id: n.id, n: outs.length }))
+      errors.push(tVal('perr.decisionTooFewOut', { id: n.id, n: outs.length }))
     }
     for (const e of outs) {
       if (!e.condition) {
-        errors.push(tEn('perr.decisionNoCondition', { id: n.id, index: e.index, to: e.to }))
+        errors.push(tVal('perr.decisionNoCondition', { id: n.id, index: e.index, to: e.to }))
       }
     }
   }
@@ -267,7 +267,7 @@ export function validateProcedure(spec) {
   for (const [from, list_] of out) {
     const marked = list_.filter((e) => e.main === true)
     if (marked.length > 1) {
-      errors.push(tEn('perr.tooManyMain', { id: from, n: marked.length }))
+      errors.push(tVal('perr.tooManyMain', { id: from, n: marked.length }))
     }
     if (marked.length === 1) mains.set(from, marked[0])
   }
@@ -288,7 +288,7 @@ export function validateProcedure(spec) {
       cur = next
     }
     if (broken) {
-      errors.push(tEn('perr.mainBroken', { id: cur }))
+      errors.push(tVal('perr.mainBroken', { id: cur }))
     }
   }
 
@@ -325,7 +325,7 @@ export function hintsOfProcedure(spec) {
     if (!a || !b) continue
     if (order.has(a.stageId) && order.has(b.stageId) && order.get(a.stageId) > order.get(b.stageId)) {
       hints.push(
-        tEn('phint.stageBackwards', {
+        tVal('phint.stageBackwards', {
           from: e.from,
           fromStage: a.stageId,
           to: e.to,
@@ -342,7 +342,7 @@ export function hintsOfProcedure(spec) {
     const onSpine = inn.get(n.id).some((e) => e.main === true)
     const hasMainOut = out.get(n.id).some((e) => e.main === true)
     if (onSpine && out.get(n.id).length >= 2 && !hasMainOut) {
-      hints.push(tEn('phint.decisionOnSpine', { id: n.id, label: n.label }))
+      hints.push(tVal('phint.decisionOnSpine', { id: n.id, label: n.label }))
     }
   }
 
@@ -350,7 +350,7 @@ export function hintsOfProcedure(spec) {
   // label with the detail in `detail` reads better and is not cut
   for (const n of byId.values()) {
     if (typeof n.label === 'string' && labelCut(n.label, n.kind)) {
-      hints.push(tEn('phint.longLabel', { id: n.id, n: [...n.label].length }))
+      hints.push(tVal('phint.longLabel', { id: n.id, n: [...n.label].length }))
     }
   }
 
@@ -359,7 +359,7 @@ export function hintsOfProcedure(spec) {
   // already a sentence stands alone)
   for (const n of byId.values()) {
     if (n.kind === 'note' && !(typeof n.detail === 'string' && n.detail.trim()) && textEm(String(n.label ?? '')) < NOTE_BARE_EM) {
-      hints.push(tEn('phint.noteNoDetail', { id: n.id, label: n.label }))
+      hints.push(tVal('phint.noteNoDetail', { id: n.id, label: n.label }))
     }
   }
 
@@ -373,7 +373,7 @@ export function hintsOfProcedure(spec) {
     (id) => inn.get(id).length === 0 && byId.get(id).kind === 'start' && !ruleEnds.has(id),
   )
   if (entries.length > 1) {
-    hints.push(tEn('phint.multipleEntries', { n: entries.length, ids: entries.join(', ') }))
+    hints.push(tVal('phint.multipleEntries', { n: entries.length, ids: entries.join(', ') }))
   }
   return hints
 }

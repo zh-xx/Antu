@@ -28,7 +28,7 @@ import { validateRelationship, hintsOfRelationship, isDirected } from '../graph/
 import { labelOf, permutations } from '../graph/layout.js'
 import { sizeOf, labelBox, PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
-import { tEn } from '../../../core/i18n.js'
+import { tEn, tVal } from '../../../core/i18n.js'
 
 /** The rings are ellipses, wider than tall (a screen is) */
 export const ASPECT = 1.7
@@ -466,7 +466,7 @@ export function buildFocusGraph(spec, fields = {}) {
   const t = typeof fields?.t === 'function' ? fields.t : tEn
   const entities = spec.entities
   const relations = spec.relations
-  if (entities.length > SCALE_HINT_ENTITIES) hints.push(tEn('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
+  if (entities.length > SCALE_HINT_ENTITIES) hints.push(tVal('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
 
   const groups = spec.groups ?? []
   const groupIndex = (e) => groups.findIndex((g) => g.id === e.groupId)

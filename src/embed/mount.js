@@ -77,6 +77,8 @@ const isItem = (spec, id) => itemOf(spec, id)?.item.id === id
  * @param {boolean|string[]} [options.persist]  which of the reader's changes reach the prefs store: true (all,
  *                                      the default), false (none), or the names in spec/embed.md
  * @param {(event: object) => void} [options.onEvent]   select, kindchange, themechange, invalid (spec/embed.md)
+ * @param {{ top?: number, right?: number, bottom?: number, left?: number }} [options.fitInsets]
+ *                                      extra room (px) kept clear when fitting; replaces the auto measure per side
  */
 export function mount(el, spec, options = {}) {
   if (!el || typeof el.attachShadow !== 'function') throw new TypeError('antu mount: the first argument must be an element')
@@ -140,6 +142,7 @@ export function mount(el, spec, options = {}) {
     initial: normalizeInitial(options.initial ?? {}),
     locked: options.locked ?? {},
     persist: options.persist === undefined ? true : options.persist,
+    fitInsets: options.fitInsets ?? null,
     emit: (event) => {
       if (event?.type === 'invalid') {
         drawnNow = false

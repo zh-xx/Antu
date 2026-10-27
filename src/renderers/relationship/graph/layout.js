@@ -39,7 +39,7 @@ import { straightenJog } from '../../../core/links.js'
 import { routeLink } from '../../procedure/flow/router.js'
 import { toReal } from '../../procedure/flow/columns.js'
 import { textEm } from '../../fact/cardGeometry.js'
-import { tEn } from '../../../core/i18n.js'
+import { tEn, tVal } from '../../../core/i18n.js'
 import { labelOf } from './labelOf.js'
 import { makePartyData } from '../partyData.js'
 import {
@@ -244,10 +244,10 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   const showGroups = fields?.groups !== false && presentGroups.length > 0
 
   if (entities.length > SCALE_HINT_ENTITIES) {
-    hints.push(tEn('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
+    hints.push(tVal('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
   }
   if (relations.length > SCALE_HINT_RELATIONS) {
-    hints.push(tEn('rhint.tooManyRelations', { n: relations.length, limit: SCALE_HINT_RELATIONS }))
+    hints.push(tVal('rhint.tooManyRelations', { n: relations.length, limit: SCALE_HINT_RELATIONS }))
   }
 
   // ── the camps, in the order they stand ──

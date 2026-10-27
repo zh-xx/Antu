@@ -10,7 +10,7 @@
 //  Plain JS, no React, so the Node side (MCP) and the unit tests can import it directly.
 // ============================================================
 
-import { tEn } from '../../../core/i18n.js'
+import { tVal } from '../../../core/i18n.js'
 import { SOURCE_TYPE_KEYS } from '../../../core/labels.js'
 
 /** Entity kinds. They fix the shape and colour of the box and nothing else. */
@@ -46,34 +46,34 @@ export const isDirected = (r) => (typeof r?.directed === 'boolean' ? r.directed 
  */
 export function validateRelationship(spec) {
   const errors = []
-  if (!isObj(spec)) return [tEn('err.specNotObject')]
+  if (!isObj(spec)) return [tVal('err.specNotObject')]
 
   // Rule 12: asOf is a date
   if (spec.asOf !== undefined && (typeof spec.asOf !== 'string' || !ISO_RE.test(spec.asOf))) {
-    errors.push(tEn('rerr.badAsOf', { value: String(spec.asOf) }))
+    errors.push(tVal('rerr.badAsOf', { value: String(spec.asOf) }))
   }
 
   // The title is shown at the top left and names the diagram's remembered choices
-  if (typeof spec.title !== 'string' || !spec.title.trim()) errors.push(tEn('rerr.required', { at: 'the diagram', field: 'title' }))
+  if (typeof spec.title !== 'string' || !spec.title.trim()) errors.push(tVal('rerr.required', { at: 'the diagram', field: 'title' }))
 
   // Rule 1: the two lists that make a diagram
-  if (!Array.isArray(spec.entities) || spec.entities.length === 0) errors.push(tEn('rerr.entitiesEmpty'))
-  if (!Array.isArray(spec.relations) || spec.relations.length === 0) errors.push(tEn('rerr.relationsEmpty'))
+  if (!Array.isArray(spec.entities) || spec.entities.length === 0) errors.push(tVal('rerr.entitiesEmpty'))
+  if (!Array.isArray(spec.relations) || spec.relations.length === 0) errors.push(tVal('rerr.relationsEmpty'))
   if (errors.length) return errors
 
   // ── diagram-level lists a reference can point into ──
   const groupIds = new Set()
   if (spec.groups !== undefined) {
     if (!Array.isArray(spec.groups)) {
-      errors.push(tEn('rerr.notArray', { field: 'groups' }))
+      errors.push(tVal('rerr.notArray', { field: 'groups' }))
     } else {
       spec.groups.forEach((g, i) => {
         const at = `groups[${i}]` + (isObj(g) && g.id ? ` (${g.id})` : '')
-        if (!isObj(g)) return void errors.push(tEn('rerr.notObject', { at: `groups[${i}]` }))
-        if (!g.id || typeof g.id !== 'string') errors.push(tEn('rerr.required', { at, field: 'id' }))
-        else if (groupIds.has(g.id)) errors.push(tEn('rerr.duplicateId', { at, id: g.id, what: 'group' }))
+        if (!isObj(g)) return void errors.push(tVal('rerr.notObject', { at: `groups[${i}]` }))
+        if (!g.id || typeof g.id !== 'string') errors.push(tVal('rerr.required', { at, field: 'id' }))
+        else if (groupIds.has(g.id)) errors.push(tVal('rerr.duplicateId', { at, id: g.id, what: 'group' }))
         else groupIds.add(g.id)
-        if (!g.label || typeof g.label !== 'string') errors.push(tEn('rerr.required', { at, field: 'label' }))
+        if (!g.label || typeof g.label !== 'string') errors.push(tVal('rerr.required', { at, field: 'label' }))
       })
     }
   }
@@ -81,16 +81,16 @@ export function validateRelationship(spec) {
   const sourceIds = new Set()
   if (spec.sources !== undefined) {
     if (!Array.isArray(spec.sources)) {
-      errors.push(tEn('rerr.notArray', { field: 'sources' }))
+      errors.push(tVal('rerr.notArray', { field: 'sources' }))
     } else {
       spec.sources.forEach((src, i) => {
         const at = `sources[${i}]` + (isObj(src) && src.id ? ` (${src.id})` : '')
-        if (!isObj(src)) return void errors.push(tEn('rerr.notObject', { at: `sources[${i}]` }))
-        if (!src.id || typeof src.id !== 'string') errors.push(tEn('rerr.required', { at, field: 'id' }))
-        else if (sourceIds.has(src.id)) errors.push(tEn('rerr.duplicateId', { at, id: src.id, what: 'source' }))
+        if (!isObj(src)) return void errors.push(tVal('rerr.notObject', { at: `sources[${i}]` }))
+        if (!src.id || typeof src.id !== 'string') errors.push(tVal('rerr.required', { at, field: 'id' }))
+        else if (sourceIds.has(src.id)) errors.push(tVal('rerr.duplicateId', { at, id: src.id, what: 'source' }))
         else sourceIds.add(src.id)
-        if (!src.name || typeof src.name !== 'string') errors.push(tEn('rerr.required', { at, field: 'name' }))
-        if (!Object.keys(SOURCE_TYPE_KEYS).includes(src.type)) errors.push(tEn('rerr.badSourceType', { at, value: String(src.type), allowed: Object.keys(SOURCE_TYPE_KEYS).join(' / ') }))
+        if (!src.name || typeof src.name !== 'string') errors.push(tVal('rerr.required', { at, field: 'name' }))
+        if (!Object.keys(SOURCE_TYPE_KEYS).includes(src.type)) errors.push(tVal('rerr.badSourceType', { at, value: String(src.type), allowed: Object.keys(SOURCE_TYPE_KEYS).join(' / ') }))
       })
     }
   }
@@ -98,26 +98,26 @@ export function validateRelationship(spec) {
   // ── entities (rules 2 to 4, 8) ──
   const entityById = new Map()
   spec.entities.forEach((e, i) => {
-    if (!isObj(e)) return void errors.push(tEn('rerr.notObject', { at: `entities[${i}]` }))
+    if (!isObj(e)) return void errors.push(tVal('rerr.notObject', { at: `entities[${i}]` }))
     const at = `entities[${i}]` + (e.id ? ` (${e.id})` : '')
     if (!e.id || typeof e.id !== 'string') {
-      errors.push(tEn('rerr.required', { at, field: 'id' }))
+      errors.push(tVal('rerr.required', { at, field: 'id' }))
       return
     }
-    if (entityById.has(e.id)) errors.push(tEn('rerr.duplicateId', { at, id: e.id, what: 'entity' }))
+    if (entityById.has(e.id)) errors.push(tVal('rerr.duplicateId', { at, id: e.id, what: 'entity' }))
     else entityById.set(e.id, e)
     if (!ENTITY_KINDS.includes(e.kind)) {
-      errors.push(tEn('rerr.badEntityKind', { at, value: String(e.kind), allowed: ENTITY_KINDS.join(' / ') }))
+      errors.push(tVal('rerr.badEntityKind', { at, value: String(e.kind), allowed: ENTITY_KINDS.join(' / ') }))
     }
-    if (!e.label || typeof e.label !== 'string') errors.push(tEn('rerr.required', { at, field: 'label' }))
+    if (!e.label || typeof e.label !== 'string') errors.push(tVal('rerr.required', { at, field: 'label' }))
     for (const f of ['role', 'detail']) {
-      if (e[f] !== undefined && typeof e[f] !== 'string') errors.push(tEn('rerr.mustBeString', { at, field: f }))
+      if (e[f] !== undefined && typeof e[f] !== 'string') errors.push(tVal('rerr.mustBeString', { at, field: f }))
     }
     if (e.groupId !== undefined && !groupIds.has(e.groupId)) {
-      errors.push(tEn('rerr.badRef', { at, field: 'groupId', kind: 'group', id: String(e.groupId) }))
+      errors.push(tVal('rerr.badRef', { at, field: 'groupId', kind: 'group', id: String(e.groupId) }))
     }
     for (const id of list(e.sourceIds)) {
-      if (!sourceIds.has(id)) errors.push(tEn('rerr.badRef', { at, field: 'sourceIds', kind: 'source', id: String(id) }))
+      if (!sourceIds.has(id)) errors.push(tVal('rerr.badRef', { at, field: 'sourceIds', kind: 'source', id: String(id) }))
     }
   })
 
@@ -125,47 +125,47 @@ export function validateRelationship(spec) {
   const relationById = new Map()
   const seenPair = new Set()
   spec.relations.forEach((r, i) => {
-    if (!isObj(r)) return void errors.push(tEn('rerr.notObject', { at: `relations[${i}]` }))
+    if (!isObj(r)) return void errors.push(tVal('rerr.notObject', { at: `relations[${i}]` }))
     const at = `relations[${i}]` + (r.id ? ` (${r.id})` : '')
-    if (!r.id || typeof r.id !== 'string') errors.push(tEn('rerr.required', { at, field: 'id' }))
-    else if (relationById.has(r.id)) errors.push(tEn('rerr.duplicateId', { at, id: r.id, what: 'relation' }))
+    if (!r.id || typeof r.id !== 'string') errors.push(tVal('rerr.required', { at, field: 'id' }))
+    else if (relationById.has(r.id)) errors.push(tVal('rerr.duplicateId', { at, id: r.id, what: 'relation' }))
     else relationById.set(r.id, r)
 
     if (!RELATION_KINDS.includes(r.kind)) {
-      errors.push(tEn('rerr.badRelationKind', { at, value: String(r.kind), allowed: RELATION_KINDS.join(' / ') }))
+      errors.push(tVal('rerr.badRelationKind', { at, value: String(r.kind), allowed: RELATION_KINDS.join(' / ') }))
     }
     // Rule 5 and 6: both ends exist, and are two different entities
     for (const end of ['from', 'to']) {
       if (typeof r[end] !== 'string' || !entityById.has(r[end])) {
-        errors.push(tEn('rerr.badEnd', { at, end, id: String(r[end]) }))
+        errors.push(tVal('rerr.badEnd', { at, end, id: String(r[end]) }))
       }
     }
-    if (typeof r.from === 'string' && r.from === r.to) errors.push(tEn('rerr.selfRelation', { at, id: r.from }))
+    if (typeof r.from === 'string' && r.from === r.to) errors.push(tVal('rerr.selfRelation', { at, id: r.from }))
     // Rule 7: the same relation twice
     if (typeof r.from === 'string' && typeof r.to === 'string') {
       const key = [r.from, r.to, r.kind, r.label ?? ''].join('\u0000')
-      if (seenPair.has(key)) errors.push(tEn('rerr.duplicateRelation', { at, from: r.from, to: r.to, kind: String(r.kind) }))
+      if (seenPair.has(key)) errors.push(tVal('rerr.duplicateRelation', { at, from: r.from, to: r.to, kind: String(r.kind) }))
       seenPair.add(key)
     }
     for (const f of ['label', 'detail']) {
-      if (r[f] !== undefined && typeof r[f] !== 'string') errors.push(tEn('rerr.mustBeString', { at, field: f }))
+      if (r[f] !== undefined && typeof r[f] !== 'string') errors.push(tVal('rerr.mustBeString', { at, field: f }))
     }
-    if (r.directed !== undefined && typeof r.directed !== 'boolean') errors.push(tEn('rerr.mustBeBoolean', { at, field: 'directed' }))
+    if (r.directed !== undefined && typeof r.directed !== 'boolean') errors.push(tVal('rerr.mustBeBoolean', { at, field: 'directed' }))
     for (const id of list(r.sourceIds)) {
-      if (!sourceIds.has(id)) errors.push(tEn('rerr.badRef', { at, field: 'sourceIds', kind: 'source', id: String(id) }))
+      if (!sourceIds.has(id)) errors.push(tVal('rerr.badRef', { at, field: 'sourceIds', kind: 'source', id: String(id) }))
     }
 
     // Rules 9 and 10: a dedicated field on the kinds it belongs to
     if (r.share !== undefined) {
-      if (!SHARE_KINDS.includes(r.kind)) errors.push(tEn('rerr.fieldNotHere', { at, field: 'share', kinds: SHARE_KINDS.join(' / ') }))
-      else if (typeof r.share !== 'number' || !(r.share >= 0 && r.share <= 100)) errors.push(tEn('rerr.badShare', { at, value: String(r.share) }))
+      if (!SHARE_KINDS.includes(r.kind)) errors.push(tVal('rerr.fieldNotHere', { at, field: 'share', kinds: SHARE_KINDS.join(' / ') }))
+      else if (typeof r.share !== 'number' || !(r.share >= 0 && r.share <= 100)) errors.push(tVal('rerr.badShare', { at, value: String(r.share) }))
     }
     if (r.amount !== undefined) {
-      if (!AMOUNT_KINDS.includes(r.kind)) errors.push(tEn('rerr.fieldNotHere', { at, field: 'amount', kinds: AMOUNT_KINDS.join(' / ') }))
-      else if (typeof r.amount !== 'string' || !r.amount.trim()) errors.push(tEn('rerr.mustBeString', { at, field: 'amount' }))
+      if (!AMOUNT_KINDS.includes(r.kind)) errors.push(tVal('rerr.fieldNotHere', { at, field: 'amount', kinds: AMOUNT_KINDS.join(' / ') }))
+      else if (typeof r.amount !== 'string' || !r.amount.trim()) errors.push(tVal('rerr.mustBeString', { at, field: 'amount' }))
     }
     if (r.secures !== undefined && !SECURES_KINDS.includes(r.kind)) {
-      errors.push(tEn('rerr.fieldNotHere', { at, field: 'secures', kinds: SECURES_KINDS.join(' / ') }))
+      errors.push(tVal('rerr.fieldNotHere', { at, field: 'secures', kinds: SECURES_KINDS.join(' / ') }))
     }
   })
 
@@ -174,9 +174,9 @@ export function validateRelationship(spec) {
     if (!isObj(r) || r.secures === undefined || !SECURES_KINDS.includes(r.kind)) return
     const at = `relations[${i}]` + (r.id ? ` (${r.id})` : '')
     const target = relationById.get(r.secures)
-    if (!target) errors.push(tEn('rerr.badSecures', { at, id: String(r.secures) }))
+    if (!target) errors.push(tVal('rerr.badSecures', { at, id: String(r.secures) }))
     else if (!CLAIM_KINDS.includes(target.kind)) {
-      errors.push(tEn('rerr.securesNotClaim', { at, id: r.secures, kind: String(target.kind), claims: CLAIM_KINDS.join(' / ') }))
+      errors.push(tVal('rerr.securesNotClaim', { at, id: r.secures, kind: String(target.kind), claims: CLAIM_KINDS.join(' / ') }))
     }
   })
 
@@ -202,18 +202,18 @@ export function hintsOfRelationship(spec) {
     if (r.kind === 'equity' && typeof r.share === 'number') heldIn.set(r.to, (heldIn.get(r.to) ?? 0) + r.share)
   }
   for (const [id, total] of heldIn) {
-    if (total > 100 + 1e-9) hints.push(tEn('rhint.shareOver100', { id, label: name(id), total: Number(total.toFixed(4)) }))
+    if (total > 100 + 1e-9) hints.push(tVal('rhint.shareOver100', { id, label: name(id), total: Number(total.toFixed(4)) }))
   }
 
   // Rule 14: an entity nothing relates to
   const touched = new Set(relations.flatMap((r) => [r.from, r.to]))
   for (const e of entities) {
-    if (!touched.has(e.id)) hints.push(tEn('rhint.isolated', { id: e.id, label: e.label ?? e.id }))
+    if (!touched.has(e.id)) hints.push(tVal('rhint.isolated', { id: e.id, label: e.label ?? e.id }))
   }
 
   // Rule 15: a guarantee that does not say which claim it secures
   for (const r of relations) {
-    if (r.kind === 'guarantee' && r.secures === undefined) hints.push(tEn('rhint.noSecures', { id: r.id ?? `${r.from}->${r.to}` }))
+    if (r.kind === 'guarantee' && r.secures === undefined) hints.push(tVal('rhint.noSecures', { id: r.id ?? `${r.from}->${r.to}` }))
   }
 
   // Rule 16: shareholdings that loop back (cross-holding). Allowed; it exists in the real world.
@@ -247,7 +247,7 @@ export function hintsOfRelationship(spec) {
       }
     }
   }
-  for (const c of cycle) hints.push(tEn('rhint.equityCycle', { path: c.map(name).join(' → ') }))
+  for (const c of cycle) hints.push(tVal('rhint.equityCycle', { path: c.map(name).join(' → ') }))
 
   return hints
 }

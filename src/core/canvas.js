@@ -14,6 +14,47 @@
 /** The padding ratio for fitView. React Flow's fitViewOptions.padding and this value must agree. */
 export const FIT_PADDING = 0.12
 
+/** Gap between chrome (label card / dock) and the fitted content, in CSS pixels */
+export const CHROME_FIT_GAP = 8
+
+/**
+ * Non-negative inset sides. Missing or non-finite values become 0.
+ * @param {{ top?: number, right?: number, bottom?: number, left?: number } | null | undefined} raw
+ */
+export function normalizeInsets(raw) {
+  const n = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0)
+  return { top: n(raw?.top), right: n(raw?.right), bottom: n(raw?.bottom), left: n(raw?.left) }
+}
+
+/**
+ * Auto chrome insets, with each side the host set in `host` replacing that side.
+ * @param {object} auto
+ * @param {object | null | undefined} host  `mount(…, { fitInsets })`; omitted sides keep auto
+ */
+export function mergeInsets(auto, host) {
+  const out = normalizeInsets(auto)
+  if (!host || typeof host !== 'object') return out
+  for (const side of ['top', 'right', 'bottom', 'left']) {
+    const v = host[side]
+    if (typeof v === 'number' && Number.isFinite(v)) out[side] = Math.max(0, v)
+  }
+  return out
+}
+
+/**
+ * The clear rectangle inside the canvas after chrome / host insets.
+ * @returns {{ width: number, height: number, left: number, top: number }}
+ */
+export function insetViewport(clientW, clientH, insets) {
+  const i = normalizeInsets(insets)
+  return {
+    width: Math.max(1, clientW - i.left - i.right),
+    height: Math.max(1, clientH - i.top - i.bottom),
+    left: i.left,
+    top: i.top,
+  }
+}
+
 /**
  * The zoom factor at which the content just fits the viewport, capped at 1.
  *

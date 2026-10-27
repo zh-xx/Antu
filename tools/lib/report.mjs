@@ -11,6 +11,7 @@ import { knowledgeOf, layoutOf as layoutFromRegistry, layoutKindsOf } from '../.
 // come from the registry.
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
+import { withValidateLang } from '../../src/core/i18n.js'
 import { PAPER_LEVELS, isPaperLevel, paperOf } from '../../src/core/paper.js'
 
 /**
@@ -41,10 +42,14 @@ function canvasForPaper(paper) {
   return { ok: true, paper: level, canvas: paperOf(level).canvas }
 }
 
-/** Validation. Returns errors one by one (already in Chinese, for humans and agents) */
-export function validate(spec) {
+/**
+ * Validation. Returns errors one by one.
+ * @param {object} [options]
+ * @param {'zh'|'en'} [options.lang]  host UI language; omit for English (agents / MCP)
+ */
+export function validate(spec, { lang } = {}) {
   try {
-    return validateSpec(spec)
+    return validateSpec(spec, { lang })
   } catch (e) {
     return [`the validation layer itself threw: ${e.message}`]
   }
@@ -53,10 +58,12 @@ export function validate(spec) {
 /**
  * What validation does not call an error but the author should see (for fact: a slot whose date is
  * wholly earlier than the one before). Each type supplies its own (knowledge.notes).
+ * @param {object} [options]
+ * @param {'zh'|'en'} [options.lang]  same language as `validate` when a host asks for Chinese notes
  */
-export function notesOf(spec) {
+export function notesOf(spec, { lang } = {}) {
   try {
-    return knowledgeOf(spec?.type)?.notes?.(spec) ?? []
+    return withValidateLang(lang, () => knowledgeOf(spec?.type)?.notes?.(spec) ?? [])
   } catch (e) {
     return [`the notes layer itself threw: ${e.message}`]
   }

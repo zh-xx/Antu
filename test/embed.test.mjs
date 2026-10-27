@@ -145,6 +145,18 @@ test('@zh-xx/antu/validate: the checks, notes and geometry of the command line, 
   assert.ok(versions().types.length === listKnowledgeTypes().length)
 })
 
+test('@zh-xx/antu/validate: { lang: "zh" } for host UI; default stays English (issue #166)', () => {
+  const empty = { type: 'procedure', title: 't', nodes: [], edges: [] }
+  const en = validate(empty)
+  const zh = validate(empty, { lang: 'zh' })
+  const enAgain = validate(empty, { lang: 'en' })
+  assert.equal(en.ok, false)
+  assert.match(en.errors[0], /must not be empty/)
+  assert.match(zh.errors[0], /不能为空/)
+  assert.equal(enAgain.errors[0], en.errors[0])
+  assert.notEqual(zh.errors[0], en.errors[0])
+})
+
 test('@zh-xx/antu/validate describe: the field table as data, an unknown type names the available ones', () => {
   const r = describe('procedure')
   assert.equal(r.ok, true)

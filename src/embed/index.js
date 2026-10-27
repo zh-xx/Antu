@@ -18,10 +18,12 @@ export { kindIcon, kindLabel } from './kinds.js'
 
 /**
  * Check a spec the way the diagram checks it before drawing.
+ * @param {object} [options]
+ * @param {'zh'|'en'} [options.lang]  host UI language for messages; default English (issue 166)
  * @returns {{ ok: boolean, errors: string[] }}  each error names its field (for example `nodes[2] (n-3): …`)
  */
-export function validate(spec) {
-  const errors = validateSpec(spec)
+export function validate(spec, { lang } = {}) {
+  const errors = validateSpec(spec, { lang })
   return { ok: errors.length === 0, errors: [...errors] }
 }
 
