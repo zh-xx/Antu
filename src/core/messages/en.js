@@ -31,6 +31,11 @@ export const en = {
     'The dev server received no data. Specify one with ?example=0 or ?spec=examples/some-file.json.',
 
   // ---------- render error fallback (ErrorBoundary.jsx) ----------
+  // ---------- start-up failure, before React (shell/startupError.js) ----------
+  'error.startTitle': 'This page did not open',
+  'error.startHint':
+    'A setting the page starts with is wrong (the text below names it — an unknown paper level, for instance). Fix it and regenerate the page, or drop that setting.',
+
   'error.renderTitle': 'Rendering failed',
   'error.renderHint':
     'The data itself may be fine (validation passed); this rendering kind threw an error. Send the text below to the developer, or try another rendering kind.',

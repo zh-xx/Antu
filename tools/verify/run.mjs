@@ -2173,6 +2173,47 @@ async function checkHoverKeepsViewport() {
   }
 }
 
+async function checkBadPresetExplainsItself() {
+  section('start-up: a bad preset says so on the page, not a blank page (#123, #276)')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  // The viewer builds its environment before React mounts, so an environment it cannot build (a preset
+  // with a paper level nobody knows) throws out of ErrorBoundary's reach: the page used to stay blank,
+  // with the message only in the console (found on #276; ErrorBoundary.jsx exists for the same reason).
+  const spec = JSON.parse(readFileSync(join(REPO, 'examples/fact/fang-yuan-loan-and-conflict.zh-CN.json'), 'utf8'))
+  const badFile = join(OUT, 'preset-bad.html')
+  const okFile = join(OUT, 'preset-ok.html')
+  renderToFile(spec, { outPath: badFile, quiet: true, preset: { paper: 'letter' } })
+  renderToFile(spec, { outPath: okFile, quiet: true, preset: { paper: 'a4p' } })
+  const browser = await launchBrowser({ width: 1200, height: 800 })
+  try {
+    await browser.open(`file://${badFile}?lang=zh`)
+    const shown = await browser.eval(`(() => {
+      const title = document.querySelector('.antu-error-title')
+      const hint = document.querySelector('.antu-error-hint')
+      const trace = document.querySelector('.antu-error-trace')
+      return {
+        title: title ? title.textContent.trim() : '',
+        hint: hint ? hint.textContent.trim() : '',
+        trace: trace ? trace.textContent : '',
+        drawn: document.querySelectorAll('.antu-canvas').length,
+      }
+    })()`)
+    truthy('the page says something instead of staying blank', shown.title !== '' && shown.hint !== '')
+    eq('it does not pretend to have drawn the diagram', shown.drawn, 0)
+    truthy('the message names the value and the levels it may use', /letter/.test(shown.trace) && /a4p/.test(shown.trace))
+
+    // The guard must not swallow a good page: a known level still draws.
+    await browser.open(`file://${okFile}?lang=zh`)
+    eq('a known paper level still draws the diagram', await browser.eval(`document.querySelectorAll('.antu-canvas').length`), 1)
+    eq('and shows no error', await browser.eval(`document.querySelectorAll('.antu-error-title').length`), 0)
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderLevelledViews() {
   section('render: relationship authority chart, related-party list, relation path')
   if (!findChrome()) {
@@ -3197,6 +3238,7 @@ if (!shotOnly && !skipBrowser) {
   await checkMinimapShowsExtent()
   await checkHoverKeepsNodesVisible()
   await checkHoverKeepsViewport()
+  await checkBadPresetExplainsItself()
   await checkDockClearance()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)

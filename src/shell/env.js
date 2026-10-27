@@ -139,7 +139,10 @@ export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = 
   }
 }
 
-export const EnvContext = createContext(standaloneEnv())
+// The default is built without looking at the page's preset: this runs at import time, so a bad
+// preset would throw while the bundle loads — before main.jsx can explain anything. Anything real
+// supplies its own env (renderDiagram), and that one does resolve the preset, strictly.
+export const EnvContext = createContext(standaloneEnv({ preset: null }))
 
 /** The spec now drawn (App provides it), so the canvas can find the nodes of an item a host names */
 export const ShownSpecContext = createContext(null)

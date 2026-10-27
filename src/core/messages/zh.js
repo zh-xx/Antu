@@ -27,6 +27,11 @@ export const zh = {
     '开发服务器未获取到数据：请用 ?example=0 或 ?spec=examples/某份.json 指定一份。',
 
   // ---------- render error fallback (ErrorBoundary.jsx) ----------
+  // ---------- start-up failure, before React (shell/startupError.js) ----------
+  'error.startTitle': '这个页面没有打开',
+  'error.startHint':
+    '页面启动时的设置有问题（下面的信息里写着是哪一项，例如一个不认识的纸张档位）；改正后重新生成这一页，或把那条设置删掉。',
+
   'error.renderTitle': '渲染出错',
   'error.renderHint':
     '数据本身可能没问题（校验已经通过），是这个画法在渲染时抛错了。请将下列信息提供给开发者，或改用其他画法。',
