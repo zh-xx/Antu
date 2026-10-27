@@ -158,7 +158,8 @@ test('clearSpecPrefs: removes the key from every map with one write, and leaves 
   const saved = store.held()
   assert.equal(saved.theme, 'legal')
   assert.equal(saved.lang, 'zh')
-  assert.deepEqual(saved.kinds, { [other]: 'timeline' })
+  // The chosen kind stays: restoring is about this picture's settings, not about which picture you are on
+  assert.deepEqual(saved.kinds, { [key]: 'chronicle', [other]: 'timeline' })
   assert.deepEqual(saved.orientations, { [other]: 'horizontal' })
   assert.deepEqual(saved.relationshipCompanies, {})
   for (const name of PER_DIAGRAM_PREF_NAMES) {
@@ -168,12 +169,14 @@ test('clearSpecPrefs: removes the key from every map with one write, and leaves 
 })
 
 test('the per-diagram list is every map, and never the theme or the language', () => {
-  for (const name of ['kinds', 'orientations', 'staggers', 'flowFieldsByDiagram', 'procedureRouteFieldsByDiagram',
+  for (const name of ['orientations', 'staggers', 'flowFieldsByDiagram', 'procedureRouteFieldsByDiagram',
     'justificationLabels', 'justificationFolded', 'justificationMerged', 'scaleByParty', 'relationshipCentres',
     'relationshipCompanies', 'relationshipFieldsByDiagram', 'relationshipPaths',
     'headerFolded', 'dockFolded', 'linkStyle', 'showGrid', 'fields']) {
     assert.ok(PER_DIAGRAM_PREF_NAMES.includes(name), `${name} is missing`)
   }
+  // which picture you are looking at is not a setting of that picture: see src/shell/prefs.js
+  assert.equal(PER_DIAGRAM_PREF_NAMES.includes('kinds'), false)
   assert.equal(PER_DIAGRAM_PREF_NAMES.includes('theme'), false)
   assert.equal(PER_DIAGRAM_PREF_NAMES.includes('lang'), false)
 })
