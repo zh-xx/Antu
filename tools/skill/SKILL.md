@@ -137,6 +137,8 @@ one JSON for each piece from the same material, give each piece a clear title of
 check each with `layout` again, and tell the user it is in pieces and why. **Never drop facts to make it fit.** When it
 only says small, you may leave it whole and tell the user they can zoom in.
 
+`--paper screen|a4l|a4p` (for `layout`, `render` and `preview`) lays the picture out for a sheet instead of the screen: `a4l` is A4 landscape and `a4p` A4 portrait, both with 12 mm margins, so 1032×703 or 703×1032 CSS px. `layout` then reports the fit and the text size on that sheet, and `render` / `preview` open on it — what you see is what the paper gets. Without it the sheet is `screen` (1600×900), as before.
+
 `--kind K` (for `layout`, `render` and `preview`) picks another way of drawing the same JSON; `guide` lists the ways of
 each kind, and the reader can still switch in the page. `--theme document|modern|legal|dark` (for `render` and
 `preview`) fixes the look of the picture: `document` is black and white and square, for print and filing (the default when

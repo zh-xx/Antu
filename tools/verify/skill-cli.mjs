@@ -93,6 +93,26 @@ try {
     console.log('  (this command line has no preview yet)')
   }
 
+  // --paper (#123): the sheet the picture is laid out for. A command line from an earlier release has none.
+  if (run('--help').stdout.includes('--paper')) {
+    const spec = join(work, 'antu/examples/fact-1-minimal.zh-CN.json')
+    const screen = run('layout', spec)
+    const a4p = run('layout', spec, '--paper', 'a4p')
+    check('fact: layout --paper a4p reports the A4 sheet', a4p.status === 0 && /Text on one screen \(703×1032\)/.test(a4p.stdout), a4p.stderr.trim() || a4p.stdout.trim())
+    // the line reads "7.4 px as it opens" when the picture does not fit, and "full size (13 px) either way" when it does
+    const px = (out) => {
+      const m = /Text on one screen \([^)]*\): (?:([\d.]+) px|full size \(([\d.]+) px\))/.exec(out)
+      return m ? Number(m[1] ?? m[2]) : NaN
+    }
+    check('the smaller sheet reports smaller text', px(a4p.stdout) > 0 && px(screen.stdout) > 0 && px(a4p.stdout) < px(screen.stdout), `${px(screen.stdout)} → ${px(a4p.stdout)}`)
+    const wrong = run('layout', spec, '--paper', 'letter')
+    check('an unknown paper level is named, exit code 2', wrong.status === 2 && /screen, a4l, a4p/.test(wrong.stderr), `${wrong.status} ${wrong.stderr.trim()}`)
+    const out = join(work, 'paper.html')
+    const ren = run('render', spec, '-o', out, '--paper', 'a4l')
+    const html = existsSync(out) ? readFileSync(out, 'utf8') : ''
+    check('render --paper a4l puts the sheet in the page', ren.status === 0 && html.includes('"paper":"a4l"'), ren.stderr.trim())
+  }
+
   // --kind (#85): the same JSON drawn another way. A command line from an earlier release has none.
   if (run('--help').stdout.includes('--kind')) {
     const spec = join(work, 'antu/examples/fact-1-minimal.zh-CN.json')
