@@ -156,7 +156,13 @@ export default function Canvas({
     const insets = mergeInsets(measureChromeInsets(el), hostFitInsets)
     return insetViewport(el.clientWidth, el.clientHeight, insets)
   }
-  const fit = (duration = 300) => {
+  /**
+   * @param {number} [duration]
+   * @param {{ readable?: boolean }} [opts]  `readable: true` (opening / kind change): keep fitMinZoom so
+   *   wide flows stay readable and scroll sideways. Explicit fitView (button / host) omits it so the
+   *   whole diagram fits (issue 166).
+   */
+  const fit = (duration = 300, { readable = false } = {}) => {
     const { width, height } = graph.size
     if (!rfRef.current) return
     fittedRef.current = true
@@ -173,8 +179,9 @@ export default function Canvas({
       return
     }
     // A wide picture read left to right (fitMinZoom: the procedure route map and flowchart) does not shrink
-    // below a readable zoom: it opens at that zoom from the left, centred up and down, and the reader scrolls
-    if (fitMinZoom && width && height && area) {
+    // below a readable zoom on open: it opens at that zoom from the left, centred up and down, and the
+    // reader scrolls. An explicit fitView skips this so the whole diagram is on screen.
+    if (readable && fitMinZoom && width && height && area) {
       const whole = fitZoom(graph.size, area)
       if (whole < fitMinZoom) {
         const zoom = fitMinZoom
@@ -224,7 +231,8 @@ export default function Canvas({
     // Wait one frame so React Flow measures the new sizes first
     const id = requestAnimationFrame(() => {
       const first = firstFitRef.current
-      fit(first ? 0 : 300)
+      // Opening and kind changes use the readable floor; the fit-view button and host fitView do not
+      fit(first ? 0 : 300, { readable: true })
       firstFitRef.current = false
       // the diagram is on the screen and fitted: a host waiting on `ready` may now take its picture
       if (first) {
@@ -512,7 +520,7 @@ export default function Canvas({
         translateExtent={translateExtent}
         onInit={(inst) => {
           rfRef.current = inst
-          if (!fittedRef.current) requestAnimationFrame(() => fit(0))
+          if (!fittedRef.current) requestAnimationFrame(() => fit(0, { readable: true }))
         }}
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}

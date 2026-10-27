@@ -2997,6 +2997,14 @@ async function checkTextSize() {
       const html = join(OUT, 'render-textsize.html')
       renderToFile(spec, { outPath: html, quiet: true })
       await browser.open(`file://${html}?lang=zh`, { settleMs: 1500 })
+      // Fold the chrome and fit the whole picture: layout reports assume the full canvas, while open
+      // fit clears the label card and dock (issue 166). This guard checks the formula, not the chrome.
+      await browser.eval(`(() => {
+        document.querySelector('.antu-header-fold')?.click()
+        document.querySelector('.antu-dock-fold')?.click()
+        document.querySelector('.react-flow__controls-fitview')?.click()
+      })()`)
+      await new Promise((r) => setTimeout(r, 500))
       const drawn = await browser.eval(`(() => {
         const scale = new DOMMatrix(getComputedStyle(document.querySelector('.react-flow__viewport')).transform).a
         return scale * parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(selector)})).fontSize)

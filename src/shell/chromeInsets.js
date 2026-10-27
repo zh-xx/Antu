@@ -25,13 +25,11 @@ export function measureChromeInsets(canvasEl) {
   const dock = canvasEl.querySelector?.('.antu-dock-capsule')
 
   let top = 0
-  let left = 0
   let bottom = 0
   if (header) {
     const r = header.getBoundingClientRect()
-    // Header floats over the top-left; clear its height, and a bit of its width for left-opening fits
+    // Clear the header's height: content opens below it (a left inset would shrink zoom for every kind)
     top = Math.max(0, r.bottom - canvas.top + CHROME_FIT_GAP)
-    left = Math.max(0, Math.min(r.right - canvas.left + CHROME_FIT_GAP, canvas.width * 0.35))
   }
   if (dock) {
     const r = dock.getBoundingClientRect()
@@ -40,5 +38,5 @@ export function measureChromeInsets(canvasEl) {
       bottom = Math.max(0, canvas.bottom - r.top + CHROME_FIT_GAP)
     }
   }
-  return { top, right: 0, bottom, left }
+  return { top, right: 0, bottom, left: 0 }
 }
