@@ -106,7 +106,7 @@ function focusReport(spec, layout, { canvas }) {
   const fit = Number(fitZoom(g.size, canvas).toFixed(3))
   const label = (spec.entities ?? []).find((e) => e.id === g.centre)?.label ?? g.centre
   return {
-    text: { font: ENTITY_FONT, canvas, open: { name: 'fitted whole', fit }, other: { name: 'fitted whole', fit } },
+    text: { font: ENTITY_FONT, size: g.size, canvas, open: { name: 'fitted whole', fit }, other: { name: 'fitted whole', fit } },
     counts: { entities: g.stats.entities, relations: g.stats.relations, groups: g.stats.groups, kinds: g.stats.kinds, sources: spec.sources?.length ?? 0 },
     size: g.size,
     centre: { id: g.centre, label },
@@ -137,7 +137,7 @@ function matrixReport(spec, layout, { canvas }) {
   const g = layout(spec, {})
   const fit = Number(fitZoom({ width: g.size.width, height: 1 }, { width: canvas.width, height: canvas.height * 1e6 }).toFixed(3))
   return {
-    text: { font: ENTITY_FONT, canvas, open: { name: 'fitted to width', fit }, other: { name: 'fitted to width', fit } },
+    text: { font: ENTITY_FONT, size: g.size, canvas, open: { name: 'fitted to width', fit }, other: { name: 'fitted to width', fit } },
     counts: { entities: g.stats.entities, relations: g.stats.relations, groups: g.stats.groups, kinds: g.stats.kinds, sources: spec.sources?.length ?? 0 },
     size: g.size,
     filled: g.filled,
@@ -167,7 +167,7 @@ function equityReport(spec, layout, { canvas }) {
   const g = layout(spec, {})
   const fit = Number(fitZoom({ width: g.size.width, height: 1 }, { width: canvas.width, height: canvas.height * 1e6 }).toFixed(3))
   return {
-    text: { font: ENTITY_FONT, canvas, open: { name: 'fitted to width', fit }, other: { name: 'fitted to width', fit } },
+    text: { font: ENTITY_FONT, size: g.size, canvas, open: { name: 'fitted to width', fit }, other: { name: 'fitted to width', fit } },
     counts: { entities: g.stats.entities, relations: g.stats.relations, groups: g.stats.groups, kinds: g.stats.kinds, sources: spec.sources?.length ?? 0 },
     size: g.size,
     levels: g.levels,
@@ -215,7 +215,7 @@ function viewReport(kind, facts) {
     const wide = kind === 'path'
     const fit = Number(fitZoom(wide ? g.size : { width: g.size.width, height: 1 }, wide ? canvas : { width: canvas.width, height: canvas.height * 1e6 }).toFixed(3))
     return {
-      text: { font: ENTITY_FONT, canvas, open: { name: wide ? 'whole picture' : 'fitted to width', fit }, other: { name: wide ? 'whole picture' : 'fitted to width', fit } },
+      text: { font: ENTITY_FONT, size: g.size, canvas, open: { name: wide ? 'whole picture' : 'fitted to width', fit }, other: { name: wide ? 'whole picture' : 'fitted to width', fit } },
       counts: { entities: g.stats.entities, relations: g.stats.relations, groups: g.stats.groups, kinds: g.stats.kinds, sources: spec.sources?.length ?? 0 },
       size: g.size,
       fit,
@@ -302,7 +302,7 @@ export const relationshipKnowledge = {
     const v = byOrientation.vertical
     const h = byOrientation.horizontal
     return {
-      text: { font: ENTITY_FONT, canvas, open: { name: 'vertical', fit: v.fit }, other: { name: 'horizontal', fit: h.fit } },
+      text: { font: ENTITY_FONT, size: v.size, canvas, open: { name: 'vertical', fit: v.fit }, other: { name: 'horizontal', fit: h.fit } },
       counts: {
         entities: g.stats.entities,
         relations: g.stats.relations,

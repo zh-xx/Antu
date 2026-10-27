@@ -94,6 +94,24 @@ export function resolvePaperLevel(value, { fallback = 'screen' } = {}) {
   return value
 }
 
+/**
+ * How many sheets of `sheet` a picture of `size` takes, printed at full size (1 CSS px = 1/96 inch).
+ * Used by the geometry report (issue 123): "three sheets on A4" is the question the issue is about.
+ * @param {{width: number, height: number}} size  the content, at 100 %
+ * @param {{width: number, height: number}} sheet the printable area, from `paperOf(level).canvas`
+ * @returns {{ across: number, down: number, total: number }}
+ */
+export function sheetsOf(size, sheet) {
+  const w = Number(size?.width)
+  const h = Number(size?.height)
+  const sw = Number(sheet?.width)
+  const sh = Number(sheet?.height)
+  if (!(w > 0 && h > 0 && sw > 0 && sh > 0)) return { across: 0, down: 0, total: 0 }
+  const across = Math.ceil(w / sw)
+  const down = Math.ceil(h / sh)
+  return { across, down, total: across * down }
+}
+
 export function paperOf(level) {
   if (!isPaperLevel(level)) {
     throw new Error(

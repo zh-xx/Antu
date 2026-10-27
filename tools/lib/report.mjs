@@ -11,7 +11,7 @@ import { knowledgeOf, layoutOf as layoutFromRegistry, layoutKindsOf } from '../.
 // come from the registry.
 import '../../src/renderers/index.js'
 import { validateSpec } from '../../src/core/validate.js'
-import { PAPER_LEVELS, isPaperLevel, paperOf } from '../../src/core/paper.js'
+import { PAPER_LEVELS, isPaperLevel, paperOf, sheetsOf } from '../../src/core/paper.js'
 
 /**
  * The default assumption for canvas size: used to compute the "fit zoom".
@@ -110,7 +110,26 @@ export function kindProblem(spec, kind) {
 /** Turn the geometry report into a short human-readable text (the part the tool returns to an agent) */
 export function formatLayoutReport(r) {
   if (!r.ok) return r.reason
-  return knowledgeOf(r.type).formatReport(r)
+  const text = knowledgeOf(r.type).formatReport(r)
+  const sheets = sheetsLine(r)
+  return sheets ? `${text}\n${sheets}` : text
+}
+
+/**
+ * How many sheets of the reported paper level the picture takes, printed at full size (issue 123). One line, added
+ * here rather than in each type's formatter: every type already puts its content size in `text.size`.
+ * Nothing is said for `screen`, where "sheets" has no meaning.
+ */
+function sheetsLine(r) {
+  if (!r.paper || r.paper === 'screen') return ''
+  const { across, down, total } = sheetsOf(r.text?.size, r.canvas)
+  if (!total) return ''
+  const sheet = `${r.canvas.width}×${r.canvas.height}`
+  if (total === 1) return `Sheets at full size: one, on ${r.paper} (${sheet}).`
+  return (
+    `Sheets at full size: ${across} across × ${down} down = ${total} on ${r.paper} (${sheet}) — ` +
+    'the whole picture does not fit one sheet, and printing today fits it onto one instead of breaking it.'
+  )
 }
 
 /**

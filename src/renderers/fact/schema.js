@@ -117,7 +117,7 @@ function chronicleReport(spec, layout, { fields, canvas }) {
   const screens = Math.max(1, Math.round(((g.size.height * fit) / canvas.height) * 10) / 10)
   const gaps = g.items.filter((i) => i.gap)
   return {
-    text: { font: CHRONICLE_TITLE_FONT, canvas, open: { name: 'fitted to width', fit }, other: { name: 'whole column', fit: whole } },
+    text: { font: CHRONICLE_TITLE_FONT, size: g.size, canvas, open: { name: 'fitted to width', fit }, other: { name: 'whole column', fit: whole } },
     counts: {
       slots: Array.isArray(spec.slots) ? spec.slots.length : 0,
       events: g.items.length,
@@ -150,7 +150,7 @@ function scaleReport(spec, layout, { canvas }) {
   const g = layout(spec, {})
   const fit = Number(fitZoom(g.size, canvas).toFixed(3))
   return {
-    text: { font: SCALE_TITLE_FONT, canvas, open: { name: 'fitted whole', fit }, other: { name: 'fitted whole', fit } },
+    text: { font: SCALE_TITLE_FONT, size: g.size, canvas, open: { name: 'fitted whole', fit }, other: { name: 'fitted whole', fit } },
     counts: { events: g.eventCount, actors: spec.actors?.length ?? 0, sources: spec.sources?.length ?? 0 },
     size: g.size,
     segments: g.segments.map((s) => ({ unit: s.unit, count: s.count })),
@@ -269,6 +269,7 @@ export const factKnowledge = {
     const others = opens === 'vertical' ? 'horizontal' : 'vertical'
     return {
       text: {
+        size: byOrientation[opens].size,
         font: LABEL_FONT,
         canvas,
         open: { name: opens, fit: byOrientation[opens].fit },

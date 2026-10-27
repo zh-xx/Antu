@@ -123,8 +123,8 @@ export const justificationKnowledge = {
       opensFolded,
       unfolded: h.fit,
       text: opensFolded
-        ? { font: NODE_FONT, canvas, open: { name: 'horizontal, issues folded', fit: folded }, other: { name: 'vertical', fit: v.fit } }
-        : { font: NODE_FONT, canvas, open: { name: 'horizontal', fit: h.fit }, other: { name: 'vertical', fit: v.fit }, folded },
+        ? { font: NODE_FONT, size: h.size, canvas, open: { name: 'horizontal, issues folded', fit: folded }, other: { name: 'vertical', fit: v.fit } }
+        : { font: NODE_FONT, size: h.size, canvas, open: { name: 'horizontal', fit: h.fit }, other: { name: 'vertical', fit: v.fit }, folded },
       counts: {
         nodes: g.stats.nodes,
         links: g.stats.links,

@@ -91,6 +91,8 @@ HTML viewer 与 `mount` 可以一打开就按纸张档位排，不必点「打�
 - 打印路径共用这些量。
 - **Layout-A**：`layoutReport` / `layoutMessage` 接受可选 `paper`；说理图的默认折叠按 `paperOf('screen')` 判断。
 - **Layout-B**：viewer preset + `mount({ paper })` 把画布收成纸张尺寸。
+- **页数**：A4 档位下几何报告末尾给出 `Sheets at full size: 2 across × 1 down = 2 on a4p (703×1032)`，
+  由各类型自己的内容尺寸经 `sheetsOf` 算出；`screen` 档不报（"几张纸"在那里没有意义）。
 
 **下一步**（仍属 issue #123），按这个顺序：
 

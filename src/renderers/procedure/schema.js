@@ -142,7 +142,7 @@ function routeReport(spec, layout, { canvas }) {
   const g = layout(spec, {})
   const open = Math.max(Number(fitZoom(g.size, canvas).toFixed(3)), 0.7)
   return {
-    text: { font: NODE_FONT, canvas, open: { name: 'route', fit: Math.min(open, 1) }, other: { name: 'route', fit: Math.min(open, 1) } },
+    text: { font: NODE_FONT, size: g.size, canvas, open: { name: 'route', fit: Math.min(open, 1) }, other: { name: 'route', fit: Math.min(open, 1) } },
     counts: { nodes: g.stats.nodes, edges: g.edgeCount, rules: g.rules, stages: Array.isArray(spec.stages) ? spec.stages.length : 0, actors: spec.actors?.length ?? 0, sources: spec.sources?.length ?? 0 },
     size: g.size,
     stations: g.stations,
@@ -218,7 +218,7 @@ export const procedureKnowledge = {
     const v = byOrientation.vertical
     const h = byOrientation.horizontal
     return {
-      text: { font: NODE_FONT, canvas, open: { name: 'vertical', fit: v.fit }, other: { name: 'horizontal', fit: h.fit } },
+      text: { font: NODE_FONT, size: v.size, canvas, open: { name: 'vertical', fit: v.fit }, other: { name: 'horizontal', fit: h.fit } },
       counts: {
         nodes: g.stats.nodes,
         edges: g.stats.edges,

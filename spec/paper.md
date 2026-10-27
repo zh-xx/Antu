@@ -91,6 +91,9 @@ There is no dock control yet: the level is chosen by preset / mount option (CLI 
 - Print path shares those quantities.
 - **Layout-A**: `layoutReport` / `layoutMessage` take optional `paper`; fold-on-open for justification uses `paperOf('screen')`.
 - **Layout-B**: viewer preset + `mount({ paper })` size the canvas to the paper level.
+- **Page count**: on an A4 level the geometry report ends with `Sheets at full size: 2 across × 1 down = 2 on
+  a4p (703×1032)`, counted by `sheetsOf` from each type's own content size (`text.size`). Nothing is said
+  for `screen`, where "sheets" has no meaning.
 
 **Next** (still issue #123), in this order:
 
