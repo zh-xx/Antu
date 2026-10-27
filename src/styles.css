@@ -780,12 +780,22 @@
   margin-top: 6px;
 }
 
-/* 大类：事实图 / 关系图…… 只说明这张图归哪一类 */
+/* 大类：事实图 / 关系图…… 可点开「关于这张图」（三版本，issue 131） */
 .antu-header-type {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
   font-size: var(--antu-type-meta);
   line-height: 1.5;
   color: var(--antu-text-3);
+  cursor: pointer;
+  text-align: left;
 }
+.antu-header-type:hover { color: var(--antu-text-2); }
+.antu-header-type.is-on { color: var(--antu-text); }
+.antu-header-type:focus-visible { outline: 2px solid var(--antu-text); outline-offset: 2px; border-radius: 4px; }
 
 /* 渲染类型：只有一种时是纯文字，多于一种时是可点的芯片 */
 .antu-header-kind {
@@ -893,6 +903,49 @@
 .antu-header-cell:hover { border-color: var(--antu-text-4); }
 .antu-header-cell.is-on { border: 2px solid var(--antu-text); padding: 5px; color: var(--antu-text); font-weight: 650; }
 .antu-kindicon { display: block; width: 100%; height: auto; }
+
+/* About panel: engine / format generation / diagram version (issue 131). Same chrome as the kind panel. */
+.antu-header-about {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  box-sizing: border-box;
+  width: min(300px, 46vw);
+  padding: 12px 14px 13px;
+  border-radius: var(--antu-chrome-radius, 16px);
+  background: var(--antu-chrome-bg-pop, rgba(255, 255, 255, 0.96));
+  -webkit-backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
+  backdrop-filter: var(--antu-chrome-blur, blur(20px) saturate(1.8));
+  border: var(--antu-chrome-border, 1px solid rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.06));
+  box-shadow: var(--antu-chrome-shadow, 0 14px 38px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.16));
+}
+.antu-header-about-title {
+  margin: 0 0 8px;
+  font-size: var(--antu-type-caption);
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--antu-text-2);
+}
+.antu-header-about-list { margin: 0; }
+.antu-header-about-row {
+  display: grid;
+  grid-template-columns: 3.2em 1fr;
+  gap: 8px 10px;
+  align-items: baseline;
+  padding: 4px 0;
+}
+.antu-header-about-row + .antu-header-about-row { border-top: 1px solid var(--antu-line-soft, var(--antu-line)); }
+.antu-header-about-row dt {
+  margin: 0;
+  font-size: var(--antu-type-tag);
+  color: var(--antu-text-3);
+}
+.antu-header-about-row dd {
+  margin: 0;
+  font-size: var(--antu-type-caption);
+  line-height: 1.45;
+  color: var(--antu-text);
+}
 
 /* ---------- 渲染器不可用时的兜底 ---------- */
 .antu-fallback {

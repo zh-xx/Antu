@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+
+const version = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
 
 // `@zh-xx/antu/embed`: `mount` and `validate` for a host's own page (issue #152, spec/embed.md)
 //
@@ -9,7 +12,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   // library mode leaves process.env alone; React reads it to pick its production build
-  define: { 'process.env.NODE_ENV': JSON.stringify('production') },
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production'),
+    __ANTU_VERSION__: JSON.stringify(version),
+  },
   logLevel: 'warn',
   build: {
     outDir: 'dist-embed',

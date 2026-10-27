@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+
+const version = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
 
 // 案图渲染内核 · 自包含 HTML 用的引擎构建
 //
@@ -12,6 +15,7 @@ import react from '@vitejs/plugin-react'
 // 由 tools/make-html.mjs 把这两个文件和一份规范 JSON 拼成一个 HTML。
 export default defineConfig({
   plugins: [react()],
+  define: { __ANTU_VERSION__: JSON.stringify(version) },
   build: {
     outDir: 'dist-engine',
     emptyOutDir: true,

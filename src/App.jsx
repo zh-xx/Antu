@@ -226,6 +226,7 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
           key={resetCount}
           specKey={specKey}
           title={spec?.title || t('common.untitled')}
+          type={spec?.type}
           typeLabel={spec ? labelOf(GRAPH_TYPE_KEYS, spec.type) : ''}
           info={diagramInfo(spec, t, formatNumber)}
           kinds={kindFixed ? kinds.filter((k) => k.kind === kind) : kinds}

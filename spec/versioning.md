@@ -123,7 +123,9 @@ The list of all types and diagrams with their versions is `spec/versions.md`. It
 `node tools/gen/versions.mjs` and a test fails when it is out of date, so it is not edited by hand. The command line
 (`antu versions`, with `--json`) and the MCP server (`antu_versions`) tell the same list.
 
-The page does not yet say which version of a diagram drew it; that is open in #131.
+The label card shows the three versions when the reader clicks the type name (引擎 /
+format generation / diagram version). They stay off the main reading line and off print
+and export. Per-diagram polishing remains tracked under #131.
 
 ## How a release is made
 
