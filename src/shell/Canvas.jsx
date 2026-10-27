@@ -18,13 +18,15 @@ import { ReactFlow, Background, Controls, MiniMap, Panel, getViewportForBounds, 
 import { useLang } from './LangContext.jsx'
 import { useTheme, themeVars } from '../theme/ThemeContext.jsx'
 import { FIT_PADDING, fitWidthZoom, fitZoom } from '../core/canvas.js'
+import { levelForOrientation, paperOf } from '../core/paper.js'
+import { paperFor } from './printPaper.js'
 import { EXPORT_CLASS, exportPng as runExportPng, renderPng } from './exportPng.js'
 import { ShownSpecContext, useEnv, useUi, useViewValue } from './env.js'
 import { nodesOfItem, pinTargetOf } from '../core/items.js'
 import { placeDock } from './dockPlace.js'
 import { frames } from './printPaper.js'
 import { usePrintHost } from './printHost.js'
-import { buildTiles, removeTiles } from './printTiles.js'
+import { buildTiles, planTiles, removeTiles } from './printTiles.js'
 import { readSpecPref, specKeyOf, writeSpecPref } from './prefs.js'
 
 /** React Flow's minimap width plus its border, until one has been measured */
@@ -308,6 +310,18 @@ export default function Canvas({
         app.dataset.printPrep = ''
         await frames(2)
         fitPaper(area)
+      },
+      // How the cross-sheet print would come out now (the dock names the count before you press it)
+      sheetsNow: () => {
+        const app = canvasRef.current?.closest('.antu-app')
+        const root = canvasRef.current
+        if (!app || !root) return null
+        const size = graph.size ?? { width: 0, height: 0 }
+        // The level App wrote on the page (Layout-B) when one is chosen; otherwise the orientation print
+        // would pick from the diagram's own shape, which is the sheet the cross-sheet action would use.
+        const level = app.dataset.paper || levelForOrientation(paperFor(size.width, size.height))
+        const plan = planTiles(root, paperOf(level).canvas, size)
+        return { ...plan.sheets, scale: plan.scale }
       },
       // Printing across sheets (issue 123): the picture at its own size, cut into sheets, instead of
       // fitted onto one. `size` is the one the layout produced, the same quantity the report counts.

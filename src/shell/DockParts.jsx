@@ -87,15 +87,21 @@ export function DockPrintAcrossButton() {
   if (embedded || !host) return null
   const sheets = host.acrossNow?.()
   if (!sheets || sheets.total <= 1) return null
+  const vars = {
+    n: sheets.total,
+    across: sheets.across,
+    down: sheets.down,
+    pct: Math.round((sheets.scale ?? 1) * 100),
+  }
   return (
     <button
       className="antu-dock-chip antu-dock-print-across"
       onClick={() => host.printAcross()}
       disabled={host.printing}
-      title={t('dock.printAcrossTitle', { n: sheets.total, across: sheets.across, down: sheets.down })}
-      aria-label={t('dock.printAcrossTitle', { n: sheets.total, across: sheets.across, down: sheets.down })}
+      title={t('dock.printAcrossTitle', vars)}
+      aria-label={t('dock.printAcrossTitle', vars)}
     >
-      {t('dock.printAcross', { n: sheets.total })}
+      {t('dock.printAcross', vars)}
     </button>
   )
 }

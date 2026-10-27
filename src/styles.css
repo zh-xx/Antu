@@ -969,6 +969,14 @@
     page-break-after: always;
   }
   .antu-print-tile:last-child { break-after: auto; page-break-after: auto; }
+  /* 页角标：拼起来时知道这是第几张（打印跨页才需要） */
+  .antu-print-page-mark {
+    position: absolute;
+    right: 4mm;
+    bottom: 3mm;
+    font-size: 9px;
+    color: var(--antu-text-4, #94a3b8);
+  }
 }
 
 @media print {

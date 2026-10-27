@@ -70,9 +70,11 @@ export const zh = {
   'dock.fold': '收起',
   'dock.display': '显示选项',
   'dock.restore': '恢复本图默认',
-  'dock.printAcross': ({ n }) => `跨页打印（${n} 张）`,
-  'dock.printAcrossTitle': ({ across, down }) =>
-    `这张纸装不下：按原始尺寸分别打印到 ${across}×${down} 张纸上，字号不变（原来的「打印」是一页装下、把字缩小）`,
+  'dock.printAcross': ({ n, pct }) => (pct < 100 ? `跨页打印（${n} 张 · ${pct}%）` : `跨页打印（${n} 张）`),
+  'dock.printAcrossTitle': ({ across, down, pct }) =>
+    pct < 100
+      ? `这张纸装不下：按 ${pct}% 输出到 ${across}×${down} 张纸，字号仍在可读线以上（原来的「打印」是一页装下、把字缩小到读不清）`
+      : `这张纸装不下：按原始尺寸输出到 ${across}×${down} 张纸，字号不变（原来的「打印」是一页装下、把字缩小到读不清）`,
   'dock.restoreTitle': '清除这张图记住的选择，按内置默认值重新打开；主题和语言不变。',
   'export.failed': ({ message }) => `导出失败：${message}`,
   'dock.langEn': 'EN',

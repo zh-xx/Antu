@@ -85,7 +85,8 @@ export function usePrintController(themeId, paperLevel = 'screen') {
   const acrossNow = useCallback(() => {
     const cap = capRef.current
     if (!cap?.size) return { across: 0, down: 0, total: 0 }
-    return sheetsOf(cap.size, pageOf(cap).canvas)
+    // The plan, not the raw count: printing may shrink a little to need fewer sheets (see printTiles.js)
+    return cap.sheetsNow?.() ?? sheetsOf(cap.size, pageOf(cap).canvas).total
   }, [paperLevel])
 
   const print = useCallback(async () => {
