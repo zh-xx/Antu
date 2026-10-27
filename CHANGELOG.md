@@ -14,6 +14,7 @@ what breaks a file or a tool call written for the version before, with how to br
 - **#123 product turn: content-first, one HTML diagram** — the A4-shaped preview viewport (`preset.paper` / `mount({ paper })`) is removed. Across-sheets print, sheet-count product lines, and CLI/MCP `paper` are out of scope (open PRs #284–#287 closed without merge). Print hygiene (hide chrome, fit one sheet) stays.
 
 ### Fixed
+- **Source overview panel** (#124): Escape closes it (same as a card popover); the visible row no longer shows internal `collection · id` (kept on the row `title` for hover).
 - **Browser print / Save as PDF hides the chrome and sets an A4 page** (#123): an `@media print` block hides the label card, the bottom dock, the zoom controls, the minimap, the preview popovers and the React Flow attribution, and `@page` sets A4 with 12 mm margins. Quantities live in `src/core/paper.js`.
 - **Print button** (#123): the dock has a **Print** action. It lays the diagram out on paper first (A4 portrait or landscape by the diagram's own shape, in the document theme whatever the page is in, fitted to the printable area so nothing is cropped), then opens the browser's print preview, and puts the page back afterwards. It is offered on the viewer page only: an embedded diagram lives in a host's page, where printing would print that page.
 

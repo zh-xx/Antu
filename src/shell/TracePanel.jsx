@@ -7,7 +7,7 @@
 //  a host's `select` / `focus`).
 // ============================================================
 
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
 import { locTextOf, sourceTypesIn, traceRowsOf } from '../core/trace.js'
 import { useLang } from './LangContext.jsx'
@@ -75,6 +75,20 @@ export function SourceTracePanel() {
     if (filter === 'none') return rows.filter((r) => !r.sources.length)
     return rows.filter((r) => r.sources.some((s) => s.type === filter))
   }, [rows, filter])
+
+  // Same Esc path as a pinned card's popover: when the panel is open, Esc closes it first
+  // (capture so a focused card does not eat the key and leave the panel up).
+  useEffect(() => {
+    if (!open) return undefined
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      e.stopPropagation()
+      setOpen(false)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [open, setOpen])
 
   if (!open || !spec) return null
 
@@ -153,11 +167,11 @@ export function SourceTracePanel() {
                 <tr
                   key={`${row.collection}:${row.id}`}
                   className={selectedId === row.id ? 'is-sel' : ''}
+                  title={`${row.collection} · ${row.id}`}
                   onClick={() => onRow(row)}
                 >
                   <td>
                     <div className="antu-trace-label">{row.label}</div>
-                    <div className="antu-trace-id">{row.collection} · {row.id}</div>
                   </td>
                   <td>
                     {row.sources.length === 0 ? (

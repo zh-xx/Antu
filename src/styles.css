@@ -1030,7 +1030,6 @@
 .antu-trace-table tbody tr:hover { background: var(--antu-chip, #f7f5f0); }
 .antu-trace-table tbody tr.is-sel { background: var(--antu-chip, #eef2f7); outline: 1px solid var(--antu-line); }
 .antu-trace-label { font-weight: 600; line-height: 1.35; }
-.antu-trace-id { margin-top: 2px; color: var(--antu-text-3); font-size: var(--antu-type-tag); }
 .antu-trace-src + .antu-trace-src { margin-top: 6px; }
 .antu-trace-src-name { font-weight: 600; }
 .antu-trace-src-meta { margin-top: 1px; color: var(--antu-text-3); }
