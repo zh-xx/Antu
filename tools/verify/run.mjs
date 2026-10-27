@@ -2252,6 +2252,59 @@ async function checkResetKeepsChosenKind() {
   }
 }
 
+async function checkPrintAcrossSheets() {
+  section('print: a picture too big for one sheet can be printed across sheets (#123)')
+  if (!findChrome()) {
+    bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
+    return
+  }
+  // Printing fits the whole picture onto one sheet, so a big diagram arrives with its text under the readable floor.
+  // The cross-sheet action keeps the designed type size and cuts the picture into page-sized tiles; it is offered
+  // only when one sheet cannot hold it.
+  const spec = JSON.parse(readFileSync(join(REPO, 'examples/fact/fang-yuan-loan-and-conflict.zh-CN.json'), 'utf8'))
+  const html = join(OUT, 'print-across.html')
+  renderToFile(spec, { outPath: html, quiet: true })
+  const browser = await launchBrowser({ width: 1600, height: 900 })
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+  try {
+    await browser.open(`file://${html}?lang=zh`)
+    const chip = await browser.eval(`(() => {
+      const e = document.querySelector('.antu-dock-print-across')
+      return e ? e.textContent.trim() : ''
+    })()`)
+    truthy('the dock offers printing across sheets, naming how many', /\d/.test(chip), chip)
+
+    // window.print would open the dialog and block the check; the tiles are built before it, and stay until
+    // afterprint, which is exactly the state to inspect.
+    await browser.eval(`window.print = () => {}`, { userGesture: true })
+    await browser.clickAt(`document.querySelector('.antu-dock-print-across')`)
+    await wait(2000)
+    const built = await browser.eval(`(() => {
+      const tiles = [...document.querySelectorAll('.antu-print-tile')]
+      return {
+        count: tiles.length,
+        pages: tiles.map((t) => t.dataset.page).join(','),
+        nodes: tiles.map((t) => t.querySelectorAll('.react-flow__node').length).join(','),
+        marked: document.querySelector('.antu-app').dataset.printTiles !== undefined,
+        fitted: document.querySelectorAll('.antu-app[data-print-prep]').length,
+      }
+    })()`)
+    truthy('more than one sheet is built', built.count > 1, String(built.count))
+    eq('the tiles number their pages in order', built.pages, Array.from({ length: built.count }, (_, i) => i + 1).join(','))
+    truthy('every tile carries the drawn picture', built.nodes.split(',').every((n) => Number(n) > 0), built.nodes)
+    truthy('the app is marked as printing across sheets', built.marked === true)
+    eq('the single-sheet preparation is not also in play', built.fitted, 0)
+
+    // Printing done: the tiles go away again, and the page is back to what it was
+    await browser.eval(`window.dispatchEvent(new Event('afterprint'))`, { userGesture: true })
+    await wait(1200)
+    eq('the tiles are taken away after printing', await browser.eval(`document.querySelectorAll('.antu-print-tile').length`), 0)
+    eq('the marking goes with them', await browser.eval(`document.querySelector('.antu-app').dataset.printTiles === undefined`), true)
+  } finally {
+    await browser.close()
+  }
+}
+
 async function checkRenderLevelledViews() {
   section('render: relationship authority chart, related-party list, relation path')
   if (!findChrome()) {
@@ -3278,6 +3331,7 @@ if (!shotOnly && !skipBrowser) {
   await checkHoverKeepsViewport()
   await checkBadPresetExplainsItself()
   await checkResetKeepsChosenKind()
+  await checkPrintAcrossSheets()
   await checkDockClearance()
   await checkRenderRoute()
   if (data.sample) await checkKindSwitching(data.sample)

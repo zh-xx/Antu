@@ -954,6 +954,23 @@
    .antu-app[data-print-prep]），fit 按这个尺寸重算，整张图落在一页里，
    再打开浏览器自己的打印预览。完整的纸张级别（screen|a4l|a4p）先不做。
    ============================================================== */
+/* 跨页打印（issue 123）：每张纸一页，页内裁剪。屏幕上不存在，打印时才出现。 */
+.antu-print-tiles { display: none; }
+@media print {
+  .antu-app[data-print-tiles] .antu-canvas { display: none; }
+  .antu-app[data-print-tiles] .antu-print-tiles { display: block; }
+  .antu-print-tile {
+    position: relative;
+    width: var(--antu-print-w, 100vw);
+    height: var(--antu-print-h, 100vh);
+    overflow: hidden;
+    background: var(--antu-paper);
+    break-after: page;
+    page-break-after: always;
+  }
+  .antu-print-tile:last-child { break-after: auto; page-break-after: auto; }
+}
+
 @media print {
   /* 图自己有一部分是用 CSS 背景画的（时间轴那条线、大事记的圆点）。浏览器打印默认**不打背景**，
      纸上的图就会缺这些细节（issue 123，实测轴线消失）。打印时对画布内强制保留图形。 */

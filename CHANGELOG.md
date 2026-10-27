@@ -10,6 +10,7 @@ what breaks a file or a tool call written for the version before, with how to br
 - **`layoutReport` / `layoutMessage` take optional `paper`** (#123): fit and text-size lines are judged on `paperOf(level).canvas` (`screen` by default). `CANVAS` is `paperOf('screen').canvas`.
 - **Paper preview viewport** (#123): `preset.paper` on the viewer page and `mount({ paper })` size `.antu-canvas` to `a4l` / `a4p` (centred sheet). Print keeps that A4 level when set. CLI/MCP `--paper` flags, page-count reports, and deriving `PIXEL_RATIO` stay deferred.
 - **Page count on a paper level** (#123): when a sheet is asked for, the geometry report ends with `Sheets at full size: 2 across × 1 down = 2 on a4p (703×1032)` — each type puts its content size in `text.size` and `sheetsOf` counts the sheets. Nothing is said for `screen`.
+- **Print across sheets** (#123): when one sheet cannot hold the picture, the dock offers «跨页打印 / Print across N sheets» beside Print. It prints the picture at its own size, one page per sheet (`sheetsOf`), instead of fitting it onto one page and shrinking the text under the readable floor; plain Print is unchanged. Nothing is offered when the picture already fits.
 
 ### Changed
 

@@ -24,6 +24,7 @@ import { nodesOfItem, pinTargetOf } from '../core/items.js'
 import { placeDock } from './dockPlace.js'
 import { frames } from './printPaper.js'
 import { usePrintHost } from './printHost.js'
+import { buildTiles, removeTiles } from './printTiles.js'
 import { readSpecPref, specKeyOf, writeSpecPref } from './prefs.js'
 
 /** React Flow's minimap width plus its border, until one has been measured */
@@ -308,9 +309,23 @@ export default function Canvas({
         await frames(2)
         fitPaper(area)
       },
+      // Printing across sheets (issue 123): the picture at its own size, cut into sheets, instead of
+      // fitted onto one. `size` is the one the layout produced, the same quantity the report counts.
+      prepareAcross: async (area) => {
+        const app = canvasRef.current?.closest('.antu-app')
+        const root = canvasRef.current
+        if (!app || !root) return { across: 0, down: 0, total: 0 }
+        setPrinting(true)
+        app.style.setProperty('--antu-print-w', `${area.width}px`)
+        app.style.setProperty('--antu-print-h', `${area.height}px`)
+        const sheets = buildTiles(app, root, area, graph.size ?? { width: 0, height: 0 })
+        await frames(2)
+        return sheets
+      },
       finish: () => {
         const app = canvasRef.current?.closest('.antu-app')
         if (app) {
+          removeTiles(app)
           delete app.dataset.printPrep
           app.style.removeProperty('--antu-print-w')
           app.style.removeProperty('--antu-print-h')

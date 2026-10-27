@@ -72,6 +72,9 @@ export const en = {
   'dock.fold': 'Fold',
   'dock.display': 'Display',
   'dock.restore': "Restore this diagram's defaults",
+  'dock.printAcross': ({ n }) => `Print across ${n} sheets`,
+  'dock.printAcrossTitle': ({ across, down }) =>
+    `One sheet cannot hold it: print at full size on ${across}×${down} sheets, keeping the type size (the plain Print fits it onto one sheet and shrinks the text)`,
   'dock.restoreTitle': "Clear this diagram's remembered choices and open it with the built-in defaults; the theme and the language are not changed.",
   'export.failed': ({ message }) => `Export failed: ${message}`,
   // Each language name is written in its own language (English / Chinese) and never translated: on the switcher you must recognise your own language at a glance.

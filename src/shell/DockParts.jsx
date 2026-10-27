@@ -75,12 +75,38 @@ export function DockPrintButton() {
   )
 }
 
+/**
+ * Print across sheets (issue 123): shown only when this picture does not fit the sheet it would print on at
+ * its own size. Printing today fits it onto one sheet, so a big diagram arrives with its text under the
+ * readable floor; this keeps the designed type size and cuts the picture into sheets instead.
+ */
+export function DockPrintAcrossButton() {
+  const { t } = useLang()
+  const { embedded } = useEnv()
+  const host = usePrintHost()
+  if (embedded || !host) return null
+  const sheets = host.acrossNow?.()
+  if (!sheets || sheets.total <= 1) return null
+  return (
+    <button
+      className="antu-dock-chip antu-dock-print-across"
+      onClick={() => host.printAcross()}
+      disabled={host.printing}
+      title={t('dock.printAcrossTitle', { n: sheets.total, across: sheets.across, down: sheets.down })}
+      aria-label={t('dock.printAcrossTitle', { n: sheets.total, across: sheets.across, down: sheets.down })}
+    >
+      {t('dock.printAcross', { n: sheets.total })}
+    </button>
+  )
+}
+
 /** The export action: the only solid block in the dock, with a download symbol */
 export function DockExportButton({ exporting = false, onExport }) {
   const { t } = useLang()
   return (
     <>
       <DockPrintButton />
+      <DockPrintAcrossButton />
       <button className="antu-dock-action" onClick={onExport} disabled={exporting} title={t('dock.exportTitle')}>
       {/* The conventional download mark (an arrow down onto a line). This cell is an action
           while the others are states, and giving an action a symbol is standard toolbar

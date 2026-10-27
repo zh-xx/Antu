@@ -94,6 +94,9 @@ HTML viewer 与 `mount` 可以一打开就按纸张档位排，不必点「打�
 - **页数**：A4 档位下几何报告末尾给出 `Sheets at full size: 2 across × 1 down = 2 on a4p (703×1032)`，
   由各类型自己的内容尺寸经 `sheetsOf` 算出；`screen` 档不报（"几张纸"在那里没有意义）。
 
+- **跨页打印**：一张纸按原始尺寸装不下时，底栏在「打印」旁给出它——按 `sheetsOf` 切成页大小的瓦片，
+  字号保持设计尺寸；「打印」本身仍是一页装下。
+
 **下一步**（仍属 issue #123），按这个顺序：
 
 1. **命令行** — `layout` / `render` / `preview` 上可选的 `paper`（写入 viewer 的 preset）。

@@ -22,7 +22,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 
-import { PRINT_MARGIN_MM, isPaperLevel, levelForOrientation, paperOf } from '../core/paper.js'
+import { PRINT_MARGIN_MM, isPaperLevel, levelForOrientation, paperOf, sheetsOf } from '../core/paper.js'
 import { frames, paperFor, showPrintDialog } from './printPaper.js'
 
 const PrintHostContext = createContext(null)
@@ -66,9 +66,27 @@ export function usePrintController(themeId, paperLevel = 'screen') {
   const capRef = useRef(null)
   const busyRef = useRef(false)
 
+  // The canvas registers after its first paint, and `acrossNow` reads it: without a re-render the dock would
+  // decide once, before the canvas exists, and never show the cross-sheet action (issue 123).
+  const [attached, setAttached] = useState(0)
   const attach = useCallback((cap) => {
     capRef.current = cap
+    setAttached((n) => n + 1)
   }, [])
+
+  /** A page that already chose a4l/a4p keeps that sheet; otherwise orientation follows the diagram's
+   *  shape (issue 123 Layout-B). */
+  const pageOf = (cap) =>
+    isPaperLevel(paperLevel) && paperLevel !== 'screen'
+      ? paperOf(paperLevel)
+      : paperOf(levelForOrientation(paperFor(cap?.size?.width, cap?.size?.height)))
+
+  /** How many sheets this picture takes at full size on the sheet it would print on (issue 123) */
+  const acrossNow = useCallback(() => {
+    const cap = capRef.current
+    if (!cap?.size) return { across: 0, down: 0, total: 0 }
+    return sheetsOf(cap.size, pageOf(cap).canvas)
+  }, [paperLevel])
 
   const print = useCallback(async () => {
     const cap = capRef.current
@@ -83,12 +101,7 @@ export function usePrintController(themeId, paperLevel = 'screen') {
         setPrintLight(true)
         await frames(2)
       }
-      // A page that already chose a4l/a4p keeps that sheet; otherwise orientation follows
-      // the diagram's shape (issue 123 Layout-B).
-      const page =
-        isPaperLevel(paperLevel) && paperLevel !== 'screen'
-          ? paperOf(paperLevel)
-          : paperOf(levelForOrientation(paperFor(cap.size?.width, cap.size?.height)))
+      const page = pageOf(cap)
       setPageRule(page)
       await cap.prepare?.(page.canvas)
       await frames(2)
@@ -102,6 +115,39 @@ export function usePrintController(themeId, paperLevel = 'screen') {
     }
   }, [themeId, paperLevel])
 
-  const value = useMemo(() => ({ printing, print, attach }), [printing, print, attach])
+  /**
+   * The same, across sheets (issue 123): the picture at its own size, one page per sheet, for a diagram that
+   * one sheet cannot hold at a readable text size. Falls back to the fitted single sheet when it already fits.
+   */
+  const printAcross = useCallback(async () => {
+    const cap = capRef.current
+    if (!cap || busyRef.current) return
+    busyRef.current = true
+    setPrinting(true)
+    try {
+      const light = themeId !== 'document'
+      if (light) {
+        setPrintLight(true)
+        await frames(2)
+      }
+      const page = pageOf(cap)
+      setPageRule(page)
+      const sheets = await cap.prepareAcross?.(page.canvas)
+      if (!sheets?.total) await cap.prepare?.(page.canvas)
+      await frames(2)
+      await showPrintDialog()
+    } finally {
+      cap.finish?.()
+      clearPageRule()
+      setPrintLight(false)
+      setPrinting(false)
+      busyRef.current = false
+    }
+  }, [themeId, paperLevel])
+
+  const value = useMemo(
+    () => ({ printing, print, printAcross, acrossNow, attach }),
+    [printing, print, printAcross, acrossNow, attach, attached],
+  )
   return { value, printLight }
 }

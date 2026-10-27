@@ -95,6 +95,9 @@ There is no dock control yet: the level is chosen by preset / mount option (CLI 
   a4p (703×1032)`, counted by `sheetsOf` from each type's own content size (`text.size`). Nothing is said
   for `screen`, where "sheets" has no meaning.
 
+- **Print across sheets**: when one sheet cannot hold the picture at its own size, the dock offers it beside Print —
+  the picture is cut into `sheetsOf` page-sized tiles at the designed type size. Plain Print still fits one sheet.
+
 **Next** (still issue #123), in this order:
 
 1. **CLI** — optional `paper` on `layout` / `render` / `preview` (writes the preset for the viewer).
