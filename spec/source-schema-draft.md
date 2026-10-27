@@ -5,7 +5,7 @@
 > Core value: **every expression must carry its provenance**. Every point on the diagram can point to the original material behind "what makes you say that". This is Antu's core advantage, and every kind of diagram must be able to do it.
 > Principles: reference rather than copy (the table inside the diagram is stored once and many-to-many goes through ids); controlled enums plus optional dedicated fields; **a stable foundation first (structured location), then functional extension**.
 >
-> **Reading the sources as a list (issue 124).** The offline HTML page offers a dock chip *Source list / 来源一览* that opens an in-page panel: one row per item the diagram type is about, with material name, location and quote. Clicking a row pins that item on the diagram. There is **no** sidecar `.trace.html`; the page stays one file. Kind-specific “only what this drawing shows” filtering may follow later.
+> **Reading the sources as a list (issue 124).** The offline HTML page offers a dock chip *Sources / 出处* that opens an in-page panel (*Sources / 来源一览*): one row per item the diagram type is about, with material name, location and quote. Clicking a row pins that item on the diagram. There is **no** sidecar `.trace.html`; the page stays one file. Kind-specific “only what this drawing shows” filtering may follow later.
 
 ## 0. Decisions taken (settled by the founder, 2025-09)
 

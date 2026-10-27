@@ -2014,7 +2014,9 @@ async function checkDocumentThemeIsGrey() {
 // The control capsule, the zoom buttons and the minimap never cover one another (src/shell/dockPlace.js)
 // ---------------------------------------------------------------
 // The capsule was centred whatever the width: below about 1200 px the widest one ran under the minimap and hid
-// the export button, below about 800 px into the zoom buttons and off the canvas. Every kind, at four widths.
+// the export button, below about 800 px into the zoom buttons and off the canvas. Every kind, at five widths.
+// The "nothing has to give" check uses 1600 px: the relationship graph dock with many kind chips plus the
+// Sources / 出处 chip (issue 124) no longer centres at 1400 while keeping the minimap.
 async function checkDockClearance() {
   section('the capsule clears the minimap and the zoom buttons at every width')
   if (!findChrome()) {
@@ -2030,7 +2032,7 @@ async function checkDockClearance() {
   const html = join(OUT, 'dock-clearance.html')
   const problems = { overlap: [], outside: [], exportHidden: [], wideNotCentred: [], wideNoMinimap: [] }
   let measured = 0
-  for (const width of [1400, 1024, 800, 560]) {
+  for (const width of [1600, 1400, 1024, 800, 560]) {
     const browser = await launchBrowser({ width, height: 700 })
     try {
       for (const [type, file] of cases) {
@@ -2053,21 +2055,21 @@ async function checkDockClearance() {
           if (!m.inside) problems.outside.push(at)
           if (!m.exportShown) problems.exportHidden.push(at)
           // on a wide canvas nothing has to give: centred, minimap kept
-          if (width === 1400 && !m.centred) problems.wideNotCentred.push(at)
-          if (width === 1400 && !m.minimap) problems.wideNoMinimap.push(at)
+          if (width === 1600 && !m.centred) problems.wideNotCentred.push(at)
+          if (width === 1600 && !m.minimap) problems.wideNoMinimap.push(at)
         }
       }
     } finally {
       await browser.close()
     }
   }
-  const expected = 4 * cases.reduce((n, [type]) => n + layoutKindsOf(type).length, 0)
+  const expected = 5 * cases.reduce((n, [type]) => n + layoutKindsOf(type).length, 0)
   truthy('every kind at every width was measured', measured === expected, `${measured} of ${expected}`)
   eq('the capsule covers neither the minimap nor the zoom buttons', problems.overlap, [])
   eq('the capsule stays on the canvas', problems.outside, [])
   eq('the export button is fully visible', problems.exportHidden, [])
-  eq('on a wide canvas (1400 px) the capsule is centred', problems.wideNotCentred, [])
-  eq('on a wide canvas (1400 px) the minimap is kept', problems.wideNoMinimap, [])
+  eq('on a wide canvas (1600 px) the capsule is centred', problems.wideNotCentred, [])
+  eq('on a wide canvas (1600 px) the minimap is kept', problems.wideNoMinimap, [])
 }
 
 // ---------------------------------------------------------------

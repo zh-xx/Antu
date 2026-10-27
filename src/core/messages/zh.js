@@ -76,8 +76,9 @@ export const zh = {
   'dock.langZh': '中文',
 
   // ---------- 同页来源一览（issue 124，shell/TracePanel.jsx） ----------
-  'trace.chip': '来源一览',
-  'trace.chipTitle': '列出图上每一项及其所依材料，便于核对',
+  // Chip stays two characters like the rest of the dock; the panel title carries the fuller name.
+  'trace.chip': '出处',
+  'trace.chipTitle': '来源一览：列出图上每一项及其所依材料，便于核对',
   'trace.title': '来源一览',
   'trace.subtitle': ({ n, total }) =>
     n === total ? `${n} 行 · 点击一行可在图上打开` : `${n} / ${total} 行 · 点击一行可在图上打开`,

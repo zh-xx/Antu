@@ -79,8 +79,9 @@ export const en = {
   'dock.langZh': '中文',
 
   // ---------- in-page source overview (issue 124, shell/TracePanel.jsx) ----------
-  'trace.chip': 'Source list',
-  'trace.chipTitle': 'List every item on the diagram with the material it rests on',
+  // Short dock chip (the panel title is the fuller name).
+  'trace.chip': 'Sources',
+  'trace.chipTitle': 'Source list: every item on the diagram with the material it rests on',
   'trace.title': 'Sources',
   'trace.subtitle': ({ n, total }) =>
     n === total ? `${n} row${n === 1 ? '' : 's'} · click a row to open it on the diagram` : `${n} of ${total} · click a row to open it on the diagram`,
