@@ -433,16 +433,21 @@ export async function checkEmbed(t) {
         return { minimap: !!mini, wrapped: !!root.querySelector('.antu-dock-capsule.is-wrapped'), clear: !hit(cap, mini) && !hit(cap, zoom), inside: !!cap && cap.left >= box.left - 0.5 && cap.right <= box.right + 0.5 }
       }
       const settle = () => new Promise((r) => setTimeout(r, 300))
-      // (the page's words are English by now, and its capsule is the widest: ~930 px)
+      // Earlier steps turn Rules on, which brings the long "Restore…" chip (~200 px). Clear it first:
+      // this check is about dockPlace, not about that chip staying on the bar.
+      root.querySelector('.antu-dock-reset')?.click()
+      await settle()
+      // English flowchart capsule (conditions…rules + Sources + export) is ~1100 px; 1600 leaves room
+      // for the minimap (same "wide" floor as checkDockClearance after issue 124).
       host.style.width = '520px'; await settle()
       const narrow = look()
-      host.style.width = '1400px'; await settle()
+      host.style.width = '1600px'; await settle()
       const wide = look()
       host.style.width = '1000px'
       return { narrow, wide }
     })()`, { awaitPromise: true })
     eq('embed: the host narrows to 520 px: the minimap gives way, the capsule wraps, clear and on the canvas', resized.narrow, { minimap: false, wrapped: true, clear: true, inside: true })
-    eq('embed: and widens to 1400 px: the capsule is on one line again and the minimap comes back', resized.wide, { minimap: true, wrapped: false, clear: true, inside: true })
+    eq('embed: and widens to 1600 px: the capsule is on one line again and the minimap comes back', resized.wide, { minimap: true, wrapped: false, clear: true, inside: true })
 
     // ---- a host configuring what the reader sees: initial, locked, persist (issue 200) ----
     const viewState = await browser.eval(`(async () => {
