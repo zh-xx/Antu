@@ -3,10 +3,10 @@
 //
 //  ErrorBoundary catches what throws *inside* React. Some failures happen before that:
 //  the viewer builds its environment (`standaloneEnv` in shell/env.js) before mounting,
-//  and an environment that cannot be built — a preset with a paper level nobody knows,
-//  say — throws there, out of React's reach. The page then stayed blank: `#root` with no
-//  child, the message only in the console, nothing for the person who double-clicked the
-//  file (issue 123 slices; found while testing the paper preview, issue 276).
+//  and anything that throws there is out of React's reach. The page then stayed blank:
+//  `#root` with no child, the message only in the console, nothing for the person who
+//  double-clicked the file (kept from the #276 / #282 path; paper is no longer such a
+//  failure — the HTML page ignores a paper preset).
 //
 //  So this writes the same sentence the ErrorBoundary writes, straight into the root
 //  element, and keeps the error itself copyable.

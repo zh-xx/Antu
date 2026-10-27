@@ -1,28 +1,39 @@
-# 纸张尺寸作为布局输入
+# 纸张尺寸（仅打印用量）
 
-状态：**草案**（issue #123；数量、布局报告与纸张预览视口已在 0.17.0 之后接线）。状态行对照 0.17.0。
+状态：**现阶段已定**（issue #123）。HTML 图是主呈现；纸张不重排、不约束内容。状态行对照 0.17.0+。
 
 英文版 [paper.md](./paper.md) 为准。
 
-## 问题
+## 产品决定
 
-`document` 主题面向打印与归档，`PIXEL_RATIO = 2` 旁的注释把 A4 当作「够清楚」的理由，但 **代码里从来没有 A4 这个数**。布局和 `antu_layout` 按屏幕画布（`REFERENCE_CANVAS`，1600×900）判断是否装得下；分页和缩放要到浏览器打印时才定，同一份 JSON 在屏幕上和纸上不是同一张图。
+案图把一份 JSON 画成 **一张** 可离线打开的 HTML 法律图。内容优先；离线 HTML 页才是呈现方式。纸张尺寸 **不是** 用来约束或重排图的布局输入；装不进一张 A4 时，也 **不会** 拆成多页去打印。
 
-打印切片（#271）在 `@media print` 下藏掉 chrome，用 `@page` 设 A4 与 12 mm 边距，并加了「打印」：先按可印区域排好再打开对话框。那条路径引入了毫米和 CSS 像素；`src/core/paper.js` 把这些尺寸收成共用的 **纸张档位**。布局报告现在把同样的档位作为可选输入。
+#123 里留下的：
+
+- A4 作为数量存在（边距、可印 CSS 像素）。
+- 浏览器打印 / 另存为 PDF 时藏掉 chrome，并用固定的 A4 `@page`。
+- 「打印」把图 **拟合到一张纸**（方向由图自身宽高比决定），再打开浏览器对话框。
+
+明确不做的：
+
+- 把 HTML viewer 或 `mount` 收成 A4 形状的预览视口。
+- 在 CLI 或 MCP 上暴露 `paper`。
+- 把「要几张纸」做成产品路径，或跨页打印。
+- 用纸张尺寸逼作者或 agent 缩内容、拆内容。一张图拟合到一页仍难读时，换画法或拆图——与产品里已有说法一致。
 
 ## 纸张不是主题
 
-**主题**回答「这个角色长什么样」（`spec/theme.md`）：颜色、圆角、字体。**纸张**回答画布有多宽、多高。两者不是一类东西。`paper` 是独立输入，不是主题字段，也不是图 JSON 里的字段。
+**主题**回答「这个角色长什么样」（`spec/theme.md`）：颜色、圆角、字体。这里的 **纸张** 只回答打印路径里可印区域有多宽、多高。它不是主题字段，也不是图 JSON 里的字段。
 
-## 档位
+## 档位（共用数量）
 
 | 档位 | 含义 | 绘图区域（`canvas`） |
 | --- | --- | --- |
-| `screen` | 今天的默认：参考窗口 | `REFERENCE_CANVAS` — 1600×900 CSS px |
+| `screen` | 几何报告默认用的参考窗口 | `REFERENCE_CANVAS` — 1600×900 CSS px |
 | `a4p` | A4 纵向，减去打印边距 | 703×1032 CSS px |
 | `a4l` | A4 横向，减去打印边距 | 1032×703 CSS px |
 
-目前只有这三档（不做 A3、Letter）。
+目前只有这三档（不做 A3、Letter）。数量在 `src/core/paper.js`，让打印 CSS 与「打印」动作共用一套换算。它们 **不是** viewer 的 preset，也不是 `mount` 选项。
 
 ### 固定量
 
@@ -50,60 +61,35 @@ paperOf('a4p')
 - `screen` 没有打印页字段（无 `orientation` / `pageSize` / `marginMm`）。
 - A4 档位带上 `@page` 与「打印」动作需要的字段。
 
-viewer 上的「打印」仍按图自身的宽高比选纵向/横向（`printPaper.js` 的 `paperFor`），再经 `paperOf` 落到 `a4p` 或 `a4l`。这是按钮的便利，不是第四档。
+viewer 上的「打印」按图自身的宽高比选纵向/横向（`printPaper.js` 的 `paperFor`），再经 `paperOf` 落到 `a4p` 或 `a4l`。
 
-## 布局报告（`layoutReport` 的 `paper`）
+## `layoutReport` 上可选的 `paper`（内部）
 
-`tools/lib/report.mjs`：
+`tools/lib/report.mjs` 仍接受可选的 `paper`，直接导入引擎的调用方若需要，可按 A4 画布做诊断。默认仍是 `screen`。**CLI 与 MCP 不暴露该旗标**，也不会暴露：agent 应按 HTML 页产出内容，而不是按一张纸。
 
 ```js
 layoutReport(spec)                    // 默认 screen
-layoutReport(spec, { paper: 'a4l' })  // 按 1032×703 判断 fit / 字号
+layoutReport(spec, { paper: 'a4l' })  // 仅内部可选诊断
 ```
 
-- 报告模块导出的 `CANVAS` 即 `paperOf('screen').canvas`。
-- 错误的 `paper` 软失败（`{ ok: false, reason }`），与错误的 `kind` 一样。
-- 成功结果带上 `paper` 与 `canvas`，调用方能看见用的是哪一档。
-- `layoutMessage` 会把 `paper` 传下去。**CLI / MCP 尚未暴露旗标**；直接导入引擎的调用方现在就可以传。
-
-未指定纸张时：与改动前相同（屏幕画布）。
-
-## 预览视口（Layout-B）
-
-HTML viewer 与 `mount` 可以一打开就按纸张档位排，不必点「打印」。
-
-| 方式 | 位置 |
-| --- | --- |
-| viewer 页面 | `window.__ANTU_PRESET__.paper`（与 `renderHtml` / `renderToFile` 已有的 preset 相同）；非法值拒绝打开页面 |
-| `mount(el, spec, { paper })` | 选项；非法值拒绝挂载 |
-
-- `screen`（默认）：画布铺满窗口，与以前一样。
-- `a4l` / `a4p`：App 设置 `data-paper` 与 `--antu-paper-w` / `--antu-paper-h`；`.antu-canvas` 为该尺寸，在类型根上居中（`safe center` + `margin: auto`——窗口比纸矮时仍能滚到起始边）。Fit 按测到的纸框算，所见与 `layoutReport(..., { paper })` 一致。
-- 打印：若页面已是 A4 档，Print 沿用该纸；否则仍按图的宽高比选方向。
-
-尚无 dock 控件：档位由 preset / mount 选项决定（下一步才是 CLI `--paper`）。
-
-## 已做 / 尚未做
+## 已做 / 不做
 
 **已做**
 
-- 规格 + `src/core/paper.js`（`screen` \| `a4l` \| `a4p`）。
-- 打印路径共用这些量。
-- **Layout-A**：`layoutReport` / `layoutMessage` 接受可选 `paper`；说理图的默认折叠按 `paperOf('screen')` 判断。
-- **Layout-B**：viewer preset + `mount({ paper })` 把画布收成纸张尺寸。
+- 规格 + `src/core/paper.js`（`screen` \| `a4l` \| `a4p`）作为打印用量。
+- 打印路径共用这些量；`@media print` 藏 chrome；一页「打印」动作。
+- `layoutReport` / `layoutMessage` 可选 `paper`（仅引擎导入；不对 agent 暴露）。
 
-**下一步**（仍属 issue #123），按这个顺序：
+**不做**（#123 上未合并关闭：#284–#287；#276 的纸面预览已撤回）
 
-1. **命令行** — `layout` / `render` / `preview` 上可选的 `paper`（写入 viewer 的 preset）。
-2. **MCP** — 同样的 `paper` 参数；`antu_layout` 按该档位报告页数与最小字号。
-3. 然后：`PIXEL_RATIO` 由纸张档位推导；一页装不下时的分页打断；哪些画法在该档位装得下的建议；可选的 dock 控件。
+- CLI `--paper` / MCP `paper`。
+- A4 形状的 HTML 预览（`preset.paper`、`mount({ paper })`）。
+- 跨页打印，或导向跨页的产品级「页数」行。
 
-一页装不下时，既定方向（尚未实现）是 **分页并报告页数**，而不是缩到一页把字压到可读线以下。
-
-## 目前切片的验收
+## 验收
 
 - `paperOf('a4p'|'a4l'|'screen')` 返回上表；错误档位抛错。
 - `printableArea` / 打印准备使用的 CSS 像素与 `paperOf` 相同。
-- `layoutReport(spec, { paper: 'a4l' })` 按 1032×703 判断 fit；省略 `paper` 与旧的屏幕报告一致。
-- `preset: { paper: 'a4l' }`（或 `mount(..., { paper: 'a4l' })`）时，预览画布为 1032×703 CSS px。
-- 没有新的 CLI/MCP `paper` 旗标时，既有工具调用不变。
+- `layoutReport` 省略 `paper` 时与屏幕报告一致。
+- HTML viewer 与 `mount` 始终铺满窗口（或宿主元素）；忽略 preset 上的任何 `paper` 键。
+- 没有 CLI/MCP `paper` 旗标时，既有工具调用不变。

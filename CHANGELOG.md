@@ -6,11 +6,11 @@ what breaks a file or a tool call written for the version before, with how to br
 ## Unreleased
 
 ### Added
-- **Paper levels `screen` \| `a4l` \| `a4p`** (#123): `spec/paper.md` (and `.zh-CN.md`) and `src/core/paper.js` (`paperOf`) fix the millimetre→CSS-pixel quantities in one place. The print path shares them.
-- **`layoutReport` / `layoutMessage` take optional `paper`** (#123): fit and text-size lines are judged on `paperOf(level).canvas` (`screen` by default). `CANVAS` is `paperOf('screen').canvas`.
-- **Paper preview viewport** (#123): `preset.paper` on the viewer page and `mount({ paper })` size `.antu-canvas` to `a4l` / `a4p` (centred sheet). Print keeps that A4 level when set. CLI/MCP `--paper` flags, page-count reports, and deriving `PIXEL_RATIO` stay deferred.
+- **Paper levels `screen` \| `a4l` \| `a4p` as print quantities** (#123): `spec/paper.md` (and `.zh-CN.md`) and `src/core/paper.js` (`paperOf`) fix the millimetre→CSS-pixel sizes the print path needs. The HTML diagram stays the primary presentation; paper does not reshape content.
+- **`layoutReport` / `layoutMessage` take optional `paper`** (#123): an engine-import diagnostic only (`screen` by default). CLI and MCP do **not** expose a `paper` flag.
 
 ### Changed
+- **#123 product turn: content-first, one HTML diagram** — the A4-shaped preview viewport (`preset.paper` / `mount({ paper })`) is removed. Across-sheets print, sheet-count product lines, and CLI/MCP `paper` are out of scope (open PRs #284–#287 closed without merge). Print hygiene (hide chrome, fit one sheet) stays.
 
 ### Fixed
 - **Browser print / Save as PDF hides the chrome and sets an A4 page** (#123): an `@media print` block hides the label card, the bottom dock, the zoom controls, the minimap, the preview popovers and the React Flow attribution, and `@page` sets A4 with 12 mm margins. Quantities live in `src/core/paper.js`.

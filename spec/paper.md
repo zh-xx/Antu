@@ -1,28 +1,39 @@
-# Paper size as a layout input
+# Paper size (print quantities only)
 
-Status: **draft** (issue #123; quantities, layout report, and paper preview viewport after 0.17.0). Status line checked against 0.17.0.
+Status: **settled for now** (issue #123). The HTML diagram is the primary presentation; paper does not reshape content. Status line checked against 0.17.0+.
 
 English is authoritative; Chinese: [paper.zh-CN.md](./paper.zh-CN.md).
 
-## Problem
+## Product decision
 
-The `document` theme is for print and filing, and comments next to `PIXEL_RATIO = 2` named A4 as the reason that resolution is clear enough. **A4 was nowhere as a number.** Layout and `antu_layout` judged fit against a screen canvas (`REFERENCE_CANVAS`, 1600×900). The browser decided page breaks and scale only at print time, so the same JSON was one picture on screen and another on paper.
+Antu turns one JSON document into **one** self-contained HTML diagram. Content comes first; the offline HTML page is how that content is shown. Paper size is **not** a layout input that constrains or reflows the diagram, and a picture that would not fit one A4 sheet is **not** printed across many pages.
 
-The print slice (#271) hid the chrome under `@media print`, set `@page` to A4 with 12 mm margins, and added a Print action that fits the diagram to the printable area before opening the dialog. That path introduced millimetres and CSS-pixel sizes; `src/core/paper.js` makes those sizes the shared **paper levels**. The layout report now takes the same levels as an optional input.
+What we keep from #123:
+
+- A4 exists as a number (margins, printable CSS pixels).
+- Browser print / Save as PDF hides the chrome and uses a fixed A4 `@page`.
+- The Print action fits the picture onto **one** sheet (orientation from the diagram's shape), then opens the browser dialog.
+
+What we are not doing:
+
+- Opening the HTML viewer or `mount` as an A4-shaped preview viewport.
+- Exposing `paper` on the CLI or MCP.
+- Reporting “how many sheets” as a product path, or printing across sheets.
+- Using paper size to force authors or agents to shrink or split content. If a diagram is hard to read when fitted to one sheet, change kind or split the diagram — same vocabulary the rest of the product already uses.
 
 ## Paper is not a theme
 
-A **theme** answers "what does this role look like" (`spec/theme.md`): paint, corners, type face. **Paper** answers how wide and tall the drawing area is. They are different kinds of thing. `paper` is its own input; it is not a field of a theme and not a field of the diagram JSON.
+A **theme** answers “what does this role look like” (`spec/theme.md`): paint, corners, type face. **Paper** here only answers how wide and tall the **printable** area is for the print path. It is not a field of a theme and not a field of the diagram JSON.
 
-## Levels
+## Levels (shared quantities)
 
 | Level | Meaning | Drawing area (`canvas`) |
 | --- | --- | --- |
-| `screen` | Today's default: the reference window | `REFERENCE_CANVAS` — 1600×900 CSS px |
+| `screen` | The reference window used by the geometry report by default | `REFERENCE_CANVAS` — 1600×900 CSS px |
 | `a4p` | A4 portrait, less the print margins | 703×1032 CSS px |
 | `a4l` | A4 landscape, less the print margins | 1032×703 CSS px |
 
-Only these three exist for now (no A3, no Letter).
+Only these three exist (no A3, no Letter). They live in `src/core/paper.js` so print CSS and the Print action share one conversion. They are **not** offered as a viewer preset or a `mount` option.
 
 ### Fixed quantities
 
@@ -50,60 +61,35 @@ paperOf('a4p')
 - `screen` has no print sheet fields (no `orientation` / `pageSize` / `marginMm`).
 - A4 levels carry what `@page` and the Print action need.
 
-The viewer Print button still chooses portrait vs landscape from the diagram's own shape (`paperFor` in `printPaper.js`), then resolves that orientation to `a4p` or `a4l` through `paperOf`. That is a convenience for the button; it is not a fourth level.
+The viewer Print button chooses portrait vs landscape from the diagram's own shape (`paperFor` in `printPaper.js`), then resolves that orientation to `a4p` or `a4l` through `paperOf`.
 
-## Layout report (`paper` on `layoutReport`)
+## Optional `paper` on `layoutReport` (internal)
 
-`tools/lib/report.mjs`:
+`tools/lib/report.mjs` still accepts an optional `paper` so a caller that imports the engine can judge fit against an A4 canvas if they want a diagnostic. Default remains `screen`. **CLI and MCP do not expose this flag** and will not: agents should keep producing content for the HTML page, not for a sheet of paper.
 
 ```js
 layoutReport(spec)                    // paper defaults to screen
-layoutReport(spec, { paper: 'a4l' })  // fit / text size judged on 1032×703
+layoutReport(spec, { paper: 'a4l' })  // optional internal diagnostic only
 ```
 
-- `CANVAS` exported from the report module is `paperOf('screen').canvas`.
-- A bad `paper` fails softly (`{ ok: false, reason }`), like a bad `kind`.
-- The success payload includes `paper` and `canvas` so callers can see which level was used.
-- `layoutMessage` passes `paper` through. **CLI / MCP do not yet expose a flag**; callers that import the engine can already pass it.
-
-Default when nothing asks for paper: same numbers as before this work (screen canvas).
-
-## Preview viewport (Layout-B)
-
-The HTML viewer and `mount` can open already laid out for a paper level, without pressing Print.
-
-| How | Where |
-| --- | --- |
-| Viewer page | `window.__ANTU_PRESET__.paper` (same preset object `renderHtml` / `renderToFile` already write); a bad value refuses the page |
-| `mount(el, spec, { paper })` | option; a bad value refuses the mount |
-
-- `screen` (default): canvas fills the window, as before.
-- `a4l` / `a4p`: the app sets `data-paper` and `--antu-paper-w` / `--antu-paper-h`; `.antu-canvas` is that size, centred on the type root (`safe center` + `margin: auto` — when the window is smaller than the sheet, the start edge stays reachable by scroll). Fit uses the measured paper box, so what you see matches `layoutReport(..., { paper })`.
-- Print: if the page is already on an A4 level, Print keeps that sheet; otherwise it still picks orientation from the diagram's shape.
-
-There is no dock control yet: the level is chosen by preset / mount option (CLI `--paper` comes next).
-
-## Done / not yet
+## Done / not doing
 
 **Done**
 
-- Spec + `src/core/paper.js` (`screen` \| `a4l` \| `a4p`).
-- Print path shares those quantities.
-- **Layout-A**: `layoutReport` / `layoutMessage` take optional `paper`; fold-on-open for justification uses `paperOf('screen')`.
-- **Layout-B**: viewer preset + `mount({ paper })` size the canvas to the paper level.
+- Spec + `src/core/paper.js` (`screen` \| `a4l` \| `a4p`) as print quantities.
+- Print path shares those quantities; chrome hidden under `@media print`; one-sheet Print action.
+- Optional `paper` on `layoutReport` / `layoutMessage` (engine import only; not agent-facing).
 
-**Next** (still issue #123), in this order:
+**Not doing** (closed on #123 without merge: #284–#287; preview viewport from #276 reverted)
 
-1. **CLI** — optional `paper` on `layout` / `render` / `preview` (writes the preset for the viewer).
-2. **MCP** — the same `paper` argument; `antu_layout` reporting page count and smallest type size on that level.
-3. Then: `PIXEL_RATIO` derived from the paper level; multi-page break when content does not fit; suggestions for which kinds fit at a level; optional dock control.
+- CLI `--paper` / MCP `paper`.
+- A4-shaped HTML preview (`preset.paper`, `mount({ paper })`).
+- Multi-page / across-sheets print, or a product sheet-count line that leads there.
 
-When content does not fit one sheet, the intended direction (not implemented yet) is to **break and report the page count**, not to scale everything onto one page and push type under the readable floor.
-
-## Acceptance for the slices so far
+## Acceptance
 
 - `paperOf('a4p'|'a4l'|'screen')` returns the table above; a bad level throws.
 - `printableArea` / Print preparation use the same CSS-pixel sizes as `paperOf`.
-- `layoutReport(spec, { paper: 'a4l' })` judges fit on 1032×703; omitting `paper` matches the old screen report.
-- With `preset: { paper: 'a4l' }` (or `mount(..., { paper: 'a4l' })`), the preview canvas is 1032×703 CSS px.
-- Without any new CLI/MCP `paper` flag, existing tool calls are unchanged.
+- Omitting `paper` on `layoutReport` matches the screen report.
+- The HTML viewer and `mount` always fill the window (or host element); they ignore any `paper` key on a preset.
+- Without a CLI/MCP `paper` flag, existing tool calls are unchanged.

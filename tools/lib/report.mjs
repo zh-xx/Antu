@@ -15,7 +15,8 @@ import { PAPER_LEVELS, isPaperLevel, paperOf } from '../../src/core/paper.js'
 
 /**
  * The default assumption for canvas size: used to compute the "fit zoom".
- * Comes from `paperOf('screen')` (issue 123): the same quantity print and future CLI/MCP share.
+ * Comes from `paperOf('screen')` (issue 123): the same quantity the print path shares.
+ * CLI / MCP do not take a paper flag; the HTML page stays the primary canvas.
  */
 export const CANVAS = paperOf('screen').canvas
 
@@ -71,8 +72,8 @@ export function notesOf(spec) {
  * (renderers/<type>/schema.js); this only dispatches. It used to count fact's slots for
  * every type, and a procedure came back as "0 events / 0 time slots".
  *
- * `paper` (issue 123): optional `screen` | `a4l` | `a4p`. Default `screen` — same canvas as before.
- * CLI/MCP flags that pass this through are a later slice; the engine accepts it now.
+ * `paper` (issue 123): optional `screen` | `a4l` | `a4p` for an engine-import diagnostic only.
+ * Default `screen` — same canvas as before. Not exposed on CLI / MCP.
  */
 export function layoutReport(spec, { orientation, fields, kind: asked, paper } = {}) {
   const type = spec?.type
