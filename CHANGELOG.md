@@ -6,6 +6,7 @@ what breaks a file or a tool call written for the version before, with how to br
 ## Unreleased
 
 ### Added
+- **Label-card “About this diagram”** (#131): click the type name (事实图 / Fact …) for a small panel with the three versions — engine release, JSON format generation, and diagram (way of drawing) version and status. Off the main reading line; hidden with the chrome when printing.
 - **In-page source overview** (#124): a dock chip **Sources / 出处** opens a same-page panel (**Sources / 来源一览**) listing each drawn item with its materials, location and quote. Click a row to pin and focus it on the diagram. No sidecar `.trace.html`.
 - **Paper levels `screen` \| `a4l` \| `a4p` as print quantities** (#123): `spec/paper.md` (and `.zh-CN.md`) and `src/core/paper.js` (`paperOf`) fix the millimetre→CSS-pixel sizes the print path needs. The HTML diagram stays the primary presentation; paper does not reshape content.
 - **`layoutReport` / `layoutMessage` take optional `paper`** (#123): an engine-import diagnostic only (`screen` by default). CLI and MCP do **not** expose a `paper` flag.

@@ -176,6 +176,18 @@ export const zh = {
   'header.kindGroup': '画法',
   'header.fold': '收起标题卡',
   'header.unfold': '展开标题卡',
+  // 标签卡「关于这张图」：引擎 / JSON 代际 / 画法版本（issue 131）
+  'header.about': '关于这张图',
+  'header.aboutTitle': '查看引擎、格式与画法版本',
+  'header.about.engine': '引擎',
+  'header.about.format': '格式',
+  'header.about.diagram': '画法',
+  'header.about.engineValue': ({ v }) => `Antu ${v}`,
+  'header.about.formatValue': ({ type, n }) => `${type} · 第 ${n} 代`,
+  'header.about.diagramValue': ({ kind, n, status }) => `${kind} · 第 ${n} 版 · ${status}`,
+  'diagram.status.experimental': '试验',
+  'diagram.status.stable': '稳定',
+  'diagram.status.deprecated': '弃用',
   'graphKind.chronicle': '大事记',
   'graphKind.scale': '比例时间轴',
 
