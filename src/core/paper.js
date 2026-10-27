@@ -1,13 +1,12 @@
 // ============================================================
-//  src/core/paper.js — paper size as a layout input (issue 123)
+//  src/core/paper.js — shared A4 / screen quantities for print (issue 123)
 //
-//  A theme is appearance (`spec/theme.md`). Paper is layout: how wide and tall the
-//  drawing area is. Comments used to name A4 as the reason for PIXEL_RATIO = 2, but A4
-//  was nowhere as a number. The print path (PR 271) introduced millimetres and a printable
-//  area for the browser's sheet; this file is the shared quantity those CSS pixels come
-//  from, and the place future layout / CLI / MCP `paper` arguments will read.
+//  A theme is appearance (`spec/theme.md`). This file only names the millimetre and
+//  CSS-pixel sizes the print path needs (and an optional geometry report may reuse).
+//  It is not a product input that reshapes the HTML diagram: the page stays content-first;
+//  CLI / MCP do not take a `paper` flag; the viewer does not open as a sheet of paper.
 //
-//  Levels today: screen (the reference window), a4l / a4p (A4 less the print margins).
+//  Levels: screen (the reference window), a4l / a4p (A4 less the print margins).
 //  Plain JS, no React, so Node and the browser both import it.
 // ============================================================
 
@@ -77,23 +76,6 @@ function a4Canvas(orientation) {
  *   marginMm?: number,
  * }}
  */
-/**
- * Resolve a caller-supplied paper value to a level.
- * Empty / missing → `fallback` (default `screen`). A non-empty unknown value throws.
- * @param {unknown} value
- * @param {{ fallback?: 'screen'|'a4l'|'a4p' }} [opts]
- * @returns {'screen'|'a4l'|'a4p'}
- */
-export function resolvePaperLevel(value, { fallback = 'screen' } = {}) {
-  if (value === undefined || value === null || value === '') return fallback
-  if (!isPaperLevel(value)) {
-    throw new Error(
-      `unknown paper level ${JSON.stringify(value)}: use one of ${PAPER_LEVELS.join(', ')}`,
-    )
-  }
-  return value
-}
-
 export function paperOf(level) {
   if (!isPaperLevel(level)) {
     throw new Error(

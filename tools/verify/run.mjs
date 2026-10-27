@@ -2173,42 +2173,36 @@ async function checkHoverKeepsViewport() {
   }
 }
 
-async function checkBadPresetExplainsItself() {
-  section('start-up: a bad preset says so on the page, not a blank page (#123, #276)')
+async function checkPaperPresetDoesNotReshape() {
+  section('paper: a paper key on the preset does not reshape or blank the HTML page (#123)')
   if (!findChrome()) {
     bad('no usable Chrome, skipped', 'install Chrome, or point ANTU_CHROME at the browser you already have')
     return
   }
-  // The viewer builds its environment before React mounts, so an environment it cannot build (a preset
-  // with a paper level nobody knows) throws out of ErrorBoundary's reach: the page used to stay blank,
-  // with the message only in the console (found on #276; ErrorBoundary.jsx exists for the same reason).
+  // Content-first: the HTML page is the presentation. A leftover or mistyped `paper` on the preset
+  // must not size the canvas to a sheet, and must not blank the page (that used to happen when the
+  // viewer treated paper as a layout input, #276 / #282).
   const spec = JSON.parse(readFileSync(join(REPO, 'examples/fact/fang-yuan-loan-and-conflict.zh-CN.json'), 'utf8'))
-  const badFile = join(OUT, 'preset-bad.html')
-  const okFile = join(OUT, 'preset-ok.html')
-  renderToFile(spec, { outPath: badFile, quiet: true, preset: { paper: 'letter' } })
-  renderToFile(spec, { outPath: okFile, quiet: true, preset: { paper: 'a4p' } })
+  const letterFile = join(OUT, 'preset-paper-letter.html')
+  const a4File = join(OUT, 'preset-paper-a4p.html')
+  renderToFile(spec, { outPath: letterFile, quiet: true, preset: { paper: 'letter' } })
+  renderToFile(spec, { outPath: a4File, quiet: true, preset: { paper: 'a4p' } })
   const browser = await launchBrowser({ width: 1200, height: 800 })
   try {
-    await browser.open(`file://${badFile}?lang=zh`)
-    const shown = await browser.eval(`(() => {
-      const title = document.querySelector('.antu-error-title')
-      const hint = document.querySelector('.antu-error-hint')
-      const trace = document.querySelector('.antu-error-trace')
-      return {
-        title: title ? title.textContent.trim() : '',
-        hint: hint ? hint.textContent.trim() : '',
-        trace: trace ? trace.textContent : '',
+    for (const [label, file] of [
+      ['unknown paper value', letterFile],
+      ['known A4 level', a4File],
+    ]) {
+      await browser.open(`file://${file}?lang=zh`)
+      const shown = await browser.eval(`(() => ({
         drawn: document.querySelectorAll('.antu-canvas').length,
-      }
-    })()`)
-    truthy('the page says something instead of staying blank', shown.title !== '' && shown.hint !== '')
-    eq('it does not pretend to have drawn the diagram', shown.drawn, 0)
-    truthy('the message names the value and the levels it may use', /letter/.test(shown.trace) && /a4p/.test(shown.trace))
-
-    // The guard must not swallow a good page: a known level still draws.
-    await browser.open(`file://${okFile}?lang=zh`)
-    eq('a known paper level still draws the diagram', await browser.eval(`document.querySelectorAll('.antu-canvas').length`), 1)
-    eq('and shows no error', await browser.eval(`document.querySelectorAll('.antu-error-title').length`), 0)
+        paperAttr: document.querySelector('.antu-app')?.getAttribute('data-paper') || '',
+        errors: document.querySelectorAll('.antu-error-title').length,
+      }))()`)
+      eq(`${label}: the diagram still draws`, shown.drawn, 1)
+      eq(`${label}: the page is not an A4-shaped preview`, shown.paperAttr, '')
+      eq(`${label}: no start-up error`, shown.errors, 0)
+    }
   } finally {
     await browser.close()
   }
@@ -3276,7 +3270,7 @@ if (!shotOnly && !skipBrowser) {
   await checkMinimapShowsExtent()
   await checkHoverKeepsNodesVisible()
   await checkHoverKeepsViewport()
-  await checkBadPresetExplainsItself()
+  await checkPaperPresetDoesNotReshape()
   await checkResetKeepsChosenKind()
   await checkDockClearance()
   await checkRenderRoute()
