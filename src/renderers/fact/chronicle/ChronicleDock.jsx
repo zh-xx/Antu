@@ -9,6 +9,7 @@
 
 import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch, DockResetButton } from '../../../shell/DockParts.jsx'
+import { DockTraceButton } from '../../../shell/TracePanel.jsx'
 
 const OPTIONAL_FIELDS = ['sources', 'actors', 'summary']
 const FIELD_KEYS = { sources: 'dock.sources', actors: 'dock.actors', summary: 'dock.summary' }
@@ -31,6 +32,7 @@ export default function ChronicleDock({ fields = {}, onToggleField, exporting = 
         <span className="antu-dock-sep" />
 
         <DockLangSwitch />
+        <DockTraceButton />
 
         <span className="antu-dock-sep" />
 

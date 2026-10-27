@@ -78,6 +78,29 @@ export const en = {
   'dock.langEn': 'EN',
   'dock.langZh': '中文',
 
+  // ---------- in-page source overview (issue 124, shell/TracePanel.jsx) ----------
+  // Short dock chip (the panel title is the fuller name).
+  'trace.chip': 'Sources',
+  'trace.chipTitle': 'Source list: every item on the diagram with the material it rests on',
+  'trace.title': 'Sources',
+  'trace.subtitle': ({ n, total }) =>
+    n === total ? `${n} row${n === 1 ? '' : 's'} · click a row to open it on the diagram` : `${n} of ${total} · click a row to open it on the diagram`,
+  'trace.filters': 'Filter by material kind',
+  'trace.filterAll': 'All',
+  'trace.filterNone': 'No source',
+  'trace.colLabel': 'On the diagram',
+  'trace.colSource': 'Material',
+  'trace.colQuote': 'Quote',
+  'trace.noSource': 'No source recorded',
+  'trace.empty': 'Nothing in this filter',
+  'source.type.statute': 'Statute',
+  'source.type.case': 'Case',
+  'source.type.contract': 'Contract',
+  'source.type.evidence': 'Evidence',
+  'source.type.document': 'Document',
+  'source.type.web': 'Web',
+  'source.type.other': 'Other',
+
   // ---------- card and source overlay (EventNode.jsx) ----------
   'card.sources': ({ n }) => `${n} source${n === 1 ? '' : 's'}`,
   'card.sourcesUnlisted': 'No sources listed',

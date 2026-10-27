@@ -8,6 +8,7 @@
 
 import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch, DockResetButton } from '../../../shell/DockParts.jsx'
+import { DockTraceButton } from '../../../shell/TracePanel.jsx'
 
 export default function ScaleDock({ byParty = false, onToggleByParty, exporting = false, onExport }) {
   const { t } = useLang()
@@ -23,6 +24,7 @@ export default function ScaleDock({ byParty = false, onToggleByParty, exporting 
           </>
         )}
         <DockLangSwitch />
+        <DockTraceButton />
         <span className="antu-dock-sep" />
         <DockExportButton exporting={exporting} onExport={onExport} />
 

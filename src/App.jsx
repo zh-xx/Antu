@@ -36,6 +36,7 @@ import ErrorBoundary from './shell/ErrorBoundary.jsx'
 import { useTheme, shellVars, ThemeOverrideProvider } from './theme/ThemeContext.jsx'
 import { themeOf } from './theme/themes.js'
 import { PrintHostProvider, usePrintController } from './shell/printHost.js'
+import { SourceTracePanel, TracePanelProvider } from './shell/TracePanel.jsx'
 
 /** The fallback explanation when no renderer is available */
 function FallbackInfo({ errors, spec, hasRenderer, t, labelOf, formatNumber }) {
@@ -214,7 +215,8 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
   return (
     <PrintHostProvider value={printHost.value}>
       <ThemeOverrideProvider value={printHost.printLight ? 'document' : null}>
-        <div className="antu-app" data-theme={printedTheme} style={shellVars(shellTheme)}>
+        <TracePanelProvider>
+          <div className="antu-app" data-theme={printedTheme} style={shellVars(shellTheme)}>
       {/* The label card has no switch of its own on the page. It used to control both
           "whether it shows on screen" and "whether the export carries it"; now the
           export never carries the heading (spec/fact/rendering.md §10.2 changed),
@@ -238,6 +240,7 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
           <ErrorBoundary lang={lang}>
             <ShownSpecContext.Provider value={spec}>
               <Renderer spec={spec} />
+              <SourceTracePanel />
             </ShownSpecContext.Provider>
           </ErrorBoundary>
         </ResetSpecContext.Provider>
@@ -252,7 +255,8 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
           formatNumber={formatNumber}
         />
       )}
-        </div>
+          </div>
+        </TracePanelProvider>
       </ThemeOverrideProvider>
     </PrintHostProvider>
   )
