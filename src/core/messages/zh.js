@@ -75,6 +75,28 @@ export const zh = {
   'dock.langEn': 'EN',
   'dock.langZh': '中文',
 
+  // ---------- 同页来源一览（issue 124，shell/TracePanel.jsx） ----------
+  'trace.chip': '来源一览',
+  'trace.chipTitle': '列出图上每一项及其所依材料，便于核对',
+  'trace.title': '来源一览',
+  'trace.subtitle': ({ n, total }) =>
+    n === total ? `${n} 行 · 点击一行可在图上打开` : `${n} / ${total} 行 · 点击一行可在图上打开`,
+  'trace.filters': '按材料种类筛选',
+  'trace.filterAll': '全部',
+  'trace.filterNone': '无出处',
+  'trace.colLabel': '图上文字',
+  'trace.colSource': '出处',
+  'trace.colQuote': '摘录',
+  'trace.noSource': '未记录出处',
+  'trace.empty': '该筛选下没有条目',
+  'source.type.statute': '法条',
+  'source.type.case': '判例',
+  'source.type.contract': '合同',
+  'source.type.evidence': '证据',
+  'source.type.document': '文书',
+  'source.type.web': '网页',
+  'source.type.other': '其他',
+
   // ---------- flowchart dock and node overlay (procedure/flow) ----------
   'flow.conditions': '条件',
   'flow.detail': '详情',

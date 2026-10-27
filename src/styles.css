@@ -931,6 +931,137 @@
   overflow-wrap: anywhere;
 }
 
+/* ===== 来源一览（issue 124） =====================================
+   同页右侧面板：图上条目 ↔ 出处。不另写 .trace.html；打印时与其它外壳一并藏掉。
+   ============================================================== */
+.antu-trace {
+  position: absolute;
+  top: 56px;
+  right: 14px;
+  bottom: 78px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, 42vw);
+  min-width: 280px;
+  background: var(--antu-bg, #fff);
+  border: 1px solid var(--antu-line);
+  border-radius: min(10px, var(--antu-chrome-radius, 10px));
+  box-shadow: 0 12px 36px rgba(var(--antu-shadow-rgb, 15, 23, 42), 0.14);
+  overflow: hidden;
+}
+.antu-trace-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 12px 10px 14px;
+  border-bottom: 1px solid var(--antu-line);
+}
+.antu-trace-title {
+  margin: 0 0 2px;
+  font-size: var(--antu-type-title);
+  font-weight: 650;
+  color: var(--antu-text);
+}
+.antu-trace-sub {
+  margin: 0;
+  font-size: var(--antu-type-caption);
+  color: var(--antu-text-3);
+}
+.antu-trace-close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--antu-text-3);
+  font-size: var(--antu-type-mark);
+  line-height: 1;
+  cursor: pointer;
+}
+.antu-trace-close:hover { background: var(--antu-chip, #f0f3f7); color: var(--antu-text); }
+.antu-trace-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--antu-line);
+}
+.antu-trace-filter {
+  border: 1px solid var(--antu-line);
+  border-radius: 999px;
+  background: var(--antu-bg, #fff);
+  color: var(--antu-text-3);
+  font-size: var(--antu-type-caption);
+  padding: 2px 9px;
+  cursor: pointer;
+}
+.antu-trace-filter.is-on {
+  background: var(--antu-chip, #eef2f7);
+  color: var(--antu-text);
+  border-color: var(--antu-line);
+}
+.antu-trace-scroll { flex: 1 1 auto; overflow: auto; }
+.antu-trace-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--antu-type-caption);
+}
+.antu-trace-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--antu-chip, #f0f3f7);
+  color: var(--antu-text-2);
+  font-weight: 600;
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--antu-line);
+}
+.antu-trace-table td {
+  vertical-align: top;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--antu-line);
+  color: var(--antu-text);
+}
+.antu-trace-table tbody tr { cursor: pointer; }
+.antu-trace-table tbody tr:hover { background: var(--antu-chip, #f7f5f0); }
+.antu-trace-table tbody tr.is-sel { background: var(--antu-chip, #eef2f7); outline: 1px solid var(--antu-line); }
+.antu-trace-label { font-weight: 600; line-height: 1.35; }
+.antu-trace-id { margin-top: 2px; color: var(--antu-text-3); font-size: var(--antu-type-tag); }
+.antu-trace-src + .antu-trace-src { margin-top: 6px; }
+.antu-trace-src-name { font-weight: 600; }
+.antu-trace-src-meta { margin-top: 1px; color: var(--antu-text-3); }
+.antu-trace-kind {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--antu-chip, #ece8e0);
+  color: var(--antu-text-2);
+}
+.antu-trace-quote {
+  color: var(--antu-text-2);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.antu-trace-quote + .antu-trace-quote { margin-top: 6px; }
+.antu-trace-nosrc,
+.antu-trace-empty { color: var(--antu-text-3); }
+@media (max-width: 720px) {
+  .antu-trace {
+    left: 10px;
+    right: 10px;
+    width: auto;
+    min-width: 0;
+    bottom: 72px;
+  }
+}
+
 /* ===== 导出期间 ================================================
    exportPng.js 抓 .react-flow__viewport，抓完就把 .is-exporting 摘掉。
 
@@ -967,6 +1098,7 @@
   .antu-dock-capsule,
   .antu-dock,
   .antu-dock-open,
+  .antu-trace,
   .react-flow__controls,
   .react-flow__minimap,
   .antu-preview,

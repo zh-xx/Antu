@@ -2612,7 +2612,8 @@ async function checkRenderProcedure(sampleFile) {
     if (dock) {
       // conditions · detail · main line · states, plus stages and rules when the data has them,
       // plus "restore defaults", plus Print (viewer only; sits beside export as a chip, issue 123)
-      eq('the dock has a switch per thing the data has', dock.chips, 6 + (spec.stages?.length ? 1 : 0) + (spec.rules?.length ? 1 : 0))
+      // + Source list (issue 124) beside language; + Print beside export
+      eq('the dock has a switch per thing the data has', dock.chips, 7 + (spec.stages?.length ? 1 : 0) + (spec.rules?.length ? 1 : 0))
       truthy('the dock has a Print chip on the viewer page', dock.print)
       eq('five blocks: switches · orientation · language · export · restore', dock.blocks, 5)
       eq('only the export action is solid dark', dock.dark, ['antu-dock-action'])
@@ -2789,8 +2790,8 @@ async function checkRenderRelationship(sampleFile) {
     if (dock) {
       const kinds = new Set(spec.relations.map((r) => r.kind)).size
       eq('one chip per kind of relation the data uses', dock.kindChips, kinds)
-      // kinds + labels + groups + Print (viewer only; beside export as a chip, issue 123)
-      eq('the dock has those, plus labels and groups', dock.chips, kinds + 3)
+      // kinds + labels + groups + Source list (issue 124) + Print (viewer only; issue 123)
+      eq('the dock has those, plus labels and groups', dock.chips, kinds + 4)
       truthy('the dock has a Print chip on the viewer page', dock.print)
       eq('only the export action is solid dark', dock.dark, ['antu-dock-action'])
     }

@@ -12,6 +12,7 @@
 
 import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch, DockResetButton, DockSegmented } from '../../../shell/DockParts.jsx'
+import { DockTraceButton } from '../../../shell/TracePanel.jsx'
 
 /** The switches, in display order. Message keys are stored and resolved per language on use. */
 const SWITCHES = [
@@ -71,6 +72,7 @@ export default function FlowDock({
         <span className="antu-dock-sep" />
 
         <DockLangSwitch />
+        <DockTraceButton />
 
         {/* Set off by a divider: everything before is a "how to look at it" switch, this is the only action */}
         <span className="antu-dock-sep" />

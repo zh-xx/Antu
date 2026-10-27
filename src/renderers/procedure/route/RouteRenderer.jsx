@@ -16,6 +16,7 @@ import { specKeyOf } from '../../../shell/prefs.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch, DockResetButton } from '../../../shell/DockParts.jsx'
+import { DockTraceButton } from '../../../shell/TracePanel.jsx'
 import RouteLayerNode from './RouteLayerNode.jsx'
 import { buildRouteGraph } from './layout.js'
 import { statesByDefault } from '../flow/FlowRenderer.jsx'
@@ -66,6 +67,7 @@ export default function ProcedureRoute({ spec }) {
             )}
             <span className="antu-dock-sep" />
             <DockLangSwitch />
+            <DockTraceButton />
             <span className="antu-dock-sep" />
             <DockExportButton exporting={exporting} onExport={onExport} />
             <DockResetButton />

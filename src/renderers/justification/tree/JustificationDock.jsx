@@ -12,6 +12,7 @@
 
 import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch, DockResetButton, DockSegmented } from '../../../shell/DockParts.jsx'
+import { DockTraceButton } from '../../../shell/TracePanel.jsx'
 
 // A reasoning reads from the conclusion on the left to the facts on the right, so horizontal comes first
 const ORIENTATIONS = [
@@ -77,6 +78,7 @@ export default function JustificationDock({
         <span className="antu-dock-sep" />
 
         <DockLangSwitch />
+        <DockTraceButton />
 
         <span className="antu-dock-sep" />
 
