@@ -80,6 +80,11 @@ const kindArg = z
   .optional()
   .describe('which way of drawing (fact: timeline, chronicle or scale; relationship: graph, focus, matrix, equity, authority, related or path; procedure: flow or route); omit it for the default, the first')
 
+const paperArg = z
+  .enum(['screen', 'a4l', 'a4p'])
+  .optional()
+  .describe('the sheet the picture is laid out for (issue 123): a4l and a4p are A4 landscape and portrait with 12 mm margins, 1032×703 and 703×1032 CSS px. Give it and the geometry report, the page and the screenshot are judged on that sheet; omit it for screen (1600×900), as before')
+
 
 
 const OK = (text) => ({ content: [{ type: 'text', text }] })
@@ -258,10 +263,11 @@ server.registerTool(
       orientation: z.enum(['vertical', 'horizontal']).optional().describe('omit it and the slot-count rule suggests one'),
       summary: z.boolean().optional().describe('fact only: whether the cards show the summary (affects card height, and through it the content size); true by default'),
       kind: kindArg,
+      paper: paperArg,
     },
   },
-  async ({ spec, orientation, summary = true, kind }) => {
-    const m = layoutMessage(spec, { orientation, fields: { summary }, kind })
+  async ({ spec, orientation, summary = true, kind, paper }) => {
+    const m = layoutMessage(spec, { orientation, fields: { summary }, kind, paper })
     return m.ok ? OK(m.text) : FAIL(m.text)
   },
 )
@@ -283,16 +289,21 @@ server.registerTool(
       outPath: z.string().optional().describe('output path; pass an absolute one. Omit it and the file goes to a default place (dist-html/<title>.html in a checkout, else the current folder)'),
       theme: themeArg,
       kind: kindArg.describe('which way of drawing the page opens in (fact: timeline, chronicle or scale; relationship: graph, focus, matrix, equity, authority, related or path; procedure: flow or route); the reader can still switch. Omit it for the default, the first'),
+      paper: paperArg,
     },
   },
-  async ({ spec, outPath, kind, theme }) => {
+  async ({ spec, outPath, kind, theme, paper }) => {
     const errors = validate(spec)
     if (errors.length > 0) {
       return FAIL(`Validation failed; fix these first:\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`)
     }
     const bad = kindProblem(spec, kind)
     if (bad) return FAIL(bad)
-    const { path, bytes } = renderHtml(spec, { outPath, preset: kind || theme ? { ...(kind && { defaultKind: kind }), ...(theme && { theme }) } : undefined })
+    const preset =
+      kind || theme || paper
+        ? { ...(kind && { defaultKind: kind }), ...(theme && { theme }), ...(paper && { paper }) }
+        : undefined
+    const { path, bytes } = renderHtml(spec, { outPath, preset })
     return OK(`Written: ${path}\nSize: ${Math.round(bytes / 1024)} KB\nDouble-click to open it; no server needed, and it works offline.`)
   },
 )
@@ -315,11 +326,12 @@ server.registerTool(
       sources: z.boolean().optional().describe('whether to show the source markers, false by default'),
       kind: kindArg,
       theme: themeArg,
+      paper: paperArg,
       width: z.number().int().optional().describe('screenshot width, 1600 by default'),
       height: z.number().int().optional().describe('screenshot height, 900 by default'),
     },
   },
-  async ({ spec, orientation, summary = true, actors = false, sources = false, width = 1600, height = 900, kind, theme }) => {
+  async ({ spec, orientation, summary = true, actors = false, sources = false, width = 1600, height = 900, kind, theme, paper }) => {
     const errors = validate(spec)
     if (errors.length > 0) {
       return FAIL(`Validation failed; fix these before previewing:\n\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`)
@@ -336,7 +348,7 @@ server.registerTool(
     const dir = mkdtempSync(join(tmpdir(), 'antu-shot-'))
     const html = join(dir, 'preview.html')
     try {
-      renderHtml(spec, { outPath: html, preset: { orientation, fields: { summary, actors, sources }, kind, theme } })
+      renderHtml(spec, { outPath: html, preset: { orientation, fields: { summary, actors, sources }, kind, theme, paper } })
       const shot = await screenshot(html, { width, height })
       const kb = Math.round(shot.data.length * 0.75 / 1024)
       return {

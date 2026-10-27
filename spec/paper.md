@@ -91,11 +91,13 @@ There is no dock control yet: the level is chosen by preset / mount option (CLI 
 - Print path shares those quantities.
 - **Layout-A**: `layoutReport` / `layoutMessage` take optional `paper`; fold-on-open for justification uses `paperOf('screen')`.
 - **Layout-B**: viewer preset + `mount({ paper })` size the canvas to the paper level.
+- **MCP**: `paper` on `antu_layout` (the report and its text-size line are judged on that sheet — the level's
+  smallest type size), on `antu_render` (the page opens on it) and on `antu_preview`.
 
 **Next** (still issue #123), in this order:
 
 1. **CLI** — optional `paper` on `layout` / `render` / `preview` (writes the preset for the viewer).
-2. **MCP** — the same `paper` argument; `antu_layout` reporting page count and smallest type size on that level.
+2. **Page count** — `antu_layout` saying how many sheets the picture takes at full size on that level.
 3. Then: `PIXEL_RATIO` derived from the paper level; multi-page break when content does not fit; suggestions for which kinds fit at a level; optional dock control.
 
 When content does not fit one sheet, the intended direction (not implemented yet) is to **break and report the page count**, not to scale everything onto one page and push type under the readable floor.

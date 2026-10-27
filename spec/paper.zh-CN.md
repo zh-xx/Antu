@@ -91,11 +91,13 @@ HTML viewer 与 `mount` 可以一打开就按纸张档位排，不必点「打�
 - 打印路径共用这些量。
 - **Layout-A**：`layoutReport` / `layoutMessage` 接受可选 `paper`；说理图的默认折叠按 `paperOf('screen')` 判断。
 - **Layout-B**：viewer preset + `mount({ paper })` 把画布收成纸张尺寸。
+- **MCP**：`antu_layout` 接受 `paper`（几何报告与字号行按该档位算——即该档位下的最小字号），
+  `antu_render`（页面按该档位打开）与 `antu_preview` 同样接受。
 
 **下一步**（仍属 issue #123），按这个顺序：
 
 1. **命令行** — `layout` / `render` / `preview` 上可选的 `paper`（写入 viewer 的 preset）。
-2. **MCP** — 同样的 `paper` 参数；`antu_layout` 按该档位报告页数与最小字号。
+2. **页数报告** — `antu_layout` 说明该档位下按原始尺寸需要几张纸。
 3. 然后：`PIXEL_RATIO` 由纸张档位推导；一页装不下时的分页打断；哪些画法在该档位装得下的建议；可选的 dock 控件。
 
 一页装不下时，既定方向（尚未实现）是 **分页并报告页数**，而不是缩到一页把字压到可读线以下。

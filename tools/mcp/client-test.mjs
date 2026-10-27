@@ -131,12 +131,22 @@ try {
   const lay = await rpc('tools/call', { name: 'antu_layout', arguments: { spec: good } })
   console.log('  ' + textOf(lay).split('\n').join('\n  '))
 
+  // The same report on a sheet (issue 123): the numbers and the text size are judged on A4, not on the screen
+  const a4p = await rpc('tools/call', { name: 'antu_layout', arguments: { spec: good, paper: 'a4p' } })
+  const a4pText = textOf(a4p)
+  console.log('  on A4 portrait: ' + (a4pText.split('\n').find((l) => l.startsWith('Text on one screen')) ?? '(no text line)'))
+  if (!a4pText.includes('Text on one screen (703×1032)')) throw new Error('antu_layout with paper a4p must report the A4 portrait sheet')
+  const badPaper = await rpc('tools/call', { name: 'antu_layout', arguments: { spec: good, paper: 'letter' } })
+  if (!badPaper.isError) throw new Error('an unknown paper level must be refused')
+
   step(11, 'Build the self-contained HTML')
   const html = await rpc('tools/call', {
     name: 'antu_render',
-    arguments: { spec: good, outPath: '/tmp/mcp-test-out.html' },
+    arguments: { spec: good, outPath: '/tmp/mcp-test-out.html', paper: 'a4l' },
   })
   console.log('  ' + textOf(html).split('\n').join('\n  '))
+  const page = readFileSync('/tmp/mcp-test-out.html', 'utf8')
+  if (!page.includes('"paper":"a4l"')) throw new Error('antu_render with paper a4l must put the sheet in the page')
 
   step(12, 'Screenshot preview (this step needs a browser)')
   const pv = await rpc('tools/call', {
