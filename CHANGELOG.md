@@ -18,7 +18,7 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ### Changed
 - **Relationship graph layout is cheaper on large cases** (#181): the orthogonal router caps search effort per link (then falls back to a simple elbow); camp ELK results and whole-graph layouts are cached so a repeated layout or an unchanged camp is not recomputed. Flowchart and justification routing stay uncapped.
-- **Relationship graph layout runs in a Web Worker in the browser** (#181): the graph view posts layout to an inlined worker (`?worker&inline`, no network) so the page stays responsive; Node / MCP / tests keep the sync `buildRelationshipGraph` API. Sync fallback if Worker is unavailable.
+- **Relationship graph layout yields in the browser** (#181): the graph view runs the same layout generator as the sync API but pauses between ELK tries and routed links so the page stays responsive. An inlined Web Worker was tried and dropped — it duplicated ELK and pushed the npm pack over 4 MB. Node / MCP / tests keep sync `buildRelationshipGraph`.
 - **#123 product turn: content-first, one HTML diagram** — the A4-shaped preview viewport (`preset.paper` / `mount({ paper })`) is removed. Across-sheets print, sheet-count product lines, and CLI/MCP `paper` are out of scope (open PRs #284–#287 closed without merge). Print hygiene (hide chrome, fit one sheet) stays.
 
 ### Fixed

@@ -100,14 +100,14 @@ export default function RelationshipGraph({ spec }) {
   const [linkStyle, setLinkStyle] = useSpecPref('linkStyle', specKey, (stored) => PRESET?.linkStyle ?? stored ?? 'curved')
   const toggleLinkStyle = (next) => setLinkStyle(next)
 
-  // Geometry runs off the UI thread when a Worker is available (issue 181). Keep the last
-  // layout on screen while a toggle recomputes, so the page stays interactive.
+  // Geometry yields to the event loop while it runs (issue 181). Keep the last layout on
+  // screen while a toggle recomputes, so the page stays interactive.
   const [layout, setLayout] = useState(EMPTY_LAYOUT)
   const layoutReq = useRef(0)
   useEffect(() => {
     const id = ++layoutReq.current
     let cancelled = false
-    // `lang` is enough for the worker; `t` is only used on the sync-fallback path
+    // `lang` drives default labels; `t` is the same language's translate when present
     layoutRelationshipAsync(spec, { groups: fields.groups, lang, t }, orientation).then((next) => {
       if (!cancelled && id === layoutReq.current) setLayout(next)
     })

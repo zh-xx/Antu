@@ -647,6 +647,21 @@ test('fields.lang matches fields.t for default relation labels (worker boundary,
   )
 })
 
+test('async layout matches sync geometry (issue 181)', async () => {
+  const { buildRelationshipGraphAsync } = await import('../src/renderers/relationship/graph/layout.js')
+  const sync = buildRelationshipGraph(base(), {}, undefined, 'vertical')
+  const asyncLayout = await buildRelationshipGraphAsync(base(), {}, undefined, 'horizontal')
+  const syncH = buildRelationshipGraph(base(), {}, undefined, 'horizontal')
+  assert.deepEqual(
+    asyncLayout.nodes.map((n) => n.position),
+    syncH.nodes.map((n) => n.position),
+  )
+  assert.notDeepEqual(
+    sync.nodes.map((n) => n.position),
+    asyncLayout.nodes.map((n) => n.position),
+  )
+})
+
 test('a dense synthetic graph still lays out under a soft time budget (#181)', () => {
   let seed = 3
   const rnd = () => {

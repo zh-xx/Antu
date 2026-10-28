@@ -253,7 +253,7 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
     layoutCache.set(key, hit)
     return hit
   }
-  const built = layOutRelationshipGraph(spec, fields, view, orientation)
+  const built = finishLayout(layOutRelationshipGraph(spec, fields, view, orientation))
   if (key !== null) {
     layoutCache.set(key, built)
     if (layoutCache.size > LAYOUT_CACHE_SIZE) layoutCache.delete(layoutCache.keys().next().value)
@@ -261,7 +261,67 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
   return built
 }
 
-function layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertical') {
+/**
+ * Same as `buildRelationshipGraph`, but yields to the event loop between heavy steps so the
+ * browser can paint and take input (issue 181). Used when an inlined Web Worker would duplicate
+ * ELK and push the npm pack over 4 MB.
+ */
+export function buildRelationshipGraphAsync(spec, fields = {}, view, orientation = 'vertical') {
+  const t = translateOf(fields)
+  const groupsFlag = fields?.groups === false ? 'flat' : 'grouped'
+  let key
+  try {
+    const labels = Array.isArray(spec?.relations) ? spec.relations.map((r) => labelOf(r, t)).join('\u0001') : ''
+    key = `${orientation}|${groupsFlag}|${labels}|${JSON.stringify(spec)}`
+  } catch {
+    key = null
+  }
+  if (key !== null && layoutCache.has(key)) {
+    const hit = layoutCache.get(key)
+    layoutCache.delete(key)
+    layoutCache.set(key, hit)
+    return Promise.resolve(hit)
+  }
+  return finishLayoutAsync(layOutRelationshipGraph(spec, fields, view, orientation)).then((built) => {
+    if (key !== null) {
+      layoutCache.set(key, built)
+      if (layoutCache.size > LAYOUT_CACHE_SIZE) layoutCache.delete(layoutCache.keys().next().value)
+    }
+    return built
+  })
+}
+
+/** Run a layout generator to completion without pausing (Node / MCP / tests). */
+function finishLayout(gen) {
+  let step = gen.next()
+  while (!step.done) step = gen.next()
+  return step.value
+}
+
+/** Run a layout generator, pausing about every 6 ms so the page stays responsive. */
+function finishLayoutAsync(gen) {
+  return new Promise((resolve, reject) => {
+    const pump = () => {
+      try {
+        const t0 = performance.now()
+        let step
+        do {
+          step = gen.next()
+          if (step.done) {
+            resolve(step.value)
+            return
+          }
+        } while (performance.now() - t0 < 6)
+        setTimeout(pump, 0)
+      } catch (err) {
+        reject(err)
+      }
+    }
+    setTimeout(pump, 0)
+  })
+}
+
+function* layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertical') {
   const errors = validateRelationship(spec)
   const hints = hintsOfRelationship(spec)
   const vertical = orientation !== 'horizontal'
@@ -349,7 +409,7 @@ function layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertica
       .map((r) => Math.sign(campIndexOf.get(r.from === e.id ? r.to : r.from) - ci))
     return sides.length ? sides.reduce((a, b) => a + b, 0) / sides.length : 0
   }
-  const layCamp = (members, ci) => {
+  const layCamp = function* (members, ci) {
     const inside = new Set(members.map((e) => e.id))
     // Written order decides ties in ELK (considerModelOrder), so an entity whose links go to the camp on
     // the left is handed over first and stands on the left: the guarantor of a creditor on the left no
@@ -469,6 +529,7 @@ function layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertica
           fewest = n
         }
         if (fewest === 0) break
+        yield
       }
       campElkCache.set(campKey, {
         width: laid.width,
@@ -511,7 +572,20 @@ function layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertica
 
   // Which camp is the middle column of neutral parties (none when every entity is boxed, or with no groups)
   const middle = camps.findIndex((c) => !c.group && camps.some((o) => o.group))
-  const laidCamps = camps.map((camp, ci) => (ci === middle ? null : layCamp(camp.members, ci)))
+  const laidCamps = []
+  for (let ci = 0; ci < camps.length; ci += 1) {
+    if (ci === middle) {
+      laidCamps.push(null)
+      continue
+    }
+    const campGen = layCamp(camps[ci].members, ci)
+    let campStep = campGen.next()
+    while (!campStep.done) {
+      yield
+      campStep = campGen.next()
+    }
+    laidCamps.push(campStep.value)
+  }
 
   // ── ② the camps side by side; each moved up or down so the links between camps run level ──
   // The first boxed camp stands at the top. Every next one is moved so the links between it and the camps
@@ -720,6 +794,7 @@ function layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertica
     const c = { index: i, points, labelAt: null, labelSize: { width: labels[i].frame.width, height: labels[i].frame.height } }
     drawn[i] = c
     done.push(c)
+    yield
   }
   // a link that steps sideways by a few px between two boxes of different sizes becomes one straight line
   drawn.forEach((c) => {
