@@ -45,8 +45,21 @@ await diagram.ready
 元素要有尺寸：图撑满它（它的 `height: 100%`），尺寸变了会重新适配。
 
 画出来的内容在元素的 **shadow root** 里，不在它的子元素中：`el.children`、`el.querySelectorAll(…)` 什么都找不到，
-看上去像"没画出来"。宿主的测试要到 `el.shadowRoot` 里找（`el.shadowRoot.querySelectorAll('.react-flow__node')`），
-shadow root 是开放的，正为此。
+看上去像"没画出来"。宿主的测试要到 `el.shadowRoot` 里找；shadow root 是开放的，正为此。
+
+### 宿主测试用的稳定选择器
+
+在开放的 shadow root 内查找（issue #166）。请优先用下表，不要依赖 React Flow 按类型生成的 class
+（`.react-flow__node-pnode`、`.react-flow__node-rnode` 等，属于实现细节）：
+
+| 要找的 | 选择器 |
+| --- | --- |
+| JSON 里 id 为 `x` 的图上节点 | `[data-antu="node"][data-id="x"]` |
+| 流程图规则表的一行（`rule:x`） | `[data-pin-id="rule:x"]` |
+| 底栏某个 chip（按名） | `[data-chip="…"]`（如 `trace`、`stagger`） |
+
+`data-id` 是 JSON 条目 id（React Flow 写在节点外壳上）。`data-antu="node"` 盖在对应 JSON 条目的节点上
+（装饰层、minimap 占位等 id 以 `__` 开头的不盖）。案图自己的聚焦 / 钉住也用同一套选择器。有 id 时不要靠刮正文来认节点。
 
 ### 承诺
 
