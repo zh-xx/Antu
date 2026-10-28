@@ -5,7 +5,7 @@
 //  so it is nowhere in the picture, and validation used to say nothing. A note, not an error.
 // ============================================================
 
-import { tEn } from '../../core/i18n.js'
+import { tVal } from '../../core/i18n.js'
 
 /**
  * A party that no event names (issue 172): it is nowhere in the picture, and nothing told the writer.
@@ -23,5 +23,5 @@ export function partyNotes(spec) {
   return actors
     .map((a, i) => ({ a, i }))
     .filter(({ a }) => a && typeof a.id === 'string' && !named.has(a.id))
-    .map(({ a, i }) => tEn('note.partyNoEvent', { at: `actors[${i}]`, id: a.id, name: a.name ?? a.id }))
+    .map(({ a, i }) => tVal('note.partyNoEvent', { at: `actors[${i}]`, id: a.id, name: a.name ?? a.id }))
 }

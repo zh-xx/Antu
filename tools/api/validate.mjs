@@ -19,13 +19,15 @@ const VERSION = typeof __ANTU_VERSION__ === 'undefined' ? null : __ANTU_VERSION_
 
 /**
  * Is the spec valid?
+ * @param {object} [options]
+ * @param {'zh'|'en'} [options.lang]  message language for a host UI; default English for agents (issue 166)
  * @returns {{ ok: boolean, errors: string[], notes: string[] }}  `errors` name their field
  *          (`nodes[2] (n-3): …`); `notes` are what is not an error but the author should see, given only
  *          when there are no errors
  */
-export function validate(spec) {
-  const errors = problemsOf(spec)
-  return { ok: errors.length === 0, errors: [...errors], notes: errors.length ? [] : [...notesOf(spec)] }
+export function validate(spec, { lang } = {}) {
+  const errors = problemsOf(spec, { lang })
+  return { ok: errors.length === 0, errors: [...errors], notes: errors.length ? [] : [...notesOf(spec, { lang })] }
 }
 
 /**

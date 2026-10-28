@@ -24,7 +24,7 @@ import { sectionWriter, SECTION_GAP } from '../sections.js'
 import { PAD, SCALE_HINT_ENTITIES } from '../graph/metrics.js'
 import { makePartyData } from '../partyData.js'
 import { pillW, pillH } from '../pill.js'
-import { tEn } from '../../../core/i18n.js'
+import { tEn, tVal } from '../../../core/i18n.js'
 
 // The tests and the layouts of the other levelled views take the measure of a pill from here as from relationship/pill.js
 export { pillW, pillH }
@@ -218,7 +218,7 @@ export function buildPathGraph(spec, fields = {}) {
   const t = typeof fields?.t === 'function' ? fields.t : tEn
   const entities = spec.entities
   const relations = spec.relations
-  if (entities.length > SCALE_HINT_ENTITIES) hints.push(tEn('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
+  if (entities.length > SCALE_HINT_ENTITIES) hints.push(tVal('rhint.tooLarge', { n: entities.length, limit: SCALE_HINT_ENTITIES }))
   const entityById = new Map(entities.map((e) => [e.id, e]))
   const party = makePartyData(spec, t)
   const textIndex = new Map(relations.map((r, i) => [r.id, i]))

@@ -100,6 +100,12 @@ export interface MountOptions {
   locked?: AntuViewState
   /** Which of the reader's changes reach the prefs store: true (all, the default), false (none, kept while mounted), or a list of names. An unknown name or a wrong type: `mount` throws. */
   persist?: boolean | AntuPersistName[]
+  /**
+   * Extra room (CSS px) kept clear when fitting the diagram (issue 166).
+   * Each side that is a finite number replaces the auto measure for that side
+   * (label card top/left, dock capsule bottom); omitted sides keep auto.
+   */
+  fitInsets?: { top?: number; right?: number; bottom?: number; left?: number }
   onEvent?: (event: AntuEvent) => void
 }
 
@@ -140,8 +146,11 @@ export declare const cardUi: Readonly<{
   panOnScroll: false
 }>
 
-/** Check a spec the way the diagram checks it before drawing; each error names its field */
-export function validate(spec: unknown): { ok: boolean; errors: string[] }
+/**
+ * Check a spec the way the diagram checks it before drawing; each error names its field.
+ * Pass `{ lang: 'zh' }` for Chinese host UI messages; default English for agents (issue 166).
+ */
+export function validate(spec: unknown, options?: { lang?: AntuLang }): { ok: boolean; errors: string[] }
 
 /** Repair what is inconsistent in the marks of a spec but not in its content (a procedure's main line); the input is not modified, `changes` says what was done */
 export function normalize(spec: unknown): { spec: unknown; changes: string[] }

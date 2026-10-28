@@ -97,6 +97,8 @@ export function standaloneEnv({ preset } = {}) {
     drawn: noop,
     /** Where the diagram's elements are looked up (the whole document on the viewer page) */
     root: typeof document !== 'undefined' ? document : null,
+    /** Extra fit padding a host asked for (`mount(…, { fitInsets })`); none on the viewer page */
+    fitInsets: null,
   }
 }
 
@@ -111,7 +113,7 @@ export function standaloneEnv({ preset } = {}) {
  * @param locked  values forced for this mount, with their controls hidden
  * @param persist which writes may reach the store: true, false, or the names in shell/viewState.js
  */
-export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = null, ui = {}, initial = {}, locked = {}, persist = true } = {}) {
+export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = null, ui = {}, initial = {}, locked = {}, persist = true, fitInsets = null } = {}) {
   const raw = prefs === 'local' ? localPrefs : prefs && typeof prefs === 'object' ? prefs : memoryPrefs()
   // With nothing refused we hand the store straight over, so a host's own store keeps its identity (issue 152);
   // with something refused, its writes are filtered and the refused ones stay in the wrapper's overlay.
@@ -132,6 +134,8 @@ export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = 
     drawn,
     root,
     ui,
+    // host padding around the fitted picture (issue 166); chrome is still measured on top
+    fitInsets: fitInsets && typeof fitInsets === 'object' ? fitInsets : null,
   }
 }
 

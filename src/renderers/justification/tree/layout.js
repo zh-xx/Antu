@@ -41,7 +41,7 @@ import { straightenJog } from '../../../core/links.js'
 import { routeLink } from '../../procedure/flow/router.js'
 import { toReal } from '../../procedure/flow/columns.js'
 import { titleBoxOf, edgesOfBox, portCostFor, segsOf, placeOnLine, fallbackRoute } from '../../relationship/graph/layout.js'
-import { tEn } from '../../../core/i18n.js'
+import { tVal } from '../../../core/i18n.js'
 import { textEm } from '../../fact/cardGeometry.js'
 import { crossScore, routedCrossings } from './crossings.js'
 import {
@@ -153,7 +153,7 @@ function layOut(spec, orientation, collapsed, merged) {
   const groups = Array.isArray(spec.groups) ? spec.groups : []
   const groupById = new Map(groups.map((g) => [g.id, g]))
   if (nodes.length > SCALE_HINT_NODES) {
-    hints.push(tEn('jhint.tooLarge', { n: nodes.length, limit: SCALE_HINT_NODES }))
+    hints.push(tVal('jhint.tooLarge', { n: nodes.length, limit: SCALE_HINT_NODES }))
   }
 
   // ── where each node stands ──

@@ -22,7 +22,8 @@ export interface VersionsReport {
   }>
 }
 
-export function validate(spec: unknown): ValidateResult
+/** Default English (agents). Pass `{ lang: 'zh' }` for Chinese host UI messages (issue 166). */
+export function validate(spec: unknown, options?: { lang?: 'zh' | 'en' }): ValidateResult
 export function layout(spec: unknown, options?: { kind?: string; orientation?: 'vertical' | 'horizontal' }): LayoutResult
 export interface NormalizeResult {
   /** A repaired copy; the input is not modified */

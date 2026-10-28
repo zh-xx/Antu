@@ -40,6 +40,9 @@ const nodeTypes = {
   pstages: StageBoxNode,
 }
 
+/** Wide flows open at this zoom from the left (same floor as the route map; issue 166) */
+const OPEN_MIN_ZOOM = 0.7
+
 /**
  * Defaults for the switches. Most are on: a first look should show everything the data says. The rule table
  * opens off (issue 235), one click away when the data has rules. Stored under their own preference key, apart
@@ -211,6 +214,7 @@ export default function ProcedureFlow({ spec }) {
           ref={canvasRef}
           graph={graph}
           fitKey={layout}
+          fitMinZoom={OPEN_MIN_ZOOM}
           nodeTypes={nodeTypes}
           onNodeMouseEnter={(_, n) => {
             if (n.type === 'pnode') setHoveredId(n.id)
