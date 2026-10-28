@@ -634,6 +634,34 @@ test('a second identical layout is a cache hit (#181)', () => {
   assert.notEqual(flat, a)
 })
 
+test('fields.lang matches fields.t for default relation labels (worker boundary, issue 181)', () => {
+  const withT = buildRelationshipGraph(base(), { t: (k, v) => translate('zh', k, v) }, undefined, 'vertical')
+  const withLang = buildRelationshipGraph(base(), { lang: 'zh' }, undefined, 'vertical')
+  assert.deepEqual(
+    withT.connections.map((c) => c.label),
+    withLang.connections.map((c) => c.label),
+  )
+  assert.deepEqual(
+    withT.nodes.map((n) => n.position),
+    withLang.nodes.map((n) => n.position),
+  )
+})
+
+test('async layout matches sync geometry (issue 181)', async () => {
+  const { buildRelationshipGraphAsync } = await import('../src/renderers/relationship/graph/layout.js')
+  const sync = buildRelationshipGraph(base(), {}, undefined, 'vertical')
+  const asyncLayout = await buildRelationshipGraphAsync(base(), {}, undefined, 'horizontal')
+  const syncH = buildRelationshipGraph(base(), {}, undefined, 'horizontal')
+  assert.deepEqual(
+    asyncLayout.nodes.map((n) => n.position),
+    syncH.nodes.map((n) => n.position),
+  )
+  assert.notDeepEqual(
+    sync.nodes.map((n) => n.position),
+    asyncLayout.nodes.map((n) => n.position),
+  )
+})
+
 test('a dense synthetic graph still lays out under a soft time budget (#181)', () => {
   let seed = 3
   const rnd = () => {
