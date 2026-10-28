@@ -22,7 +22,7 @@ keeps it (`validate`), and makes the self-contained page on its own server or co
 | Import | Runs in | What it gives | Built by |
 | --- | --- | --- | --- |
 | `@zh-xx/antu/embed` | the browser | `mount`, `validate`, `normalize`, `kindsOf`, `kindIcon`, `kindLabel` | `vite.embed.config.js` → `embed/antu-embed.js` |
-| `@zh-xx/antu/validate` | Node or the browser | `validate`, `normalize`, `layout`, `kinds`, `versions` | `vite.api.config.js` → `lib/validate.mjs` |
+| `@zh-xx/antu/validate` | Node or the browser | `validate`, `normalize`, `layout`, `describe`, `guide`, `kinds`, `versions` | `vite.api.config.js` → `lib/validate.mjs` |
 | `@zh-xx/antu/html` | Node | `renderHtml` | `vite.api.config.js` → `lib/html.mjs` |
 
 Each is one ES module with every dependency inside, as the command line and the MCP server are; the package
@@ -231,6 +231,8 @@ The checks, notes and geometry report of the command line and the MCP server (`t
 | `validate(spec, { lang }?)` | `{ ok, errors, notes }`. Each error names its field: ``nodes[2] (n-3): `kind` is "bogus", …`` — give them back to the model as they are. `notes` are not errors (given only when there are none). Default English (agents / MCP); pass `{ lang: 'zh' }` for Chinese host UI messages (issue #166) |
 | `normalize(spec)` | `{ spec, changes }`: a copy with what is wrong in the marks but not in the content repaired, and what was done (below). The input is not modified |
 | `layout(spec, { kind, orientation })` | the geometry report of `antu layout`: `{ ok: true, type, kind, text, … }`, or `{ ok: false, reason, errors? }` |
+| `describe(type?)` | the field table of one type (`antu_schema`); `{ ok: true, text }` or `{ ok: false, reason }` |
+| `guide(type?, { lang }?)` | the mechanism notes of one type (`antu_guide` / `spec/agent/<type>/guide.md`), for a host that builds a prompt without copying the file (issue #166). English only; `lang` is accepted and ignored. `{ ok: true, text }` or `{ ok: false, reason }` |
 | `kinds()` | `{ type: [kind, …] }`, the first kind being the one a diagram opens in |
 | `versions()` | what `antu versions --json` prints |
 

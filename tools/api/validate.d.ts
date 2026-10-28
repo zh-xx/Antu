@@ -36,6 +36,11 @@ export interface NormalizeResult {
 export function normalize(spec: unknown): NormalizeResult
 /** The field table of one type, the text `antu_schema` serves; `reason` names the available types when the type is unknown */
 export function describe(type?: string): { ok: true; text: string } | { ok: false; reason: string }
+/**
+ * The mechanism notes of one type (`antu_guide` / `spec/agent/<type>/guide.md`).
+ * English only; `lang` is accepted and ignored (issue 166).
+ */
+export function guide(type?: string, options?: { lang?: 'zh' | 'en' }): { ok: true; text: string } | { ok: false; reason: string }
 /** Each type and its kinds, the first kind being the one a diagram opens in */
 export function kinds(): Record<string, string[]>
 export function versions(): VersionsReport

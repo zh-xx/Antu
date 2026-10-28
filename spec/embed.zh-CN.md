@@ -21,7 +21,7 @@
 | 导入 | 运行于 | 提供 | 构建 |
 | --- | --- | --- | --- |
 | `@zh-xx/antu/embed` | 浏览器 | `mount`、`validate`、`normalize`、`kindsOf`、`kindIcon`、`kindLabel` | `vite.embed.config.js` → `embed/antu-embed.js` |
-| `@zh-xx/antu/validate` | Node 或浏览器 | `validate`、`normalize`、`layout`、`kinds`、`versions` | `vite.api.config.js` → `lib/validate.mjs` |
+| `@zh-xx/antu/validate` | Node 或浏览器 | `validate`、`normalize`、`layout`、`describe`、`guide`、`kinds`、`versions` | `vite.api.config.js` → `lib/validate.mjs` |
 | `@zh-xx/antu/html` | Node | `renderHtml` | `vite.api.config.js` → `lib/html.mjs` |
 
 每个都是一个 ES 模块，依赖全部打在里面，和命令行、MCP 服务端一样，包本身没有需要安装的依赖。每个都附类型声明
@@ -217,6 +217,8 @@ mount(el, spec, {
 | `validate(spec, { lang }?)` | `{ ok, errors, notes }`。每条错误开头写明字段：``nodes[2] (n-3): `kind` is "bogus", …``，原样交还给模型修改即可。`notes` 不是错误（只在没有错误时给出）。默认英文（给 agent / MCP）；宿主面向读者时可传 `{ lang: 'zh' }` 得到中文（issue #166） |
 | `normalize(spec)` | `{ spec, changes }`：修正了“标记有误、内容无误”之处的副本，以及做了什么（见下文）。不修改传入的对象 |
 | `layout(spec, { kind, orientation })` | `antu layout` 的几何报告：`{ ok: true, type, kind, text, … }`，或 `{ ok: false, reason, errors? }` |
+| `describe(type?)` | 某一类型的字段表（`antu_schema`）；`{ ok: true, text }` 或 `{ ok: false, reason }` |
+| `guide(type?, { lang }?)` | 某一类型的机制说明（`antu_guide` / `spec/agent/<type>/guide.md`），供宿主拼模型提示而不必自己拷文件（issue #166）。仅英文；`lang` 接受但忽略。`{ ok: true, text }` 或 `{ ok: false, reason }` |
 | `kinds()` | `{ 类型: [画法, …] }`，第一种是默认画法 |
 | `versions()` | 即 `antu versions --json` 的输出 |
 
