@@ -129,6 +129,7 @@ export async function checkEmbed(t) {
     const g = buildProcedureGraph(flow, {})
     const pnodes = g.nodes.filter((n) => n.type === 'pnode').length
     eq('embed: the flowchart draws one box per node, inside its shadow root', await browser.eval(`${S('a')}.querySelectorAll('.antu-pn').length`), pnodes)
+    eq('embed: every diagram node carries data-antu=node for host tests (issue 166)', await browser.eval(`${S('a')}.querySelectorAll('[data-antu="node"]').length`), pnodes)
     eq('embed: nothing of the diagram is in the host\'s document', await browser.eval(`document.querySelectorAll('.antu-app, .react-flow, .antu-pn').length`), 0)
     truthy('embed: the second diagram opens in the kind it was given (route)', (await browser.eval(`${S('b')}.querySelectorAll('.antu-rt-label').length`)) > 0)
     eq('embed: the second diagram is in the theme it was given', await browser.eval(`${S('b')}.querySelector('.antu-app')?.dataset.theme`), 'legal')
@@ -279,9 +280,9 @@ export async function checkEmbed(t) {
     const withSource = flow.nodes[at]
     const clicked = await browser.eval(`((i) => {
       const id = window.__api.SPECS.flow.nodes[i].id
-      const el = [...${S('a')}.querySelectorAll('.react-flow__node')].find((n) => n.dataset.id === id)
+      const el = ${S('a')}.querySelector('[data-antu="node"][data-id="' + CSS.escape(id) + '"]')
       el?.click()
-      return !!el
+      return !!el && el.getAttribute('data-antu') === 'node'
     })(${Number(at)})`)
     await wait(200)
     const sel = await browser.eval(`window.__events.a.filter((e) => e.type === 'select').at(-1) ?? null`)
@@ -320,8 +321,8 @@ export async function checkEmbed(t) {
       await h.ready
       await pause(300)
       const root = host.shadowRoot
-      const nodeEl = (x) => [...root.querySelectorAll('.react-flow__node')].find((n) => n.dataset.id === x)
-      const ruleEl = (x) => [...root.querySelectorAll('.antu-rtable-row')].find((n) => n.dataset.pinId === 'rule:' + x)
+      const nodeEl = (x) => root.querySelector('[data-antu="node"][data-id="' + CSS.escape(x) + '"]')
+      const ruleEl = (x) => root.querySelector('[data-pin-id="rule:' + CSS.escape(x) + '"]')
       const ring = (el) => (el ? getComputedStyle(el).outlineStyle : 'missing')
       const lastSelect = () => events.filter((e) => e.type === 'select').at(-1)?.id
       const out = { refused, early, folded: !!root.querySelector('.antu-header-card.is-folded') }

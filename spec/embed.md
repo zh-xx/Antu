@@ -48,7 +48,22 @@ The element needs a size: the diagram fills it (`height: 100%` of it), and fits 
 
 What is drawn lives in the element's **shadow root**, not among its children: `el.children` and
 `el.querySelectorAll(…)` find nothing, which reads as "nothing was drawn". A host's tests look in
-`el.shadowRoot` (`el.shadowRoot.querySelectorAll('.react-flow__node')`); the root is open for that.
+`el.shadowRoot`; the root is open for that.
+
+### Stable selectors for host tests
+
+Inside the open shadow root (issue #166). Prefer these over React Flow's type-specific classes
+(`.react-flow__node-pnode`, `.react-flow__node-rnode`, …), which are implementation detail:
+
+| Find | Selector |
+| --- | --- |
+| A diagram node whose JSON id is `x` | `[data-antu="node"][data-id="x"]` |
+| A flowchart rule row (`rule:x`) | `[data-pin-id="rule:x"]` |
+| A dock chip (by name) | `[data-chip="…"]` (e.g. `trace`, `stagger`) |
+
+`data-id` is the item id from the JSON (React Flow puts it on the node wrapper). `data-antu="node"` is
+Antu's own mark on every diagram node. Antu's focus / pin path uses the same selectors. Do not scrape
+text content to identify a node when an id is available.
 
 ### What it promises
 

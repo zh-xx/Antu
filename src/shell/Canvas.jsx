@@ -26,6 +26,7 @@ import { frames } from './printPaper.js'
 import { usePrintHost } from './printHost.js'
 import { readSpecPref, specKeyOf, writeSpecPref } from './prefs.js'
 import { measureChromeInsets } from './chromeInsets.js'
+import { stampHostNode } from './hostAttrs.js'
 
 /** React Flow's minimap width plus its border, until one has been measured */
 const MINIMAP_WIDTH = 202
@@ -73,7 +74,9 @@ const miniGhost = ({ width, height }) => ({
 
 /** The element an item's node stands at: a canvas node, or a row of the flowchart's rule table (`rule:<id>`) */
 const selectorOf = (id) =>
-  id.startsWith('rule:') ? `[data-pin-id="${CSS.escape(id)}"]` : `.react-flow__node[data-id="${CSS.escape(id)}"]`
+  id.startsWith('rule:')
+    ? `[data-pin-id="${CSS.escape(id)}"]`
+    : `[data-antu="node"][data-id="${CSS.escape(id)}"]`
 
 export default function Canvas({
   ref,
@@ -106,7 +109,9 @@ export default function Canvas({
   const dark = theme.scheme === 'dark'
   const shell = { dots: dark ? theme.color.dots : '#e8ebef', miniMask: dark ? 'rgba(10, 13, 18, 0.62)' : undefined }
   const miniColor = (node) => (node.id === MINI_GHOST_ID ? (dark ? theme.color.miniGhost : '#eef1f5') : dark ? theme.color.mini : '#cbd5e1')
-  const [nodes, setNodes, onNodesChange] = useNodesState([miniGhost(graph.size), ...graph.nodes])
+  const [nodes, setNodes, onNodesChange] = useNodesState(
+    [miniGhost(graph.size), ...graph.nodes].map((n) => stampHostNode(n, MINI_GHOST_ID)),
+  )
   const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges)
 
   useEffect(() => {
@@ -122,8 +127,8 @@ export default function Canvas({
       const prevById = new Map(prev.map((n) => [n.id, n]))
       return [miniGhost(graph.size), ...graph.nodes].map((n) => {
         const old = prevById.get(n.id)
-        if (!old) return n
-        let next = n
+        let next = stampHostNode(n, MINI_GHOST_ID)
+        if (!old) return next
         if (old.measured && old.type === n.type) next = { ...next, measured: old.measured }
         return old.selected ? { ...next, selected: true } : next
       })
