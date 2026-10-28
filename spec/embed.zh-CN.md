@@ -58,8 +58,8 @@ await diagram.ready
 | 流程图规则表的一行（`rule:x`） | `[data-pin-id="rule:x"]` |
 | 底栏某个 chip（按名） | `[data-chip="…"]`（如 `trace`、`stagger`） |
 
-`data-id` 是 JSON 条目 id（React Flow 写在节点外壳上）。`data-antu="node"` 是案图盖在每个图节点上的标记。
-案图自己的聚焦 / 钉住也用同一套选择器。有 id 时不要靠刮正文来认节点。
+`data-id` 是 JSON 条目 id（React Flow 写在节点外壳上）。`data-antu="node"` 盖在对应 JSON 条目的节点上
+（装饰层、minimap 占位等 id 以 `__` 开头的不盖）。案图自己的聚焦 / 钉住也用同一套选择器。有 id 时不要靠刮正文来认节点。
 
 ### 承诺
 

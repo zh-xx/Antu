@@ -62,8 +62,9 @@ Inside the open shadow root (issue #166). Prefer these over React Flow's type-sp
 | A dock chip (by name) | `[data-chip="…"]` (e.g. `trace`, `stagger`) |
 
 `data-id` is the item id from the JSON (React Flow puts it on the node wrapper). `data-antu="node"` is
-Antu's own mark on every diagram node. Antu's focus / pin path uses the same selectors. Do not scrape
-text content to identify a node when an id is available.
+Antu's own mark on nodes that are JSON items (decoration layers and the minimap ghost, whose ids start
+with `__`, are not marked). Antu's focus / pin path uses the same selectors. Do not scrape text content
+to identify a node when an id is available.
 
 ### What it promises
 

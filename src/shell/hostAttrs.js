@@ -6,16 +6,22 @@
 //  depending on React Flow's `.react-flow__node*` class names. Contract: spec/embed.md.
 // ============================================================
 
-/** Attribute set stamped onto every diagram node (not the minimap ghost). */
+/** Attribute set stamped onto JSON-item diagram nodes (not decoration layers / the minimap ghost). */
 export const HOST_NODE_DOM_ATTRIBUTES = Object.freeze({ 'data-antu': 'node' })
 
+/** Decoration and shell helpers use ids like `__plinks__`, `__stages__`, `__head__…`. */
+export function isHostTestNodeId(id) {
+  return typeof id === 'string' && id.length > 0 && !id.startsWith('__')
+}
+
 /**
- * Copy of a React Flow node with Antu's host-test marker. The minimap ghost is left alone.
+ * Copy of a React Flow node with Antu's host-test marker.
+ * Skips the minimap ghost and decoration / layer nodes (`__…` ids).
  * @param {object} node
  * @param {string} [ghostId]
  */
 export function stampHostNode(node, ghostId) {
-  if (!node || node.id === ghostId) return node
+  if (!node || node.id === ghostId || !isHostTestNodeId(node.id)) return node
   const prev = node.domAttributes
   if (prev && prev['data-antu'] === 'node') return node
   return { ...node, domAttributes: { ...prev, ...HOST_NODE_DOM_ATTRIBUTES } }
