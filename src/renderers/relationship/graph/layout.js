@@ -59,7 +59,7 @@ import {
   labelBox,
 } from './metrics.js'
 
-/** Whole-graph layouts kept across toggles / MCP double-runs (#181); same idea as justification */
+/** Whole-graph layouts kept across toggles / MCP double-runs (issue 181); same idea as justification */
 const LAYOUT_CACHE_SIZE = 6
 const layoutCache = new Map()
 /** Per-camp ELK winners (after order search, before undirected label widening) */
@@ -225,7 +225,7 @@ export function fallbackRoute(a, b) {
  * view is accepted and unused. `fields.t` is the interface language's translate function, used
  * only for the default text on a relation with no label of its own.
  *
- * The last few layouts are kept (#181): the interface, the geometry report and an export all lay
+ * The last few layouts are kept (issue 181): the interface, the geometry report and an export all lay
  * out the same diagram again, and a large one takes seconds. Keyed by orientation, groups on/off,
  * the resolved relation labels (so the interface language matters), and the JSON.
  */
@@ -366,7 +366,7 @@ function layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertica
       return { at, width: wide, height: y - NODE_GAP, level: new Map(ordered.map((e) => [e.id, 0])), levels: 1 }
     }
     const inEdges = relations.map((r, i) => ({ r, i })).filter(({ r }) => inside.has(r.from) && inside.has(r.to))
-    // Camp ELK inputs (#181): membership, sizes, pulls (neighbour camps), directed edges and label boxes
+    // Camp ELK inputs (issue 181): membership, sizes, pulls (neighbour camps), directed edges and label boxes
     const campKey = [
       vertical ? 'v' : 'h',
       `c${ci}`,
@@ -705,7 +705,7 @@ function layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertica
         // box spread to match
         sideSpread: SIDE_SPREAD,
         parallelGap: PARALLEL_MIN,
-        // Dense graphs: stop the A* search and take the elbow below rather than freeze the page (#181)
+        // Dense graphs: stop the A* search and take the elbow below rather than freeze the page (issue 181)
         maxExpansions: ROUTE_MAX_EXPANSIONS,
       })
     const points = (stacked ? route(['top', 'bottom']) : null) ?? route(undefined) ?? fallbackRoute(a, b)

@@ -79,7 +79,7 @@ const emOf = (text, factor) => {
 export const CROSS_COST = 1300
 
 /**
- * Cap on the orthogonal router's A* expansions per relation (#181). Past this the search
+ * Cap on the orthogonal router's A* expansions per relation (issue 181). Past this the search
  * stops and the layout falls back to a simple elbow, so a dense graph stays interactive.
  * Omitted in flowchart / justification (unlimited). Tuned so bundled examples still find
  * real routes; pathological late links give up instead of searching for tens of thousands of states.
