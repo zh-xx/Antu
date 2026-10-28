@@ -12,6 +12,7 @@ import { versionsReport } from '../lib/versions.mjs'
 import { knowledgeOf, listKnowledgeTypes, layoutKindsOf } from '../../src/core/registry.js'
 import { normalizeSpec } from '../../src/core/normalize.js'
 import { tEn } from '../../src/core/i18n.js'
+import { AGENT_GUIDES } from '../../src/core/agentGuides.generated.js'
 
 // set by the bundler; a run from the source reads it where the engine does
 // eslint-disable-next-line no-undef
@@ -64,6 +65,20 @@ export function describe(type = 'fact') {
   const k = knowledgeOf(type)
   if (!k) return { ok: false, reason: unknownType(type) }
   return { ok: true, text: k.describe() }
+}
+
+/**
+ * The mechanism notes of one type, the same text `antu_guide` / `antu guide` serve
+ * (`spec/agent/<type>/guide.md`). For a host that builds a model prompt without copying the file
+ * (issue 166). English only (agent material); `lang` is accepted for API shape and ignored.
+ * @param {string} [type]
+ * @param {{ lang?: 'zh' | 'en' }} [options]
+ * @returns {{ ok: true, text: string } | { ok: false, reason: string }}
+ */
+export function guide(type = 'fact', { lang: _lang } = {}) {
+  const text = AGENT_GUIDES[type]
+  if (typeof text !== 'string') return { ok: false, reason: unknownType(type) }
+  return { ok: true, text }
 }
 
 /** The wording used when the type asked for does not exist yet (the same as tools/mcp/engine.mjs) */

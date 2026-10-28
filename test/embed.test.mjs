@@ -14,7 +14,7 @@ import { HOST_RULES, PAGE_FONT, toShadowCss } from '../src/embed/shadowCss.js'
 import { embeddedEnv, isInside, standaloneEnv } from '../src/shell/env.js'
 import { localPrefs } from '../src/shell/prefs.js'
 import { buildHtml } from '../tools/lib/make-html.mjs'
-import { validate, layout, kinds, versions, describe } from '../tools/api/validate.mjs'
+import { validate, layout, kinds, versions, describe, guide } from '../tools/api/validate.mjs'
 import { renderHtml } from '../tools/api/html.mjs'
 import { ENTRIES, packageJson } from '../tools/build-npm.mjs'
 
@@ -163,6 +163,19 @@ test('@zh-xx/antu/validate describe: the field table as data, an unknown type na
   assert.ok(r.text.length > 20, 'the field table is the type descriptor text')
   assert.equal(describe().ok, true, 'fact by default')
   const bad = describe('nope')
+  assert.equal(bad.ok, false)
+  assert.match(bad.reason, /no reference material for type "nope" yet/)
+  assert.match(bad.reason, /Available: .*fact/)
+})
+
+test('@zh-xx/antu/validate guide: the mechanism notes as data, same text as the guide file', () => {
+  const fromFile = readFileSync('spec/agent/fact/guide.md', 'utf8')
+  const r = guide('fact')
+  assert.equal(r.ok, true)
+  assert.equal(r.text, fromFile)
+  assert.equal(guide().ok, true, 'fact by default')
+  assert.equal(guide('procedure', { lang: 'zh' }).text, readFileSync('spec/agent/procedure/guide.md', 'utf8'))
+  const bad = guide('nope')
   assert.equal(bad.ok, false)
   assert.match(bad.reason, /no reference material for type "nope" yet/)
   assert.match(bad.reason, /Available: .*fact/)

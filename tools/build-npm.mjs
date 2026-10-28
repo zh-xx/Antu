@@ -9,7 +9,7 @@
 //  for the data left empty), the agent guides and the examples the server serves, the licence and the notices.
 //  And three entries for a host's own code (issue #152, spec/embed.md), each bundled the same way:
 //    @zh-xx/antu/embed     mount() a diagram in a page (vite.embed.config.js)
-//    @zh-xx/antu/validate  validate(), layout(), kinds(), versions() (vite.api.config.js)
+//    @zh-xx/antu/validate  validate(), normalize(), layout(), describe(), guide(), kinds(), versions() (vite.api.config.js)
 //    @zh-xx/antu/html      renderHtml(): the self-contained page as a string (vite.api.config.js)
 //
 //  Nothing is written by hand twice: the files are the ones the repository has, and the version is package.json's
