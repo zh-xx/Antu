@@ -17,7 +17,8 @@ what breaks a file or a tool call written for the version before, with how to br
 - **`layoutReport` / `layoutMessage` take optional `paper`** (#123): an engine-import diagnostic only (`screen` by default). CLI and MCP do **not** expose a `paper` flag.
 
 ### Changed
-- **Relationship graph layout is cheaper on large cases** (#181): the orthogonal router caps search effort per link (then falls back to a simple elbow); camp ELK results and whole-graph layouts are cached so a repeated layout or an unchanged camp is not recomputed. Flowchart and justification routing stay uncapped. No Web Worker yet.
+- **Relationship graph layout is cheaper on large cases** (#181): the orthogonal router caps search effort per link (then falls back to a simple elbow); camp ELK results and whole-graph layouts are cached so a repeated layout or an unchanged camp is not recomputed. Flowchart and justification routing stay uncapped.
+- **Relationship graph layout runs in a Web Worker in the browser** (#181): the graph view posts layout to an inlined worker (`?worker&inline`, no network) so the page stays responsive; Node / MCP / tests keep the sync `buildRelationshipGraph` API. Sync fallback if Worker is unavailable.
 - **#123 product turn: content-first, one HTML diagram** — the A4-shaped preview viewport (`preset.paper` / `mount({ paper })`) is removed. Across-sheets print, sheet-count product lines, and CLI/MCP `paper` are out of scope (open PRs #284–#287 closed without merge). Print hygiene (hide chrome, fit one sheet) stays.
 
 ### Fixed

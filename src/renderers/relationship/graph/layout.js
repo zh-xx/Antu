@@ -39,7 +39,7 @@ import { straightenJog } from '../../../core/links.js'
 import { routeLink } from '../../procedure/flow/router.js'
 import { toReal } from '../../procedure/flow/columns.js'
 import { textEm } from '../../fact/cardGeometry.js'
-import { tEn, tVal } from '../../../core/i18n.js'
+import { tEn, tVal, translate } from '../../../core/i18n.js'
 import { labelOf } from './labelOf.js'
 import { makePartyData } from '../partyData.js'
 import {
@@ -65,6 +65,13 @@ const layoutCache = new Map()
 /** Per-camp ELK winners (after order search, before undirected label widening) */
 const CAMP_ELK_CACHE_SIZE = 48
 const campElkCache = new Map()
+
+/** `fields.t`, else `fields.lang` via translate (workers cannot clone a function), else English */
+function translateOf(fields) {
+  if (typeof fields?.t === 'function') return fields.t
+  if (fields?.lang) return (key, vars) => translate(fields.lang, key, vars)
+  return tEn
+}
 
 /** Two links running side by side keep at least this far apart; the side ports of a box spread to allow it */
 const PARALLEL_MIN = 15
@@ -223,14 +230,15 @@ export function fallbackRoute(a, b) {
  * The signature matches the other types' (spec, fields, view, orientation), because the registry
  * calls them all with the same four parameters. relationship has no views (schema-draft §0);
  * view is accepted and unused. `fields.t` is the interface language's translate function, used
- * only for the default text on a relation with no label of its own.
+ * only for the default text on a relation with no label of its own. A worker may pass `fields.lang`
+ * instead (`'en'` / `'zh'`): functions cannot cross the worker boundary.
  *
  * The last few layouts are kept (issue 181): the interface, the geometry report and an export all lay
  * out the same diagram again, and a large one takes seconds. Keyed by orientation, groups on/off,
  * the resolved relation labels (so the interface language matters), and the JSON.
  */
 export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'vertical') {
-  const t = typeof fields?.t === 'function' ? fields.t : tEn
+  const t = translateOf(fields)
   const groupsFlag = fields?.groups === false ? 'flat' : 'grouped'
   let key
   try {
@@ -273,7 +281,7 @@ function layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertica
     }
   }
 
-  const t = typeof fields?.t === 'function' ? fields.t : tEn
+  const t = translateOf(fields)
   const entities = spec.entities
   const relations = spec.relations
   const presentGroups = (spec.groups ?? []).filter((g) => entities.some((e) => e.groupId === g.id))

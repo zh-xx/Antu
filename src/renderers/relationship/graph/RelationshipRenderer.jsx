@@ -20,7 +20,7 @@
 //      anything.
 // ============================================================
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { useEnv, usePreset, usePrefs } from '../../../shell/env.js'
@@ -32,11 +32,24 @@ import EntityNode from './EntityNode.jsx'
 import ConnectionLayerNode from './ConnectionLayerNode.jsx'
 import GroupBoxNode from './GroupBoxNode.jsx'
 import RelationshipDock from './RelationshipDock.jsx'
-import { buildRelationshipGraph } from './layout.js'
+import { layoutRelationshipAsync } from './layoutAsync.js'
 import { lookedAt } from './secures.js'
 import { OPEN_MAX_ZOOM } from './metrics.js'
 import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 import { useSpecPref } from '../useSpecPref.js'
+
+/** Shown until the first worker (or sync-fallback) layout arrives */
+const EMPTY_LAYOUT = {
+  errors: [],
+  hints: [],
+  orientation: 'vertical',
+  nodes: [],
+  edges: [],
+  connections: [],
+  groupBoxes: [],
+  size: { width: 0, height: 0 },
+  stats: { entities: 0, relations: 0, groups: 0, layers: 0, widest: 0, kinds: {} },
+}
 
 /** Node types used by the graph. Adding one means registering one line here. */
 const nodeTypes = {
@@ -87,13 +100,22 @@ export default function RelationshipGraph({ spec }) {
   const [linkStyle, setLinkStyle] = useSpecPref('linkStyle', specKey, (stored) => PRESET?.linkStyle ?? stored ?? 'curved')
   const toggleLinkStyle = (next) => setLinkStyle(next)
 
-  // Only the switches that move geometry go into layout: the group boxes turn camps into columns;
-  // the interface language changes the default text on a relation and so the size of its label
-  const layout = useMemo(
-    () => buildRelationshipGraph(spec, { groups: fields.groups, t }, undefined, orientation),
-    // `t` follows `lang`, so the language is what the layout depends on
-    [spec, fields.groups, orientation, lang],
-  )
+  // Geometry runs off the UI thread when a Worker is available (issue 181). Keep the last
+  // layout on screen while a toggle recomputes, so the page stays interactive.
+  const [layout, setLayout] = useState(EMPTY_LAYOUT)
+  const layoutReq = useRef(0)
+  useEffect(() => {
+    const id = ++layoutReq.current
+    let cancelled = false
+    // `lang` is enough for the worker; `t` is only used on the sync-fallback path
+    layoutRelationshipAsync(spec, { groups: fields.groups, lang, t }, orientation).then((next) => {
+      if (!cancelled && id === layoutReq.current) setLayout(next)
+    })
+    return () => {
+      cancelled = true
+    }
+    // `t` follows `lang` (LangContext); depending on `t` would re-run every render if it were a fresh closure
+  }, [spec, fields.groups, orientation, lang])
 
   const [hoveredId, setHoveredId] = useState(null)
   const [pinnedId, setPinnedId] = useState(null)
