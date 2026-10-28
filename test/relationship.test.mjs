@@ -623,3 +623,54 @@ test('a long chain of authority (20000 parties) is classified without overflowin
   const g = classifyAuthority({ type: 'relationship', specVersion: 1, title: 't', entities, relations })
   assert.equal(Math.max(...g.level.values()), N - 1)
 })
+
+test('a second identical layout is a cache hit (#181)', () => {
+  const a = buildRelationshipGraph(base(), {}, undefined, 'vertical')
+  const b = buildRelationshipGraph(base(), {}, undefined, 'vertical')
+  assert.equal(a, b)
+  const flipped = buildRelationshipGraph(base(), {}, undefined, 'horizontal')
+  assert.notEqual(flipped, a)
+  const flat = buildRelationshipGraph(base(), { groups: false }, undefined, 'vertical')
+  assert.notEqual(flat, a)
+})
+
+test('a dense synthetic graph still lays out under a soft time budget (#181)', () => {
+  let seed = 3
+  const rnd = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0
+    return seed / 2 ** 32
+  }
+  const nEnt = 20
+  const nRel = 60
+  const entities = Array.from({ length: nEnt }, (_, i) => ({
+    id: `e-${i}`,
+    kind: i % 3 === 0 ? 'company' : 'person',
+    label: `Party ${i}`,
+    groupId: i < nEnt / 2 ? 'g-1' : 'g-2',
+  }))
+  const groups = [
+    { id: 'g-1', label: 'A' },
+    { id: 'g-2', label: 'B' },
+  ]
+  const kinds = ['debt', 'guarantee', 'equity', 'control', 'contract']
+  const relations = []
+  while (relations.length < nRel) {
+    const from = `e-${Math.floor(rnd() * nEnt)}`
+    const to = `e-${Math.floor(rnd() * nEnt)}`
+    if (from === to) continue
+    const kind = kinds[relations.length % kinds.length]
+    relations.push({ id: `r-${relations.length}`, kind, from, to, label: `L${relations.length}` })
+  }
+  const claims = relations.filter((r) => r.kind === 'debt' || r.kind === 'contract')
+  for (const r of relations) {
+    if (r.kind === 'guarantee') r.secures = (claims[0] || relations[0]).id
+  }
+  const spec = { type: 'relationship', specVersion: 1, title: 'dense', asOf: '2024-01-01', groups, entities, relations }
+  const t0 = performance.now()
+  const g = buildRelationshipGraph(spec)
+  const ms = performance.now() - t0
+  assert.deepEqual(g.errors, [])
+  assert.equal(g.connections.length, nRel)
+  // Soft ceiling: without the router budget this class of graph was measured in many seconds
+  assert.ok(ms < 8000, `dense layout took ${ms.toFixed(0)}ms`)
+})

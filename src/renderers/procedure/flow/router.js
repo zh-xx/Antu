@@ -211,8 +211,11 @@ class Heap {
  *   two stages then takes the gap between their boxes rather than a strip inside one, where both are as short
  * @param {number} [p.maxCost]  find only a route cheaper than this (the search stops there): a second try at a link
  *   that has a route already need not look at anything dearer
+ * @param {number} [p.maxExpansions]  stop after this many heap expansions (accepted pops). Past the budget the
+ *   search returns the best complete route found so far, or null. Omitted = no cap (flowchart / justification).
  * @param {boolean} [p.exhaustive]  search without the A* estimate (for the tests: it must find routes as cheap)
  * @param {Function} [p.onCost]  called with the cost of the route found (for the tests)
+ * @param {Function} [p.onExpansions]  called with how many states were expanded (for the tests / budgets)
  * @param {boolean} [p.join]  a `share` link is one to join (merge.js): the route may lie exactly on it, a little cheaper
  *   than beside it, and keeps such a run where it is (without it, `share` links may only be run along, as a bundle)
  * @param {number} [p.crossCost]  what crossing another link costs, in pixels of length (default: more than two bends)
@@ -506,10 +509,14 @@ export function routeLink(p) {
 
   let best = null
   let bestCost = p.maxCost ?? Infinity
+  const maxExp = p.maxExpansions ?? Infinity
+  let expansions = 0
   while (heap.size) {
     const [f, s, c] = heap.pop()
     if (c > dist[s]) continue
     if (f >= bestCost) break
+    expansions += 1
+    if (expansions > maxExp) break
     if (goal.has(s)) {
       const total = c + goal.get(s)
       if (total < bestCost) {
@@ -533,6 +540,7 @@ export function routeLink(p) {
       }
     }
   }
+  p.onExpansions?.(expansions)
   p.onCost?.(bestCost)
   if (best === null) return null
 

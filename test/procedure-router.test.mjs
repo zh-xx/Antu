@@ -55,6 +55,22 @@ test('a port another link uses is taken', () => {
   assert.notDeepEqual(second[0], first[0], 'two links leave from one point')
 })
 
+test('maxExpansions stops the search: a tiny budget finds nothing on a blocked straight line', () => {
+  const pts = routeLink({ from: A, to: B, nodes: [A, B, X], maxExpansions: 1 })
+  assert.equal(pts, null)
+})
+
+test('without maxExpansions a blocked straight line still finds a way round', () => {
+  const pts = routeLink({ from: A, to: B, nodes: [A, B, X] })
+  assert.ok(pts && pts.length >= 2)
+})
+
+test('onExpansions reports how many states were expanded', () => {
+  let n = -1
+  routeLink({ from: A, to: B, nodes: [A, B], onExpansions: (e) => (n = e) })
+  assert.ok(n > 0)
+})
+
 test('the A* search finds routes as cheap as the search without its estimate (ports off the half-pixel grid too)', () => {
   // A seeded scatter of boxes, routes between pairs of them among the rest, some with existing links to cross
   let seed = 7

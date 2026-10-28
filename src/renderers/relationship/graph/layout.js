@@ -54,9 +54,17 @@ import {
   SCALE_HINT_ENTITIES,
   SCALE_HINT_RELATIONS,
   CROSS_COST,
+  ROUTE_MAX_EXPANSIONS,
   sizeOf,
   labelBox,
 } from './metrics.js'
+
+/** Whole-graph layouts kept across toggles / MCP double-runs (#181); same idea as justification */
+const LAYOUT_CACHE_SIZE = 6
+const layoutCache = new Map()
+/** Per-camp ELK winners (after order search, before undirected label widening) */
+const CAMP_ELK_CACHE_SIZE = 48
+const campElkCache = new Map()
 
 /** Two links running side by side keep at least this far apart; the side ports of a box spread to allow it */
 const PARALLEL_MIN = 15
@@ -216,8 +224,36 @@ export function fallbackRoute(a, b) {
  * calls them all with the same four parameters. relationship has no views (schema-draft §0);
  * view is accepted and unused. `fields.t` is the interface language's translate function, used
  * only for the default text on a relation with no label of its own.
+ *
+ * The last few layouts are kept (#181): the interface, the geometry report and an export all lay
+ * out the same diagram again, and a large one takes seconds. Keyed by orientation, groups on/off,
+ * the resolved relation labels (so the interface language matters), and the JSON.
  */
 export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'vertical') {
+  const t = typeof fields?.t === 'function' ? fields.t : tEn
+  const groupsFlag = fields?.groups === false ? 'flat' : 'grouped'
+  let key
+  try {
+    const labels = Array.isArray(spec?.relations) ? spec.relations.map((r) => labelOf(r, t)).join('\u0001') : ''
+    key = `${orientation}|${groupsFlag}|${labels}|${JSON.stringify(spec)}`
+  } catch {
+    key = null
+  }
+  if (key !== null && layoutCache.has(key)) {
+    const hit = layoutCache.get(key)
+    layoutCache.delete(key)
+    layoutCache.set(key, hit)
+    return hit
+  }
+  const built = layOutRelationshipGraph(spec, fields, view, orientation)
+  if (key !== null) {
+    layoutCache.set(key, built)
+    if (layoutCache.size > LAYOUT_CACHE_SIZE) layoutCache.delete(layoutCache.keys().next().value)
+  }
+  return built
+}
+
+function layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertical') {
   const errors = validateRelationship(spec)
   const hints = hintsOfRelationship(spec)
   const vertical = orientation !== 'horizontal'
@@ -330,6 +366,15 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
       return { at, width: wide, height: y - NODE_GAP, level: new Map(ordered.map((e) => [e.id, 0])), levels: 1 }
     }
     const inEdges = relations.map((r, i) => ({ r, i })).filter(({ r }) => inside.has(r.from) && inside.has(r.to))
+    // Camp ELK inputs (#181): membership, sizes, pulls (neighbour camps), directed edges and label boxes
+    const campKey = [
+      vertical ? 'v' : 'h',
+      `c${ci}`,
+      ordered.map((e) => `${e.id}:${frameSize(e).w}x${frameSize(e).h}:${pullOf(e, ci).toFixed(4)}`).join(','),
+      inEdges
+        .map(({ r, i }) => `${r.from}>${r.to}:${isDirected(r) ? 1 : 0}:${labels[i].frame.width}x${labels[i].frame.height}`)
+        .join(';'),
+    ].join('|')
     const runElk = (order) =>
       elkLayoutSync({
         id: `camp${ci}`,
@@ -389,22 +434,40 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
       )
       return n
     }
-    const tries = [ordered]
-    if (members.length > 2 && inEdges.length && members.some((e) => pullOf(e, ci) !== 0)) {
-      const seed = mulberry32(ci + members.length * 7919)
-      const want = members.length <= 5 ? permutations(ordered) : Array.from({ length: 40 }, () => shuffled(ordered, seed))
-      tries.push(...want)
-    }
     let laid = null
-    let fewest = Infinity
-    for (const order of tries) {
-      const one = runElk(order)
-      const n = crossings(one)
-      if (n < fewest) {
-        laid = one
-        fewest = n
+    if (campElkCache.has(campKey)) {
+      const hit = campElkCache.get(campKey)
+      campElkCache.delete(campKey)
+      campElkCache.set(campKey, hit)
+      // Fresh children so undirected label widening below cannot poison the cache
+      laid = {
+        width: hit.width,
+        height: hit.height,
+        children: hit.children.map((c) => ({ id: c.id, x: c.x, y: c.y, width: c.width, height: c.height })),
       }
-      if (fewest === 0) break
+    } else {
+      const tries = [ordered]
+      if (members.length > 2 && inEdges.length && members.some((e) => pullOf(e, ci) !== 0)) {
+        const seed = mulberry32(ci + members.length * 7919)
+        const want = members.length <= 5 ? permutations(ordered) : Array.from({ length: 40 }, () => shuffled(ordered, seed))
+        tries.push(...want)
+      }
+      let fewest = Infinity
+      for (const order of tries) {
+        const one = runElk(order)
+        const n = crossings(one)
+        if (n < fewest) {
+          laid = one
+          fewest = n
+        }
+        if (fewest === 0) break
+      }
+      campElkCache.set(campKey, {
+        width: laid.width,
+        height: laid.height,
+        children: laid.children.map((c) => ({ id: c.id, x: c.x, y: c.y, width: c.width, height: c.height })),
+      })
+      if (campElkCache.size > CAMP_ELK_CACHE_SIZE) campElkCache.delete(campElkCache.keys().next().value)
     }
     const at = new Map(laid.children.map((c) => [c.id, { x: c.x, y: c.y, w: c.width, h: c.height }]))
     // Left out of ELK, an undirected relation got no room for its label: two spouses side by side were
@@ -642,6 +705,8 @@ export function buildRelationshipGraph(spec, fields = {}, view, orientation = 'v
         // box spread to match
         sideSpread: SIDE_SPREAD,
         parallelGap: PARALLEL_MIN,
+        // Dense graphs: stop the A* search and take the elbow below rather than freeze the page (#181)
+        maxExpansions: ROUTE_MAX_EXPANSIONS,
       })
     const points = (stacked ? route(['top', 'bottom']) : null) ?? route(undefined) ?? fallbackRoute(a, b)
     const c = { index: i, points, labelAt: null, labelSize: { width: labels[i].frame.width, height: labels[i].frame.height } }
