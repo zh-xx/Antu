@@ -77,6 +77,7 @@ await diagram.ready
 | `kind` | 该类型的第一种 | 打开时的画法，读者另选之前一直用它。不是该 spec 类型的画法时，`mount` 抛错并指明字段，与 `renderHtml`、`setKind` 的拒绝一致 |
 | `kinds` | 该类型的全部 | 读者可选的画法；只给一种就等于锁定。其中有不属于该类型的画法，或 `kind` 不在列表里，`mount` 抛错。（`update` 换成另一类型的 spec 后，不属于它的 `kind`、`kinds` 不再生效，图以它的第一种画法打开） |
 | `theme` | `document` | 打开时的主题：`document`、`modern`、`legal`、`dark`（`spec/theme.md`）。读者仍可切换，除非去掉了标签卡 |
+| `themeTokens` | 无 | 宿主在命名主题上的颜色/字体覆盖（issue #293）：`{ accent?, canvas?, chromeBg?, text?, textMuted?, line?, chromeBorder?, font?, fontHead? }`。颜色为 CSS 颜色字符串；`font` / `fontHead` 为 font-family 列表。叠在命名主题的变量之后。当前主题为 `document`（黑白归档）时不套用。未知键与非法值跳过；`canvas` 与墨色（或宿主 `text`）及主题双方色对比不足 4.5:1 时丢弃该 canvas；`text` / `textMuted` 与有效画布对比不足时丢弃；`chromeBorder` 以 `1px solid <颜色>` 写入。CLI / MCP / Agent 不提供此项 |
 | `lang` | 浏览器的 | `zh` 或 `en`：页面自身文字的语言。案件内容不翻译 |
 | `ui` | 全部 `true` | `{ header, capsule, minimap, zoom, panOnScroll, panOnDrag }`：去掉页面上的哪些部件（左上角标签卡、底部控制胶囊、缩略图、缩放按钮）。`panOnScroll: false` 时滚轮不再平移图，宿主页面（如聊天卡片）仍可滚动；`panOnDrag: false` 时按住拖拽不再平移；捏合缩放仍可用。聊天卡片请优先展开 [`cardUi`](#卡片-ui) |
 | `prefs` | `'none'` | 读者的选择（画法、字段、方向……）存在哪：`'none'` 只在挂载期间保留；`'local'` 存进 viewer 页面的 `localStorage` 键（`antu.prefs`）；或宿主自己的存储 `{ read(): object, write(patch) }`。每张图的选择按图的内容作键；只有主题和语言是共用的 |
@@ -150,9 +151,10 @@ interface AntuViewState {
 | `update(spec)` | 在原处画另一份 spec；读者的选择按图的内容保存，与 viewer 页面相同 |
 | `setKind(kind)` | 不是该类型（或 `kinds`）的画法时返回 `false` |
 | `setTheme(theme)`、`setLang(lang)` | 值不存在时返回 `false` |
+| `setThemeTokens(tokens \| null)` | 合并宿主颜色/字体覆盖（与 `themeTokens` 同一白名单）；`null` 清空。返回应用结果是否变化。未知键与非法值跳过 |
 | `select(id)` | 钉住 spec 中条目 `id` 的卡片，如同读者点了它：宿主照常收到 `select`。`select(null)` 取消钉住。该画法里没有画出这个条目的卡片（或该画法不能钉住任何东西，如路线图）时返回 `false` |
 | `focus(id)` | 把视野移到条目 `id` 居中，缩放不变，除非在这个缩放下它放不进窗口。该画法里没有画出它时返回 `false` |
-| `highlight(ids)` | 用主题的颜色给这些条目加一圈标记；`highlight([])` 清除。标记在 `update`、切换画法或主题后仍在，直到再次调用；不影响钉住和读者的悬停，也不进 `exportPng`。不对应任何条目的 id 略过 |
+| `highlight(ids)` | 用主题强调色（`--antu-accent`，默认同 side1）给这些条目加一圈标记；`highlight([])` 清除。标记在 `update`、切换画法或主题后仍在，直到再次调用；不影响钉住和读者的悬停，也不进 `exportPng`。不对应任何条目的 id 略过 |
 | `fitView()` | 重新把整张图适配进视野 |
 | `exportPng({ pixelRatio })` | `Promise<Blob>`：与页面自带导出相同的 PNG（不含标签卡，四周为与主题底色相同的边，默认每设计像素 2 个设备像素），不保存到任何地方。会等当前挂载的 spec 画好；spec 不合法时拒绝（问题在 `errors`） |
 | `destroy()` | 把图拿掉；元素可以再次挂载。在已挂载的元素上再 `mount` 会抛错 |

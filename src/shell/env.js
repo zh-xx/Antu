@@ -13,6 +13,7 @@
 
 import { createContext, useContext } from 'react'
 import { initialLang, writeStoredLang } from '../core/i18n.js'
+import { mergeThemeTokens, normalizeThemeTokens } from '../theme/themeTokens.js'
 import { localPrefs, memoryPrefs } from './prefs.js'
 import { getPath, persistingStore, presetAt, resolveView } from './viewState.js'
 
@@ -73,6 +74,30 @@ function markStore() {
   }
 }
 
+/**
+ * Host colour overlays (`mount({ themeTokens })`, issue 293). Same subscribe shape as `highlight`.
+ * @param {object} [initial]
+ */
+function themeTokenStore(initial = {}) {
+  let tokens = normalizeThemeTokens(initial)
+  const listeners = new Set()
+  return {
+    get: () => tokens,
+    /** Merge a patch, or `null` to clear. Returns whether the applied set changed. */
+    set(patch) {
+      const { tokens: next, changed } = mergeThemeTokens(tokens, patch)
+      if (!changed) return false
+      tokens = next
+      listeners.forEach((fn) => fn())
+      return true
+    },
+    subscribe(fn) {
+      listeners.add(fn)
+      return () => listeners.delete(fn)
+    },
+  }
+}
+
 /** The viewer page: the window is the diagram's own */
 export function standaloneEnv({ preset } = {}) {
   const fromWindow = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
@@ -87,6 +112,8 @@ export function standaloneEnv({ preset } = {}) {
     emit: noop,
     commands: commandBus(),
     highlight: markStore(),
+    /** Host colour overlays; empty on the viewer page (issue 293) */
+    themeTokens: themeTokenStore(),
     /** How the diagram opens, ahead of the reader's stored choices (`mount(…, { initial })`); nothing on the page */
     initial: {},
     /** A host forcing a value and hiding its control (`mount(…, { locked })`); nothing on the page */
@@ -113,7 +140,7 @@ export function standaloneEnv({ preset } = {}) {
  * @param locked  values forced for this mount, with their controls hidden
  * @param persist which writes may reach the store: true, false, or the names in shell/viewState.js
  */
-export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = null, ui = {}, initial = {}, locked = {}, persist = true, fitInsets = null } = {}) {
+export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = null, ui = {}, initial = {}, locked = {}, persist = true, fitInsets = null, themeTokens = null } = {}) {
   const raw = prefs === 'local' ? localPrefs : prefs && typeof prefs === 'object' ? prefs : memoryPrefs()
   // With nothing refused we hand the store straight over, so a host's own store keeps its identity (issue 152);
   // with something refused, its writes are filtered and the refused ones stay in the wrapper's overlay.
@@ -127,6 +154,7 @@ export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = 
     emit,
     commands: commandBus(),
     highlight: markStore(),
+    themeTokens: themeTokenStore(themeTokens),
     initial,
     locked,
     // the reader's changes during this mount, so `initial` wins over stored prefs but not over a click

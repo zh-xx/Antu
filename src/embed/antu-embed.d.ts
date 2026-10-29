@@ -12,6 +12,28 @@ export interface AntuSpec {
 export type AntuTheme = 'document' | 'modern' | 'legal' | 'dark'
 export type AntuLang = 'zh' | 'en'
 
+/** Host colour / font overlays on a named theme (`mount({ themeTokens })`, issue 293) */
+export interface AntuThemeTokens {
+  /** Brand / highlight colour (`--antu-accent`); defaults to the theme's side1 */
+  accent?: string
+  /** Diagram ground (`--antu-canvas`, and `--antu-bg` when set) */
+  canvas?: string
+  /** Dock / chrome wash (`--antu-chrome-bg`) */
+  chromeBg?: string
+  /** Body ink (`--antu-text`) */
+  text?: string
+  /** Secondary ink (`--antu-text-2`) */
+  textMuted?: string
+  /** Divider / soft edge (`--antu-line`, and `--antu-line-soft`) */
+  line?: string
+  /** Chrome border colour; applied as `1px solid <colour>` (`--antu-chrome-border`) */
+  chromeBorder?: string
+  /** Body font-family (`--antu-font`) */
+  font?: string
+  /** Heading font-family (`--antu-font-head`) */
+  fontHead?: string
+}
+
 /**
  * How a mounted diagram opens and what it shows (issue 200). Every value a reader can change may be set here:
  * the theme and language, the label card and dock folds, and every switch of the flowchart and route map.
@@ -77,6 +99,11 @@ export interface MountOptions {
   kinds?: string[]
   /** The theme it opens in (the reader can still switch, unless the label card is left out) */
   theme?: AntuTheme
+  /**
+   * Host colour / font overlays on the named theme (issue 293). See `AntuThemeTokens`.
+   * Ignored while the active theme is `document`. Unknown keys and invalid values are skipped.
+   */
+  themeTokens?: AntuThemeTokens
   /** The language of the page's own words; the case is never translated. Default: the browser's. */
   lang?: AntuLang
   /**
@@ -117,12 +144,17 @@ export interface AntuHandle {
   /** False when `kind` is not a kind of the type (or not in `kinds`) */
   setKind(kind: string): boolean
   setTheme(theme: AntuTheme): boolean
+  /**
+   * Overlay host colours on the named theme (issue 293). Merges into the current set; `null` clears.
+   * Returns whether the applied set changed.
+   */
+  setThemeTokens(tokens: AntuThemeTokens | null): boolean
   setLang(lang: AntuLang): boolean
   /** Pin the card of the item `id`, as a reader's click would (a `select` event follows); `null` unpins. False when no card of it is drawn in this kind. */
   select(id: string | null): boolean
   /** Move the view to the item `id`, keeping the zoom unless it would not show it. False when it is not drawn in this kind. */
   focus(id: string): boolean
-  /** Ring these items in the theme's colour until called again; `[]` clears. Ids that name no item are passed over. */
+  /** Ring these items in the theme's accent colour until called again; `[]` clears. Ids that name no item are passed over. */
   highlight(ids: string[]): void
   fitView(): void
   /** The PNG the page's own export makes (no label card, a white margin), not saved anywhere. Waits until the spec now mounted is drawn; rejects (with `errors`) while it is not valid. */

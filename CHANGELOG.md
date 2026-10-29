@@ -6,6 +6,7 @@ what breaks a file or a tool call written for the version before, with how to br
 ## Unreleased
 
 ### Added
+- **Embed `themeTokens`** (#293): a host may overlay `accent` / `canvas` / `chromeBg` / `text` / `textMuted` / `line` / `chromeBorder` / `font` / `fontHead` on a named theme via `mount({ themeTokens })` and `setThemeTokens`; ignored in `document`. Highlight rings use `--antu-accent`.
 - **Embed fit clears chrome; host `fitInsets`** (#166): fit-view keeps clear of the label card and the dock capsule; `mount(…, { fitInsets: { top, right, bottom, left } })` replaces the auto measure per side.
 - **Flowchart opens at a readable zoom** (#166): like the route map, a wide flowchart opens at zoom ≥ 0.7 from the left instead of shrinking to unreadably small text.
 - **`validate(spec, { lang: 'zh' })`** (#166): validation / notes messages can be Chinese for a host UI; default remains English for agents and MCP.

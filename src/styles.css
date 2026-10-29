@@ -22,6 +22,8 @@
   --antu-radius: 8px;
   --antu-side1: #2f6fed;
   --antu-side2: #e5484d;
+  /* Host highlight / brand mark; themeVars defaults it to side1 (issue 293) */
+  --antu-accent: var(--antu-side1);
   --antu-axis: #94a3b8;
   /* Type sizes: src/theme/scale.js TYPE, the same in every theme (test/theme-lock.test.mjs). */
   --antu-type-tag: 10px;
