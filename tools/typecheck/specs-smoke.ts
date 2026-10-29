@@ -64,6 +64,16 @@ const badProcKind: ProcedureSpec = { type: 'procedure', title: 'x', nodes: [{ id
 const badEntityKind: RelationshipSpec = { type: 'relationship', title: 'x', entities: [{ id: 'e1', kind: 'robot', label: 'A' }] }
 // @ts-expect-error justification node kind must be the closed union
 const badJustKind: JustificationSpec = { type: 'justification', title: 'x', nodes: [{ id: 'n1', kind: 'premise', label: 'Nope' }] }
+// @ts-expect-error relation kind must be the closed union
+const badRelKind: RelationshipSpec = { type: 'relationship', title: 'x', relations: [{ id: 'r1', from: 'a', to: 'b', kind: 'friendship' }] }
+// @ts-expect-error stance must be the closed union (on links, not nodes)
+const badStance: JustificationSpec = { type: 'justification', title: 'x', links: [{ from: 'a', to: 'b', stance: 'maybe' }] }
+// @ts-expect-error procedure outcome must be the closed union
+const badOutcome: ProcedureSpec = { type: 'procedure', title: 'x', nodes: [{ id: 'n1', kind: 'end', label: 'X', outcome: 'win' }] }
+// @ts-expect-error holds must be yes|no
+const badHolds: JustificationSpec = { type: 'justification', title: 'x', nodes: [{ id: 'n1', kind: 'conclusion', label: 'C', holds: 'maybe' }] }
+// @ts-expect-error combine must be all|any
+const badCombine: JustificationSpec = { type: 'justification', title: 'x', nodes: [{ id: 'n1', kind: 'conclusion', label: 'C', combine: 'xor' }] }
 
 void badType
 void badKey
@@ -74,3 +84,8 @@ void badDomain
 void badProcKind
 void badEntityKind
 void badJustKind
+void badRelKind
+void badStance
+void badOutcome
+void badHolds
+void badCombine
