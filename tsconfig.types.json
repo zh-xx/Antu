@@ -4,11 +4,22 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
     "noEmit": true,
     "skipLibCheck": false,
     "paths": {
-      "@zh-xx/antu/types": ["./src/types/antu-specs.d.ts"]
+      "@zh-xx/antu/types": ["./src/types/antu-specs.d.ts"],
+      "@zh-xx/antu/embed": ["./src/embed/antu-embed.d.ts"],
+      "@zh-xx/antu/validate": ["./tools/api/validate.d.ts"],
+      "@zh-xx/antu/html": ["./tools/api/html.d.ts"]
     }
   },
-  "include": ["src/types/antu-specs.d.ts", "tools/typecheck/specs-smoke.ts"]
+  "include": [
+    "src/types/antu-specs.d.ts",
+    "src/embed/antu-embed.d.ts",
+    "tools/api/validate.d.ts",
+    "tools/api/html.d.ts",
+    "tools/typecheck/specs-smoke.ts",
+    "tools/typecheck/api-smoke.ts"
+  ]
 }

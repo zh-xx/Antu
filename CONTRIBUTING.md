@@ -14,7 +14,7 @@ naming the pull request.
 
 ```bash
 npm run lint         # static checks
-npm run typecheck    # generated `@zh-xx/antu/types` declarations under tsc (issue 294)
+npm run typecheck    # public .d.ts + generated Specs under tsc (issues 294, 227)
 npm test             # unit tests
 npm run verify:fast  # checks that need no browser
 npm run verify       # with browser rendering and the whole MCP run
@@ -22,6 +22,24 @@ npm run verify       # with browser rendering and the whole MCP run
 
 `src/types/antu-specs.d.ts` is generated (`node tools/gen/spec-types.mjs`); do not edit it by hand. A stale
 file fails `npm test`; a syntactically broken one fails `npm run typecheck`.
+
+## TypeScript (gradual, issue #227)
+
+**Goal:** catch wrong field names and closed enums while editing, without a rewrite.
+
+**Coexistence (current rule):** keep source as `.js` / `.mjs` / `.jsx`. Prefer **JSDoc types** (+ later `checkJs`)
+over renaming files to `.ts`. Reasons: `node --test` must stay runnable on Node 18/20, and the DSH plugin
+build inlines `.mjs` as text. New host-facing options still need an update to the matching `.d.ts`
+(`src/embed/antu-embed.d.ts`, `tools/api/validate.d.ts`, `tools/api/html.d.ts`) in the same change.
+
+**What `npm run typecheck` covers today:**
+
+- Generated diagram Specs (`@zh-xx/antu/types`) and their smoke negatives
+- Public API declarations for embed / validate / html (`tools/typecheck/api-smoke.ts` — a bad `mount`
+  theme or unknown option must fail)
+
+**Not yet:** emitting `.d.ts` from implementation, or `checkJs` across the tree (next slices of #227).
+Do not weaken runtime `validate()` or existing tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").
