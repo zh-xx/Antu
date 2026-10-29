@@ -99,12 +99,13 @@ MCP 服务是 npm 包 [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu)
 
 ## 在应用里使用
 
-同一个包为应用自己的代码提供三个入口（[spec/embed.zh-CN.md](spec/embed.zh-CN.md)）：
+同一个包为应用自己的代码提供这些入口（[spec/embed.zh-CN.md](spec/embed.zh-CN.md)）：
 
 ```js
 import { mount } from '@zh-xx/antu/embed'          // 把图画在你的页面里（在 shadow root 中）
 import { validate } from '@zh-xx/antu/validate'    // 校验模型写出的 JSON，每条错误写明字段
 import { renderHtml } from '@zh-xx/antu/html'      // 以字符串返回自包含页面（Node）
+import type { ProcedureSpec } from '@zh-xx/antu/types'  // 各图 JSON 的 TypeScript 形状
 
 const diagram = mount(element, spec, { lang: 'zh', onEvent: (e) => console.log(e) })
 ```

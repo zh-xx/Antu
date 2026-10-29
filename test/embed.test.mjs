@@ -215,6 +215,7 @@ const exportedNames = (text) =>
 test('the declarations name every function and const each entry exports, and nothing else', () => {
   const code = { './embed': 'src/embed/index.js', './validate': 'tools/api/validate.mjs', './html': 'tools/api/html.mjs' }
   for (const e of ENTRIES) {
+    if (e.typesOnly) continue
     const declared = [
       ...readFileSync(e.src, 'utf8').matchAll(/^export function (\w+)/gm),
       ...readFileSync(e.src, 'utf8').matchAll(/^export declare const (\w+)/gm),
@@ -243,8 +244,14 @@ test('cardUi is the quiet chrome a chat card needs, and is frozen', async () => 
   }, TypeError)
 })
 
-test('the package exports the three entries and its package.json, nothing else', () => {
+test('the package exports the host entries and its package.json, nothing else', () => {
   const { exports } = packageJson()
-  assert.deepEqual(Object.keys(exports).sort(), ['./embed', './html', './package.json', './validate'])
-  for (const e of ENTRIES) assert.deepEqual(exports[e.path], { types: `./${e.types}`, default: `./${e.file}` })
+  assert.deepEqual(Object.keys(exports).sort(), ['./embed', './html', './package.json', './types', './validate'])
+  for (const e of ENTRIES) {
+    if (e.typesOnly) {
+      assert.deepEqual(exports[e.path], { types: `./${e.types}` })
+    } else {
+      assert.deepEqual(exports[e.path], { types: `./${e.types}`, default: `./${e.file}` })
+    }
+  }
 })

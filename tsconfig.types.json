@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "noEmit": true,
+    "skipLibCheck": false,
+    "paths": {
+      "@zh-xx/antu/types": ["./src/types/antu-specs.d.ts"]
+    }
+  },
+  "include": ["src/types/antu-specs.d.ts", "tools/typecheck/specs-smoke.ts"]
+}

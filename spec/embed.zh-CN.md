@@ -16,16 +16,49 @@
   环境，`mount` 给它宿主的环境。verify 在 viewer 页面上查过的，对挂载的图同样成立。
 - **不联网。** 挂载的图不发任何请求，所需的一切都在包里。
 
-## 2. 三个入口
+## 2. 宿主入口
 
 | 导入 | 运行于 | 提供 | 构建 |
 | --- | --- | --- | --- |
 | `@zh-xx/antu/embed` | 浏览器 | `mount`、`validate`、`normalize`、`kindsOf`、`kindIcon`、`kindLabel` | `vite.embed.config.js` → `embed/antu-embed.js` |
 | `@zh-xx/antu/validate` | Node 或浏览器 | `validate`、`normalize`、`layout`、`describe`、`guide`、`kinds`、`versions` | `vite.api.config.js` → `lib/validate.mjs` |
 | `@zh-xx/antu/html` | Node | `renderHtml` | `vite.api.config.js` → `lib/html.mjs` |
+| `@zh-xx/antu/types` | 仅 TypeScript | `FactSpec`、`ProcedureSpec`、`RelationshipSpec`、`JustificationSpec`、`AntuDiagramSpec` | 生成的 `types/antu-specs.d.ts`（issue #294） |
 
-每个都是一个 ES 模块，依赖全部打在里面，和命令行、MCP 服务端一样，包本身没有需要安装的依赖。每个都附类型声明
-（`.d.ts`），由 `test/embed.test.mjs` 保证与代码一致。包里其余的东西都不供导入（`exports` 只列这三个）。
+每个运行时入口都是一个 ES 模块，依赖全部打在里面，和命令行、MCP 服务端一样，包本身没有需要安装的依赖。运行时入口附
+类型声明（`.d.ts`），由 `test/embed.test.mjs` 保证与代码一致。`@zh-xx/antu/types` **没有运行时代码**：只有声明，
+从与 `describe()` / `antu_schema` 同一套 `*_FIELDS` 生成（`node tools/gen/spec-types.mjs`；过期则测试失败）。包里其
+余的东西都不供导入（`exports` 只列这些）。
+
+### 图 JSON 类型（`@zh-xx/antu/types`）
+
+在 TypeScript 里拼 Antu JSON 的宿主可直接导入形状，不必再手写一份：
+
+```ts
+import type { ProcedureSpec } from '@zh-xx/antu/types'
+import { validate } from '@zh-xx/antu/validate'
+
+const spec: ProcedureSpec = {
+  type: 'procedure',
+  title: '采购',
+  nodes: [{ id: 'n1', kind: 'start', label: '开始' }],
+  edges: [],
+}
+const { ok, errors } = validate(spec)
+```
+
+字段表里已写明的封闭枚举（程序图节点 `kind`、结果色、领域、关系图实体/关系种类、证成图节点种类与立场等）会变成
+字符串字面量联合。条件必填（`req: '*'`）在 TypeScript 里仍是可选；跨字段规则仍由运行时 `validate()` 负责。Agent
+与纯 JS 宿主不变。
+
+**这些类型管什么。** 适合宿主在 TypeScript 里**手写/构造**对象。`import data from './x.json'` **不会**自动带上
+字面量类型：`type` 会被放宽成 `string`，`const s: FactSpec = data` 会报错，除非 `as const` / 断言，或用
+`validate()` 在运行时收窄。`validate()` 放过的拼错键（如 `summry` 相对 `summary`），正是在类型化字面量上
+`tsc` 能拦住的那一类。
+
+**在本仓库里试。** 包名 `@zh-xx/antu/types` 出现在**打包产物**里（`node tools/build-npm.mjs` → `dist-npm/`）。
+源码树里请 `import type { … } from '../../src/types/antu-specs.d.ts'`，或跑 `npm run typecheck`（对生成文件与
+一个 smoke 消费者做严格 `tsc`）。CI 跑同一检查，避免生成器吐出坏声明仍绿。
 
 ## 3. `mount`
 
