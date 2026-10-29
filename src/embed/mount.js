@@ -212,9 +212,9 @@ export function mount(el, spec, options = {}) {
       return true
     },
     /**
-     * Overlay host colours on the named theme (issue 293). Merges into the current set;
-     * `null` clears. Unknown keys and bad colours are skipped. Returns whether anything changed.
-     * @param {{ accent?: string, canvas?: string, chromeBg?: string } | null} tokens
+     * Overlay host colours / fonts on the named theme (issue 293). Merges into the current set;
+     * `null` clears. Unknown keys and bad values are skipped. Returns whether anything changed.
+     * @param {import('./antu-embed').AntuThemeTokens | null} tokens
      */
     setThemeTokens(tokens) {
       alive('setThemeTokens')

@@ -100,8 +100,8 @@ export interface MountOptions {
   /** The theme it opens in (the reader can still switch, unless the label card is left out) */
   theme?: AntuTheme
   /**
-   * Host colour overlays on the named theme (issue 293). Allowlist: `accent`, `canvas`, `chromeBg`.
-   * Ignored while the active theme is `document`. Unknown keys and invalid colours are skipped.
+   * Host colour / font overlays on the named theme (issue 293). See `AntuThemeTokens`.
+   * Ignored while the active theme is `document`. Unknown keys and invalid values are skipped.
    */
   themeTokens?: AntuThemeTokens
   /** The language of the page's own words; the case is never translated. Default: the browser's. */
