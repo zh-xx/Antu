@@ -15,7 +15,7 @@
 //  What it checks:
 //    1. build        dev build and engine build both pass
 //    2. lint         static checks (undefined variables, dead variables)
-//    2b. typecheck   generated `@zh-xx/antu/types` declarations parse under tsc (issue 294)
+//    2b. typecheck   public API .d.ts + generated Specs under tsc (issues 294, 227)
 //    3. data         every example validates; every view × direction lays out;
 //                    the validation errors themselves match
 //    4. browser lookup  ANTU_CHROME wins, a wrong value does not get returned blindly; a
@@ -198,10 +198,10 @@ function checkBuild() {
 // 2. lint
 // ---------------------------------------------------------------
 function checkTypecheck() {
-  section('typecheck (antu-specs.d.ts)')
+  section('typecheck (public API + Specs)')
   try {
     execFileSync('npm', ['run', 'typecheck'], { cwd: REPO, stdio: 'pipe' })
-    ok('generated diagram Spec declarations')
+    ok('public .d.ts and generated Spec declarations')
   } catch (e) {
     bad('typecheck failed', String(e.stderr || e.stdout || e.message).slice(0, 800))
   }
