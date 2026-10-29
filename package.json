@@ -21,6 +21,7 @@
     "mcp:test": "node tools/mcp/client-test.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "typecheck": "tsc -p tsconfig.types.json --noEmit",
     "verify": "node tools/verify/run.mjs",
     "verify:fast": "node tools/verify/run.mjs --no-browser",
     "test": "node --test 'test/*.test.mjs'"
@@ -38,6 +39,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "eslint": "^10.13.0",
     "globals": "^17.13.0",
+    "typescript": "^5.9.3",
     "vite": "^8.3.5"
   }
 }

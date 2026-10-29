@@ -54,6 +54,17 @@ relation kinds, justification node kinds and stances, …) are string-literal un
 fields (`req: '*'`) are optional in TypeScript; cross-field rules stay in runtime `validate()`. Agents and plain
 JS hosts are unchanged.
 
+**What these types cover.** They shine when a host **builds the object in TypeScript** (literals /
+constructors). They do **not** appear automatically when you `import data from './x.json'`: TypeScript
+widens `type` to `string`, so `const s: FactSpec = data` fails unless you assert (`as const` / a cast) or
+narrow at runtime with `validate()`. Typos in keys that `validate()` ignores (`summry` vs `summary`) are
+exactly what `tsc` catches on a typed literal.
+
+**Trying it in this repository.** The package name `@zh-xx/antu/types` exists in the **published / packed**
+package (`node tools/build-npm.mjs` → `dist-npm/`). In the source tree use
+`import type { … } from '../../src/types/antu-specs.d.ts'`, or run `npm run typecheck` (strict `tsc` on the
+generated file plus a smoke consumer). CI runs the same check so a broken generator cannot stay green.
+
 ## 3. `mount`
 
 ```js

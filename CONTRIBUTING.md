@@ -14,10 +14,14 @@ naming the pull request.
 
 ```bash
 npm run lint         # static checks
+npm run typecheck    # generated `@zh-xx/antu/types` declarations under tsc (issue 294)
 npm test             # unit tests
 npm run verify:fast  # checks that need no browser
 npm run verify       # with browser rendering and the whole MCP run
 ```
+
+`src/types/antu-specs.d.ts` is generated (`node tools/gen/spec-types.mjs`); do not edit it by hand. A stale
+file fails `npm test`; a syntactically broken one fails `npm run typecheck`.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

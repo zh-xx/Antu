@@ -51,6 +51,15 @@ const { ok, errors } = validate(spec)
 字符串字面量联合。条件必填（`req: '*'`）在 TypeScript 里仍是可选；跨字段规则仍由运行时 `validate()` 负责。Agent
 与纯 JS 宿主不变。
 
+**这些类型管什么。** 适合宿主在 TypeScript 里**手写/构造**对象。`import data from './x.json'` **不会**自动带上
+字面量类型：`type` 会被放宽成 `string`，`const s: FactSpec = data` 会报错，除非 `as const` / 断言，或用
+`validate()` 在运行时收窄。`validate()` 放过的拼错键（如 `summry` 相对 `summary`），正是在类型化字面量上
+`tsc` 能拦住的那一类。
+
+**在本仓库里试。** 包名 `@zh-xx/antu/types` 出现在**打包产物**里（`node tools/build-npm.mjs` → `dist-npm/`）。
+源码树里请 `import type { … } from '../../src/types/antu-specs.d.ts'`，或跑 `npm run typecheck`（对生成文件与
+一个 smoke 消费者做严格 `tsc`）。CI 跑同一检查，避免生成器吐出坏声明仍绿。
+
 ## 3. `mount`
 
 ```js
