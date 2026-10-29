@@ -19,3 +19,15 @@ const fact: FactSpec = {
 const any: AntuDiagramSpec = procedure
 void fact
 void any
+
+// Negative cases: if the generator loosens a literal to `string` / drops excess-property
+// checks, these `@ts-expect-error` lines become unused and `tsc` fails (issue 294 review).
+// @ts-expect-error type must be the literal "fact"
+const badType: FactSpec = { type: 'factt', title: 'x' }
+// @ts-expect-error misspelled keys must error
+const badKey: FactSpec = { type: 'fact', title: 'x', eventz: [] }
+// @ts-expect-error title must be a string
+const badTitle: FactSpec = { type: 'fact', title: 42 }
+void badType
+void badKey
+void badTitle
