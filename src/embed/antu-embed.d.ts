@@ -12,7 +12,7 @@ export interface AntuSpec {
 export type AntuTheme = 'document' | 'modern' | 'legal' | 'dark'
 export type AntuLang = 'zh' | 'en'
 
-/** Host colour overlays on a named theme (`mount({ themeTokens })`, issue 293) */
+/** Host colour / font overlays on a named theme (`mount({ themeTokens })`, issue 293) */
 export interface AntuThemeTokens {
   /** Brand / highlight colour (`--antu-accent`); defaults to the theme's side1 */
   accent?: string
@@ -20,6 +20,18 @@ export interface AntuThemeTokens {
   canvas?: string
   /** Dock / chrome wash (`--antu-chrome-bg`) */
   chromeBg?: string
+  /** Body ink (`--antu-text`) */
+  text?: string
+  /** Secondary ink (`--antu-text-2`) */
+  textMuted?: string
+  /** Divider / soft edge (`--antu-line`, and `--antu-line-soft`) */
+  line?: string
+  /** Chrome border colour; applied as `1px solid <colour>` (`--antu-chrome-border`) */
+  chromeBorder?: string
+  /** Body font-family (`--antu-font`) */
+  font?: string
+  /** Heading font-family (`--antu-font-head`) */
+  fontHead?: string
 }
 
 /**

@@ -1,5 +1,5 @@
 // ============================================================
-//  src/theme/themeTokens.js — host colour overlays on a named theme (issue 293)
+//  src/theme/themeTokens.js — host colour / font overlays on a named theme (issue 293)
 //
 //  A host may tint a small allowlist of CSS variables so an embedded diagram sits in its
 //  chrome, without inventing a fifth named theme. Agent / CLI / MCP stay on named themes only.
@@ -8,13 +8,38 @@
 import { themeOf } from './themes.js'
 
 /** Keys a host may set in `mount({ themeTokens })` / `setThemeTokens` */
-export const THEME_TOKEN_KEYS = Object.freeze(['accent', 'canvas', 'chromeBg'])
+export const THEME_TOKEN_KEYS = Object.freeze([
+  'accent',
+  'canvas',
+  'chromeBg',
+  'text',
+  'textMuted',
+  'line',
+  'chromeBorder',
+  'font',
+  'fontHead',
+])
 
-/** Maps allowlist keys to the CSS variables `themeVars` / the stylesheet already use */
+/** Colour keys (validated with `isCssColor`) */
+const COLOR_KEYS = new Set(['accent', 'canvas', 'chromeBg', 'text', 'textMuted', 'line', 'chromeBorder'])
+
+/** Font-family keys (validated with `isCssFontFamily`) */
+const FONT_KEYS = new Set(['font', 'fontHead'])
+
+/**
+ * Maps allowlist keys to the CSS variables `themeVars` / the stylesheet already use.
+ * `chromeBorder` is a colour; apply wraps it as `1px solid <colour>` to match theme shape.
+ */
 const TOKEN_TO_VAR = Object.freeze({
   accent: '--antu-accent',
   canvas: '--antu-canvas',
   chromeBg: '--antu-chrome-bg',
+  text: '--antu-text',
+  textMuted: '--antu-text-2',
+  line: '--antu-line',
+  chromeBorder: '--antu-chrome-border',
+  font: '--antu-font',
+  fontHead: '--antu-font-head',
 })
 
 /**
@@ -31,7 +56,20 @@ export function isCssColor(value) {
   return false
 }
 
-/** Hex only, for WCAG math (canvas override check). null when not a simple hex. */
+/**
+ * A font-family list safe to put in a CSS variable: quoted names, identifiers, commas, spaces.
+ * No `url()`, `@import`, `expression`, or semicolons (declaration injection).
+ */
+export function isCssFontFamily(value) {
+  if (typeof value !== 'string') return false
+  const s = value.trim()
+  if (!s || s.length > 256) return false
+  if (/[;{}\\]|url\s*\(|@import|expression\s*\(/i.test(s)) return false
+  // Allow: "Foo Bar", 'Baz', system-ui, sans-serif, Noto Sans CJK SC, commas between
+  return /^[\w\s"'.,-]+$/u.test(s)
+}
+
+/** Hex only, for WCAG math. null when not a simple hex. */
 function hexOf(value) {
   if (typeof value !== 'string') return null
   const s = value.trim()
@@ -55,23 +93,37 @@ const contrastRatio = (a, b) => {
   return (hi + 0.05) / (lo + 0.05)
 }
 
+/** True when both are hex and contrast ≥ 4.5:1; non-hex pairs cannot be checked here → true. */
+function contrastOk(fg, bg) {
+  const a = hexOf(fg)
+  const b = hexOf(bg)
+  if (!a || !b) return true
+  return contrastRatio(a, b) >= 4.5
+}
+
 /**
- * Whether `canvas` can replace the theme canvas: ink and both side colours stay ≥ 4.5:1 on it.
+ * Whether `canvas` can replace the theme canvas: both side colours stay ≥ 4.5:1 on it, and
+ * at least one of (theme ink, host `text`) does too — so a dark branded ground can pass when
+ * the host also sets a light `text`, without a bad `text` dragging a fine canvas down.
  * Non-hex canvas (rgb/hsl) cannot be checked here — accepted (host responsibility).
+ * @param {string} themeId
+ * @param {string} canvas
+ * @param {string} [hostText]  host `text` token, if any
  */
-export function canvasOverrideOk(themeId, canvas) {
+export function canvasOverrideOk(themeId, canvas, hostText) {
   const hex = hexOf(canvas)
   if (!hex) return true
   const c = themeOf(themeId).color
-  for (const key of ['ink', 'side1', 'side2']) {
-    const ink = hexOf(c[key])
-    if (ink && contrastRatio(ink, hex) < 4.5) return false
+  const inkOk = contrastOk(c.ink, canvas) || (hostText ? contrastOk(hostText, canvas) : false)
+  if (!inkOk) return false
+  for (const key of ['side1', 'side2']) {
+    if (!contrastOk(c[key], canvas)) return false
   }
   return true
 }
 
 /**
- * Keep only allowlisted keys with valid colours. Unknown keys and bad colours are dropped.
+ * Keep only allowlisted keys with valid values. Unknown keys and bad values are dropped.
  * @returns {Record<string, string>}
  */
 export function normalizeThemeTokens(input) {
@@ -81,8 +133,13 @@ export function normalizeThemeTokens(input) {
     if (!(key in input)) continue
     const v = input[key]
     if (v === undefined || v === null) continue
-    if (!isCssColor(v)) continue
-    out[key] = v.trim()
+    if (COLOR_KEYS.has(key)) {
+      if (!isCssColor(v)) continue
+      out[key] = v.trim()
+    } else if (FONT_KEYS.has(key)) {
+      if (!isCssFontFamily(v)) continue
+      out[key] = v.trim()
+    }
   }
   return out
 }
@@ -90,8 +147,10 @@ export function normalizeThemeTokens(input) {
 /**
  * Merge host tokens onto a `themeVars` (or empty) map.
  * When the active theme is `document`, the overlay is skipped (black-and-white filing).
- * A `canvas` that fails contrast against the theme's ink/sides is dropped.
+ * A `canvas` that fails contrast against ink/sides is dropped; a `text` / `textMuted` that
+ * fails against the effective canvas is dropped.
  * Setting `canvas` also sets `--antu-bg` to the same value so the page ground matches.
+ * Setting `line` also sets `--antu-line-soft`. `chromeBorder` is stored as `1px solid <colour>`.
  *
  * @param {Record<string, string>} baseVars  from `themeVars(theme)` (or `{}`)
  * @param {Record<string, string>} tokens      already normalized, or raw (will be normalized)
@@ -104,15 +163,29 @@ export function applyThemeTokens(baseVars, tokens, themeId) {
   const clean = normalizeThemeTokens(tokens)
   if (!Object.keys(clean).length) return base
 
-  if (clean.canvas && !canvasOverrideOk(themeId, clean.canvas)) {
+  const themeCanvas = themeOf(themeId).color.canvas
+  if (clean.canvas && !canvasOverrideOk(themeId, clean.canvas, clean.text)) {
     delete clean.canvas
+  }
+
+  const effectiveCanvas = clean.canvas || themeCanvas
+  if (clean.text && !contrastOk(clean.text, effectiveCanvas)) {
+    delete clean.text
+  }
+  if (clean.textMuted && !contrastOk(clean.textMuted, effectiveCanvas)) {
+    delete clean.textMuted
   }
 
   for (const [key, value] of Object.entries(clean)) {
     const cssVar = TOKEN_TO_VAR[key]
     if (!cssVar) continue
-    base[cssVar] = value
+    if (key === 'chromeBorder') {
+      base[cssVar] = `1px solid ${value}`
+    } else {
+      base[cssVar] = value
+    }
     if (key === 'canvas') base['--antu-bg'] = value
+    if (key === 'line') base['--antu-line-soft'] = value
   }
   return base
 }
@@ -141,7 +214,11 @@ export function mergeThemeTokens(current, patch) {
       }
       continue
     }
-    if (!isCssColor(v)) continue
+    if (COLOR_KEYS.has(key)) {
+      if (!isCssColor(v)) continue
+    } else if (FONT_KEYS.has(key)) {
+      if (!isCssFontFamily(v)) continue
+    } else continue
     const trimmed = v.trim()
     if (next[key] !== trimmed) {
       next[key] = trimmed

@@ -79,7 +79,7 @@ const isItem = (spec, id) => itemOf(spec, id)?.item.id === id
  * @param {(event: object) => void} [options.onEvent]   select, kindchange, themechange, invalid (spec/embed.md)
  * @param {{ top?: number, right?: number, bottom?: number, left?: number }} [options.fitInsets]
  *                                      extra room (px) kept clear when fitting; replaces the auto measure per side
- * @param {{ accent?: string, canvas?: string, chromeBg?: string }} [options.themeTokens]
+ * @param {{ accent?: string, canvas?: string, chromeBg?: string, text?: string, textMuted?: string, line?: string, chromeBorder?: string, font?: string, fontHead?: string }} [options.themeTokens]
  *                                      host colour overlays on the named theme (issue 293); ignored while theme is `document`
  */
 export function mount(el, spec, options = {}) {

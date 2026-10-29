@@ -80,9 +80,27 @@ Add one entry to `THEMES` in `src/theme/themes.js` with the same keys as the oth
 ## Host colour overlays (embed)
 
 An embedded host may pass `themeTokens` to `mount` (issue #293, `spec/embed.md`): a small allowlist
-(`accent`, `canvas`, `chromeBg`) overlaid on the named theme’s CSS variables. This is not a fifth theme.
-Overlays are ignored while the active theme is `document`. CLI, MCP and agents stay on named themes only.
+overlaid on the named theme’s CSS variables. This is not a fifth theme. Overlays are ignored while the
+active theme is `document`. CLI, MCP and agents stay on named themes only.
+
+| Token | CSS variable | Notes |
+| --- | --- | --- |
+| `accent` | `--antu-accent` | highlight / brand; defaults to side1 |
+| `canvas` | `--antu-canvas` (and `--antu-bg`) | dropped if contrast vs ink/sides &lt; 4.5:1 |
+| `chromeBg` | `--antu-chrome-bg` | dock / chrome wash |
+| `text` | `--antu-text` | body ink; dropped if contrast vs canvas &lt; 4.5:1 |
+| `textMuted` | `--antu-text-2` | secondary ink; same contrast rule |
+| `line` | `--antu-line` (and `--antu-line-soft`) | dividers / soft edges |
+| `chromeBorder` | `--antu-chrome-border` | colour only; written as `1px solid …` |
+| `font` | `--antu-font` | body font-family list |
+| `fontHead` | `--antu-font-head` | heading font-family list |
+
+Not on the allowlist (and not planned as free host overrides): relation / entity / procedure paints that
+carry meaning, type sizes (layout lock), or any overlay on `document`.
 
 ## Not yet
 
-- Bundled fonts (the themes name system fonts and keep a place for bundled ones). Type sizes are locked; fonts are the piece still open on issue #97.
+- Bundled fonts (the themes name system fonts and keep a place for bundled ones). Type sizes are locked;
+  a host may already pass `font` / `fontHead` via `themeTokens`; shipping webfonts with the package is
+  the piece still open on issue #97.
+- Further host tokens if needed: `side1` / `side2` (semantic — contrast required), `chip`, chrome radius.
