@@ -1,7 +1,10 @@
 // Declarations of `@zh-xx/antu/embed` (src/embed/index.js). The contract is in spec/embed.md;
 // test/embed.test.mjs checks that every function the module exports is declared here and nothing else.
 
-/** An Antu JSON: the envelope (`type`, `specVersion`, `title`) and the content of its type */
+/**
+ * An Antu JSON envelope (loose). For a typed diagram shape, prefer
+ * `import type { ProcedureSpec /* … *\/ } from '@zh-xx/antu/types'` (issue 294).
+ */
 export interface AntuSpec {
   type: string
   specVersion?: number

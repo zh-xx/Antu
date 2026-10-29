@@ -17,17 +17,42 @@ keeps it (`validate`), and makes the self-contained page on its own server or co
   What the verifier checks on the viewer page holds for a mounted diagram too.
 - **No network.** A mounted diagram makes no request; the bundle has everything inside.
 
-## 2. The three entries
+## 2. The host entries
 
 | Import | Runs in | What it gives | Built by |
 | --- | --- | --- | --- |
 | `@zh-xx/antu/embed` | the browser | `mount`, `validate`, `normalize`, `kindsOf`, `kindIcon`, `kindLabel` | `vite.embed.config.js` → `embed/antu-embed.js` |
 | `@zh-xx/antu/validate` | Node or the browser | `validate`, `normalize`, `layout`, `describe`, `guide`, `kinds`, `versions` | `vite.api.config.js` → `lib/validate.mjs` |
 | `@zh-xx/antu/html` | Node | `renderHtml` | `vite.api.config.js` → `lib/html.mjs` |
+| `@zh-xx/antu/types` | TypeScript only | `FactSpec`, `ProcedureSpec`, `RelationshipSpec`, `JustificationSpec`, `AntuDiagramSpec` | generated `types/antu-specs.d.ts` (issue #294) |
 
-Each is one ES module with every dependency inside, as the command line and the MCP server are; the package
-has no dependencies to install. Declarations (`.d.ts`) come with each; `test/embed.test.mjs` keeps them to the
-code. Nothing else of the package is meant to be imported (its `exports` lists only these).
+Each runtime entry is one ES module with every dependency inside, as the command line and the MCP server are; the
+package has no dependencies to install. Declarations (`.d.ts`) come with each; `test/embed.test.mjs` keeps the
+runtime entries to their code. `@zh-xx/antu/types` has **no runtime**: it is declarations only, generated from
+the same `*_FIELDS` tables as `describe()` / `antu_schema` (`node tools/gen/spec-types.mjs`; a test fails when
+stale). Nothing else of the package is meant to be imported (its `exports` lists only these).
+
+### Diagram JSON types (`@zh-xx/antu/types`)
+
+A host that builds Antu JSON in TypeScript imports the shape instead of re-declaring it:
+
+```ts
+import type { ProcedureSpec } from '@zh-xx/antu/types'
+import { validate } from '@zh-xx/antu/validate'
+
+const spec: ProcedureSpec = {
+  type: 'procedure',
+  title: 'Purchase',
+  nodes: [{ id: 'n1', kind: 'start', label: 'Begin' }],
+  edges: [],
+}
+const { ok, errors } = validate(spec)
+```
+
+Closed enums that the field tables already name (procedure node `kind`, outcomes, domains, relationship entity /
+relation kinds, justification node kinds and stances, …) are string-literal unions. Conditionally required
+fields (`req: '*'`) are optional in TypeScript; cross-field rules stay in runtime `validate()`. Agents and plain
+JS hosts are unchanged.
 
 ## 3. `mount`
 

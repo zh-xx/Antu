@@ -7,10 +7,11 @@
 //  every dependency inside (vite.cli.config.js, vite.mcp.config.js), so `npx` downloads a small package and no tree
 //  of others, and nothing is built on the user's machine. Beside them: the viewer page (the engine with the place
 //  for the data left empty), the agent guides and the examples the server serves, the licence and the notices.
-//  And three entries for a host's own code (issue #152, spec/embed.md), each bundled the same way:
+//  And entries for a host's own code (issue #152 / #294, spec/embed.md):
 //    @zh-xx/antu/embed     mount() a diagram in a page (vite.embed.config.js)
 //    @zh-xx/antu/validate  validate(), normalize(), layout(), describe(), guide(), kinds(), versions() (vite.api.config.js)
 //    @zh-xx/antu/html      renderHtml(): the self-contained page as a string (vite.api.config.js)
+//    @zh-xx/antu/types     generated diagram JSON interfaces only (no runtime; issue 294)
 //
 //  Nothing is written by hand twice: the files are the ones the repository has, and the version is package.json's
 //  (spec/versioning.md). The package is made here and published from dist-npm/ (see #80); this script publishes nothing.
@@ -45,15 +46,23 @@ export const NPM_DIR = join(REPO, 'dist-npm')
 /**
  * The entries a host imports (spec/embed.md), with where each one's code and declarations lie in the package.
  * `src` is the declarations file in the repository, copied as it is.
+ * `typesOnly: true` = declarations with no runtime module (`@zh-xx/antu/types`, issue 294).
  */
 export const ENTRIES = [
   { path: './embed', file: 'embed/antu-embed.js', types: 'embed/antu-embed.d.ts', src: 'src/embed/antu-embed.d.ts' },
   { path: './validate', file: 'lib/validate.mjs', types: 'lib/validate.d.ts', src: 'tools/api/validate.d.ts' },
   { path: './html', file: 'lib/html.mjs', types: 'lib/html.d.ts', src: 'tools/api/html.d.ts' },
+  { path: './types', types: 'types/antu-specs.d.ts', src: 'src/types/antu-specs.d.ts', typesOnly: true },
 ]
 
 const EXPORTS = {
-  ...Object.fromEntries(ENTRIES.map((e) => [e.path, { types: `./${e.types}`, default: `./${e.file}` }])),
+  ...Object.fromEntries(
+    ENTRIES.map((e) =>
+      e.typesOnly
+        ? [e.path, { types: `./${e.types}` }]
+        : [e.path, { types: `./${e.types}`, default: `./${e.file}` }],
+    ),
+  ),
   './package.json': './package.json',
 }
 
@@ -142,7 +151,11 @@ export async function writeNpmPackage(dir = NPM_DIR) {
   // the entries for a host's code, and their declarations
   await bundleModule('vite.embed.config.js', 'dist-embed', dir, 'embed')
   await bundleModule('vite.api.config.js', 'dist-api', dir, 'lib')
-  for (const e of ENTRIES) cpSync(join(REPO, e.src), join(dir, e.types))
+  for (const e of ENTRIES) {
+    const dest = join(dir, e.types)
+    mkdirSync(dirname(dest), { recursive: true })
+    cpSync(join(REPO, e.src), dest)
+  }
 
   ensureEngine({ quiet: true })
   writeFileSync(join(dir, 'assets/viewer.html'), buildViewerHtml(readEngine()))
@@ -165,13 +178,14 @@ as one HTML page that opens offline. This package holds its two commands.
 - \`antu\`: the command line (\`validate\`, \`layout\`, \`render\`, \`preview\`, \`schema\`, \`guide\`, \`examples\`, \`version\`; \`antu --version\`).
 - \`antu-mcp\`: the MCP server, started by an MCP client over stdio.
 
-And three entries for an application's own code (each one file, everything inside):
+And entries for an application's own code:
 
 - \`@zh-xx/antu/embed\`: \`mount(element, spec, options)\` draws a diagram inside a page, in a shadow root.
 - \`@zh-xx/antu/validate\`: \`validate(spec)\`, \`layout(spec)\`, \`kinds()\`, \`versions()\`.
 - \`@zh-xx/antu/html\`: \`renderHtml(spec, options)\`, the self-contained page as a string (Node).
+- \`@zh-xx/antu/types\`: TypeScript interfaces for each diagram JSON (\`FactSpec\`, …); declarations only.
 
-The contract of the three is in the repository, spec/embed.md.
+The contract is in the repository, spec/embed.md.
 
 Install guidance for each client, the guides and the source are in the repository: ${REPO_URL}
 

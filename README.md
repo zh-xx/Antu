@@ -105,12 +105,13 @@ A native DSH plugin, [`@zh-xx/antu-dsh`](https://www.npmjs.com/package/@zh-xx/an
 
 ## In an Application
 
-The same package has three entries for an application's own code ([spec/embed.md](spec/embed.md)):
+The same package has entries for an application's own code ([spec/embed.md](spec/embed.md)):
 
 ```js
 import { mount } from '@zh-xx/antu/embed'          // draw a diagram inside your page, in a shadow root
 import { validate } from '@zh-xx/antu/validate'    // check the JSON your model wrote; each error names its field
 import { renderHtml } from '@zh-xx/antu/html'      // the self-contained page as a string (Node)
+import type { ProcedureSpec } from '@zh-xx/antu/types'  // TypeScript shapes for each diagram JSON
 
 const diagram = mount(element, spec, { lang: 'en', onEvent: (e) => console.log(e) })
 ```
