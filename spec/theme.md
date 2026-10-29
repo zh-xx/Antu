@@ -77,6 +77,12 @@ weight, dash or fill.
 Add one entry to `THEMES` in `src/theme/themes.js` with the same keys as the others, add its name under `theme.*` in
 `src/core/messages/en.js` and `zh.js`, and add its id to `THEME_IDS`. The tests say what is missing.
 
+## Host colour overlays (embed)
+
+An embedded host may pass `themeTokens` to `mount` (issue #293, `spec/embed.md`): a small allowlist
+(`accent`, `canvas`, `chromeBg`) overlaid on the named theme’s CSS variables. This is not a fifth theme.
+Overlays are ignored while the active theme is `document`. CLI, MCP and agents stay on named themes only.
+
 ## Not yet
 
 - Bundled fonts (the themes name system fonts and keep a place for bundled ones). Type sizes are locked; fonts are the piece still open on issue #97.

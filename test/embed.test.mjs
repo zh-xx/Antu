@@ -225,6 +225,16 @@ test('the declarations name every function and const each entry exports, and not
   }
 })
 
+test('embeddedEnv themeTokens store merges and clears (issue 293)', () => {
+  const env = embeddedEnv({ themeTokens: { accent: '#1a6b4a', junk: '#000' } })
+  assert.deepEqual(env.themeTokens.get(), { accent: '#1a6b4a' })
+  assert.equal(env.themeTokens.set({ canvas: '#f7faf8' }), true)
+  assert.deepEqual(env.themeTokens.get(), { accent: '#1a6b4a', canvas: '#f7faf8' })
+  assert.equal(env.themeTokens.set({ accent: 'nope' }), false)
+  assert.equal(env.themeTokens.set(null), true)
+  assert.deepEqual(env.themeTokens.get(), {})
+})
+
 test('cardUi is the quiet chrome a chat card needs, and is frozen', async () => {
   const { cardUi } = await import('../src/embed/cardUi.js')
   assert.deepEqual(cardUi, { header: false, capsule: false, minimap: false, zoom: false, panOnScroll: false })

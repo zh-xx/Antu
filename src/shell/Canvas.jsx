@@ -17,6 +17,7 @@ import { ReactFlow, Background, Controls, MiniMap, Panel, getViewportForBounds, 
 
 import { useLang } from './LangContext.jsx'
 import { useTheme, themeVars } from '../theme/ThemeContext.jsx'
+import { applyThemeTokens } from '../theme/themeTokens.js'
 import { FIT_PADDING, fitWidthZoom, fitZoom, insetViewport, mergeInsets } from '../core/canvas.js'
 import { EXPORT_CLASS, exportPng as runExportPng, renderPng } from './exportPng.js'
 import { ShownSpecContext, useEnv, useUi, useViewValue } from './env.js'
@@ -415,7 +416,7 @@ export default function Canvas({
       .flatMap((id) => nodesOfItem(shownSpec, graph.nodes, id))
       .map(selectorOf)
     if (!selectors.length) return ''
-    return `.antu-app:not(.${EXPORT_CLASS}) :is(${selectors.join(', ')}) { outline: 3px solid var(--antu-side1); outline-offset: 4px; }`
+    return `.antu-app:not(.${EXPORT_CLASS}) :is(${selectors.join(', ')}) { outline: 3px solid var(--antu-accent, var(--antu-side1)); outline-offset: 4px; }`
   }, [marked, shownSpec, graph])
 
   // The pieces of the shell a host may turn off (`mount(…, { ui })`); all on for the viewer page
@@ -482,13 +483,18 @@ export default function Canvas({
     // (a React Flow panel has a margin of its own; `left` is already measured from the canvas edge)
     : { left: dock.left, marginLeft: 0, transform: 'none', ...(dock.maxWidth != null ? { '--antu-dock-max': `${dock.maxWidth}px` } : {}) }
 
+  // Host colour overlays (issue 293); empty on the viewer page
+  const { themeTokens: tokenStore } = useEnv()
+  const hostTokens = useSyncExternalStore(tokenStore.subscribe, tokenStore.get)
+
   // The theme reaches the diagram only: its CSS variables sit on the viewport (the layer the export clones), not on the
-  // app root, so the shell round it keeps one look in every theme
+  // app root, so the shell round it keeps one look in every theme. Host tokens overlay after the named theme.
   useEffect(() => {
     const viewport = canvasRef.current?.querySelector('.react-flow__viewport')
     if (!viewport) return
-    for (const [k, v] of Object.entries(themeVars(theme))) viewport.style.setProperty(k, v)
-  }, [theme, graph])
+    const vars = applyThemeTokens(themeVars(theme), hostTokens, theme.id)
+    for (const [k, v] of Object.entries(vars)) viewport.style.setProperty(k, v)
+  }, [theme, graph, hostTokens])
 
   return (
     <main

@@ -24,7 +24,7 @@
 //    bottom left/right  zoom, minimap (from React Flow)
 // ============================================================
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { validateSpec } from './core/validate.js'
 import { getRenderer, knowledgeOf, listKinds, listTypes } from './core/registry.js'
 import { GRAPH_TYPE_KEYS } from './core/labels.js'
@@ -34,6 +34,7 @@ import { ResetSpecContext, ShownSpecContext, useEnv, useUi } from './shell/env.j
 import { clearSpecPrefs, specKeyOf } from './shell/prefs.js'
 import ErrorBoundary from './shell/ErrorBoundary.jsx'
 import { useTheme, shellVars, ThemeOverrideProvider } from './theme/ThemeContext.jsx'
+import { applyThemeTokens } from './theme/themeTokens.js'
 import { themeOf } from './theme/themes.js'
 import { PrintHostProvider, usePrintController } from './shell/printHost.js'
 import { SourceTracePanel, TracePanelProvider } from './shell/TracePanel.jsx'
@@ -99,6 +100,12 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
   const printedTheme = printHost.printLight ? 'document' : themeId
   const shellTheme = printHost.printLight ? themeOf('document') : theme
   const env = useEnv()
+  const hostTokens = useSyncExternalStore(env.themeTokens.subscribe, env.themeTokens.get)
+  // chromeBg (and other shell-facing overlays) sit on the app root; document ignores overlays
+  const appStyle = useMemo(
+    () => applyThemeTokens(shellVars(shellTheme), hostTokens, printedTheme),
+    [shellTheme, hostTokens, printedTheme],
+  )
   const { prefs, preset, emit, commands } = env
   const [spec, setSpec] = useState(null)
   const [errors, setErrors] = useState([])
@@ -216,7 +223,7 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
     <PrintHostProvider value={printHost.value}>
       <ThemeOverrideProvider value={printHost.printLight ? 'document' : null}>
         <TracePanelProvider>
-          <div className="antu-app" data-theme={printedTheme} style={shellVars(shellTheme)}>
+          <div className="antu-app" data-theme={printedTheme} style={appStyle}>
       {/* The label card has no switch of its own on the page. It used to control both
           "whether it shows on screen" and "whether the export carries it"; now the
           export never carries the heading (spec/fact/rendering.md §10.2 changed),

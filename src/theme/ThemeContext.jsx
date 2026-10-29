@@ -45,6 +45,8 @@ export function themeVars(theme) {
     '--antu-chip': c.chip,
     '--antu-side1': c.side1,
     '--antu-side2': c.side2,
+    // Host highlight / brand mark (issue 293); defaults to side1 until a host sets themeTokens.accent
+    '--antu-accent': c.side1,
     '--antu-axis': c.axis,
     '--antu-bg': c.bg,
     '--antu-label-bg': c.labelBg,

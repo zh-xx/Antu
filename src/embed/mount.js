@@ -79,6 +79,8 @@ const isItem = (spec, id) => itemOf(spec, id)?.item.id === id
  * @param {(event: object) => void} [options.onEvent]   select, kindchange, themechange, invalid (spec/embed.md)
  * @param {{ top?: number, right?: number, bottom?: number, left?: number }} [options.fitInsets]
  *                                      extra room (px) kept clear when fitting; replaces the auto measure per side
+ * @param {{ accent?: string, canvas?: string, chromeBg?: string }} [options.themeTokens]
+ *                                      host colour overlays on the named theme (issue 293); ignored while theme is `document`
  */
 export function mount(el, spec, options = {}) {
   if (!el || typeof el.attachShadow !== 'function') throw new TypeError('antu mount: the first argument must be an element')
@@ -143,6 +145,7 @@ export function mount(el, spec, options = {}) {
     locked: options.locked ?? {},
     persist: options.persist === undefined ? true : options.persist,
     fitInsets: options.fitInsets ?? null,
+    themeTokens: options.themeTokens ?? null,
     emit: (event) => {
       if (event?.type === 'invalid') {
         drawnNow = false
@@ -207,6 +210,15 @@ export function mount(el, spec, options = {}) {
       if (!isTheme(theme)) return false
       env.commands.run('setTheme', theme)
       return true
+    },
+    /**
+     * Overlay host colours on the named theme (issue 293). Merges into the current set;
+     * `null` clears. Unknown keys and bad colours are skipped. Returns whether anything changed.
+     * @param {{ accent?: string, canvas?: string, chromeBg?: string } | null} tokens
+     */
+    setThemeTokens(tokens) {
+      alive('setThemeTokens')
+      return env.themeTokens.set(tokens)
     },
     /** Switch the language of the page's own words; false when it is not one Antu speaks */
     setLang(lang) {
