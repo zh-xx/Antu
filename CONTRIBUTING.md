@@ -14,7 +14,7 @@ naming the pull request.
 
 ```bash
 npm run lint         # static checks
-npm run typecheck    # public .d.ts + generated Specs + embed/shell checkJs (issues 294, 227)
+npm run typecheck    # public .d.ts + generated Specs + embed/shell/App checkJs (issues 294, 227)
 npm test             # unit tests
 npm run verify:fast  # checks that need no browser
 npm run verify       # with browser rendering and the whole MCP run
@@ -43,8 +43,12 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   (`src/shell/env.js`, `src/shell/viewState.js`), and the providers it wraps (`src/shell/LangContext.jsx`,
   `src/theme/ThemeContext.jsx`), also via `tsconfig.embed.json`; `ThemeProvider` props are JSDoc-typed
   optional, so a `core.jsx` call with only `initialTheme` checks
+- `// @ts-check` on the app shell `src/App.jsx` (Refs #227, does not close): App props are JSDoc-typed
+  (`spec`, `kind`, `kinds`) and so are `DiagramHeader`'s; `import.meta.env.DEV` is declared in
+  `tools/typecheck/embed-shims.d.ts` rather than pulling `vite/client`, and the two components that take a
+  JSX `key` are cast once (this project has no `@types/react`)
 
-**Not yet:** emitting `.d.ts` from implementation, `checkJs` on `App.jsx` / renderers / the rest of
+**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the renderers or the rest of
 `src/shell`, or tree-wide coverage (later slices of #227). Do not weaken runtime `validate()` or existing
 tests for the sake of types.
 
