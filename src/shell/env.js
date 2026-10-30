@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/env.js — what one diagram on a page may take from around it (issue 152)
 //
@@ -98,9 +99,14 @@ function themeTokenStore(initial = {}) {
   }
 }
 
-/** The viewer page: the window is the diagram's own */
+/**
+ * The viewer page: the window is the diagram's own
+ * @param {{ preset?: object|null }} [opts]
+ */
 export function standaloneEnv({ preset } = {}) {
-  const fromWindow = typeof window !== 'undefined' ? window.__ANTU_PRESET__ ?? null : null
+  /** @type {any} */
+  const win = typeof window === 'undefined' ? null : window
+  const fromWindow = win?.__ANTU_PRESET__ ?? null
   return {
     embedded: false,
     // Built without resolving a paper level: the HTML page is the primary presentation (issue 123);
