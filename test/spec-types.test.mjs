@@ -25,7 +25,7 @@ test('generated types name each diagram Spec and the union', () => {
   assert.match(text, /type: "procedure"/)
 })
 
-test('generated declarations, public API .d.ts, and embed/shell checkJs typecheck (npm run typecheck)', () => {
+test('generated declarations, public API .d.ts, and embed/shell/provider checkJs typecheck (npm run typecheck)', () => {
   const r = spawnSync('npm', ['run', 'typecheck'], { encoding: 'utf8', cwd: REPO })
   assert.equal(r.status, 0, r.stderr || r.stdout)
 })
