@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/prefs.js —— reading and writing local preferences
 //

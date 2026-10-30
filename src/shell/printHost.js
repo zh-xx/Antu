@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/printHost.js — the Print action, from the dock button to the paper
 //

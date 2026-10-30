@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/printPaper.js — the paper a printed diagram lands on
 //
@@ -47,16 +48,19 @@ export function paperFor(width, height) {
  * @returns {string}
  */
 export function pageSize(orientation = 'portrait') {
-  return paperOf(levelForOrientation(orientation)).pageSize
+  return /** @type {string} */ (paperOf(levelForOrientation(orientation)).pageSize)
 }
 
-/** Wait a given number of animation frames: a resize and a fit each need one to settle. */
+/**
+ * Wait a given number of animation frames: a resize and a fit each need one to settle.
+ * @returns {Promise<void>}
+ */
 export function frames(count = 2) {
   return new Promise((resolve) => {
     let left = Math.max(1, count)
     const step = () => {
       left -= 1
-      if (left <= 0) resolve()
+      if (left <= 0) resolve(undefined)
       else requestAnimationFrame(step)
     }
     requestAnimationFrame(step)
@@ -68,6 +72,7 @@ export function frames(count = 2) {
  * Chrome runs `print()` to the end of the dialog, so the promise resolves on `afterprint`;
  * a browser that never fires it (headless, or a refused dialog) must not hold the page
  * hostage, so a timeout resolves it too.
+ * @returns {Promise<void>}
  */
 export function showPrintDialog({ timeoutMs = 60000 } = {}) {
   return new Promise((resolve) => {
@@ -76,7 +81,7 @@ export function showPrintDialog({ timeoutMs = 60000 } = {}) {
       if (done) return
       done = true
       window.removeEventListener('afterprint', finish)
-      resolve()
+      resolve(undefined)
     }
     window.addEventListener('afterprint', finish)
     try {

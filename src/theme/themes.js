@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/theme/themes.js — the three themes (issue #97)
 //
