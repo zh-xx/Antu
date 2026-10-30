@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "strictNullChecks": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0
+  },
+  "include": [
+    "tools/typecheck/embed-shims.d.ts",
+    "src/embed/cardUi.js",
+    "src/embed/kinds.js",
+    "src/embed/index.js",
+    "src/embed/mount.js",
+    "src/embed/shadowCss.js"
+  ]
+}

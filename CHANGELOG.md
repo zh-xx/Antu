@@ -7,6 +7,7 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ### Added
 - **Typecheck step 0 for public host APIs** (#227): `npm run typecheck` also checks embed / validate / html `.d.ts` via `tools/typecheck/api-smoke.ts` (wrong `mount` theme or unknown option fails under `tsc`). CONTRIBUTING records the JSDoc coexistence rule (no mass rename to `.ts`).
+- **`checkJs` on `src/embed` plain JS** (#227): `cardUi` / `kinds` / `index` / `mount` / `shadowCss` carry `// @ts-check`; `tsc -p tsconfig.embed.json` runs in `npm run typecheck`. `embeddedEnv` JSDoc typed so mount options stay honest.
 - **`@zh-xx/antu/types`** (#294): generated TypeScript interfaces for each diagram JSON (`FactSpec`, `ProcedureSpec`, `RelationshipSpec`, `JustificationSpec`, `AntuDiagramSpec`) from the same `*_FIELDS` as `describe()`; `node tools/gen/spec-types.mjs` (+ `--check`). Types only — runtime `validate()` unchanged. `npm run typecheck` (`tsc`) keeps the declarations parseable in CI.
 - **Embed `themeTokens`** (#293): a host may overlay `accent` / `canvas` / `chromeBg` / `text` / `textMuted` / `line` / `chromeBorder` / `font` / `fontHead` on a named theme via `mount({ themeTokens })` and `setThemeTokens`; ignored in `document`. Highlight rings use `--antu-accent`.
 - **Embed fit clears chrome; host `fitInsets`** (#166): fit-view keeps clear of the label card and the dock capsule; `mount(…, { fitInsets: { top, right, bottom, left } })` replaces the auto measure per side.

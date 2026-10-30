@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/embed/cardUi.js — recommended `mount` ui for a chat card (DSH and the like)
 //

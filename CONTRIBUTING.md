@@ -37,9 +37,12 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
 - Generated diagram Specs (`@zh-xx/antu/types`) and their smoke negatives
 - Public API declarations for embed / validate / html (`tools/typecheck/api-smoke.ts` — a bad `mount`
   theme or unknown option must fail)
+- `// @ts-check` on `src/embed` plain JS (`cardUi`, `kinds`, `index`, `mount`, `shadowCss`) via
+  `tsconfig.embed.json` — edits there are checked without renaming to `.ts`
 
-**Not yet:** emitting `.d.ts` from implementation, or `checkJs` across the tree (next slices of #227).
-Do not weaken runtime `validate()` or existing tests for the sake of types.
+**Not yet:** emitting `.d.ts` from implementation, `checkJs` on `core.jsx` / shell / renderers, or
+tree-wide coverage (later slices of #227). Do not weaken runtime `validate()` or existing tests for
+the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

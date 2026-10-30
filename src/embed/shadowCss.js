@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/embed/shadowCss.js — the page's stylesheet, made to work inside a shadow root (issue 152)
 //
@@ -23,7 +24,11 @@ export const HOST_RULES = `
 .antu-embed-root .antu-app { height: 100%; }
 `
 
-/** The stylesheet with its `:root` rules moved to `:host`. Throws if there is no `:root` to move. */
+/**
+ * The stylesheet with its `:root` rules moved to `:host`. Throws if there is no `:root` to move.
+ * @param {string} text
+ * @returns {string}
+ */
 export function toShadowCss(text) {
   const parts = String(text).split(':root')
   if (parts.length < 2) throw new Error('antu: the stylesheet has no :root rule to move to :host')

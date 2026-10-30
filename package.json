@@ -21,7 +21,7 @@
     "mcp:test": "node tools/mcp/client-test.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc -p tsconfig.types.json --noEmit",
+    "typecheck": "tsc -p tsconfig.types.json --noEmit && tsc -p tsconfig.embed.json --noEmit",
     "verify": "node tools/verify/run.mjs",
     "verify:fast": "node tools/verify/run.mjs --no-browser",
     "test": "node --test 'test/*.test.mjs'"

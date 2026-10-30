@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/embed/mount.js — a diagram inside a host's own window (issue 152)
 //
@@ -35,10 +36,16 @@ const MOUNTED = 'antu-embed-root'
  * this type is refused, as `renderHtml` and `setKind` refuse it, rather than quietly drawn as another (issue 152).
  * A spec whose type is not known is left to the validation, which reports it as `invalid`.
  */
-function kindOptionProblem(spec, { kind, kinds }) {
+/**
+ * @param {any} spec
+ * @param {{ kind?: string|null, kinds?: string[] }} [opts]
+ * @returns {string}
+ */
+function kindOptionProblem(spec, { kind, kinds } = {}) {
   const type = spec && typeof spec === 'object' ? spec.type : undefined
   const known = listKinds(type).map((k) => k.kind)
   if (!known.length) return ''
+  /** @param {string} name */
   const not = (name) => `"${name}" is not a kind of ${type}: ${known.join(', ')}`
   if (kind !== undefined && kind !== null && !known.includes(kind)) return `options.kind ${not(kind)}`
   if (kinds !== undefined) {
@@ -51,10 +58,12 @@ function kindOptionProblem(spec, { kind, kinds }) {
 }
 
 /** What is wrong with `initial` ('' when nothing is): the full view-state shape plus the old `headerFolded` alias */
+/** @param {unknown} initial */
 const initialProblem = (initial) => viewStateProblem(initial, 'options.initial', { aliasHeaderFolded: true })
 
 /** Whether `id` is the id of an item of `spec` (a select or focus sent before the diagram is drawn is answered so) */
-const isItem = (spec, id) => itemOf(spec, id)?.item.id === id
+/** @param {unknown} spec @param {unknown} id */
+const isItem = (spec, id) => itemOf(spec, /** @type {string} */ (id))?.item?.id === id
 
 /**
  * @param {HTMLElement} el   the host's element; the diagram fills it, so it needs a height
@@ -214,7 +223,7 @@ export function mount(el, spec, options = {}) {
     /**
      * Overlay host colours / fonts on the named theme (issue 293). Merges into the current set;
      * `null` clears. Unknown keys and bad values are skipped. Returns whether anything changed.
-     * @param {import('./antu-embed').AntuThemeTokens | null} tokens
+     * @param {import('./antu-embed.d.ts').AntuThemeTokens | null} tokens
      */
     setThemeTokens(tokens) {
       alive('setThemeTokens')

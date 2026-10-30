@@ -131,14 +131,18 @@ export function standaloneEnv({ preset } = {}) {
 
 /**
  * A diagram mounted in a host's window.
- * @param prefs   'none' (default: remembered while it is mounted, nothing written), 'local' (the viewer's
- *                localStorage key), or a store { read(): object, write(patch): void }
- * @param emit    the host's onEvent
- * @param root    the shadow root (or element) the diagram is drawn in
- * @param ui      which pieces of the page's own chrome show
- * @param initial how it opens, ahead of the stored choices (`AntuViewState`; shell/viewState.js)
- * @param locked  values forced for this mount, with their controls hidden
- * @param persist which writes may reach the store: true, false, or the names in shell/viewState.js
+ * @param {object} [opts]
+ * @param {'none'|'local'|{read(): object, write(patch: object): void}} [opts.prefs]
+ *                'none' (default: remembered while mounted), 'local' (viewer localStorage), or a host store
+ * @param {(event: object) => void} [opts.emit]  the host's onEvent
+ * @param {() => void} [opts.drawn]  called once the diagram has been drawn and fitted
+ * @param {ShadowRoot|Document|null} [opts.root]  the shadow root (or element) the diagram is drawn in
+ * @param {object} [opts.ui]  which pieces of the page's own chrome show
+ * @param {Record<string, unknown>} [opts.initial]  how it opens (`AntuViewState`; shell/viewState.js)
+ * @param {Record<string, unknown>} [opts.locked]  values forced for this mount, controls hidden
+ * @param {boolean|string[]} [opts.persist]  which writes may reach the store
+ * @param {{ top?: number, right?: number, bottom?: number, left?: number }|null} [opts.fitInsets]
+ * @param {Record<string, string>|null} [opts.themeTokens]  host colour overlays (issue 293)
  */
 export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = null, ui = {}, initial = {}, locked = {}, persist = true, fitInsets = null, themeTokens = null } = {}) {
   const raw = prefs === 'local' ? localPrefs : prefs && typeof prefs === 'object' ? prefs : memoryPrefs()

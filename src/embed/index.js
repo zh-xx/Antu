@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/embed/index.js — the entry of `@zh-xx/antu/embed` (issue 152)
 //
@@ -18,25 +19,30 @@ export { kindIcon, kindLabel } from './kinds.js'
 
 /**
  * Check a spec the way the diagram checks it before drawing.
- * @param {object} [options]
- * @param {'zh'|'en'} [options.lang]  host UI language for messages; default English (issue 166)
+ * @param {unknown} spec
+ * @param {{ lang?: 'zh'|'en' }} [options]  host UI language for messages; default English (issue 166)
  * @returns {{ ok: boolean, errors: string[] }}  each error names its field (for example `nodes[2] (n-3): …`)
  */
-export function validate(spec, { lang } = {}) {
-  const errors = validateSpec(spec, { lang })
+export function validate(spec, options = {}) {
+  const errors = validateSpec(spec, { lang: options.lang })
   return { ok: errors.length === 0, errors: [...errors] }
 }
 
 /**
  * Repair what is inconsistent in the marks of a spec but not in its content (a procedure's main line), and
  * say what was done. The input is not modified. The same as `normalize` in `@zh-xx/antu/validate`.
+ * @param {unknown} spec
  * @returns {{ spec: unknown, changes: string[] }}
  */
 export function normalize(spec) {
   return normalizeSpec(spec)
 }
 
-/** The kinds a type can be drawn in, the first being the one it opens in */
+/**
+ * The kinds a type can be drawn in, the first being the one it opens in.
+ * @param {unknown} type
+ * @returns {string[]}
+ */
 export function kindsOf(type) {
   return listKinds(type).map((k) => k.kind)
 }
