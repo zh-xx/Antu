@@ -32,6 +32,14 @@
     "src/theme/themes.js",
     "src/theme/themeTokens.js",
     "src/shell/printPaper.js",
-    "src/shell/ErrorBoundary.jsx"
+    "src/shell/ErrorBoundary.jsx",
+    "src/shell/hostAttrs.js",
+    "src/shell/DockParts.jsx",
+    "src/shell/useSelectEvent.js",
+    "src/shell/chromeInsets.js",
+    "src/shell/dockPlace.js",
+    "src/shell/useExport.js",
+    "src/shell/startupError.js",
+    "src/shell/exportPng.js"
   ]
 }

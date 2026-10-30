@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/DockParts.jsx — the dock controls every rendering kind shares
 //

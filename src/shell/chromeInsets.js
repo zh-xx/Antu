@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/chromeInsets.js — how much of the canvas the chrome covers (issue 166)
 //
@@ -19,8 +20,9 @@ export function measureChromeInsets(canvasEl) {
   const canvas = canvasEl.getBoundingClientRect()
   if (!canvas.width || !canvas.height) return empty
 
-  const app = canvasEl.closest?.('.antu-app') || canvasEl.getRootNode?.()?.host?.closest?.('.antu-app') || null
-  const root = app || (canvasEl.getRootNode?.() instanceof ShadowRoot ? canvasEl.getRootNode() : canvasEl.ownerDocument)
+  const rootNode = /** @type {any} */ (canvasEl.getRootNode?.())
+  const app = canvasEl.closest?.('.antu-app') || rootNode?.host?.closest?.('.antu-app') || null
+  const root = app || (rootNode instanceof ShadowRoot ? rootNode : canvasEl.ownerDocument)
   const header = root?.querySelector?.('.antu-header')
   const dock = canvasEl.querySelector?.('.antu-dock-capsule')
 
