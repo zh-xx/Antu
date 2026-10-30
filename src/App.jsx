@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/App.jsx — the application shell
 //
@@ -39,7 +40,16 @@ import { themeOf } from './theme/themes.js'
 import { PrintHostProvider, usePrintController } from './shell/printHost.js'
 import { SourceTracePanel, TracePanelProvider } from './shell/TracePanel.jsx'
 
-/** The fallback explanation when no renderer is available */
+/**
+ * The fallback explanation when no renderer is available
+ * @param {object} props
+ * @param {string[]} props.errors
+ * @param {any} [props.spec]
+ * @param {boolean} props.hasRenderer
+ * @param {any} props.t
+ * @param {any} props.labelOf
+ * @param {any} props.formatNumber
+ */
 function FallbackInfo({ errors, spec, hasRenderer, t, labelOf, formatNumber }) {
   if (errors.length > 0) {
     return (
@@ -82,10 +92,11 @@ function diagramInfo(spec, t, formatNumber) {
 
 /**
  * One diagram.
- * @param spec     the JSON: on the viewer page the one inlined into it (main.jsx), in a mounted diagram the
- *                 host's (src/embed/)
- * @param kind     the kind it opens in until the reader picks another (a host's `mount(…, { kind })`)
- * @param kinds    the kinds the reader may pick from; leave out for all of the type's
+ * @param {object} props
+ * @param {any} props.spec        the JSON: on the viewer page the one inlined into it (main.jsx), in a mounted
+ *                                diagram the host's (src/embed/)
+ * @param {string|null} [props.kind]   the kind it opens in until the reader picks another (a host's `mount(…, { kind })`)
+ * @param {string[]|null} [props.kinds]  the kinds the reader may pick from; leave out for all of the type's
  *
  * Kinds from the page's preset (window.__ANTU_PRESET__, written by tools/lib/fill.mjs; usePreset):
  *   kind         a screenshot names the kind outright (preview --kind)
@@ -218,6 +229,10 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
   }, [commands, setTheme, setLang])
 
   const showHeader = useUi('header')
+  // Without @types/react, tsc does not know JSX's special `key` attribute (issue 227). Cast the two
+  // components once here, rather than silencing the whole JSX block: their own props stay JSDoc-typed.
+  const Header = /** @type {any} */ (DiagramHeader)
+  const Fallback = /** @type {any} */ (FallbackInfo)
 
   return (
     <PrintHostProvider value={printHost.value}>
@@ -229,7 +244,7 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
           export never carries the heading (spec/fact/rendering.md §10.2 changed),
           so the switch has no meaning. A host that draws its own title may leave it out. */}
       {showHeader && (
-        <DiagramHeader
+        <Header
           key={resetCount}
           specKey={specKey}
           title={spec?.title || t('common.untitled')}
@@ -253,7 +268,7 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
           </ErrorBoundary>
         </ResetSpecContext.Provider>
       ) : (
-        <FallbackInfo
+        <Fallback
           key={partKey}
           errors={errors}
           spec={spec}

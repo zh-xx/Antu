@@ -31,6 +31,18 @@ import { themeOf } from '../theme/themes.js'
 import { isInside, useEnv, useViewValue } from './env.js'
 import { readSpecPref, writeSpecPref } from './prefs.js'
 
+/**
+ * @param {object} props
+ * @param {string} [props.specKey]
+ * @param {any} props.title
+ * @param {any} props.type
+ * @param {any} props.typeLabel
+ * @param {any[]} [props.info]     the third line: size and time span, from the type's knowledge
+ * @param {any[]} [props.kinds]    [{ kind, labelKey }] the ways this type can be drawn
+ * @param {any} props.kind
+ * @param {(kind: any) => void} props.onSelectKind
+ * @param {() => void} [props.onPrefsChanged]
+ */
 export default function DiagramHeader({
   specKey = '',
   title,

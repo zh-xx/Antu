@@ -16,6 +16,7 @@
   },
   "include": [
     "tools/typecheck/embed-shims.d.ts",
+    "src/App.jsx",
     "src/embed/cardUi.js",
     "src/embed/core.jsx",
     "src/embed/kinds.js",
