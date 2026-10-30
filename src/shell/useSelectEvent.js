@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/useSelectEvent.js — tell a host what the reader pinned (issue 152)
 //

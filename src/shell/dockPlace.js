@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/dockPlace.js — where the control capsule goes on a canvas of a given width
 //
@@ -26,7 +27,10 @@ export const DOCK_EDGE = 15
  */
 export function placeDock({ width, natural, zoomRight = null, minimapWidth = null }) {
   const lo = zoomRight == null ? DOCK_EDGE : zoomRight + DOCK_GAP
-  const right = (minimap) => (minimap ? width - DOCK_EDGE - minimapWidth - DOCK_GAP : width - DOCK_EDGE)
+  const right = (minimap) => {
+    const mw = minimap ? minimapWidth : null
+    return mw == null ? width - DOCK_EDGE : width - DOCK_EDGE - mw - DOCK_GAP
+  }
   const place = (hi) => Math.min(Math.max(width / 2 - natural / 2, lo), hi - natural)
 
   if (minimapWidth != null && natural <= right(true) - lo) return { left: place(right(true)), maxWidth: null, hideMinimap: false }
