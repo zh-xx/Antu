@@ -14,7 +14,7 @@ naming the pull request.
 
 ```bash
 npm run lint         # static checks
-npm run typecheck    # public .d.ts + generated Specs + embed/shell/App checkJs (issues 294, 227)
+npm run typecheck    # public .d.ts + generated Specs + embed/shell/theme/App checkJs (issues 294, 227)
 npm test             # unit tests
 npm run verify:fast  # checks that need no browser
 npm run verify       # with browser rendering and the whole MCP run
@@ -47,10 +47,15 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   (`spec`, `kind`, `kinds`) and so are `DiagramHeader`'s; `import.meta.env.DEV` is declared in
   `tools/typecheck/embed-shims.d.ts` rather than pulling `vite/client`, and the two components that take a
   JSX `key` are cast once (this project has no `@types/react`)
+- `// @ts-check` on the remaining small shell/theme deps (Refs #227, does not close): `src/shell/prefs.js`,
+  `src/shell/printHost.js`, `src/shell/printPaper.js`, `src/shell/ErrorBoundary.jsx`, `src/theme/themes.js`
+  and `src/theme/themeTokens.js` join `tsconfig.embed.json`; the two empty-record accumulators are JSDoc-typed,
+  the print promises resolve explicitly, and `ErrorBoundary` reads `this.props` / `this.state` through one
+  `any` cast rather than adding `@types/react`
 
-**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the renderers or the rest of
-`src/shell`, or tree-wide coverage (later slices of #227). Do not weaken runtime `validate()` or existing
-tests for the sake of types.
+**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the renderers, the remaining shell panels
+(`Canvas`, `DockParts`, `TracePanel`) or tree-wide coverage (later slices of #227). Do not weaken runtime
+`validate()` or existing tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

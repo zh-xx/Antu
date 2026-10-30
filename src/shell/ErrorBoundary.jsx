@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/ErrorBoundary.jsx —— the fallback when rendering throws
 //
@@ -33,9 +34,11 @@ export default class ErrorBoundary extends Component {
   // language in as a prop. This is the only piece of wording here; it is not worth
   // turning the whole boundary into a function component for it.
   render() {
-    const { error } = this.state
-    const t = (key, vars) => translate(this.props.lang, key, vars)
-    if (!error) return this.props.children
+    // Without @types/react, tsc has no `props` / `state` on the class; read them through one cast.
+    const { error } = /** @type {any} */ (this).state
+    const props = /** @type {any} */ (this).props
+    const t = (key, vars) => translate(props.lang, key, vars)
+    if (!error) return props.children
 
     return (
       <div className="antu-fallback">

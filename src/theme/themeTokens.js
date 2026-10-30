@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/theme/themeTokens.js — host colour / font overlays on a named theme (issue 293)
 //
@@ -128,6 +129,7 @@ export function canvasOverrideOk(themeId, canvas, hostText) {
  */
 export function normalizeThemeTokens(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return {}
+  /** @type {Record<string, string>} */
   const out = {}
   for (const key of THEME_TOKEN_KEYS) {
     if (!(key in input)) continue
@@ -196,6 +198,7 @@ export function applyThemeTokens(baseVars, tokens, themeId) {
  */
 export function mergeThemeTokens(current, patch) {
   if (patch === null || patch === undefined) {
+    /** @type {Record<string, string>} */
     const empty = {}
     return { tokens: empty, changed: Object.keys(current || {}).length > 0 }
   }

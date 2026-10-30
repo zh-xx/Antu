@@ -26,6 +26,12 @@
     "src/shell/viewState.js",
     "src/shell/env.js",
     "src/shell/LangContext.jsx",
-    "src/theme/ThemeContext.jsx"
+    "src/theme/ThemeContext.jsx",
+    "src/shell/prefs.js",
+    "src/shell/printHost.js",
+    "src/theme/themes.js",
+    "src/theme/themeTokens.js",
+    "src/shell/printPaper.js",
+    "src/shell/ErrorBoundary.jsx"
   ]
 }
