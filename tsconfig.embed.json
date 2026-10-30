@@ -23,6 +23,8 @@
     "src/embed/mount.js",
     "src/embed/shadowCss.js",
     "src/shell/viewState.js",
-    "src/shell/env.js"
+    "src/shell/env.js",
+    "src/shell/LangContext.jsx",
+    "src/theme/ThemeContext.jsx"
   ]
 }

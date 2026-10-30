@@ -39,9 +39,10 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   theme or unknown option must fail)
 - `// @ts-check` on `src/embed` plain JS (`cardUi`, `kinds`, `index`, `mount`, `shadowCss`) via
   `tsconfig.embed.json` — edits there are checked without renaming to `.ts`
-- `// @ts-check` on the embed entry (`src/embed/core.jsx`) and the shell modules it imports directly
-  (`src/shell/env.js`, `src/shell/viewState.js`), also via `tsconfig.embed.json`; `ThemeProvider` props
-  are JSDoc-typed optional, so a `core.jsx` call with only `initialTheme` checks
+- `// @ts-check` on the embed entry (`src/embed/core.jsx`), the shell modules it imports directly
+  (`src/shell/env.js`, `src/shell/viewState.js`), and the providers it wraps (`src/shell/LangContext.jsx`,
+  `src/theme/ThemeContext.jsx`), also via `tsconfig.embed.json`; `ThemeProvider` props are JSDoc-typed
+  optional, so a `core.jsx` call with only `initialTheme` checks
 
 **Not yet:** emitting `.d.ts` from implementation, `checkJs` on `App.jsx` / renderers / the rest of
 `src/shell`, or tree-wide coverage (later slices of #227). Do not weaken runtime `validate()` or existing

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/theme/ThemeContext.jsx — which theme the page is in, for every component (issue #97)
 //

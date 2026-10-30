@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/LangContext.jsx —— the React context for interface language
 //
