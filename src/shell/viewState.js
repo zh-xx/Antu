@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/viewState.js — how a host configures what a reader sees (issue 200)
 //
@@ -167,7 +168,11 @@ export function persistingStore(store, persist) {
   }
 }
 
-/** The precedence, in one place; every argument is a leaf value and `touched` says the reader changed it now */
+/**
+ * The precedence, in one place; every argument is a leaf value and `touched` says the reader changed it now.
+ * @param {{ locked?: unknown, touched?: boolean, initial?: unknown, preset?: unknown, stored?: unknown, fallback?: unknown }} [options]
+ * @returns {unknown}
+ */
 export function resolveView({ locked, touched = false, initial, preset, stored, fallback } = {}) {
   if (locked !== undefined) return locked
   if (touched) return stored

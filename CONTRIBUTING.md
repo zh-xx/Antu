@@ -14,7 +14,7 @@ naming the pull request.
 
 ```bash
 npm run lint         # static checks
-npm run typecheck    # public .d.ts + generated Specs under tsc (issues 294, 227)
+npm run typecheck    # public .d.ts + generated Specs + embed/shell checkJs (issues 294, 227)
 npm test             # unit tests
 npm run verify:fast  # checks that need no browser
 npm run verify       # with browser rendering and the whole MCP run
@@ -39,10 +39,13 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   theme or unknown option must fail)
 - `// @ts-check` on `src/embed` plain JS (`cardUi`, `kinds`, `index`, `mount`, `shadowCss`) via
   `tsconfig.embed.json` — edits there are checked without renaming to `.ts`
+- `// @ts-check` on the embed entry (`src/embed/core.jsx`) and the shell modules it imports directly
+  (`src/shell/env.js`, `src/shell/viewState.js`), also via `tsconfig.embed.json`; `ThemeProvider` props
+  are JSDoc-typed optional, so a `core.jsx` call with only `initialTheme` checks
 
-**Not yet:** emitting `.d.ts` from implementation, `checkJs` on `core.jsx` / shell / renderers, or
-tree-wide coverage (later slices of #227). Do not weaken runtime `validate()` or existing tests for
-the sake of types.
+**Not yet:** emitting `.d.ts` from implementation, `checkJs` on `App.jsx` / renderers / the rest of
+`src/shell`, or tree-wide coverage (later slices of #227). Do not weaken runtime `validate()` or existing
+tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

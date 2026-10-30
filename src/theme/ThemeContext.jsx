@@ -78,6 +78,12 @@ export function shellVars(theme) {
   return { colorScheme: 'dark', ...Object.fromEntries(keep.map((k) => [k, rest[k]])) }
 }
 
+/**
+ * @param {object} props
+ * @param {import('react').ReactNode} props.children
+ * @param {string} [props.theme]  forces the theme for this diagram (locked / preset path)
+ * @param {string} [props.initialTheme]  where it opens when not forced (`renderDiagram` / mount theme)
+ */
 export function ThemeProvider({ children, theme: forcedTheme, initialTheme }) {
   const prefs = usePrefs()
   const preset = usePreset()

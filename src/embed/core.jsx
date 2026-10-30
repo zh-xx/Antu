@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/embed/core.jsx — one diagram drawn into one element (issue 152)
 //
@@ -16,8 +17,8 @@ import { LangProvider } from '../shell/LangContext.jsx'
 import { ThemeProvider } from '../theme/ThemeContext.jsx'
 
 /**
- * @param container  the element the diagram fills
- * @param env        standaloneEnv() or embeddedEnv(…) (shell/env.js)
+ * @param {Element} container  the element the diagram fills
+ * @param {{ env: object }} options  `env` is standaloneEnv() or embeddedEnv(…) (shell/env.js)
  * @returns {{ draw(props): void, unmount(): void }}  `draw` (re)draws with { spec, kind, kinds, theme, lang };
  *          `theme` and `lang` are where it opens, read once
  */

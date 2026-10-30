@@ -17,9 +17,12 @@
   "include": [
     "tools/typecheck/embed-shims.d.ts",
     "src/embed/cardUi.js",
+    "src/embed/core.jsx",
     "src/embed/kinds.js",
     "src/embed/index.js",
     "src/embed/mount.js",
-    "src/embed/shadowCss.js"
+    "src/embed/shadowCss.js",
+    "src/shell/viewState.js",
+    "src/shell/env.js"
   ]
 }
