@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/matrix/layout.js — the relation matrix (issue #91): parties × parties
 //
@@ -46,14 +47,17 @@ const lineCount = (text, width, font) => Math.max(1, wrapLineCount(text, (width 
 /**
  * The order of the parties and the bands they stand under: the camps in written order, then the
  * parties of no camp.
- * @returns { order: entity[], bands: [{ id, label, from, to }] }  from/to: index range in `order`
+ * @returns {{ order: any[], bands: Array<{ id: string | null, label: string, from: number, to: number }> }}
+ *   order: the entities in the order they stand; bands: the camps, with from/to the index range in `order`
  */
 export function matrixOrder(spec, ungroupedLabel = '') {
   const known = new Set((spec.groups ?? []).map((g) => g.id))
   const buckets = (spec.groups ?? []).map((g) => ({ id: g.id, label: g.label, members: spec.entities.filter((e) => e.groupId === g.id) }))
   const rest = spec.entities.filter((e) => !known.has(e.groupId))
   if (rest.length) buckets.push({ id: null, label: ungroupedLabel, members: rest })
+  /** @type {any[]} */
   const order = []
+  /** @type {any[]} */
   const bands = []
   for (const b of buckets) {
     if (!b.members.length) continue
@@ -135,6 +139,7 @@ export function buildMatrixGraph(spec, fields = {}) {
   const width = gridX + n * CELL_W + PAD
   const height = Math.ceil(y + PAD)
 
+  /** @type {any} */
   const layer = { width, height, // The empty cell where the head row and the head column meet (and the band row and column): ruled like the rest
     corner: { x: PAD, y: PAD, w: gridX - PAD, h: gridY - PAD }, bands: [], heads: [], rowHeads: [], cells: [], diagonal: [], chipsTotal: 0, filled: 0 }
   bands.forEach((b, bi) => {

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/RelationshipDock.jsx — the relationship graph's control capsule
 //

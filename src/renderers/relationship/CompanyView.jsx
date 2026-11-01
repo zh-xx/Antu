@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/CompanyView.jsx — the equity tree and the authority chart, with a company to pick
 //

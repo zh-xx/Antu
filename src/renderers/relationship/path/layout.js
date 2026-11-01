@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/path/layout.js — the relation path (issue #93): how two parties are tied
 //
@@ -49,7 +50,7 @@ const CARD_CLEAR = 108
  * goes below, the next above, and so on; a run of parties that follows a party already off the line goes one
  * row further out. A run of k parties needs 2k positions between its neighbours; the parties after are
  * moved right to make room, so the line only stretches where the chains need it.
- * @returns { pos: Map<id, number>, row: Map<id, number> }
+ * @returns {{ pos: Map<string, number>, row: Map<string, number> }} pos: Map id -> half-column; row: Map id -> row
  */
 export function placeChains(chains) {
   const pos = new Map()
@@ -128,9 +129,10 @@ function distancesFrom(spec, from) {
   const dist = new Map([[from, 0]])
   const queue = [from]
   for (let i = 0; i < queue.length; i++) {
+    const here = dist.get(queue[i])
     for (const n of next.get(queue[i])) {
       if (!dist.has(n)) {
-        dist.set(n, dist.get(queue[i]) + 1)
+        dist.set(n, (here ?? 0) + 1)
         queue.push(n)
       }
     }
@@ -145,7 +147,9 @@ export function defaultEnds(spec) {
     const dist = distancesFrom(spec, a.id)
     for (const b of spec.entities) {
       if (b.id === a.id || !dist.has(b.id)) continue
-      if (best === null || dist.get(b.id) > best.d) best = { from: a.id, to: b.id, d: dist.get(b.id) }
+      const d = dist.get(b.id)
+      if (d === undefined) continue
+      if (best === null || d > best.d) best = { from: a.id, to: b.id, d }
     }
   }
   return best ? { from: best.from, to: best.to } : { from: spec.entities[0].id, to: spec.entities[Math.min(1, spec.entities.length - 1)].id }
@@ -160,13 +164,18 @@ export function endsOf(spec, asked = {}) {
 
 /**
  * The chains from `from` to `to`: shortest first, then in written order of their relations.
- * @returns { chains: [{ nodes: id[], rels: relation[] }], total, truncated, shortest }
- *   chains: at most MAX_CHAINS; total: how many were found (counted up to SEARCH_CAP and SLACK longer than the shortest)
+ * @returns {{
+ *   chains: Array<{ nodes: string[], rels: any[] }>,
+ *   total: number,
+ *   truncated: boolean,
+ *   shortest: number
+ * }} chains: at most MAX_CHAINS; total: how many were found (counted up to SEARCH_CAP and SLACK longer
+ *   than the shortest); truncated: whether the search stopped at SEARCH_CAP; shortest: the shortest length
  */
 export function findChains(spec, from, to) {
   const dist = distancesFrom(spec, to)
   if (!dist.has(from)) return { chains: [], total: 0, truncated: false, shortest: 0 }
-  const shortest = dist.get(from)
+  const shortest = dist.get(from) ?? 0
   const adj = new Map(spec.entities.map((e) => [e.id, []]))
   spec.relations.forEach((r, i) => {
     adj.get(r.from).push({ r, i, other: r.to })
@@ -234,9 +243,11 @@ export function buildPathGraph(spec, fields = {}) {
   const chains = found.chains
   const shortestLen = chains[0]?.rels.length ?? 0
   const { pos, row } = placeChains(chains)
+  const posOf = (id) => pos.get(id) ?? 0
+  const rowOf = (id) => row.get(id) ?? 0
   const ids = [...pos.keys()]
-  const boxW = Math.max(MIN_BOX_W, ...ids.map((id) => party.sizes.get(id).w))
-  const rowH = ids.length ? Math.max(...ids.map((id) => party.sizes.get(id).h)) : 0
+  const boxW = Math.max(MIN_BOX_W, ...ids.map((id) => party.sizes.get(id)?.w ?? 0))
+  const rowH = ids.length ? Math.max(...ids.map((id) => party.sizes.get(id)?.h ?? 0)) : 0
   const minRow = Math.min(0, ...row.values())
   const maxRow = Math.max(0, ...row.values())
   const nPos = ids.length ? Math.max(...pos.values()) + 1 : 0
@@ -250,13 +261,15 @@ export function buildPathGraph(spec, fields = {}) {
   const PORT_STEP = Math.max(6, Math.min(14, (rowH - 16) / 3))
 
   // The hops of every chain, once each (a relation two chains share is one line); heavy when a shortest chain has it
+  /** @type {any[]} */
   const hops = []
   const hopOf = new Map()
   chains.forEach((c) =>
     c.rels.forEach((r, i) => {
       const heavy = c.rels.length === shortestLen
       if (hopOf.has(r.id)) {
-        if (heavy) hopOf.get(r.id).heavy = true
+        const seen = hopOf.get(r.id)
+        if (heavy && seen) seen.heavy = true
         return
       }
       const hop = { r, a: c.nodes[i], b: c.nodes[i + 1], heavy, pw: pillW(textOf(r)) }
@@ -265,7 +278,7 @@ export function buildPathGraph(spec, fields = {}) {
     }),
   )
   for (const h of hops) {
-    const [pa, pb, ra, rb] = [pos.get(h.a), pos.get(h.b), row.get(h.a), row.get(h.b)]
+    const [pa, pb, ra, rb] = [posOf(h.a), posOf(h.b), rowOf(h.a), rowOf(h.b)]
     if (ra === rb) {
       h.type = 'row'
       ;[h.s, h.e] = pa <= pb ? [h.a, h.b] : [h.b, h.a]
@@ -276,8 +289,8 @@ export function buildPathGraph(spec, fields = {}) {
       h.type = 'bend'
       const aNear = Math.abs(ra) < Math.abs(rb) || (Math.abs(ra) === Math.abs(rb) && pa < pb)
       ;[h.s, h.e] = aNear ? [h.a, h.b] : [h.b, h.a]
-      h.dir = Math.sign(row.get(h.e) - row.get(h.s))
-      h.toRight = pos.get(h.e) > pos.get(h.s)
+      h.dir = Math.sign(rowOf(h.e) - rowOf(h.s))
+      h.toRight = posOf(h.e) > posOf(h.s)
     }
   }
   // Parallel lines on one row: each at its own height, the same at both ends
@@ -313,7 +326,7 @@ export function buildPathGraph(spec, fields = {}) {
       list.splice(0, list.length, byLabel[0])
     }
     list.forEach((h, i) => {
-      h.y = rowY(row.get(h.s)) + rowH / 2 + (i - (list.length - 1) / 2) * PORT_STEP
+      h.y = rowY(rowOf(h.s)) + rowH / 2 + (i - (list.length - 1) / 2) * PORT_STEP
       h.slotOf = list
     })
   }
@@ -333,11 +346,11 @@ export function buildPathGraph(spec, fields = {}) {
     along.set(`${list[0].e}\u0000l`, (along.get(`${list[0].e}\u0000l`) ?? 0) + list.length)
   }
   for (const [key, list] of entries) {
-    const far = (h) => Math.abs(pos.get(h.s) - pos.get(h.e))
+    const far = (h) => Math.abs(posOf(h.s) - posOf(h.e))
     list.sort((u, v) => (u.dir > 0 ? far(u) - far(v) : far(v) - far(u)))
     const nr = along.get(key) ?? 0
     list.forEach((h, i) => {
-      const centre = rowY(row.get(h.e)) + rowH / 2
+      const centre = rowY(rowOf(h.e)) + rowH / 2
       if (!nr) h.y = centre + (i - (list.length - 1) / 2) * PORT_STEP
       else h.y = h.dir > 0 ? centre - ((nr - 1) / 2 + list.length - i) * PORT_STEP : centre + ((nr - 1) / 2 + 1 + i) * PORT_STEP
     })
@@ -351,7 +364,7 @@ export function buildPathGraph(spec, fields = {}) {
     exits.get(key).push(h)
   }
   for (const list of exits.values()) {
-    list.sort((u, v) => Math.abs(v.y - rowY(row.get(v.s))) - Math.abs(u.y - rowY(row.get(u.s))))
+    list.sort((u, v) => Math.abs(v.y - rowY(rowOf(v.s))) - Math.abs(u.y - rowY(rowOf(u.s))))
     // Spread over the width of the box (never past its edge), the one with the longest way to go nearest the middle
     const reach = boxW / 2 - 14
     list.forEach((h, i) => {
@@ -366,17 +379,17 @@ export function buildPathGraph(spec, fields = {}) {
   const unit = Array.from({ length: Math.max(0, nPos - 1) }, () => (boxW + MIN_GAP) / 2)
   const need = []
   for (let r = minRow; r <= maxRow; r += 1) {
-    const inRow = ids.filter((id) => row.get(id) === r).sort((u, v) => pos.get(u) - pos.get(v))
+    const inRow = ids.filter((id) => rowOf(id) === r).sort((u, v) => posOf(u) - posOf(v))
     for (let n = 1; n < inRow.length; n += 1) {
       const between = hops.filter((h) => h.type === 'row' && h.s === inRow[n - 1] && h.e === inRow[n])
       const labels = [...new Set(between.map((h) => h.slotOf))].reduce((w, list) => w + list.reduce((m, h) => m + h.pw + 2 * PILL_MARGIN, 0), 0)
-      need.push({ a: pos.get(inRow[n - 1]), b: pos.get(inRow[n]), w: boxW + Math.max(MIN_GAP, labels) })
+      need.push({ a: posOf(inRow[n - 1]), b: posOf(inRow[n]), w: boxW + Math.max(MIN_GAP, labels) })
     }
   }
   // A line that goes round has its label on the stretch over (or under) the gap: the gap is as wide as that label
-  for (const h of hops.filter((x) => x.type === 'round')) need.push({ a: pos.get(h.s), b: pos.get(h.e), w: boxW + h.pw - 2 * roundIn(h.level) + 2 * PILL_MARGIN })
+  for (const h of hops.filter((x) => x.type === 'round')) need.push({ a: posOf(h.s), b: posOf(h.e), w: boxW + h.pw - 2 * roundIn(h.level) + 2 * PILL_MARGIN })
   for (const h of hops.filter((x) => x.type === 'bend')) {
-    const [p, q] = [pos.get(h.s), pos.get(h.e)]
+    const [p, q] = [posOf(h.s), posOf(h.e)]
     need.push({ a: Math.min(p, q), b: Math.max(p, q), w: boxW / 2 + 56 + Math.abs(h.exitAt) })
   }
   for (let pass = 0; pass < 40; pass += 1) {
@@ -395,6 +408,7 @@ export function buildPathGraph(spec, fields = {}) {
   const contentRight = nPos ? xc(nPos - 1) + boxW / 2 : PAD
   const contentW = Math.max(contentRight - PAD, MIN_CONTENT_W - PAD * 2)
   const nodes = []
+  /** @type {any} */
   const layer = { width: contentW + PAD * 2, height: 0, links: [], pills: [], empties: [], frames: [], texts: [] }
   const drawn = new Set()
   const drawnRels = new Set()
@@ -405,16 +419,18 @@ export function buildPathGraph(spec, fields = {}) {
     nodes.push({
       id,
       type: 'rnode',
-      position: { x: xc(pos.get(id)) - boxW / 2, y: rowY(row.get(id)) },
+      position: { x: xc(posOf(id)) - boxW / 2, y: rowY(rowOf(id)) },
       data: { ...party.dataOf(entityById.get(id), { layer: 0, hintKey: 'rel.previewHint', vertical: false, end: endId(id) }), w: boxW, h: rowH, textW: boxW - 28 },
     })
   }
   const belowDepth = Math.max(0, ...hops.filter((x) => x.type === 'round' && x.side > 0).map((x) => x.off + x.ph / 2))
   const bottom = chains.length ? rowY(maxRow) + rowH + belowDepth : PAD + CARD_CLEAR
+  /** @type {any[]} */
   const bends = []
   for (const h of hops) {
     drawnRels.add(h.r.id)
     const arrow = !isDirected(h.r) ? 'none' : h.r.from === h.s ? 'end' : 'start'
+    /** @type {any} */
     const link = { kind: h.r.kind, ink: true, back: false, via: [], arrow, width: h.heavy ? 2.6 : 1.4 }
     const pill = { text: textOf(h.r), kind: h.r.kind, ink: true, back: false, relId: h.r.id }
     if (h.type === 'row') {
@@ -466,7 +482,10 @@ export function buildPathGraph(spec, fields = {}) {
     const pts = [...d.matchAll(/[ML] ([\d.-]+) ([\d.-]+)/g)].map((m) => [+m[1], +m[2]])
     return pts.slice(1).map((q, i) => [pts[i], q])
   }
-  const cover = (r, [a, b]) => Math.max(a[0], b[0]) > r.x && Math.min(a[0], b[0]) < r.x + r.w && Math.max(a[1], b[1]) > r.y && Math.min(a[1], b[1]) < r.y + r.h
+  const cover = (r, seg) => {
+    const [a, b] = seg
+    return Math.max(a[0], b[0]) > r.x && Math.min(a[0], b[0]) < r.x + r.w && Math.max(a[1], b[1]) > r.y && Math.min(a[1], b[1]) < r.y + r.h
+  }
   const rectOf = (pl, w) => ({ x: pl.x - w / 2, y: pl.y - pillH(pl.text) / 2, w, h: pillH(pl.text) })
   const linePieces = layer.links.map((l) => polyline(l.d))
   const taken = layer.pills.filter((pl) => !bends.some((b) => b.pill === pl)).map((pl) => rectOf(pl, pillW(pl.text)))
@@ -499,6 +518,7 @@ export function buildPathGraph(spec, fields = {}) {
       if (!best || score < best.score) best = { score, x, y: yy }
       if (score === 0) break
     }
+    if (!best) continue
     b.pill.x = best.x
     b.pill.y = best.y
     taken.push(rectOf(b.pill, w))

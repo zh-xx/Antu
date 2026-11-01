@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/metrics.js — relationship sizes and spacing
 //
@@ -65,7 +66,7 @@ export const BOLD_FACTOR = 1.3
 export const LABEL_FACTOR = 1.2
 const emOf = (text, factor) => {
   const s = String(text ?? '')
-  const latin = [...s].filter((ch) => ch.codePointAt(0) < 0x2e80).join('')
+  const latin = [...s].filter((ch) => (ch.codePointAt(0) ?? 0) < 0x2e80).join('')
   return textEm(s) + textEm(latin) * (factor - 1)
 }
 

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/layout.js — laying out the relationship graph (pure computation)
 //
@@ -687,7 +688,7 @@ function* layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertic
   // ── set everything down: camps left to right, the whole picture moved so its top is at PAD ──
   const tops = []
   camps.forEach((camp, ci) => {
-    if (ci === middle) tops.push(Math.min(...[...middleCol.at.values()].map((r) => r.y)))
+    if (ci === middle) tops.push(middleCol ? Math.min(...[...middleCol.at.values()].map((r) => r.y)) : 0)
     else tops.push(campTop[ci])
   })
   const lift = PAD - Math.min(...tops)
@@ -699,12 +700,12 @@ function* layOutRelationshipGraph(spec, fields = {}, view, orientation = 'vertic
   let lowest = PAD
   camps.forEach((camp, ci) => {
     if (ci === middle) {
-      for (const [id, r] of middleCol.at) {
+      for (const [id, r] of middleCol?.at ?? []) {
         placed.set(id, { x: cursor + r.x, y: lift + r.y, w: r.w, h: r.h })
         lowest = Math.max(lowest, lift + r.y + r.h)
         levelOf.set(id, 0)
       }
-      cursor += middleCol.width + gapAfter[ci]
+      cursor += (middleCol?.width ?? 0) + gapAfter[ci]
       return
     }
     const lay = laidCamps[ci]

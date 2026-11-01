@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/register.js — register the relationship sub-type renderer with the engine
 //

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/LineLayerNode.jsx — everything of a levelled relationship view that is not a party box
 //

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/matrix/MatrixLayerNode.jsx — the whole relation matrix, as one layer
 //

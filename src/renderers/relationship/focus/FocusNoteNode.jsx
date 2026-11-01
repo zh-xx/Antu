@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/focus/FocusNoteNode.jsx — the caption over the islands
 //

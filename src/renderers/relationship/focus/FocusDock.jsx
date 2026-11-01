@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/focus/FocusDock.jsx — the focus view's control capsule
 //
@@ -13,6 +14,23 @@ import { DockExportButton, DockLangSwitch, DockResetButton } from '../../../shel
 import { DockTraceButton } from '../../../shell/TracePanel.jsx'
 import { RELATION_KINDS } from '../graph/rules.js'
 
+/**
+ * @param {{
+ *   kinds?: Record<string, number>,
+ *   hiddenKinds?: string[],
+ *   onToggleKind?: (kind: string) => void,
+ *   showLabels?: boolean,
+ *   onToggleLabels: (show: boolean) => void,
+ *   parties?: Array<{ id: string, label: string }>,
+ *   centre?: string | null,
+ *   onPickCentre?: (id: string) => void,
+ *   isDefaultCentre?: boolean,
+ *   onResetCentre?: () => void,
+ *   exporting?: boolean,
+ *   onExport?: () => void,
+ *   extra?: any
+ * }} props
+ */
 export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, showLabels = true, onToggleLabels, parties = [], centre = null, onPickCentre, isDefaultCentre = true, onResetCentre, exporting = false, onExport, extra = null }) {
   const { t } = useLang()
   const used = RELATION_KINDS.filter((k) => kinds[k] > 0)
@@ -24,7 +42,7 @@ export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, 
             <button
               key={k}
               className={`antu-dock-chip antu-rkind k-${k}${hiddenKinds.includes(k) ? '' : ' is-on'}`}
-              onClick={() => onToggleKind(k)}
+              onClick={() => onToggleKind?.(k)}
               title={t('rel.kindChipTitle', { n: kinds[k] })}
             >
               {t(`rel.kind.${k}`)}
@@ -46,7 +64,7 @@ export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, 
           </select>
         )}
         {!isDefaultCentre && (
-          <button className="antu-dock-chip antu-rf-reset" onClick={onResetCentre} title={t('rel.focus.resetTitle')}>
+          <button className="antu-dock-chip antu-rf-reset" onClick={() => onResetCentre?.()} title={t('rel.focus.resetTitle')}>
             {t('rel.focus.reset')}
           </button>
         )}

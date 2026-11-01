@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/focus/register.js — registers the relationship focus view
 //

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/focus/layout.js — the focus view (issue #87): one party in the middle
 //
@@ -211,12 +212,22 @@ function relatedRing(members, related, campOf) {
       if (!best || cost < best.cost - 1e-9) best = { cost, at }
     }
   }
-  return members.map((id) => best.at.get(id))
+  if (!best) return null
+  const { at } = best
+  return members.map((id) => at.get(id))
 }
 
 /**
  * Lay out one connected group around `centre`, in a frame whose origin is the centre's middle.
- * @returns { boxes: Map id -> {x,y,w,h,ring,angle}, rings: id[][], radii: number[], halves: number[] }
+ * @returns {{
+ *   boxes: Map<string, { x: number, y: number, w: number, h: number, ring: number, angle: number }>,
+ *   rings: string[][],
+ *   radii: number[],
+ *   halves: number[],
+ *   ring: Map<string, number>,
+ *   at: (angle: number, R: number) => number[]
+ * }} boxes: Map id -> { x, y, w, h, ring, angle }; rings: ids per ring; radii: each ring's radius;
+ *   halves: each ring's widest half-box; ring: Map id -> ring; at: a point on a ring
  */
 export function placeRings(entities, relations, centre, sizes, campOf, labelWOf = () => 0) {
   const ids = new Set(entities.map((e) => e.id))
@@ -246,6 +257,7 @@ export function placeRings(entities, relations, centre, sizes, campOf, labelWOf 
 
   const box = (id) => ({ w: sizes.get(id).w, h: sizes.get(id).h })
   const half = (id) => Math.hypot(box(id).w, box(id).h) / 2
+  /** @type {Map<string, { x: number, y: number, w: number, h: number, ring: number, angle: number }>} */
   const boxes = new Map()
   boxes.set(centre, { x: -box(centre).w / 2, y: -box(centre).h / 2, ...box(centre), ring: 0, angle: 0 })
   const radii = [0]
@@ -318,7 +330,7 @@ export function placeRings(entities, relations, centre, sizes, campOf, labelWOf 
       if (around) angles = around
     } else {
       angles = members.map((id) => {
-        const parents = next.get(id).filter((p) => ring.get(p) === k - 1).map((p) => boxes.get(p).angle)
+        const parents = next.get(id).filter((p) => ring.get(p) === k - 1).map((p) => boxes.get(p)?.angle ?? 0)
         // circular mean of the parents' angles
         const s = parents.reduce((n, a) => n + Math.sin(a), 0)
         const c = parents.reduce((n, a) => n + Math.cos(a), 0)
@@ -352,9 +364,11 @@ export function placeRings(entities, relations, centre, sizes, campOf, labelWOf 
       }
       place(final)
       // Exact check against everything inside and the rest of this ring (the discs were conservative; this is a guard)
-      const clash = members.some((a, i) =>
-        [...boxes.entries()].some(([other, b]) => other !== a && (ring.get(other) < k || members.indexOf(other) > i) && overlaps(rectOf(boxes.get(a)), rectOf(b), BOX_GAP)),
-      )
+      const clash = members.some((a, i) => {
+        const boxA = boxes.get(a)
+        if (!boxA) return false
+        return [...boxes.entries()].some(([other, b]) => other !== a && ((ring.get(other) ?? -1) < k || members.indexOf(other) > i) && overlaps(rectOf(boxA), rectOf(b), BOX_GAP))
+      })
       if (!clash) break
       R *= 1.03
     }
@@ -497,10 +511,12 @@ export function buildFocusGraph(spec, fields = {}) {
     // Which side of its straight line a pair's bent lines go to (the one that clears with the least bend), so the
     // relations of one pair bend the same way and run side by side
     const detourSide = new Map()
+    /** @type {any[]} */
     const conns = []
     for (const r of rels) {
       const a = rects.get(r.from)
       const b = rects.get(r.to)
+      if (!a || !b) continue
       const sib = byPair.get(pairKey(r))
       const k = sib.indexOf(r)
       const ca = centreOf(a)
@@ -553,6 +569,7 @@ export function buildFocusGraph(spec, fields = {}) {
         // Round the outside of the rings: through a point beyond the outer end's ring, at the middle angle
         const ra = laid.boxes.get(r.from)
         const rb = laid.boxes.get(r.to)
+        if (!ra || !rb) continue
         // Out of the first box along its radius, along an ellipse outside the outer ring by the shorter
         // way round, in along the second box's radius: it passes outside every party in between
         let delta = rb.angle - ra.angle
@@ -574,6 +591,7 @@ export function buildFocusGraph(spec, fields = {}) {
       conns.push({ r, points, d, faint: r.from !== centre && r.to !== centre })
     }
     // Labels, shortest lines first so a long line's label finds what is free
+    /** @type {any[]} */
     const placedLabels = []
     const order = conns.map((c, i) => i).sort((x, y) => conns[x].points.length - conns[y].points.length)
     for (const i of order) {
@@ -581,6 +599,7 @@ export function buildFocusGraph(spec, fields = {}) {
       const size = labelSizes[relations.indexOf(c.r)]
       c.labelSize = { width: size.width, height: size.height }
       const at = placeLabel(c.points, c.labelSize, [...rects.values()], placedLabels, conns.filter((o) => o !== c).map((o) => o.points))
+      if (!at) continue
       c.labelAt = { x: at.x, y: at.y }
       placedLabels.push({ x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height })
     }
@@ -597,8 +616,10 @@ export function buildFocusGraph(spec, fields = {}) {
         for (const sa of labelSpots(a.points, a.labelSize, [...rects.values()], rest, linesBut(a))) {
           const ra = { x: sa.x, y: sa.y, w: a.labelSize.width, h: a.labelSize.height }
           const sb = placeLabel(b.points, b.labelSize, [...rects.values()], [...rest, ra], linesBut(b))
+          if (!sb) continue
           if (!best || sa.bad + sb.bad < best.bad - 1e-9) best = { bad: sa.bad + sb.bad, sa, sb }
         }
+        if (!best) continue
         a.labelAt = { x: best.sa.x, y: best.sa.y }
         b.labelAt = { x: best.sb.x, y: best.sb.y }
       }

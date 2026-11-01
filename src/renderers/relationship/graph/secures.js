@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/secures.js — where a guarantee is tied to the claim it secures
 //
@@ -43,7 +44,7 @@ export function nearestOn(points, pt) {
 /**
  * The ties to draw: for each guarantee that names a claim, from the middle of its line to the
  * nearest point on the claim's line, when that is near enough to read as a tie.
- * @returns {{ id: string, from: number[], to: number[] }[]}
+ * @returns {{ id: string, claimId: string, from: number[], to: number[] }[]}
  */
 export function securesTies(connections, maxDist = 140) {
   const byRelation = new Map(connections.map((c) => [c.relationId, c]))

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/matrix/register.js — registers the relation matrix
 //

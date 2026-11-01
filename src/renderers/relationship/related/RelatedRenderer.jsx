@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/related/RelatedRenderer.jsx — the related-party list (issue #93)
 //

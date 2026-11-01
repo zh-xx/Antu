@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/rules.js — validation for relationship
 //
@@ -230,7 +231,7 @@ export function hintsOfRelationship(spec) {
     while (path.length) {
       const u = path.at(-1)
       const outs = holds.get(u) ?? []
-      const i = next.at(-1)
+      const i = next.at(-1) ?? 0
       if (i < outs.length) {
         next[next.length - 1] += 1
         const v = outs[i]

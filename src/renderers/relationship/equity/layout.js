@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/equity/layout.js — the equity tree (issue #91): who holds what, top to bottom
 //
@@ -46,17 +47,24 @@ export const shareText = (share) => `${Number(Number(share).toFixed(2))}%`
 
 /**
  * The structure of the tree, no geometry.
- * @returns {
- *   edges:     the equity relations, each with `back: true` when it closes a cross-holding,
- *   ids:       the parties in the tree, in written order,
- *   level:     Map id -> level (0 = held by no one),
- *   roots:     ids of the ultimate holders (no incoming line except a back line),
- *   rest:      relations that are not equity,
- *   above:     with a company chosen, the equity relations above it (its holders), written under the picture,
- *   apart:     entities not in the picture (no equity relation, or outside the chosen company's picture),
- *   company:   the party whose picture it is, null for all of it,
- *   companies: the parties in the whole tree, which the reader may pick from,
- * }
+ * @returns {{
+ *   edges: Array<{ key: string, rel: any, from: string, to: string, back: boolean }>,
+ *   ids: string[],
+ *   level: Map<string, number>,
+ *   roots: string[],
+ *   rest: any[],
+ *   above: any[],
+ *   apart: any[],
+ *   company: string | null,
+ *   companies: string[],
+ *   several: boolean
+ * }} edges: the equity relations, each with `back: true` when it closes a cross-holding; ids: the parties in
+ *   the tree, in written order; level: Map id -> level (0 = held by no one); roots: ids of the ultimate
+ *   holders (no incoming line except a back line); rest: relations that are not equity; above: with a company
+ *   chosen, the equity relations above it (its holders), written under the picture; apart: entities not in
+ *   the picture (no equity relation, or outside the chosen company's picture); company: the party whose
+ *   picture it is, null for all of it; companies: the parties in the whole tree, which the reader may pick
+ *   from; several: whether there is more than one separate structure
  */
 export function classifyEquity(spec, asked) {
   const all = spec.relations.filter((r) => r.kind === 'equity').map((r) => ({ key: r.id, rel: r, from: r.from, to: r.to, back: false }))
@@ -86,14 +94,16 @@ export function classifyEquity(spec, asked) {
  * @returns [{ holder, held, total, terms: string[] | null }]
  */
 export function indirectHoldings(spec, parts = classifyEquity(spec)) {
+  /** @type {Map<string, any[]>} */
   const out = new Map(parts.ids.map((id) => [id, []]))
-  for (const e of parts.edges) if (!e.back) out.get(e.from).push(e)
+  for (const e of parts.edges) if (!e.back) out.get(e.from)?.push(e)
+  /** @type {any[]} */
   const rows = []
   for (const root of parts.roots) {
     // All simple paths from the root: the tree is a DAG once back lines are out, so every walk ends
     const found = new Map() // held id -> { paths: number[][] | null (unknown), multi: bool }
     const go = (id, shares, known) => {
-      for (const e of out.get(id)) {
+      for (const e of out.get(id) ?? []) {
         const next = [...shares, e.rel.share]
         const ok = known && typeof e.rel.share === 'number'
         const rec = found.get(e.to) ?? { paths: [], unknown: false, long: false }
@@ -144,6 +154,7 @@ export function buildEquityGraph(spec, fields = {}) {
   const shift = PAD + (contentW - treeSpan - rightRoom) / 2
 
   const nodes = []
+  /** @type {{ width: number, height: number, links: any[], pills: any[], empties: any[], frames: any[], texts: any[] }} */
   const layer = { width: contentW + PAD * 2, height: 0, links: [], pills: [], empties: [], frames: [], texts: [] }
   for (const [id, b] of g.boxes) {
     nodes.push({ id, type: 'rnode', position: { x: b.x + shift, y: b.y + PAD }, data: party.dataOf(entityById.get(id), { layer: g.level.get(id), hintKey: 'rel.previewHint', w: b.w, textW: sizeOf(id).textW }) })
@@ -156,9 +167,10 @@ export function buildEquityGraph(spec, fields = {}) {
     const share = typeof e.rel.share === 'number' ? shareText(e.rel.share) : t('rel.equity.noShare')
     return e.back ? `${share} · ${t('rel.equity.cross')}` : share
   })
-  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), h: pillH(pillTexts[i]), back: e.back, gathered: g.links.get(e.key).gathered })))
+  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key)?.segs.at(-1), w: pillW(pillTexts[i]), h: pillH(pillTexts[i]), back: e.back, gathered: g.links.get(e.key)?.gathered })))
   parts.edges.forEach((e, i) => {
     const link = g.links.get(e.key)
+    if (!link) return
     layer.links.push({ d: pathOf(link.segs, shift, PAD), back: e.back, via: link.via.map(([x, yy]) => [x + shift, yy + PAD]) })
     layer.pills.push({ x: spots[i][0] + shift, y: spots[i][1] + PAD, text: pillTexts[i], unknown: typeof e.rel.share !== 'number', back: e.back, relId: e.rel.id })
   })

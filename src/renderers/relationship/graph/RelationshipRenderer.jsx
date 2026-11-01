@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/RelationshipRenderer.jsx — the relationship graph
 //

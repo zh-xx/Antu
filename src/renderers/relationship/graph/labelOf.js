@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/labelOf.js — the text a relation shows on its line
 //

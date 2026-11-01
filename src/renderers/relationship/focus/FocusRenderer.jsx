@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/focus/FocusRenderer.jsx — the relationship focus view (issue #87)
 //
@@ -69,6 +70,7 @@ export default function RelationshipFocus({ spec }) {
 
   const graph = useMemo(() => {
     const { width, height } = layout.size
+    /** @type {any[]} */
     const deco = [
       {
         ...DECORATION,
