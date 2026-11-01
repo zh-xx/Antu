@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/scale/ScaleLayerNode.jsx — everything on the time scale that is not a card
 //

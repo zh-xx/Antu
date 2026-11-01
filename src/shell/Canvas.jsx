@@ -33,6 +33,9 @@ import { stampHostNode } from './hostAttrs.js'
 /** React Flow's minimap width plus its border, until one has been measured */
 const MINIMAP_WIDTH = 202
 
+/** Shared empty style: an absent `style` prop is not a new object on every render */
+const NO_STYLE = {}
+
 /**
  * The capsule's width on one line, whether or not it is wrapped now: its items side by side with their margins
  * (the separators have some), the gaps between them, its padding and border. (A wrapped bar's own width says
@@ -83,14 +86,16 @@ const selectorOf = (id) =>
 export default function Canvas({
   ref,
   graph,
-  fitKey,
+  // Optional: without it the graph itself is the fit key (see the fit effect below)
+  fitKey = graph,
   fitWidth = false,
   fitSelf = false,
   fitMinZoom = 0,
   fitMaxZoom = 0,
   nodeTypes,
   showGrid = false,
-  style,
+  // Optional: a renderer that has no CSS variables to set leaves it out
+  style = NO_STYLE,
   children,
   onNodeMouseEnter,
   onNodeMouseLeave,

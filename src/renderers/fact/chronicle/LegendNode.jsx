@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/chronicle/LegendNode.jsx — what the marks on the line mean
 //

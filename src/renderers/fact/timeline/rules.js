@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/timeline/rules.js — validation for fact
 //
@@ -57,7 +58,7 @@ function isBefore(a, b) {
  * @returns {{ errors: string[], actors: object[], groups: object[], sources: object[],
  *   slots: unknown, actorById: Map, groupById: Map, groupIndexById: Map, sourceById: Map,
  *   byActor: boolean, sideOfActor: Map<string, string>,
- *   seenActorsOnSide: { side1: Set<string>, side2: Set<string> },
+ *   seenActorsOnSide: Record<string, Set<string>>,
  *   flat: Array<{ slotIndex: number, event: object, side: string, actorId: string|null }> }}
  */
 export function analyzeFact(spec) {
@@ -72,6 +73,10 @@ export function analyzeFact(spec) {
   const groupIndexById = new Map()
   const sourceById = new Map()
   const sideOfActor = new Map()
+  /**
+   * Keyed by side ('side1' / 'side2'): a party with a card of its own on that side.
+   * @type {Record<string, Set<string>>}
+   */
   const seenActorsOnSide = { [SIDE.SIDE1]: new Set(), [SIDE.SIDE2]: new Set() }
 
   /** Flattened events: { slotIndex, event, side, actorId|null } */

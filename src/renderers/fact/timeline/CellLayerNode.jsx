@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/timeline/CellLayerNode.jsx — the cell layer (a decoration node)
 //

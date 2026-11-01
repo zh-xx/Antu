@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/EventPreview.jsx — the detail overlay beside an event card
 //

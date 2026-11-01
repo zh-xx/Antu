@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/ControlDock.jsx — the control capsule at the bottom of the canvas
 //

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/scale/ScaleRunNode.jsx — a gathered run of events that lie too close
 //

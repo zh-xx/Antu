@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/chronicle/ChronicleDock.jsx — the chronicle's control dock
 //

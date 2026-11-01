@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/scale/layout.js — the proportional time scale (issue #85, kind A)
 //
@@ -313,7 +314,11 @@ function tryLevels(units, levels, width, gap) {
 
 /**
  * Turn a fact spec into React Flow nodes for the time scale.
- * Called as (spec, fields, options) like the chronicle; options: { measure(text, 'title') => px }.
+ * Called as (spec, fields, options) like the chronicle.
+ * @param {any} spec
+ * @param {any} [_fields]
+ * @param {{ measure?: ((text: string, kind?: string) => number) | null, byParty?: boolean }} [options]
+ *   `measure(text, 'title')` returns the drawn width in pixels; `byParty` gives a side's parties their own lanes.
  */
 export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false } = {}) {
   const actorById = new Map((spec?.actors || []).filter(Boolean).map((a) => [a.id, a]))
@@ -380,27 +385,27 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     const k = bounds.findIndex(([, to]) => t <= to)
     return k < 0 ? bounds.length - 1 : k
   }
-  const segments = bounds.map(([from, to], k) => {
-    const events = flat.filter((f) => segOf(f.time.t) === k)
-    // A segment of one instant has no scale to speak of: it is named by its day
-    return { index: k, from, to, count: events.length, unit: to > from ? unitOf(to - from) : 'day' }
-  })
   // The label column: as wide as the longest lane name, within bounds. Estimated the same way on the page and in Node
   // (not measured on the page), so the size the reports and the export check compute is the size the page draws
   const nameW = (text) => textWidth(text, LANE_FONT) * 1.06
   const laneNames = lanesOf(spec, flat.map((f) => f.event), { byParty }).flatMap((l) => [l.label || '', l.side || ''])
   const labelW = Math.round(Math.min(LABEL_W_MAX, Math.max(LABEL_W, ...laneNames.map((n) => nameW(n) + LANE_NAME_PAD))))
   let x = labelW
-  segments.forEach((s, k) => {
+  // Lay the segments out in one pass, so the fields the rest of the file reads are there from the start
+  const segments = bounds.map(([from, to], k) => {
+    const events = flat.filter((f) => segOf(f.time.t) === k)
+    // A segment of one instant has no scale to speak of: it is named by its day
+    let breakBefore = null
     if (k > 0) {
-      const gapMs = s.from - segments[k - 1].to
-      s.breakBefore = { x, w: BREAK_W, gap: gapOfMs(gapMs) }
+      const gapMs = from - bounds[k - 1][1]
+      breakBefore = { x, w: BREAK_W, gap: gapOfMs(gapMs) }
       x += BREAK_W
     }
-    s.x0 = x
-    s.w = Math.max(SEG_MIN, s.count * PER_EVENT_W)
-    s.x1 = x + s.w
-    x = s.x1
+    const x0 = x
+    const w = Math.max(SEG_MIN, events.length * PER_EVENT_W)
+    const x1 = x0 + w
+    x = x1
+    return { index: k, from, to, count: events.length, unit: to > from ? unitOf(to - from) : 'day', breakBefore, x0, w, x1 }
   })
   const width = x
   // Position inside a segment: exact, between its padded edges; a segment of one instant is centred
@@ -441,7 +446,7 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     const shown = kind === 'band' && (coarse || x1 - x0 < 8) ? 'dot' : kind
     if (shown === 'dot') x0 = x1 = at
     else if (x1 - x0 < 6) x1 = x0 + 6
-    return { id: f.event.id, order, lane: laneOf(f.event), kind: shown, x: at, x0, x1, undated: Boolean(f.time.undated), coarse, prec: f.time.prec, event: f.event }
+    return { id: f.event.id, order, lane: laneOf(f.event), kind: shown, x: at, x0, x1, undated: Boolean(f.time.undated), coarse, prec: f.time.prec, event: f.event, stack: 0 }
   })
   // Same moment in one lane: the dots stack upwards
   const seen = new Map()
@@ -472,21 +477,25 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
     laneHs[li] = units.length ? laneHeightOf(Math.max(0, ...units.map((u) => u.level)) + 1) : EMPTY_LANE_H
     top += laneHs[li]
   })
+  const markById = new Map(marks.map((m) => [m.id, m]))
   placed.forEach((units, li) => {
     const anchorOf = (u) => {
-      const xs = u.ids.map((id) => marks.find((m) => m.id === id).x)
+      const xs = u.ids.map((id) => markById.get(id)?.x ?? 0)
       return (Math.min(...xs) + Math.max(...xs)) / 2
     }
     for (const u of units) {
       const left = u.x - CARD_W / 2
-      const members = u.ids.map((id) => marks.find((m) => m.id === id)).sort((a, b) => a.order - b.order)
+      const members = u.ids
+        .map((id) => markById.get(id))
+        .filter((m) => m !== undefined)
+        .sort((a, b) => a.order - b.order)
       const isRun = members.length > 1
       const titleLines = isRun ? 1 : lineCount(members[0].event.label || '')
       // an undated card says so ("date unknown · placed by order"), which may not fit one line either
       const timeLines = isRun
         ? 1
         : members[0].undated
-          ? textWidth(translate('en', 'scale.undated'), TIME_FONT) * 1.05 > CARD_INNER_W ? 2 : 1
+          ? textWidth(translate('en', 'scale.undated', undefined), TIME_FONT) * 1.05 > CARD_INNER_W ? 2 : 1
           : timeLinesOf(members[0].event)
       const h = cardHeightOf(titleLines, timeLines)
       const bottom = lineY(li) - LANE_FOOT - u.level * LEVEL_H
@@ -532,6 +541,9 @@ export function buildScaleGraph(spec, _fields = {}, { measure, byParty = false }
   const height = lanesH + AXIS_H + listH
 
   const groupIndexOfEvent = (e) => lanes[laneOf(e)].groupIndex
+  // Heterogeneous on purpose: the decoration layer, one card per event, and the run list carry
+  // different data, and React Flow nodes are not a single shape.
+  /** @type {any[]} */
   const nodes = [
     {
       id: '__scale__',

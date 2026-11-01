@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/chronicle/ChronicleRenderer.jsx — the chronicle (issue #85)
 //

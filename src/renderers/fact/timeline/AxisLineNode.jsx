@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/timeline/AxisLineNode.jsx — the axis (a decoration node)
 //

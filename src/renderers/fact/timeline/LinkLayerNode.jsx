@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/timeline/LinkLayerNode.jsx — the link layer (a decoration node)
 //
