@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/justification/schema.js — the "knowledge" a justification diagram exposes
 //

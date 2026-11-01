@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/schema.js — the "knowledge" a procedure diagram exposes
 //

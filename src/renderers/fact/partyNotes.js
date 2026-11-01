@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/partyNotes.js — a party that no event names
 //

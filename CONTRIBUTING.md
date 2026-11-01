@@ -61,10 +61,16 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   (Refs #227, does not close): both join `tsconfig.embed.json`; the two `exportPng` callbacks
   take JSDoc option objects, `placeDock`'s options are typed (`minimapWidth` is intentionally
   `number | null`), and the one JSX `key` is cast once rather than adding `@types/react`
+- `// @ts-check` on the first renderer slice (Refs #227, does not close): the registry entry
+  `src/renderers/index.js`, `components.js`, the four `*/schema.js` files and the fact plain helpers
+  `fact/cardGeometry.js`, `fact/partyNotes.js`, `fact/dateOrder.js`, `fact/dateText.js` join
+  `tsconfig.embed.json`; `dateSpan` guards its missing year, `formatEnd`'s missing clock text is
+  defaulted, and the four `translate` calls pass `undefined` for `vars`. Kind-specific renderer trees
+  and the relationship helpers stay out of this slice
 
-**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the renderers, `@types/react` (a single
-cast covers the JSX `key`), or tree-wide coverage (later slices of #227). Do not weaken runtime
-`validate()` or existing tests for the sake of types.
+**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the renderer kind trees and the
+relationship `*.js` helpers, `@types/react` (a single cast covers the JSX `key`), or tree-wide coverage
+(later slices of #227). Do not weaken runtime `validate()` or existing tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/schema.js — the "knowledge" the fact top-level type exposes
 //

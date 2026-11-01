@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/cardGeometry.js — the geometric specification of a card
 //

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/schema.js — the "knowledge" a relationship diagram exposes
 //
