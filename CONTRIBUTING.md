@@ -67,10 +67,16 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   `tsconfig.embed.json`; `dateSpan` guards its missing year, `formatEnd`'s missing clock text is
   defaulted, and the four `translate` calls pass `undefined` for `vars`. Kind-specific renderer trees
   and the relationship helpers stay out of this slice
+- `// @ts-check` on the relationship shared helpers (Refs #227, does not close): `relationship/pill.js`,
+  `scope.js`, `useSpecPref.js`, `layered.js`, `partyData.js` and `sections.js` join
+  `tsconfig.embed.json`; `layered`'s informal JSDoc return shapes become object types, its depth-first
+  top is guarded, and the label-placement rectangle takes a coordinate array. The kind-specific
+  relationship trees stay out of this slice
 
-**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the renderer kind trees and the
-relationship `*.js` helpers, `@types/react` (a single cast covers the JSX `key`), or tree-wide coverage
-(later slices of #227). Do not weaken runtime `validate()` or existing tests for the sake of types.
+**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the renderer kind trees (including the
+kind-specific trees under `relationship/*/`), `@types/react` (a single cast covers the JSX `key`), or
+tree-wide coverage (later slices of #227). Do not weaken runtime `validate()` or existing tests for the
+sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

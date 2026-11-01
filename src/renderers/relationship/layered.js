@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/layered.js — boxes in levels, lines between levels (shared)
 //
@@ -48,13 +49,15 @@ export function equalWidths(ids, level, size) {
 
 /**
  * Which lines close a cycle, and the level of every box.
- * @param ids    box ids in written order
- * @param edges  [{ key, from, to }] (from -> to is the way the level grows)
- * @returns { back: Set(key), level: Map id -> level, roots: ids that nothing points to }
+ * @param {string[]} ids box ids in written order
+ * @param {Array<{ key: string, from: string, to: string }>} edges from -> to is the way the level grows
+ * @returns {{ back: Set<string>, level: Map<string, number>, roots: string[] }} back: the keys of the lines that
+ *   close a cycle; level: each box's level; roots: the ids that nothing points to
  */
 export function classifyLayers(ids, edges) {
+  /** @type {Map<string, Array<{ key: string, from: string, to: string }>>} */
   const out = new Map(ids.map((id) => [id, []]))
-  for (const e of edges) out.get(e.from).push(e)
+  for (const e of edges) out.get(e.from)?.push(e)
   const hasIn = new Set(edges.map((e) => e.to))
   const back = new Set()
   const state = new Map() // 1 = on the stack, 2 = done
@@ -64,7 +67,8 @@ export function classifyLayers(ids, edges) {
     state.set(start, 1)
     while (stack.length) {
       const top = stack.at(-1)
-      const outs = out.get(top.id)
+      if (!top) continue
+      const outs = out.get(top.id) ?? []
       if (top.i < outs.length) {
         const e = outs[top.i++]
         if (state.get(e.to) === 1) back.add(e.key)
@@ -81,40 +85,45 @@ export function classifyLayers(ids, edges) {
   for (const id of ids) if (!hasIn.has(id) && !state.has(id)) walk(id)
   for (const id of ids) if (!state.has(id)) walk(id)
   // The level of a box: one more than its highest parent, over the lines that do not close a cycle
+  /** @type {Map<string, string[]>} */
   const kids = new Map(ids.map((id) => [id, []]))
   const waiting = new Map(ids.map((id) => [id, 0]))
   for (const e of edges) {
     if (back.has(e.key)) continue
-    kids.get(e.from).push(e.to)
-    waiting.set(e.to, waiting.get(e.to) + 1)
+    kids.get(e.from)?.push(e.to)
+    waiting.set(e.to, (waiting.get(e.to) ?? 0) + 1)
   }
   const depth = new Map(ids.map((id) => [id, 0]))
   const queue = ids.filter((id) => waiting.get(id) === 0)
   for (let i = 0; i < queue.length; i++) {
-    for (const v of kids.get(queue[i])) {
-      depth.set(v, Math.max(depth.get(v), depth.get(queue[i]) + 1))
-      waiting.set(v, waiting.get(v) - 1)
+    for (const v of kids.get(queue[i]) ?? []) {
+      depth.set(v, Math.max(depth.get(v) ?? 0, (depth.get(queue[i]) ?? 0) + 1))
+      waiting.set(v, (waiting.get(v) ?? 0) - 1)
       if (waiting.get(v) === 0) queue.push(v)
     }
   }
-  const level = new Map(ids.map((id) => [id, depth.get(id)]))
+  const level = new Map(ids.map((id) => [id, depth.get(id) ?? 0]))
   return { back, level, roots: ids.filter((id) => !hasIn.has(id)) }
 }
 
 /**
  * Place the boxes and route the lines.
- * @param ids         box ids in written order
- * @param edges       [{ key, from, to }]
- * @param size        id -> { w, h }
- * @param opts        { horizontal, gapAcross, gapAlong }
- * @returns {
- *   levels:  ids per level, in the order they stand,
- *   boxes:   Map id -> { x, y, w, h } with the content's top-left at (0, 0),
- *   links:   Map key -> { back, segs: [[p0, c1, c2, p3], ...] (the start, the two corners of the turn, the end: a polyline),
- *            via: [[x, y], ...], gathered },
- *   size:    { width, height } of boxes, waypoints and back lines,
- *   level:   Map id -> level, back: Set(key), roots
- * }
+ * @param {string[]} ids box ids in written order
+ * @param {Array<{ key: string, from: string, to: string }>} edges
+ * @param {(id: string) => { w: number, h: number }} size
+ * @param {{ horizontal?: boolean, gapAcross?: number, gapAlong?: number }} [opts]
+ * @returns {{
+ *   levels: string[][],
+ *   boxes: Map<string, { x: number, y: number, w: number, h: number }>,
+ *   links: Map<string, { back: boolean, segs: number[][][], via: number[][], gathered?: boolean }>,
+ *   size: { width: number, height: number },
+ *   level: Map<string, number>,
+ *   back: Set<string>,
+ *   roots: string[]
+ * }} levels: ids per level, in the order they stand; boxes: Map id -> { x, y, w, h } with the
+ *   content's top-left at (0, 0); links: Map key -> { back, segs: [[p0, c1, c2, p3], ...] (the start,
+ *   the two corners of the turn, the end: a polyline), via: [[x, y], ...], gathered }; size: { width,
+ *   height } of boxes, waypoints and back lines; level: Map id -> level; back: Set(key); roots
  */
 export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross = 40, gapAlong = 96 } = {}) {
   const { back, level, roots } = classifyLayers(ids, edges)
@@ -126,15 +135,18 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
   const along = (id) => (isWaypoint(id) ? 0 : horizontal ? size(id).w : size(id).h)
   const pt = (a, l) => (horizontal ? [l, a] : [a, l])
 
+  /** @type {string[][]} */
   const levels = []
-  for (const id of ids) (levels[level.get(id)] ??= []).push(id)
+  for (const id of ids) (levels[level.get(id) ?? 0] ??= []).push(id)
+  /** @type {Map<string, string[]>} */
   const above = new Map(ids.map((id) => [id, []]))
+  /** @type {Map<string, string[]>} */
   const below = new Map(ids.map((id) => [id, []]))
   const waypointsOf = new Map()
   for (const e of edges) {
     if (back.has(e.key)) continue
     const chain = [e.from]
-    for (let l = level.get(e.from) + 1; l < level.get(e.to); l++) {
+    for (let l = (level.get(e.from) ?? 0) + 1; l < (level.get(e.to) ?? 0); l++) {
       const id = `\u0000wp${waypointIds.size}`
       waypointIds.add(id)
       levels[l].push(id)
@@ -145,8 +157,8 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
     waypointsOf.set(e.key, chain.slice(1))
     chain.push(e.to)
     for (let i = 0; i + 1 < chain.length; i++) {
-      above.get(chain[i + 1]).push(chain[i])
-      below.get(chain[i]).push(chain[i + 1])
+      above.get(chain[i + 1])?.push(chain[i])
+      below.get(chain[i])?.push(chain[i + 1])
     }
   }
 
@@ -280,7 +292,7 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
     for (let i = 0; i + 1 < pts.length; i++) {
       const lo = Math.min(acrossOf(pts[i]), acrossOf(pts[i + 1]))
       const hi = Math.max(acrossOf(pts[i]), acrossOf(pts[i + 1]))
-      const gapKey = level.get(e.from) + i
+      const gapKey = (level.get(e.from) ?? 0) + i
       if (!turns.has(gapKey)) turns.set(gapKey, [])
       const list = turns.get(gapKey)
       if (gathered.has(e.key)) {
@@ -330,10 +342,13 @@ export function layeredGraph(ids, edges, size, { horizontal = false, gapAcross =
       links.set(e.key, { back: false, segs, via, gathered: gathered.has(e.key) })
     } else {
       // Round the far side across the levels, out of the later box's side and into the earlier one's
-      const lo2 = level.get(e.to)
-      const hi2 = level.get(e.from)
+      const lo2 = level.get(e.to) ?? 0
+      const hi2 = level.get(e.from) ?? 0
       let edge = 0
-      for (let l = lo2; l <= hi2; l++) for (const id of levels[l]) if (boxes.has(id)) edge = Math.max(edge, horizontal ? boxes.get(id).y + boxes.get(id).h : boxes.get(id).x + boxes.get(id).w)
+      for (let l = lo2; l <= hi2; l++) for (const id of levels[l] ?? []) {
+        const box = boxes.get(id)
+        if (box) edge = Math.max(edge, horizontal ? box.y + box.h : box.x + box.w)
+      }
       const bulge = edge + BULGE + BULGE_STEP * backIndex++
       farthest = Math.max(farthest, bulge)
       // Back lines out of one box (or into one) leave side by side, so they do not share the first stretch
@@ -367,6 +382,11 @@ export function placePills(items) {
   const rects = []
   const clash = (r) => rects.some((o) => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h)
   const out = items.map(() => null)
+  /**
+   * @param {number[]} p the label's centre
+   * @param {number} w
+   * @param {number} [h]
+   */
   const rect = ([x, y], w, h = 22) => ({ x: x - w / 2 - 1, y: y - h / 2 - 1, w: w + 2, h: h + 2 })
   items.forEach((it, i) => {
     if (!it.back) return

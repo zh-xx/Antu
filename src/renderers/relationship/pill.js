@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/pill.js — how big a relation's label is on the page of a levelled view (shared)
 //

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/sections.js — the lists under a levelled picture (shared)
 //
@@ -21,10 +22,14 @@ export const EMPTY_H = 84
 const lines = (text, width) => Math.max(1, wrapLineCount(text, width / LINE_FONT, SCALE))
 
 /**
- * @param layer  the line layer's data (frames, texts and empties are pushed into it)
- * @param width  the sections' width; they start at PAD
- * @param y      where the first one starts
- * @returns { section(title, items), empty(text, sub), y() }  items: [{ main, sub?, tone? }]
+ * @param {any} layer the line layer's data (frames, texts and empties are pushed into it)
+ * @param {number} width the sections' width; they start at PAD
+ * @param {number} y where the first one starts
+ * @returns {{
+ *   section: (title: string, items: Array<{ main: string, sub?: string, tone?: any }>) => void,
+ *   empty: (text: string, sub?: string) => void,
+ *   y: () => number
+ * }} `items` are the rows: { main, sub?, tone? }
  */
 export function sectionWriter(layer, width, y) {
   const textW = width - SECTION_PAD * 2

@@ -22,7 +22,12 @@ what breaks a file or a tool call written for the version before, with how to br
   `fact/{cardGeometry,partyNotes,dateOrder,dateText}.js` carry `// @ts-check` and join
   `tsconfig.embed.json`; `dateSpan` guards its missing year, `formatEnd`'s missing clock text is
   defaulted, and the four `translate` calls pass `undefined` for `vars`. Kind-specific renderer trees,
-  relationship helpers, `.d.ts` generation and `@types/react` remain out of scope.
+  `.d.ts` generation and `@types/react` remain out of scope.
+- **`checkJs` on the relationship shared helpers** (Refs #227, does not close):
+  `src/renderers/relationship/{pill,scope,useSpecPref,layered,partyData,sections}.js` carry
+  `// @ts-check` and join `tsconfig.embed.json`; `layered`'s informal JSDoc return shapes become object
+  types, its depth-first top is guarded, and the label-placement rectangle takes a coordinate array.
+  The kind-specific relationship trees, `.d.ts` generation and `@types/react` remain out of scope.
 - **`@zh-xx/antu/types`** (#294): generated TypeScript interfaces for each diagram JSON (`FactSpec`, `ProcedureSpec`, `RelationshipSpec`, `JustificationSpec`, `AntuDiagramSpec`) from the same `*_FIELDS` as `describe()`; `node tools/gen/spec-types.mjs` (+ `--check`). Types only — runtime `validate()` unchanged. `npm run typecheck` (`tsc`) keeps the declarations parseable in CI.
 - **Embed `themeTokens`** (#293): a host may overlay `accent` / `canvas` / `chromeBg` / `text` / `textMuted` / `line` / `chromeBorder` / `font` / `fontHead` on a named theme via `mount({ themeTokens })` and `setThemeTokens`; ignored in `document`. Highlight rings use `--antu-accent`.
 - **Embed fit clears chrome; host `fitInsets`** (#166): fit-view keeps clear of the label card and the dock capsule; `mount(…, { fitInsets: { top, right, bottom, left } })` replaces the auto measure per side.

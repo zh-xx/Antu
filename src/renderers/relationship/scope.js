@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/scope.js — which party's picture the equity tree and the authority chart draw
 //
