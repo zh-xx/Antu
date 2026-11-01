@@ -52,9 +52,14 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   and `src/theme/themeTokens.js` join `tsconfig.embed.json`; the two empty-record accumulators are JSDoc-typed,
   the print promises resolve explicitly, and `ErrorBoundary` reads `this.props` / `this.state` through one
   `any` cast rather than adding `@types/react`
+- `// @ts-check` on the remaining small shell helpers (Refs #227, does not close): `src/shell/hostAttrs.js`,
+  `DockParts.jsx`, `useSelectEvent.js`, `chromeInsets.js`, `dockPlace.js`, `useExport.js`, `startupError.js`
+  and `exportPng.js` join `tsconfig.embed.json`; the shadow-root host is read through one `any` cast, the
+  dock's minimap width is narrowed to a local, the unknown catch is formatted with `instanceof Error`, and
+  the PNG export's async return and null 2D context are explicit (still no `@types/react`)
 
 **Not yet:** emitting `.d.ts` from implementation, `checkJs` on the renderers, the remaining shell panels
-(`Canvas`, `DockParts`, `TracePanel`) or tree-wide coverage (later slices of #227). Do not weaken runtime
+(`Canvas`, `TracePanel`) or tree-wide coverage (later slices of #227). Do not weaken runtime
 `validate()` or existing tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it

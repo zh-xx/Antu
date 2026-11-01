@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/hostAttrs.js — stable DOM markers for host tests (issue 166)
 //

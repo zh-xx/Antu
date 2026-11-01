@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/useExport.js —— the export action as every renderer uses it
 //
@@ -27,7 +28,7 @@ export function useExport(title) {
       await canvasRef.current?.exportPng({ title })
     } catch (e) {
       console.error('[antu] export failed:', e)
-      window.alert(t('export.failed', { message: e.message }))
+      window.alert(t('export.failed', { message: e instanceof Error ? e.message : String(e) }))
     } finally {
       exportingRef.current = false
       setExporting(false)

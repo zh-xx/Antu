@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/exportPng.js —— export the current diagram as one PNG
 //
@@ -111,7 +112,7 @@ function toPngBlob(canvas) {
  * @param rootEl  the canvas shell element (.antu-canvas)
  * @param graph   the current graph; its size frames the content
  * @param title   used for the file name
- * @returns {{width:number, height:number}} the size of the written PNG, in device pixels
+ * @returns {Promise<{width:number, height:number}>} the size of the written PNG, in device pixels
  *
  * **No heading.** The label card at the top left is an on-screen overlay and does not
  * enter the image; the old "heading" switch for the user to choose is gone.
@@ -166,6 +167,7 @@ export async function renderPng({ rootEl, graph, pixelRatio = PIXEL_RATIO, backg
     out.width = Math.round(frame.width * pixelRatio)
     out.height = Math.round(frame.height * pixelRatio)
     const ctx = out.getContext('2d')
+    if (!ctx) throw new Error('the output canvas has no 2D context')
     ctx.fillStyle = background
     ctx.fillRect(0, 0, out.width, out.height)
     // Round the offset: a non-integer offset resamples the whole image and blurs the text

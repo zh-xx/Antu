@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/startupError.js — the page could not start at all
 //
@@ -22,7 +23,8 @@ import { translate } from '../core/i18n.js'
  */
 export function renderStartupError(root, error, lang) {
   if (!root) return
-  const t = (key) => translate(lang, key)
+  const err = /** @type {any} */ (error)
+  const t = (key) => translate(lang, key, undefined)
   const say = (className, text) => {
     const el = document.createElement('div')
     el.className = className
@@ -33,7 +35,7 @@ export function renderStartupError(root, error, lang) {
   wrap.className = 'antu-fallback'
   const trace = document.createElement('pre')
   trace.className = 'antu-error-trace'
-  trace.textContent = String(error?.stack || error)
+  trace.textContent = String(err?.stack || err)
   wrap.append(
     say('antu-error-title', t('error.startTitle')),
     say('antu-error-hint', t('error.startHint')),
