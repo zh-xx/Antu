@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/route/RouteRenderer.jsx — the route map (issue #95)
 //

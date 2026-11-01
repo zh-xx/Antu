@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/StageBoxNode.jsx — stage boxes (a decoration node)
 //

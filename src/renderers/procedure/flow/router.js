@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/router.js — an orthogonal router for links ELK does not route
 //
@@ -192,22 +193,24 @@ class Heap {
 /**
  * Route one link.
  * @param {object} p
- * @param {{x,y,w,h}} p.from   source box
- * @param {{x,y,w,h}} p.to     target box
- * @param {boolean} [p.fromDiamond] [p.toDiamond]  a diamond only has its four points
- * @param {{x,y,w,h}[]} p.nodes      every node box (the two ends included; they are skipped)
- * @param {{x,y,w,h}[]} p.blocks     other things not to cross: stage titles, labels, cards
+ * @param {{ x: number, y: number, w: number, h: number }} p.from   source box
+ * @param {{ x: number, y: number, w: number, h: number }} p.to     target box
+ * @param {boolean} [p.fromDiamond]  a diamond only has its four points
+ * @param {boolean} [p.toDiamond]  a diamond only has its four points
+ * @param {{ x: number, y: number, w: number, h: number }[]} p.nodes      every node box (the two ends included; they are skipped)
+ * @param {{ x: number, y: number, w: number, h: number }[]} p.blocks     other things not to cross: stage titles, labels, cards
  * @param {{points:number[][], share?:boolean}[]} p.routes  links already drawn; `share` ones may be run along
- * @param {string[]} [p.outSides] [p.inSides]  restrict the sides used (default: all)
+ * @param {string[]} [p.outSides]  restrict the sides used (default: all)
+ * @param {string[]} [p.inSides]  restrict the sides used (default: all)
  * @param {object} [p.portCost]  override what a side costs: { in: { bottom: 0 } } for a link from below
  * @param {number[][][]} [p.borders]  box edges ([[x0,y0],[x1,y1]]) a route may cross but not run along
- * @param {{x,y,w,h}} [p.bounds]  keep the whole route inside this rectangle (a link inside one stage)
+ * @param {{ x: number, y: number, w: number, h: number }} [p.bounds]  keep the whole route inside this rectangle (a link inside one stage)
  * @param {number[][]} [p.taken]  more points no route may start or end at (ends of links left out of `routes`)
  * @param {boolean} [p.sidePorts]  also offer a quarter port on each side (left and right), not only top and bottom
  * @param {number} [p.sideSpread]  with sidePorts, put the two side ports this far from the middle of the side (px)
  * @param {number} [p.parallelGap]  how far apart two links running side by side must be (default PARALLEL_GAP)
  * @param {number[][]} [p.inAt]  arrive only at one of these points (a link that joins another into the same node)
- * @param {{x,y,w,h}[]} [p.soft]  boxes a route may run through but a little dearer (5% more per pixel): a link between
+ * @param {{ x: number, y: number, w: number, h: number }[]} [p.soft]  boxes a route may run through but a little dearer (5% more per pixel): a link between
  *   two stages then takes the gap between their boxes rather than a strip inside one, where both are as short
  * @param {number} [p.maxCost]  find only a route cheaper than this (the search stops there): a second try at a link
  *   that has a route already need not look at anything dearer
@@ -572,6 +575,11 @@ export function routeLink(p) {
  * the router already put it as close in as is clear. No move adds a crossing.
  */
 const SPAN = 160
+/**
+ * @param {number[][]} points
+ * @param {Function} segCheck
+ * @param {(x0: number, y0: number, x1: number, y1: number) => boolean} [onShared]
+ */
 function centre(points, segCheck, onShared = () => false) {
   const pts = points.map((p) => [...p])
   for (let k = 1; k < pts.length - 2; k += 1) {
@@ -579,7 +587,7 @@ function centre(points, segCheck, onShared = () => false) {
     const ax = vertical ? 0 : 1
     const here = pts[k][ax]
     // A run on a link it joins stays on it
-    if (onShared(...pts[k], ...pts[k + 1])) continue
+    if (onShared(pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1])) continue
     const crossesAt = (v) => {
       const a = [...pts[k - 1]]
       const b = [...pts[k]]

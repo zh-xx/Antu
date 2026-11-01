@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/straighten.js — fewer bends after ELK
 //
@@ -132,11 +133,11 @@ function segsCross([a, b], [c, d]) {
 
 /**
  * @param {object[]} connections  from layout.js: { id, from, to, kind, points, label, labelAt, labelSize }
- * @param {Map<string,{x,y,w,h}>} placed  node boxes
- * @param {{x,y,w,h}[]} obstacles  other things a link or a label must not cross (stage titles)
+ * @param {Map<string,{ x: number, y: number, w: number, h: number }>} placed  node boxes
+ * @param {{ x: number, y: number, w: number, h: number }[]} obstacles  other things a link or a label must not cross (stage titles)
  * @param {boolean} vertical
  * @param {Set<string>} diamonds  ids of decision nodes (a straight link meets one only at its point)
- * @returns the connections, each with its points and label box possibly replaced
+ * @returns {any[]} the connections, each with its points and label box possibly replaced
  */
 export function straighten(connections, placed, obstacles, vertical, diamonds = new Set(), opts = {}) {
   // Column layout (columns.js): routes must not run along a stage box's edge, and a link inside
@@ -147,6 +148,8 @@ export function straighten(connections, placed, obstacles, vertical, diamonds = 
   const P = (a, c) => (vertical ? [c, a] : [a, c])
   const box = (id) => {
     const r = placed.get(id)
+    // Every link end has a placed node; a missing one is a caller bug, not data to lay out
+    if (!r) return { a0: 0, a1: 0, am: 0, c0: 0, c1: 0, cm: 0 }
     const [a0, c0, al, ac] = vertical ? [r.y, r.x, r.h, r.w] : [r.x, r.y, r.w, r.h]
     return { a0, a1: a0 + al, am: a0 + al / 2, c0, c1: c0 + ac, cm: c0 + ac / 2 }
   }
@@ -439,5 +442,5 @@ export function straighten(connections, placed, obstacles, vertical, diamonds = 
     return out
   }
 
-  return attempt(true) ?? attempt(false)
+  return attempt(true) ?? attempt(false) ?? connections
 }

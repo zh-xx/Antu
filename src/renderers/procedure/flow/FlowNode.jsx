@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/FlowNode.jsx — one node of the flowchart
 //

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/ruleTable.js — the rule table under the flowchart
 //
@@ -46,11 +47,14 @@ export const ruleTableNoteKey = (domain) => (domain === 'contract-performance' ?
 export const whensOf = (rule) => (Array.isArray(rule.when) ? rule.when : [rule.when])
 
 /**
- * @param {object[]} rules      the spec's rules
- * @param {object[]} stages     the spec's stages, in order
- * @param {Map<string,object>} byId  nodes by id (for the labels of the ends)
- * @param {number} x, y         top left of the table
- * @param {number} available    the width the diagram above takes (the table follows it, within limits)
+ * @param {{
+ *   rules: object[],
+ *   stages: object[],
+ *   byId: Map<string, object>,
+ *   x: number,
+ *   y: number,
+ *   available: number,
+ * }} p
  * @returns the table: position, size, column widths, and groups of rows with their heights
  */
 export function layoutRuleTable({ rules, stages, byId, x, y, available }) {
@@ -91,6 +95,8 @@ export function layoutRuleTable({ rules, stages, byId, x, y, available }) {
   // Groups: one per end the rules lead to, in the order the ends are first named; then the rest
   const byStage = (a, b) => a.first - b.first || a.index - b.index
   const ends = [...new Set(rules.map((r) => r.endId).filter((id) => id && byId.has(id)))]
+  // The groups gain a heading flag and vertical positions further down, so start them loose
+  /** @type {any[]} */
   const groups = [
     ...ends.map((endId) => ({ endId, endLabel: byId.get(endId).label, rows: rows.filter((r) => r.rule.endId === endId).sort(byStage) })),
     { endId: null, endLabel: null, rows: rows.filter((r) => !r.rule.endId || !byId.has(r.rule.endId)).sort(byStage) },

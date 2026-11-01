@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/columns.js — the column layout: one column per stage
 //
@@ -148,6 +149,8 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
     // to a branch, say) and the link to the next stage has to cross that branch.
     const outs = groups.filter((g) => ownIds.has(g.from) && !ownIds.has(g.to) && !g.isBack)
     const ins = groups.filter((g) => !ownIds.has(g.from) && ownIds.has(g.to) && !g.isBack)
+    // The placement gains `cost` when compared; the rest of the file reads the stage's boxes and links
+    /** @type {any} */
     let best = null
     for (const placement of PLACEMENTS) {
       const tried = layoutStage(own, inner, placement, outs, ins)

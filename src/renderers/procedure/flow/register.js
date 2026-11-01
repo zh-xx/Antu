@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/register.js — register the procedure sub-type renderer with the engine
 //

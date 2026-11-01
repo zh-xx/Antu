@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/normalize.js — repair the main-line marks of a procedure (issue 163)
 //
@@ -83,7 +84,7 @@ function mainLineProblem(byId, edges, entry) {
  * The path the main line is marked along: from the entry to the normal end (an `end` whose outcome is
  * positive, else any `end`), keeping to the edges already marked wherever it can. A 0-1 shortest path: an
  * edge already marked costs nothing, any other costs one. Ties go to the end that comes first in `nodes`.
- * @returns {{ e, index }[] | null} null when no end can be reached
+ * @returns {Array<{ e: any, index: number }> | null} null when no end can be reached
  */
 function mainPath(byId, edges, entry) {
   const cost = new Map([[entry, 0]])
@@ -94,7 +95,7 @@ function mainPath(byId, edges, entry) {
     for (const edge of edges) {
       if (edge.e.from !== at) continue
       const step = edge.e.main === true ? 0 : 1
-      const c = cost.get(at) + step
+      const c = (cost.get(at) ?? 0) + step
       if (c < (cost.get(edge.e.to) ?? Infinity)) {
         cost.set(edge.e.to, c)
         via.set(edge.e.to, edge)
@@ -107,7 +108,7 @@ function mainPath(byId, edges, entry) {
   const positive = ends.filter((n) => n.outcome === 'positive')
   const pool = positive.length ? positive : ends
   if (!pool.length) return null
-  const goal = pool.reduce((best, n) => (cost.get(n.id) < cost.get(best.id) ? n : best)).id
+  const goal = pool.reduce((best, n) => ((cost.get(n.id) ?? Infinity) < (cost.get(best.id) ?? Infinity) ? n : best)).id
 
   const path = []
   for (let at = goal; at !== entry; ) {

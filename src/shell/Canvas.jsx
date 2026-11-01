@@ -97,10 +97,11 @@ export default function Canvas({
   // Optional: a renderer that has no CSS variables to set leaves it out
   style = NO_STYLE,
   children,
-  onNodeMouseEnter,
-  onNodeMouseLeave,
-  onNodeClick,
-  onPaneClick,
+  // Optional: a renderer with no hover / click handling (the route map) leaves them out
+  onNodeMouseEnter = /** @type {((event: any, node: any) => void) | undefined} */ (undefined),
+  onNodeMouseLeave = /** @type {((event: any, node: any) => void) | undefined} */ (undefined),
+  onNodeClick = /** @type {((event: any, node: any) => void) | undefined} */ (undefined),
+  onPaneClick = /** @type {(() => void) | undefined} */ (undefined),
 }) {
   // Nodes must live in writable state: React Flow writes the measured sizes back onto
   // the nodes via onNodesChange, and everything that depends on size (the MiniMap and

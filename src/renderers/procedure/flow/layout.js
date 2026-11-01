@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/layout.js — laying out the flowchart (pure computation)
 //
@@ -436,7 +437,7 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
         size.width = Math.max(size.width, x + PAD)
         size.height = Math.max(size.height, y + PAD)
       }
-      if (c.labelAt) {
+      if (c.labelAt && c.labelSize) {
         size.width = Math.max(size.width, c.labelAt.x + c.labelSize.width + PAD)
         size.height = Math.max(size.height, c.labelAt.y + c.labelSize.height + PAD)
       }
@@ -458,6 +459,8 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
   // runs down inside a stage and the stages run across, so the picture is not one long strip.
   // Otherwise, one graph as before.
   const columnMode = showStages && presentStages.length > 1 && nodes.every((n) => stageById.has(n.stageId))
+  // The column layout has no `cost` / `stageTitles`, the single graph has; both are read below
+  /** @type {any} */
   let best = null
   if (columnMode) {
     best = layoutColumns({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
@@ -487,11 +490,12 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
   const backList = spec.edges.filter((e) => back.has(keyOf(e)))
 
   // Layers, read back from where ELK put the nodes (for the stats and the popover direction)
-  const layerStarts = [...new Set(ids.map((id) => Math.round(boxes.get(id).a0)))].sort((a, b) => a - b)
-  const layerOf = (id) => layerStarts.indexOf(Math.round(boxes.get(id).a0))
+  const alongOf = (id) => Math.round(boxes.get(id)?.a0 ?? 0)
+  const layerStarts = [...new Set(ids.map(alongOf))].sort((a, b) => a - b)
+  const layerOf = (id) => layerStarts.indexOf(alongOf(id))
   const rows = layerStarts.map((a, i) => {
     const inRow = ids.filter((id) => layerOf(id) === i)
-    return { layer: i, along: a, extent: Math.max(...inRow.map((id) => boxes.get(id).a1 - a)), count: inRow.length }
+    return { layer: i, along: a, extent: Math.max(...inRow.map((id) => (boxes.get(id)?.a1 ?? 0) - a)), count: inRow.length }
   })
 
   // ④ The rules: a table under the diagram, whatever the orientation (a list turned on its side

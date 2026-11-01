@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/elk.js — ELK's layered layout, called synchronously
 //
@@ -21,6 +22,7 @@ import elkWorker from 'elkjs/lib/elk-worker.min.js'
 const FakeWorker = elkWorker.Worker ?? elkWorker.default ?? elkWorker
 
 let worker = null
+/** @type {any} */
 let reply
 
 function ensureWorker() {
