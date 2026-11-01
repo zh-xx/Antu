@@ -78,10 +78,16 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   and `Canvas`'s `fitKey` / `style` are optional, the chronicle / scale layout options take `measure`,
   and the scale's segment, mark and node accumulators are typed loosely instead of forcing one payload
   shape. The procedure, relationship and justification kind trees stay out of this slice
+- `// @ts-check` on the procedure kind tree (Refs #227, does not close): every file under
+  `src/renderers/procedure/flow/` and `route/` joins `tsconfig.embed.json` — the flowchart, the route
+  map, and their shared layout, router and polish helpers. Informal JSDoc return and box shapes become
+  object types, nullable layout results and `Map.get` lookups are guarded, the layout accumulators and
+  rule-table groups are typed loosely, and `Canvas`'s node handlers are optional so the route map need
+  not pass no-ops. The relationship and justification kind trees stay out of this slice
 
-**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the procedure, relationship and
-justification kind trees, `@types/react` (a single cast covers the JSX `key`), or tree-wide coverage
-(later slices of #227). Do not weaken runtime `validate()` or existing tests for the sake of types.
+**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the relationship and justification
+kind trees, `@types/react` (a single cast covers the JSX `key`), or tree-wide coverage (later slices
+of #227). Do not weaken runtime `validate()` or existing tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

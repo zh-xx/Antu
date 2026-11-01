@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/FlowRenderer.jsx — the flowchart
 //
@@ -97,7 +98,7 @@ export default function ProcedureFlow({ spec }) {
   // flowchart reads top to bottom (§6.1): the main line runs down the centre of the screen.
   const [orientationPrefs, setOrientationPrefs] = useState(() => prefs.read().orientations || {})
   const orientationView = useViewValue('view.flow.orientation', orientationPrefs[specKey], 'vertical')
-  const orientation = orientationView.value
+  const orientation = typeof orientationView.value === 'string' ? orientationView.value : 'vertical'
   const toggleOrientation = (next) => {
     orientationView.touch()
     const map = { ...orientationPrefs, [specKey]: next }
@@ -109,7 +110,7 @@ export default function ProcedureFlow({ spec }) {
   // the same route. Remembered per diagram now (issue 236), in the same map every renderer uses.
   const [linkStyle, setLinkStyle] = useSpecPref('linkStyle', specKey)
   const linkStyleView = useViewValue('view.flow.linkStyle', linkStyle, 'straight')
-  const linkStyleValue = linkStyleView.value
+  const linkStyleValue = typeof linkStyleView.value === 'string' ? linkStyleView.value : 'straight'
   const toggleLinkStyle = (next) => {
     linkStyleView.touch()
     setLinkStyle(next)

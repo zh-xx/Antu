@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/palette.js — the flowchart's SVG paint, from the theme
 //

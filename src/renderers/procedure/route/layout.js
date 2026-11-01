@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/route/layout.js — the route map (issue #95): the main line as one line
 //
@@ -57,7 +58,18 @@ const lineCount = (text, width, font, max) => Math.min(max, Math.max(1, wrapLine
 
 /**
  * The structure: the main line and what leaves it, no geometry.
- * @returns { spine, back, hangs, arcs, drawn, edgesDrawn, notFollowed, off }
+ * @returns {{
+ *   spine: any[],
+ *   back: Set<number>,
+ *   hangs: any[],
+ *   arcs: any[],
+ *   drawn: Set<string>,
+ *   edgesDrawn: number,
+ *   notFollowed: number,
+ *   off: any[],
+ *   ruleEnds: Set<string>,
+ *   edgeCount: number,
+ * }} the structure
  *   hangs: [{ from, cond, boxes: [node], tail: { type: 'end' | 'return' | 'cut' | 'merge' | 'none', to?, cond?, more? } }]
  *   arcs:  [{ from, to, cond, kind: 'loop' | 'jump' }] between stations
  */
@@ -115,11 +127,13 @@ export function classifyRoute(spec) {
     for (const e of outE.get(u)) {
       if (used.has(e.index)) continue
       const iu = at.get(u)
-      if (at.has(e.to)) {
+      if (iu === undefined) continue
+      const it = at.get(e.to)
+      if (it !== undefined) {
         used.add(e.index)
         edgesDrawn += 1
-        if (at.get(e.to) === iu + 1 && (spine[iu + 1] === e.to)) continue // along the line
-        const kind = at.get(e.to) <= iu ? 'loop' : 'jump'
+        if (it === iu + 1 && (spine[iu + 1] === e.to)) continue // along the line
+        const kind = it <= iu ? 'loop' : 'jump'
         const key = `${u}|${e.to}`
         if (!arcsByPair.has(key)) arcsByPair.set(key, { from: u, to: e.to, kind, conds: [] })
         if (e.condition) arcsByPair.get(key).conds.push(e.condition)
@@ -203,10 +217,11 @@ export function buildRouteGraph(spec, fields = {}) {
   const { spine } = r
 
   // ── along the line: stations, and the room each station's hanging branches need ──
+  /** @type {Map<string, any[]>} */
   const hangsOf = new Map(spine.map((id) => [id, []]))
-  for (const h of r.hangs) hangsOf.get(h.from).push(h)
+  for (const h of r.hangs) hangsOf.get(h.from)?.push(h)
   const groupW = (id) => {
-    const n = hangsOf.get(id).length
+    const n = hangsOf.get(id)?.length ?? 0
     return n ? n * HANG_W + (n - 1) * HANG_GAP : 0
   }
   const hasStages = (spec.stages ?? []).length > 0
@@ -263,7 +278,7 @@ export function buildRouteGraph(spec, fields = {}) {
   const hangDraw = []
   let bottom = lineY + 24
   for (const id of spine) {
-    const hs = hangsOf.get(id)
+    const hs = hangsOf.get(id) ?? []
     const gw = groupW(id)
     hs.forEach((h, i) => {
       const cx = x.get(id) - gw / 2 + i * (HANG_W + HANG_GAP) + HANG_W / 2
@@ -289,10 +304,13 @@ export function buildRouteGraph(spec, fields = {}) {
   // returns to a station other than its own or the next one is an arc too, out of its last box, so that it
   // does not cut across the picture
   const idx = new Map(spine.map((id, i) => [id, i]))
+  /** @type {any[]} */
   const arcSpecs = r.arcs.map((a) => ({ kind: a.kind, cond: a.cond, from: a.from, to: a.to, startX: x.get(a.from), start: 'station' }))
   for (const h of hangDraw) {
     if (h.tail.type !== 'return' || !h.boxes.length) continue
-    if (Math.abs(idx.get(h.tail.to) - idx.get(h.from)) <= 1) continue
+    const toIdx = idx.get(h.tail.to)
+    const fromIdx = idx.get(h.from)
+    if (toIdx === undefined || fromIdx === undefined || Math.abs(toIdx - fromIdx) <= 1) continue
     const last = h.boxes.at(-1)
     arcSpecs.push({ kind: 'return', cond: '', from: h.from, to: h.tail.to, startX: last.x + last.w, startY: last.y + last.h / 2, start: 'box' })
     h.tail = { ...h.tail, asArc: true }

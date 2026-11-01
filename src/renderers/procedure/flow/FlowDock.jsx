@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/FlowDock.jsx — the flowchart's control capsule
 //
@@ -34,6 +35,21 @@ const LINK_STYLES = [
   ['curved', 'flow.linkCurved'],
 ]
 
+/**
+ * @param {{
+ *   fields?: Record<string, unknown>,
+ *   onToggleField: (key: string, value: boolean) => void,
+ *   hasStages?: boolean,
+ *   hasRules?: boolean,
+ *   orientation?: string,
+ *   onToggleOrientation: (next: string) => void,
+ *   linkStyle?: string,
+ *   onToggleLinkStyle: (next: string) => void,
+ *   locked?: Record<string, unknown>,
+ *   exporting?: boolean,
+ *   onExport: () => void,
+ * }} props
+ */
 export default function FlowDock({
   fields = {},
   onToggleField,

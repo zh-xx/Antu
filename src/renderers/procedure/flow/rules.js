@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/rules.js — validation for procedure
 //
@@ -323,7 +324,9 @@ export function hintsOfProcedure(spec) {
     const a = byId.get(e.from)
     const b = byId.get(e.to)
     if (!a || !b) continue
-    if (order.has(a.stageId) && order.has(b.stageId) && order.get(a.stageId) > order.get(b.stageId)) {
+    const aStage = order.get(a.stageId)
+    const bStage = order.get(b.stageId)
+    if (aStage !== undefined && bStage !== undefined && aStage > bStage) {
       hints.push(
         tVal('phint.stageBackwards', {
           from: e.from,

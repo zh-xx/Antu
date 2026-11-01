@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/ConnectionLayerNode.jsx — the link layer (a decoration node)
 //

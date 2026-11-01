@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/route/RouteLayerNode.jsx — the whole route map, as one layer
 //

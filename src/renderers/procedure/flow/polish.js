@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/polish.js — the last passes over a laid-out flowchart's links
 //
@@ -171,6 +172,11 @@ export function polishLinks(ctx) {
   // read from the other end
   // `box`: the node the line leaves (a box, not a diamond): a line down out of its bottom that still meets the bottom,
   // well inside it, after the move needs no change at all (a straight line to a box with other lines in stays straight)
+  /**
+   * @param {{ points: number[][] }} o
+   * @param {number} dx
+   * @param {{ x: number, y: number, w: number, h: number }|null} [box]
+   */
   const moveStart = (o, dx, box = null) => {
     const q = o.points.map((pt) => [...pt])
     if (q.length < 2) return null
@@ -186,6 +192,11 @@ export function polishLinks(ctx) {
     } else return null
     return q
   }
+  /**
+   * @param {{ points: number[][] }} o
+   * @param {number} dx
+   * @param {{ x: number, y: number, w: number, h: number }|null} [box]
+   */
   const moveEnd = (o, dx, box = null) => {
     const back = moveStart({ points: [...o.points].reverse() }, dx, box)
     return back ? back.reverse() : null

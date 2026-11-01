@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/procedure/flow/RuleTableNode.jsx — the rule table under the flowchart
 //
