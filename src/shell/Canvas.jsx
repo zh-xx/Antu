@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/Canvas.jsx —— the canvas shell
 //
@@ -308,11 +309,11 @@ export default function Canvas({
   // large the content is (graph.size).
   // A renderer only receives an exportPng method and still never touches React Flow
   // (see spec/fact/rendering.md §10).
+  /** @param {{ title?: string }} [opts] */
+  const exportPng = ({ title } = {}) => runExportPng({ rootEl: canvasRef.current, graph, title, background: theme.color.exportBg })
   useImperativeHandle(
     ref,
-    () => ({
-      exportPng: ({ title } = {}) => runExportPng({ rootEl: canvasRef.current, graph, title, background: theme.color.exportBg }),
-    }),
+    () => ({ exportPng }),
     [graph],
   )
 
@@ -357,7 +358,9 @@ export default function Canvas({
 
   useEffect(() => {
     const offFit = commands.on('fitView', () => fitRef.current(300))
-    const offPng = commands.on('exportPng', ({ pixelRatio } = {}) => renderPng({ rootEl: canvasRef.current, graph, pixelRatio, background: theme.color.exportBg }))
+    /** @param {{ pixelRatio?: number }} [opts] */
+    const onExportPng = ({ pixelRatio } = {}) => renderPng({ rootEl: canvasRef.current, graph, pixelRatio, background: theme.color.exportBg })
+    const offPng = commands.on('exportPng', onExportPng)
     return () => {
       offFit()
       offPng()

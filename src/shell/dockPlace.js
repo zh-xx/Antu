@@ -18,10 +18,11 @@ export const DOCK_GAP = 12
 export const DOCK_EDGE = 15
 
 /**
- * @param width         the canvas width
- * @param natural       the capsule's width on one line
- * @param zoomRight     the right edge of the zoom buttons, or null when there are none
- * @param minimapWidth  the minimap's width, or null when there is none
+ * @param {object} opts
+ * @param {number} opts.width                  the canvas width
+ * @param {number} opts.natural                the capsule's width on one line
+ * @param {number | null} [opts.zoomRight]     the right edge of the zoom buttons, or null when there are none
+ * @param {number | null} [opts.minimapWidth]  the minimap's width, or null when there is none
  * @returns {{ left: number, maxWidth: number | null, hideMinimap: boolean }}  `left` from the canvas's left edge;
  *          `maxWidth` set when the capsule has to wrap
  */

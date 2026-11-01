@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/TracePanel.jsx — in-page source overview (issue 124)
 //
@@ -54,6 +55,9 @@ function SourceCell({ source, t }) {
     </div>
   )
 }
+
+// Without @types/react, JSX `key` is not on props: cast once, as App.jsx does.
+const Cell = /** @type {any} */ (SourceCell)
 
 /**
  * The floating panel. Renders nothing when closed. Lives under `.antu-app` so export / print
@@ -177,7 +181,7 @@ export function SourceTracePanel() {
                     {row.sources.length === 0 ? (
                       <span className="antu-trace-nosrc">{t('trace.noSource')}</span>
                     ) : (
-                      row.sources.map((s) => <SourceCell key={s.id} source={s} t={t} />)
+                      row.sources.map((s) => <Cell key={s.id} source={s} t={t} />)
                     )}
                   </td>
                   <td>
