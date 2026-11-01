@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/justification/tree/register.js — register the justification sub-type renderer with the engine
 //

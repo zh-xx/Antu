@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/justification/tree/JustificationDock.jsx — the justification tree's control capsule
 //

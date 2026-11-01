@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/justification/tree/crossings.js — how badly a placement of nodes tangles its links
 //

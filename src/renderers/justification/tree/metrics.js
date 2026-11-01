@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/justification/tree/metrics.js — justification sizes and spacing
 //
@@ -63,7 +64,7 @@ export const SCALE_HINT_NODES = 60
 const LATIN = 1.15
 const emOf = (text) => {
   const s = String(text ?? '')
-  const latin = [...s].filter((ch) => ch.codePointAt(0) < 0x2e80).join('')
+  const latin = [...s].filter((ch) => (ch.codePointAt(0) ?? 0) < 0x2e80).join('')
   return textEm(s) + textEm(latin) * (LATIN - 1)
 }
 

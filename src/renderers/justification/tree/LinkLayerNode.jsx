@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/justification/tree/LinkLayerNode.jsx — the link layer (a decoration node)
 //

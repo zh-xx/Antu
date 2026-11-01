@@ -148,6 +148,19 @@
     "src/renderers/relationship/related/register.js",
     "src/renderers/relationship/path/PathRenderer.jsx",
     "src/renderers/relationship/path/layout.js",
-    "src/renderers/relationship/path/register.js"
+    "src/renderers/relationship/path/register.js",
+    "src/renderers/justification/tree/IssueBoxNode.jsx",
+    "src/renderers/justification/tree/JustificationDock.jsx",
+    "src/renderers/justification/tree/JustificationNode.jsx",
+    "src/renderers/justification/tree/JustificationRenderer.jsx",
+    "src/renderers/justification/tree/LinkLayerNode.jsx",
+    "src/renderers/justification/tree/chain.js",
+    "src/renderers/justification/tree/crossings.js",
+    "src/renderers/justification/tree/foldDefault.js",
+    "src/renderers/justification/tree/layout.js",
+    "src/renderers/justification/tree/metrics.js",
+    "src/renderers/justification/tree/palette.js",
+    "src/renderers/justification/tree/register.js",
+    "src/renderers/justification/tree/rules.js"
   ]
 }
