@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/index.js — which types exist, in this one place only
 //

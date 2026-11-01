@@ -42,6 +42,16 @@
     "src/shell/startupError.js",
     "src/shell/exportPng.js",
     "src/shell/Canvas.jsx",
-    "src/shell/TracePanel.jsx"
+    "src/shell/TracePanel.jsx",
+    "src/renderers/index.js",
+    "src/renderers/components.js",
+    "src/renderers/fact/schema.js",
+    "src/renderers/procedure/schema.js",
+    "src/renderers/relationship/schema.js",
+    "src/renderers/justification/schema.js",
+    "src/renderers/fact/cardGeometry.js",
+    "src/renderers/fact/partyNotes.js",
+    "src/renderers/fact/dateOrder.js",
+    "src/renderers/fact/dateText.js"
   ]
 }

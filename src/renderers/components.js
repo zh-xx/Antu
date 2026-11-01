@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/components.js — every kind's React renderer, registered in one place
 //

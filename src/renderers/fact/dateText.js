@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/dateText.js — how a fact event's time is written
 //
@@ -14,7 +15,7 @@ import { translate } from '../../core/i18n.js'
 export function formatDate(date, approx, lang) {
   // The local is named time, not t: inside a component t is the translation function, and a name clash silently picks the wrong thing.
   const [d, time] = String(date).split('T')
-  const prefix = approx ? translate(lang, 'card.approxPrefix') : ''
+  const prefix = approx ? translate(lang, 'card.approxPrefix', undefined) : ''
   if (!time) return prefix + d
   const parts = time.split(':')
   const hhmm = parts.slice(0, 2).join(':')
@@ -25,7 +26,7 @@ export function formatDate(date, approx, lang) {
 export function formatEnd(start, end, lang) {
   const full = formatDate(end, false, lang)
   const sameDay = String(start).split('T')[0] === String(end).split('T')[0]
-  return sameDay && String(end).includes('T') ? full.split(' ').pop() : full
+  return sameDay && String(end).includes('T') ? (full.split(' ').pop() ?? '') : full
 }
 
 /**
@@ -38,7 +39,7 @@ export function formatEnd(start, end, lang) {
  */
 export function formatTimeText(event, lang) {
   // An event with no date (the material gives none): say so, do not show a blank or a made-up one
-  if (!event.date) return translate(lang, 'card.dateUnknown')
+  if (!event.date) return translate(lang, 'card.dateUnknown', undefined)
   const start = formatDate(event.date, event.approx, lang)
   if (!event.dateEnd) return start
   return `${start} - ${formatEnd(event.date, event.dateEnd, lang)}`
@@ -73,9 +74,9 @@ export function formatDuration(start, end, t) {
  * @returns [{ text, strong }]
  */
 export function whenLines(event, lang, sameDay = false) {
-  if (!event.date) return [{ text: translate(lang, 'chronicle.dateUnknown'), strong: false }]
+  if (!event.date) return [{ text: translate(lang, 'chronicle.dateUnknown', undefined), strong: false }]
   const [d, time] = String(event.date).split('T')
-  const prefix = event.approx ? translate(lang, 'card.approxPrefix') : ''
+  const prefix = event.approx ? translate(lang, 'card.approxPrefix', undefined) : ''
   const lines = [{ text: prefix + d, strong: true }]
   const clock = time ? formatDate(event.date, false, lang).split(' ').pop() : ''
   if (sameDay && clock) lines.shift()

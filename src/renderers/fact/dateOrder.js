@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/dateOrder.js — does the order of the slots contradict the dates?
 //
@@ -19,6 +20,7 @@ export function dateSpan(text) {
   const m = FORM.exec(typeof text === 'string' ? text.trim() : '')
   if (!m) return null
   const [y, mo, d, h, mi, s] = m.slice(1).map((v) => (v === undefined ? undefined : Number(v)))
+  if (y === undefined) return null
   const at = (yy, mm, dd, hh, mn, ss) => Date.UTC(yy, mm, dd, hh, mn, ss)
   let from
   let to
