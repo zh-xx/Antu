@@ -20,6 +20,7 @@ const VERSION = typeof __ANTU_VERSION__ === 'undefined' ? null : __ANTU_VERSION_
 
 /**
  * Is the spec valid?
+ * @param {unknown} spec
  * @param {object} [options]
  * @param {'zh'|'en'} [options.lang]  message language for a host UI; default English for agents (issue 166)
  * @returns {{ ok: boolean, errors: string[], notes: string[] }}  `errors` name their field
@@ -50,6 +51,7 @@ export function layout(spec, { kind, orientation } = {}) {
  * Repair what is inconsistent in the marks of a spec but not in its content, and say what was done
  * (issue 163). For a procedure: the main line, when the edges marked `main` do not form one chain from the
  * start to an end. The input is not modified. Call it before `validate` when a model wrote the spec.
+ * @param {unknown} spec
  * @returns {{ spec: unknown, changes: string[] }}
  */
 export function normalize(spec) {
