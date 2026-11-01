@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/justification/tree/layout.js — laying out the justification tree (pure computation)
 //

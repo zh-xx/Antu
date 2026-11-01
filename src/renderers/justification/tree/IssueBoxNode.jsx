@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/justification/tree/IssueBoxNode.jsx — the issues' boxes (a decoration node)
 //

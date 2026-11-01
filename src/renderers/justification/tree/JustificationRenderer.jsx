@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/justification/tree/JustificationRenderer.jsx — the justification tree
 //

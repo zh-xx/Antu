@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/justification/tree/palette.js — the justification tree's SVG paint, from the theme
 //

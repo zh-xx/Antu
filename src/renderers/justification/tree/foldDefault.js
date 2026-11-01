@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/justification/tree/foldDefault.js — which issues a justification diagram opens with folded
 //

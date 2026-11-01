@@ -91,10 +91,14 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   nullable `Map.get` lookups and layout results are guarded, the layout accumulators are typed
   loosely, `FocusDock`'s kind/centre handlers are optional, and `LevelledView`'s props are JSDoc-typed
   so a caller can pass only a dock addition. The justification kind tree stays out of this slice
+- `// @ts-check` on the justification kind tree (Refs #227, does not close): every remaining file under
+  `src/renderers/justification/tree/` joins `tsconfig.embed.json`; `metrics`'s `codePointAt` read is
+  guarded the same way as the relationship graph metrics. Renderer kind trees under `src/renderers/`
+  are now covered; `.d.ts` generation and `@types/react` stay out of this slice
 
-**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the justification kind tree,
-`@types/react` (a single cast covers the JSX `key`), or tree-wide coverage (later slices
-of #227). Do not weaken runtime `validate()` or existing tests for the sake of types.
+**Not yet:** emitting `.d.ts` from implementation, `@types/react` (a single cast covers the JSX
+`key`), or tree-wide coverage outside the checked set (later slices of #227). Do not weaken runtime
+`validate()` or existing tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").
