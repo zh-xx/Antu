@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/chronicle/SpineNode.jsx — the spine, its dots and the gap pills
 //

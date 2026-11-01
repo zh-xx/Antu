@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/scale/ScaleRunListNode.jsx — every gathered event, written out under the diagram
 //

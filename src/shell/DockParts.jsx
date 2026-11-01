@@ -25,7 +25,11 @@ const LANGS = [
   ['zh', 'dock.langZh'],
 ]
 
-/** A segmented control: few mutually exclusive options, all out in the open, the selected one raised */
+/**
+ * A segmented control: few mutually exclusive options, all out in the open, the selected one raised.
+ * `title` is optional: a caller that has no heading to give simply leaves it out.
+ * @param {{ options: string[][], value: string, onChange: (v: string) => void, title?: string }} props
+ */
 export function DockSegmented({ options, value, onChange, title }) {
   const { t } = useLang()
   return (

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/chronicle/EntryNode.jsx — one row of the chronicle
 //

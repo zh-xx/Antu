@@ -72,11 +72,16 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   `tsconfig.embed.json`; `layered`'s informal JSDoc return shapes become object types, its depth-first
   top is guarded, and the label-placement rectangle takes a coordinate array. The kind-specific
   relationship trees stay out of this slice
+- `// @ts-check` on the fact kind tree (Refs #227, does not close): every remaining file under
+  `src/renderers/fact/` joins `tsconfig.embed.json` — the shared `ControlDock.jsx`, `EventNode.jsx`,
+  `EventPreview.jsx` and the `timeline/`, `chronicle/` and `scale/` trees. `DockSegmented`'s `title`
+  and `Canvas`'s `fitKey` / `style` are optional, the chronicle / scale layout options take `measure`,
+  and the scale's segment, mark and node accumulators are typed loosely instead of forcing one payload
+  shape. The procedure, relationship and justification kind trees stay out of this slice
 
-**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the renderer kind trees (including the
-kind-specific trees under `relationship/*/`), `@types/react` (a single cast covers the JSX `key`), or
-tree-wide coverage (later slices of #227). Do not weaken runtime `validate()` or existing tests for the
-sake of types.
+**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the procedure, relationship and
+justification kind trees, `@types/react` (a single cast covers the JSX `key`), or tree-wide coverage
+(later slices of #227). Do not weaken runtime `validate()` or existing tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

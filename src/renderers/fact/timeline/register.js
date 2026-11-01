@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/timeline/register.js — register the fact sub-type renderer with the engine
 //

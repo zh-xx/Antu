@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/scale/ScaleDock.jsx — the time scale's control dock
 //

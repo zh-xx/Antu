@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/timeline/grid.js — fact placement (the layout side)
 //
@@ -49,7 +50,8 @@ function isPlainObject(v) {
 
 /**
  * Compute the grid of a fact spec.
- * @returns {{ errors: string[], columns: Array<{ key, side, actorId?, actorName?, groupIndex? }>,
+ * @returns {{ errors: string[], byActor: boolean, sideLabels: Record<string, string>,
+ *   columns: Array<{ key, side, actorId?, actorName?, groupIndex? }>,
  *   rows: Array<{ index, cells: Map<string, object> }>, placements: Map<string, { row, col, key }>,
  *   axisColumnIndex: number, actorById: Map, groupById: Map, groupIndexById: Map, sourceById: Map,
  *   eventCount: number }}

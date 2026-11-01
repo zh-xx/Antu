@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/scale/ScaleRenderer.jsx — the proportional time scale (issue #85, kind A)
 //

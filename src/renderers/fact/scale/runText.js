@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/scale/runText.js — the time range of a gathered run, as one short text
 // ============================================================

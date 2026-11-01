@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/timeline/ColumnHeaderNode.jsx — column headings
 //

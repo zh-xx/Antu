@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/timeline/nodes.js — build React Flow nodes from the computed numbers
 //

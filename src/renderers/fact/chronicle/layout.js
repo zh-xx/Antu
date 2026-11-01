@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/chronicle/layout.js — the chronicle: every event in one column, in order
 //
@@ -293,8 +294,12 @@ export function textLinesOf(event, fields, measure) {
 /**
  * Turn a fact spec into React Flow nodes for the chronicle.
  * The `layouts` table calls every kind as (spec, fields, view, orientation); the chronicle has no
- * view or orientation, and its third argument is options instead: { measure(text, 'title' | 'summary') => px }.
+ * view or orientation, and its third argument is options instead.
  * A view object passed there has no `measure`, so it is harmless.
+ * @param {any} spec
+ * @param {any} [fields]
+ * @param {{ measure?: ((text: string, kind?: string) => number) | null }} [options]
+ *   `measure(text, 'title' | 'summary')` returns the drawn width in pixels.
  */
 export function buildChronicleGraph(spec, fields = {}, { measure } = {}) {
   const actorById = new Map((spec?.actors || []).filter(Boolean).map((a) => [a.id, a]))

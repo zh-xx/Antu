@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/timeline/TimelineRenderer.jsx — the timeline
 //

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/fact/chronicle/register.js — registers the fact chronicle
 //
