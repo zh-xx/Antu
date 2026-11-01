@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/useSpecPref.js — a choice remembered for one diagram (shared)
 //

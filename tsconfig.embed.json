@@ -52,6 +52,12 @@
     "src/renderers/fact/cardGeometry.js",
     "src/renderers/fact/partyNotes.js",
     "src/renderers/fact/dateOrder.js",
-    "src/renderers/fact/dateText.js"
+    "src/renderers/fact/dateText.js",
+    "src/renderers/relationship/pill.js",
+    "src/renderers/relationship/scope.js",
+    "src/renderers/relationship/useSpecPref.js",
+    "src/renderers/relationship/layered.js",
+    "src/renderers/relationship/partyData.js",
+    "src/renderers/relationship/sections.js"
   ]
 }

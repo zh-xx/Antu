@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/partyData.js — what the graph's EntityNode needs about one party
 //
@@ -13,12 +14,16 @@ import { sizeOf } from './graph/metrics.js'
 import { tEn } from '../../core/i18n.js'
 
 /**
- * @param spec a valid relationship spec
- * @param t    the interface language's translate function (the default text on a relation with no label)
- * @returns { labelTexts, sizes, dataOf }
- *   labelTexts  the text each relation shows, in the order of spec.relations
- *   sizes       Map entity id -> { w, h, textW }
- *   dataOf(entity, extra)  the `data` of an entity node; `extra` is merged over it (layer, centre, ...)
+ * @param {any} spec a valid relationship spec
+ * @param {(key: string, vars?: object) => string} [t] the interface language's translate function (the
+ *   default text on a relation with no label)
+ * @returns {{
+ *   labelTexts: string[],
+ *   sizes: Map<string, { w: number, h: number, textW: number }>,
+ *   dataOf: (entity: any, extra?: object) => any
+ * }} labelTexts: the text each relation shows, in the order of spec.relations; sizes: Map entity id ->
+ *   { w, h, textW }; dataOf(entity, extra): the `data` of an entity node; `extra` is merged over it
+ *   (layer, centre, ...)
  */
 export function makePartyData(spec, t = tEn) {
   const entities = spec.entities
