@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/ConnectionLayerNode.jsx — the link layer (a decoration node)
 //

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/EntityNode.jsx — one party of the relationship graph
 //

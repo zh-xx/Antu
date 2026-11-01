@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/related/layout.js — the related-party list (issue #93): one party and everyone tied to it
 //
@@ -45,7 +46,12 @@ const arrowOf = (r, centre) => (!isDirected(r) ? '↔' : r.from === centre ? '�
 
 /**
  * The rows, no geometry.
- * @returns { rows: [{ id, name, role, kinds: string[], rels: [{ rel, arrow }], sources: string[] }], none: entity[], rest: relation[] }
+ * @returns {{
+ *   rows: Array<{ id: string, name: string, role: string, kinds: string[], rels: any[], sources: string[] }>,
+ *   none: any[],
+ *   rest: any[]
+ * }} rows: one block per party tied to the centre; none: the parties not tied to it; rest: the relations
+ *   that do not involve it
  */
 export function relatedRows(spec, centre) {
   const sourceName = new Map((spec.sources ?? []).map((s) => [s.id, s.name]))
@@ -56,6 +62,7 @@ export function relatedRows(spec, centre) {
     if (!byParty.has(other)) byParty.set(other, [])
     byParty.get(other).push({ rel: r, arrow: arrowOf(r, centre) })
   }
+  /** @type {any[]} */
   const rows = []
   for (const e of spec.entities) {
     if (e.id === centre || !byParty.has(e.id)) continue
@@ -97,6 +104,7 @@ export function buildRelatedGraph(spec, fields = {}) {
   const cols = hasSources ? COLS : COLS.slice(0, 3)
   const tableW = cols.reduce((a, b) => a + b, 0)
   const width = tableW + PAD * 2
+  /** @type {any} */
   const layer = { width, height: 0, links: [], pills: [], empties: [], frames: [], texts: [], table: null }
   const relCount = rows.reduce((n, r) => n + r.rels.length, 0)
   // The title stands over the middle of the table, bold and larger than the text under it
@@ -107,7 +115,7 @@ export function buildRelatedGraph(spec, fields = {}) {
   // One line of the table for each relation, so its category, content and direction stand level; the party
   // (and its sources) is one cell as tall as all its relations together
   const header = [t('rel.related.colParty'), t('rel.related.colKind'), t('rel.related.colText'), ...(hasSources ? [t('rel.related.colSource')] : [])]
-  const xs = cols.reduce((acc, w) => [...acc, acc.at(-1) + w], [PAD])
+  const xs = cols.reduce((acc, w) => [...acc, (acc.at(-1) ?? PAD) + w], [PAD])
   // Which way a relation runs is said with the two names, under the relation as written: no word to learn
   const directionOf = (r) => (isDirected(r) ? `${nameOf(r.from)} → ${nameOf(r.to)}` : t('rel.related.dirNone', { a: nameOf(r.from), b: nameOf(r.to) }))
   let y = top + HEAD_H
@@ -128,6 +136,7 @@ export function buildRelatedGraph(spec, fields = {}) {
     let sy = y
     subs.forEach((sb, k) => {
       const h = sb.h + (k === subs.length - 1 ? extra : 0)
+      /** @type {any[]} */
       const cells = sb.texts.map((lines, c) => ({ x: xs[c + 1], w: COLS[c + 1], lines, bold: false, sub: lines.length > 1 }))
       if (k === 0) {
         cells.unshift({ x: xs[0], w: COLS[0], lines: partyLines, bold: true, y, h: total })

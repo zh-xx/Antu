@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/equity/EquityRenderer.jsx — the equity tree (issue #91)
 //

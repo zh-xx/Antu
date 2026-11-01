@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/path/PathRenderer.jsx — the relation path (issue #93)
 //

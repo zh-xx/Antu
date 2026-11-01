@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/GroupBoxNode.jsx — the camps' boxes (a decoration node)
 //

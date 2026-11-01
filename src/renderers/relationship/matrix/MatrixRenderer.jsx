@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/matrix/MatrixRenderer.jsx — the relation matrix (issue #91)
 //

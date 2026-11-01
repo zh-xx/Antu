@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/graph/palette.js — what the relationship diagrams ask the theme for
 //

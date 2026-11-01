@@ -42,6 +42,13 @@ what breaks a file or a tool call written for the version before, with how to br
   guarded, the layout accumulators and rule-table groups are typed loosely, and `Canvas`'s node
   handlers are optional so the route map need not pass no-ops. The relationship and justification
   kind trees, `.d.ts` generation and `@types/react` remain out of scope.
+- **`checkJs` on the relationship kind tree** (Refs #227, does not close): every remaining file under
+  `src/renderers/relationship/` carries `// @ts-check` and joins `tsconfig.embed.json` — the shared
+  `CompanyView.jsx`, `LevelledView.jsx`, `LineLayerNode.jsx`, and the `graph/`, `focus/`, `matrix/`,
+  `equity/`, `authority/`, `related/` and `path/` trees. Informal JSDoc return shapes become object
+  types, nullable `Map.get` lookups and layout results are guarded, the layout accumulators are typed
+  loosely, `FocusDock`'s kind/centre handlers are optional, and `LevelledView`'s props are JSDoc-typed.
+  The justification kind tree, `.d.ts` generation and `@types/react` remain out of scope.
 - **`@zh-xx/antu/types`** (#294): generated TypeScript interfaces for each diagram JSON (`FactSpec`, `ProcedureSpec`, `RelationshipSpec`, `JustificationSpec`, `AntuDiagramSpec`) from the same `*_FIELDS` as `describe()`; `node tools/gen/spec-types.mjs` (+ `--check`). Types only — runtime `validate()` unchanged. `npm run typecheck` (`tsc`) keeps the declarations parseable in CI.
 - **Embed `themeTokens`** (#293): a host may overlay `accent` / `canvas` / `chromeBg` / `text` / `textMuted` / `line` / `chromeBorder` / `font` / `fontHead` on a named theme via `mount({ themeTokens })` and `setThemeTokens`; ignored in `document`. Highlight rings use `--antu-accent`.
 - **Embed fit clears chrome; host `fitInsets`** (#166): fit-view keeps clear of the label card and the dock capsule; `mount(…, { fitInsets: { top, right, bottom, left } })` replaces the auto measure per side.

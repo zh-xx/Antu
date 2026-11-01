@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/LevelledView.jsx — the page of a levelled relationship view (shared)
 //
@@ -24,6 +25,19 @@ import { specKeyOf } from '../../shell/prefs.js'
 
 const nodeTypes = { rnode: EntityNode, lineLayer: LineLayerNode }
 
+/**
+ * @param {{
+ *   spec: any,
+ *   build: (spec: any, options: any) => any,
+ *   className?: string,
+ *   options?: any,
+ *   onParty?: ((id: string, overlay: { pin: () => void, unpin: () => void }) => void) | null,
+ *   dockExtra?: ((layout: any) => any) | null,
+ *   fitWidth?: boolean,
+ *   decorate?: ((node: any) => any) | null,
+ *   fitMaxZoom?: number
+ * }} props
+ */
 export default function LevelledView({ spec, build, className, options = {}, onParty = null, dockExtra = null, fitWidth = true, decorate = null, fitMaxZoom = 0 }) {
   const specKey = specKeyOf(spec)
   const { t, lang } = useLang()

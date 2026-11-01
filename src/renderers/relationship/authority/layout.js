@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/authority/layout.js — the authority chart (issue #93): who commands whom
 //
@@ -33,7 +34,22 @@ const MIN_CONTENT_W = 760
 
 /**
  * The structure, no geometry.
- * @returns { edges, ids, level, roots, rest, apart, company, companies }  as classifyEquity, for the three kinds of authority
+ * @returns {{
+ *   edges: Array<{ key: string, rel: any, from: string, to: string, back: boolean }>,
+ *   ids: string[],
+ *   level: Map<string, number>,
+ *   roots: string[],
+ *   rest: any[],
+ *   above: any[],
+ *   apart: any[],
+ *   company: string | null,
+ *   companies: string[],
+ *   several: boolean
+ * }} edges: the authority relations, each with `back: true` when it closes a cycle; ids: the parties in the
+ *   chart, in written order; level: Map id -> level; roots: the parties nothing points to; rest: relations
+ *   that are not authority; above: with a company chosen, the authority relations above it; apart: entities
+ *   not in the picture; company: the party whose picture it is, null for all of it; companies: the parties
+ *   the reader may pick from; several: whether there is more than one separate structure
  */
 export function classifyAuthority(spec, asked) {
   const all = spec.relations.filter((r) => AUTHORITY_KINDS.includes(r.kind)).map((r) => ({ key: r.id, rel: r, from: r.from, to: r.to, back: false }))
@@ -79,14 +95,16 @@ export function buildAuthorityGraph(spec, fields = {}) {
   const shift = PAD + (contentW - g.size.width - (backCount ? 24 : 0)) / 2
 
   const nodes = []
+  /** @type {{ width: number, height: number, links: any[], pills: any[], empties: any[], frames: any[], texts: any[] }} */
   const layer = { width: contentW + PAD * 2, height: 0, links: [], pills: [], empties: [], frames: [], texts: [] }
   for (const [id, b] of g.boxes) {
     nodes.push({ id, type: 'rnode', position: { x: b.x + shift, y: b.y + PAD }, data: party.dataOf(entityById.get(id), { layer: g.level.get(id), hintKey: 'rel.previewHint', w: b.w, textW: sizeOf(id).textW }) })
   }
   const pillTexts = parts.edges.map((e) => (e.back ? `${textOf(e.rel)} · ${t('rel.authority.cycle')}` : textOf(e.rel)))
-  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key).segs.at(-1), w: pillW(pillTexts[i]), h: pillH(pillTexts[i]), back: e.back, gathered: g.links.get(e.key).gathered })))
+  const spots = placePills(parts.edges.map((e, i) => ({ seg: g.links.get(e.key)?.segs.at(-1), w: pillW(pillTexts[i]), h: pillH(pillTexts[i]), back: e.back, gathered: g.links.get(e.key)?.gathered })))
   parts.edges.forEach((e, i) => {
     const link = g.links.get(e.key)
+    if (!link) return
     layer.links.push({ d: pathOf(link.segs, shift, PAD), kind: e.rel.kind, back: e.back, via: link.via.map(([x, yy]) => [x + shift, yy + PAD]), arrow: isDirected(e.rel) ? 'end' : 'none' })
     layer.pills.push({ x: spots[i][0] + shift, y: spots[i][1] + PAD, text: pillTexts[i], kind: e.rel.kind, back: e.back, relId: e.rel.id })
   })

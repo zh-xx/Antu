@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  layoutAsync.js — relationship graph layout without freezing the page (issue 181)
 //

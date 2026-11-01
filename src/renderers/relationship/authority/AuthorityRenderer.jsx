@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/renderers/relationship/authority/AuthorityRenderer.jsx — the authority chart (issue #93)
 //
