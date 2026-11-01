@@ -94,11 +94,21 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
 - `// @ts-check` on the justification kind tree (Refs #227, does not close): every remaining file under
   `src/renderers/justification/tree/` joins `tsconfig.embed.json`; `metrics`'s `codePointAt` read is
   guarded the same way as the relationship graph metrics. Renderer kind trees under `src/renderers/`
-  are now covered; `.d.ts` generation and `@types/react` stay out of this slice
+  are now covered
 
-**Not yet:** emitting `.d.ts` from implementation, `@types/react` (a single cast covers the JSX
-`key`), or tree-wide coverage outside the checked set (later slices of #227). Do not weaken runtime
-`validate()` or existing tests for the sake of types.
+**Public `.d.ts` (current contract):** embed / validate / html stay as hand-maintained declarations
+(`src/embed/antu-embed.d.ts`, `tools/api/validate.d.ts`, `tools/api/html.d.ts`) checked by
+`tools/typecheck/api-smoke.ts` and by the export-name parity test in `test/embed.test.mjs`. Spec
+shapes are generated (`src/types/antu-specs.d.ts`). Implementation JSDoc on the API entries should
+match those declarations (e.g. `renderHtml`'s `theme` includes `dark`). Emitting `.d.ts` from the
+`.js` / `.mjs` implementation instead of maintaining the hand-written files is an open follow-up —
+pick a generator (tsc declaration emit vs a small gen script) before swapping the published files.
+
+**`@types/react` (deferred):** not installed. JSX `key` is cast once where needed (`App.jsx`,
+`TracePanel.jsx`). A probe that adds `@types/react@19` on top of the current `tsconfig.embed.json`
+set fails with on the order of **270** errors (mostly React Flow refs typed as `never`, context
+defaults, and call-signature mismatches). Revisit when those host boundaries are typed, not as a
+drive-by dependency add. Do not weaken runtime `validate()` or existing tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

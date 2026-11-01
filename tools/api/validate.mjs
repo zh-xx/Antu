@@ -33,6 +33,7 @@ export function validate(spec, { lang } = {}) {
 
 /**
  * How big the drawing will be, before it is drawn: the geometry report of `antu layout`, as data, with its text.
+ * @param {unknown} spec
  * @param {{ kind?: string, orientation?: 'vertical'|'horizontal' }} [options]
  * @returns {{ ok: true, type: string, kind: string, text: string } & object | { ok: false, reason: string, errors?: string[] }}
  */
