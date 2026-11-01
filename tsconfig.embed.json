@@ -40,6 +40,8 @@
     "src/shell/dockPlace.js",
     "src/shell/useExport.js",
     "src/shell/startupError.js",
-    "src/shell/exportPng.js"
+    "src/shell/exportPng.js",
+    "src/shell/Canvas.jsx",
+    "src/shell/TracePanel.jsx"
   ]
 }

@@ -57,9 +57,13 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   and `exportPng.js` join `tsconfig.embed.json`; the shadow-root host is read through one `any` cast, the
   dock's minimap width is narrowed to a local, the unknown catch is formatted with `instanceof Error`, and
   the PNG export's async return and null 2D context are explicit (still no `@types/react`)
+- `// @ts-check` on the last shell panels `src/shell/Canvas.jsx` and `src/shell/TracePanel.jsx`
+  (Refs #227, does not close): both join `tsconfig.embed.json`; the two `exportPng` callbacks
+  take JSDoc option objects, `placeDock`'s options are typed (`minimapWidth` is intentionally
+  `number | null`), and the one JSX `key` is cast once rather than adding `@types/react`
 
-**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the renderers, the remaining shell panels
-(`Canvas`, `TracePanel`) or tree-wide coverage (later slices of #227). Do not weaken runtime
+**Not yet:** emitting `.d.ts` from implementation, `checkJs` on the renderers, `@types/react` (a single
+cast covers the JSX `key`), or tree-wide coverage (later slices of #227). Do not weaken runtime
 `validate()` or existing tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
