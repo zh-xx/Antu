@@ -13,8 +13,8 @@ import { pageHtml } from '../lib/make-html.mjs'
 import { THEME_IDS, isTheme } from '../../src/theme/themes.js'
 
 /**
- * @param {object} spec
- * @param {{ kind?: string, theme?: 'document'|'modern'|'legal' }} [options]
+ * @param {unknown} spec
+ * @param {{ kind?: string, theme?: 'document'|'modern'|'legal'|'dark' }} [options]
  *        `kind`: the kind the page opens in (the reader can still switch, as with `render --kind`);
  *        `theme`: the page is fixed to this theme (as with `render --theme`)
  * @returns {string} the HTML of the page
