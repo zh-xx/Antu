@@ -11,7 +11,24 @@
 import { memo } from 'react'
 import { useLang } from '../../../shell/LangContext.jsx'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{ y: number, groupIndex: number, shape: string, hollow?: boolean, dim?: boolean }} SpineDot
+ * @typedef {{
+ *   y: number,
+ *   gap: { long?: boolean, approx?: boolean, key: string, vars?: Record<string, unknown> },
+ * }} SpinePill
+ * @typedef {{ y0: number, y1: number }} SpineBreak
+ * @typedef {{
+ *   x: number,
+ *   top: number,
+ *   bottom: number,
+ *   dots: SpineDot[],
+ *   pills: SpinePill[],
+ *   breaks: SpineBreak[],
+ *   dotSize: number,
+ * }} SpineNodeData
+ * @type {(props: { id?: string, data: SpineNodeData }) => import('react').ReactNode}
+ */
 const SpineNode = memo(function SpineNode({ data }) {
   const { x, top, bottom, dots, pills, breaks, dotSize } = data
   const { t } = useLang()

@@ -13,7 +13,20 @@ import { formatTimeText } from '../dateText.js'
 import { runMark } from './ScaleLayerNode.jsx'
 import { runRange } from './runText.js'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   id: string,
+ *   label: string,
+ *   date?: string,
+ *   dateEnd?: string,
+ *   dateNote?: string,
+ *   approx?: boolean,
+ *   summary?: string,
+ *   detail?: string,
+ * }} FactEvent
+ * @typedef {{ run: number, events: FactEvent[], cardH: number }} ScaleRunNodeData
+ * @type {(props: { id?: string, data: ScaleRunNodeData }) => import('react').ReactNode}
+ */
 const ScaleRunNode = memo(function ScaleRunNode({ id, data }) {
   const { run, events, cardH } = data
   const { pinnedId, unpin } = useContext(PreviewContext)

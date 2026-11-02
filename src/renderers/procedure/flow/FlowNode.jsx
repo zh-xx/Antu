@@ -91,7 +91,33 @@ function Outline({ kind, outcome, w, h, theme, states }) {
   }
 }
 
-/** @type {(props: { id: string, data?: any }) => any} */
+/**
+ * @typedef {{ id: string, name?: string, type?: string, quote?: string }} FlowSource
+ * @typedef {{
+ *   kind: string,
+ *   outcome?: string,
+ *   label: string,
+ *   detail?: string,
+ * }} FlowSpecNode
+ * @typedef {{
+ *   node: FlowSpecNode,
+ *   w: number,
+ *   h: number,
+ *   textW: number,
+ *   cut?: boolean,
+ *   ruleCount?: number,
+ *   lit?: boolean,
+ *   states?: boolean,
+ *   isSpine?: boolean,
+ *   stageLabel?: string,
+ *   actorNames: string[],
+ *   sources: FlowSource[],
+ *   showDetail?: boolean,
+ *   vertical: boolean,
+ *   layer: number,
+ * }} FlowNodeData
+ * @type {(props: { id: string, data: FlowNodeData }) => import('react').ReactNode}
+ */
 const FlowNode = memo(function FlowNode({ id, data }) {
   const { node, w, h, textW, cut = false, ruleCount = 0, lit = false, states = false, isSpine, stageLabel, actorNames, sources, showDetail, vertical, layer } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)

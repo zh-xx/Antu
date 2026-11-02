@@ -16,7 +16,55 @@ import { TYPE } from '../../../theme/scale.js'
 
 export const runMark = (n) => (n <= 20 ? String.fromCodePoint(0x2460 + n - 1) : `(${n})`)
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{ x: number, w: number, gap?: { key: string, vars?: Record<string, unknown> } }} ScaleBreak
+ * @typedef {{
+ *   index: number,
+ *   x0: number,
+ *   x1: number,
+ *   unit: string,
+ *   count: number,
+ *   breakBefore?: ScaleBreak,
+ * }} ScaleSegment
+ * @typedef {{
+ *   key: string,
+ *   top: number,
+ *   lineY: number,
+ *   groupIndex: number,
+ *   side?: string,
+ *   other?: boolean,
+ *   label?: string,
+ * }} ScaleLane
+ * @typedef {{ x: number, label: string }} ScaleTick
+ * @typedef {{
+ *   id: string,
+ *   kind?: string,
+ *   x: number,
+ *   x0: number,
+ *   x1: number,
+ *   y: number,
+ *   undated?: boolean,
+ *   coarse?: boolean,
+ *   prec?: string,
+ *   approx?: boolean,
+ *   groupIndex: number,
+ * }} ScaleMark
+ * @typedef {{ x: number, y0: number, y1: number, run?: boolean }} ScaleLeader
+ * @typedef {{ run: number, x0: number, x1: number, y: number }} ScaleBracket
+ * @typedef {{
+ *   width: number,
+ *   labelW: number,
+ *   lanesH: number,
+ *   axisY: number,
+ *   lanes: ScaleLane[],
+ *   segments: ScaleSegment[],
+ *   ticks: ScaleTick[],
+ *   marks: ScaleMark[],
+ *   leaders: ScaleLeader[],
+ *   brackets: ScaleBracket[],
+ * }} ScaleLayerNodeData
+ * @type {(props: { id?: string, data: ScaleLayerNodeData }) => import('react').ReactNode}
+ */
 const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
   const { t } = useLang()
   const { theme } = useTheme()
@@ -47,7 +95,7 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
         {segments
           .filter((s) => s.breakBefore)
           .map((s) => {
-            const b = s.breakBefore
+            const b = /** @type {ScaleBreak} */ (s.breakBefore)
             return (
               <g key={`b${s.index}`}>
                 <rect x={b.x + 6} y={0} width={b.w - 12} height={axisY} fill={c0.chip} />
@@ -143,11 +191,14 @@ const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
       ))}
       {segments
         .filter((s) => s.breakBefore?.gap)
-        .map((s) => (
-          <div key={`g${s.index}`} className="antu-sc-break" style={{ left: s.breakBefore.x, width: s.breakBefore.w, top: lanesH / 2 - 10 }}>
-            {t(s.breakBefore.gap.key, s.breakBefore.gap.vars)}
-          </div>
-        ))}
+        .map((s) => {
+          const b = /** @type {Required<ScaleBreak>} */ (s.breakBefore)
+          return (
+            <div key={`g${s.index}`} className="antu-sc-break" style={{ left: b.x, width: b.w, top: lanesH / 2 - 10 }}>
+              {t(b.gap.key, b.gap.vars)}
+            </div>
+          )
+        })}
     </div>
   )
 })

@@ -16,7 +16,23 @@ import { stagePaint } from './palette.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { STAGE_TITLE_FONT, STAGE_PAD } from './metrics.js'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   stageId: string,
+ *   label: string,
+ *   x: number,
+ *   y: number,
+ *   w: number,
+ *   h: number,
+ * }} StageBox
+ * @typedef {{
+ *   boxes: StageBox[],
+ *   width: number,
+ *   height: number,
+ *   lit?: string[],
+ * }} StageBoxNodeData
+ * @type {(props: { id?: string, data: StageBoxNodeData }) => import('react').ReactNode}
+ */
 const StageBoxNode = memo(function StageBoxNode({ data }) {
   const { theme } = useTheme()
   const { boxes, width, height, lit = [] } = data

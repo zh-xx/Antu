@@ -19,7 +19,27 @@ import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { GROUP_PAD, GROUP_TITLE_FONT } from './metrics.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   groupId: string,
+ *   label: string,
+ *   x: number,
+ *   y: number,
+ *   w: number,
+ *   h: number,
+ *   collapsed?: boolean,
+ *   hidden?: number,
+ *   total: number,
+ * }} IssueBox
+ * @typedef {{
+ *   boxes: IssueBox[],
+ *   width: number,
+ *   height: number,
+ *   onToggle: (groupId: string) => void,
+ *   foldable?: boolean,
+ * }} IssueBoxNodeData
+ * @type {(props: { id?: string, data: IssueBoxNodeData }) => import('react').ReactNode}
+ */
 const IssueBoxNode = memo(function IssueBoxNode({ data }) {
   const { boxes, width, height, onToggle, foldable = true } = data
   const { t } = useLang()

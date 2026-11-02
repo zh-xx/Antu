@@ -17,7 +17,31 @@ import { memo, useMemo } from 'react'
 import { stancePaint, DIM_OPACITY } from './palette.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   id: string,
+ *   from: string,
+ *   to: string,
+ *   fromNode: string,
+ *   toNode: string,
+ *   stance: string,
+ *   label?: string | null,
+ *   points: number[][],
+ *   d: string,
+ *   dCurve?: string,
+ *   labelAt: { x: number, y: number },
+ *   labelSize: { width: number, height: number },
+ * }} JustificationLink
+ * @typedef {{
+ *   connections: JustificationLink[],
+ *   width: number,
+ *   height: number,
+ *   showLabels: boolean,
+ *   curved: boolean,
+ *   litLines?: Set<string> | null,
+ * }} LinkLayerNodeData
+ * @type {(props: { id?: string, data: LinkLayerNodeData }) => import('react').ReactNode}
+ */
 const LinkLayerNode = memo(function LinkLayerNode({ data }) {
   const { theme } = useTheme()
   const { connections, width, height, showLabels, curved, litLines = null } = data

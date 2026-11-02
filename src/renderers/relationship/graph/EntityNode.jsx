@@ -47,7 +47,40 @@ function Outline({ kind, w, h, theme, end = false }) {
   }
 }
 
-/** @type {(props: { id: string, data?: any }) => any} */
+/**
+ * @typedef {{ id: string, name?: string, type?: string, quote?: string }} EntitySource
+ * @typedef {{
+ *   kind: string,
+ *   label: string,
+ *   role?: string,
+ *   detail?: string,
+ * }} Entity
+ * @typedef {{
+ *   id: string,
+ *   directed?: boolean,
+ *   out?: boolean,
+ *   other?: string,
+ *   text: string,
+ * }} EntityRelation
+ * @typedef {{
+ *   entity: Entity,
+ *   w: number,
+ *   h: number,
+ *   textW: number,
+ *   lit?: boolean,
+ *   dim?: boolean,
+ *   groupLabel?: string,
+ *   sources: EntitySource[],
+ *   relations: EntityRelation[],
+ *   vertical: boolean,
+ *   layer: number,
+ *   centre?: boolean,
+ *   end?: boolean,
+ *   camp?: { label: string, tone: number } | null,
+ *   hintKey?: string,
+ * }} EntityNodeData
+ * @type {(props: { id: string, data: EntityNodeData }) => import('react').ReactNode}
+ */
 const EntityNode = memo(function EntityNode({ id, data }) {
   const { entity, w, h, textW, lit = false, dim = false, groupLabel, sources, relations, vertical, layer, centre = false, end = false, camp = null, hintKey = 'rel.previewHint' } = data
   const { hoveredId, pinnedId, pin, unpin, focusOn } = useContext(PreviewContext)

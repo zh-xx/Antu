@@ -18,7 +18,31 @@ import { whenLines } from '../dateText.js'
 import { CARD_W, CARD_X, WHEN_W } from './layout.js'
 import EventPreview from '../EventPreview.jsx'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   id: string,
+ *   label: string,
+ *   date?: string,
+ *   dateEnd?: string,
+ *   dateNote?: string,
+ *   approx?: boolean,
+ *   summary?: string,
+ *   detail?: string,
+ * }} FactEvent
+ * @typedef {{ id: string, name?: string, type?: string, quote?: string }} FactSource
+ * @typedef {{ summary?: boolean, actors?: boolean, sources?: boolean }} EventFields
+ * @typedef {{
+ *   event: FactEvent,
+ *   groupIndex: number,
+ *   actorNames: string[],
+ *   sources: FactSource[],
+ *   fields: EventFields,
+ *   cardH: number,
+ *   sameDay?: boolean,
+ *   dim?: boolean,
+ * }} EntryNodeData
+ * @type {(props: { id?: string, data: EntryNodeData }) => import('react').ReactNode}
+ */
 const EntryNode = memo(function EntryNode({ data }) {
   const { event, groupIndex, actorNames, sources, fields, cardH, sameDay, dim = false } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)

@@ -19,7 +19,37 @@ import { useLang } from '../../shell/LangContext.jsx'
 import { formatTimeText } from './dateText.js'
 import EventPreview from './EventPreview.jsx'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   id: string,
+ *   label: string,
+ *   date?: string,
+ *   dateEnd?: string,
+ *   dateNote?: string,
+ *   approx?: boolean,
+ *   summary?: string,
+ *   detail?: string,
+ * }} FactEvent
+ * @typedef {{
+ *   id: string,
+ *   name?: string,
+ *   type?: string,
+ *   quote?: string,
+ * }} FactSource
+ * @typedef {{
+ *   event: FactEvent,
+ *   actorNames: string[],
+ *   sources: FactSource[],
+ *   groupIndex: number,
+ *   row: number,
+ *   cardW: number,
+ *   cardH: number,
+ *   labelLines: number,
+ *   fields?: Record<string, boolean>,
+ *   isH: boolean,
+ * }} EventNodeData
+ * @type {(props: { id?: string, data: EventNodeData }) => import('react').ReactNode}
+ */
 const EventNode = memo(function EventNode({ data }) {
   const { event, actorNames, sources, groupIndex, row, cardW, cardH, labelLines, fields = {}, isH } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)

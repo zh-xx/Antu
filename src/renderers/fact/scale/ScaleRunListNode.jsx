@@ -11,13 +11,27 @@ import { useLang } from '../../../shell/LangContext.jsx'
 import { formatTimeText } from '../dateText.js'
 import { runMark } from './ScaleLayerNode.jsx'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   id: string,
+ *   label: string,
+ *   date?: string,
+ *   dateEnd?: string,
+ *   dateNote?: string,
+ *   approx?: boolean,
+ *   summary?: string,
+ *   detail?: string,
+ * }} FactEvent
+ * @typedef {{ run: number, events: FactEvent[] }} ScaleRun
+ * @typedef {{ runs: ScaleRun[], width: number, lh: number }} ScaleRunListNodeData
+ * @type {(props: { id?: string, data: ScaleRunListNodeData }) => import('react').ReactNode}
+ */
 const ScaleRunListNode = memo(function ScaleRunListNode({ data }) {
   const { t, lang } = useLang()
   return (
     <div
       className="antu-sc-list"
-      style={/** @type {import('react').CSSProperties & Record<string, string>} */ ({
+      style={/** @type {import('react').CSSProperties & Record<string, string | number>} */ ({
         width: data.width,
         '--antu-sc-list-lh': `${data.lh}px`,
       })}

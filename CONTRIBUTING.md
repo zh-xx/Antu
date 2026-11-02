@@ -113,7 +113,9 @@ including the special `key`, are checked by `tsconfig.embed.json`. The casts and
 because JSX `key` was unknown can be removed, and new ones should not be added. The coexistence rule
 above still holds: no mass `.js` → `.ts` rename; source stays JS/JSX with JSDoc and `// @ts-check`,
 and React Flow node props that cannot use this `@xyflow/react` version's `NodeProps` generic are typed
-with a local JSDoc object. The probe on the earlier tree reported ~274 errors (React Flow refs typed as
+with a local JSDoc object. Each RF node's `data` is now a local typedef with the concrete fields
+that node reads (nested shapes included), not `any`; still no mass `.js` → `.ts` rename. The probe
+on the earlier tree reported ~274 errors (React Flow refs typed as
 `never`, context defaults, and call-signature mismatches); typing the context roots and the React Flow
 refs / node components clears the current checkJs set. Do not weaken runtime `validate()` or existing
 tests for the sake of types.
