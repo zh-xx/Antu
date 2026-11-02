@@ -9,7 +9,8 @@ const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
 
 test('the lists in code follow THEME_IDS', () => {
   const dts = read('src/embed/antu-embed.d.ts').match(/export type AntuTheme = ([^\n]+)/)?.[1] ?? ''
-  assert.deepEqual([...dts.matchAll(/'(\w+)'/g)].map((m) => m[1]), THEME_IDS, 'AntuTheme in antu-embed.d.ts')
+  const quoted = (s) => [...s.matchAll(/'([\w.-]+)'|"([\w.-]+)"/g)].map((m) => m[1] ?? m[2])
+  assert.deepEqual(quoted(dts), THEME_IDS, 'AntuTheme in antu-embed.d.ts')
   const htmlTheme = read('tools/api/html.d.ts').match(/theme\?:\s*([^\n)]+)/)?.[1] ?? ''
   assert.deepEqual([...htmlTheme.matchAll(/'(\w+)'/g)].map((m) => m[1]), THEME_IDS, 'theme union in html.d.ts')
   const vs = read('src/shell/viewState.js').match(/const THEMES = \[([^\]]+)\]/)?.[1] ?? ''

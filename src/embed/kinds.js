@@ -15,7 +15,7 @@ import { translate } from '../core/i18n.js'
  * Its colours are CSS variables the host sets where it puts the markup: `--antu-text-3` (the ink), `--antu-line`
  * (the tint of the boxes) and `--antu-bg` (the ground it sits on; a few sketches paint with it, white if unset).
  * A kind without a sketch gives `null`.
- * @param {unknown} kind
+ * @param {string} kind
  * @returns {string | null}
  */
 export function kindIcon(kind) {
@@ -26,8 +26,8 @@ export function kindIcon(kind) {
 /**
  * The name of a kind in the page's own words, as the picker shows it (`zh` or `en`; another value gives English).
  * An unknown kind gives `null`.
- * @param {unknown} kind
- * @param {unknown} lang
+ * @param {string} kind
+ * @param {import('./hostTypes.js').AntuLang} [lang]
  * @returns {string | null}
  */
 export function kindLabel(kind, lang) {

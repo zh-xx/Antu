@@ -6,6 +6,7 @@ what breaks a file or a tool call written for the version before, with how to br
 ## Unreleased
 
 ### Added
+- **Embed `.d.ts` generated from JSDoc** (Refs #227, does not close): `src/embed/hostTypes.js` is the source of truth for `AntuSpec`, `MountOptions`, `AntuHandle`, `AntuEvent` and the other host types; `node tools/gen/api-dts.mjs` now emits `src/embed/antu-embed.d.ts` alongside validate / html, and `--check` keeps it fresh. `@types/react` is still deferred.
 - **Typecheck step 0 for public host APIs** (#227): `npm run typecheck` also checks embed / validate / html `.d.ts` via `tools/typecheck/api-smoke.ts` (wrong `mount` theme or unknown option fails under `tsc`). CONTRIBUTING records the JSDoc coexistence rule (no mass rename to `.ts`).
 - **`checkJs` on `src/embed` plain JS** (#227): `cardUi` / `kinds` / `index` / `mount` / `shadowCss` carry `// @ts-check`; `tsc -p tsconfig.embed.json` runs in `npm run typecheck`. `embeddedEnv` JSDoc typed so mount options stay honest.
 - **`checkJs` on the embed entry and shell view state** (Refs #227, does not close): `src/embed/core.jsx`, `src/shell/viewState.js` and `src/shell/env.js` carry `// @ts-check` and join `tsconfig.embed.json`; `ThemeProvider` props are JSDoc-typed optional so `core.jsx`'s `initialTheme`-only call checks.
@@ -55,8 +56,9 @@ what breaks a file or a tool call written for the version before, with how to br
 - **`validate` / `html` `.d.ts` generated from implementation JSDoc** (Refs #227, does not close):
   `node tools/gen/api-dts.mjs` (+ `--check`) writes `tools/api/validate.d.ts` and `html.d.ts` from
   those entries' typedefs and `@param` / `@returns`; options are taken as an `options` object so the
-  declarations stay host-friendly. Embed's `antu-embed.d.ts` remains hand-written until its JSDoc is
-  as complete. `@types/react` stays deferred (~270 probe errors on the current checkJs set).
+  declarations stay host-friendly. Embed's `antu-embed.d.ts` is generated the same way from
+  `src/embed/hostTypes.js` and the entry JSDoc (see the newer Unreleased bullet). `@types/react`
+  stays deferred (~270 probe errors on the current checkJs set).
 - **`@zh-xx/antu/types`** (#294): generated TypeScript interfaces for each diagram JSON (`FactSpec`, `ProcedureSpec`, `RelationshipSpec`, `JustificationSpec`, `AntuDiagramSpec`) from the same `*_FIELDS` as `describe()`; `node tools/gen/spec-types.mjs` (+ `--check`). Types only — runtime `validate()` unchanged. `npm run typecheck` (`tsc`) keeps the declarations parseable in CI.
 - **Embed `themeTokens`** (#293): a host may overlay `accent` / `canvas` / `chromeBg` / `text` / `textMuted` / `line` / `chromeBorder` / `font` / `fontHead` on a named theme via `mount({ themeTokens })` and `setThemeTokens`; ignored in `document`. Highlight rings use `--antu-accent`.
 - **Embed fit clears chrome; host `fitInsets`** (#166): fit-view keeps clear of the label card and the dock capsule; `mount(…, { fitInsets: { top, right, bottom, left } })` replaces the auto measure per side.

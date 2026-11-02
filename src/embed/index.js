@@ -5,6 +5,7 @@
 //  Everything a host's page needs to draw diagrams in its own window: `mount`, and the validation the
 //  diagram itself runs, so a host can check a spec before it mounts it. Built by vite.embed.config.js into
 //  one ES module with React, React Flow and the stylesheet inside. The contract is in spec/embed.md.
+//  Host types live in hostTypes.js; antu-embed.d.ts is generated from their JSDoc (issue 227).
 // ============================================================
 
 // the knowledge of every type and the component of every kind; without it nothing draws and every spec "passes"
@@ -40,7 +41,7 @@ export function normalize(spec) {
 
 /**
  * The kinds a type can be drawn in, the first being the one it opens in.
- * @param {unknown} type
+ * @param {string} type
  * @returns {string[]}
  */
 export function kindsOf(type) {

@@ -1,13 +1,13 @@
 // ============================================================
-//  tools/gen/api-dts.mjs — public `.d.ts` for `@zh-xx/antu/validate` and `@zh-xx/antu/html`
+//  tools/gen/api-dts.mjs — public `.d.ts` for `@zh-xx/antu/validate`, `/html` and `/embed`
 //
-//  Source of truth: JSDoc on `tools/api/validate.mjs` and `tools/api/html.mjs` (issue 227).
-//  Emits declaration files by stubbing their imports (so tsc does not walk the engine) and running
-//  `tsc --declaration --emitDeclarationOnly`. Spec JSON types stay in tools/gen/spec-types.mjs;
-//  embed's richer host contract stays hand-written until its JSDoc is as complete.
+//  Source of truth: JSDoc on `tools/api/validate.mjs`, `tools/api/html.mjs` and the embed files
+//  (issue 227). Emits declaration files by stubbing their imports (so tsc does not walk the engine)
+//  and running `tsc --declaration --emitDeclarationOnly`. Spec JSON types stay in
+//  tools/gen/spec-types.mjs; embed's host types live in src/embed/hostTypes.js.
 //
-//    node tools/gen/api-dts.mjs          write tools/api/validate.d.ts and tools/api/html.d.ts
-//    node tools/gen/api-dts.mjs --check  exit 1 if either file is stale
+//    node tools/gen/api-dts.mjs          write the generated public `.d.ts` files
+//    node tools/gen/api-dts.mjs --check  exit 1 if any of them is stale
 // ============================================================
 
 import { spawnSync } from 'node:child_process'
@@ -19,6 +19,25 @@ import { fileURLToPath } from 'node:url'
 
 const REPO = join(fileURLToPath(new URL('../..', import.meta.url)))
 const TSC = join(REPO, 'node_modules/.bin/tsc')
+
+/** The embed sources whose JSDoc becomes `src/embed/antu-embed.d.ts` */
+const EMBED_SOURCES = [
+  'hostTypes.js',
+  'mount.js',
+  'index.js',
+  'cardUi.js',
+  'kinds.js',
+  'kindIcons.generated.js',
+]
+
+/** Relative imports kept in the embed temp copy; the rest are stubbed */
+const EMBED_KEEP = new Set(EMBED_SOURCES.map((file) => `./${file}`))
+
+/** @type {{ out: string, title: string }} */
+export const EMBED = {
+  out: 'src/embed/antu-embed.d.ts',
+  title: 'Declarations of `@zh-xx/antu/embed` (from src/embed/*.js JSDoc).',
+}
 
 /** @type {Array<{ src: string, out: string, title: string }>} */
 export const MODULES = [
@@ -39,6 +58,63 @@ const stubImports = (text) =>
     .split(/\r?\n/)
     .map((line) => (/^import\s/.test(line) ? `// stubbed: ${line}` : line))
     .join('\n')
+
+/** Stub what leaves the embed set or cannot be read by tsc; keep imports among the embed files. */
+const stubEmbedImports = (text) =>
+  text
+    .split(/\r?\n/)
+    .map((line) => {
+      if (!/^import\s/.test(line)) return line
+      const spec = line.match(/from\s+['"]([^'"]+)['"]|^import\s+['"]([^'"]+)['"]/)
+      const from = spec?.[1] ?? spec?.[2] ?? ''
+      return EMBED_KEEP.has(from) ? line : `// stubbed: ${line}`
+    })
+    .join('\n')
+
+/**
+ * Split a declaration file into top-level blocks, keeping each block's leading JSDoc.
+ * @param {string} text
+ * @returns {Array<{ name: string, text: string }>}
+ */
+const declarationBlocks = (text) => {
+  const lines = text.split(/\r?\n/)
+  /** @type {Array<{ name: string, text: string }>} */
+  const blocks = []
+  let doc = ''
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    if (line.startsWith('/**')) {
+      const comment = [line]
+      while (!comment[comment.length - 1].includes('*/') && i + 1 < lines.length) comment.push(lines[++i])
+      doc = comment.join('\n')
+      i += 1
+      continue
+    }
+    if (!line.startsWith('export ')) {
+      i += 1
+      continue
+    }
+    const decl = [line]
+    i += 1
+    // The next top-level comment or export ends a declaration; its own closing braces stay in.
+    while (i < lines.length && !lines[i].startsWith('export ') && !lines[i].startsWith('/**')) decl.push(lines[i++])
+    const name =
+      line.match(/^export (?:declare )?(?:function|const) (\w+)\b/)?.[1] ??
+      line.match(/^export type (\w+)\b/)?.[1] ??
+      ''
+    if (name) blocks.push({ name, text: `${doc ? `${doc}\n` : ''}${decl.join('\n').trimEnd()}` })
+    doc = ''
+  }
+  return blocks
+}
+
+/** @param {string} name @param {Array<{ name: string, text: string }>} blocks */
+const blockOf = (name, blocks) => {
+  const block = blocks.find((b) => b.name === name)
+  if (!block) throw new Error(`api-dts: emitted declarations have no ${name}`)
+  return block.text
+}
 
 /** Drop the raw `@typedef` comment blocks; `export type` that follows already carries the shape. */
 const stripTypedefComments = (text) =>
@@ -107,6 +183,68 @@ export function expectedFiles() {
       const body = stripTypedefComments(readFileSync(path, 'utf8')).trimStart()
       out[m.out] = `${header(m.title)}${body.endsWith('\n') ? body : `${body}\n`}`
     }
+
+    const embedDir = join(dir, 'embed')
+    mkdirSync(embedDir)
+    for (const file of EMBED_SOURCES) {
+      writeFileSync(join(embedDir, file), stubEmbedImports(readFileSync(join(REPO, 'src/embed', file), 'utf8')))
+    }
+    writeFileSync(
+      join(dir, 'tsconfig.embed.json'),
+      `${JSON.stringify(
+        {
+          compilerOptions: {
+            allowJs: true,
+            checkJs: false,
+            declaration: true,
+            emitDeclarationOnly: true,
+            strict: true,
+            noImplicitAny: false,
+            module: 'ESNext',
+            moduleResolution: 'bundler',
+            target: 'ES2022',
+            lib: ['ES2022', 'DOM'],
+            skipLibCheck: true,
+            outDir: './out-embed',
+          },
+          include: EMBED_SOURCES.map((file) => `./embed/${file}`),
+        },
+        null,
+        2,
+      )}\n`,
+    )
+    const er = spawnSync(TSC, ['-p', join(dir, 'tsconfig.embed.json'), '--pretty', 'false'], {
+      encoding: 'utf8',
+      cwd: dir,
+    })
+    /** @param {string} base */
+    const readEmit = (base) => {
+      const path = join(dir, 'out-embed', `${base}.d.ts`)
+      if (!existsSync(path)) {
+        const detail = (er.stdout || '') + (er.stderr || '')
+        throw new Error(`api-dts: no embed emit for ${base}.js\n${detail}`)
+      }
+      return readFileSync(path, 'utf8')
+    }
+    const inlineHostTypes = (text) => text.replace(/import\((['"])\.\/hostTypes\.js\1\)\./g, '')
+    const hostTypes = stripTypedefComments(readEmit('hostTypes')).trim()
+    const mountBlocks = declarationBlocks(readEmit('mount'))
+    const cardUiBlocks = declarationBlocks(readEmit('cardUi'))
+    const kindsBlocks = declarationBlocks(readEmit('kinds'))
+    const indexBlocks = declarationBlocks(readEmit('index'))
+    const body = [
+      hostTypes,
+      blockOf('mount', mountBlocks),
+      blockOf('cardUi', cardUiBlocks).replace(/^export const /m, 'export declare const '),
+      blockOf('kindIcon', kindsBlocks),
+      blockOf('kindLabel', kindsBlocks),
+      blockOf('validate', indexBlocks),
+      blockOf('normalize', indexBlocks),
+      blockOf('kindsOf', indexBlocks),
+    ]
+      .map(inlineHostTypes)
+      .join('\n\n')
+    out[EMBED.out] = `${header(EMBED.title)}${body}\n`
     return out
   } finally {
     rmSync(dir, { recursive: true, force: true })
