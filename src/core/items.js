@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/items.js — which item of the JSON a pinned card stands for (issue 152)
 //

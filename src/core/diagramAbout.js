@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/diagramAbout.js — the three versions the label card can show (issue 131)
 //

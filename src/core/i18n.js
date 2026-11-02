@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/i18n.js — resolving the interface language and taking text from it
 //
@@ -111,9 +112,9 @@ export function writeStoredLang(lang) {
  * undefined: a missing translation then shows as `dock.exportImage`, visible at
  * a glance; an empty string silently drops a piece and is hardest to trace.
  *
- * @param lang  language
- * @param key   message key, e.g. 'dock.exportImage'
- * @param vars  placeholder values, e.g. { n: 3 } for {n} in the message
+ * @param {string} lang  language
+ * @param {string} key   message key, e.g. 'dock.exportImage'
+ * @param {Record<string, unknown>} [vars]  placeholder values, e.g. { n: 3 } for {n} in the message
  */
 export function translate(lang, key, vars) {
   const dict = MESSAGES[normalizeLang(lang)] ?? MESSAGES[FALLBACK_LANG]
@@ -121,7 +122,7 @@ export function translate(lang, key, vars) {
   if (raw === undefined) return key
   if (typeof raw === 'function') return raw(vars ?? {})
   if (!vars) return raw
-  return String(raw).replace(/\{(\w+)\}/g, (_, name) => (vars[name] ?? `{${name}}`))
+  return String(raw).replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? `{${name}}`))
 }
 
 /**

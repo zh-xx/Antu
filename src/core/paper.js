@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/paper.js — shared A4 / screen quantities for print (issue 123)
 //

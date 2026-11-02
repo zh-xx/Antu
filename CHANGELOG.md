@@ -6,6 +6,9 @@ what breaks a file or a tool call written for the version before, with how to br
 ## Unreleased
 
 ### Added
+- **`checkJs` on engine core pure modules** (Refs #227, does not close): `src/core` validate / normalize /
+  items / registry / i18n and the other listed helpers carry `// @ts-check` and join `tsconfig.core.json`
+  (wired into `npm run typecheck`). Generated message dictionaries stay out.
 - **`checkJs` on DSH pure helpers** (Refs #227, does not close): `tools/dsh/src/card-model.mjs`,
   `locale.mjs` and `require-async.mjs` carry `// @ts-check` and join `tsconfig.dsh.json` (wired into
   `npm run typecheck`). Still `.mjs` for the client inline build; Host/Client React slots stay out.

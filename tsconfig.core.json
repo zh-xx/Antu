@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "strictNullChecks": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "skipLibCheck": true,
+    "maxNodeModuleJsDepth": 0
+  },
+  "include": [
+    "tools/typecheck/embed-shims.d.ts",
+    "src/core/canvas.js",
+    "src/core/diagramAbout.js",
+    "src/core/engineVersion.js",
+    "src/core/i18n.js",
+    "src/core/items.js",
+    "src/core/labels.js",
+    "src/core/links.js",
+    "src/core/normalize.js",
+    "src/core/paper.js",
+    "src/core/registry.js",
+    "src/core/specVersion.js",
+    "src/core/trace.js",
+    "src/core/validate.js"
+  ]
+}

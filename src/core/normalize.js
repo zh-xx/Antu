@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/normalize.js — repair what is wrong in the marks of a spec but not in its content (issue 163)
 //

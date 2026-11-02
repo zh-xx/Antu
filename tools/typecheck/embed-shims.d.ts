@@ -14,3 +14,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+/** Injected by Vite into engine/embed builds (`define`); source runs fall back in engineVersion(). */
+declare const __ANTU_VERSION__: string | undefined

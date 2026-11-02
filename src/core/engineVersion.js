@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/engineVersion.js — the release number of the engine on the page
 //

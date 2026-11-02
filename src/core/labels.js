@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/labels.js — display names for enum values and canvas accessibility text
 //
