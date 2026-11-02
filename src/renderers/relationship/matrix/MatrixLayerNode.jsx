@@ -11,6 +11,7 @@ import { memo } from 'react'
 import { relationPaint } from '../graph/palette.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
   const { theme } = useTheme()
   const { width, height, corner, bands, heads, rowHeads, cells, diagonal, showLabels = true } = data

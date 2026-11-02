@@ -51,22 +51,22 @@ and run the same generator.
   optional, so a `core.jsx` call with only `initialTheme` checks
 - `// @ts-check` on the app shell `src/App.jsx` (Refs #227, does not close): App props are JSDoc-typed
   (`spec`, `kind`, `kinds`) and so are `DiagramHeader`'s; `import.meta.env.DEV` is declared in
-  `tools/typecheck/embed-shims.d.ts` rather than pulling `vite/client`, and the two components that take a
-  JSX `key` are cast once (this project has no `@types/react`)
+  `tools/typecheck/embed-shims.d.ts` rather than pulling `vite/client`. With `@types/react` installed the
+  JSX `key` is checked directly, so the temporary `any` casts on components that take one are gone
 - `// @ts-check` on the remaining small shell/theme deps (Refs #227, does not close): `src/shell/prefs.js`,
   `src/shell/printHost.js`, `src/shell/printPaper.js`, `src/shell/ErrorBoundary.jsx`, `src/theme/themes.js`
   and `src/theme/themeTokens.js` join `tsconfig.embed.json`; the two empty-record accumulators are JSDoc-typed,
   the print promises resolve explicitly, and `ErrorBoundary` reads `this.props` / `this.state` through one
-  `any` cast rather than adding `@types/react`
+  `any` cast (written before `@types/react` was installed)
 - `// @ts-check` on the remaining small shell helpers (Refs #227, does not close): `src/shell/hostAttrs.js`,
   `DockParts.jsx`, `useSelectEvent.js`, `chromeInsets.js`, `dockPlace.js`, `useExport.js`, `startupError.js`
   and `exportPng.js` join `tsconfig.embed.json`; the shadow-root host is read through one `any` cast, the
   dock's minimap width is narrowed to a local, the unknown catch is formatted with `instanceof Error`, and
-  the PNG export's async return and null 2D context are explicit (still no `@types/react`)
+  the PNG export's async return and null 2D context are explicit (written before `@types/react` was installed)
 - `// @ts-check` on the last shell panels `src/shell/Canvas.jsx` and `src/shell/TracePanel.jsx`
   (Refs #227, does not close): both join `tsconfig.embed.json`; the two `exportPng` callbacks
   take JSDoc option objects, `placeDock`'s options are typed (`minimapWidth` is intentionally
-  `number | null`), and the one JSX `key` is cast once rather than adding `@types/react`
+  `number | null`), and the one JSX `key` was cast once before `@types/react` was installed (that cast is gone now)
 - `// @ts-check` on the first renderer slice (Refs #227, does not close): the registry entry
   `src/renderers/index.js`, `components.js`, the four `*/schema.js` files and the fact plain helpers
   `fact/cardGeometry.js`, `fact/partyNotes.js`, `fact/dateOrder.js`, `fact/dateText.js` join
@@ -108,11 +108,15 @@ from implementation JSDoc (`node tools/gen/api-dts.mjs`, `--check` in tests). Sp
 in the function signatures. All three stay checked by `tools/typecheck/api-smoke.ts` and by the
 export-name parity test in `test/embed.test.mjs`.
 
-**`@types/react` (deferred):** not installed. JSX `key` is cast once where needed (`App.jsx`,
-`TracePanel.jsx`). A probe that adds `@types/react@19` on top of the current `tsconfig.embed.json`
-set fails with on the order of **270** errors (mostly React Flow refs typed as `never`, context
-defaults, and call-signature mismatches). Next slice is that probe. Do not weaken
-runtime `validate()` or existing tests for the sake of types.
+**`@types/react` (installed):** `@types/react@19` is a type-only devDependency, so JSX props,
+including the special `key`, are checked by `tsconfig.embed.json`. The casts and workarounds added only
+because JSX `key` was unknown can be removed, and new ones should not be added. The coexistence rule
+above still holds: no mass `.js` → `.ts` rename; source stays JS/JSX with JSDoc and `// @ts-check`,
+and React Flow node props that cannot use this `@xyflow/react` version's `NodeProps` generic are typed
+with a local JSDoc object. The probe on the earlier tree reported ~274 errors (React Flow refs typed as
+`never`, context defaults, and call-signature mismatches); typing the context roots and the React Flow
+refs / node components clears the current checkJs set. Do not weaken runtime `validate()` or existing
+tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

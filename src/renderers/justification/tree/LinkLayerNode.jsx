@@ -17,6 +17,7 @@ import { memo, useMemo } from 'react'
 import { stancePaint, DIM_OPACITY } from './palette.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const LinkLayerNode = memo(function LinkLayerNode({ data }) {
   const { theme } = useTheme()
   const { connections, width, height, showLabels, curved, litLines = null } = data

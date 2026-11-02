@@ -14,7 +14,13 @@ import { locTextOf, sourceTypesIn, traceRowsOf } from '../core/trace.js'
 import { useLang } from './LangContext.jsx'
 import { ShownSpecContext, useEnv } from './env.js'
 
-const TraceOpenContext = createContext({ open: false, setOpen: () => {} })
+/**
+ * @typedef {{ open: boolean, setOpen: import('react').Dispatch<import('react').SetStateAction<boolean>> }} TraceOpenValue
+ */
+const TraceOpenContext = createContext(/** @type {TraceOpenValue} */ ({
+  open: false,
+  setOpen: () => {},
+}))
 
 export function TracePanelProvider({ children }) {
   const [open, setOpen] = useState(false)
@@ -55,9 +61,6 @@ function SourceCell({ source, t }) {
     </div>
   )
 }
-
-// Without @types/react, JSX `key` is not on props: cast once, as App.jsx does.
-const Cell = /** @type {any} */ (SourceCell)
 
 /**
  * The floating panel. Renders nothing when closed. Lives under `.antu-app` so export / print
@@ -181,7 +184,7 @@ export function SourceTracePanel() {
                     {row.sources.length === 0 ? (
                       <span className="antu-trace-nosrc">{t('trace.noSource')}</span>
                     ) : (
-                      row.sources.map((s) => <Cell key={s.id} source={s} t={t} />)
+                      row.sources.map((s) => <SourceCell key={s.id} source={s} t={t} />)
                     )}
                   </td>
                   <td>

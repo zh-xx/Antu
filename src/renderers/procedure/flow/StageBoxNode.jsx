@@ -16,6 +16,7 @@ import { stagePaint } from './palette.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { STAGE_TITLE_FONT, STAGE_PAD } from './metrics.js'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const StageBoxNode = memo(function StageBoxNode({ data }) {
   const { theme } = useTheme()
   const { boxes, width, height, lit = [] } = data

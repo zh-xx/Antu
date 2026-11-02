@@ -59,8 +59,8 @@ export default function RelationshipFocus({ spec }) {
 
   const layout = useMemo(() => buildFocusGraph(spec, { centre: chosen, t }), [spec, chosen, lang])
 
-  const [hoveredId, setHoveredId] = useState(null)
-  const [pinnedId, setPinnedId] = useState(null)
+  const [hoveredId, setHoveredId] = useState(/** @type {string | null} */ (null))
+  const [pinnedId, setPinnedId] = useState(/** @type {string | null} */ (null))
   useSelectEvent(spec, pinnedId, setPinnedId)
   const preview = useMemo(
     () => ({ hoveredId, pinnedId, pin: (id) => setPinnedId(id), unpin: () => setPinnedId(null) }),

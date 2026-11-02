@@ -14,6 +14,7 @@ import { relationPaint } from './graph/palette.js'
 import { useTheme } from '../../theme/ThemeContext.jsx'
 import { TYPE } from '../../theme/scale.js'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const LineLayerNode = memo(function LineLayerNode({ data }) {
   const { theme } = useTheme()
   const { width, height, links, pills, empties, frames, texts, table = null, showLabels = true } = data

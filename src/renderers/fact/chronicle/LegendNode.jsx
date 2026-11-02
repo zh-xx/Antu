@@ -10,6 +10,7 @@
 
 import { memo } from 'react'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const LegendNode = memo(function LegendNode({ data }) {
   const { groups, active = null, onToggle } = data
   return (

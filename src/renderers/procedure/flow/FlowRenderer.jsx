@@ -130,8 +130,8 @@ export default function ProcedureFlow({ spec }) {
     [spec, fields.detail, fields.stages, fields.rules, orientation],
   )
 
-  const [hoveredId, setHoveredId] = useState(null)
-  const [pinnedId, setPinnedId] = useState(null)
+  const [hoveredId, setHoveredId] = useState(/** @type {string | null} */ (null))
+  const [pinnedId, setPinnedId] = useState(/** @type {string | null} */ (null))
   useSelectEvent(spec, pinnedId, setPinnedId)
   const preview = useMemo(
     () => ({

@@ -14,7 +14,7 @@
 // ============================================================
 
 import { useContext, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { ReactFlow, Background, Controls, MiniMap, Panel, getViewportForBounds, useNodesState, useEdgesState } from '@xyflow/react'
+import { ReactFlow, Background, Controls, MiniMap, Panel, PanOnScrollMode, getViewportForBounds, useNodesState, useEdgesState } from '@xyflow/react'
 
 import { useLang } from './LangContext.jsx'
 import { useTheme, themeVars } from '../theme/ThemeContext.jsx'
@@ -152,7 +152,7 @@ export default function Canvas({
   // off-screen. fitView only runs once on init; this covers the later ones. Later fits
   // animate, so the view slides over instead of flashing (the first open does not
   // animate, otherwise the page moves by itself the moment it appears).
-  const rfRef = useRef(null)
+  const rfRef = useRef(/** @type {import('@xyflow/react').ReactFlowInstance<any, any> | null} */ (null))
   // Fit to the size the layout computed (graph.size), not to what React Flow can measure: the decoration
   // layers are declared 1×1 (see fact/timeline/nodes.js), so their real extent — a group box wider than
   // its nodes — never reached fitView's bounds and was cut off (issue #42). graph.size is also what
@@ -256,6 +256,7 @@ export default function Canvas({
     return () => cancelAnimationFrame(id)
   }, [fitKey ?? graph])
 
+  /** @type {[[number, number], [number, number]]} */
   const translateExtent = useMemo(
     () => [
       [-PAN_PAD, -PAN_PAD],
@@ -266,7 +267,7 @@ export default function Canvas({
 
   // Measure the real size of the canvas container to compute the zoom at which the
   // whole diagram just fits
-  const canvasRef = useRef(null)
+  const canvasRef = useRef(/** @type {HTMLElement | null} */ (null))
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
   useEffect(() => {
     const el = canvasRef.current
@@ -339,7 +340,7 @@ export default function Canvas({
       // The sheet's printable area is set on the app root (styles.css), then the canvas is fitted
       // to it: one frame for the CSS to land, another for the resize to be measured.
       prepare: async (area) => {
-        const app = canvasRef.current?.closest('.antu-app')
+        const app = /** @type {HTMLElement | null} */ (canvasRef.current?.closest('.antu-app') ?? null)
         if (!app) return
         setPrinting(true)
         app.style.setProperty('--antu-print-w', `${area.width}px`)
@@ -349,7 +350,7 @@ export default function Canvas({
         fitPaper(area)
       },
       finish: () => {
-        const app = canvasRef.current?.closest('.antu-app')
+        const app = /** @type {HTMLElement | null} */ (canvasRef.current?.closest('.antu-app') ?? null)
         if (app) {
           delete app.dataset.printPrep
           app.style.removeProperty('--antu-print-w')
@@ -377,7 +378,9 @@ export default function Canvas({
   // into view, `highlight` rings them. An item is found among the canvas nodes the way `select` events name them
   // back (core/items.js); a rule of the flowchart is a row of its table, found by its `data-pin-id`.
   const { highlight } = useEnv()
-  const latestRef = useRef(null)
+  const latestRef = useRef(
+    /** @type {{ spec: object | null, graph: any, minZoom: number }} */ ({ spec: null, graph: null, minZoom: 0 }),
+  )
   latestRef.current = { spec: shownSpec, graph, minZoom }
   useEffect(() => {
     if (!placed) return undefined
@@ -454,7 +457,9 @@ export default function Canvas({
   }
 
   // Where the capsule goes on this width, and whether the minimap gives way to it (shell/dockPlace.js)
-  const [dock, setDock] = useState({ left: null, maxWidth: null, hideMinimap: false })
+  const [dock, setDock] = useState(
+    /** @type {{ left: number | null, maxWidth: number | null, hideMinimap: boolean }} */ ({ left: null, maxWidth: null, hideMinimap: false }),
+  )
   const minimapWidthRef = useRef(MINIMAP_WIDTH)
   useLayoutEffect(() => {
     const el = canvasRef.current
@@ -467,7 +472,7 @@ export default function Canvas({
       if (!natural || !el.clientWidth) return
       const box = el.getBoundingClientRect()
       const zoom = showZoom ? el.querySelector('.react-flow__controls') : null
-      const mini = el.querySelector('.react-flow__minimap')
+      const mini = /** @type {HTMLElement | null} */ (el.querySelector('.react-flow__minimap'))
       if (mini?.offsetWidth) minimapWidthRef.current = mini.offsetWidth
       const next = placeDock({
         width: el.clientWidth,
@@ -499,7 +504,7 @@ export default function Canvas({
   // The theme reaches the diagram only: its CSS variables sit on the viewport (the layer the export clones), not on the
   // app root, so the shell round it keeps one look in every theme. Host tokens overlay after the named theme.
   useEffect(() => {
-    const viewport = canvasRef.current?.querySelector('.react-flow__viewport')
+    const viewport = /** @type {HTMLElement | null} */ (canvasRef.current?.querySelector('.react-flow__viewport') ?? null)
     if (!viewport) return
     const vars = applyThemeTokens(themeVars(theme), hostTokens, theme.id)
     for (const [k, v] of Object.entries(vars)) viewport.style.setProperty(k, v)
@@ -531,7 +536,7 @@ export default function Canvas({
         // preventScrolling must follow: xyflow's zoom-on-scroll handler still calls preventDefault on
         // plain wheel events unless it is false, which would block the host page from scrolling.
         panOnScroll={panOnScroll}
-        panOnScrollMode="free"
+        panOnScrollMode={PanOnScrollMode.Free}
         panOnScrollSpeed={1}
         preventScrolling={panOnScroll}
         zoomOnScroll={false}

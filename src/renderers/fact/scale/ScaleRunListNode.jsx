@@ -11,10 +11,17 @@ import { useLang } from '../../../shell/LangContext.jsx'
 import { formatTimeText } from '../dateText.js'
 import { runMark } from './ScaleLayerNode.jsx'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const ScaleRunListNode = memo(function ScaleRunListNode({ data }) {
   const { t, lang } = useLang()
   return (
-    <div className="antu-sc-list" style={{ width: data.width, '--antu-sc-list-lh': `${data.lh}px` }}>
+    <div
+      className="antu-sc-list"
+      style={/** @type {import('react').CSSProperties & Record<string, string>} */ ({
+        width: data.width,
+        '--antu-sc-list-lh': `${data.lh}px`,
+      })}
+    >
       {data.runs.map((r) => (
         <div key={r.run}>
           <div className="antu-sc-list-head">

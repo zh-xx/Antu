@@ -20,6 +20,7 @@ import { relationPaint, DIM_OPACITY } from './palette.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { securesTies, lookedAt } from './secures.js'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
   const { connections, width, height, hiddenKinds = [], showLabels, curved, litEntity = null } = data
   const { theme } = useTheme()

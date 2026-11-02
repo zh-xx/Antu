@@ -17,7 +17,9 @@ import { useLang } from './LangContext.jsx'
 /** Returns { canvasRef, exporting, onExport }. Hand canvasRef to <Canvas ref>. */
 export function useExport(title) {
   const { t } = useLang()
-  const canvasRef = useRef(null)
+  const canvasRef = useRef(
+    /** @type {{ exportPng: (opts?: { title?: string }) => Promise<void> } | null} */ (null),
+  )
   const exportingRef = useRef(false)
   const [exporting, setExporting] = useState(false)
   const onExport = async () => {

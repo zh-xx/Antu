@@ -19,6 +19,7 @@ import { useLang } from '../../shell/LangContext.jsx'
 import { formatTimeText } from './dateText.js'
 import EventPreview from './EventPreview.jsx'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const EventNode = memo(function EventNode({ data }) {
   const { event, actorNames, sources, groupIndex, row, cardW, cardH, labelLines, fields = {}, isH } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)

@@ -40,6 +40,9 @@ import { themeOf } from './theme/themes.js'
 import { PrintHostProvider, usePrintController } from './shell/printHost.js'
 import { SourceTracePanel, TracePanelProvider } from './shell/TracePanel.jsx'
 
+/** The spec object as handed in; its fields are the type's own (validated before use). */
+/** @typedef {Record<string, any>} Spec */
+
 /**
  * The fallback explanation when no renderer is available
  * @param {object} props
@@ -118,8 +121,8 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
     [shellTheme, hostTokens, printedTheme],
   )
   const { prefs, preset, emit, commands } = env
-  const [spec, setSpec] = useState(null)
-  const [errors, setErrors] = useState([])
+  const [spec, setSpec] = useState(/** @type {Spec | null} */ (null))
+  const [errors, setErrors] = useState(/** @type {string[]} */ ([]))
 
   // The viewer page: the data is inlined into the page. If it cannot be found, something
   // went wrong at the generation/injection step: say so plainly, do not fob the user
@@ -205,14 +208,14 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
   // A mounted diagram: the host hears each change of kind after the first drawing, and may set the kind, the
   // theme and the language itself (src/embed/mount.js checks the value and sends it through the command bus;
   // the kinds are not checked here, because right after mounting the spec is not validated yet)
-  const toldKind = useRef(null)
+  const toldKind = useRef(/** @type {string | null} */ (null))
   useEffect(() => {
     if (!kind) return
     if (toldKind.current !== null && toldKind.current !== kind) emit({ type: 'kindchange', kind })
     toldKind.current = kind
   }, [kind, emit])
   // Likewise the theme: the host hears every change after the first drawing, whether the reader or its own setTheme made it
-  const toldTheme = useRef(null)
+  const toldTheme = useRef(/** @type {string | null} */ (null))
   useEffect(() => {
     if (toldTheme.current !== null && toldTheme.current !== themeId) emit({ type: 'themechange', theme: themeId })
     toldTheme.current = themeId
@@ -229,10 +232,6 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
   }, [commands, setTheme, setLang])
 
   const showHeader = useUi('header')
-  // Without @types/react, tsc does not know JSX's special `key` attribute (issue 227). Cast the two
-  // components once here, rather than silencing the whole JSX block: their own props stay JSDoc-typed.
-  const Header = /** @type {any} */ (DiagramHeader)
-  const Fallback = /** @type {any} */ (FallbackInfo)
 
   return (
     <PrintHostProvider value={printHost.value}>
@@ -244,7 +243,7 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
           export never carries the heading (spec/fact/rendering.md §10.2 changed),
           so the switch has no meaning. A host that draws its own title may leave it out. */}
       {showHeader && (
-        <Header
+        <DiagramHeader
           key={resetCount}
           specKey={specKey}
           title={spec?.title || t('common.untitled')}
@@ -268,7 +267,7 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
           </ErrorBoundary>
         </ResetSpecContext.Provider>
       ) : (
-        <Fallback
+        <FallbackInfo
           key={partKey}
           errors={errors}
           spec={spec}

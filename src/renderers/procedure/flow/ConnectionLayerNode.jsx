@@ -21,6 +21,7 @@ import { useTheme } from '../../../theme/ThemeContext.jsx'
 /** The three link kinds. Each has its own arrowhead, so the head takes the line's colour. */
 const KINDS = ['main', 'branch', 'back']
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
   const { theme } = useTheme()
   const { connections, width, height, showConditions, highlightMain, curved } = data
