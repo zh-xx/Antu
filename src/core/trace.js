@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/trace.js — rows for the in-page source overview (issue 124)
 //

@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/canvas.js — pure canvas-level computation
 //
@@ -104,7 +105,7 @@ export const textPx = (font, fit) => Math.round(font * Math.min(fit, 1) * 10) / 
 
 /**
  * The lines of a geometry report about the text on one screen. Every kind says it in these words.
- * @param t        { font, canvas: {width, height}, open: {name, fit}, other: {name, fit}, folded?: fit }
+ * @param {{ font: number, canvas: { width: number, height: number }, open: { name: string, fit: number }, other: { name: string, fit: number }, folded?: number }} t
  * @param split    how this kind of diagram is split when it is too big, e.g. "one diagram per issue"
  */
 export function textSizeLines(t, split) {

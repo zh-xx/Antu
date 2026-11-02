@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/specVersion.js — which generation of a diagram type's JSON format a file follows
 //

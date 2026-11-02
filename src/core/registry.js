@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/registry.js — the renderer registry
 //
@@ -40,7 +41,7 @@ export const DIAGRAM_STATUSES = ['experimental', 'stable', 'deprecated']
 /**
  * Register the knowledge of one type.
  * @param type the type
- * @param k    { specVersion, validate(spec) => string[], layouts: { kind: buildGraph } }
+ * @param {{ specVersion: number, validate: (spec: unknown) => string[], describe: () => string, layouts?: Record<string, Function>, diagrams?: Record<string, object> }} k
  */
 export function registerKnowledge(type, k) {
   if (!type) throw new Error('registerKnowledge: type must not be empty')

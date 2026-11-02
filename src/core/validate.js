@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/validate.js — the validation gate (the engine's first step)
 //
@@ -48,7 +49,7 @@ function validateEnvelope(spec) {
  * @param {object} [options]
  * @param {'zh'|'en'} [options.lang]  host UI language for messages; default English for agents (issue 166)
  */
-export function validateSpec(spec, { lang } = {}) {
+export function validateSpec(spec, { lang } = /** @type {{ lang?: 'zh'|'en' }} */ ({})) {
   return withValidateLang(lang, () => {
     const envelopeErrors = validateEnvelope(spec)
     if (envelopeErrors.length) return envelopeErrors

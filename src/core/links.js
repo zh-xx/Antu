@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/core/links.js — small repairs to the polyline of a link
 //
