@@ -39,3 +39,6 @@ runs/
 
 # Case material drawn with Antu: stays on this machine, never in the repository
 cases/
+
+# Local verification screenshots / probes (once committed by mistake with #271; keep out)
+evidence/
