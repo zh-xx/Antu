@@ -14,7 +14,7 @@ naming the pull request.
 
 ```bash
 npm run lint         # static checks
-npm run typecheck    # public .d.ts + generated Specs + embed/shell/theme/App checkJs (issues 294, 227)
+npm run typecheck    # public .d.ts + Specs + embed/shell + DSH pure helpers checkJs (issues 294, 227)
 npm test             # unit tests
 npm run verify:fast  # checks that need no browser
 npm run verify       # with browser rendering and the whole MCP run
@@ -117,6 +117,11 @@ with a local JSDoc object. The probe on the earlier tree reported ~274 errors (R
 `never`, context defaults, and call-signature mismatches); typing the context roots and the React Flow
 refs / node components clears the current checkJs set. Do not weaken runtime `validate()` or existing
 tests for the sake of types.
+
+- `// @ts-check` on the DSH plugin's pure helpers (Refs #227, does not close): `tools/dsh/src/card-model.mjs`,
+  `locale.mjs` and `require-async.mjs` join `tsconfig.dsh.json` (also part of `npm run typecheck`). These
+  stay `.mjs` so `build.mjs` can still inline them into `package/client.js`; Host/Client React slots stay
+  out of this slice.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").
