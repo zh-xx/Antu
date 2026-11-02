@@ -5,68 +5,16 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+### Changed
+
+### Fixed
+
+## 0.18.0
+
+This is a **minor** release: hosts gain new embed / validate surface (`themeTokens`, `fitInsets`, `guide()`, Chinese validation messages, stable `data-antu` selectors, `#294` diagram Spec types), the label card can open an about panel for the three versions, and an in-page source overview replaces the old sidecar trace page. Relationship graph layout is cheaper and yields in the browser on large cases. Gradual TypeScript (#227) lands as write-time feedback only — public `.d.ts` now generate from JSDoc, `npm run typecheck` covers embed / shell / renderers / core / DSH helpers — with no mass rename to `.ts` and no change to runtime `validate()`. Nothing breaks a file or a tool call written for 0.17.x: the additions are new options, new helpers, or internal typing.
+
 ### Added
-- **`checkJs` on engine core pure modules** (Refs #227, does not close): `src/core` validate / normalize /
-  items / registry / i18n and the other listed helpers carry `// @ts-check` and join `tsconfig.core.json`
-  (wired into `npm run typecheck`). Generated message dictionaries stay out.
-- **`checkJs` on DSH pure helpers** (Refs #227, does not close): `tools/dsh/src/card-model.mjs`,
-  `locale.mjs` and `require-async.mjs` carry `// @ts-check` and join `tsconfig.dsh.json` (wired into
-  `npm run typecheck`). Still `.mjs` for the client inline build; Host/Client React slots stay out.
-- **`@types/react@19` installed; embed checkJs set clears** (Refs #227, does not close): `@types/react` is a devDependency and `tsconfig.embed.json` now type-checks the full JSX tree; typed context defaults, React Flow instance / DOM refs and node props clear the probe's ~274 errors without changing runtime `validate()` or any rendering behaviour. No mass `.js` → `.ts` rename.
-- **Embed `.d.ts` generated from JSDoc** (Refs #227, does not close): `src/embed/hostTypes.js` is the source of truth for `AntuSpec`, `MountOptions`, `AntuHandle`, `AntuEvent` and the other host types; `node tools/gen/api-dts.mjs` now emits `src/embed/antu-embed.d.ts` alongside validate / html, and `--check` keeps it fresh. `@types/react` was still deferred at that point (see the newer Unreleased bullet).
-- **Typecheck step 0 for public host APIs** (#227): `npm run typecheck` also checks embed / validate / html `.d.ts` via `tools/typecheck/api-smoke.ts` (wrong `mount` theme or unknown option fails under `tsc`). CONTRIBUTING records the JSDoc coexistence rule (no mass rename to `.ts`).
-- **`checkJs` on `src/embed` plain JS** (#227): `cardUi` / `kinds` / `index` / `mount` / `shadowCss` carry `// @ts-check`; `tsc -p tsconfig.embed.json` runs in `npm run typecheck`. `embeddedEnv` JSDoc typed so mount options stay honest.
-- **`checkJs` on the embed entry and shell view state** (Refs #227, does not close): `src/embed/core.jsx`, `src/shell/viewState.js` and `src/shell/env.js` carry `// @ts-check` and join `tsconfig.embed.json`; `ThemeProvider` props are JSDoc-typed optional so `core.jsx`'s `initialTheme`-only call checks.
-- **`checkJs` on the providers `core.jsx` wraps** (Refs #227, does not close): `src/shell/LangContext.jsx` and `src/theme/ThemeContext.jsx` carry `// @ts-check` and join `tsconfig.embed.json`; still `.jsx`, no `.ts` rename.
-- **`checkJs` on the app shell `App.jsx`** (Refs #227, does not close): `src/App.jsx` carries `// @ts-check` and joins `tsconfig.embed.json`; App and `DiagramHeader` props are JSDoc-typed, `import.meta.env.DEV` is declared in `tools/typecheck/embed-shims.d.ts` (no `vite/client` dependency), and the two components that take a JSX `key` are cast once (no `@types/react`).
-- **`checkJs` on the remaining small shell/theme deps** (Refs #227, does not close): `src/shell/prefs.js`, `src/shell/printHost.js`, `src/shell/printPaper.js`, `src/shell/ErrorBoundary.jsx`, `src/theme/themes.js` and `src/theme/themeTokens.js` carry `// @ts-check` and join `tsconfig.embed.json`; empty-record accumulators are JSDoc-typed, print's promises resolve explicitly, and `ErrorBoundary` reads `this.props` / `this.state` through one `any` cast (still no `@types/react`).
-- **`checkJs` on the remaining small shell helpers** (Refs #227, does not close): `src/shell/hostAttrs.js`, `src/shell/DockParts.jsx`, `src/shell/useSelectEvent.js`, `src/shell/chromeInsets.js`, `src/shell/dockPlace.js`, `src/shell/useExport.js`, `src/shell/startupError.js` and `src/shell/exportPng.js` carry `// @ts-check` and join `tsconfig.embed.json`; the shadow-root host is read through one `any` cast, the dock's minimap width is narrowed to a local, the unknown catch is formatted with `instanceof Error`, and the PNG export's async return and null 2D context are explicit (no `@types/react`).
-- **`checkJs` on `Canvas` and `TracePanel`** (Refs #227, does not close): `src/shell/Canvas.jsx` and
-  `src/shell/TracePanel.jsx` carry `// @ts-check` and join `tsconfig.embed.json`; the imperative
-  `exportPng` callbacks take JSDoc option objects, `placeDock` types its `number | null` minimap width,
-  and the one JSX `key` is cast once (still no `@types/react`).
-- **`checkJs` on the renderer registry entry, schemas and fact plain helpers** (Refs #227, does not close):
-  `src/renderers/index.js`, `components.js`, the four `*/schema.js` files and
-  `fact/{cardGeometry,partyNotes,dateOrder,dateText}.js` carry `// @ts-check` and join
-  `tsconfig.embed.json`; `dateSpan` guards its missing year, `formatEnd`'s missing clock text is
-  defaulted, and the four `translate` calls pass `undefined` for `vars`. Kind-specific renderer trees,
-  `.d.ts` generation and `@types/react` remain out of scope.
-- **`checkJs` on the relationship shared helpers** (Refs #227, does not close):
-  `src/renderers/relationship/{pill,scope,useSpecPref,layered,partyData,sections}.js` carry
-  `// @ts-check` and join `tsconfig.embed.json`; `layered`'s informal JSDoc return shapes become object
-  types, its depth-first top is guarded, and the label-placement rectangle takes a coordinate array.
-  The kind-specific relationship trees, `.d.ts` generation and `@types/react` remain out of scope.
-- **`checkJs` on the fact kind tree** (Refs #227, does not close): every remaining file under
-  `src/renderers/fact/` carries `// @ts-check` and joins `tsconfig.embed.json` — the shared
-  `ControlDock.jsx`, `EventNode.jsx`, `EventPreview.jsx` and the `timeline/`, `chronicle/` and
-  `scale/` trees. `DockSegmented`'s `title` and `Canvas`'s `fitKey` / `style` are optional, the
-  chronicle / scale layout options take `measure`, and the scale's segment, mark and node
-  accumulators are typed loosely instead of forcing one payload shape. The procedure, relationship
-  and justification kind trees, `.d.ts` generation and `@types/react` remain out of scope.
-- **`checkJs` on the procedure kind tree** (Refs #227, does not close): every file under
-  `src/renderers/procedure/flow/` and `route/` carries `// @ts-check` and joins `tsconfig.embed.json` —
-  the flowchart, the route map, and their shared layout, router and polish helpers. Informal JSDoc
-  return and box shapes become object types, nullable layout results and `Map.get` lookups are
-  guarded, the layout accumulators and rule-table groups are typed loosely, and `Canvas`'s node
-  handlers are optional so the route map need not pass no-ops. The relationship and justification
-  kind trees, `.d.ts` generation and `@types/react` remain out of scope.
-- **`checkJs` on the relationship kind tree** (Refs #227, does not close): every remaining file under
-  `src/renderers/relationship/` carries `// @ts-check` and joins `tsconfig.embed.json` — the shared
-  `CompanyView.jsx`, `LevelledView.jsx`, `LineLayerNode.jsx`, and the `graph/`, `focus/`, `matrix/`,
-  `equity/`, `authority/`, `related/` and `path/` trees. Informal JSDoc return shapes become object
-  types, nullable `Map.get` lookups and layout results are guarded, the layout accumulators are typed
-  loosely, `FocusDock`'s kind/centre handlers are optional, and `LevelledView`'s props are JSDoc-typed.
-  The justification kind tree, `.d.ts` generation and `@types/react` remain out of scope.
-- **`checkJs` on the justification kind tree** (Refs #227, does not close): every remaining file under
-  `src/renderers/justification/tree/` carries `// @ts-check` and joins `tsconfig.embed.json`;
-  `metrics`'s `codePointAt` read is guarded. Renderer kind trees under `src/renderers/` are covered.
-- **`validate` / `html` `.d.ts` generated from implementation JSDoc** (Refs #227, does not close):
-  `node tools/gen/api-dts.mjs` (+ `--check`) writes `tools/api/validate.d.ts` and `html.d.ts` from
-  those entries' typedefs and `@param` / `@returns`; options are taken as an `options` object so the
-  declarations stay host-friendly. Embed's `antu-embed.d.ts` is generated the same way from
-  `src/embed/hostTypes.js` and the entry JSDoc (see the newer Unreleased bullet). `@types/react`
-  was still deferred at that point (~270 probe errors); see the newer Unreleased bullet for the install.
-- **`@zh-xx/antu/types`** (#294): generated TypeScript interfaces for each diagram JSON (`FactSpec`, `ProcedureSpec`, `RelationshipSpec`, `JustificationSpec`, `AntuDiagramSpec`) from the same `*_FIELDS` as `describe()`; `node tools/gen/spec-types.mjs` (+ `--check`). Types only — runtime `validate()` unchanged. `npm run typecheck` (`tsc`) keeps the declarations parseable in CI.
+- **`@zh-xx/antu/types`** (#294): generated TypeScript interfaces for each diagram JSON (`FactSpec`, `ProcedureSpec`, `RelationshipSpec`, `JustificationSpec`, `AntuDiagramSpec`) from the same `*_FIELDS` as `describe()`; `node tools/gen/spec-types.mjs` (+ `--check`). Types only — runtime `validate()` unchanged.
 - **Embed `themeTokens`** (#293): a host may overlay `accent` / `canvas` / `chromeBg` / `text` / `textMuted` / `line` / `chromeBorder` / `font` / `fontHead` on a named theme via `mount({ themeTokens })` and `setThemeTokens`; ignored in `document`. Highlight rings use `--antu-accent`.
 - **Embed fit clears chrome; host `fitInsets`** (#166): fit-view keeps clear of the label card and the dock capsule; `mount(…, { fitInsets: { top, right, bottom, left } })` replaces the auto measure per side.
 - **Flowchart opens at a readable zoom** (#166): like the route map, a wide flowchart opens at zoom ≥ 0.7 from the left instead of shrinking to unreadably small text.
@@ -75,20 +23,24 @@ what breaks a file or a tool call written for the version before, with how to br
 - **Stable host-test selectors** (#166): every diagram node carries `data-antu="node"` next to React Flow's `data-id`; documented in `spec/embed.md` with `[data-pin-id]` for rule rows. Prefer these over `.react-flow__node-*` type classes.
 - **Label-card “About this diagram”** (#131): click the type name (事实图 / Fact …) for a small panel with the three versions — engine release, JSON format generation, and diagram (way of drawing) version and status. Off the main reading line; hidden with the chrome when printing.
 - **In-page source overview** (#124): a dock chip **Sources / 出处** opens a same-page panel (**Sources / 来源一览**) listing each drawn item with its materials, location and quote. Click a row to pin and focus it on the diagram. No sidecar `.trace.html`.
-- **Paper levels `screen` \| `a4l` \| `a4p` as print quantities** (#123): `spec/paper.md` (and `.zh-CN.md`) and `src/core/paper.js` (`paperOf`) fix the millimetre→CSS-pixel sizes the print path needs. The HTML diagram stays the primary presentation; paper does not reshape content.
-- **`layoutReport` / `layoutMessage` take optional `paper`** (#123): an engine-import diagnostic only (`screen` by default). CLI and MCP do **not** expose a `paper` flag.
+- **Paper levels `screen` | `a4l` | `a4p` as print quantities** (#123): `spec/paper.md` (and `.zh-CN.md`) and `src/core/paper.js` (`paperOf`) fix the millimetre→CSS-pixel sizes the print path needs. The HTML diagram stays the primary presentation; paper does not reshape content. `layoutReport` / `layoutMessage` take optional `paper` (engine-import diagnostic only; CLI and MCP do not expose a `paper` flag).
+- **Gradual TypeScript write-time checks** (#227): `npm run typecheck` covers public API smoke, generated Spec / validate / html / embed `.d.ts`, and `// @ts-check` across embed, shell, renderers, `src/core` pure helpers and DSH pure helpers (`tsconfig.embed.json` / `tsconfig.core.json` / `tsconfig.dsh.json`). Public `.d.ts` for validate / html / embed generate from JSDoc (`tools/gen/api-dts.mjs` + `--check`); `@types/react@19` is a type-only devDependency. Source stays `.js` / `.mjs` / `.jsx` — no mass rename, no weaker `validate()`.
 
 ### Changed
-- **Tighten React Flow node `data` JSDoc beyond `any`** (Refs #227, does not close): every node wrapper under `src/renderers/` now types `data` with a local object typedef naming the fields that component reads (event, entity, connection, box and geometry shapes), instead of `data?: any`; no runtime or JSX change, and no mass `.js` → `.ts` rename.
+- **Tighten React Flow node `data` JSDoc beyond `any`** (#227): every node wrapper under `src/renderers/` types `data` with a local object typedef naming the fields that component reads; no runtime or JSX change.
 - **`renderHtml` theme type includes `dark`** (#227): `tools/api/html.d.ts` matches `THEME_IDS` / embed (was missing `dark`).
 - **Relationship graph layout is cheaper on large cases** (#181): the orthogonal router caps search effort per link (then falls back to a simple elbow); camp ELK results and whole-graph layouts are cached so a repeated layout or an unchanged camp is not recomputed. Flowchart and justification routing stay uncapped.
-- **Relationship graph layout yields in the browser** (#181): the graph view runs the same layout generator as the sync API but pauses between ELK tries and routed links so the page stays responsive. An inlined Web Worker was tried and dropped — it duplicated ELK and pushed the npm pack over 4 MB. Node / MCP / tests keep sync `buildRelationshipGraph`.
-- **#123 product turn: content-first, one HTML diagram** — the A4-shaped preview viewport (`preset.paper` / `mount({ paper })`) is removed. Across-sheets print, sheet-count product lines, and CLI/MCP `paper` are out of scope (open PRs #284–#287 closed without merge). Print hygiene (hide chrome, fit one sheet) stays.
+- **Relationship graph layout yields in the browser** (#181): the graph view runs the same layout generator as the sync API but pauses between ELK tries and routed links so the page stays responsive. Node / MCP / tests keep sync `buildRelationshipGraph`.
+- **#123 product turn: content-first, one HTML diagram** — the A4-shaped preview viewport (`preset.paper` / `mount({ paper })`) is removed. Across-sheets print, sheet-count product lines, and CLI/MCP `paper` are out of scope. Print hygiene (hide chrome, fit one sheet) stays.
 
 ### Fixed
 - **Source overview panel** (#124): Escape closes it (same as a card popover); the visible row no longer shows internal `collection · id` (kept on the row `title` for hover).
 - **Browser print / Save as PDF hides the chrome and sets an A4 page** (#123): an `@media print` block hides the label card, the bottom dock, the zoom controls, the minimap, the preview popovers and the React Flow attribution, and `@page` sets A4 with 12 mm margins. Quantities live in `src/core/paper.js`.
 - **Print button** (#123): the dock has a **Print** action. It lays the diagram out on paper first (A4 portrait or landscape by the diagram's own shape, in the document theme whatever the page is in, fitted to the printable area so nothing is cropped), then opens the browser's print preview, and puts the page back afterwards. It is offered on the viewer page only: an embedded diagram lives in a host's page, where printing would print that page.
+- **Restoring a diagram's defaults keeps the picture you were looking at** (#283).
+- **A blank viewer page now says why it did not open** (#276 / #282).
+- **Fact: a hover no longer re-fits the viewport** (#273 / #277).
+- **Theme type sizes stay locked to the scale** (#270).
 
 ## 0.17.0
 
