@@ -28,9 +28,11 @@ keeps it (`validate`), and makes the self-contained page on its own server or co
 
 Each runtime entry is one ES module with every dependency inside, as the command line and the MCP server are; the
 package has no dependencies to install. Declarations (`.d.ts`) come with each; `test/embed.test.mjs` keeps the
-runtime entries to their code. `@zh-xx/antu/types` has **no runtime**: it is declarations only, generated from
-the same `*_FIELDS` tables as `describe()` / `antu_schema` (`node tools/gen/spec-types.mjs`; a test fails when
-stale). Nothing else of the package is meant to be imported (its `exports` lists only these).
+runtime entries to their export names. `validate` / `html` declarations are generated from those entries' JSDoc
+(`node tools/gen/api-dts.mjs`; a test fails when stale). Embed's `antu-embed.d.ts` is still hand-maintained.
+`@zh-xx/antu/types` has **no runtime**: it is declarations only, generated from the same `*_FIELDS` tables as
+`describe()` / `antu_schema` (`node tools/gen/spec-types.mjs`; a test fails when stale). Nothing else of the
+package is meant to be imported (its `exports` lists only these).
 
 ### Diagram JSON types (`@zh-xx/antu/types`)
 

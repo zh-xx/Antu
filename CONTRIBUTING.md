@@ -23,14 +23,18 @@ npm run verify       # with browser rendering and the whole MCP run
 `src/types/antu-specs.d.ts` is generated (`node tools/gen/spec-types.mjs`); do not edit it by hand. A stale
 file fails `npm test`; a syntactically broken one fails `npm run typecheck`.
 
+`tools/api/validate.d.ts` and `tools/api/html.d.ts` are generated from those entries' JSDoc
+(`node tools/gen/api-dts.mjs`); do not edit them by hand. A stale file fails `npm test`.
+
 ## TypeScript (gradual, issue #227)
 
 **Goal:** catch wrong field names and closed enums while editing, without a rewrite.
 
 **Coexistence (current rule):** keep source as `.js` / `.mjs` / `.jsx`. Prefer **JSDoc types** (+ later `checkJs`)
 over renaming files to `.ts`. Reasons: `node --test` must stay runnable on Node 18/20, and the DSH plugin
-build inlines `.mjs` as text. New host-facing options still need an update to the matching `.d.ts`
-(`src/embed/antu-embed.d.ts`, `tools/api/validate.d.ts`, `tools/api/html.d.ts`) in the same change.
+build inlines `.mjs` as text. New host-facing options on **embed** still need an update to
+`src/embed/antu-embed.d.ts` in the same change. For **validate** / **html**, update the JSDoc on
+`tools/api/validate.mjs` / `html.mjs` and run `node tools/gen/api-dts.mjs` (or let the test remind you).
 
 **What `npm run typecheck` covers today:**
 
@@ -96,19 +100,18 @@ build inlines `.mjs` as text. New host-facing options still need an update to th
   guarded the same way as the relationship graph metrics. Renderer kind trees under `src/renderers/`
   are now covered
 
-**Public `.d.ts` (current contract):** embed / validate / html stay as hand-maintained declarations
-(`src/embed/antu-embed.d.ts`, `tools/api/validate.d.ts`, `tools/api/html.d.ts`) checked by
-`tools/typecheck/api-smoke.ts` and by the export-name parity test in `test/embed.test.mjs`. Spec
-shapes are generated (`src/types/antu-specs.d.ts`). Implementation JSDoc on the API entries should
-match those declarations (e.g. `renderHtml`'s `theme` includes `dark`). Emitting `.d.ts` from the
-`.js` / `.mjs` implementation instead of maintaining the hand-written files is an open follow-up —
-pick a generator (tsc declaration emit vs a small gen script) before swapping the published files.
+**Public `.d.ts`:** `tools/api/validate.d.ts` and `html.d.ts` are generated from implementation JSDoc
+(`node tools/gen/api-dts.mjs`, `--check` in tests). Spec shapes are generated
+(`src/types/antu-specs.d.ts`). Embed's host contract (`src/embed/antu-embed.d.ts`) stays
+hand-maintained for now — its `MountOptions` / handle surface is richer than the current mount
+JSDoc; generating it is a later slice once those typedefs are complete. All three stay checked by
+`tools/typecheck/api-smoke.ts` and by the export-name parity test in `test/embed.test.mjs`.
 
 **`@types/react` (deferred):** not installed. JSX `key` is cast once where needed (`App.jsx`,
 `TracePanel.jsx`). A probe that adds `@types/react@19` on top of the current `tsconfig.embed.json`
 set fails with on the order of **270** errors (mostly React Flow refs typed as `never`, context
-defaults, and call-signature mismatches). Revisit when those host boundaries are typed, not as a
-drive-by dependency add. Do not weaken runtime `validate()` or existing tests for the sake of types.
+defaults, and call-signature mismatches). Next slice after embed `.d.ts` generation. Do not weaken
+runtime `validate()` or existing tests for the sake of types.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

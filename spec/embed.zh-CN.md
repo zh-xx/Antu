@@ -26,9 +26,10 @@
 | `@zh-xx/antu/types` | 仅 TypeScript | `FactSpec`、`ProcedureSpec`、`RelationshipSpec`、`JustificationSpec`、`AntuDiagramSpec` | 生成的 `types/antu-specs.d.ts`（issue #294） |
 
 每个运行时入口都是一个 ES 模块，依赖全部打在里面，和命令行、MCP 服务端一样，包本身没有需要安装的依赖。运行时入口附
-类型声明（`.d.ts`），由 `test/embed.test.mjs` 保证与代码一致。`@zh-xx/antu/types` **没有运行时代码**：只有声明，
-从与 `describe()` / `antu_schema` 同一套 `*_FIELDS` 生成（`node tools/gen/spec-types.mjs`；过期则测试失败）。包里其
-余的东西都不供导入（`exports` 只列这些）。
+类型声明（`.d.ts`）；`test/embed.test.mjs` 核对导出名。`validate` / `html` 的声明从各自入口的 JSDoc 生成
+（`node tools/gen/api-dts.mjs`；过期则测试失败）。embed 的 `antu-embed.d.ts` 仍手写维护。`@zh-xx/antu/types`
+**没有运行时代码**：只有声明，从与 `describe()` / `antu_schema` 同一套 `*_FIELDS` 生成（`node tools/gen/spec-types.mjs`；
+过期则测试失败）。包里其余的东西都不供导入（`exports` 只列这些）。
 
 ### 图 JSON 类型（`@zh-xx/antu/types`）
 
