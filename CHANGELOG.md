@@ -6,6 +6,9 @@ what breaks a file or a tool call written for the version before, with how to br
 ## Unreleased
 
 ### Added
+- **`checkJs` on DSH pure helpers** (Refs #227, does not close): `tools/dsh/src/card-model.mjs`,
+  `locale.mjs` and `require-async.mjs` carry `// @ts-check` and join `tsconfig.dsh.json` (wired into
+  `npm run typecheck`). Still `.mjs` for the client inline build; Host/Client React slots stay out.
 - **`@types/react@19` installed; embed checkJs set clears** (Refs #227, does not close): `@types/react` is a devDependency and `tsconfig.embed.json` now type-checks the full JSX tree; typed context defaults, React Flow instance / DOM refs and node props clear the probe's ~274 errors without changing runtime `validate()` or any rendering behaviour. No mass `.js` → `.ts` rename.
 - **Embed `.d.ts` generated from JSDoc** (Refs #227, does not close): `src/embed/hostTypes.js` is the source of truth for `AntuSpec`, `MountOptions`, `AntuHandle`, `AntuEvent` and the other host types; `node tools/gen/api-dts.mjs` now emits `src/embed/antu-embed.d.ts` alongside validate / html, and `--check` keeps it fresh. `@types/react` was still deferred at that point (see the newer Unreleased bullet).
 - **Typecheck step 0 for public host APIs** (#227): `npm run typecheck` also checks embed / validate / html `.d.ts` via `tools/typecheck/api-smoke.ts` (wrong `mount` theme or unknown option fails under `tsc`). CONTRIBUTING records the JSDoc coexistence rule (no mass rename to `.ts`).

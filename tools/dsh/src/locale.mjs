@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  tools/dsh/src/locale.mjs — the plugin's own words, in DSH's locale service
 //

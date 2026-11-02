@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  tools/dsh/src/card-model.mjs — pure helpers of the chat card and the sidebar tab
 //
@@ -109,6 +110,7 @@ export function pickOpening(known, wantKind, wantTheme) {
 /**
  * The theme to mount with: a dark host wins, else the reader's pick while the host is light, else the
  * theme the call asked for. Unknown names count as absent, so a stale or bogus value passes nothing.
+ * @param {{ dark?: boolean, requested?: string, lightPick?: string }} [opts]
  * @returns {string | undefined}
  */
 export function effectiveTheme({ dark, requested, lightPick } = {}) {
