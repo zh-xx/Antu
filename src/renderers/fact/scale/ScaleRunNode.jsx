@@ -13,6 +13,7 @@ import { formatTimeText } from '../dateText.js'
 import { runMark } from './ScaleLayerNode.jsx'
 import { runRange } from './runText.js'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const ScaleRunNode = memo(function ScaleRunNode({ id, data }) {
   const { run, events, cardH } = data
   const { pinnedId, unpin } = useContext(PreviewContext)

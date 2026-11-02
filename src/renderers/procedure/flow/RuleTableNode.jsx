@@ -23,9 +23,12 @@ import { ruleTableNoteKey, whensOf } from './ruleTable.js'
 const scopeText = (t, scope) =>
   scope.kind === 'all' ? t('rule.tScopeAll') : scope.kind === 'one' ? scope.stage : t('rule.tScopeRange', { from: scope.from, to: scope.to })
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const RuleTableNode = memo(function RuleTableNode({ data }) {
   const { table, sourceById, domain } = data
   const { hoveredId, pinnedId, pin, unpin, hover } = useContext(PreviewContext)
+  // The context marks hover optional for kinds that do not report it; a rule table always does
+  const hoverRow = /** @type {(id: string | null) => void} */ (hover)
   const { t, lang } = useLang()
   const cols = table.cols.map((c) => `${c}px`).join(' ')
 
@@ -64,8 +67,8 @@ const RuleTableNode = memo(function RuleTableNode({ data }) {
                 role="button"
                 tabIndex={0}
                 aria-expanded={isPinned}
-                onMouseEnter={() => hover(id)}
-                onMouseLeave={() => hover(null)}
+                onMouseEnter={() => hoverRow(id)}
+                onMouseLeave={() => hoverRow(null)}
                 onClick={(e) => {
                   e.stopPropagation()
                   if (isPinned) unpin()

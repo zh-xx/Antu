@@ -32,12 +32,12 @@ export function printableArea(orientation = 'portrait') {
  * Which way up the sheet goes for a diagram of this shape.
  * A wider picture gets the landscape sheet, a taller one the portrait sheet; a square or
  * an unknown size gets portrait.
- * @param {number} width the diagram's content width
- * @param {number} height the diagram's content height
+ * @param {number} [width] the diagram's content width
+ * @param {number} [height] the diagram's content height
  * @returns {'portrait'|'landscape'}
  */
 export function paperFor(width, height) {
-  if (!(Number.isFinite(width) && Number.isFinite(height)) || width <= 0 || height <= 0) return 'portrait'
+  if (typeof width !== 'number' || typeof height !== 'number' || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return 'portrait'
   return width > height ? 'landscape' : 'portrait'
 }
 

@@ -27,6 +27,7 @@ const poly = (pts) => {
 
 const arrowId = (c) => `antu-rt-arrow-${c.replace(/[^0-9a-z]/gi, '')}`
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const RouteLayerNode = memo(function RouteLayerNode({ data }) {
   const { theme } = useTheme()
   const f = theme.flow

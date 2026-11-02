@@ -40,6 +40,17 @@ import { useSelectEvent } from '../../../shell/useSelectEvent.js'
 import { useSpecPref } from '../useSpecPref.js'
 
 /** Shown until the first worker (or sync-fallback) layout arrives */
+/** @type {{
+ *   errors: string[],
+ *   hints: string[],
+ *   orientation: string,
+ *   nodes: any[],
+ *   edges: any[],
+ *   connections: any[],
+ *   groupBoxes: any[],
+ *   size: { width: number, height: number },
+ *   stats: { entities: number, relations: number, groups: number, layers: number, widest: number, kinds: Record<string, number> },
+ * }} */
 const EMPTY_LAYOUT = {
   errors: [],
   hints: [],
@@ -118,8 +129,8 @@ export default function RelationshipGraph({ spec }) {
     // `t` follows `lang` (LangContext); depending on `t` would re-run every render if it were a fresh closure
   }, [spec, fields.groups, orientation, lang])
 
-  const [hoveredId, setHoveredId] = useState(null)
-  const [pinnedId, setPinnedId] = useState(null)
+  const [hoveredId, setHoveredId] = useState(/** @type {string | null} */ (null))
+  const [pinnedId, setPinnedId] = useState(/** @type {string | null} */ (null))
   useSelectEvent(spec, pinnedId, setPinnedId)
   // The pinned card can hand its party to the focus view: it is remembered as the centre, then the kind is switched
   const { commands } = useEnv()

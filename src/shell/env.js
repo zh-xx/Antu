@@ -18,6 +18,7 @@ import { mergeThemeTokens, normalizeThemeTokens } from '../theme/themeTokens.js'
 import { localPrefs, memoryPrefs } from './prefs.js'
 import { getPath, persistingStore, presetAt, resolveView } from './viewState.js'
 
+/** @type {(event?: object) => void} */
 const noop = () => {}
 
 /**
@@ -26,14 +27,20 @@ const noop = () => {}
  * last one of each name, and run when its handler comes.
  */
 function commandBus() {
+  /** @type {Map<string, (...args: any[]) => any>} */
   const handlers = new Map()
+  /** @type {Map<string, any[]>} */
   const held = new Map()
   return {
-    /** Register the handler of `name`; returns the function that removes it */
+    /**
+     * Register the handler of `name`; returns the function that removes it
+     * @param {string} name
+     * @param {(...args: any[]) => any} fn
+     */
     on(name, fn) {
       handlers.set(name, fn)
       if (held.has(name)) {
-        const args = held.get(name)
+        const args = held.get(name) ?? []
         held.delete(name)
         fn(...args)
       }
@@ -41,11 +48,18 @@ function commandBus() {
         if (handlers.get(name) === fn) handlers.delete(name)
       }
     },
-    /** Whether something answers `name` now */
+    /**
+     * Whether something answers `name` now
+     * @param {string} name
+     */
     has(name) {
       return handlers.has(name)
     },
-    /** Run `name` and return what it returns; undefined when it was held */
+    /**
+     * Run `name` and return what it returns; undefined when it was held
+     * @param {string} name
+     * @param {...any} args
+     */
     run(name, ...args) {
       const fn = handlers.get(name)
       if (fn) return fn(...args)
@@ -183,7 +197,7 @@ export function embeddedEnv({ prefs = 'none', emit = noop, drawn = noop, root = 
 export const EnvContext = createContext(standaloneEnv({ preset: null }))
 
 /** The spec now drawn (App provides it), so the canvas can find the nodes of an item a host names */
-export const ShownSpecContext = createContext(null)
+export const ShownSpecContext = createContext(/** @type {object | null} */ (null))
 
 /**
  * Clears the open diagram's remembered choices and opens it again (App provides it, the dock calls it). A

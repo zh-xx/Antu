@@ -19,6 +19,7 @@ import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { GROUP_PAD, GROUP_TITLE_FONT } from './metrics.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const IssueBoxNode = memo(function IssueBoxNode({ data }) {
   const { boxes, width, height, onToggle, foldable = true } = data
   const { t } = useLang()

@@ -674,6 +674,7 @@ export function buildFocusGraph(spec, fields = {}) {
   const nodes = []
   const connections = []
   const centreY = (i) => offsets.get(i)[1]
+  /** @type {Record<string, number>} */
   const kinds = {}
   for (const r of relations) kinds[r.kind] = (kinds[r.kind] ?? 0) + 1
   let width = 0

@@ -16,6 +16,7 @@ import { TYPE } from '../../../theme/scale.js'
 
 export const runMark = (n) => (n <= 20 ? String.fromCodePoint(0x2460 + n - 1) : `(${n})`)
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const ScaleLayerNode = memo(function ScaleLayerNode({ data }) {
   const { t } = useLang()
   const { theme } = useTheme()

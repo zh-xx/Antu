@@ -9,6 +9,7 @@
 
 import { memo } from 'react'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const LinkLayerNode = memo(function LinkLayerNode({ data }) {
   const { segments, isH } = data
 

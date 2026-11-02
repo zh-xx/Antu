@@ -47,6 +47,7 @@ function Outline({ kind, w, h, theme, end = false }) {
   }
 }
 
+/** @type {(props: { id: string, data?: any }) => any} */
 const EntityNode = memo(function EntityNode({ id, data }) {
   const { entity, w, h, textW, lit = false, dim = false, groupLabel, sources, relations, vertical, layer, centre = false, end = false, camp = null, hintKey = 'rel.previewHint' } = data
   const { hoveredId, pinnedId, pin, unpin, focusOn } = useContext(PreviewContext)

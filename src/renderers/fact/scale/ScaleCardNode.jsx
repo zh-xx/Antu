@@ -13,6 +13,7 @@ import { useLang } from '../../../shell/LangContext.jsx'
 import { formatDate, formatEnd, formatTimeText } from '../dateText.js'
 import EventPreview from '../EventPreview.jsx'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const ScaleCardNode = memo(function ScaleCardNode({ data }) {
   const { event, undated, titleLines, timeLines = 1, cardH, actorNames = [], sources = [] } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)

@@ -11,6 +11,7 @@
 import { memo } from 'react'
 import { useLang } from '../../../shell/LangContext.jsx'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const SpineNode = memo(function SpineNode({ data }) {
   const { x, top, bottom, dots, pills, breaks, dotSize } = data
   const { t } = useLang()

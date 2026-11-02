@@ -18,6 +18,7 @@ import { whenLines } from '../dateText.js'
 import { CARD_W, CARD_X, WHEN_W } from './layout.js'
 import EventPreview from '../EventPreview.jsx'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const EntryNode = memo(function EntryNode({ data }) {
   const { event, groupIndex, actorNames, sources, fields, cardH, sameDay, dim = false } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)

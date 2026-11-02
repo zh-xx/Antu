@@ -1,3 +1,4 @@
+// @ts-check
 // ============================================================
 //  src/shell/previewContext.js
 //
@@ -14,13 +15,20 @@
 
 import { createContext } from 'react'
 
-export const PreviewContext = createContext({
+/**
+ * @typedef {{
+ *   hoveredId: string | null,
+ *   pinnedId: string | null,
+ *   pin: (id: string) => void,
+ *   unpin: () => void,
+ *   focusOn?: ((id: string) => void) | null,
+ *   hover?: (id: string | null) => void,
+ * }} PreviewContextValue
+ */
+export const PreviewContext = createContext(/** @type {PreviewContextValue} */ ({
   hoveredId: null,
   pinnedId: null,
-  // A card could previously only be pinned by a mouse click (React Flow's onNodeClick),
-  // which keyboard users cannot reach. These two functions let the card pin and close itself.
-  pin: () => {},
+  pin: (_id) => {},
   unpin: () => {},
-  // A view that can hand a party over to another view (the relationship graph to its focus view) sets this
   focusOn: null,
-})
+}))

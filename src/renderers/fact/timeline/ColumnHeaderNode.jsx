@@ -10,6 +10,7 @@
 
 import { memo } from 'react'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const ColumnHeaderNode = memo(function ColumnHeaderNode({ data }) {
   const { width, height, isH, groupIndex, sideTitle, colTitle, actors, laneWs = [] } = data
 

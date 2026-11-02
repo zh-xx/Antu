@@ -20,7 +20,17 @@ import { detectLang, normalizeLang, translate } from '../core/i18n.js'
 import { ariaLabelConfig } from '../core/labels.js'
 import { useEnv } from './env.js'
 
-const LangContext = createContext(null)
+/**
+ * @typedef {{
+ *   lang: string,
+ *   setLang: (next: string) => void,
+ *   t: (key: string, vars?: Record<string, unknown>) => string,
+ *   labelOf: (keyMap: Record<string, string>, val: unknown) => unknown,
+ *   formatNumber: (n: number) => string,
+ *   ariaLabels: ReturnType<typeof ariaLabelConfig>,
+ * }} LangContextValue
+ */
+const LangContext = createContext(/** @type {LangContextValue | null} */ (null))
 
 /** Interface language + lookup function + number formatting. Every user-facing string comes from here. */
 export function LangProvider({ children, lang: forcedLang }) {

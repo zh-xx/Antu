@@ -26,7 +26,19 @@ import { createContext, useCallback, useContext, useMemo, useRef, useState } fro
 import { PRINT_MARGIN_MM, levelForOrientation, paperOf } from '../core/paper.js'
 import { frames, paperFor, showPrintDialog } from './printPaper.js'
 
-const PrintHostContext = createContext(null)
+/**
+ * @typedef {{
+ *   size?: { width?: number, height?: number },
+ *   prepare?: (canvas: { width: number, height: number }) => (void | Promise<void>),
+ *   finish?: () => void,
+ * }} PrintCap
+ * @typedef {{
+ *   printing: boolean,
+ *   print: () => Promise<void>,
+ *   attach: (cap: PrintCap | null) => void,
+ * }} PrintHostValue
+ */
+const PrintHostContext = createContext(/** @type {PrintHostValue | null} */ (null))
 
 /** What App provides to its subtree; null where printing makes no sense. */
 export const PrintHostProvider = PrintHostContext.Provider
@@ -58,12 +70,12 @@ function clearPageRule() {
 /**
  * The host App provides. `themeId` decides whether the page has to be re-drawn for paper.
  * @param {string} themeId the theme the page is in now
- * @returns {{value: {printing: boolean, print: () => Promise<void>, attach: (cap: object|null) => void}, printLight: boolean}}
+ * @returns {{value: PrintHostValue, printLight: boolean}}
  */
 export function usePrintController(themeId) {
   const [printing, setPrinting] = useState(false)
   const [printLight, setPrintLight] = useState(false)
-  const capRef = useRef(null)
+  const capRef = useRef(/** @type {PrintCap | null} */ (null))
   const busyRef = useRef(false)
 
   const attach = useCallback((cap) => {

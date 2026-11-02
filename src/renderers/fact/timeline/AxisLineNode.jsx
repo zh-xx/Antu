@@ -18,6 +18,7 @@
 
 import { memo } from 'react'
 
+/** @type {(props: { id?: string, data?: any }) => any} */
 const AxisLineNode = memo(function AxisLineNode({ data }) {
   const { isH, length, dotOffsets, dotSize } = data
 

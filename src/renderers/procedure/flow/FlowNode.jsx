@@ -91,6 +91,7 @@ function Outline({ kind, outcome, w, h, theme, states }) {
   }
 }
 
+/** @type {(props: { id: string, data?: any }) => any} */
 const FlowNode = memo(function FlowNode({ id, data }) {
   const { node, w, h, textW, cut = false, ruleCount = 0, lit = false, states = false, isSpine, stageLabel, actorNames, sources, showDetail, vertical, layer } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)
