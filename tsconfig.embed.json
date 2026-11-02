@@ -19,6 +19,7 @@
     "src/App.jsx",
     "src/embed/cardUi.js",
     "src/embed/core.jsx",
+    "src/embed/hostTypes.js",
     "src/embed/kinds.js",
     "src/embed/index.js",
     "src/embed/mount.js",

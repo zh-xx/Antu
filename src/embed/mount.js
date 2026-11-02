@@ -66,30 +66,13 @@ const initialProblem = (initial) => viewStateProblem(initial, 'options.initial',
 const isItem = (spec, id) => itemOf(spec, /** @type {string} */ (id))?.item?.id === id
 
 /**
+ * Draw `spec` inside `el` (in a shadow root; the element needs a height), with the options and the
+ * handle described by `MountOptions` / `AntuHandle` (spec/embed.md). Throws if one is already
+ * mounted there, or if `kind`/`kinds` name a way of drawing the spec's type does not have.
  * @param {HTMLElement} el   the host's element; the diagram fills it, so it needs a height
- * @param {object} spec      the Antu JSON
- * @param {object} [options]
- * @param {string} [options.kind]       the kind it opens in, until the reader picks another
- * @param {string[]} [options.kinds]    the kinds the reader may pick from (one: the kind is fixed)
- * @param {'document'|'modern'|'legal'|'dark'} [options.theme]  the theme it opens in
- * @param {'zh'|'en'} [options.lang]   the language of the page's own words (the case is never translated)
- * @param {{header?: boolean, capsule?: boolean, minimap?: boolean, zoom?: boolean, panOnScroll?: boolean, panOnDrag?: boolean}} [options.ui]
- *                                      pieces of the page's chrome to leave out (all shown by default);
- *                                      `panOnScroll: false` lets the wheel scroll the host page (a chat card);
- *                                      `panOnDrag: false` stops press-and-drag from panning (see also `cardUi`)
- * @param {'none'|'local'|{read(): object, write(patch: object): void}} [options.prefs]
- *                                      where the reader's choices are kept: 'none' (default) while mounted
- *                                      only, 'local' in the viewer page's localStorage key, or the host's store
- * @param {object} [options.initial]   how it opens, ahead of the reader's stored choices (`AntuViewState`;
- *                                      `headerFolded` is the old alias of `shell.headerFolded`)
- * @param {object} [options.locked]     values forced for this mount (`AntuViewState`); their controls are hidden
- * @param {boolean|string[]} [options.persist]  which of the reader's changes reach the prefs store: true (all,
- *                                      the default), false (none), or the names in spec/embed.md
- * @param {(event: object) => void} [options.onEvent]   select, kindchange, themechange, invalid (spec/embed.md)
- * @param {{ top?: number, right?: number, bottom?: number, left?: number }} [options.fitInsets]
- *                                      extra room (px) kept clear when fitting; replaces the auto measure per side
- * @param {{ accent?: string, canvas?: string, chromeBg?: string, text?: string, textMuted?: string, line?: string, chromeBorder?: string, font?: string, fontHead?: string }} [options.themeTokens]
- *                                      host colour overlays on the named theme (issue 293); ignored while theme is `document`
+ * @param {import('./hostTypes.js').AntuSpec} spec   the Antu JSON
+ * @param {import('./hostTypes.js').MountOptions} [options]
+ * @returns {import('./hostTypes.js').AntuHandle}
  */
 export function mount(el, spec, options = {}) {
   if (!el || typeof el.attachShadow !== 'function') throw new TypeError('antu mount: the first argument must be an element')
@@ -121,6 +104,7 @@ export function mount(el, spec, options = {}) {
   }
 
   let settle
+  /** @type {Promise<void>} */
   const ready = new Promise((resolve, reject) => {
     settle = { resolve, reject }
   })
@@ -197,7 +181,10 @@ export function mount(el, spec, options = {}) {
   return {
     /** Resolves once the diagram is drawn and fitted; refused (with `.errors`) when the spec is not valid */
     ready,
-    /** Draw another spec in the same place; the reader's choices are kept per diagram content */
+    /**
+     * Draw another spec in the same place; the reader's choices are kept per diagram content
+     * @param {import('./hostTypes.js').AntuSpec} next
+     */
     update(next) {
       alive('update')
       // the old spec's problems are not the new one's: wait for its drawing or its own `invalid`
@@ -205,7 +192,10 @@ export function mount(el, spec, options = {}) {
       current = { ...current, spec: next }
       view.draw(current)
     },
-    /** Switch to a kind of the diagram's type (and of `kinds`, if given); false when it is not one */
+    /**
+     * Switch to a kind of the diagram's type (and of `kinds`, if given); false when it is not one
+     * @param {string} kind
+     */
     setKind(kind) {
       alive('setKind')
       const type = current.spec?.type
@@ -213,7 +203,10 @@ export function mount(el, spec, options = {}) {
       if (ok) env.commands.run('setKind', kind)
       return ok
     },
-    /** Switch the theme; false when it is not one of the themes */
+    /**
+     * Switch the theme; false when it is not one of the themes
+     * @param {import('./hostTypes.js').AntuTheme} theme
+     */
     setTheme(theme) {
       alive('setTheme')
       if (!isTheme(theme)) return false
@@ -223,13 +216,16 @@ export function mount(el, spec, options = {}) {
     /**
      * Overlay host colours / fonts on the named theme (issue 293). Merges into the current set;
      * `null` clears. Unknown keys and bad values are skipped. Returns whether anything changed.
-     * @param {import('./antu-embed.d.ts').AntuThemeTokens | null} tokens
+     * @param {import('./hostTypes.js').AntuThemeTokens | null} tokens
      */
     setThemeTokens(tokens) {
       alive('setThemeTokens')
       return env.themeTokens.set(tokens)
     },
-    /** Switch the language of the page's own words; false when it is not one Antu speaks */
+    /**
+     * Switch the language of the page's own words; false when it is not one Antu speaks
+     * @param {import('./hostTypes.js').AntuLang} lang
+     */
     setLang(lang) {
       alive('setLang')
       if (lang !== 'zh' && lang !== 'en') return false
@@ -239,6 +235,7 @@ export function mount(el, spec, options = {}) {
     /**
      * Pin the card of the item `id` of the spec, as if the reader had clicked it (the host hears `select`);
      * `null` unpins. False when no card of that item is drawn in this kind.
+     * @param {string | null} id
      */
     select(id) {
       alive('select')
@@ -247,14 +244,20 @@ export function mount(el, spec, options = {}) {
       // held until the diagram is drawn: answered from the spec
       return done === undefined ? id === null || isItem(current.spec, id) : done
     },
-    /** Move the view to the item `id`, keeping the zoom unless it would not show it; false when it is not drawn */
+    /**
+     * Move the view to the item `id`, keeping the zoom unless it would not show it; false when it is not drawn
+     * @param {string} id
+     */
     focus(id) {
       alive('focus')
       if (typeof id !== 'string') return false
       const done = env.commands.run('focus', id)
       return done === undefined ? isItem(current.spec, id) : done
     },
-    /** Ring these items in the theme's colour until called again; `[]` clears. Ids that name no item are passed over */
+    /**
+     * Ring these items in the theme's colour until called again; `[]` clears. Ids that name no item are passed over
+     * @param {string[]} ids
+     */
     highlight(ids) {
       alive('highlight')
       if (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string')) throw new TypeError('antu highlight: ids must be an array of strings')
