@@ -27,6 +27,7 @@ This is a **minor** release: hosts gain new embed / validate surface (`themeToke
 - **Gradual TypeScript write-time checks** (#227): `npm run typecheck` covers public API smoke, generated Spec / validate / html / embed `.d.ts`, and `// @ts-check` across embed, shell, renderers, `src/core` pure helpers and DSH pure helpers (`tsconfig.embed.json` / `tsconfig.core.json` / `tsconfig.dsh.json`). Public `.d.ts` for validate / html / embed generate from JSDoc (`tools/gen/api-dts.mjs` + `--check`); `@types/react@19` is a type-only devDependency. Source stays `.js` / `.mjs` / `.jsx` — no mass rename, no weaker `validate()`.
 
 ### Changed
+- **Drop leftover `evidence/` screenshots** (#323): print-chrome verification images from #271 are removed; the path is gitignored so local probes stay out of the repo.
 - **Tighten React Flow node `data` JSDoc beyond `any`** (#227): every node wrapper under `src/renderers/` types `data` with a local object typedef naming the fields that component reads; no runtime or JSX change.
 - **`renderHtml` theme type includes `dark`** (#227): `tools/api/html.d.ts` matches `THEME_IDS` / embed (was missing `dark`).
 - **Relationship graph layout is cheaper on large cases** (#181): the orthogonal router caps search effort per link (then falls back to a simple elbow); camp ELK results and whole-graph layouts are cached so a repeated layout or an unchanged camp is not recomputed. Flowchart and justification routing stay uncapped.
