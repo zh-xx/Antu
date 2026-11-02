@@ -21,7 +21,19 @@ import { useStore } from '@xyflow/react'
 /** How many empty lanes to draw on each side of the content */
 const PAD_COLS = 1
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{ start: number, size: number }} CellLane
+ * @typedef {{
+ *   rows: number,
+ *   cellW: number,
+ *   cellH: number,
+ *   originX: number,
+ *   originY: number,
+ *   isH: boolean,
+ *   lanes?: CellLane[],
+ * }} CellLayerNodeData
+ * @type {(props: { id?: string, data: CellLayerNodeData }) => import('react').ReactNode}
+ */
 const CellLayerNode = memo(function CellLayerNode({ data }) {
   const { rows, cellW, cellH, originX, originY, isH, lanes = [] } = data
 

@@ -27,7 +27,76 @@ const poly = (pts) => {
 
 const arrowId = (c) => `antu-rt-arrow-${c.replace(/[^0-9a-z]/gi, '')}`
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{ x: number, y: number, w: number, h: number }} RouteRect
+ * @typedef {{ x: number, y: number, w: number, h: number, text: string }} RouteMore
+ * @typedef {{
+ *   id: string,
+ *   kind: string,
+ *   outcome: string,
+ *   label: string,
+ *   detail?: string,
+ *   x: number,
+ *   y: number,
+ *   w: number,
+ *   h: number,
+ * }} RouteBox
+ * @typedef {{
+ *   from: string,
+ *   fromX: number,
+ *   cx: number,
+ *   topY: number,
+ *   cond?: string,
+ *   more?: RouteMore | null,
+ *   tail: { type: string, to: string, asArc?: boolean },
+ *   boxes: RouteBox[],
+ * }} RouteHang
+ * @typedef {{
+ *   id: string,
+ *   kind: string,
+ *   outcome: string,
+ *   x: number,
+ *   y: number,
+ *   label: string,
+ *   detail?: string,
+ *   actor?: string,
+ *   labelBox: RouteRect,
+ * }} RouteStation
+ * @typedef {{
+ *   kind: string,
+ *   cond?: string,
+ *   start: string,
+ *   fromX: number,
+ *   fromY?: number,
+ *   out: number,
+ *   into: number,
+ *   depth: number,
+ *   toX: number,
+ * }} RouteArc
+ * @typedef {{ x: number, w: number, label: string }} RouteBand
+ * @typedef {{ x: number, y: number, w: number, h: number, text: string, sub: string }} RouteEmpty
+ * @typedef {{ x: number, y: number, w: number, h: number, titleAt: [number, number], title: string }} RouteFrame
+ * @typedef {{ x: number, y: number, w: number, main: string, sub?: string, tone?: string }} RouteText
+ * @typedef {{
+ *   width: number,
+ *   height: number,
+ *   top: number,
+ *   bandBottom: number,
+ *   lineY: number,
+ *   lineFrom: number,
+ *   lineTo: number,
+ *   bands: RouteBand[],
+ *   stations: RouteStation[],
+ *   hangs: RouteHang[],
+ *   arcs: RouteArc[],
+ *   showLabels?: boolean,
+ *   showStates?: boolean,
+ *   empties: RouteEmpty[],
+ *   frames: RouteFrame[],
+ *   texts: RouteText[],
+ * }} RouteLayerNodeData
+ * @type {(props: { id?: string, data: RouteLayerNodeData }) => import('react').ReactNode}
+ */
 const RouteLayerNode = memo(function RouteLayerNode({ data }) {
   const { theme } = useTheme()
   const f = theme.flow
@@ -75,13 +144,13 @@ const RouteLayerNode = memo(function RouteLayerNode({ data }) {
             parts.push(<rect key={`r${j}`} x={b.x} y={b.y} width={b.w} height={b.h} rx={b.kind === 'end' ? Math.min(b.h / 2, 22) : 8} fill={b.kind === 'end' || (showStates && !isPlain(b.kind, b.outcome)) ? bp.fill : theme.color.bg} stroke={isPlain(b.kind, b.outcome) && b.kind !== 'end' ? theme.color.ink4 : c} strokeWidth={1.6} strokeDasharray={b.kind === 'end' || showStates ? bp.dash : undefined} />)
           })
           if (h.more) {
-            const last = h.boxes.at(-1)
+            const last = /** @type {RouteBox} */ (h.boxes.at(-1))
             parts.push(<path key="m" d={`M ${h.cx} ${last.y + last.h} L ${h.cx} ${h.more.y - 2}`} fill="none" stroke={GREY} strokeWidth={1.6} strokeDasharray="3 3" />)
             parts.push(<rect key="mr" x={h.more.x} y={h.more.y} width={h.more.w} height={h.more.h} rx={theme.radius.group} fill={f.stage.fill} stroke={theme.color.ink4} strokeDasharray="4 3" />)
           }
           if (h.tail.type === 'return' && h.boxes.length && !h.tail.asArc) {
-            const last = h.boxes.at(-1)
-            const to = stations.find((s) => s.id === h.tail.to)
+            const last = /** @type {RouteBox} */ (h.boxes.at(-1))
+            const to = /** @type {RouteStation} */ (stations.find((s) => s.id === h.tail.to))
             const sx = last.x + last.w
             const sy = last.y + last.h / 2
             // Straight up into the station when nothing is in the way: right, then up beside the station's own

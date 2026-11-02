@@ -14,7 +14,22 @@ import { groupPaint, campBoxPaint } from './palette.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { GROUP_PAD, GROUP_TITLE_FONT } from './metrics.js'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   groupId: string,
+ *   label: string,
+ *   x: number,
+ *   y: number,
+ *   w: number,
+ *   h: number,
+ * }} GroupBox
+ * @typedef {{
+ *   boxes: GroupBox[],
+ *   width: number,
+ *   height: number,
+ * }} GroupBoxNodeData
+ * @type {(props: { id?: string, data: GroupBoxNodeData }) => import('react').ReactNode}
+ */
 const GroupBoxNode = memo(function GroupBoxNode({ data }) {
   const { boxes, width, height } = data
   const { theme } = useTheme()

@@ -10,7 +10,15 @@
 
 import { memo } from 'react'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{ groupIndex: number, shape: string, label: string }} LegendGroup
+ * @typedef {{
+ *   groups: LegendGroup[],
+ *   active?: number | null,
+ *   onToggle?: (groupIndex: number) => void,
+ * }} LegendNodeData
+ * @type {(props: { id?: string, data: LegendNodeData }) => import('react').ReactNode}
+ */
 const LegendNode = memo(function LegendNode({ data }) {
   const { groups, active = null, onToggle } = data
   return (

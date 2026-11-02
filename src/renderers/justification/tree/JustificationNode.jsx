@@ -57,7 +57,35 @@ function Outline({ kind, w, h, rejected, theme }) {
 /** The date of a fact, as the reader wants it: 2016-04-14 22:22 */
 const showDate = (date) => date.replace('T', ' ')
 
-/** @type {(props: { id: string, data?: any }) => any} */
+/**
+ * @typedef {{ id: string, name?: string, type?: string, quote?: string }} JustificationSource
+ * @typedef {{
+ *   kind: string,
+ *   label: string,
+ *   holds?: string,
+ *   date?: string,
+ *   combine?: string,
+ *   detail?: string,
+ * }} Justification
+ * @typedef {{ id: string, stance: string, text?: string }} JustificationEdge
+ * @typedef {{
+ *   node: Justification,
+ *   w: number,
+ *   h: number,
+ *   textW: number,
+ *   lit?: boolean,
+ *   dim?: boolean,
+ *   copyOf?: string | null,
+ *   copies: number,
+ *   groupLabel?: string,
+ *   sources: JustificationSource[],
+ *   grounds: JustificationEdge[],
+ *   supports: JustificationEdge[],
+ *   vertical: boolean,
+ *   layer: number,
+ * }} JustificationNodeData
+ * @type {(props: { id: string, data: JustificationNodeData }) => import('react').ReactNode}
+ */
 const JustificationNode = memo(function JustificationNode({ id, data }) {
   const { node, w, h, textW, lit = false, dim = false, copyOf, copies, groupLabel, sources, grounds, supports, vertical, layer } = data
   const { hoveredId, pinnedId, pin, unpin } = useContext(PreviewContext)

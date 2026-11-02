@@ -14,7 +14,64 @@ import { relationPaint } from './graph/palette.js'
 import { useTheme } from '../../theme/ThemeContext.jsx'
 import { TYPE } from '../../theme/scale.js'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   d: string,
+ *   kind?: string,
+ *   ink?: boolean,
+ *   back?: boolean,
+ *   opacity?: number,
+ *   width?: number,
+ *   arrow?: string,
+ * }} LineLink
+ * @typedef {{
+ *   x: number,
+ *   y: number,
+ *   text: string,
+ *   relId?: string,
+ *   opacity?: number,
+ *   kind?: string,
+ *   ink?: boolean,
+ *   unknown?: boolean,
+ *   back?: boolean,
+ * }} LinePill
+ * @typedef {{ x: number, y: number, w: number, h: number, text: string, sub: string }} LineEmpty
+ * @typedef {{ x: number, y: number, w: number, h: number, titleAt: [number, number], title: string }} LineFrame
+ * @typedef {{ x: number, y: number, w: number, main: string, sub?: string, tone?: string }} LineText
+ * @typedef {{
+ *   x: number,
+ *   y?: number,
+ *   w: number,
+ *   h?: number,
+ *   lines: string[],
+ *   bold?: boolean,
+ *   sub?: boolean,
+ * }} LineCell
+ * @typedef {{ id: string, y: number, h: number, sep?: boolean, cells: LineCell[] }} LineRow
+ * @typedef {{
+ *   x: number,
+ *   y: number,
+ *   w: number,
+ *   headH: number,
+ *   bottom: number,
+ *   xs: number[],
+ *   header: { x: number, w: number, text: string }[],
+ *   rows: LineRow[],
+ * }} LineTable
+ * @typedef {{
+ *   width: number,
+ *   height: number,
+ *   links: LineLink[],
+ *   pills: LinePill[],
+ *   empties: LineEmpty[],
+ *   frames: LineFrame[],
+ *   texts: LineText[],
+ *   table?: LineTable | null,
+ *   showLabels?: boolean,
+ *   blocks?: unknown[],
+ * }} LineLayerNodeData
+ * @type {(props: { id?: string, data: LineLayerNodeData }) => import('react').ReactNode}
+ */
 const LineLayerNode = memo(function LineLayerNode({ data }) {
   const { theme } = useTheme()
   const { width, height, links, pills, empties, frames, texts, table = null, showLabels = true } = data

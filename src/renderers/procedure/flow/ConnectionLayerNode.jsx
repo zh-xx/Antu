@@ -21,7 +21,26 @@ import { useTheme } from '../../../theme/ThemeContext.jsx'
 /** The three link kinds. Each has its own arrowhead, so the head takes the line's colour. */
 const KINDS = ['main', 'branch', 'back']
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   id: string,
+ *   kind: string,
+ *   d: string,
+ *   dCurve?: string,
+ *   label?: string,
+ *   labelAt: { x: number, y: number },
+ *   labelSize: { width: number, height: number },
+ * }} FlowConnection
+ * @typedef {{
+ *   connections: FlowConnection[],
+ *   width: number,
+ *   height: number,
+ *   showConditions: boolean,
+ *   highlightMain: boolean,
+ *   curved: boolean,
+ * }} ConnectionLayerNodeData
+ * @type {(props: { id?: string, data: ConnectionLayerNodeData }) => import('react').ReactNode}
+ */
 const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
   const { theme } = useTheme()
   const { connections, width, height, showConditions, highlightMain, curved } = data

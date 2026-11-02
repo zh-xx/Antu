@@ -20,7 +20,35 @@ import { relationPaint, DIM_OPACITY } from './palette.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 import { securesTies, lookedAt } from './secures.js'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   id: string,
+ *   relationId: string,
+ *   from: string,
+ *   to: string,
+ *   kind: string,
+ *   directed: boolean,
+ *   secures?: string | null,
+ *   claimId?: string,
+ *   label?: string,
+ *   points: number[][],
+ *   d: string,
+ *   dCurve?: string,
+ *   faint?: boolean,
+ *   labelAt: { x: number, y: number },
+ *   labelSize: { width: number, height: number },
+ * }} RelationConnection
+ * @typedef {{
+ *   connections: RelationConnection[],
+ *   width: number,
+ *   height: number,
+ *   hiddenKinds?: string[],
+ *   showLabels: boolean,
+ *   curved: boolean,
+ *   litEntity?: string | null,
+ * }} ConnectionLayerNodeData
+ * @type {(props: { id?: string, data: ConnectionLayerNodeData }) => import('react').ReactNode}
+ */
 const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
   const { connections, width, height, hiddenKinds = [], showLabels, curved, litEntity = null } = data
   const { theme } = useTheme()

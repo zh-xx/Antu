@@ -9,7 +9,16 @@
 
 import { memo } from 'react'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   left: number,
+ *   top: number,
+ *   width?: number,
+ *   height?: number,
+ * }} TimelineLink
+ * @typedef {{ segments: TimelineLink[], isH: boolean }} LinkLayerNodeData
+ * @type {(props: { id?: string, data: LinkLayerNodeData }) => import('react').ReactNode}
+ */
 const LinkLayerNode = memo(function LinkLayerNode({ data }) {
   const { segments, isH } = data
 

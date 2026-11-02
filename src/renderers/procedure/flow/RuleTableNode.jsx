@@ -23,7 +23,34 @@ import { ruleTableNoteKey, whensOf } from './ruleTable.js'
 const scopeText = (t, scope) =>
   scope.kind === 'all' ? t('rule.tScopeAll') : scope.kind === 'one' ? scope.stage : t('rule.tScopeRange', { from: scope.from, to: scope.to })
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{ id: string, name?: string, type?: string, quote?: string }} RuleSource
+ * @typedef {{
+ *   id: string,
+ *   then: string,
+ *   sourceIds?: string[],
+ * }} Rule
+ * @typedef {{
+ *   kind: string,
+ *   stage?: string,
+ *   from?: string,
+ *   to?: string,
+ * }} RuleScope
+ * @typedef {{ rule: Rule, scope: RuleScope, h: number }} RuleRow
+ * @typedef {{
+ *   endId?: string | null,
+ *   headed?: boolean,
+ *   endLabel?: string,
+ *   rows: RuleRow[],
+ * }} RuleGroup
+ * @typedef {{ cols: number[], w: number, h: number, groups: RuleGroup[] }} RuleTable
+ * @typedef {{
+ *   table: RuleTable,
+ *   sourceById: Map<string, RuleSource>,
+ *   domain: string,
+ * }} RuleTableNodeData
+ * @type {(props: { id?: string, data: RuleTableNodeData }) => import('react').ReactNode}
+ */
 const RuleTableNode = memo(function RuleTableNode({ data }) {
   const { table, sourceById, domain } = data
   const { hoveredId, pinnedId, pin, unpin, hover } = useContext(PreviewContext)
@@ -57,7 +84,7 @@ const RuleTableNode = memo(function RuleTableNode({ data }) {
             const whens = whensOf(row.rule)
             const isPinned = pinnedId === id
             const lit = isPinned || (!pinnedId && hoveredId === id)
-            const sources = (row.rule.sourceIds ?? []).map((s) => sourceById.get(s)).filter(Boolean)
+            const sources = /** @type {RuleSource[]} */ ((row.rule.sourceIds ?? []).map((s) => sourceById.get(s)).filter(Boolean))
             return (
               <div
                 key={id}

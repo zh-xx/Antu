@@ -10,7 +10,19 @@
 
 import { memo } from 'react'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{
+ *   width: number,
+ *   height: number | null,
+ *   isH: boolean,
+ *   groupIndex: number,
+ *   sideTitle?: string | null,
+ *   colTitle?: string | null,
+ *   actors?: string[],
+ *   laneWs?: number[],
+ * }} ColumnHeaderNodeData
+ * @type {(props: { id?: string, data: ColumnHeaderNodeData }) => import('react').ReactNode}
+ */
 const ColumnHeaderNode = memo(function ColumnHeaderNode({ data }) {
   const { width, height, isH, groupIndex, sideTitle, colTitle, actors, laneWs = [] } = data
 

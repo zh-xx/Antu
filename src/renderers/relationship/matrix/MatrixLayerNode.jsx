@@ -11,7 +11,47 @@ import { memo } from 'react'
 import { relationPaint } from '../graph/palette.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 
-/** @type {(props: { id?: string, data?: any }) => any} */
+/**
+ * @typedef {{ x: number, y: number, w: number, h: number }} MatrixRect
+ * @typedef {{
+ *   id: string,
+ *   label: string,
+ *   tone: number,
+ *   top: MatrixRect,
+ *   left: MatrixRect,
+ * }} MatrixBand
+ * @typedef {{ id: string, text: string, x: number, y: number, w: number, h: number }} MatrixHead
+ * @typedef {{
+ *   id: string,
+ *   kind: string,
+ *   text: string,
+ *   x: number,
+ *   y: number,
+ *   w: number,
+ *   h: number,
+ * }} MatrixChip
+ * @typedef {{
+ *   row: string,
+ *   col: string,
+ *   x: number,
+ *   y: number,
+ *   w: number,
+ *   h: number,
+ *   chips: MatrixChip[],
+ * }} MatrixCell
+ * @typedef {{
+ *   width: number,
+ *   height: number,
+ *   corner: MatrixRect,
+ *   bands: MatrixBand[],
+ *   heads: MatrixHead[],
+ *   rowHeads: MatrixHead[],
+ *   cells: MatrixCell[],
+ *   diagonal: MatrixRect[],
+ *   showLabels?: boolean,
+ * }} MatrixLayerNodeData
+ * @type {(props: { id?: string, data: MatrixLayerNodeData }) => import('react').ReactNode}
+ */
 const MatrixLayerNode = memo(function MatrixLayerNode({ data }) {
   const { theme } = useTheme()
   const { width, height, corner, bands, heads, rowHeads, cells, diagonal, showLabels = true } = data
