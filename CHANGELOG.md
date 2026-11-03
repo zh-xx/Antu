@@ -7,6 +7,7 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ### Added
 
+- **`normalize(spec)` for fact and relationship marks** (#332): same entry as procedure. Relationship drops `share` / `amount` / `secures` on the wrong kind and coerces a numeric-string equity `share`; fact clears `approx` when an event has no `date`. Still host-opt-in; no inventing parties or facts; `validate()` unchanged. Docs in `spec/embed.md` (EN + zh-CN).
 - **Embed view-state phase 2 for fact and relationship** (#329): hosts may set `initial` / `locked` / `persist` for `view.fact.*` (`summary`, `actors`, `sources`, `grid`, `stagger`, `orientation`, `byParty`) and `view.relationship.*` (`labels`, `groups`, `orientation`, `linkStyle`). Shared prefs maps `orientations` / `linkStyle` allow a write when any listed `view.*` name that uses them is in `persist`. Justification and relationship `hiddenKinds` stay out of the contract. Docs, host `.d.ts`, and embed verify cover the new paths.
 - **Procedure flowchart layout caps and yields** (#330): the orthogonal router stops after the same expansion budget as the relationship graph and falls back to a simple elbow; the browser path yields between ELK tries, stage columns and routed links so the page stays responsive. Node / MCP / tests keep sync `buildProcedureGraph`. Justification routing uses the same router budget.
 

@@ -3,9 +3,9 @@
 //  src/core/normalize.js — repair what is wrong in the marks of a spec but not in its content (issue 163)
 //
 //  The entry of `normalize` in `@zh-xx/antu/validate` and `@zh-xx/antu/embed`. Each type that has something
-//  to repair supplies it as `normalize` in its knowledge (procedure: the main line, flow/normalize.js); this
-//  file only copies the spec and dispatches, like validate.js. A host calls it when it chooses to: nothing in
-//  Antu calls it by itself.
+//  to repair supplies it as `normalize` in its knowledge (procedure: the main line; relationship: kind-field
+//  marks; fact: approx without a date); this file only copies the spec and dispatches, like validate.js. A
+//  host calls it when it chooses to: nothing in Antu calls it by itself.
 // ============================================================
 
 import { knowledgeOf } from './registry.js'

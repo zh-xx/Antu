@@ -20,6 +20,7 @@ import { dateOrderNotes } from './dateOrder.js'
 import { partyNotes } from './partyNotes.js'
 import { buildGrid } from './timeline/grid.js'
 import { validateFact } from './timeline/rules.js'
+import { normalizeFact } from './normalize.js'
 import { buildFactGraph } from './timeline/layout.js'
 import { buildChronicleGraph, TITLE_FONT as CHRONICLE_TITLE_FONT } from './chronicle/layout.js'
 import { buildScaleGraph, TITLE_FONT as SCALE_TITLE_FONT } from './scale/layout.js'
@@ -203,6 +204,8 @@ export const factKnowledge = {
    * layout path in timeline/grid.js (issue #26), so the two no longer tell one story.
    */
   validate: (spec) => validateFact(spec),
+  /** Repair approx marks of a copy (normalize.js, core/normalize.js; issue 332) */
+  normalize: (spec) => normalizeFact(spec),
 
   /** What validation cannot call an error: the slot order against the dates (a note, never a reorder; see dateOrder.js) */
   notes: (spec) => [

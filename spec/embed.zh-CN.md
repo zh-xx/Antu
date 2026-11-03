@@ -290,9 +290,14 @@ mount(el, spec, {
   （一个节点有两条标为主线的出边，或链在中途断开、绕回，例如把自动续期标成了主线），沿一条从起点到正常结束的路
   重新标出主线：`outcome` 为 `positive` 的 `end`，没有就取任一个 `end`。这条路尽量沿原本已标的边走；路外的标记
   去掉。到不了任何终点时不做改动，仍由 `validate` 报错。
-- **其他类型：** 暂无（`changes: []`）。
+- **relationship：按 kind 才有的字段。** 写在错误 kind 上的专用字段会去掉：`share` 只属于 `equity`，`amount` 只属于
+  `debt` / `contract`，`secures` 只属于 `guarantee`。equity 的 `share` 若写成数字字符串（可带 `%`，如 `"60"` 或
+  `"60%"`）会收成数字。`directed`、两端、标签，以及 `secures` 指向不存在或非债权关系的 id，仍交给 `validate`。
+- **fact：没有日期却标了 `approx`。** 事件没有 `date` 却写了 `approx: true` 时去掉该标记（`approx` 表示时间是估
+  算的，不是“没有日期”）。槽位顺序、日期、引文和当事人一律不动。
+- **justification：** 暂无（`changes: []`）。
 
-它从不增删节点或边，也不改动上面所说标记以外的任何内容。
+它从不增删当事人、事件、关系、节点或边，也不改动上面所说标记以外的任何内容。
 
 ## 5. `@zh-xx/antu/html`
 

@@ -12,6 +12,7 @@
 
 import { specVersionFieldRow } from '../../core/specVersion.js'
 import { validateRelationship, hintsOfRelationship, ENTITY_KINDS, RELATION_KINDS } from './graph/rules.js'
+import { normalizeRelationship } from './graph/normalize.js'
 import { buildRelationshipGraph } from './graph/layout.js'
 import { buildFocusGraph } from './focus/layout.js'
 import { buildMatrixGraph } from './matrix/layout.js'
@@ -362,6 +363,8 @@ export const relationshipKnowledge = {
 
   /** Validation: there is only one copy of the rules, in graph/rules.js */
   validate: (spec) => validateRelationship(spec),
+  /** Repair kind-field marks of a copy (graph/normalize.js, core/normalize.js; issue 332) */
+  normalize: (spec) => normalizeRelationship(spec),
 
   /**
    * What validation cannot call an error but the author should see: rules 13 to 16 of the spec
