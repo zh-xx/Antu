@@ -1,5 +1,7 @@
 # Versioning
 
+English is authoritative; Chinese: [versioning.zh-CN.md](./versioning.zh-CN.md).
+
 Three things carry a version, and they are kept apart on purpose.
 
 | | What it is | Where it lives | Form |

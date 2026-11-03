@@ -1,5 +1,7 @@
 # Notes for contributors
 
+English is authoritative; Chinese summary: [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md).
+
 ## Issues
 
 Known problems and wanted changes are managed in [GitHub issues](https://github.com/zh-xx/Antu/issues).

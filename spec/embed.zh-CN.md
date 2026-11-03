@@ -111,7 +111,7 @@ await diagram.ready
 | --- | --- | --- |
 | `kind` | 该类型的第一种 | 打开时的画法，读者另选之前一直用它。不是该 spec 类型的画法时，`mount` 抛错并指明字段，与 `renderHtml`、`setKind` 的拒绝一致 |
 | `kinds` | 该类型的全部 | 读者可选的画法；只给一种就等于锁定。其中有不属于该类型的画法，或 `kind` 不在列表里，`mount` 抛错。（`update` 换成另一类型的 spec 后，不属于它的 `kind`、`kinds` 不再生效，图以它的第一种画法打开） |
-| `theme` | `document` | 打开时的主题：`document`、`modern`、`legal`、`dark`（`spec/theme.md`）。读者仍可切换，除非去掉了标签卡 |
+| `theme` | `document` | 打开时的主题：`document`、`modern`、`legal`、`dark`（`spec/theme.zh-CN.md`）。读者仍可切换，除非去掉了标签卡 |
 | `themeTokens` | 无 | 宿主在命名主题上的颜色/字体覆盖（issue #293）：`{ accent?, canvas?, chromeBg?, text?, textMuted?, line?, chromeBorder?, font?, fontHead? }`。颜色为 CSS 颜色字符串；`font` / `fontHead` 为 font-family 列表。叠在命名主题的变量之后。当前主题为 `document`（黑白归档）时不套用。未知键与非法值跳过；`canvas` 与墨色（或宿主 `text`）及主题双方色对比不足 4.5:1 时丢弃该 canvas；`text` / `textMuted` 与有效画布对比不足时丢弃；`chromeBorder` 以 `1px solid <颜色>` 写入。CLI / MCP / Agent 不提供此项 |
 | `lang` | 浏览器的 | `zh` 或 `en`：页面自身文字的语言。案件内容不翻译 |
 | `ui` | 全部 `true` | `{ header, capsule, minimap, zoom, panOnScroll, panOnDrag }`：去掉页面上的哪些部件（左上角标签卡、底部控制胶囊、缩略图、缩放按钮）。`panOnScroll: false` 时滚轮不再平移图，宿主页面（如聊天卡片）仍可滚动；`panOnDrag: false` 时按住拖拽不再平移；捏合缩放仍可用。聊天卡片请优先展开 [`cardUi`](#卡片-ui) |
@@ -243,7 +243,7 @@ mount(el, spec, {
 | `invalid` | `errors` | spec（`mount` 或 `update` 时）不合法；图的位置上列出问题，与 viewer 页面相同 |
 
 不是 JSON 里一个条目的卡片（时间比例轴上聚在一起的一串事件）以画布上的 id 告知，`collection` 为 `null`。宿主忽略
-不认识的事件类型和字段：新增的属于"增加"（`spec/versioning.md`）。
+不认识的事件类型和字段：新增的属于"增加"（`spec/versioning.zh-CN.md`）。
 
 ### 宿主自己的画法选择器
 

@@ -1,5 +1,7 @@
 # DSH plugin (`@zh-xx/antu-dsh`)
 
+English is authoritative; Chinese: [README.zh-CN.md](./README.zh-CN.md).
+
 Plan: [spec/dsh-plugin.md](../../spec/dsh-plugin.md) (中文 [spec/dsh-plugin.zh-CN.md](../../spec/dsh-plugin.zh-CN.md)).
 DSH conventions (resource addresses, providers, seats): [spec/dsh-conventions.md](../../spec/dsh-conventions.md)
 (中文 [spec/dsh-conventions.zh-CN.md](../../spec/dsh-conventions.zh-CN.md)).

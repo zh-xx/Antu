@@ -9,7 +9,7 @@
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-339933)](package.json)
 [![状态: 0.x](https://img.shields.io/badge/%E7%8A%B6%E6%80%81-0.x%20draft-orange)](CHANGELOG.md)
 [![在线演示](https://img.shields.io/badge/%E6%BC%94%E7%A4%BA-online-blue)](https://antu.nervonly.cn/)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.zh-CN.md)
 
 [English](README.md) | **中文**
 
@@ -31,7 +31,7 @@ JSON，再由引擎据此画图；同一份 JSON 得到的图是一致的。案�
 关系图（同一份 JSON 有七种画法）画主体、角色和法律关系；事实图画时间、参与人和事件经过；程序图画程序路径与可能分支；证成图画由规范与事实推出的结论。关系图和证成图的 schema 仍是草案，**证成图目前处于实验阶段，暂不发展**。
 
 四种外观，叫**主题**：`document` 文书（方正、纯黑白，适合打印和归档，默认）、`modern` 现代、`legal` 法律、`dark` 深色（现代的外观配深色底，给页面本身是深色的宿主）。读者在页面里
-切换，调用时也可以把页面固定成某一个。只有图本身受主题影响；`dark` 还会把图外的外壳一并调暗。详见 [spec/theme.md](spec/theme.md)。
+切换，调用时也可以把页面固定成某一个。只有图本身受主题影响；`dark` 还会把图外的外壳一并调暗。详见 [spec/theme.zh-CN.md](spec/theme.zh-CN.md)。
 
 ## 使用
 
@@ -52,7 +52,7 @@ Agent ──> 提取关键信息 ──> 一份 JSON ──> 引擎 ──> 图
 |---|---|---|
 | 模型 | 读文书、提取事实、理解语义 | 每次的结果可能不同 |
 | 引擎 | 按规范画图 | 同一份 JSON 得到同一张图，与由哪个模型写出无关 |
-| JSON 规范 | 两者之间唯一的接口 | 有版本号（见 [spec/versioning.md](spec/versioning.md)） |
+| JSON 规范 | 两者之间唯一的接口 | 有版本号（见 [spec/versioning.zh-CN.md](spec/versioning.zh-CN.md)） |
 
 
 引擎不写 JSON，Agent 不画图：模型只负责把信息写进 JSON，画图由引擎完成。JSON 规范自成一套，原因有四：
@@ -112,9 +112,9 @@ const diagram = mount(element, spec, { lang: 'zh', onEvent: (e) => console.log(e
 
 ## 文档
 
-- 供人阅读的设计文档在 [`spec/`](spec/)：[架构](spec/v0-architecture.md)、[来源的 7 类字段](spec/source-schema-draft.md)、[主题](spec/theme.md)、[MCP 服务端](spec/mcp-server.md)、[在应用里使用](spec/embed.zh-CN.md)、[DSH 插件规划](spec/dsh-plugin.zh-CN.md)，以及各类图（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 Agent 看的说明在 [`spec/Agent/`](spec/Agent/)。
-- [CHANGELOG.md](CHANGELOG.md)，版本号的规则见 [spec/versioning.md](spec/versioning.md)。
-- 已知问题与需求记录在 [GitHub issues](https://github.com/zh-xx/Antu/issues)。参与贡献前，请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- 供人阅读的设计文档在 [`spec/`](spec/)：[架构](spec/v0-architecture.zh-CN.md)、[来源的 7 类字段](spec/source-schema-draft.zh-CN.md)、[主题](spec/theme.zh-CN.md)、[纸张](spec/paper.zh-CN.md)、[MCP 服务端](spec/mcp-server.zh-CN.md)、[在应用里使用](spec/embed.zh-CN.md)、[DSH 插件规划](spec/dsh-plugin.zh-CN.md)（安装说明 [tools/dsh/README.zh-CN.md](tools/dsh/README.zh-CN.md)），以及各类图（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 Agent 看的说明在 [`spec/agent/`](spec/agent/)，只保留英文。
+- [CHANGELOG.md](CHANGELOG.md)，版本号的规则见 [spec/versioning.zh-CN.md](spec/versioning.zh-CN.md)。
+- 已知问题与需求记录在 [GitHub issues](https://github.com/zh-xx/Antu/issues)。参与贡献前，请先阅读 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。
 
 ## 安全
 
