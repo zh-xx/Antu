@@ -19,7 +19,7 @@ test('the lists in code follow THEME_IDS', () => {
 })
 
 test('the docs and the skill name every theme id', () => {
-  for (const file of ['spec/theme.md', 'spec/embed.md', 'spec/embed.zh-CN.md', 'spec/mcp-server.md', 'spec/mcp-server.zh-CN.md', 'spec/agent/README.md', 'tools/skill/SKILL.md', 'README.md', 'README.zh-CN.md']) {
+  for (const file of ['spec/theme.md', 'spec/theme.zh-CN.md', 'spec/embed.md', 'spec/embed.zh-CN.md', 'spec/mcp-server.md', 'spec/mcp-server.zh-CN.md', 'spec/agent/README.md', 'tools/skill/SKILL.md', 'README.md', 'README.zh-CN.md']) {
     const text = read(file)
     for (const id of THEME_IDS) assert.ok(text.includes(`\`${id}\``), `${file} does not name \`${id}\``)
   }

@@ -1,6 +1,6 @@
 # Themes and the design scale
 
-Status: in use (issue #97). English only for now; the interface names of the themes are in `src/core/messages/`.
+Status: in use (issue #97). English is authoritative; Chinese: [theme.zh-CN.md](./theme.zh-CN.md). The interface names of the themes are in `src/core/messages/`.
 
 A diagram is drawn with a **theme**: one answer to the question "what does this role look like". The roles
 (a party, a relation, an outcome, a node of a justification tree, ...) and the sizes are the same in every theme; a
