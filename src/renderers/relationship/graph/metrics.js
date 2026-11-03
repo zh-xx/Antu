@@ -82,8 +82,8 @@ export const CROSS_COST = 1300
 /**
  * Cap on the orthogonal router's A* expansions per relation (issue 181). Past this the search
  * stops and the layout falls back to a simple elbow, so a dense graph stays interactive.
- * Omitted in flowchart / justification (unlimited). Tuned so bundled examples still find
- * real routes; pathological late links give up instead of searching for tens of thousands of states.
+ * Flowchart and justification use the same budget (issue 330). Tuned so bundled examples still
+ * find real routes; pathological late links give up instead of searching for tens of thousands of states.
  */
 export const ROUTE_MAX_EXPANSIONS = 12000
 

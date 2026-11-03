@@ -21,8 +21,7 @@ Turn structured JSON into self-contained offline HTML legal diagrams (fact / pro
 - Gradual TypeScript / `npm run typecheck` for write-time checks is in place (closed #227); source stays JS/JSX.
 - Prefer these documented unfinished surfaces over inventing work or reopening parked issues:
   - `normalize(spec)` beyond procedure (#332)
-  - Procedure layout cost caps / yield (#330), without the #190 redesign
-  - Doc / verify hygiene (#331 status honesty leftovers, #333–#335)
+  - Doc / verify hygiene (#334 Chinese human docs, #335 embed verify soft waits)
 - Parked for now (do not expand unless the maintainer says so): justification evidence layer and guide (#38, #51), fact quote-per-source model (#161), “layout like water” (#190).
 
 ## Do not

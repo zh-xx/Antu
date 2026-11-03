@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { routeLink, runsAlongBorder, edgesOf } from '../src/renderers/procedure/flow/router.js'
 import { bendsOf } from '../src/renderers/procedure/flow/straighten.js'
+import { ROUTE_MAX_EXPANSIONS } from '../src/renderers/procedure/flow/metrics.js'
 
 const A = { x: 0, y: 0, w: 100, h: 40 }
 const B = { x: 0, y: 200, w: 100, h: 40 }
@@ -62,6 +63,11 @@ test('maxExpansions stops the search: a tiny budget finds nothing on a blocked s
 
 test('without maxExpansions a blocked straight line still finds a way round', () => {
   const pts = routeLink({ from: A, to: B, nodes: [A, B, X] })
+  assert.ok(pts && pts.length >= 2)
+})
+
+test('the flowchart budget still finds a way round a blocked straight line (issue 330)', () => {
+  const pts = routeLink({ from: A, to: B, nodes: [A, B, X], maxExpansions: ROUTE_MAX_EXPANSIONS })
   assert.ok(pts && pts.length >= 2)
 })
 

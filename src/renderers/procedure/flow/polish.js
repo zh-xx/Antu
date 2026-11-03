@@ -19,7 +19,7 @@
 import { routeLink, runsAlongBorder, BEND, CROSS } from './router.js'
 import { bendsOf } from './straighten.js'
 import { joinsAsTrunk, ownPart } from './merge.js'
-import { PAD, STAGE_PAD } from './metrics.js'
+import { PAD, STAGE_PAD, ROUTE_MAX_EXPANSIONS } from './metrics.js'
 
 /** Room a straight line keeps from a box it passes (the router's own clearance) */
 const CLEAR_LINE = 10
@@ -136,6 +136,8 @@ export function linkRouting(ctx) {
         // A link between stages may go round the outside of the boxes, but not off the top or the left of the picture
         bounds: within(g) ?? PICTURE,
         maxCost: limit,
+        // Dense charts: stop the A* search rather than freeze the page (issue 330)
+        maxExpansions: ROUTE_MAX_EXPANSIONS,
       })
     if (onlyJoin) {
       const joined = others.some((c) => joinable(g, c)) ? route(true) : null
@@ -617,6 +619,7 @@ export function polishLinks(ctx) {
       routes: others.map((o) => ({ points: o.points })),
       borders,
       bounds: within(c) ?? PICTURE,
+      maxExpansions: ROUTE_MAX_EXPANSIONS,
     })
     if (!pts || crossingsOf(pts, others) > crossingsOf(c.points, others)) continue
     c.points = pts

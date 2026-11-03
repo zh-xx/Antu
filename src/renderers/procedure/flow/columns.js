@@ -122,7 +122,23 @@ export const titleBoxOf = (box, label, vertical) => {
  * @returns {{ placed: Map, stageBoxes: object[], connections: object[], size: {width,height}, frame: object }}
  *   `frame` is the same picture before the transpose (the frame geometry), for inspection.
  */
-export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, vertical }) {
+export function layoutColumns(args) {
+  return finishColumns(layoutColumnsGen(args))
+}
+
+/** Drain a columns generator without pausing (Node / MCP / tests). */
+function finishColumns(gen) {
+  let step = gen.next()
+  while (!step.done) step = gen.next()
+  return step.value
+}
+
+/**
+ * Same work as `layoutColumns`, as a generator that yields between ELK tries and routed links
+ * so the browser path can stay responsive (issue 330).
+ * @returns {Generator<void, { placed: Map, stageBoxes: object[], connections: object[], size: {width,height}, frame: object }, unknown>}
+ */
+export function* layoutColumnsGen({ nodes, groups, stages, ruleEnds, labelBox, vertical }) {
   const byId = new Map(nodes.map((n) => [n.id, n]))
   // The title strip runs along the real top of a box: the frame's top when vertical, its left
   // when the picture is transposed
@@ -140,7 +156,7 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
   }
 
   // ① each stage on its own (a set of its nodes; a stage cut in two is laid out once per part)
-  const layOut = (st, own) => {
+  const layOut = function* (st, own) {
     const ownIds = new Set(own.map((n) => n.id))
     const inner = groups.filter((g) => ownIds.has(g.from) && ownIds.has(g.to))
     // Links leaving or entering: ELK does not route them (router.js does, later), but it is told
@@ -156,10 +172,14 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
       const tried = layoutStage(own, inner, placement, outs, ins)
       const cost = tried.connections.reduce((s, c) => s + linkCost(c, tried.placed, diamonds), 0)
       if (!best || cost < best.cost) best = { ...tried, cost }
+      yield
     }
     return { st, ids: ownIds, inner, ...best }
   }
-  const whole = stages.map((st) => layOut(st, nodes.filter((n) => n.stageId === st.id)))
+  const whole = []
+  for (const st of stages) {
+    whole.push(yield* layOut(st, nodes.filter((n) => n.stageId === st.id)))
+  }
 
   // ② A stage far taller than the others turns the picture back into a strip (03: one stage of
   // nine steps beside a stage of two ends). It is cut in two, where the fewest links cross the
@@ -173,8 +193,9 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
   for (const lay of whole) {
     const tall = lay.height > SPLIT_MIN_H && lay.height > median * SPLIT_RATIO && lay.height > roughWidth * SPLIT_ASPECT
     const parts = tall ? cutInTwo(lay) : null
-    if (parts) for (const ids of parts) segments.push(layOut(lay.st, nodes.filter((n) => ids.has(n.id))))
-    else segments.push(lay)
+    if (parts) {
+      for (const ids of parts) segments.push(yield* layOut(lay.st, nodes.filter((n) => ids.has(n.id))))
+    } else segments.push(lay)
   }
   const segOf = new Map()
   segments.forEach((seg, i) => {
@@ -396,6 +417,7 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
       labelAt: at,
       labelSize: size,
     })
+    yield
   }
 
   // Once more over the whole picture, now that the links between stages are there: a loop
@@ -405,6 +427,7 @@ export function layoutColumns({ nodes, groups, stages, ruleEnds, labelBox, verti
   connections.splice(0, connections.length, ...all)
 
   polishLinks(ctx)
+  yield
 
   // The content box
   let width = cx - COLUMN_GAP + PAD

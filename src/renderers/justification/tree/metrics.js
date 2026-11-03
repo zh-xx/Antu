@@ -54,6 +54,12 @@ export const LABEL_MAX_W = 150
 /** What crossing another link costs the router: the same reasoning as the relationship diagram's */
 export const CROSS_COST = 450
 
+/**
+ * Cap on the orthogonal router's A* expansions per link (issue 330). Same budget as the flowchart /
+ * relationship graph; past it the layout falls back to a simple elbow.
+ */
+export const ROUTE_MAX_EXPANSIONS = 12000
+
 /** How far beyond its two ends the router first looks for a link between two issues */
 export const SEARCH_MARGIN = 160
 

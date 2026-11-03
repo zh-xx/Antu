@@ -70,6 +70,14 @@ export const LABEL_LINE = 16
 export const LABEL_PAD_X = 6
 export const LABEL_MAX_W = 150
 
+/**
+ * Cap on the orthogonal router's A* expansions per link (issue 330, same idea as relationship
+ * issue 181). Past this the search stops and the caller keeps the previous route or a simple elbow,
+ * so a dense flowchart stays interactive. Tuned with relationship's 12000: bundled examples still
+ * find real routes.
+ */
+export const ROUTE_MAX_EXPANSIONS = 12000
+
 /** Corner radius of an orthogonal link where it turns */
 export const CORNER_R = 8
 /**

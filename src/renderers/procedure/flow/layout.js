@@ -29,7 +29,7 @@
 import { validateProcedure, hintsOfProcedure, ruleEndIds } from './rules.js'
 import { elkLayoutSync } from './elk.js'
 import { straighten, linkCost } from './straighten.js'
-import { layoutColumns } from './columns.js'
+import { layoutColumnsGen } from './columns.js'
 import { polishLinks } from './polish.js'
 import { edgesOf } from './router.js'
 import { layoutRuleTable } from './ruleTable.js'
@@ -157,6 +157,36 @@ export function labelBox(text) {
   return { width, height: lines * LABEL_LINE + 2 }
 }
 
+/** Drain a layout generator without pausing (Node / MCP / tests). */
+function finishLayout(gen) {
+  let step = gen.next()
+  while (!step.done) step = gen.next()
+  return step.value
+}
+
+/** Drain a layout generator, pausing about every 6 ms so the page stays responsive (issue 330). */
+function finishLayoutAsync(gen) {
+  return new Promise((resolve, reject) => {
+    const pump = () => {
+      try {
+        const t0 = performance.now()
+        let step
+        do {
+          step = gen.next()
+          if (step.done) {
+            resolve(step.value)
+            return
+          }
+        } while (performance.now() - t0 < 6)
+        setTimeout(pump, 0)
+      } catch (err) {
+        reject(err)
+      }
+    }
+    setTimeout(pump, 0)
+  })
+}
+
 /**
  * Lay out one procedure spec.
  *
@@ -165,6 +195,23 @@ export function labelBox(text) {
  * views**; view is accepted and unused (see spec/procedure/schema-draft.md §4.7).
  */
 export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vertical') {
+  return finishLayout(layOutProcedureGraph(spec, fields, view, orientation))
+}
+
+/**
+ * Same as `buildProcedureGraph`, but yields to the event loop between heavy steps so the
+ * browser can paint and take input (issue 330). Used when an inlined Web Worker would duplicate
+ * ELK and push the npm pack over 4 MB.
+ * @returns {Promise<object>}
+ */
+export function buildProcedureGraphAsync(spec, fields = {}, view, orientation = 'vertical') {
+  return finishLayoutAsync(layOutProcedureGraph(spec, fields, view, orientation))
+}
+
+/**
+ * @returns {Generator<void, object, unknown>}
+ */
+function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical') {
   const errors = validateProcedure(spec)
   const hints = hintsOfProcedure(spec)
   const vertical = orientation !== 'horizontal'
@@ -463,16 +510,20 @@ export function buildProcedureGraph(spec, fields = {}, view, orientation = 'vert
   /** @type {any} */
   let best = null
   if (columnMode) {
-    best = layoutColumns({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
+    best = yield* layoutColumnsGen({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
   } else {
     for (const placement of PLACEMENTS) {
       const tried = place(placement)
       const cost = tried.connections.reduce((n, c) => n + linkCost(c, tried.placed, diamonds), 0)
       if (!best || cost < best.cost) best = { ...tried, cost }
+      yield
     }
   }
   // The last passes over the links (polish.js), as in the column layout
-  if (!columnMode) polishSingle(best, diamonds, vertical, byId)
+  if (!columnMode) {
+    polishSingle(best, diamonds, vertical, byId)
+    yield
+  }
   const { placed, stageBoxes, size } = best
   const connections = best.connections.map((c) => ({ ...c, d: toPathD(c.points), dCurve: toCurveD(c.points) }))
 
