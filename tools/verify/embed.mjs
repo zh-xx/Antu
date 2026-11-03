@@ -27,6 +27,19 @@ import { specKeyOf } from '../../src/shell/prefs.js'
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
+/**
+ * In-page poll helper (string body) for browser.eval IIFEs — prefer over fixed pause (issue 335).
+ * Predicates are sync; the loop yields so React / layout can catch up.
+ */
+const UNTIL_FN = `async (pred, ms = 8000) => {
+  const t0 = Date.now()
+  while (Date.now() - t0 < ms) {
+    if (pred()) return
+    await new Promise((r) => setTimeout(r, 40))
+  }
+  throw new Error('until timed out')
+}`
+
 /** A static server for the test page and the bundle; resolves to its origin */
 function serve(files) {
   const server = createServer((req, res) => {
@@ -212,10 +225,10 @@ export async function checkEmbed(t) {
     // ---- themechange: told for the host's own setTheme and for the reader's click, not for what did not change ----
     const themeEvents = () => browser.eval(`window.__events.a.filter((e) => e.type === 'themechange').map((e) => e.theme)`)
     await browser.eval(`window.__h.a.setTheme('modern'); window.__h.a.setTheme('modern')`)
-    await new Promise((r) => setTimeout(r, 400))
+    await browser.waitUntil(`window.__events.a.some((e) => e.type === 'themechange' && e.theme === 'modern')`, { label: 'themechange modern' })
     const afterHost = await themeEvents()
     await browser.eval(`(() => { const btn = [...${S('a')}.querySelectorAll('.antu-header-themeopt')].find((b) => b.getAttribute('aria-pressed') === 'false'); btn?.click() })()`)
-    await new Promise((r) => setTimeout(r, 400))
+    await browser.waitUntil(`window.__events.a.filter((e) => e.type === 'themechange').length >= 2`, { label: 'reader themechange' })
     const afterReader = await themeEvents()
     eq('embed: setTheme tells the host once, and a theme it already has tells nothing', afterHost, ['modern'])
     truthy('embed: the reader picking another theme in the label card tells the host too', afterReader.length === 2 && afterReader[1] !== 'modern', JSON.stringify(afterReader))
@@ -228,7 +241,11 @@ export async function checkEmbed(t) {
       document.getElementById('d').style.width = '300px'
       window.__h.d.fitView()
     })()`)
-    await new Promise((r) => setTimeout(r, 900))
+    await browser.waitUntil(`(() => {
+      const el = document.getElementById('d')
+      const rights = [...${S('d')}.querySelectorAll('.antu-pn')].map((n) => n.getBoundingClientRect().right)
+      return rights.length > 0 && Math.max(...rights) - el.getBoundingClientRect().right <= 0.5
+    })()`, { timeoutMs: 10000, label: 'fitView after host narrow' })
     const refit = await browser.eval(`(() => {
       const el = document.getElementById('d')
       const root = ${S('d')}
@@ -289,20 +306,20 @@ export async function checkEmbed(t) {
       el?.click()
       return !!el && el.getAttribute('data-antu') === 'node'
     })(${Number(at)})`)
-    await wait(200)
+    await browser.waitUntil(`window.__events.a.filter((e) => e.type === 'select').at(-1)?.id === ${JSON.stringify(withSource.id)}`, { label: 'select after node click' })
     const sel = await browser.eval(`window.__events.a.filter((e) => e.type === 'select').at(-1) ?? null`)
     truthy('embed: a node is there to click', clicked)
     eq('embed: clicking a node tells the host which item it is, with its sources', sel && { id: sel.id, collection: sel.collection, sourceIds: sel.sourceIds, locs: sel.sources.map((s) => s.loc) },
       { id: withSource.id, collection: 'nodes', sourceIds: withSource.sourceIds, locs: withSource.sourceIds.map((id) => flow.sources.find((s) => s.id === id)?.loc) })
     await browser.eval(`${S('a')}.querySelector('.react-flow__pane')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))`)
-    await wait(200)
+    await browser.waitUntil(`window.__events.a.filter((e) => e.type === 'select').at(-1)?.id == null`, { label: 'select null after pane click' })
     eq('embed: clicking the empty canvas tells the host nothing is pinned', await browser.eval(`(() => { const e = window.__events.a.filter((e) => e.type === 'select').at(-1); return e ? e.id : 'no event' })()`), null)
     if (Array.isArray(flow.rules) && flow.rules.length) {
       // the rule table is off by default (issue 235): switch it on in this diagram first
       await browser.eval(`[...${S('a')}.querySelectorAll('.antu-dock-chip')].find((c) => c.textContent.trim() === ${JSON.stringify(translate('zh', 'flow.rules'))})?.click()`, { userGesture: true })
-      await wait(300)
+      await browser.waitUntil(`${S('a')}.querySelector('.antu-rtable-row')`, { label: 'rule table row' })
       await browser.eval(`${S('a')}.querySelector('.antu-rtable-row')?.click()`)
-      await wait(200)
+      await browser.waitUntil(`window.__events.a.filter((e) => e.type === 'select').at(-1)?.collection === 'rules'`, { label: 'select rules' })
       const rule = await browser.eval(`window.__events.a.filter((e) => e.type === 'select').at(-1) ?? null`)
       eq('embed: a row of the rule table is told as a rule', rule && [rule.collection, flow.rules.some((r) => r.id === rule.id)], ['rules', true])
     } else bad('embed: the flowchart example has no rules to click')
@@ -311,7 +328,7 @@ export async function checkEmbed(t) {
     // on a diagram of its own, so the counts of the checks above and below stay as they are
     const ruleAt = Array.isArray(flow.rules) && flow.rules.length ? 0 : -1
     const asked = await browser.eval(`(async (at, ruleAt, key) => {
-      const pause = (ms) => new Promise((r) => setTimeout(r, ms))
+      const until = ${UNTIL_FN}
       const host = document.createElement('div')
       host.style.cssText = 'width: 1000px; height: 640px'
       document.body.append(host)
@@ -324,24 +341,30 @@ export async function checkEmbed(t) {
       const h = window.__api.mount(host, flow, { initial: { headerFolded: true, view: { flow: { rules: true } } }, prefs: { read: () => ({ headerFolded: { [key]: false } }), write: () => {} }, onEvent: (e) => events.push(e) })
       const early = h.select(id)
       await h.ready
-      await pause(300)
       const root = host.shadowRoot
       const nodeEl = (x) => root.querySelector('[data-antu="node"][data-id="' + CSS.escape(x) + '"]')
       const ruleEl = (x) => root.querySelector('[data-pin-id="rule:' + CSS.escape(x) + '"]')
       const ring = (el) => (el ? getComputedStyle(el).outlineStyle : 'missing')
       const lastSelect = () => events.filter((e) => e.type === 'select').at(-1)?.id
+      await until(() => nodeEl(id) && lastSelect() === id)
       const out = { refused, early, folded: !!root.querySelector('.antu-header-card.is-folded') }
       out.earlyPinned = [lastSelect() === id, nodeEl(id)?.querySelector('.antu-pn')?.getAttribute('aria-expanded')]
       out.unknown = h.select('no such item')
-      out.unpin = [h.select(null), (await pause(200), lastSelect())]
+      out.unpin = [h.select(null), (await until(() => lastSelect() == null), lastSelect())]
       if (rule) {
-        out.rule = [h.select(rule), (await pause(200), events.filter((e) => e.type === 'select').at(-1)?.collection), ruleEl(rule)?.getAttribute('aria-expanded')]
+        out.rule = [h.select(rule), (await until(() => events.filter((e) => e.type === 'select').at(-1)?.collection === 'rules'), events.filter((e) => e.type === 'select').at(-1)?.collection), ruleEl(rule)?.getAttribute('aria-expanded')]
         h.select(null)
+        await until(() => lastSelect() == null)
       }
       // focus: the item ends up in the middle of the host
       const box = host.getBoundingClientRect()
       out.focus = h.focus(last)
-      await pause(600)
+      await until(() => {
+        const el = nodeEl(last)
+        if (!el) return false
+        const r = el.getBoundingClientRect()
+        return Math.abs(r.left + r.width / 2 - (box.left + box.width / 2)) < 30 && Math.abs(r.top + r.height / 2 - (box.top + box.height / 2)) < 30
+      })
       const r = nodeEl(last).getBoundingClientRect()
       out.centred = Math.abs(r.left + r.width / 2 - (box.left + box.width / 2)) < 30 && Math.abs(r.top + r.height / 2 - (box.top + box.height / 2)) < 30
       out.focusUnknown = h.focus('no such item')
@@ -349,20 +372,20 @@ export async function checkEmbed(t) {
       const bytes = async () => new Uint8Array(await (await h.exportPng({ pixelRatio: 1 })).arrayBuffer()).join(',')
       const plain = await bytes()
       h.highlight(rule ? [id, rule, 'no such item'] : [id, 'no such item'])
-      await pause(200)
+      await until(() => ring(nodeEl(id)) === 'solid' && (!rule || ring(ruleEl(rule)) === 'solid') && ring(nodeEl(last)) === 'none')
       out.ring = [ring(nodeEl(id)), rule ? ring(ruleEl(rule)) : 'solid', ring(nodeEl(last))]
       out.exportSame = (await bytes()) === plain
       h.setTheme('legal')
-      await pause(300)
+      await until(() => root.querySelector('.antu-app')?.dataset.theme === 'legal' && ring(nodeEl(id)) === 'solid')
       out.ringAfterTheme = ring(nodeEl(id))
       out.ringColour = getComputedStyle(nodeEl(id)).outlineColor !== 'rgb(0, 0, 255)'
       h.highlight([])
-      await pause(200)
+      await until(() => ring(nodeEl(id)) === 'none')
       out.cleared = ring(nodeEl(id))
       out.badIds = (() => { try { h.highlight('x'); return 'accepted' } catch (e) { return e.name } })()
       // a kind no reader can pin anything in
       h.setKind('route')
-      await pause(600)
+      await until(() => !nodeEl(id) || root.querySelector('.antu-rn, .antu-route'))
       out.routeSelect = h.select(id)
       h.destroy()
       host.remove()
@@ -385,23 +408,26 @@ export async function checkEmbed(t) {
     // ---- the window is shared: keys and outside clicks ----
     const kindsBefore = await browser.eval(`window.__events.a.filter((e) => e.type === 'kindchange').length`)
     await browser.eval(`document.getElementById('probe').focus(); document.getElementById('probe').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }))`)
-    await wait(300)
+    // No kindchange is the assertion — a short poll confirms it stayed put (not a settle sleep).
+    await wait(80)
     eq('embed: the arrow keys in the host\'s page do not switch the diagram', await browser.eval(`window.__events.a.filter((e) => e.type === 'kindchange').length`), kindsBefore)
     await browser.eval(`${S('a')}.querySelector('.antu-app').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }))`)
-    await wait(300)
+    await browser.waitUntil(`window.__events.a.filter((e) => e.type === 'kindchange').at(-1)?.kind === 'route'`, { label: 'arrow kindchange route' })
     eq('embed: inside the diagram the arrow keys do', await browser.eval(`window.__events.a.filter((e) => e.type === 'kindchange').map((e) => e.kind)`), ['route'])
     // the kind picker: a press inside it must not count as outside (its target is the host, seen from the document)
     const picked = await browser.eval(`(async () => {
+      const until = ${UNTIL_FN}
       const root = ${S('a')}
       root.querySelector('.antu-header-current')?.click()
-      await new Promise((r) => setTimeout(r, 150))
+      await until(() => [...root.querySelectorAll('.antu-header-cell')].some((c) => !c.classList.contains('is-on')))
       const cell = [...root.querySelectorAll('.antu-header-cell')].find((c) => !c.classList.contains('is-on'))
       if (!cell) return 'no panel'
       cell.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }))
-      await new Promise((r) => setTimeout(r, 150))
+      // One frame: a press that wrongly closes the panel would disconnect the cell before click.
+      await new Promise((r) => setTimeout(r, 40))
       if (!cell.isConnected) return 'closed on press'
       cell.click()
-      await new Promise((r) => setTimeout(r, 300))
+      await until(() => window.__events.a.filter((e) => e.type === 'kindchange').at(-1)?.kind === 'flow')
       return window.__events.a.filter((e) => e.type === 'kindchange').at(-1)?.kind
     })()`, { awaitPromise: true })
     eq('embed: the kind picker inside the diagram takes a click', picked, 'flow')
@@ -409,11 +435,21 @@ export async function checkEmbed(t) {
     // ---- the handle ----
     eq('embed: setKind refuses a kind the type does not have', await browser.eval(`window.__h.a.setKind('timeline')`), false)
     eq('embed: setKind switches to one it has', await browser.eval(`window.__h.a.setKind('route')`), true)
-    await wait(600)
+    await browser.waitUntil(`window.__events.a.filter((e) => e.type === 'kindchange').at(-1)?.kind === 'route'`, { label: 'setKind route event' })
     eq('embed: and the host hears it', await browser.eval(`window.__events.a.filter((e) => e.type === 'kindchange').at(-1)?.kind`), 'route')
     eq('embed: the other diagram did not move', await browser.eval(`window.__events.b.filter((e) => e.type === 'kindchange').length`), 0)
-    eq('embed: setTheme', await browser.eval(`(async () => { window.__h.a.setTheme('modern'); await new Promise((r) => setTimeout(r, 200)); return ${S('a')}.querySelector('.antu-app').dataset.theme })()`, { awaitPromise: true }), 'modern')
-    truthy('embed: setLang', await browser.eval(`(async () => { window.__h.a.setLang('en'); await new Promise((r) => setTimeout(r, 200)); return ${S('a')}.querySelector('.antu-header').textContent })()`, { awaitPromise: true }).then((s) => s.includes(translate('en', 'graphKind.route'))))
+    eq('embed: setTheme', await browser.eval(`(async () => {
+      const until = ${UNTIL_FN}
+      window.__h.a.setTheme('modern')
+      await until(() => ${S('a')}.querySelector('.antu-app')?.dataset.theme === 'modern')
+      return ${S('a')}.querySelector('.antu-app').dataset.theme
+    })()`, { awaitPromise: true }), 'modern')
+    truthy('embed: setLang', await browser.eval(`(async () => {
+      const until = ${UNTIL_FN}
+      window.__h.a.setLang('en')
+      await until(() => (${S('a')}.querySelector('.antu-header')?.textContent || '').includes(${JSON.stringify(translate('en', 'graphKind.route'))}))
+      return ${S('a')}.querySelector('.antu-header').textContent
+    })()`, { awaitPromise: true }).then((s) => s.includes(translate('en', 'graphKind.route'))))
     const png = await browser.eval(`(async () => {
       const blob = await window.__h.a.exportPng()
       const head = [...new Uint8Array(await blob.slice(0, 8).arrayBuffer())]
@@ -425,12 +461,18 @@ export async function checkEmbed(t) {
     eq('embed: exportPng hands back a PNG', [png.type, png.head.slice(0, 4)], ['image/png', [137, 80, 78, 71]])
     eq('embed: of the size the page\'s own export has: (content + padding) × 2', [png.width, png.height], [frame.width * 2, frame.height * 2])
     truthy('embed: and no download was started for it', (await browser.eval(`document.querySelectorAll('a[download]').length`)) === 0)
-    eq('embed: update draws the new spec', await browser.eval(`(async () => { window.__h.a.update(window.__api.SPECS.renamed); await new Promise((r) => setTimeout(r, 400)); return ${S('a')}.querySelector('.antu-header-title')?.textContent })()`, { awaitPromise: true }), renamed.title)
+    eq('embed: update draws the new spec', await browser.eval(`(async () => {
+      const until = ${UNTIL_FN}
+      window.__h.a.update(window.__api.SPECS.renamed)
+      await until(() => ${S('a')}.querySelector('.antu-header-title')?.textContent === ${JSON.stringify(renamed.title)})
+      return ${S('a')}.querySelector('.antu-header-title')?.textContent
+    })()`, { awaitPromise: true }), renamed.title)
     eq('embed: after all this the host\'s storage is still empty', await browser.eval('localStorage.length'), 0)
     eq('embed: the host page threw nothing', browser.errors ?? [], [])
 
     // ---- the host's element narrows and widens again (src/shell/dockPlace.js): the minimap gives way and comes back ----
     const resized = await browser.eval(`(async () => {
+      const until = ${UNTIL_FN}
       const host = document.getElementById('a'), root = ${S('a')}
       const look = () => {
         const r = (s) => { const e = root.querySelector(s); if (!e) return null; const x = e.getBoundingClientRect(); return x.width ? x : null }
@@ -438,16 +480,23 @@ export async function checkEmbed(t) {
         const hit = (a, b) => !!(a && b && a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5)
         return { minimap: !!mini, wrapped: !!root.querySelector('.antu-dock-capsule.is-wrapped'), clear: !hit(cap, mini) && !hit(cap, zoom), inside: !!cap && cap.left >= box.left - 0.5 && cap.right <= box.right + 0.5 }
       }
-      const settle = () => new Promise((r) => setTimeout(r, 300))
       // Earlier steps turn Rules on, which brings the long "Restore…" chip (~200 px). Clear it first:
       // this check is about dockPlace, not about that chip staying on the bar.
       root.querySelector('.antu-dock-reset')?.click()
-      await settle()
+      await until(() => !root.querySelector('.antu-dock-reset'))
       // English flowchart capsule (conditions…rules + Sources + export) is ~1100 px; 1600 leaves room
       // for the minimap (same "wide" floor as checkDockClearance after issue 124).
-      host.style.width = '520px'; await settle()
+      host.style.width = '520px'
+      await until(() => {
+        const n = look()
+        return n.minimap === false && n.wrapped === true && n.clear === true && n.inside === true
+      })
       const narrow = look()
-      host.style.width = '1600px'; await settle()
+      host.style.width = '1600px'
+      await until(() => {
+        const w = look()
+        return w.minimap === true && w.wrapped === false && w.clear === true && w.inside === true
+      })
       const wide = look()
       host.style.width = '1000px'
       return { narrow, wide }
@@ -457,7 +506,7 @@ export async function checkEmbed(t) {
 
     // ---- a host configuring what the reader sees: initial, locked, persist (issue 200) ----
     const viewState = await browser.eval(`(async () => {
-      const pause = (ms) => new Promise((r) => setTimeout(r, ms))
+      const until = ${UNTIL_FN}
       const flow = window.__api.SPECS.flow
       const start = (options) => {
         const host = document.createElement('div')
@@ -472,7 +521,8 @@ export async function checkEmbed(t) {
       // initial wins over the stored choice
       {
         const it = start({ initial: { view: { flow: { states: true } } }, prefs: { read: () => ({ flowFieldsByDiagram: { [${JSON.stringify(flowKey)}]: { states: false } } }), write: () => {} } })
-        await it.h.ready; await pause(200)
+        await it.h.ready
+        await until(() => chip(it.host, ${JSON.stringify(translate('en', 'flow.states'))})?.classList.contains('is-on'))
         out.initialOn = !!chip(it.host, ${JSON.stringify(translate('en', 'flow.states'))})?.classList.contains('is-on')
         off(it)
       }
@@ -480,7 +530,8 @@ export async function checkEmbed(t) {
       // a locked switch offers no control
       {
         const it = start({ locked: { view: { flow: { states: true } } } })
-        await it.h.ready; await pause(200)
+        await it.h.ready
+        await until(() => it.host.shadowRoot.querySelector('.antu-dock-capsule'))
         out.lockedHidden = !chip(it.host, ${JSON.stringify(translate('en', 'flow.states'))})
         off(it)
       }
@@ -488,11 +539,12 @@ export async function checkEmbed(t) {
       // the dock opens folded, and its one button brings the bar back
       {
         const it = start({ initial: { shell: { dockFolded: true } } })
-        await it.h.ready; await pause(200)
+        await it.h.ready
         const root = it.host.shadowRoot
+        await until(() => !!root.querySelector('.antu-dock-open') && !root.querySelector('.antu-dock-capsule .antu-dock-bar'))
         out.folded = [!!root.querySelector('.antu-dock-open'), !!root.querySelector('.antu-dock-capsule .antu-dock-bar')]
         root.querySelector('.antu-dock-open')?.click()
-        await pause(300)
+        await until(() => !root.querySelector('.antu-dock-open') && !!root.querySelector('.antu-dock-capsule .antu-dock-bar'))
         out.unfolded = [!!root.querySelector('.antu-dock-open'), !!root.querySelector('.antu-dock-capsule .antu-dock-bar')]
         off(it)
       }
@@ -501,10 +553,11 @@ export async function checkEmbed(t) {
       {
         const writes = []
         const it = start({ persist: false, prefs: { read: () => ({}), write: (p) => writes.push(p) } })
-        await it.h.ready; await pause(200)
+        await it.h.ready
+        await until(() => chip(it.host, ${JSON.stringify(translate('en', 'flow.rules'))}))
         // the rule table is off by default (issue 235), so the click turns it on
         chip(it.host, ${JSON.stringify(translate('en', 'flow.rules'))})?.click()
-        await pause(200)
+        await until(() => chip(it.host, ${JSON.stringify(translate('en', 'flow.rules'))})?.classList.contains('is-on'))
         out.persist = [writes.length, !!chip(it.host, ${JSON.stringify(translate('en', 'flow.rules'))})?.classList.contains('is-on')]
         off(it)
       }
@@ -513,21 +566,22 @@ export async function checkEmbed(t) {
       // the change, shows the built-in default again, and disappears
       {
         const it = start({})
-        await it.h.ready; await pause(200)
+        await it.h.ready
         const restoreLabel = ${JSON.stringify(translate('en', 'dock.restore'))}
         const restore = () => [...it.host.shadowRoot.querySelectorAll('.antu-dock-chip')].find((c) => c.textContent.trim() === restoreLabel)
         const rules = () => chip(it.host, ${JSON.stringify(translate('en', 'flow.rules'))})
         // one switch that opens off (rules) and one that opens on (conditions): both must come back to their default
         const conditions = () => chip(it.host, ${JSON.stringify(translate('en', 'flow.conditions'))})
         const on = (c) => !!c?.classList.contains('is-on')
+        await until(() => rules() && conditions())
         const before = [!!restore(), on(rules()), on(conditions())]
         rules()?.click()
-        await pause(300)
+        await until(() => on(rules()) && !!restore())
         conditions()?.click()
-        await pause(300)
+        await until(() => !on(conditions()) && !!restore())
         const changed = [!!restore(), on(rules()), on(conditions())]
         restore()?.click()
-        await pause(800)
+        await until(() => !restore() && !on(rules()) && on(conditions()))
         out.restore = [before, changed, [!!restore(), on(rules()), on(conditions())]]
         off(it)
       }
@@ -551,7 +605,7 @@ export async function checkEmbed(t) {
 
     // ---- fact / relationship view state (issue 329) ----
     const viewState2 = await browser.eval(`(async () => {
-      const pause = (ms) => new Promise((r) => setTimeout(r, ms))
+      const until = ${UNTIL_FN}
       const fact = window.__api.SPECS.fact
       const relationship = window.__api.SPECS.relationship
       const start = (spec, options) => {
@@ -567,7 +621,8 @@ export async function checkEmbed(t) {
       // fact: initial wins over the stored choice (summary off in store, on via initial)
       {
         const it = start(fact, { initial: { view: { fact: { summary: true } } }, prefs: { read: () => ({ fields: { [${JSON.stringify(factKey)}]: { summary: false } } }), write: () => {} } })
-        await it.h.ready; await pause(300)
+        await it.h.ready
+        await until(() => chip(it.host, ${JSON.stringify(translate('en', 'dock.summary'))})?.classList.contains('is-on'))
         out.factInitialOn = !!chip(it.host, ${JSON.stringify(translate('en', 'dock.summary'))})?.classList.contains('is-on')
         off(it)
       }
@@ -575,7 +630,8 @@ export async function checkEmbed(t) {
       // fact: a locked switch offers no control
       {
         const it = start(fact, { locked: { view: { fact: { summary: true } } } })
-        await it.h.ready; await pause(300)
+        await it.h.ready
+        await until(() => it.host.shadowRoot.querySelector('.antu-dock-capsule'))
         out.factLockedHidden = !chip(it.host, ${JSON.stringify(translate('en', 'dock.summary'))})
         off(it)
       }
@@ -583,7 +639,8 @@ export async function checkEmbed(t) {
       // relationship: initial opens labels on over the store's off
       {
         const it = start(relationship, { initial: { view: { relationship: { labels: true } } }, prefs: { read: () => ({ relationshipFieldsByDiagram: { [${JSON.stringify(relationshipKey)}]: { labels: false } } }), write: () => {} } })
-        await it.h.ready; await pause(300)
+        await it.h.ready
+        await until(() => chip(it.host, ${JSON.stringify(translate('en', 'rel.labels'))})?.classList.contains('is-on'))
         out.relInitialOn = !!chip(it.host, ${JSON.stringify(translate('en', 'rel.labels'))})?.classList.contains('is-on')
         off(it)
       }
@@ -591,7 +648,8 @@ export async function checkEmbed(t) {
       // relationship: a locked labels switch offers no control
       {
         const it = start(relationship, { locked: { view: { relationship: { labels: true } } } })
-        await it.h.ready; await pause(300)
+        await it.h.ready
+        await until(() => it.host.shadowRoot.querySelector('.antu-dock-capsule'))
         out.relLockedHidden = !chip(it.host, ${JSON.stringify(translate('en', 'rel.labels'))})
         off(it)
       }
@@ -629,7 +687,7 @@ export async function checkEmbed(t) {
     eq('embed: destroy takes the diagram off; it mounts again; a second mount on a mounted element is refused', [again.left, again.twice, again.drawn > 0], [0, true, true])
     eq('embed: validate and kindsOf come with the bundle', await browser.eval(`[window.__api.validate(window.__api.SPECS.flow).ok, window.__api.validate({}).ok, window.__api.kindsOf('procedure')]`), [true, false, ['flow', 'route']])
   } catch (e) {
-    bad('embed: the check itself failed', e.message)
+    bad('embed: the check itself failed', (e && e.stack) || e.message)
   } finally {
     await browser.close()
     server.close()
