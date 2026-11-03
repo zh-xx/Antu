@@ -21,6 +21,7 @@ import { RELATION_KINDS } from '../graph/rules.js'
  *   onToggleKind?: (kind: string) => void,
  *   showLabels?: boolean,
  *   onToggleLabels: (show: boolean) => void,
+ *   locked?: Record<string, unknown>,
  *   parties?: Array<{ id: string, label: string }>,
  *   centre?: string | null,
  *   onPickCentre?: (id: string) => void,
@@ -31,7 +32,7 @@ import { RELATION_KINDS } from '../graph/rules.js'
  *   extra?: any
  * }} props
  */
-export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, showLabels = true, onToggleLabels, parties = [], centre = null, onPickCentre, isDefaultCentre = true, onResetCentre, exporting = false, onExport, extra = null }) {
+export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, showLabels = true, onToggleLabels, locked = {}, parties = [], centre = null, onPickCentre, isDefaultCentre = true, onResetCentre, exporting = false, onExport, extra = null }) {
   const { t } = useLang()
   const used = RELATION_KINDS.filter((k) => kinds[k] > 0)
   return (
@@ -50,9 +51,11 @@ export default function FocusDock({ kinds = {}, hiddenKinds = [], onToggleKind, 
           ))}
         {used.length > 1 && <span className="antu-dock-sep" />}
 
-        <button className={`antu-dock-chip${showLabels ? ' is-on' : ''}`} onClick={() => onToggleLabels(!showLabels)}>
-          {t('rel.labels')}
-        </button>
+        {!locked.labels && (
+          <button data-chip="labels" className={`antu-dock-chip${showLabels ? ' is-on' : ''}`} onClick={() => onToggleLabels(!showLabels)}>
+            {t('rel.labels')}
+          </button>
+        )}
         {extra}
         {parties.length > 1 && onPickCentre && (
           <select className="antu-dock-chip antu-pt-end" value={centre ?? ''} onChange={(e) => onPickCentre(e.target.value)} title={t('rel.focus.centre')} aria-label={t('rel.focus.centre')}>

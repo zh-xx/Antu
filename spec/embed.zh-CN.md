@@ -135,12 +135,16 @@ interface AntuViewState {
     flow?: { states?: boolean; conditions?: boolean; detail?: boolean; mainLine?: boolean; stages?: boolean; rules?: boolean;
              orientation?: 'vertical' | 'horizontal'; linkStyle?: 'straight' | 'curved' }
     route?: { labels?: boolean; states?: boolean }
+    fact?: { summary?: boolean; actors?: boolean; sources?: boolean; grid?: boolean; stagger?: boolean;
+             orientation?: 'vertical' | 'horizontal'; byParty?: boolean }
+    relationship?: { labels?: boolean; groups?: boolean;
+                     orientation?: 'vertical' | 'horizontal'; linkStyle?: 'straight' | 'curved' }
   }
 }
 ```
 
 - **`initial`** 是打开时的值。它压过保存的偏好（`initial.headerFolded` 一直如此），而读者在本次挂载里的点击又压过它。`initial.theme`、`initial.lang` 与顶层的 `theme`、`lang` 含义相同；两者都给时以顶层为准。
-- **`locked`** 强制一个值并隐藏对应控件（不是禁用）。`shell.dockFolded: true` 会把整个控制胶囊藏起来，无法再打开；`false` 表示胶囊展开且没有收起按钮。`shell.headerFolded` 会去掉标签卡的折叠按钮。`locked.theme` 固定主题并隐藏主题切换；`locked.lang` 固定语言并隐藏语言切换。`view.flow.*`／`view.route.*` 锁定后，对应的开关不再渲染。
+- **`locked`** 强制一个值并隐藏对应控件（不是禁用）。`shell.dockFolded: true` 会把整个控制胶囊藏起来，无法再打开；`false` 表示胶囊展开且没有收起按钮。`shell.headerFolded` 会去掉标签卡的折叠按钮。`locked.theme` 固定主题并隐藏主题切换；`locked.lang` 固定语言并隐藏语言切换。`view.flow.*`／`view.route.*`／`view.fact.*`／`view.relationship.*` 锁定后，对应的开关不再渲染。
 - **`persist`** 为 `true`（默认，与今天相同）、`false`（读者的改动只在挂载期间保留，绝不写进 prefs 存储），或允许写入的名字组成的数组。
 
 每一项的取值依次来自（从高到低）：
@@ -161,10 +165,12 @@ interface AntuViewState {
 | `kind` | `kinds` |
 | `shell.headerFolded` | `headerFolded` |
 | `shell.dockFolded` | `dockFolded` |
-| `view.flow` | `flowFieldsByDiagram`、`orientations`、`linkStyle`（每个都是按图的内容作键的映射） |
+| `view.flow` | `flowFieldsByDiagram`，以及列出本名字（或其他使用它们的 `view.*`）时共享的 `orientations`／`linkStyle` |
 | `view.route` | `procedureRouteFieldsByDiagram` |
+| `view.fact` | `fields`、`showGrid`、`staggers`、`scaleByParty`，以及列出本名字（或其他使用它的 `view.*`）时共享的 `orientations` |
+| `view.relationship` | `relationshipFieldsByDiagram`，以及列出本名字（或其他使用它们的 `view.*`）时共享的 `orientations`／`linkStyle` |
 
-第一阶段只覆盖下面这些项；给其他类型写 `view.flow`／`view.route` 会被忽略，不算错误，其他图类型还没有视图状态。
+`orientations` 与 `linkStyle` 跨类型共用。只要 `persist` 列出任一使用该共享映射的 `view.*` 名字，该映射的写入就被允许（任一即可）。给其他类型写 `view.flow`／`view.route`／`view.fact`／`view.relationship` 会被忽略，不算错误。论证图尚无视图状态；关系图的关系类型过滤（`hiddenKinds`）不在本契约内。
 
 | 项 | `initial` / `locked` 路径 | prefs 键 |
 | --- | --- | --- |
@@ -177,6 +183,15 @@ interface AntuViewState {
 | 流程图连线样式 | `view.flow.linkStyle` | `linkStyle` |
 | 路线图条件标签 | `view.route.labels` | `procedureRouteFieldsByDiagram` |
 | 路线图状态 | `view.route.states` | `procedureRouteFieldsByDiagram` |
+| 事实图卡片字段 | `view.fact.summary` · `.actors` · `.sources` | `fields` |
+| 事实图网格线 | `view.fact.grid` | `showGrid` |
+| 事实图交错行 | `view.fact.stagger` | `staggers` |
+| 事实图方向 | `view.fact.orientation` | `orientations` |
+| 事实图天平按当事人分道 | `view.fact.byParty` | `scaleByParty` |
+| 关系图标签 | `view.relationship.labels` | `relationshipFieldsByDiagram` |
+| 关系图分组 | `view.relationship.groups` | `relationshipFieldsByDiagram` |
+| 关系图方向 | `view.relationship.orientation` | `orientations` |
+| 关系图连线样式 | `view.relationship.linkStyle` | `linkStyle` |
 
 ### 句柄
 

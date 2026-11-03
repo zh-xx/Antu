@@ -47,9 +47,10 @@
  */
 
 /**
- * How a mounted diagram opens and what it shows (issue 200). Every value a reader can change may be set here:
- * the theme and language, the label card and dock folds, and every switch of the flowchart and route map.
- * Unknown keys, wrong types and values outside an enum make `mount` throw.
+ * How a mounted diagram opens and what it shows (issue 200; phase 2 issue 329). Every value a reader can
+ * change may be set here: the theme and language, the label card and dock folds, and every switch of the
+ * flowchart, route map, fact and relationship views. Justification has no view state yet. Unknown keys,
+ * wrong types and values outside an enum make `mount` throw.
  * @typedef {{
  *   theme?: AntuTheme,
  *   lang?: AntuLang,
@@ -66,13 +67,30 @@
  *       linkStyle?: 'straight' | 'curved',
  *     },
  *     route?: { labels?: boolean, states?: boolean },
+ *     fact?: {
+ *       summary?: boolean,
+ *       actors?: boolean,
+ *       sources?: boolean,
+ *       grid?: boolean,
+ *       stagger?: boolean,
+ *       orientation?: 'vertical' | 'horizontal',
+ *       byParty?: boolean,
+ *     },
+ *     relationship?: {
+ *       labels?: boolean,
+ *       groups?: boolean,
+ *       orientation?: 'vertical' | 'horizontal',
+ *       linkStyle?: 'straight' | 'curved',
+ *     },
  *   },
  * }} AntuViewState
  */
 
 /**
- * The names `persist` may list: one per prefs key whose write may reach the host's store
- * @typedef {'theme' | 'lang' | 'kind' | 'shell.headerFolded' | 'shell.dockFolded' | 'view.flow' | 'view.route'} AntuPersistName
+ * The names `persist` may list: one per prefs key whose write may reach the host's store.
+ * Shared maps (`orientations`, `linkStyle`) are allowed when any of the listed `view.*` names that
+ * use them is in the persist list (issue 329).
+ * @typedef {'theme' | 'lang' | 'kind' | 'shell.headerFolded' | 'shell.dockFolded' | 'view.flow' | 'view.route' | 'view.fact' | 'view.relationship'} AntuPersistName
  */
 
 /**

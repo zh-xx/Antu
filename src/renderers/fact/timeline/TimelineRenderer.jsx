@@ -18,7 +18,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { usePreset, usePrefs } from '../../../shell/env.js'
+import { usePrefs, useViewValue } from '../../../shell/env.js'
 import { specKeyOf } from '../../../shell/prefs.js'
 import { useSpecPref } from '../../relationship/useSpecPref.js'
 import { useExport } from '../../../shell/useExport.js'
@@ -46,39 +46,47 @@ const nodeTypes = {
 const FIELD_DEFAULTS = { sources: false, actors: false, summary: true }
 
 export default function FactTimeline({ spec }) {
-  // External preset: used only by MCP's antu_preview.
-  // It has to specify "which orientation, which fields" for a screenshot without
-  // polluting the user's own preferences, so it travels through a one-shot global rather than
-  // localStorage.
-  // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
-  const PRESET = usePreset()
   const prefs = usePrefs()
   // Per-diagram preferences are keyed by the spec's content (shell/prefs.js `specKeyOf`), so two
   // diagrams with the same title, or none, never share a record.
   const specKey = specKeyOf(spec)
 
   // Which optional fields the card shows, remembered per diagram. Only the fields the user actually
-  // touched are stored, and the preset only supplies the first values.
+  // touched are stored. Every switch goes through the view state (issue 200): a host's `initial` / `locked`,
+  // the viewer page's preset (MCP's antu_preview, shell/env.js) and the reader's click are resolved in one place.
   const [storedFields, setStoredFields] = useSpecPref('fields', specKey, (stored) => stored || {})
+  const summaryView = useViewValue('view.fact.summary', storedFields.summary, FIELD_DEFAULTS.summary)
+  const actorsView = useViewValue('view.fact.actors', storedFields.actors, FIELD_DEFAULTS.actors)
+  const sourcesView = useViewValue('view.fact.sources', storedFields.sources, FIELD_DEFAULTS.sources)
+  const fieldView = { summary: summaryView, actors: actorsView, sources: sourcesView }
   // Memoised: an object rebuilt on every render sat in the graph memo's dependencies, so every re-render
   // (a hover, a pin) rebuilt the whole graph and re-fitted the viewport, throwing a zoomed-in reader back
   // to the overview (issue 273; the same failure #21 fixed for the other renderers with `fitKey`).
-  const presetFields = PRESET?.fields || null
   const fields = useMemo(
-    () => ({ ...FIELD_DEFAULTS, ...storedFields, ...(presetFields || {}) }),
-    [storedFields, presetFields],
+    () => ({ summary: summaryView.value, actors: actorsView.value, sources: sourcesView.value }),
+    [summaryView.value, actorsView.value, sourcesView.value],
   )
-  const toggleField = (key, value) => setStoredFields({ ...storedFields, [key]: value })
+  const toggleField = (key, value) => {
+    fieldView[key].touch()
+    setStoredFields({ ...storedFields, [key]: value })
+  }
 
   // Underlying grid lines: also a choice about this diagram now (issue 236)
-  const [showGrid, setShowGrid] = useSpecPref('showGrid', specKey, (stored) => stored === true)
-  const toggleGrid = (value) => setShowGrid(value)
+  const [storedGrid, setShowGrid] = useSpecPref('showGrid', specKey)
+  const gridView = useViewValue('view.fact.grid', storedGrid, false)
+  const showGrid = gridView.value === true
+  const toggleGrid = (value) => {
+    gridView.touch()
+    setShowGrid(value)
+  }
 
   // Staggered rows (vertical only, see rowTopsOf in metrics.js): on by default, and what the reader set is remembered
   // per diagram, like the orientation, so turning it off in one diagram does not change how another opens.
   const [staggerPrefs, setStaggerPrefs] = useState(() => prefs.read().staggers || {})
-  const stagger = PRESET?.stagger ?? staggerPrefs[specKey] ?? true
+  const staggerView = useViewValue('view.fact.stagger', staggerPrefs[specKey], true)
+  const stagger = staggerView.value !== false
   const toggleStagger = (value) => {
+    staggerView.touch()
     const map = { ...staggerPrefs, [specKey]: value }
     setStaggerPrefs(map)
     prefs.write({ staggers: map })
@@ -89,12 +97,23 @@ export default function FactTimeline({ spec }) {
   // cell is 316 wide, and one screen minus the heading column fits only about 3.8 slots.
   const [orientationPrefs, setOrientationPrefs] = useState(() => prefs.read().orientations || {})
   const slotCount = Array.isArray(spec?.slots) ? spec.slots.length : 0
-  const orientation =
-    PRESET?.orientation || orientationPrefs[specKey] || (slotCount >= 5 ? 'vertical' : 'horizontal')
+  const orientationView = useViewValue('view.fact.orientation', orientationPrefs[specKey], slotCount >= 5 ? 'vertical' : 'horizontal')
+  const orientation = orientationView.value === 'vertical' || orientationView.value === 'horizontal' ? orientationView.value : slotCount >= 5 ? 'vertical' : 'horizontal'
   const toggleOrientation = (next) => {
+    orientationView.touch()
     const map = { ...orientationPrefs, [specKey]: next }
     setOrientationPrefs(map)
     prefs.write({ orientations: map })
+  }
+
+  // Which controls a host locked (issue 200): the dock leaves exactly those out
+  const locked = {
+    summary: summaryView.locked,
+    actors: actorsView.locked,
+    sources: sourcesView.locked,
+    grid: gridView.locked,
+    stagger: staggerView.locked,
+    orientation: orientationView.locked,
   }
 
   // The field switches are an input to layout: they decide how many rows a card takes. Change them
@@ -167,6 +186,7 @@ export default function FactTimeline({ spec }) {
             onToggleGrid={toggleGrid}
             stagger={stagger}
             onToggleStagger={toggleStagger}
+            locked={locked}
             exporting={exporting}
             onExport={onExport}
           />

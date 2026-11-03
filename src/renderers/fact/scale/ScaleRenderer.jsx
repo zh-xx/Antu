@@ -10,7 +10,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { useEnv, usePrefs, usePreset } from '../../../shell/env.js'
+import { useEnv, usePrefs, useViewValue } from '../../../shell/env.js'
 import { specKeyOf } from '../../../shell/prefs.js'
 import { useExport } from '../../../shell/useExport.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
@@ -47,8 +47,7 @@ export default function FactScale({ spec }) {
   const { root } = useEnv()
   const measure = useMemo(() => makeMeasure(root), [root])
   // A lane per party, offered when a side holds two or more parties; off by default, remembered per diagram
-  // (the preset is MCP's antu_preview's, the prefs the page's or the host's; shell/env.js)
-  const PRESET = usePreset()
+  // (through the view state, issue 200: a host's `initial` / `locked`, MCP's antu_preview preset, the prefs; shell/env.js)
   const prefs = usePrefs()
   const specKey = specKeyOf(spec)
   const crowded = useMemo(() => {
@@ -59,8 +58,10 @@ export default function FactScale({ spec }) {
     return [...count.values()].some((n) => n >= 2)
   }, [spec])
   const [partyPrefs, setPartyPrefs] = useState(() => prefs.read().scaleByParty || {})
-  const byParty = crowded && (PRESET?.byParty ?? partyPrefs[specKey] ?? false)
+  const byPartyView = useViewValue('view.fact.byParty', partyPrefs[specKey], false)
+  const byParty = crowded && byPartyView.value === true
   const toggleByParty = (value) => {
+    byPartyView.touch()
     const map = { ...partyPrefs, [specKey]: value }
     setPartyPrefs(map)
     prefs.write({ scaleByParty: map })
@@ -99,7 +100,13 @@ export default function FactScale({ spec }) {
           }}
           onPaneClick={() => setPinnedId(null)}
         >
-          <ScaleDock byParty={byParty} onToggleByParty={crowded ? toggleByParty : null} exporting={exporting} onExport={onExport} />
+          <ScaleDock
+            byParty={byParty}
+            onToggleByParty={crowded ? toggleByParty : null}
+            locked={{ byParty: byPartyView.locked }}
+            exporting={exporting}
+            onExport={onExport}
+          />
         </Canvas>
       </PreviewContext.Provider>
     </div>

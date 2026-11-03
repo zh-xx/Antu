@@ -38,6 +38,8 @@ export default function ControlDock({
   /** Staggered rows: vertical only, so the chip is shown only then; on by default */
   stagger = false,
   onToggleStagger,
+  /** Controls a host locked (issue 200): left out of the dock */
+  locked = /** @type {Record<string, unknown>} */ ({}),
   exporting = false,
   onExport,
 }) {
@@ -46,9 +48,10 @@ export default function ControlDock({
   return (
     <div className="antu-dock">
       <div className="antu-dock-bar">
-        {OPTIONAL_FIELDS.map((key) => (
+        {OPTIONAL_FIELDS.filter((key) => !locked[key]).map((key) => (
           <button
             key={key}
+            data-chip={key}
             className={`antu-dock-chip${fields[key] ? ' is-on' : ''}`}
             onClick={() => onToggleField(key, !fields[key])}
           >
@@ -59,9 +62,9 @@ export default function ControlDock({
         <span className="antu-dock-sep" />
 
         {/* Segmented control: only two options, putting both out saves one click compared with a menu */}
-        <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} />
+        {!locked.orientation && <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} />}
 
-        {onToggleStagger && orientation === 'vertical' && (
+        {onToggleStagger && !locked.stagger && orientation === 'vertical' && (
           <button
             className={`antu-dock-chip${stagger ? ' is-on' : ''}`}
             data-chip="stagger"
@@ -77,7 +80,7 @@ export default function ControlDock({
 
         {/* The grid lines assume rows of one height, so they are not offered while the rows are staggered
             (the chip and its separator go together, so two separators never meet) */}
-        {!(stagger && orientation === 'vertical') && (
+        {!locked.grid && !(stagger && orientation === 'vertical') && (
           <>
             <button
               className={`antu-dock-chip${showGrid ? ' is-on' : ''}`}

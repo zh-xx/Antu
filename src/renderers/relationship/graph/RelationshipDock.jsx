@@ -41,6 +41,8 @@ export default function RelationshipDock({
   onToggleOrientation,
   linkStyle = 'curved',
   onToggleLinkStyle,
+  /** Controls a host locked (issue 200): left out of the dock */
+  locked = /** @type {Record<string, unknown>} */ ({}),
   exporting = false,
   onExport,
 }) {
@@ -64,11 +66,13 @@ export default function RelationshipDock({
           ))}
         {used.length > 1 && <span className="antu-dock-sep" />}
 
-        <button className={`antu-dock-chip${showLabels ? ' is-on' : ''}`} onClick={() => onToggleLabels(!showLabels)}>
-          {t('rel.labels')}
-        </button>
-        {hasGroups && (
-          <button className={`antu-dock-chip${showGroups ? ' is-on' : ''}`} onClick={() => onToggleGroups(!showGroups)}>
+        {!locked.labels && (
+          <button data-chip="labels" className={`antu-dock-chip${showLabels ? ' is-on' : ''}`} onClick={() => onToggleLabels(!showLabels)}>
+            {t('rel.labels')}
+          </button>
+        )}
+        {hasGroups && !locked.groups && (
+          <button data-chip="groups" className={`antu-dock-chip${showGroups ? ' is-on' : ''}`} onClick={() => onToggleGroups(!showGroups)}>
             {t('rel.groups')}
           </button>
         )}
@@ -77,9 +81,11 @@ export default function RelationshipDock({
 
         {/* The buttons say which way the levels run; with the camps boxed the camps stand across that way, which is why the
             picture can look the other way round (the review of PR 171): the tooltip says so */}
-        <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} title={t(hasGroups && showGroups ? 'dock.orientationCamps' : 'dock.orientation')} />
+        {!locked.orientation && (
+          <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} title={t(hasGroups && showGroups ? 'dock.orientationCamps' : 'dock.orientation')} />
+        )}
 
-        <DockSegmented options={LINK_STYLES} value={linkStyle} onChange={onToggleLinkStyle} title={t('flow.linkStyle')} />
+        {!locked.linkStyle && <DockSegmented options={LINK_STYLES} value={linkStyle} onChange={onToggleLinkStyle} title={t('flow.linkStyle')} />}
 
         <span className="antu-dock-sep" />
 

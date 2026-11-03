@@ -148,12 +148,16 @@ interface AntuViewState {
     flow?: { states?: boolean; conditions?: boolean; detail?: boolean; mainLine?: boolean; stages?: boolean; rules?: boolean;
              orientation?: 'vertical' | 'horizontal'; linkStyle?: 'straight' | 'curved' }
     route?: { labels?: boolean; states?: boolean }
+    fact?: { summary?: boolean; actors?: boolean; sources?: boolean; grid?: boolean; stagger?: boolean;
+             orientation?: 'vertical' | 'horizontal'; byParty?: boolean }
+    relationship?: { labels?: boolean; groups?: boolean;
+                     orientation?: 'vertical' | 'horizontal'; linkStyle?: 'straight' | 'curved' }
   }
 }
 ```
 
 - **`initial`** sets the opening value. It wins over the stored preferences (as `initial.headerFolded` already did), and the reader's click in this mount still wins over it. `initial.theme` and `initial.lang` mean the same as the top-level `theme`/`lang` options; if both are given, the top-level option wins.
-- **`locked`** forces a value and hides its control (not disabled). A locked `shell.dockFolded: true` hides the dock whole, with no way to open it; a locked `false` means the dock is open with no fold button. A locked `shell.headerFolded` removes the label card's fold toggle. `locked.theme` forces the theme and hides the theme switch; `locked.lang` forces the language and hides the language switch. A locked `view.flow.*` / `view.route.*` leaves out that switch.
+- **`locked`** forces a value and hides its control (not disabled). A locked `shell.dockFolded: true` hides the dock whole, with no way to open it; a locked `false` means the dock is open with no fold button. A locked `shell.headerFolded` removes the label card's fold toggle. `locked.theme` forces the theme and hides the theme switch; `locked.lang` forces the language and hides the language switch. A locked `view.flow.*` / `view.route.*` / `view.fact.*` / `view.relationship.*` leaves out that switch.
 - **`persist`** is `true` (the default: as today), `false` (the reader's changes are kept while mounted but never reach the prefs store), or a list of the names that may be written.
 
 The value of every configurable item comes from, highest first:
@@ -174,10 +178,12 @@ A write through `prefs.write` is allowed by the name of its prefs key. A write w
 | `kind` | `kinds` |
 | `shell.headerFolded` | `headerFolded` |
 | `shell.dockFolded` | `dockFolded` |
-| `view.flow` | `flowFieldsByDiagram`, `orientations`, `linkStyle` (each is a map keyed by the diagram's content) |
+| `view.flow` | `flowFieldsByDiagram`, and the shared maps `orientations` / `linkStyle` when this name (or another that uses them) is listed |
 | `view.route` | `procedureRouteFieldsByDiagram` |
+| `view.fact` | `fields`, `showGrid`, `staggers`, `scaleByParty`, and the shared map `orientations` when this name (or another that uses it) is listed |
+| `view.relationship` | `relationshipFieldsByDiagram`, and the shared maps `orientations` / `linkStyle` when this name (or another that uses them) is listed |
 
-Phase 1 covers these items; a `view.flow` or `view.route` entry for a diagram of another type is ignored, not an error, and the other kinds of diagram have no view state yet.
+`orientations` and `linkStyle` are shared across types. Listing any of the `view.*` names that use a shared map allows a write of that map (any-of). A `view.flow` / `view.route` / `view.fact` / `view.relationship` entry for a diagram of another type is ignored, not an error. Justification has no view state yet; relationship kind filters (`hiddenKinds`) are not part of this contract.
 
 | Item | `initial` / `locked` path | Prefs key |
 | --- | --- | --- |
@@ -190,6 +196,15 @@ Phase 1 covers these items; a `view.flow` or `view.route` entry for a diagram of
 | Flowchart link style | `view.flow.linkStyle` | `linkStyle` |
 | Route map condition labels | `view.route.labels` | `procedureRouteFieldsByDiagram` |
 | Route map states | `view.route.states` | `procedureRouteFieldsByDiagram` |
+| Fact card fields | `view.fact.summary` · `.actors` · `.sources` | `fields` |
+| Fact grid lines | `view.fact.grid` | `showGrid` |
+| Fact staggered rows | `view.fact.stagger` | `staggers` |
+| Fact orientation | `view.fact.orientation` | `orientations` |
+| Fact scale lane-per-party | `view.fact.byParty` | `scaleByParty` |
+| Relationship labels | `view.relationship.labels` | `relationshipFieldsByDiagram` |
+| Relationship groups | `view.relationship.groups` | `relationshipFieldsByDiagram` |
+| Relationship orientation | `view.relationship.orientation` | `orientations` |
+| Relationship link style | `view.relationship.linkStyle` | `linkStyle` |
 
 ### The handle
 

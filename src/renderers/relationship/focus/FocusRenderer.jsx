@@ -16,7 +16,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { usePreset } from '../../../shell/env.js'
+import { usePreset, useViewValue } from '../../../shell/env.js'
 import { specKeyOf } from '../../../shell/prefs.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
@@ -46,12 +46,21 @@ export default function RelationshipFocus({ spec }) {
   const specKey = specKeyOf(spec)
   const { t, lang } = useLang()
 
-  const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey, (was) => (PRESET?.fields ? { ...was, ...PRESET.fields } : was))
-  const fields = { ...FIELD_DEFAULTS, ...stored }
+  // (a preview's preset gives the first hidden kinds; the labels go through the view state, issue 329)
+  const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey, (was) =>
+    PRESET?.fields?.hiddenKinds ? { ...was, hiddenKinds: PRESET.fields.hiddenKinds } : was,
+  )
+  const labelsView = useViewValue('view.relationship.labels', stored?.labels, FIELD_DEFAULTS.labels)
+  const fields = { ...FIELD_DEFAULTS, ...stored, labels: labelsView.value !== false }
   const setField = (patch) => setStored({ ...stored, ...patch })
   const toggleKind = (kind) => {
     const hidden = fields.hiddenKinds.includes(kind) ? fields.hiddenKinds.filter((k) => k !== kind) : [...fields.hiddenKinds, kind]
     setField({ hiddenKinds: hidden })
+  }
+
+  const toggleLabels = (value) => {
+    labelsView.touch()
+    setField({ labels: value })
   }
 
   // The centre, per diagram. An id the data no longer has means the default.
@@ -126,7 +135,8 @@ export default function RelationshipFocus({ spec }) {
             hiddenKinds={fields.hiddenKinds}
             onToggleKind={toggleKind}
             showLabels={fields.labels}
-            onToggleLabels={(v) => setField({ labels: v })}
+            onToggleLabels={toggleLabels}
+            locked={{ labels: labelsView.locked }}
             parties={spec.entities}
             centre={layout.centre}
             onPickCentre={(id) => {

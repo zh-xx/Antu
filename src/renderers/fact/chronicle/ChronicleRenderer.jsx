@@ -13,7 +13,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { useEnv, usePreset } from '../../../shell/env.js'
+import { useEnv, useViewValue } from '../../../shell/env.js'
 import { specKeyOf } from '../../../shell/prefs.js'
 import { useSpecPref } from '../../relationship/useSpecPref.js'
 import { useExport } from '../../../shell/useExport.js'
@@ -56,15 +56,24 @@ function makeMeasure(root) {
 const FIELD_DEFAULTS = { sources: false, actors: false, summary: true }
 
 export default function FactChronicle({ spec }) {
-  // External preset for screenshots (antu_preview, the skill's preview); see the timeline renderer
-  // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
-  const PRESET = usePreset()
   // The card fields are remembered per diagram, by the spec's content key (shell/prefs.js), and shared with the
-  // timeline: the same diagram means the same fields in either way of drawing it.
+  // timeline: the same diagram means the same fields in either way of drawing it. Every switch goes through the
+  // view state (issue 200): a host's `initial` / `locked`, the viewer page's preset (shell/env.js) and the reader's click.
   const specKey = specKeyOf(spec)
   const [storedFields, setStoredFields] = useSpecPref('fields', specKey, (stored) => stored || {})
-  const fields = { ...FIELD_DEFAULTS, ...storedFields, ...(PRESET?.fields || {}) }
-  const toggleField = (key, value) => setStoredFields({ ...storedFields, [key]: value })
+  const summaryView = useViewValue('view.fact.summary', storedFields.summary, FIELD_DEFAULTS.summary)
+  const actorsView = useViewValue('view.fact.actors', storedFields.actors, FIELD_DEFAULTS.actors)
+  const sourcesView = useViewValue('view.fact.sources', storedFields.sources, FIELD_DEFAULTS.sources)
+  const fieldView = { summary: summaryView, actors: actorsView, sources: sourcesView }
+  const fields = useMemo(
+    () => ({ summary: summaryView.value, actors: actorsView.value, sources: sourcesView.value }),
+    [summaryView.value, actorsView.value, sourcesView.value],
+  )
+  const toggleField = (key, value) => {
+    fieldView[key].touch()
+    setStoredFields({ ...storedFields, [key]: value })
+  }
+  const locked = { summary: summaryView.locked, actors: actorsView.locked, sources: sourcesView.locked }
 
   const { root } = useEnv()
   const measure = useMemo(() => makeMeasure(root), [root])
@@ -124,7 +133,7 @@ export default function FactChronicle({ spec }) {
           }}
           onPaneClick={() => setPinnedId(null)}
         >
-          <ChronicleDock fields={fields} onToggleField={toggleField} exporting={exporting} onExport={onExport} />
+          <ChronicleDock fields={fields} onToggleField={toggleField} locked={locked} exporting={exporting} onExport={onExport} />
         </Canvas>
       </PreviewContext.Provider>
     </div>

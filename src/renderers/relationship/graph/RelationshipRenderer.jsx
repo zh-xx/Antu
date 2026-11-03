@@ -24,7 +24,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { useEnv, usePreset, usePrefs } from '../../../shell/env.js'
+import { useEnv, usePreset, usePrefs, useViewValue } from '../../../shell/env.js'
 import { specKeyOf, writeSpecPref } from '../../../shell/prefs.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
 import { useExport } from '../../../shell/useExport.js'
@@ -85,7 +85,8 @@ const DECORATION = {
 }
 
 export default function RelationshipGraph({ spec }) {
-  // External preset: used only by MCP's antu_preview (same convention as the other renderers)
+  // External preset: used only by MCP's antu_preview (same convention as the other renderers); the labels, groups,
+  // orientation and link style reach it through the view state, the hidden kinds are not part of it (issue 329)
   // (read through usePreset, shell/env.js: the viewer page's window.__ANTU_PRESET__, none when mounted)
   const PRESET = usePreset()
   const prefs = usePrefs()
@@ -95,22 +96,57 @@ export default function RelationshipGraph({ spec }) {
   const { t, lang } = useLang()
 
   // What to show is a choice about this data, so it is remembered per diagram (as in the flowchart)
-  // (a preview's preset gives the first values; the controls still work after it)
-  const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey, (was) => (PRESET?.fields ? { ...was, ...PRESET.fields } : was))
-  const fields = { ...FIELD_DEFAULTS, ...stored }
+  // (a preview's preset gives the first hidden kinds; the controls still work after it)
+  const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey, (was) =>
+    PRESET?.fields?.hiddenKinds ? { ...was, hiddenKinds: PRESET.fields.hiddenKinds } : was,
+  )
+  const labelsView = useViewValue('view.relationship.labels', stored?.labels, FIELD_DEFAULTS.labels)
+  const groupsView = useViewValue('view.relationship.groups', stored?.groups, FIELD_DEFAULTS.groups)
+  const fields = {
+    ...FIELD_DEFAULTS,
+    ...stored,
+    labels: labelsView.value !== false,
+    groups: groupsView.value !== false,
+  }
   const setField = (patch) => setStored({ ...stored, ...patch })
   const toggleKind = (kind) => {
     const hidden = fields.hiddenKinds.includes(kind) ? fields.hiddenKinds.filter((k) => k !== kind) : [...fields.hiddenKinds, kind]
     setField({ hiddenKinds: hidden })
   }
+  const toggleLabels = (value) => {
+    labelsView.touch()
+    setField({ labels: value })
+  }
+  const toggleGroups = (value) => {
+    groupsView.touch()
+    setField({ groups: value })
+  }
 
   // Orientation: remembered per diagram. With nothing chosen a holder stands above what it holds.
-  const [orientationPref, toggleOrientation] = useSpecPref('orientations', specKey, (was) => PRESET?.orientation || was)
-  const orientation = orientationPref || 'vertical'
+  const [orientationPref, setOrientationPref] = useSpecPref('orientations', specKey)
+  const orientationView = useViewValue('view.relationship.orientation', orientationPref, 'vertical')
+  const orientation = typeof orientationView.value === 'string' ? orientationView.value : 'vertical'
+  const toggleOrientation = (next) => {
+    orientationView.touch()
+    setOrientationPref(next)
+  }
 
   // Link style: curved (the default) or straight, remembered per diagram (issue 236)
-  const [linkStyle, setLinkStyle] = useSpecPref('linkStyle', specKey, (stored) => PRESET?.linkStyle ?? stored ?? 'curved')
-  const toggleLinkStyle = (next) => setLinkStyle(next)
+  const [storedLinkStyle, setStoredLinkStyle] = useSpecPref('linkStyle', specKey)
+  const linkStyleView = useViewValue('view.relationship.linkStyle', storedLinkStyle, 'curved')
+  const linkStyle = typeof linkStyleView.value === 'string' ? linkStyleView.value : 'curved'
+  const toggleLinkStyle = (next) => {
+    linkStyleView.touch()
+    setStoredLinkStyle(next)
+  }
+
+  // Which controls a host locked (issue 200): the dock leaves exactly those out
+  const locked = {
+    labels: labelsView.locked,
+    groups: groupsView.locked,
+    orientation: orientationView.locked,
+    linkStyle: linkStyleView.locked,
+  }
 
   // Geometry yields to the event loop while it runs (issue 181). Keep the last layout on
   // screen while a toggle recomputes, so the page stays interactive.
@@ -204,14 +240,15 @@ export default function RelationshipGraph({ spec }) {
             hiddenKinds={fields.hiddenKinds}
             onToggleKind={toggleKind}
             showLabels={fields.labels}
-            onToggleLabels={(v) => setField({ labels: v })}
+            onToggleLabels={toggleLabels}
             hasGroups={hasGroups}
             showGroups={fields.groups}
-            onToggleGroups={(v) => setField({ groups: v })}
+            onToggleGroups={toggleGroups}
             orientation={orientation}
             onToggleOrientation={toggleOrientation}
             linkStyle={linkStyle}
             onToggleLinkStyle={toggleLinkStyle}
+            locked={locked}
             exporting={exporting}
             onExport={onExport}
           />
