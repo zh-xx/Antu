@@ -13,6 +13,7 @@
 import { useMemo, useState } from 'react'
 
 import Canvas from '../../shell/Canvas.jsx'
+import { useViewValue } from '../../shell/env.js'
 import { PreviewContext } from '../../shell/previewContext.js'
 import { useExport } from '../../shell/useExport.js'
 import { useLang } from '../../shell/LangContext.jsx'
@@ -43,8 +44,12 @@ export default function LevelledView({ spec, build, className, options = {}, onP
   const { t, lang } = useLang()
 
   const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey)
-  const showLabels = stored?.labels ?? true
-  const setLabels = (v) => setStored({ ...stored, labels: v })
+  const labelsView = useViewValue('view.relationship.labels', stored?.labels, true)
+  const showLabels = labelsView.value !== false
+  const setLabels = (v) => {
+    labelsView.touch()
+    setStored({ ...stored, labels: v })
+  }
 
   const optionsKey = JSON.stringify(options)
   const layout = useMemo(() => build(spec, { ...options, t }), [spec, lang, optionsKey])
@@ -89,7 +94,7 @@ export default function LevelledView({ spec, build, className, options = {}, onP
           }}
           onPaneClick={() => setPinnedId(null)}
         >
-          <FocusDock kinds={{}} showLabels={showLabels} onToggleLabels={setLabels} exporting={exporting} onExport={onExport} extra={dockExtra ? dockExtra(layout) : null} />
+          <FocusDock kinds={{}} showLabels={showLabels} onToggleLabels={setLabels} locked={{ labels: labelsView.locked }} exporting={exporting} onExport={onExport} extra={dockExtra ? dockExtra(layout) : null} />
         </Canvas>
       </PreviewContext.Provider>
     </div>

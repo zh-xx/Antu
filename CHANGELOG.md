@@ -5,6 +5,10 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+### Added
+
+- **Embed view-state phase 2 for fact and relationship** (#329): hosts may set `initial` / `locked` / `persist` for `view.fact.*` (`summary`, `actors`, `sources`, `grid`, `stagger`, `orientation`, `byParty`) and `view.relationship.*` (`labels`, `groups`, `orientation`, `linkStyle`). Shared prefs maps `orientations` / `linkStyle` allow a write when any listed `view.*` name that uses them is in `persist`. Justification and relationship `hiddenKinds` stay out of the contract. Docs, host `.d.ts`, and embed verify cover the new paths.
+
 ### Changed
 
 - **CONTRIBUTING TypeScript section slimmed** (#333): coexistence rules and what `npm run typecheck` covers stay; the #227 slice chronicle moves to the CHANGELOG history, not the contributor entry.

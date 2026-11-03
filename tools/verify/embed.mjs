@@ -8,7 +8,7 @@
 //    isolation   the host's CSS does not reach the diagram, the diagram's does not reach the host
 //    globals     the host's title, language, window and localStorage are untouched
 //    options     kind, kinds, theme, lang, ui, cardUi (quiet chrome + wheel does not pan)
-//    view state  initial, locked, persist: what a host configures and what a reader may change (issue 200)
+//    view state  initial, locked, persist: what a host configures and what a reader may change (issue 200; fact / relationship phase 2, issue 329)
 //    events      select (with the item's sources), kindchange, invalid
 //    handle      ready, update, setKind/setTheme/setLang, exportPng, destroy and mounting again
 //    asking      select, focus and highlight by the spec's ids; initial.headerFolded
@@ -98,12 +98,17 @@ export async function checkEmbed(t) {
     return
   }
   const read = (rel) => JSON.parse(readFileSync(join(REPO, rel), 'utf8'))
-  // a flowchart with rules and sources whose loc names clauses, and a second diagram to sit beside it
+  // a flowchart with rules and sources whose loc names clauses, and a second diagram to sit beside it;
+  // fact and relationship examples cover view-state phase 2 (issue 329)
   const flow = read('examples/procedure/01-software-development-contract.zh-CN.json')
   const flowKey = specKeyOf(flow)
   const other = read('examples/procedure/02-purchase-contract.en.json')
+  const fact = read('examples/fact/neighbour-corridor-charging.en.json')
+  const factKey = specKeyOf(fact)
+  const relationship = read('examples/relationship/sample-loan-guarantee.en.json')
+  const relationshipKey = specKeyOf(relationship)
   const renamed = { ...flow, title: `${flow.title} (v2)` }
-  const page = hostPage({ flow, other, renamed })
+  const page = hostPage({ flow, other, renamed, fact, relationship })
   mkdirSync(OUT, { recursive: true })
   writeFileSync(join(OUT, 'embed-host.html'), page)
   const { server, origin } = await serve({
@@ -543,6 +548,71 @@ export async function checkEmbed(t) {
     eq('embed: `persist: false` keeps the reader\'s change on screen and off the host\'s store', viewState.persist, [0, true])
     eq('embed: "restore defaults" shows once a choice is made, forgets it, and goes away', viewState.restore, [[false, false, true], [true, true, false], [false, false, true]])
     truthy('embed: an unknown `locked` key makes mount throw, naming options.locked', viewState.badLocked.includes('options.locked'), viewState.badLocked)
+
+    // ---- fact / relationship view state (issue 329) ----
+    const viewState2 = await browser.eval(`(async () => {
+      const pause = (ms) => new Promise((r) => setTimeout(r, ms))
+      const fact = window.__api.SPECS.fact
+      const relationship = window.__api.SPECS.relationship
+      const start = (spec, options) => {
+        const host = document.createElement('div')
+        host.style.cssText = 'width: 1000px; height: 640px'
+        document.body.append(host)
+        return { host, h: window.__api.mount(host, spec, { lang: 'en', ...options }) }
+      }
+      const chip = (host, label) => [...host.shadowRoot.querySelectorAll('.antu-dock-chip')].find((c) => c.textContent.trim() === label)
+      const off = ({ host, h }) => { h.destroy(); host.remove() }
+      const out = {}
+
+      // fact: initial wins over the stored choice (summary off in store, on via initial)
+      {
+        const it = start(fact, { initial: { view: { fact: { summary: true } } }, prefs: { read: () => ({ fields: { [${JSON.stringify(factKey)}]: { summary: false } } }), write: () => {} } })
+        await it.h.ready; await pause(300)
+        out.factInitialOn = !!chip(it.host, ${JSON.stringify(translate('en', 'dock.summary'))})?.classList.contains('is-on')
+        off(it)
+      }
+
+      // fact: a locked switch offers no control
+      {
+        const it = start(fact, { locked: { view: { fact: { summary: true } } } })
+        await it.h.ready; await pause(300)
+        out.factLockedHidden = !chip(it.host, ${JSON.stringify(translate('en', 'dock.summary'))})
+        off(it)
+      }
+
+      // relationship: initial opens labels on over the store's off
+      {
+        const it = start(relationship, { initial: { view: { relationship: { labels: true } } }, prefs: { read: () => ({ relationshipFieldsByDiagram: { [${JSON.stringify(relationshipKey)}]: { labels: false } } }), write: () => {} } })
+        await it.h.ready; await pause(300)
+        out.relInitialOn = !!chip(it.host, ${JSON.stringify(translate('en', 'rel.labels'))})?.classList.contains('is-on')
+        off(it)
+      }
+
+      // relationship: a locked labels switch offers no control
+      {
+        const it = start(relationship, { locked: { view: { relationship: { labels: true } } } })
+        await it.h.ready; await pause(300)
+        out.relLockedHidden = !chip(it.host, ${JSON.stringify(translate('en', 'rel.labels'))})
+        off(it)
+      }
+
+      // persist name view.fact is accepted; an unknown persist name still throws
+      {
+        const host = document.createElement('div')
+        host.style.height = '300px'
+        document.body.append(host)
+        out.persistFact = (() => { try { const h = window.__api.mount(host, fact, { persist: ['view.fact'] }); h.destroy(); return 'ok' } catch (e) { return e.message } })()
+        out.badPersist = (() => { try { window.__api.mount(host, fact, { persist: ['view.justification'] }); return 'mounted' } catch (e) { return e.message } })()
+        host.remove()
+      }
+      return out
+    })()`, { awaitPromise: true })
+    eq('embed: fact `initial` opens Summary on over the store\'s off', viewState2.factInitialOn, true)
+    eq('embed: a locked fact switch renders no control', viewState2.factLockedHidden, true)
+    eq('embed: relationship `initial` opens Labels on over the store\'s off', viewState2.relInitialOn, true)
+    eq('embed: a locked relationship switch renders no control', viewState2.relLockedHidden, true)
+    eq('embed: `persist: [\'view.fact\']` is accepted', viewState2.persistFact, 'ok')
+    truthy('embed: an unknown `persist` name makes mount throw', viewState2.badPersist.includes('options.persist'), viewState2.badPersist)
 
     // ---- destroy, and mount again on the same element ----
     const again = await browser.eval(`(async () => {

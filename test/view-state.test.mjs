@@ -44,6 +44,12 @@ test('presetAt maps a view path to the preset shape the viewer page uses', () =>
   assert.equal(presetAt({ linkStyle: 'curved' }, 'view.flow.linkStyle'), 'curved')
   assert.equal(presetAt({ fields: { labels: false } }, 'view.route.labels'), false)
   assert.equal(presetAt({ fields: { states: true } }, 'view.route.states'), true)
+  assert.equal(presetAt({ fields: { summary: false }, orientation: 'vertical', stagger: false, byParty: true }, 'view.fact.summary'), false)
+  assert.equal(presetAt({ orientation: 'horizontal' }, 'view.fact.orientation'), 'horizontal')
+  assert.equal(presetAt({ stagger: false }, 'view.fact.stagger'), false)
+  assert.equal(presetAt({ byParty: true }, 'view.fact.byParty'), true)
+  assert.equal(presetAt({ fields: { labels: false }, linkStyle: 'straight' }, 'view.relationship.labels'), false)
+  assert.equal(presetAt({ linkStyle: 'straight' }, 'view.relationship.linkStyle'), 'straight')
   assert.equal(presetAt(null, 'view.flow.states'), undefined)
   assert.equal(presetAt({ fields: {} }, 'shell.dockFolded'), undefined, 'a fold is not a preset')
 })
@@ -73,9 +79,21 @@ test('an unknown key or a wrong value names the field and what is allowed', () =
   assert.equal(viewStateProblem({ view: { flow: { nope: true } } }, 'options.locked'), 'options.locked.view.flow.nope is not an option: states, conditions, detail, mainLine, stages, rules, orientation, linkStyle')
   assert.equal(viewStateProblem({ view: { route: { labels: 'x' } } }, 'options.locked'), 'options.locked.view.route.labels must be a boolean')
   assert.equal(viewStateProblem({ view: { route: { nope: true } } }, 'options.locked'), 'options.locked.view.route.nope is not an option: labels, states')
+  assert.equal(viewStateProblem({ view: { fact: { nope: true } } }, 'options.locked'), 'options.locked.view.fact.nope is not an option: summary, actors, sources, grid, stagger, orientation, byParty')
+  assert.equal(viewStateProblem({ view: { fact: { orientation: 'diagonal' } } }, 'options.locked'), 'options.locked.view.fact.orientation must be one of: vertical, horizontal')
+  assert.equal(viewStateProblem({ view: { relationship: { labels: 'yes' } } }, 'options.locked'), 'options.locked.view.relationship.labels must be a boolean')
   assert.equal(viewStateProblem({ view: { flow: [] } }, 'options.locked'), 'options.locked.view.flow must be an object')
   assert.equal(viewStateProblem([], 'options.initial'), 'options.initial must be an object')
   assert.equal(viewStateProblem('x', 'options.initial'), 'options.initial must be an object')
+})
+
+test('fact and relationship view state accepts the phase-2 switches', () => {
+  assert.equal(viewStateProblem({
+    view: {
+      fact: { summary: false, actors: true, sources: true, grid: true, stagger: false, orientation: 'horizontal', byParty: true },
+      relationship: { labels: false, groups: true, orientation: 'vertical', linkStyle: 'straight' },
+    },
+  }, 'options.initial'), '')
 })
 
 test('initial still takes the old top-level headerFolded alias', () => {
@@ -95,17 +113,19 @@ test('normalizeInitial moves the alias to its full path, keeping an explicit she
   assert.equal(normalizeInitial(undefined), undefined)
 })
 
+const PERSIST_LIST = 'theme, lang, kind, shell.headerFolded, shell.dockFolded, view.flow, view.route, view.fact, view.relationship'
+
 test('persist must be a boolean or a list of the allowed names', () => {
   assert.equal(persistProblem(undefined), '')
   assert.equal(persistProblem(true), '')
   assert.equal(persistProblem(false), '')
   assert.equal(persistProblem([]), '')
   assert.equal(persistProblem([...PERSIST_NAMES]), '')
-  assert.equal(persistProblem(['theme', 'view.flow']), '')
-  assert.equal(persistProblem('yes', 'options.persist'), 'options.persist must be a boolean or an array of: theme, lang, kind, shell.headerFolded, shell.dockFolded, view.flow, view.route')
-  assert.equal(persistProblem({}, 'options.persist'), 'options.persist must be a boolean or an array of: theme, lang, kind, shell.headerFolded, shell.dockFolded, view.flow, view.route')
-  assert.equal(persistProblem(['nope'], 'options.persist'), 'options.persist lists "nope", which is not one of: theme, lang, kind, shell.headerFolded, shell.dockFolded, view.flow, view.route')
-  assert.equal(persistProblem(['theme', 1], 'options.persist'), 'options.persist lists 1, which is not one of: theme, lang, kind, shell.headerFolded, shell.dockFolded, view.flow, view.route')
+  assert.equal(persistProblem(['theme', 'view.flow', 'view.fact', 'view.relationship']), '')
+  assert.equal(persistProblem('yes', 'options.persist'), `options.persist must be a boolean or an array of: ${PERSIST_LIST}`)
+  assert.equal(persistProblem({}, 'options.persist'), `options.persist must be a boolean or an array of: ${PERSIST_LIST}`)
+  assert.equal(persistProblem(['nope'], 'options.persist'), `options.persist lists "nope", which is not one of: ${PERSIST_LIST}`)
+  assert.equal(persistProblem(['theme', 1], 'options.persist'), `options.persist lists 1, which is not one of: ${PERSIST_LIST}`)
 })
 
 test('every prefs key the phase covers is mapped to a persist name', () => {
@@ -116,10 +136,17 @@ test('every prefs key the phase covers is mapped to a persist name', () => {
     headerFolded: 'shell.headerFolded',
     dockFolded: 'shell.dockFolded',
     flowFieldsByDiagram: 'view.flow',
-    orientations: 'view.flow',
-    linkStyle: 'view.flow',
     procedureRouteFieldsByDiagram: 'view.route',
+    fields: 'view.fact',
+    showGrid: 'view.fact',
+    staggers: 'view.fact',
+    scaleByParty: 'view.fact',
+    relationshipFieldsByDiagram: 'view.relationship',
+    orientations: ['view.flow', 'view.fact', 'view.relationship'],
+    linkStyle: ['view.flow', 'view.relationship'],
   })
+  assert.ok(PERSIST_NAMES.includes('view.fact'))
+  assert.ok(PERSIST_NAMES.includes('view.relationship'))
 })
 
 test('persistAllows maps each prefs key to its name', () => {
@@ -129,10 +156,19 @@ test('persistAllows maps each prefs key to its name', () => {
   assert.equal(persistAllows(['theme'], 'theme'), true)
   assert.equal(persistAllows(['theme'], 'lang'), false)
   assert.equal(persistAllows(['view.flow'], 'flowFieldsByDiagram'), true)
-  assert.equal(persistAllows(['view.flow'], 'orientations'), true, 'orientations is the flowchart\'s in phase 1')
-  assert.equal(persistAllows(['view.flow'], 'linkStyle'), true, 'linkStyle is the flowchart\'s in phase 1')
+  assert.equal(persistAllows(['view.flow'], 'orientations'), true, 'shared orientations: any listed view.* name allows')
+  assert.equal(persistAllows(['view.fact'], 'orientations'), true)
+  assert.equal(persistAllows(['view.relationship'], 'orientations'), true)
+  assert.equal(persistAllows(['view.route'], 'orientations'), false)
+  assert.equal(persistAllows(['view.flow'], 'linkStyle'), true)
+  assert.equal(persistAllows(['view.relationship'], 'linkStyle'), true)
+  assert.equal(persistAllows(['view.fact'], 'linkStyle'), false, 'fact has no link style')
   assert.equal(persistAllows(['view.flow'], 'procedureRouteFieldsByDiagram'), false)
   assert.equal(persistAllows(['view.route'], 'procedureRouteFieldsByDiagram'), true)
+  assert.equal(persistAllows(['view.fact'], 'fields'), true)
+  assert.equal(persistAllows(['view.fact'], 'staggers'), true)
+  assert.equal(persistAllows(['view.relationship'], 'relationshipFieldsByDiagram'), true)
+  assert.equal(persistAllows(['view.flow'], 'fields'), false)
   assert.equal(persistAllows(['theme'], 'unknownKey'), false, 'a key with no name is not allowed')
 })
 
@@ -168,4 +204,9 @@ test('a persisting store keeps a refused write in an overlay and lets the allowe
   mixed.write({ lang: 'zh' })
   mixed.write({ theme: 'legal' })
   assert.deepEqual(mixed.read(), { theme: 'document', lang: 'zh' }, 'the overlay sits on top of whatever the store now holds')
+
+  const factOnly = persistingStore(store, ['view.fact'])
+  factOnly.write({ fields: { 't#1': { summary: false } }, relationshipFieldsByDiagram: { 'r#1': { labels: false } }, orientations: { t: 'horizontal' } })
+  assert.deepEqual(writes.at(-1), { fields: { 't#1': { summary: false } }, orientations: { t: 'horizontal' } }, 'fact persist keeps fields and shared orientations; relationship fields stay in the overlay')
+  assert.deepEqual(factOnly.read().relationshipFieldsByDiagram, { 'r#1': { labels: false } })
 })

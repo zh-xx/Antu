@@ -15,14 +15,15 @@ import { DockTraceButton } from '../../../shell/TracePanel.jsx'
 const OPTIONAL_FIELDS = ['sources', 'actors', 'summary']
 const FIELD_KEYS = { sources: 'dock.sources', actors: 'dock.actors', summary: 'dock.summary' }
 
-export default function ChronicleDock({ fields = {}, onToggleField, exporting = false, onExport }) {
+export default function ChronicleDock({ fields = {}, onToggleField, locked = {}, exporting = false, onExport }) {
   const { t } = useLang()
   return (
     <div className="antu-dock">
       <div className="antu-dock-bar">
-        {OPTIONAL_FIELDS.map((key) => (
+        {OPTIONAL_FIELDS.filter((key) => !locked[key]).map((key) => (
           <button
             key={key}
+            data-chip={key}
             className={`antu-dock-chip${fields[key] ? ' is-on' : ''}`}
             onClick={() => onToggleField(key, !fields[key])}
           >

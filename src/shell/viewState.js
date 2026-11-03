@@ -1,13 +1,13 @@
 // @ts-check
 // ============================================================
-//  src/shell/viewState.js — how a host configures what a reader sees (issue 200)
+//  src/shell/viewState.js — how a host configures what a reader sees (issue 200, phase 2 issue 329)
 //
 //  A mounted diagram has switches a reader can change (theme, language, the label card fold, the dock fold,
-//  every switch of the flowchart and the route map). A host can, for each of them, set the opening value
-//  (`initial`), force it and hide the control (`locked`), and say whether the reader's changes reach the
-//  prefs store (`persist`). This file is that whole contract, pure: the shape, the validation, the precedence,
-//  and the wrapper that keeps a `persist`-refused write in memory. No React, so `test/view-state.test.mjs`
-//  can check all of it without a browser.
+//  every switch of the flowchart, route map, fact and relationship views). A host can, for each of them, set
+//  the opening value (`initial`), force it and hide the control (`locked`), and say whether the reader's
+//  changes reach the prefs store (`persist`). This file is that whole contract, pure: the shape, the
+//  validation, the precedence, and the wrapper that keeps a `persist`-refused write in memory. No React, so
+//  `test/view-state.test.mjs` can check all of it without a browser.
 //
 //  Precedence for every value, highest first:
 //    locked > the reader's change made during this mount > initial > preset (viewer page only) >
@@ -34,21 +34,61 @@ const FLOW = {
 /** The route map's switches */
 const ROUTE = { labels: { bool: true }, states: { bool: true } }
 
+/**
+ * Fact card / timeline / chronicle / scale switches (shared prefs `fields`, not one group per kind).
+ * Orientation default for the timeline still depends on slot count in the renderer; the schema only
+ * constrains the value when a host sets it.
+ */
+const FACT = {
+  summary: { bool: true },
+  actors: { bool: true },
+  sources: { bool: true },
+  grid: { bool: true },
+  stagger: { bool: true },
+  orientation: { enum: ['vertical', 'horizontal'] },
+  byParty: { bool: true },
+}
+
+/** Relationship switches shared across kinds (`relationshipFieldsByDiagram`); `hiddenKinds` stays out (issue 329) */
+const RELATIONSHIP = {
+  labels: { bool: true },
+  groups: { bool: true },
+  orientation: { enum: ['vertical', 'horizontal'] },
+  linkStyle: { enum: ['straight', 'curved'] },
+}
+
 /** The whole `AntuViewState` shape; a node is `{ bool }`, `{ enum }`, or `{ object }` */
 const SCHEMA = {
   theme: { enum: THEMES },
   lang: { enum: LANGS },
   shell: { object: { headerFolded: { bool: true }, dockFolded: { bool: true } } },
-  view: { object: { flow: { object: FLOW }, route: { object: ROUTE } } },
+  view: {
+    object: {
+      flow: { object: FLOW },
+      route: { object: ROUTE },
+      fact: { object: FACT },
+      relationship: { object: RELATIONSHIP },
+    },
+  },
 }
 
 /** The names `persist` may list, one per prefs key that may be written */
-export const PERSIST_NAMES = ['theme', 'lang', 'kind', 'shell.headerFolded', 'shell.dockFolded', 'view.flow', 'view.route']
+export const PERSIST_NAMES = [
+  'theme',
+  'lang',
+  'kind',
+  'shell.headerFolded',
+  'shell.dockFolded',
+  'view.flow',
+  'view.route',
+  'view.fact',
+  'view.relationship',
+]
 
 /**
- * Which `persist` name each prefs key belongs to. `orientations` and `linkStyle` are shared with other diagram
- * types today; phase 1 counts them as the flowchart's, so a host that restricts `view.flow` restricts those
- * writes too (a later phase can split them per type).
+ * Which `persist` name each prefs key belongs to. Shared maps (`orientations`, `linkStyle`) list every
+ * view.* name that may authorize a write: listing any of them lets that key through (issue 329).
+ * @type {Record<string, string | string[]>}
  */
 export const PERSIST_KEY_NAME = {
   theme: 'theme',
@@ -57,9 +97,14 @@ export const PERSIST_KEY_NAME = {
   headerFolded: 'shell.headerFolded',
   dockFolded: 'shell.dockFolded',
   flowFieldsByDiagram: 'view.flow',
-  orientations: 'view.flow',
-  linkStyle: 'view.flow',
   procedureRouteFieldsByDiagram: 'view.route',
+  fields: 'view.fact',
+  showGrid: 'view.fact',
+  staggers: 'view.fact',
+  scaleByParty: 'view.fact',
+  relationshipFieldsByDiagram: 'view.relationship',
+  orientations: ['view.flow', 'view.fact', 'view.relationship'],
+  linkStyle: ['view.flow', 'view.relationship'],
 }
 
 /** Read a dotted path; `undefined` when the object or any step is missing */
@@ -68,13 +113,20 @@ export function getPath(obj, path) {
   return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj)
 }
 
-/** The value a viewer page's preset names for this path (`preset.fields.*`, `preset.orientation`, `preset.linkStyle`) */
+/** The value a viewer page's preset names for this path (`preset.fields.*`, `preset.orientation`, `preset.linkStyle`, …) */
 export function presetAt(preset, path) {
   if (!preset) return undefined
-  if (path === 'view.flow.orientation') return preset.orientation
-  if (path === 'view.flow.linkStyle') return preset.linkStyle
+  if (path === 'view.flow.orientation' || path === 'view.fact.orientation' || path === 'view.relationship.orientation') {
+    return preset.orientation
+  }
+  if (path === 'view.flow.linkStyle' || path === 'view.relationship.linkStyle') return preset.linkStyle
+  if (path === 'view.fact.stagger') return preset.stagger
+  if (path === 'view.fact.byParty') return preset.byParty
+  if (path === 'view.fact.grid') return preset.grid ?? preset.showGrid
   if (path.startsWith('view.flow.')) return getPath(preset.fields, path.slice('view.flow.'.length))
   if (path.startsWith('view.route.')) return getPath(preset.fields, path.slice('view.route.'.length))
+  if (path.startsWith('view.fact.')) return getPath(preset.fields, path.slice('view.fact.'.length))
+  if (path.startsWith('view.relationship.')) return getPath(preset.fields, path.slice('view.relationship.'.length))
   return undefined
 }
 
@@ -144,8 +196,11 @@ export function normalizeInitial(initial) {
 export function persistAllows(persist, key) {
   if (persist === undefined || persist === true) return true
   if (persist === false) return false
+  if (!Array.isArray(persist)) return false
   const name = PERSIST_KEY_NAME[key]
-  return name !== undefined && Array.isArray(persist) && persist.includes(name)
+  if (name === undefined) return false
+  if (Array.isArray(name)) return name.some((n) => persist.includes(n))
+  return persist.includes(name)
 }
 
 /**

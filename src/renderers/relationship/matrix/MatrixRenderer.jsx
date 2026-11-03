@@ -11,6 +11,7 @@
 import { useMemo } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
+import { useViewValue } from '../../../shell/env.js'
 import { useExport } from '../../../shell/useExport.js'
 import { useLang } from '../../../shell/LangContext.jsx'
 import { specKeyOf } from '../../../shell/prefs.js'
@@ -27,8 +28,12 @@ export default function RelationshipMatrix({ spec }) {
 
   // The labels switch is shared with the graph and the other kinds (same key)
   const [stored, setStored] = useSpecPref('relationshipFieldsByDiagram', specKey)
-  const showLabels = stored?.labels ?? true
-  const setLabels = (v) => setStored({ ...stored, labels: v })
+  const labelsView = useViewValue('view.relationship.labels', stored?.labels, true)
+  const showLabels = labelsView.value !== false
+  const setLabels = (v) => {
+    labelsView.touch()
+    setStored({ ...stored, labels: v })
+  }
 
   const layout = useMemo(() => buildMatrixGraph(spec, { t }), [spec, lang])
   const graph = useMemo(
@@ -49,6 +54,7 @@ export default function RelationshipMatrix({ spec }) {
           kinds={{}}
           showLabels={showLabels}
           onToggleLabels={setLabels}
+          locked={{ labels: labelsView.locked }}
           exporting={exporting}
           onExport={onExport}
         />

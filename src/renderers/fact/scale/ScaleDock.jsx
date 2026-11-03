@@ -11,12 +11,12 @@ import { useLang } from '../../../shell/LangContext.jsx'
 import { DockExportButton, DockLangSwitch, DockResetButton } from '../../../shell/DockParts.jsx'
 import { DockTraceButton } from '../../../shell/TracePanel.jsx'
 
-export default function ScaleDock({ byParty = false, onToggleByParty, exporting = false, onExport }) {
+export default function ScaleDock({ byParty = false, onToggleByParty, locked = /** @type {Record<string, unknown>} */ ({}), exporting = false, onExport }) {
   const { t } = useLang()
   return (
     <div className="antu-dock">
       <div className="antu-dock-bar">
-        {onToggleByParty && (
+        {onToggleByParty && !locked.byParty && (
           <>
             <button data-chip="byParty" className={`antu-dock-chip${byParty ? ' is-on' : ''}`} onClick={() => onToggleByParty(!byParty)}>
               {t('dock.byParty')}
