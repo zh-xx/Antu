@@ -313,9 +313,15 @@ by itself. It is in `@zh-xx/antu/embed` as well, the same function.
   start to the normal end: an `end` whose `outcome` is `positive`, else any `end`. The path keeps to the edges
   that were already marked wherever it can; the marks off it are removed. When no end can be reached, nothing
   changes, and `validate` reports the problem as before.
-- **The other types:** nothing yet (`changes: []`).
+- **relationship, kind-field marks.** A dedicated field on the wrong kind is removed: `share` only belongs on
+  `equity`, `amount` on `debt` / `contract`, `secures` on `guarantee`. An equity `share` written as a numeric
+  string (optional `%`, e.g. `"60"` or `"60%"`) is coerced to the number. `directed`, ends, labels, and a
+  `secures` that names a missing or non-claim id are left for `validate`.
+- **fact, `approx` without a date.** `approx: true` on an event that has no `date` is cleared (`approx` marks an
+  estimated time, not a missing one). Slot order, dates, quotes and parties are never changed.
+- **justification:** nothing yet (`changes: []`).
 
-It never adds or removes a node or an edge, and never changes anything but the marks named above.
+It never adds or removes a party, event, relation, node or edge, and never changes anything but the marks named above.
 
 ## 5. `@zh-xx/antu/html`
 

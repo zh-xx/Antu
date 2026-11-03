@@ -520,6 +520,12 @@ export const en = {
     `the main line was marked again, starting at "${from}" and ending at "${to}", keeping to the edges already marked where it could. It was: ${problem}`,
   'norm.mainSet': ({ at }) => `${at}: marked main`,
   'norm.mainCleared': ({ at }) => `${at}: no longer marked main`,
+  // relationship / fact mark repairs (issue 332); fixed English in both dictionaries for agents
+  'norm.fieldCleared': ({ at, field, kinds }) =>
+    `${at}: \`${field}\` removed (\`${field}\` only belongs on a relation of kind ${kinds})`,
+  'norm.shareCoerced': ({ at, from, to }) => `${at}: \`share\` coerced from ${from} to ${to}`,
+  'norm.approxCleared': ({ at }) =>
+    `${at}: \`approx\` cleared (no date; approx marks an estimated date, not a missing one)`,
   'perr.rulesNotArray': '`rules` must be an array',
   'perr.duplicateRuleId': ({ at, id }) => `${at}: id "${id}" is already used by another rule or node`,
   'perr.ruleWhen': ({ at }) =>
