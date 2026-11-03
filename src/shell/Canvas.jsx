@@ -246,6 +246,10 @@ export default function Canvas({
       const first = firstFitRef.current
       // Opening and kind changes use the readable floor; the fit-view button and host fitView do not
       fit(first ? 0 : 300, { readable: true })
+      // An async layout (relationship #181, flowchart issue 330) may first paint an empty placeholder.
+      // Do not settle `ready` / release held select·focus until there is a real content box; keep
+      // `first` so the next fitKey (the finished layout) still counts as the opening fit.
+      if (!(graph.size?.width > 0 || graph.size?.height > 0)) return
       firstFitRef.current = false
       // the diagram is on the screen and fitted: a host waiting on `ready` may now take its picture
       if (first) {

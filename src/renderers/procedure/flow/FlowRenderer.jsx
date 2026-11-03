@@ -17,7 +17,7 @@
 //  "one per node of the data", which is what its unit tests pin.
 // ============================================================
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
 import { usePrefs, useViewValue } from '../../../shell/env.js'
@@ -30,8 +30,41 @@ import RuleTableNode from './RuleTableNode.jsx'
 import ConnectionLayerNode from './ConnectionLayerNode.jsx'
 import StageBoxNode from './StageBoxNode.jsx'
 import FlowDock from './FlowDock.jsx'
-import { buildProcedureGraph } from './layout.js'
+import { layoutProcedureAsync } from './layoutAsync.js'
 import { useSelectEvent } from '../../../shell/useSelectEvent.js'
+
+/**
+ * Placeholder until the async layout finishes (issue 330); keeps the canvas mounted.
+ * Typed loosely so the empty arrays are not inferred as `never[]`.
+ * @type {{
+ *   errors: string[],
+ *   hints: string[],
+ *   orientation: string,
+ *   nodes: any[],
+ *   edges: any[],
+ *   connections: any[],
+ *   rows: any[],
+ *   spine: any[],
+ *   stageBoxes: any[],
+ *   ruleTable: any,
+ *   size: { width: number, height: number },
+ *   stats: Record<string, number>,
+ * }}
+ */
+const EMPTY_LAYOUT = {
+  errors: [],
+  hints: [],
+  orientation: 'vertical',
+  nodes: [],
+  edges: [],
+  connections: [],
+  rows: [],
+  spine: [],
+  stageBoxes: [],
+  ruleTable: null,
+  size: { width: 0, height: 0 },
+  stats: { nodes: 0, edges: 0, connections: 0, layers: 0, widest: 0, backEdges: 0, decisions: 0, ends: 0, groupedEdges: 0 },
+}
 
 /** Node types used by the flowchart. Adding one means registering one line here. */
 const nodeTypes = {
@@ -116,19 +149,21 @@ export default function ProcedureFlow({ spec }) {
     setLinkStyle(next)
   }
 
-  // Only the switches that move geometry go into layout: detail changes what a node shows,
-  // stages turn into boxes ELK lays out. Condition labels and the main-line highlight are paint only,
-  // so toggling them re-draws the link layer without re-fitting the viewport.
-  const layout = useMemo(
-    () =>
-      buildProcedureGraph(
-        spec,
-        { detail: fields.detail, stages: fields.stages, rules: fields.rules },
-        undefined,
-        orientation,
-      ),
-    [spec, fields.detail, fields.stages, fields.rules, orientation],
-  )
+  // Geometry yields to the event loop while it runs (issue 330). Keep the last layout on
+  // screen while a toggle recomputes, so the page stays interactive. Detail / stages / rules
+  // move geometry; condition labels and the main-line highlight are paint only.
+  const [layout, setLayout] = useState(EMPTY_LAYOUT)
+  const layoutReq = useRef(0)
+  useEffect(() => {
+    const id = ++layoutReq.current
+    let cancelled = false
+    layoutProcedureAsync(spec, { detail: fields.detail, stages: fields.stages, rules: fields.rules }, orientation).then((next) => {
+      if (!cancelled && id === layoutReq.current) setLayout(next)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [spec, fields.detail, fields.stages, fields.rules, orientation])
 
   const [hoveredId, setHoveredId] = useState(/** @type {string | null} */ (null))
   const [pinnedId, setPinnedId] = useState(/** @type {string | null} */ (null))

@@ -55,6 +55,7 @@ import {
   GROUP_PAD,
   SCALE_HINT_NODES,
   CROSS_COST,
+  ROUTE_MAX_EXPANSIONS,
   SEARCH_MARGIN,
   FOLD_NOTE_W,
   GROUP_TITLE_FONT,
@@ -322,6 +323,8 @@ function layOut(spec, orientation, collapsed, merged) {
           portCost: portCostFor(a, b),
           crossCost: CROSS_COST,
           sidePorts: true,
+          // Dense trees: stop the A* search and take the elbow below rather than freeze the page (issue 330)
+          maxExpansions: ROUTE_MAX_EXPANSIONS,
         })
       const points = route(box) ?? route(null) ?? fallbackRoute(a, b)
       const c = { index: i, points, labelAt: null, labelSize: labelFrame[i] ?? null }

@@ -215,7 +215,8 @@ class Heap {
  * @param {number} [p.maxCost]  find only a route cheaper than this (the search stops there): a second try at a link
  *   that has a route already need not look at anything dearer
  * @param {number} [p.maxExpansions]  stop after this many heap expansions (accepted pops). Past the budget the
- *   search returns the best complete route found so far, or null. Omitted = no cap (flowchart / justification).
+ *   search returns the best complete route found so far, or null. Flowchart, relationship and justification
+ *   pass a shared budget (issue 181 / 330); omit only in tests that need an unlimited search.
  * @param {boolean} [p.exhaustive]  search without the A* estimate (for the tests: it must find routes as cheap)
  * @param {Function} [p.onCost]  called with the cost of the route found (for the tests)
  * @param {Function} [p.onExpansions]  called with how many states were expanded (for the tests / budgets)

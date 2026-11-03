@@ -14,7 +14,8 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 
 import { validateProcedure, hintsOfProcedure, KINDS } from '../src/renderers/procedure/flow/rules.js'
-import { buildProcedureGraph, toPathD, toCurveD } from '../src/renderers/procedure/flow/layout.js'
+import { buildProcedureGraph, buildProcedureGraphAsync, toPathD, toCurveD } from '../src/renderers/procedure/flow/layout.js'
+import { ROUTE_MAX_EXPANSIONS } from '../src/renderers/procedure/flow/metrics.js'
 import { bendsOf } from '../src/renderers/procedure/flow/straighten.js'
 import { procedureKnowledge } from '../src/renderers/procedure/schema.js'
 import { registerKnowledge, layoutOf, layoutKindsOf } from '../src/core/registry.js'
@@ -748,4 +749,22 @@ test('no line goes past its node and comes back into it from behind', () => {
       assert.ok(!(behind && past > 40), `${name}: ${c.id} goes ${Math.round(past)} px past its node and comes back into it`)
     }
   }
+})
+
+test('async layout matches the sync result (issue 330 yield path)', async () => {
+  const spec = load(byPrefix('01-'))
+  const fields = { detail: true, stages: true, rules: true }
+  const sync = buildProcedureGraph(spec, fields)
+  const async = await buildProcedureGraphAsync(spec, fields)
+  assert.deepEqual(async.size, sync.size)
+  assert.equal(async.nodes.length, sync.nodes.length)
+  assert.equal(async.connections.length, sync.connections.length)
+  assert.deepEqual(
+    async.connections.map((c) => c.points),
+    sync.connections.map((c) => c.points),
+  )
+})
+
+test('the flowchart router budget matches the relationship graph (issue 330)', () => {
+  assert.equal(ROUTE_MAX_EXPANSIONS, 12000)
 })
