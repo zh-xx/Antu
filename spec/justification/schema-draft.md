@@ -204,9 +204,9 @@ There are no `views`, for the reason given for relationship: a view is a fact co
 
 ---
 
-## 5. Validation rules  **⚠ proposal**
+## 5. Validation rules
 
-A draft; there is no code. Errors are reported one by one, with the field path and the id.
+Implemented in `src/renderers/justification/tree/rules.js` (see the status line at the top of this file). Errors and hints are reported one by one, with the field path and the id. The table below is the rule list the code follows; open model questions stay in §7.
 
 | # | Rule | Result |
 |---|---|---|
