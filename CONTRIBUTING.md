@@ -27,107 +27,20 @@ file fails `npm test`; a syntactically broken one fails `npm run typecheck`.
 implementation JSDoc (`node tools/gen/api-dts.mjs`); do not edit them by hand. A stale file fails `npm test`.
 For embed, edit `src/embed/hostTypes.js` (the host types) or the entry's JSDoc, then run the generator.
 
-## TypeScript (gradual, issue #227)
+## TypeScript (gradual, closed #227)
 
 **Goal:** catch wrong field names and closed enums while editing, without a rewrite.
 
-**Coexistence (current rule):** keep source as `.js` / `.mjs` / `.jsx`. Prefer **JSDoc types** (+ later `checkJs`)
-over renaming files to `.ts`. Reasons: `node --test` must stay runnable on Node 18/20, and the DSH plugin
-build inlines `.mjs` as text. New host-facing options on **embed** belong in `src/embed/hostTypes.js`
-or the entry's JSDoc; run `node tools/gen/api-dts.mjs` to refresh `src/embed/antu-embed.d.ts` (or let the
-test remind you). For **validate** / **html**, update the JSDoc on `tools/api/validate.mjs` / `html.mjs`
-and run the same generator.
+**Coexistence:** keep source as `.js` / `.mjs` / `.jsx`. Prefer **JSDoc** + `// @ts-check` over renaming to `.ts`
+(`node --test` on Node 18/20; the DSH build inlines `.mjs` as text). New host-facing embed options belong in
+`src/embed/hostTypes.js` or the entry JSDoc; refresh declarations with `node tools/gen/api-dts.mjs`. For
+**validate** / **html**, update JSDoc on `tools/api/validate.mjs` / `html.mjs` and run the same generator.
 
-**What `npm run typecheck` covers today:**
-
-- Generated diagram Specs (`@zh-xx/antu/types`) and their smoke negatives
-- Public API declarations for embed / validate / html (`tools/typecheck/api-smoke.ts` — a bad `mount`
-  theme or unknown option must fail)
-- `// @ts-check` on `src/embed` plain JS (`cardUi`, `kinds`, `index`, `mount`, `shadowCss`) via
-  `tsconfig.embed.json` — edits there are checked without renaming to `.ts`
-- `// @ts-check` on the embed entry (`src/embed/core.jsx`), the shell modules it imports directly
-  (`src/shell/env.js`, `src/shell/viewState.js`), and the providers it wraps (`src/shell/LangContext.jsx`,
-  `src/theme/ThemeContext.jsx`), also via `tsconfig.embed.json`; `ThemeProvider` props are JSDoc-typed
-  optional, so a `core.jsx` call with only `initialTheme` checks
-- `// @ts-check` on the app shell `src/App.jsx` (Refs #227, does not close): App props are JSDoc-typed
-  (`spec`, `kind`, `kinds`) and so are `DiagramHeader`'s; `import.meta.env.DEV` is declared in
-  `tools/typecheck/embed-shims.d.ts` rather than pulling `vite/client`. With `@types/react` installed the
-  JSX `key` is checked directly, so the temporary `any` casts on components that take one are gone
-- `// @ts-check` on the remaining small shell/theme deps (Refs #227, does not close): `src/shell/prefs.js`,
-  `src/shell/printHost.js`, `src/shell/printPaper.js`, `src/shell/ErrorBoundary.jsx`, `src/theme/themes.js`
-  and `src/theme/themeTokens.js` join `tsconfig.embed.json`; the two empty-record accumulators are JSDoc-typed,
-  the print promises resolve explicitly, and `ErrorBoundary` reads `this.props` / `this.state` through one
-  `any` cast (written before `@types/react` was installed)
-- `// @ts-check` on the remaining small shell helpers (Refs #227, does not close): `src/shell/hostAttrs.js`,
-  `DockParts.jsx`, `useSelectEvent.js`, `chromeInsets.js`, `dockPlace.js`, `useExport.js`, `startupError.js`
-  and `exportPng.js` join `tsconfig.embed.json`; the shadow-root host is read through one `any` cast, the
-  dock's minimap width is narrowed to a local, the unknown catch is formatted with `instanceof Error`, and
-  the PNG export's async return and null 2D context are explicit (written before `@types/react` was installed)
-- `// @ts-check` on the last shell panels `src/shell/Canvas.jsx` and `src/shell/TracePanel.jsx`
-  (Refs #227, does not close): both join `tsconfig.embed.json`; the two `exportPng` callbacks
-  take JSDoc option objects, `placeDock`'s options are typed (`minimapWidth` is intentionally
-  `number | null`), and the one JSX `key` was cast once before `@types/react` was installed (that cast is gone now)
-- `// @ts-check` on the first renderer slice (Refs #227, does not close): the registry entry
-  `src/renderers/index.js`, `components.js`, the four `*/schema.js` files and the fact plain helpers
-  `fact/cardGeometry.js`, `fact/partyNotes.js`, `fact/dateOrder.js`, `fact/dateText.js` join
-  `tsconfig.embed.json`; `dateSpan` guards its missing year, `formatEnd`'s missing clock text is
-  defaulted, and the four `translate` calls pass `undefined` for `vars`. Kind-specific renderer trees
-  and the relationship helpers stay out of this slice
-- `// @ts-check` on the relationship shared helpers (Refs #227, does not close): `relationship/pill.js`,
-  `scope.js`, `useSpecPref.js`, `layered.js`, `partyData.js` and `sections.js` join
-  `tsconfig.embed.json`; `layered`'s informal JSDoc return shapes become object types, its depth-first
-  top is guarded, and the label-placement rectangle takes a coordinate array. The kind-specific
-  relationship trees stay out of this slice
-- `// @ts-check` on the fact kind tree (Refs #227, does not close): every remaining file under
-  `src/renderers/fact/` joins `tsconfig.embed.json` — the shared `ControlDock.jsx`, `EventNode.jsx`,
-  `EventPreview.jsx` and the `timeline/`, `chronicle/` and `scale/` trees. `DockSegmented`'s `title`
-  and `Canvas`'s `fitKey` / `style` are optional, the chronicle / scale layout options take `measure`,
-  and the scale's segment, mark and node accumulators are typed loosely instead of forcing one payload
-  shape. The procedure, relationship and justification kind trees stay out of this slice
-- `// @ts-check` on the procedure kind tree (Refs #227, does not close): every file under
-  `src/renderers/procedure/flow/` and `route/` joins `tsconfig.embed.json` — the flowchart, the route
-  map, and their shared layout, router and polish helpers. Informal JSDoc return and box shapes become
-  object types, nullable layout results and `Map.get` lookups are guarded, the layout accumulators and
-  rule-table groups are typed loosely, and `Canvas`'s node handlers are optional so the route map need
-  not pass no-ops. The relationship and justification kind trees stay out of this slice
-- `// @ts-check` on the relationship kind tree (Refs #227, does not close): every remaining file under
-  `src/renderers/relationship/` joins `tsconfig.embed.json` — the shared `CompanyView.jsx`,
-  `LevelledView.jsx`, `LineLayerNode.jsx`, and the `graph/`, `focus/`, `matrix/`, `equity/`,
-  `authority/`, `related/` and `path/` trees. Informal JSDoc return shapes become object types,
-  nullable `Map.get` lookups and layout results are guarded, the layout accumulators are typed
-  loosely, `FocusDock`'s kind/centre handlers are optional, and `LevelledView`'s props are JSDoc-typed
-  so a caller can pass only a dock addition. The justification kind tree stays out of this slice
-- `// @ts-check` on the justification kind tree (Refs #227, does not close): every remaining file under
-  `src/renderers/justification/tree/` joins `tsconfig.embed.json`; `metrics`'s `codePointAt` read is
-  guarded the same way as the relationship graph metrics. Renderer kind trees under `src/renderers/`
-  are now covered
-
-**Public `.d.ts`:** `tools/api/validate.d.ts`, `html.d.ts` and `src/embed/antu-embed.d.ts` are generated
-from implementation JSDoc (`node tools/gen/api-dts.mjs`, `--check` in tests). Spec shapes are generated
-(`src/types/antu-specs.d.ts`). Embed's host types live in `src/embed/hostTypes.js`; its entry JSDoc fills
-in the function signatures. All three stay checked by `tools/typecheck/api-smoke.ts` and by the
-export-name parity test in `test/embed.test.mjs`.
-
-**`@types/react` (installed):** `@types/react@19` is a type-only devDependency, so JSX props,
-including the special `key`, are checked by `tsconfig.embed.json`. The casts and workarounds added only
-because JSX `key` was unknown can be removed, and new ones should not be added. The coexistence rule
-above still holds: no mass `.js` → `.ts` rename; source stays JS/JSX with JSDoc and `// @ts-check`,
-and React Flow node props that cannot use this `@xyflow/react` version's `NodeProps` generic are typed
-with a local JSDoc object. Each RF node's `data` is now a local typedef with the concrete fields
-that node reads (nested shapes included), not `any`; still no mass `.js` → `.ts` rename. The probe
-on the earlier tree reported ~274 errors (React Flow refs typed as
-`never`, context defaults, and call-signature mismatches); typing the context roots and the React Flow
-refs / node components clears the current checkJs set. Do not weaken runtime `validate()` or existing
-tests for the sake of types.
-
-- `// @ts-check` on the DSH plugin's pure helpers (Refs #227, does not close): `tools/dsh/src/card-model.mjs`,
-  `locale.mjs` and `require-async.mjs` join `tsconfig.dsh.json` (also part of `npm run typecheck`). These
-  stay `.mjs` so `build.mjs` can still inline them into `package/client.js`; Host/Client React slots stay
-  out of this slice.
-- `// @ts-check` on the engine core pure modules (Refs #227, does not close): `src/core/{validate,normalize,
-  items,registry,i18n,labels,paper,canvas,links,trace,specVersion,engineVersion,diagramAbout}.js` join
-  `tsconfig.core.json` (wired into `npm run typecheck`). Generated message dictionaries and agent guides
-  stay out of this slice.
+**What `npm run typecheck` covers:** generated Specs (`@zh-xx/antu/types`); public embed / validate / html
+`.d.ts` (`tools/typecheck/api-smoke.ts`); `// @ts-check` over embed, shell, renderers, `src/core` pure helpers
+(`tsconfig.core.json`), and DSH pure helpers (`tsconfig.dsh.json`). `@types/react@19` is a type-only
+devDependency. Do not weaken runtime `validate()` or existing tests for the sake of types. The slice-by-slice
+history of #227 is in [CHANGELOG.md](CHANGELOG.md) (0.18.0 and earlier Unreleased notes), not repeated here.
 
 `verify` needs a Chromium-based browser; if it is not found, point the environment variable `ANTU_CHROME` at it
 (details in `spec/mcp-server.md`, "where the browser comes from").

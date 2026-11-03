@@ -17,7 +17,14 @@ Turn structured JSON into self-contained offline HTML legal diagrams (fact / pro
 - License: AGPL-3.0-or-later (diagram data in generated pages has additional terms; see README)
 
 ## Current status
-- Ground in README / CHANGELOG / open issues: 0.x draft; relation and justification diagram schemas are still drafts. Next steps: pick one or two real open issues or documented directions—do not invent progress.
+- **0.x.** Fact and procedure formats are the most settled (procedure schema is confirmed v1.1); relationship is provisional; justification is **experimental and on hold**. Ways of drawing are still marked `experimental` in the registry until the maintainer promotes them (About panel / `antu versions`).
+- Gradual TypeScript / `npm run typecheck` for write-time checks is in place (closed #227); source stays JS/JSX.
+- Prefer these documented unfinished surfaces over inventing work or reopening parked issues:
+  - Embed view-state phase 2 for fact / relationship (#329)
+  - `normalize(spec)` beyond procedure (#332)
+  - Procedure layout cost caps / yield (#330), without the #190 redesign
+  - Doc / verify hygiene (#331 status honesty leftovers, #333–#335)
+- Parked for now (do not expand unless the maintainer says so): justification evidence layer and guide (#38, #51), fact quote-per-source model (#161), “layout like water” (#190).
 
 ## Do not
 - Commit secrets to the repo
