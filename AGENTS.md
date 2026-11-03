@@ -19,9 +19,7 @@ Turn structured JSON into self-contained offline HTML legal diagrams (fact / pro
 ## Current status
 - **0.x.** Fact and procedure formats are the most settled (procedure schema is confirmed v1.1); relationship is provisional; justification is **experimental and on hold**. Ways of drawing are still marked `experimental` in the registry until the maintainer promotes them (About panel / `antu versions`).
 - Gradual TypeScript / `npm run typecheck` for write-time checks is in place (closed #227); source stays JS/JSX.
-- Prefer these documented unfinished surfaces over inventing work or reopening parked issues:
-  - Embed verify soft waits (#335)
-- Parked for now (do not expand unless the maintainer says so): justification evidence layer and guide (#38, #51), fact quote-per-source model (#161), “layout like water” (#190).
+- Prefer these documented unfinished surfaces over inventing work or reopening parked issues only when the maintainer names one; parked for now: justification evidence layer and guide (#38, #51), fact quote-per-source model (#161), “layout like water” (#190).
 
 ## Do not
 - Commit secrets to the repo

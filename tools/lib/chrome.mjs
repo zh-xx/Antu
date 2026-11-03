@@ -423,6 +423,23 @@ export async function launchBrowser({ width = 1600, height = 900, port, timeoutM
       return r.result?.value
     },
 
+    /**
+     * Poll until `expression` is truthy (issue 335). Prefer this over a fixed sleep when the page
+     * has a checkable condition (an event arrived, a node is on screen, a class flipped).
+     * @param {string} expression  evaluated in the page; truthy ends the wait
+     * @param {{ timeoutMs?: number, intervalMs?: number, label?: string }} [opts]
+     */
+    async waitUntil(expression, { timeoutMs = 8000, intervalMs = 50, label = expression } = {}) {
+      // Always coerce in-page: a truthy DOM node must not cross CDP (returnByValue → "reference chain too long").
+      const probe = `!!(${expression})`
+      const deadline = Date.now() + timeoutMs
+      while (Date.now() < deadline) {
+        if (await session.eval(probe)) return true
+        await wait(intervalMs)
+      }
+      throw new Error(`waitUntil timed out after ${timeoutMs}ms: ${label}`)
+    },
+
     /** Base64 of a screenshot (what the MCP preview wants, not written to disk) */
     async screenshotData() {
       const { data } = await c.send('Page.captureScreenshot', { format: 'png' })
