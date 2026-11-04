@@ -5,13 +5,17 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+### Added
+
+- **WorkBuddy skill package restored** on the release (`antu-workbuddy-skill-<version>.zip`): platform header fields, `icon.png` avatar (512×512, ≤ 500 KB; SVG is rejected), gzipped viewer under 3 MB, same content as `skills/antu/`. Market names **案图 · 诉讼可视化** / **Antu · Legal Diagrams**; capability blurbs speak to non-technical users (four diagram kinds and what they clarify—no JSON jargon). The MCP connector zip stays retired. Slim skill remains a reserve build, not attached.
+
 ### Changed
 
 ### Fixed
 
 ## 0.19.0
 
-This is a **minor** release: hosts gain embed view-state for fact and relationship, and `normalize(spec)` now repairs fact and relationship marks the same way it already did for procedure. Procedure flowchart layout caps search and yields in the browser so large flows stay responsive. Human-facing names become **案图 · 诉讼可视化** / **Antu · Legal Diagrams**, with a short About blurb in the READMEs. WorkBuddy open-platform packages are retired from the release; only `antu-skill-<version>.zip` is attached. Nothing breaks a file or a tool call written for 0.18.x: the additions are new host options / helpers, layout behaviour, docs, and packaging.
+This is a **minor** release: hosts gain embed view-state for fact and relationship, and `normalize(spec)` now repairs fact and relationship marks the same way it already did for procedure. Procedure flowchart layout caps search and yields in the browser so large flows stay responsive. Human-facing names become **案图 · 诉讼可视化** / **Antu · Legal Diagrams**, with a short About blurb in the READMEs. WorkBuddy open-platform packages were dropped from this release's assets (connector and skill zips); only `antu-skill-<version>.zip` was attached. The skill package is restored after 0.19.0. Nothing breaks a file or a tool call written for 0.18.x: the additions are new host options / helpers, layout behaviour, docs, and packaging.
 
 ### Added
 
@@ -30,7 +34,7 @@ This is a **minor** release: hosts gain embed view-state for fact and relationsh
 
 ### Removed
 
-- **WorkBuddy open-platform packages** (`tools/workbuddy/`): the connector and the WorkBuddy-only skill zips are retired. Releases attach only `antu-skill-<version>.zip`. The general agent skill, MCP server, and npm package are unchanged. Hosts that import a local skill package use that zip.
+- **WorkBuddy open-platform packages** (`tools/workbuddy/`): this release stopped attaching both the connector and the WorkBuddy-only skill zips (only `antu-skill-<version>.zip` shipped). The intended cut was the connector only; the skill zip is restored after 0.19.0. The general agent skill, MCP server, and npm package were unchanged.
 
 ### Fixed
 

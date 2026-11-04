@@ -143,9 +143,10 @@ and export. Per-diagram polishing remains tracked under #131.
 4. After it merges, run the **Release** workflow (Actions tab → Run workflow; the default is the latest commit of
    `main`). It reads `version` from that commit's `package.json`, refuses if the commit is not on `main`, if the tag
    already exists, or if `CHANGELOG.md` has no section for the version, and then creates the tag `vX.Y.Z` and a
-   GitHub release whose notes are that section, with the skill attached as `antu-skill-X.Y.Z.zip`. It also refuses if
+   GitHub release whose notes are that section, with the skill attached as `antu-skill-X.Y.Z.zip` and the WorkBuddy
+   skill as `antu-workbuddy-skill-X.Y.Z.zip` (the MCP connector zip is not attached). It also refuses if
    a check on the commit is red or has not finished (so wait for CI after the merge), if `skills/antu/` is not what
-   a build of that version writes, or if the packed zip, unpacked into an empty folder, fails the skill's own checks
+   a build of that version writes, or if either packed zip, unpacked into an empty folder, fails the skill's own checks
    (`tools/verify/skill-cli.mjs --skill`). Nothing is released from a branch, and nothing is tagged by hand.
 
 5. The npm package `@zh-xx/antu` and its entry in the MCP registry are published for a version that is already
