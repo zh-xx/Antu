@@ -21,6 +21,8 @@ import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
+const SRC = join(HERE, 'src')
+const ICON = join(SRC, 'icon.svg')
 const SKILL_OUT = join(HERE, 'package-skill')
 const SKILL_ROOT = join(SKILL_OUT, 'antu')
 const SLIM_OUT = join(HERE, 'package-skill-slim')
@@ -32,19 +34,38 @@ const SKILL_SOURCE = join(HERE, '../../skills/antu')
  */
 export const SKILL_MAX_BYTES = 2_900_000
 
+/** Market listing names (0.19+ display names). Machine id stays `antu`. */
+export const DISPLAY_NAME_ZH = '案图 · 诉讼可视化'
+export const DISPLAY_NAME_EN = 'Antu · Legal Diagrams'
+export const DISPLAY_NAME_SLIM_ZH = '案图 · 诉讼可视化（精简）'
+export const DISPLAY_NAME_SLIM_EN = 'Antu · Legal Diagrams (slim)'
+
+/**
+ * Platform-facing capability blurbs (description_zh / description_en). Kept under ~140 characters.
+ * Sourced from the product About line; reconfirm with the maintainer if the market listing changes.
+ */
+export const DESCRIPTION_ZH =
+  '案图 · 诉讼可视化：把案件 JSON 画成一张可离线打开的 HTML 图——时间线、程序流程、主体关系与裁判说理——供 AI Agent 与法律专业人士使用。'
+export const DESCRIPTION_EN =
+  'Antu · Legal Diagrams turns case JSON into one offline HTML diagram—timelines, procedures, relationships, and court reasoning.'
+export const DESCRIPTION_SLIM_ZH =
+  '案图 · 诉讼可视化：把案件 JSON 画成可离线 HTML 图（时间线、程序、关系、说理）。命令行从 npm 取，需 Node 18+。'
+export const DESCRIPTION_SLIM_EN =
+  'Antu · Legal Diagrams: offline HTML case diagrams from JSON. CLI via npm (Node 18+), or Python 3 fallback.'
+
 export const repoVersion = () => JSON.parse(readFileSync(join(HERE, '../../package.json'), 'utf8')).version
 
 const SKILL_HEADER = (version, description, slim) => `---
 name: antu
-display_name: ${slim ? '案图 Antu（技能版·精简）' : '案图 Antu（技能版）'}
-display_name_en: ${slim ? 'Antu (skill, slim)' : 'Antu (skill)'}
+display_name: ${slim ? DISPLAY_NAME_SLIM_ZH : DISPLAY_NAME_ZH}
+display_name_en: ${slim ? DISPLAY_NAME_SLIM_EN : DISPLAY_NAME_EN}
 description: >-
 ${description
   .split('\n')
   .map((line) => `  ${line}`)
   .join('\n')}
-description_zh: ${slim ? '用 Antu 把案情时间线、程序流程、主体关系、裁判说理画成可离线打开的单个 HTML 图。命令行从 npm 取（需要 Node 18 以上、npm 和网络），没有时退到 Python 简化版。' : '用 Antu 把案情时间线、程序流程、主体关系、裁判说理画成可离线打开的单个 HTML 图。需要 Node 18 以上，没有时退到 Python 简化版。'}
-description_en: ${slim ? 'Draw case timelines, procedures, party relationships and court reasoning as one offline HTML file. The command line comes from npm (Node 18+, npm and a network), or Python 3 for a reduced version.' : 'Draw case timelines, procedures, party relationships and court reasoning as one offline HTML file. Needs Node 18+, or Python 3 for a reduced version.'}
+description_zh: ${slim ? DESCRIPTION_SLIM_ZH : DESCRIPTION_ZH}
+description_en: ${slim ? DESCRIPTION_SLIM_EN : DESCRIPTION_EN}
 version: "${version}"
 author: Jicheng
 license: AGPL-3.0-or-later
@@ -85,9 +106,11 @@ export function buildSkillFolder(version = repoVersion(), { slim = false } = {})
   const out = slim ? SLIM_OUT : SKILL_OUT
   const root = slim ? SLIM_ROOT : SKILL_ROOT
 
+  if (!existsSync(ICON)) throw new Error('tools/workbuddy/src/icon.svg is missing')
   rmSync(out, { recursive: true, force: true })
   mkdirSync(out, { recursive: true })
   cpSync(SKILL_SOURCE, root, { recursive: true })
+  cpSync(ICON, join(root, 'icon.svg'))
   // The viewer page is 2.3 MB of the 4.3: ship it compressed. The command line and make_html.py read either form.
   const viewer = join(root, 'assets/viewer.html')
   writeFileSync(`${viewer}.gz`, gzipSync(readFileSync(viewer), { level: 9 }))
@@ -140,8 +163,17 @@ export function checkSkillFolder(dir, version = repoVersion(), { slim = false } 
     readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name), depth + 1) : [depth]))
   const deep = walk(dir).filter((depth) => depth > 2).length
   if (deep) bad.push(`${deep} file(s) deeper than root / folder / file`)
-  for (const f of [...(slim ? [] : ['scripts/antu.mjs']), 'scripts/make_html.py', 'assets/viewer.html.gz', 'references/guide-fact.md', 'examples/fact-1-minimal.zh-CN.json']) {
+  for (const f of [...(slim ? [] : ['scripts/antu.mjs']), 'scripts/make_html.py', 'assets/viewer.html.gz', 'icon.svg', 'references/guide-fact.md', 'examples/fact-1-minimal.zh-CN.json']) {
     if (!existsSync(join(dir, f))) bad.push(`${f}: missing`)
+  }
+  if (existsSync(join(dir, 'icon.svg')) && readFileSync(join(dir, 'icon.svg')).length > 20_000) {
+    bad.push('icon.svg: larger than 20 KB')
+  }
+  if (!front.includes(`display_name: ${slim ? DISPLAY_NAME_SLIM_ZH : DISPLAY_NAME_ZH}`)) {
+    bad.push(`SKILL.md: display_name must be ${slim ? DISPLAY_NAME_SLIM_ZH : DISPLAY_NAME_ZH}`)
+  }
+  if (!front.includes(`display_name_en: ${slim ? DISPLAY_NAME_SLIM_EN : DISPLAY_NAME_EN}`)) {
+    bad.push(`SKILL.md: display_name_en must be ${slim ? DISPLAY_NAME_SLIM_EN : DISPLAY_NAME_EN}`)
   }
   if (slim) {
     if (existsSync(join(dir, 'scripts/antu.mjs'))) bad.push('scripts/antu.mjs: the slim package carries no command line')

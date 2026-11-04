@@ -14,17 +14,18 @@ node tools/workbuddy/build.mjs --check    # build the folders and check them aga
 
 ## Packages
 
-1. **The skill** (`antu-workbuddy-skill-<version>.zip`, "案图 Antu（技能版）"): the general skill with the header
-   fields the platform asks (`description_zh`, `description_en`, `version`, `author`) and a short section
-   "In WorkBuddy". Content is not copied by hand. It needs **Node 18 or newer** on the user's machine; with only
-   Python 3 it falls back to `scripts/make_html.py` (it makes the page and checks nothing); with neither it says so.
-   If `antu_*` tools are already available in the session, the skill tells the model to use those instead.
+1. **The skill** (`antu-workbuddy-skill-<version>.zip`, market name **案图 · 诉讼可视化** / **Antu · Legal Diagrams**):
+   the general skill with the header fields the platform asks (`display_name`, `description_zh`, `description_en`,
+   `version`, `author`), the same `icon.svg` the old connector used, and a short section "In WorkBuddy". Content is
+   not copied by hand. It needs **Node 18 or newer** on the user's machine; with only Python 3 it falls back to
+   `scripts/make_html.py` (it makes the page and checks nothing); with neither it says so. If `antu_*` tools are
+   already available in the session, the skill tells the model to use those instead.
 
 **Size.** WorkBuddy refuses a skill over **3 MB unzipped**. So this package ships `assets/viewer.html` compressed
 (`viewer.html.gz`); the command line and `make_html.py` read either form. The build stops if the package passes
 2.9 MB. The command line itself is most of the rest; if it grows too much, the slim skill below is the next step.
 
-2. **The slim skill** (`antu-workbuddy-skill-slim-<version>.zip`, "案图 Antu（技能版·精简）"), **kept in reserve**:
+2. **The slim skill** (`antu-workbuddy-skill-slim-<version>.zip`, **案图 · 诉讼可视化（精简）**), **kept in reserve**:
    the same skill without the bundled command line. Its commands run the pinned npm package instead,
    `npx -y -p @zh-xx/antu@<version> antu validate|layout|render|preview`. It is built by
    `node tools/workbuddy/build.mjs`, but the release does **not** attach it.

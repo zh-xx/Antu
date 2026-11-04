@@ -6,7 +6,17 @@ import { tmpdir } from 'node:os'
 import { spawnSync } from 'node:child_process'
 import { gunzipSync } from 'node:zlib'
 import { join } from 'node:path'
-import { buildSkillFolder, checkSkillFolder, repoVersion, SKILL_MAX_BYTES } from '../tools/workbuddy/build.mjs'
+import {
+  buildSkillFolder,
+  checkSkillFolder,
+  repoVersion,
+  SKILL_MAX_BYTES,
+  DISPLAY_NAME_ZH,
+  DISPLAY_NAME_EN,
+  DISPLAY_NAME_SLIM_ZH,
+  DESCRIPTION_ZH,
+  DESCRIPTION_EN,
+} from '../tools/workbuddy/build.mjs'
 
 const version = repoVersion()
 
@@ -20,8 +30,12 @@ test("the skill package is the general skill with WorkBuddy's header and section
   const skillDir = buildSkillFolder()
   assert.deepEqual(checkSkillFolder(skillDir, version), [])
   const text = readFileSync(join(skillDir, 'SKILL.md'), 'utf8')
-  assert.match(text, /^display_name: 案图 Antu（技能版）$/m)
+  assert.match(text, new RegExp(`^display_name: ${DISPLAY_NAME_ZH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'))
+  assert.match(text, new RegExp(`^display_name_en: ${DISPLAY_NAME_EN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'))
+  assert.match(text, new RegExp(`^description_zh: ${DESCRIPTION_ZH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'))
+  assert.match(text, new RegExp(`^description_en: ${DESCRIPTION_EN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'))
   assert.match(text, /^author: Jicheng$/m)
+  assert.equal(readFileSync(join(skillDir, 'icon.svg'), 'utf8'), readFileSync('tools/workbuddy/src/icon.svg', 'utf8'))
   const general = readFileSync('skills/antu/SKILL.md', 'utf8')
   assert.ok(text.includes('## 2. Write the JSON'), 'the body of the general skill is kept')
   assert.ok(general.includes('## 2. Write the JSON'))
@@ -100,7 +114,8 @@ test('the slim skill carries no command line, runs the pinned npm package with n
   assert.throws(() => statSync(join(slim, 'scripts/antu.mjs')))
   assert.ok(bytesOf(slim) < 1_500_000, `${bytesOf(slim)} bytes`)
   const text = readFileSync(join(slim, 'SKILL.md'), 'utf8')
-  assert.match(text, /^display_name: 案图 Antu（技能版·精简）$/m)
+  assert.match(text, new RegExp(`^display_name: ${DISPLAY_NAME_SLIM_ZH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'))
+  assert.equal(readFileSync(join(slim, 'icon.svg'), 'utf8'), readFileSync('tools/workbuddy/src/icon.svg', 'utf8'))
   assert.ok(text.includes(`npx -y -p @zh-xx/antu@${version} antu `))
   assert.ok(!/node <skill-dir>\/scripts\/antu\.mjs/.test(text))
   assert.ok(statSync(join(buildSkillFolder(), 'scripts/antu.mjs')).size > 1_000_000)
