@@ -14,6 +14,7 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ### Changed
 
+- **About blurb**: short product line is now *Antu · Legal Diagrams turns case JSON into one offline HTML diagram—timelines, procedures, relationships, and court reasoning—for AI agents and legal professionals.* (Chinese: *案图 · 诉讼可视化：把案件 JSON 画成一张可离线打开的 HTML 图——时间线、程序流程、主体关系与裁判说理——供 AI Agent 与法律专业人士使用。*) Used in README openers, `AGENTS.md`, and `package.json` description.
 - **Display names** (human-facing only): full **案图 · 诉讼可视化** / **Antu · Legal Diagrams**; short **案图** / **Antu**. READMEs, DSH plugin locale titles, hero draft titles/footers, skill source heading, and CONTRIBUTING name the full form where a cold reader must see what it does. Machine ids (`antu`, `@zh-xx/antu`, `antu_*`, `skills/antu`) are unchanged. The committed `skills/antu/` zip content updates on the next release rebuild.
 - **Embed browser verify prefers condition waits** (#335): `browser.waitUntil` in `tools/lib/chrome.mjs` and in-page `until` polls in `tools/verify/embed.mjs` replace most fixed `setTimeout` settles (theme/kind/select/fit/dock/view-state). Timeout bounds for races stay.
 - **CONTRIBUTING TypeScript section slimmed** (#333): coexistence rules and what `npm run typecheck` covers stay; the #227 slice chronicle moves to the CHANGELOG history, not the contributor entry.

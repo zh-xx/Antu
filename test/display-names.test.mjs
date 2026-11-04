@@ -28,3 +28,15 @@ test('CONTRIBUTING records the display-name rule', () => {
   assert.ok(text.includes(ZH_FULL))
   assert.ok(text.includes(EN_FULL))
 })
+
+const ABOUT_EN =
+  'Antu · Legal Diagrams turns case JSON into one offline HTML diagram—timelines, procedures, relationships, and court reasoning—for AI agents and legal professionals.'
+const ABOUT_ZH =
+  '案图 · 诉讼可视化：把案件 JSON 画成一张可离线打开的 HTML 图——时间线、程序流程、主体关系与裁判说理——供 AI Agent 与法律专业人士使用。'
+
+test('the short About blurb is shared by README, AGENTS, and package.json', () => {
+  assert.ok(readFileSync('README.md', 'utf8').includes(ABOUT_EN))
+  assert.ok(readFileSync('README.zh-CN.md', 'utf8').includes(ABOUT_ZH))
+  assert.ok(readFileSync('AGENTS.md', 'utf8').includes(ABOUT_EN))
+  assert.equal(JSON.parse(readFileSync('package.json', 'utf8')).description, ABOUT_EN)
+})

@@ -4,7 +4,7 @@
   "license": "AGPL-3.0-or-later",
   "author": "Ji Cheng",
   "private": true,
-  "description": "Antu · Legal Diagrams — a rendering core for legal work visualization. JSON specification plus an extensible rendering engine",
+  "description": "Antu · Legal Diagrams turns case JSON into one offline HTML diagram—timelines, procedures, relationships, and court reasoning—for AI agents and legal professionals.",
   "type": "module",
   "scripts": {
     "dev": "vite",

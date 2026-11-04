@@ -13,10 +13,7 @@
 
 [中文](README.zh-CN.md) | **English**
 
-Antu turns one JSON document into one self-contained HTML legal diagram. The page is one file of about 2.3 MB that makes no network request and needs no server; it opens offline and can be archived,
-printed or sent as an attachment. An AI Agent can read the case materials and write the JSON; the engine then draws the
-diagram from it, and the same JSON gives the same diagram. Antu is at version 0.x, and the formats of the relationship
-and justification diagrams are still drafts.
+Antu · Legal Diagrams turns case JSON into one offline HTML diagram—timelines, procedures, relationships, and court reasoning—for AI agents and legal professionals. The page is one file of about 2.3 MB that makes no network request and needs no server; it opens offline and can be archived, printed or sent as an attachment. An AI Agent can read the case materials and write the JSON; the engine then draws the diagram from it, and the same JSON gives the same diagram. Antu is at version 0.x, and the formats of the relationship and justification diagrams are still drafts.
 
 ## Diagram Types
 
