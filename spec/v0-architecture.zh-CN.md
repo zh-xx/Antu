@@ -171,6 +171,7 @@ JSON (信封) ──> [校验门卫] ──> 按大类路由 ──> 注册表�
 - 底层渲染技术：React Flow（已选定，事实图已在用）。
 - 布局：**各子类自负**，不用统一布局库。事实图的时间图自己算网格（`src/renderers/fact/timeline/grid.js`）；
   程序图的流程图把每个阶段单独交给 ELK 的分层算法排（elkjs，`src/renderers/procedure/flow/elk.js`），是按实测交叉数在 dagre 与手写排布之间选出的，阶段之间的线由自写的正交寻路走（`flow/router.js`，见 `spec/procedure/schema-draft.zh-CN.md` §6.1）；自上而下读的关系图各画法共用一套分层排布（`src/renderers/relationship/layered.js`）和一个线条层（`LineLayerNode.jsx`）。
+  每种画法属于哪一类、还考虑过哪些引擎，见 [`spec/layout-engines.zh-CN.md`](layout-engines.zh-CN.md)。
 - 渲染器内部负责"语义 → React Flow nodes/edges"的翻译（翻译发生在渲染器内，不在规范内）。
 
 ## 6.1 产物形态：一个自包含的 HTML

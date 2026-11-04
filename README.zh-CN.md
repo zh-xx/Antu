@@ -111,7 +111,7 @@ const diagram = mount(element, spec, { lang: 'zh', onEvent: (e) => console.log(e
 
 ## 文档
 
-- 供人阅读的设计文档在 [`spec/`](spec/)：[架构](spec/v0-architecture.zh-CN.md)、[来源的 7 类字段](spec/source-schema-draft.zh-CN.md)、[主题](spec/theme.zh-CN.md)、[纸张](spec/paper.zh-CN.md)、[MCP 服务端](spec/mcp-server.zh-CN.md)、[在应用里使用](spec/embed.zh-CN.md)、[DSH 插件规划](spec/dsh-plugin.zh-CN.md)（安装说明 [tools/dsh/README.zh-CN.md](tools/dsh/README.zh-CN.md)），以及各类图（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 Agent 看的说明在 [`spec/agent/`](spec/agent/)，只保留英文。
+- 供人阅读的设计文档在 [`spec/`](spec/)：[架构](spec/v0-architecture.zh-CN.md)、[布局引擎](spec/layout-engines.zh-CN.md)、[React Flow 特性](spec/react-flow-features.zh-CN.md)、[来源的 7 类字段](spec/source-schema-draft.zh-CN.md)、[主题](spec/theme.zh-CN.md)、[纸张](spec/paper.zh-CN.md)、[MCP 服务端](spec/mcp-server.zh-CN.md)、[在应用里使用](spec/embed.zh-CN.md)、[DSH 插件规划](spec/dsh-plugin.zh-CN.md)（安装说明 [tools/dsh/README.zh-CN.md](tools/dsh/README.zh-CN.md)），以及各类图（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 Agent 看的说明在 [`spec/agent/`](spec/agent/)，只保留英文。
 - [CHANGELOG.md](CHANGELOG.md)，版本号的规则见 [spec/versioning.zh-CN.md](spec/versioning.zh-CN.md)。
 - 已知问题与需求记录在 [GitHub issues](https://github.com/zh-xx/Antu/issues)。参与贡献前，请先阅读 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。
 

@@ -5,6 +5,10 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+### Added
+
+- **Layout engines note** (`spec/layout-engines.md` + zh-CN): which layout family each diagram kind uses, how ELK is isolated and was measured against dagre / hand-written layout, and which industry engines are considered or not needed. Linked from the READMEs, `spec/react-flow-features.md`, and `spec/v0-architecture.md`.
+
 ### Changed
 
 ### Fixed
