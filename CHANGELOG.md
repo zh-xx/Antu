@@ -19,6 +19,10 @@ what breaks a file or a tool call written for the version before, with how to br
 - **CONTRIBUTING TypeScript section slimmed** (#333): coexistence rules and what `npm run typecheck` covers stay; the #227 slice chronicle moves to the CHANGELOG history, not the contributor entry.
 - **Status honesty for agents and justification §5** (#331): `AGENTS.md` points at documented unfinished surfaces (#329–#335) and parked issues instead of “pick an open issue”; justification schema §5 no longer claims validation has no code (EN + zh-CN). Diagram `experimental` registry statuses are unchanged pending a maintainer promotion call.
 
+### Removed
+
+- **WorkBuddy open-platform packages** (`tools/workbuddy/`): the connector and the WorkBuddy-only skill zips are retired. Releases attach only `antu-skill-<version>.zip`. The general agent skill, MCP server, and npm package are unchanged. Hosts that import a local skill package use that zip.
+
 ### Fixed
 
 ## 0.18.0
@@ -83,7 +87,7 @@ Nothing in the engine, the command line, the MCP server or the entries for a hos
 
 ### Fixed
 - **The WorkBuddy skill package is under the platform's 3 MB** (it was 4.3 MB unzipped, and the platform counts the unzipped size). The viewer page is shipped compressed in that package (`assets/viewer.html.gz`); the command line and `scripts/make_html.py` read either the plain or the compressed page, so every other client is unchanged. The build stops if the package grows past 2.9 MB.
-- **A slim WorkBuddy skill, kept in reserve** (`antu-workbuddy-skill-slim-<version>.zip`, built by `tools/workbuddy/build.mjs`, not attached to the release): the skill without the bundled command line, running `npx -y -p @zh-xx/antu@<version> antu …` instead (about 0.9 MB).
+- **A slim WorkBuddy skill, kept in reserve** (`antu-workbuddy-skill-slim-<version>.zip`, built by the then WorkBuddy packaging script, not attached to the release): the skill without the bundled command line, running `npx -y -p @zh-xx/antu@<version> antu …` instead (about 0.9 MB).
 
 ## 0.16.5
 

@@ -38,7 +38,7 @@ def main() -> int:
     if viewer.exists():
         html = viewer.read_text(encoding="utf-8")
     else:
-        # a package that has to stay small ships the page compressed (WorkBuddy takes a skill of 3 MB at most)
+        # a package that has to stay small may ship the page compressed (the plain page alone is about 2.3 MB)
         viewer = assets / "viewer.html.gz"
         try:
             html = gzip.decompress(viewer.read_bytes()).decode("utf-8")

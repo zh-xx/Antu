@@ -91,7 +91,7 @@
 
 ## Agent skill（`skills/antu/`）
 
-skill 是没有 MCP 时给 agent 画案图用的材料：一份 `SKILL.md`（如何选图、如何老实写 JSON、如何出页）、各类的指南与字段表、示例、viewer 页（引擎加数据位）、填充它的 Python 脚本，以及命令行（`scripts/antu.mjs`：validate、layout、render、preview；单文件打包，Node 18+）。它是 Claude Code、Codex 等 skill 安装器读的文件夹，也作为 zip 附在每次发行上，供导入本地包的客户端（WorkBuddy）。
+skill 是没有 MCP 时给 agent 画案图用的材料：一份 `SKILL.md`（如何选图、如何老实写 JSON、如何出页）、各类的指南与字段表、示例、viewer 页（引擎加数据位）、填充它的 Python 脚本，以及命令行（`scripts/antu.mjs`：validate、layout、render、preview；单文件打包，Node 18+）。它是 Claude Code、Codex 等 skill 安装器读的文件夹，也作为 zip 附在每次发行上，供导入本地 skill 包的客户端使用。
 
 - **生成，从不手改**：`npm run build:skill` 从 `spec/agent/`、各类字段表、`examples/agent/`、`package.json` 的版本，以及 `tools/skill/` 里两份手写文件写出。某次变更往 skill 源里加的文件列在 `ADDED_SINCE_RELEASE`（`tools/build-skill.mjs`），去掉的列在 `REMOVED_SINCE_RELEASE`：单元测试允许发行前文件夹缺前者、留后者；发行工作流的检查不允许；发行 PR 清空两份列表。
 - **它是上一次发行的状态。** 只在发行 PR 里重建，不在每次变更里重建，以免从仓库安装的人拿到比旁边 viewer 更新的指南。发行之间它故意落后于 `main`。测试保证它完整且盖着 `package.json` 的版本；发行工作流检查它等于一次构建。

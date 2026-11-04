@@ -3,7 +3,7 @@
 //
 //  The skill is what an agent is given to draw with antu when it has no MCP server: how to choose a diagram,
 //  the guide and field table of each kind, examples, and a viewer page to put the data into. The formats it
-//  installs into (Claude Code, Codex, WorkBuddy, `npx skills`) all read a folder with a SKILL.md.
+//  installs into (Claude Code, Codex, `npx skills`, and the like) all read a folder with a SKILL.md.
 //
 //  Nothing in it is written by hand twice (CONTRIBUTING rule 7): the guides are spec/agent/<kind>/guide.md,
 //  the field tables come from each kind's knowledge (the same text `antu_schema` gives), the examples are
