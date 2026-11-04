@@ -53,17 +53,20 @@ export const DESCRIPTION_SLIM_EN = DESCRIPTION_EN
 
 export const repoVersion = () => JSON.parse(readFileSync(join(HERE, '../../package.json'), 'utf8')).version
 
+/** Double-quoted YAML scalar — needed when the value contains `:` (platform parse error otherwise). */
+export const yamlDouble = (s) => `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+
 const SKILL_HEADER = (version, description, slim) => `---
 name: antu
-display_name: ${slim ? DISPLAY_NAME_SLIM_ZH : DISPLAY_NAME_ZH}
-display_name_en: ${slim ? DISPLAY_NAME_SLIM_EN : DISPLAY_NAME_EN}
+display_name: ${yamlDouble(slim ? DISPLAY_NAME_SLIM_ZH : DISPLAY_NAME_ZH)}
+display_name_en: ${yamlDouble(slim ? DISPLAY_NAME_SLIM_EN : DISPLAY_NAME_EN)}
 description: >-
 ${description
   .split('\n')
   .map((line) => `  ${line}`)
   .join('\n')}
-description_zh: ${slim ? DESCRIPTION_SLIM_ZH : DESCRIPTION_ZH}
-description_en: ${slim ? DESCRIPTION_SLIM_EN : DESCRIPTION_EN}
+description_zh: ${yamlDouble(slim ? DESCRIPTION_SLIM_ZH : DESCRIPTION_ZH)}
+description_en: ${yamlDouble(slim ? DESCRIPTION_SLIM_EN : DESCRIPTION_EN)}
 version: "${version}"
 author: Jicheng
 license: AGPL-3.0-or-later
@@ -167,11 +170,21 @@ export function checkSkillFolder(dir, version = repoVersion(), { slim = false } 
   if (existsSync(join(dir, 'icon.svg')) && readFileSync(join(dir, 'icon.svg')).length > 20_000) {
     bad.push('icon.svg: larger than 20 KB')
   }
-  if (!front.includes(`display_name: ${slim ? DISPLAY_NAME_SLIM_ZH : DISPLAY_NAME_ZH}`)) {
-    bad.push(`SKILL.md: display_name must be ${slim ? DISPLAY_NAME_SLIM_ZH : DISPLAY_NAME_ZH}`)
+  const wantName = slim ? DISPLAY_NAME_SLIM_ZH : DISPLAY_NAME_ZH
+  const wantNameEn = slim ? DISPLAY_NAME_SLIM_EN : DISPLAY_NAME_EN
+  if (!front.includes(`display_name: ${yamlDouble(wantName)}`) && !front.includes(`display_name: ${wantName}`)) {
+    bad.push(`SKILL.md: display_name must be ${wantName}`)
   }
-  if (!front.includes(`display_name_en: ${slim ? DISPLAY_NAME_SLIM_EN : DISPLAY_NAME_EN}`)) {
-    bad.push(`SKILL.md: display_name_en must be ${slim ? DISPLAY_NAME_SLIM_EN : DISPLAY_NAME_EN}`)
+  if (!front.includes(`display_name_en: ${yamlDouble(wantNameEn)}`) && !front.includes(`display_name_en: ${wantNameEn}`)) {
+    bad.push(`SKILL.md: display_name_en must be ${wantNameEn}`)
+  }
+  // Values with `:` must be quoted or the platform's YAML parser fails
+  // ("mapping values are not allowed in this context").
+  for (const [k, v] of [
+    ['description_zh', slim ? DESCRIPTION_SLIM_ZH : DESCRIPTION_ZH],
+    ['description_en', slim ? DESCRIPTION_SLIM_EN : DESCRIPTION_EN],
+  ]) {
+    if (!front.includes(`${k}: ${yamlDouble(v)}`)) bad.push(`SKILL.md: ${k} must be a double-quoted YAML string`)
   }
   if (slim) {
     if (existsSync(join(dir, 'scripts/antu.mjs'))) bad.push('scripts/antu.mjs: the slim package carries no command line')

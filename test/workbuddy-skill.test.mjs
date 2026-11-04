@@ -16,6 +16,7 @@ import {
   DISPLAY_NAME_SLIM_ZH,
   DESCRIPTION_ZH,
   DESCRIPTION_EN,
+  yamlDouble,
 } from '../tools/workbuddy/build.mjs'
 
 const version = repoVersion()
@@ -30,10 +31,13 @@ test("the skill package is the general skill with WorkBuddy's header and section
   const skillDir = buildSkillFolder()
   assert.deepEqual(checkSkillFolder(skillDir, version), [])
   const text = readFileSync(join(skillDir, 'SKILL.md'), 'utf8')
-  assert.match(text, new RegExp(`^display_name: ${DISPLAY_NAME_ZH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'))
-  assert.match(text, new RegExp(`^display_name_en: ${DISPLAY_NAME_EN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'))
-  assert.match(text, new RegExp(`^description_zh: ${DESCRIPTION_ZH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'))
-  assert.match(text, new RegExp(`^description_en: ${DESCRIPTION_EN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'))
+  assert.equal(
+    text.match(/^display_name: (.*)$/m)[1],
+    yamlDouble(DISPLAY_NAME_ZH),
+  )
+  assert.equal(text.match(/^display_name_en: (.*)$/m)[1], yamlDouble(DISPLAY_NAME_EN))
+  assert.equal(text.match(/^description_zh: (.*)$/m)[1], yamlDouble(DESCRIPTION_ZH))
+  assert.equal(text.match(/^description_en: (.*)$/m)[1], yamlDouble(DESCRIPTION_EN))
   assert.match(text, /^author: Jicheng$/m)
   assert.equal(readFileSync(join(skillDir, 'icon.svg'), 'utf8'), readFileSync('tools/workbuddy/src/icon.svg', 'utf8'))
   const general = readFileSync('skills/antu/SKILL.md', 'utf8')
@@ -41,6 +45,25 @@ test("the skill package is the general skill with WorkBuddy's header and section
   assert.ok(general.includes('## 2. Write the JSON'))
   for (const f of ['references/guide-fact.md', 'references/fields-relationship.md', 'examples/justification-1-minimal.en.json']) {
     assert.equal(readFileSync(join(skillDir, f), 'utf8'), readFileSync(join('skills/antu', f), 'utf8'), f)
+  }
+})
+
+test('frontmatter parses as YAML when description_en contains a colon', () => {
+  const skillDir = buildSkillFolder()
+  const front = /^---\n([\s\S]*?)\n---/.exec(readFileSync(join(skillDir, 'SKILL.md'), 'utf8'))[1]
+  // Unquoted "visuals: what" is what WorkBuddy rejected; quoted values must round-trip.
+  assert.match(front, /^description_en: "/m)
+  const py = spawnSync(
+    'python3',
+    ['-c', 'import sys, yaml; o=yaml.safe_load(sys.stdin.read()); assert o["description_en"] and ":" in o["description_en"]; assert o["description_zh"]; print(o["display_name"])'],
+    { input: front, encoding: 'utf8' },
+  )
+  if (py.status !== 0 && /No module named ['"]yaml['"]/.test(py.stderr || '')) {
+    // No PyYAML in this environment: still catch the platform's exact failure mode.
+    assert.doesNotMatch(front, /^description_en: [^"'\n]*:/m)
+  } else {
+    assert.equal(py.status, 0, py.stderr || py.stdout)
+    assert.equal(py.stdout.trim(), DISPLAY_NAME_ZH)
   }
 })
 
@@ -114,7 +137,7 @@ test('the slim skill carries no command line, runs the pinned npm package with n
   assert.throws(() => statSync(join(slim, 'scripts/antu.mjs')))
   assert.ok(bytesOf(slim) < 1_500_000, `${bytesOf(slim)} bytes`)
   const text = readFileSync(join(slim, 'SKILL.md'), 'utf8')
-  assert.match(text, new RegExp(`^display_name: ${DISPLAY_NAME_SLIM_ZH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'))
+  assert.equal(text.match(/^display_name: (.*)$/m)[1], yamlDouble(DISPLAY_NAME_SLIM_ZH))
   assert.equal(readFileSync(join(slim, 'icon.svg'), 'utf8'), readFileSync('tools/workbuddy/src/icon.svg', 'utf8'))
   assert.ok(text.includes(`npx -y -p @zh-xx/antu@${version} antu `))
   assert.ok(!/node <skill-dir>\/scripts\/antu\.mjs/.test(text))
