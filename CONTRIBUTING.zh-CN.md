@@ -30,6 +30,10 @@ npm run verify       # 含浏览器渲染与整段 MCP 跑通
 - PR 说明是否触动「契约」；破坏契约的还要改 `specVersion` 与 CHANGELOG 的 *Breaking*。
 - 发行是单独的小 PR，合并后在 Actions 跑 Release 工作流；不要手打标签。
 
+## 对外名称
+
+人读全称：**案图 · 诉讼可视化** / **Antu · Legal Diagrams**；短称：**案图** / **Antu**。商店、插件列表、README 标题等用全称；界面字标与短文案用短称。机器名（`@zh-xx/antu`、`antu` CLI、`antu_*`、`skills/antu` 等）不随展示名改。细则见英文 [CONTRIBUTING.md](CONTRIBUTING.md)「Display names」。
+
 ## 目录
 
 - `spec/`：给人看的设计文档（多为英文，配 `.zh-CN.md`）；`spec/agent/`：给 agent 的说明，**只保留英文**（见 `spec/agent/README.md`）。

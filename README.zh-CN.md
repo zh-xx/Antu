@@ -1,4 +1,4 @@
-# 案图 Antu
+# 案图 · 诉讼可视化
 
 [![验证](https://github.com/zh-xx/Antu/actions/workflows/verify.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/verify.yml)
 [![CodeQL](https://github.com/zh-xx/Antu/actions/workflows/codeql.yml/badge.svg)](https://github.com/zh-xx/Antu/actions/workflows/codeql.yml)

@@ -1,7 +1,9 @@
-# Antu
+# Antu · Legal Diagrams
 
 ## Goal
 Turn structured JSON into self-contained offline HTML legal diagrams (fact / procedure / relation / justification) for AI agents (MCP, CLI, skill) and legal practitioners. Demo: https://antu.nervonly.cn/
+
+Display names: full **Antu · Legal Diagrams** / **案图 · 诉讼可视化**; short **Antu** / **案图**. Machine ids (`antu`, `@zh-xx/antu`, `antu_*`) stay as they are — see CONTRIBUTING.md.
 
 ## Authority
 - Code: https://github.com/zh-xx/Antu (default branch: main)

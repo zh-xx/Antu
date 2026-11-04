@@ -578,11 +578,11 @@ const EN = {
   skillText: 'Please install the Antu skill: run npx skills add zh-xx/Antu -g -y, then use it to draw diagrams from my case material.',
   mcpT: 'Add this configuration to your MCP client',
   dshT: 'In DeepSeek Harness, open Plugins → Add plugin, paste this package name, and click Install',
-  dshN: 'Then switch on "Antu diagrams" under Installed. Needs DSH 0.2.0-rc.2 or newer.',
+  dshN: 'Then switch on "Antu · Legal Diagrams" under Installed. Needs DSH 0.2.0-rc.2 or newer.',
   dshL1: 'Guide',
   motto1: 'Legal documents, ', motto2: 'at a glance', 'k-fact': 'Facts', 'k-relationship': 'Relations', 'k-procedure': 'Procedure', 'k-justification': 'Reasoning',
   lblJ: 'Judgment · fictional', lblC: 'Contract · fictional', n1: '1', n2: '2', n3: '3', n4: '4', n5: '5',
-  foot: 'Antu · open source (AGPL-3.0-or-later) · early 0.x version, still changing',
+  foot: 'Antu · Legal Diagrams · open source (AGPL-3.0-or-later) · early 0.x version, still changing',
   copy: 'Copy', whyT: 'Suited to legal work',
   w1t: 'Runs on your machine', w1: 'The program runs on your machine; the page makes no network request and works offline',
   w2t: 'Traceable to the original', w2: 'Every node can carry its source and an excerpt of the original text',
@@ -597,7 +597,7 @@ $$('.lang button').forEach((b) => (b.onclick = () => {
   $('.lang').dataset.on = lang
   $$('.lang button').forEach((x) => x.setAttribute('aria-checked', String(x === b)))
   const dict = lang === 'en' ? EN : ZH
-  const T = lang === 'en' ? { title: 'Antu · Legal documents, at a glance', mode: 'Switch light / dark', kinds: 'Four kinds of diagram' } : { title: '案图 Antu · 法律文书，一眼看清', mode: '切换明暗', kinds: '四类图' }
+  const T = lang === 'en' ? { title: 'Antu · Legal Diagrams', mode: 'Switch light / dark', kinds: 'Four kinds of diagram' } : { title: '案图 · 诉讼可视化', mode: '切换明暗', kinds: '四类图' }
   document.title = T.title
   document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN'
   $('#mode').setAttribute('aria-label', T.mode); $('#mode').title = T.mode

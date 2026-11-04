@@ -180,7 +180,7 @@ function syncPackageJson() {
   pkg.bugs = { url: `${REPO_URL}/issues` }
   pkg.keywords = ['deepseek-harness', 'dsh-plugin', 'legal', 'diagram', 'antu']
   pkg.description =
-    'Antu diagrams inside DeepSeek Harness: Host tools (antu_validate / antu_layout / antu_render) and an interactive chat card.'
+    'Antu · Legal Diagrams inside DeepSeek Harness: Host tools (antu_validate / antu_layout / antu_render) and an interactive chat card.'
   pkg.dependencies = {
     ...(pkg.dependencies || {}),
     '@zh-xx/antu': version,
