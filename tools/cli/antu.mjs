@@ -230,8 +230,8 @@ function readSpec(file) {
 }
 
 /**
- * The viewer page beside this file in the skill folder: assets/viewer.html, or assets/viewer.html.gz for a package
- * that has to stay small (WorkBuddy takes a skill of 3 MB at most, and the page alone is 2.3 MB)
+ * The viewer page beside this file in the skill folder: assets/viewer.html, or assets/viewer.html.gz when a host
+ * needs a smaller package (the plain page alone is about 2.3 MB).
  */
 function readViewer() {
   const assets = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets')

@@ -18,6 +18,10 @@ what breaks a file or a tool call written for the version before, with how to br
 - **CONTRIBUTING TypeScript section slimmed** (#333): coexistence rules and what `npm run typecheck` covers stay; the #227 slice chronicle moves to the CHANGELOG history, not the contributor entry.
 - **Status honesty for agents and justification §5** (#331): `AGENTS.md` points at documented unfinished surfaces (#329–#335) and parked issues instead of “pick an open issue”; justification schema §5 no longer claims validation has no code (EN + zh-CN). Diagram `experimental` registry statuses are unchanged pending a maintainer promotion call.
 
+### Removed
+
+- **WorkBuddy open-platform packages** (`tools/workbuddy/`): the connector and the WorkBuddy-only skill zips are retired. Releases attach only `antu-skill-<version>.zip`. The general agent skill, MCP server, and npm package are unchanged. Hosts that import a local skill package use that zip.
+
 ### Fixed
 
 ## 0.18.0

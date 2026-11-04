@@ -167,7 +167,7 @@ diagram, how to write the JSON honestly, how to make the page), the guide and fi
 examples, a viewer page (the engine with a place for the data), a Python script that fills it, and a command
 line (`scripts/antu.mjs`: validate, layout, render, preview; one bundled file, Node 18+). It is the
 folder the skill installers of Claude Code, Codex and others read, and it is also attached to each release as
-a zip for clients that import a local package (WorkBuddy).
+a zip for clients that import a local skill package.
 
 - **It is generated, never edited**: `npm run build:skill` writes it from `spec/agent/`, each kind's field
   table, `examples/agent/`, `package.json`'s version, and the two authored files in `tools/skill/`.
