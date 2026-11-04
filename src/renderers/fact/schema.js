@@ -259,7 +259,7 @@ export const factKnowledge = {
       blocked: graph.errors.length > 0 ? graph.errors[0] : null,
     }
     // Both orientations, as the page opens them (the same slot-count rule the renderer uses by default). Vertical is
-    // measured with the rows staggered, the page's default (spec/fact/rendering.md §8.1), so "as it opens" is what the
+    // measured with the rows staggered, the page's default (docs/fact/rendering.md §8.1), so "as it opens" is what the
     // reader sees on a fresh page; the size with the switch off is kept beside it.
     const byOrientation = {}
     for (const o of ['vertical', 'horizontal']) {

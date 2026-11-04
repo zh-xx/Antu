@@ -4,7 +4,7 @@
 //
 //  Why it lives in the shell rather than a renderer: exporting has to reach into
 //  React Flow's node tree, which a renderer should not know about. The decision and
-//  its rationale are in spec/fact/rendering.md §10.
+//  its rationale are in docs/fact/rendering.md §10.
 //
 //  It is done in two steps:
 //    1. Let html-to-image clone .react-flow__viewport and replace the **clone's**
@@ -19,7 +19,7 @@
 //
 //  **Only the diagram itself is exported, without the heading.** The label card at the
 //  top left is an on-screen overlay and does not go into the image; there used to be a
-//  switch letting the user choose, later removed (spec/fact/rendering.md §10.2).
+//  switch letting the user choose, later removed (docs/fact/rendering.md §10.2).
 //
 //  Two trade-offs that must not be forgotten (spec §10.3):
 //    - **Do not use getNodesBounds**: the two 1×1 decorative nodes in a diagram get
@@ -140,7 +140,7 @@ export async function renderPng({ rootEl, graph, pixelRatio = PIXEL_RATIO, backg
   // **only the card detail overlay has to be hidden** — the zoom controls, the minimap,
   // the dock and the dot grid are all outside .react-flow__viewport and were never in
   // the capture area; hiding one more thing means one more pointless flicker
-  // (see spec/fact/rendering.md §10.4).
+  // (see docs/fact/rendering.md §10.4).
   appEl.classList.add(EXPORT_CLASS)
   try {
     // style applies only to the **clone**: with the transform replaced by the identity,

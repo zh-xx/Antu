@@ -319,7 +319,7 @@ export default function Canvas({
   // the only place in the project that knows what the canvas DOM looks like and how
   // large the content is (graph.size).
   // A renderer only receives an exportPng method and still never touches React Flow
-  // (see spec/fact/rendering.md §10).
+  // (see docs/fact/rendering.md §10).
   /** @param {{ title?: string }} [opts] */
   const exportPng = ({ title } = {}) => runExportPng({ rootEl: canvasRef.current, graph, title, background: theme.color.exportBg })
   useImperativeHandle(

@@ -1,6 +1,6 @@
 # fact · Schema draft v0
 
-> Status: **implemented** (status line checked against 0.19.0). The field set has been trimmed per the sponsor's decisions. Field names and constraints may still change in a 0.x release, with a changelog entry (`spec/versioning.md`). Besides the timeline, two more ways of drawing the same JSON are implemented, as first attempts: the chronicle and the time scale (`spec/fact/rendering.md` §9.1 and §9.2).
+> Status: **implemented** (status line checked against 0.19.0). The field set has been trimmed per the sponsor's decisions. Field names and constraints may still change in a 0.x release, with a changelog entry (`spec/versioning.md`). Besides the timeline, two more ways of drawing the same JSON are implemented, as first attempts: the chronicle and the time scale (`docs/fact/rendering.md` §9.1 and §9.2).
 
 > **Format generation 2 (placement rules v1, 2026-10).** Views are gone, and with 2 or more parties the groups are written on the parties, not on the events. The placement rules are `spec/fact/timeline-rules.md`; how to bring a generation-1 file over is `spec/fact/changes.md`.
 
@@ -8,7 +8,7 @@
 > fields come from the MCP tool `antu_schema`, mechanism from `spec/agent/fact/guide.md`.
 > The two do not copy each other; the division of labour is set out in `spec/agent/README.md`.
 
-> Basis: the shared conventions layer in `spec/v0-architecture.md` (references by id / everything carries a label / permissive optionality).
+> Basis: the shared conventions layer in `docs/architecture/v0-architecture.md` (references by id / everything carries a label / permissive optionality).
 > Scope: fact = a timeline narrative of **substantive facts that have already happened**. Procedural events (filing, hearing, judgment) are not this type; they are procedure.
 
 ## 0. Decisions already taken (sponsor's rulings, 2025-09)
@@ -324,8 +324,8 @@ Other conventions:
 
 - **a multi-party event** (`actorIds` of 2 or more) always lands on the axis;
 - **a span event** (one with `dateEnd`) is **expressed in text only** (the card shows start and end, the overlay gives the duration). **No span bar is drawn**: slots are evenly spaced while real time is not (in the corridor case 4 seconds and 264 seconds take the same distance on the diagram), so drawing length by real duration would mislead;
-- **the same data can be drawn in several ways** (sub-types), switched in the interface; see `spec/fact/rendering.md` §9;
-- the placement rules themselves are in `spec/fact/timeline-rules.md`, and the elements on screen in `spec/fact/rendering.md`.
+- **the same data can be drawn in several ways** (sub-types), switched in the interface; see `docs/fact/rendering.md` §9;
+- the placement rules themselves are in `spec/fact/timeline-rules.md`, and the elements on screen in `docs/fact/rendering.md`.
 
 ## 5. Open points (for the sponsor to rule on)
 

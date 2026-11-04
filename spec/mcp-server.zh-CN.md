@@ -10,7 +10,7 @@ agent 通过它读规范、看示例、校验自己的 JSON、算几何、出成
 
 **一、MCP 里没有"生成 JSON"这种工具。**
 
-引擎不生成 JSON，这是项目的根本原则（见 `spec/v0-architecture.md` §1）。
+引擎不生成 JSON，这是项目的根本原则（见 `docs/architecture/v0-architecture.md` §1）。
 读文书、提取事实、写 JSON 是 agent 的职责。服务端只提供
 **规范、示例、校验、几何、渲染、预览**，不替 agent 写数据。
 
@@ -100,7 +100,7 @@ antu://agent/<大类>/guide    那个大类的机制说明（现在只有 antu:/
 只此一个。`spec/agent/` 下有什么，这里就有什么；上一层的东西一律不出现。
 
 **验证器里有断言守着这条线**：MCP 的服务端代码里不许出现任何一份人类文档的名字
-（spec/fact/schema-draft.md、spec/v0-architecture.md……）。
+（spec/fact/schema-draft.md、docs/architecture/v0-architecture.md……）。
 
 ### 为什么不手抄一份"给 agent 的规范"
 

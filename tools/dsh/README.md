@@ -2,9 +2,9 @@
 
 English is authoritative; Chinese: [README.zh-CN.md](./README.zh-CN.md).
 
-Plan: [spec/dsh-plugin.md](../../spec/dsh-plugin.md) (中文 [spec/dsh-plugin.zh-CN.md](../../spec/dsh-plugin.zh-CN.md)).
-DSH conventions (resource addresses, providers, seats): [spec/dsh-conventions.md](../../spec/dsh-conventions.md)
-(中文 [spec/dsh-conventions.zh-CN.md](../../spec/dsh-conventions.zh-CN.md)).
+Plan: [docs/dsh/dsh-plugin.md](../../docs/dsh/dsh-plugin.md) (中文 [docs/dsh/dsh-plugin.zh-CN.md](../../docs/dsh/dsh-plugin.zh-CN.md)).
+DSH conventions (resource addresses, providers, seats): [docs/dsh/dsh-conventions.md](../../docs/dsh/dsh-conventions.md)
+(中文 [docs/dsh/dsh-conventions.zh-CN.md](../../docs/dsh/dsh-conventions.zh-CN.md)).
 Umbrella issue: [#79](https://github.com/zh-xx/Antu/issues/79).
 
 **On npm as `@zh-xx/antu-dsh`** (from 0.16.1; the plugin has the same version number as the repository and depends on exactly the same version of `@zh-xx/antu`): `dsh plugin --profile <name> add @zh-xx/antu-dsh`, then restart DSH. To try a build of your own, use the **tarball** (`npm run build:dsh`, below).
@@ -32,7 +32,7 @@ tools/dsh/
 
 `npm run build:dsh` always rebuilds the embed, writes `package/index.js`, `package/client.js`,
 `package/lib/*`, `package/client.embed.js`, and packs `tools/dsh/zh-xx-antu-dsh-<version>.tgz`.
-Generated files under `package/` and the tarball are not committed (`spec/dsh-plugin.md`).
+Generated files under `package/` and the tarball are not committed (`docs/dsh/dsh-plugin.md`).
 
 ## Tested on
 

@@ -8,6 +8,7 @@ what breaks a file or a tool call written for the version before, with how to br
 ### Added
 
 - **WorkBuddy skill package restored** on the release (`antu-workbuddy-skill-<version>.zip`): platform header fields, `icon.png` avatar (512×512, ≤ 500 KB; SVG is rejected), gzipped viewer under 3 MB, same content as `skills/antu/`. Market names **案图 · 诉讼可视化** / **Antu · Legal Diagrams**; capability blurbs speak to non-technical users (four diagram kinds and what they clarify—no JSON jargon). The MCP connector zip stays retired. Slim skill remains a reserve build, not attached.
+- **`docs/` tree** (split from `spec/`): architecture, reference manuals (including layout engines), fact rendering essays, and DSH plan / conventions move out of `spec/` so that folder keeps **contracts** only. Indexes: `docs/README.md`, `spec/README.md` (EN + zh-CN).
 
 ### Changed
 
@@ -83,7 +84,7 @@ This is a **minor** release: the command line gains four subcommands, `schema`, 
 - **The workflows are tighter** (#248, for the Scorecard): every action is pinned by its full commit (with the version in a comment; Dependabot keeps them current), `verify.yml` has an explicit read-only token, and the write permissions of `release.yml` and `codeql.yml` moved from the whole workflow into the one job that needs them. A test keeps all three true.
 - **The readmes' demo badge points to `https://antu.nervonly.cn/`** (the site is on https now) instead of the github.io address that redirected to it.
 - **The home page's "Get started" has a third way: the DSH plugin** (#226): the package name `@zh-xx/antu-dsh` with a copy button and the steps in DSH's own Plugins page (Add plugin, Install, switch on "Antu diagrams"), the minimum DSH version, and links to its guide and npm page; "choose either" became "choose any of three" (Chinese and English).
-- **The DSH full view has no Open HTML button any more** (#224). It depended on a function the chat card held in memory and vanished after a reload; the written file's path is in the `antu_render` result in the chat. The button, its `openHtml` words and the recorded deviation in `spec/dsh-conventions.md` are gone.
+- **The DSH full view has no Open HTML button any more** (#224). It depended on a function the chat card held in memory and vanished after a reload; the written file's path is in the `antu_render` result in the chat. The button, its `openHtml` words and the recorded deviation in `docs/dsh/dsh-conventions.md` are gone.
 
 ### Fixed
 - **Fact: data validation is separate from layout** (#26): `validateFact` / `analyzeFact` in `timeline/rules.js` report data errors only; capacity/placement stay on the layout path (`buildGrid`). A file that only fails layout no longer fails validation as if the data were wrong.
@@ -390,7 +391,7 @@ Version management of the types and the diagrams (#131), a trial that measures h
 - **A list of the types and the diagrams with their versions**: `spec/versions.md`, written from the registry (the list is kept in step by a test); `antu versions [--json]` on the command line and the MCP tool `antu_versions` (the server now has eight tools). Each of the four types has a format generation (all 1); each of the 15 diagrams has a version, a status (`experimental`, `stable`, `deprecated`) and the release it came in. A diagram that is in `layouts` without being in `diagrams` is refused at registration. The rules are in `spec/versioning.md` ("Managing a type", "The diagrams"); each type has `spec/<type>/changes.md` for changes to its JSON.
 - **The fact layout report says how many events a view draws** ("N of M events drawn") and names the ones it leaves out, so a view that names parties and so leaves out an event is no surprise (#137).
 - **The agent guides name the examples an agent can open**, and a test keeps the names to the files (#138). The size of a guide is held at 6.5k tokens.
-- **The trial** (`tools/trial/`, `spec/trial.md`): a small agent that has a weaker model (by default `deepseek-flash`) draw with the released skill, and a scoring list for judging the result by reading it. It is a tool for the maintainers; it is not part of the package.
+- **The trial** (`tools/trial/`, `docs/architecture/trial.md`): a small agent that has a weaker model (by default `deepseek-flash`) draw with the released skill, and a scoring list for judging the result by reading it. It is a tool for the maintainers; it is not part of the package.
 - **The label card at the top left of every page folds** to one line with an arrow and unfolds again; it opens unfolded, the choice is remembered, and it is not in an exported image (#144).
 
 ### Changed

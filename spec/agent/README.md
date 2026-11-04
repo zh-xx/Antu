@@ -1,11 +1,13 @@
 # Specification for agents
 
-**Everything in this directory is for agents only.** The `spec/*.md` files one level up
-are for designers. The two are kept apart.
+**Everything in this directory is for agents only.** Human design essays and reference
+manuals live under `docs/`; JSON / API contracts live under `spec/` one level up. The
+three are kept apart.
 
 ```
 spec/agent/<type>/guide.md     mechanism notes for that type (short, sufficient, actionable)
-spec/*.md                      designer documents (why it was decided this way; long)
+spec/*.md                      contracts (schemas, versioning, embed / MCP, …)
+docs/                          architecture, reference, rendering essays (not loaded into agents)
 ```
 
 There are four types so far: fact, procedure, relationship and justification:

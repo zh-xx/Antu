@@ -94,7 +94,7 @@ MCP 服务是 npm 包 [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu)
 
 ### DeepSeek Harness（DSH）
 
-面向 DSH 的原生插件 [`@zh-xx/antu-dsh`](https://www.npmjs.com/package/@zh-xx/antu-dsh)（Host 工具 + 带“画法”选择条的聊天卡片）已发布到 npm：`dsh plugin --profile <名> add @zh-xx/antu-dsh`，然后重启 DSH。需要 DSH 0.2.0-rc.2 或更新。原理和测试方法见 [spec/dsh-plugin.zh-CN.md](spec/dsh-plugin.zh-CN.md) 与 [tools/dsh/README.md](tools/dsh/README.md)。用不了插件的 profile，仍可用配置型 bundle 挂上 `antu-mcp`；配方与限制写在 [tools/dsh/README.md](tools/dsh/README.md)。
+面向 DSH 的原生插件 [`@zh-xx/antu-dsh`](https://www.npmjs.com/package/@zh-xx/antu-dsh)（Host 工具 + 带“画法”选择条的聊天卡片）已发布到 npm：`dsh plugin --profile <名> add @zh-xx/antu-dsh`，然后重启 DSH。需要 DSH 0.2.0-rc.2 或更新。原理和测试方法见 [docs/dsh/dsh-plugin.zh-CN.md](docs/dsh/dsh-plugin.zh-CN.md) 与 [tools/dsh/README.md](tools/dsh/README.md)。用不了插件的 profile，仍可用配置型 bundle 挂上 `antu-mcp`；配方与限制写在 [tools/dsh/README.md](tools/dsh/README.md)。
 
 ## 在应用里使用
 
@@ -111,9 +111,9 @@ const diagram = mount(element, spec, { lang: 'zh', onEvent: (e) => console.log(e
 
 ## 文档
 
-- 供人阅读的设计文档在 [`spec/`](spec/)：[架构](spec/v0-architecture.zh-CN.md)、[来源的 7 类字段](spec/source-schema-draft.zh-CN.md)、[主题](spec/theme.zh-CN.md)、[纸张](spec/paper.zh-CN.md)、[MCP 服务端](spec/mcp-server.zh-CN.md)、[在应用里使用](spec/embed.zh-CN.md)、[DSH 插件规划](spec/dsh-plugin.zh-CN.md)（安装说明 [tools/dsh/README.zh-CN.md](tools/dsh/README.zh-CN.md)），以及各类图（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 Agent 看的说明在 [`spec/agent/`](spec/agent/)，只保留英文。
-- [CHANGELOG.md](CHANGELOG.md)，版本号的规则见 [spec/versioning.zh-CN.md](spec/versioning.zh-CN.md)。
-- 已知问题与需求记录在 [GitHub issues](https://github.com/zh-xx/Antu/issues)。参与贡献前，请先阅读 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。
+- **契约**在 [`spec/`](spec/)（什么算合法的 JSON / API）：[版本号](spec/versioning.zh-CN.md)、[主题](spec/theme.zh-CN.md)、[纸张](spec/paper.zh-CN.md)、[MCP 服务端](spec/mcp-server.zh-CN.md)、[在应用里使用](spec/embed.zh-CN.md)、[来源的 7 类字段](spec/source-schema-draft.zh-CN.md)，以及各类图 schema（[事实图](spec/fact/)、[程序图](spec/procedure/schema-draft.zh-CN.md)、[关系图](spec/relationship/schema-draft.zh-CN.md)、[证成图](spec/justification/schema-draft.zh-CN.md)）。给 Agent 的机制说明在 [`spec/agent/`](spec/agent/)，只保留英文。
+- **设计与参考**在 [`docs/`](docs/)：[架构](docs/architecture/v0-architecture.zh-CN.md)、[布局引擎](docs/reference/layout-engines.zh-CN.md)、[React Flow 特性](docs/reference/react-flow-features.zh-CN.md)、[事实图渲染](docs/fact/rendering.zh-CN.md)、[DSH 插件规划](docs/dsh/dsh-plugin.zh-CN.md)（安装说明 [tools/dsh/README.zh-CN.md](tools/dsh/README.zh-CN.md)）。
+- [CHANGELOG.md](CHANGELOG.md)。已知问题：[GitHub issues](https://github.com/zh-xx/Antu/issues)。参与贡献：[CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。
 
 ## 安全
 

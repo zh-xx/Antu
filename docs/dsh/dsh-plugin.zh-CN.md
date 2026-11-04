@@ -32,7 +32,7 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 
 - DSH 官方实践：不要由 Host 提供 HTML 再用 iframe 嵌（拿不到主题 token、明暗、`ctx.locale`）。案图页面是**交付物**；
   聊天卡片是**插件 UI**，须在 Client 的 `conversation.chat.turnTail` 里用 `mount()`（`@zh-xx/antu/embed`）；工具行只标出这次调用。
-- 仅配置的 MCP bundle（`npx … antu-mcp`）对已有 Node 的机器是有用的止疼方案（见 [tools/dsh/README.md](../tools/dsh/README.md)），
+- 仅配置的 MCP bundle（`npx … antu-mcp`）对已有 Node 的机器是有用的止疼方案（见 [tools/dsh/README.md](../../tools/dsh/README.md)），
   **不是**给 Desktop 用户的产品：系统不一定有 `npx`、首次下载很大，且 `antu_render` 默认输出路径跟的是 MCP 进程
   cwd，不是会话工作区。
 
@@ -42,11 +42,11 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 
 - 在此锁定计划；#79 正文与本文对齐（维护者可从本文粘贴）。
 - `tools/dsh/` 脚手架，以及 README 里的临时 MCP 配方。
-- 卡片用的 embed 选项：`ui.panOnScroll: false`，避免滚轮抢走对话滚动（见 [embed.zh-CN.md](embed.zh-CN.md)）。
+- 卡片用的 embed 选项：`ui.panOnScroll: false`，避免滚轮抢走对话滚动（见 [embed.zh-CN.md](../../spec/embed.zh-CN.md)）。
 
 ### P1 — embed 卡片模式（引擎）— 已在仓库落地
 
-- `@zh-xx/antu/embed` 的 `cardUi`：安静外壳 + `panOnScroll: false`（[embed.zh-CN.md](embed.zh-CN.md)）。
+- `@zh-xx/antu/embed` 的 `cardUi`：安静外壳 + `panOnScroll: false`（[embed.zh-CN.md](../../spec/embed.zh-CN.md)）。
 - `ui.panOnDrag` 可用同样方式关掉。
 - 由 `test/embed.test.mjs` 与 `tools/verify/embed.mjs` 覆盖（滚轮不平移；外壳关掉）。
 
@@ -95,5 +95,5 @@ DSH 用户在对话里要一张图，**在聊天中看到它**（整张图，只
 
 - Issue [#79](https://github.com/zh-xx/Antu/issues/79)。[#121](https://github.com/zh-xx/Antu/issues/121) /
   [#122](https://github.com/zh-xx/Antu/issues/122) 作为 #79 的重复项关闭（未实现）。
-- [embed.zh-CN.md](embed.zh-CN.md)、[mcp-server.zh-CN.md](mcp-server.zh-CN.md)、[versioning.md](versioning.md)。
-- 源码脚手架：[tools/dsh/](../tools/dsh/)。
+- [embed.zh-CN.md](../../spec/embed.zh-CN.md)、[mcp-server.zh-CN.md](../../spec/mcp-server.zh-CN.md)、[versioning.md](../../spec/versioning.md)。
+- 源码脚手架：[tools/dsh/](../../tools/dsh/)。

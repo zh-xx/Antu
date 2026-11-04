@@ -3,7 +3,7 @@
 //  src/renderers/procedure/flow/FlowDock.jsx — the flowchart's control capsule
 //
 //  The controls are the ones listed in spec/procedure/schema-draft.md §6.2, in the four shapes
-//  of spec/fact/rendering.md §4.2 (no new shapes invented):
+//  of docs/fact/rendering.md §4.2 (no new shapes invented):
 //    condition labels / node detail / main line / states / stage bands / rules   independent switches → chips
 //    orientation, link style (straight / curved)                         two exclusive options → segmented
 //    language, print, export image                                       shared with every dock (shell/DockParts.jsx)

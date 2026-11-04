@@ -50,7 +50,7 @@ Check free disk first (`df -h /`): DSH needs about 550 MB.
 
 ## DSH plugin work: inside DSH's own conventions
 
-Everything under `tools/dsh/` follows [`spec/dsh-conventions.md`](spec/dsh-conventions.md): use DSH's documented
+Everything under `tools/dsh/` follows [`docs/dsh/dsh-conventions.md`](docs/dsh/dsh-conventions.md): use DSH's documented
 extension points (resource addresses and providers, the shortcut service, the locale service, the documented
 slots), never a private store, a raw DOM listener or a DSH internal. The sources of truth are the READMEs under
 `node_modules/@deepseek-ai/*/README.md` of the DSH the plugin targets and the official plugins that do the same thing.

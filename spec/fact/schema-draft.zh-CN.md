@@ -1,6 +1,6 @@
 # fact（事实图）· Schema 草案 v0
 
-> 状态：**已实现**（状态行对照 0.19.0 检查过）。字段已按发起人决策精简。字段名/约束在 0.x 阶段仍可能改，改时写进 CHANGELOG（`spec/versioning.md`）。除时间图外，同一份 JSON 还有两种画法已实现（都是第一版）：大事记和比例时间轴（`spec/fact/rendering.md` §9.1、§9.2）。
+> 状态：**已实现**（状态行对照 0.19.0 检查过）。字段已按发起人决策精简。字段名/约束在 0.x 阶段仍可能改，改时写进 CHANGELOG（`spec/versioning.md`）。除时间图外，同一份 JSON 还有两种画法已实现（都是第一版）：大事记和比例时间轴（`docs/fact/rendering.md` §9.1、§9.2）。
 
 > **格式第 2 代（排布规则 v1，2026-10）。** 取消视角；2 个及以上主体时，分组写在主体上，不写在事件上。排布规则见 `spec/fact/timeline-rules.zh-CN.md`；第 1 代文件怎么改见 `spec/fact/changes.md`。
 
@@ -8,7 +8,7 @@
 > 字段见 MCP 的 `antu_schema`，机制见 `spec/agent/fact/guide.md`。
 > 两份不互抄，分工写在 `spec/agent/README.md`。
 
-> 依据：`spec/v0-architecture.md` 中的公共约定层（id 引用 / 都带 label / 可选宽松）。
+> 依据：`docs/architecture/v0-architecture.md` 中的公共约定层（id 引用 / 都带 label / 可选宽松）。
 > 范围：fact = 已发生**实体事实**的时间叙事。程序事件（立案/开庭/判决）不属此类 → procedure。
 
 ## 0. 已定决策（发起人拍板，2025-09）
@@ -300,8 +300,8 @@ detail(18字) 钱敏情绪相对较为激动，孙浩比较冷静   ← 新信�
 - **持续事件**（有 `dateEnd`）**只在文字上表达**（卡片写起止、浮层给时长），
   **不画时段条**：槽是等距的而真实时间不是（楼道案里 4 秒和 264 秒占的图上距离一样），
   按真实时长画长度会骗人；
-- **同一份数据可以有几种画法**（子类），画法在页面上切，见 `spec/fact/rendering.md` §9；
-- 排布规则本身见 `spec/fact/timeline-rules.md`，画面元素见 `spec/fact/rendering.md`。
+- **同一份数据可以有几种画法**（子类），画法在页面上切，见 `docs/fact/rendering.md` §9；
+- 排布规则本身见 `spec/fact/timeline-rules.md`，画面元素见 `docs/fact/rendering.md`。
 
 ## 5. 待议点（请发起人表态）
 

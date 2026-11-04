@@ -3,7 +3,7 @@
 //  src/renderers/relationship/graph/RelationshipDock.jsx — the relationship graph's control capsule
 //
 //  The controls are the ones listed in spec/relationship/schema-draft.md §6.2, in the same four
-//  shapes as every other dock (spec/fact/rendering.md §4.2, no new shapes invented):
+//  shapes as every other dock (docs/fact/rendering.md §4.2, no new shapes invented):
 //    one chip per kind of relation the data uses      independent switches → chips
 //    relation labels / group boxes                    independent switches → chips
 //    orientation, link style (straight / curved)      two exclusive options → segmented

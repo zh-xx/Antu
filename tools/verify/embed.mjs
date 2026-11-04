@@ -180,7 +180,7 @@ export async function checkEmbed(t) {
     eq('embed: `ui` leaves out what the host turned off, and only that', ui, { aHeader: true, bHeader: false, bMinimap: false, bZoom: true, aDock: true })
     truthy('embed: `lang` sets the page\'s own words (zh)', (await browser.eval(`${S('a')}.querySelector('.antu-header')?.textContent || ''`)).includes(translate('zh', 'graphKind.flow')))
 
-    // ---- cardUi: quiet chrome + wheel does not pan or cancel (spec/dsh-plugin.md P1) ----
+    // ---- cardUi: quiet chrome + wheel does not pan or cancel (docs/dsh/dsh-plugin.md P1) ----
     const card = await browser.eval(`(() => {
       const root = ${S('d')}
       const chrome = {

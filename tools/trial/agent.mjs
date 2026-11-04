@@ -6,7 +6,7 @@
 //  correct itself, until it stops asking for tools or the turns run out. Any model with an OpenAI-compatible
 //  chat/completions interface with tool calls can be used (tools/trial/models.json).
 //
-//  What it is for: to see what level of drawing the engine lets a model reach (spec/trial.md). It is not a real agent
+//  What it is for: to see what level of drawing the engine lets a model reach (docs/architecture/trial.md). It is not a real agent
 //  product: those have their own prompts, tools and ways of loading a skill.
 //
 //  Safety: the model reaches only the four tools. It reads the case material, the skill folder and its working

@@ -35,7 +35,7 @@ else has to be installed on the user's machine (no system Node, no `npx`).
   light/dark, or `ctx.locale`). Antu's page is a *deliverable*; the chat card is *plugin UI* and must use
   `mount()` (`@zh-xx/antu/embed`) in a Client slot (`conversation.chat.turnTail`; the tool row only names the call).
 - A configuration-only MCP bundle (`npx … antu-mcp`) is a useful stopgap for machines that already have
-  Node (see [tools/dsh/README.md](../tools/dsh/README.md)). It is **not** the product for Desktop users:
+  Node (see [tools/dsh/README.md](../../tools/dsh/README.md)). It is **not** the product for Desktop users:
   system `npx` is not guaranteed, the download is large, and `antu_render`'s default output path follows the
   MCP process cwd, not the session workspace.
 
@@ -45,11 +45,11 @@ else has to be installed on the user's machine (no system Node, no `npx`).
 
 - Lock the plan here; keep #79's body in step (maintainer can paste from this file).
 - Scaffold `tools/dsh/` and the interim MCP recipe in the README.
-- Embed option for cards: `ui.panOnScroll: false` so the conversation can scroll (see [embed.md](embed.md)).
+- Embed option for cards: `ui.panOnScroll: false` so the conversation can scroll (see [embed.md](../../spec/embed.md)).
 
 ### P1 — embed card mode (engine) — done in tree
 
-- `cardUi` on `@zh-xx/antu/embed`: quiet chrome + `panOnScroll: false` ([embed.md](embed.md)).
+- `cardUi` on `@zh-xx/antu/embed`: quiet chrome + `panOnScroll: false` ([embed.md](../../spec/embed.md)).
 - `ui.panOnDrag` can be turned off the same way.
 - Covered by `test/embed.test.mjs` and `tools/verify/embed.mjs` (wheel does not pan; chrome off).
 
@@ -107,5 +107,5 @@ uninstall leaves no rows. Maintainer records DSH version and model used (#53-sty
 
 - Issue [#79](https://github.com/zh-xx/Antu/issues/79) (umbrella). [#121](https://github.com/zh-xx/Antu/issues/121) /
   [#122](https://github.com/zh-xx/Antu/issues/122) closed as duplicates of #79 (not implemented).
-- [embed.md](embed.md), [mcp-server.md](mcp-server.md), [versioning.md](versioning.md).
-- Source scaffold: [tools/dsh/](../tools/dsh/).
+- [embed.md](../../spec/embed.md), [mcp-server.md](../../spec/mcp-server.md), [versioning.md](../../spec/versioning.md).
+- Source scaffold: [tools/dsh/](../../tools/dsh/).
