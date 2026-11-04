@@ -22,7 +22,8 @@ import { spawnSync } from 'node:child_process'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SRC = join(HERE, 'src')
-const ICON = join(SRC, 'icon.svg')
+/** Market avatar: 512×512 JPG/PNG ≤ 500 KB (SVG is not accepted). Source of the design stays as icon.svg. */
+const ICON_PNG = join(SRC, 'icon.png')
 const SKILL_OUT = join(HERE, 'package-skill')
 const SKILL_ROOT = join(SKILL_OUT, 'antu')
 const SLIM_OUT = join(HERE, 'package-skill-slim')
@@ -33,6 +34,8 @@ const SKILL_SOURCE = join(HERE, '../../skills/antu')
  * zip of 4.3 MB was refused). A bit under it, so that the build stops before the platform does.
  */
 export const SKILL_MAX_BYTES = 2_900_000
+export const ICON_MAX_BYTES = 500_000
+export const ICON_SIZE_PX = 512
 
 /** Market listing names (0.19+ display names). Machine id stays `antu`. */
 export const DISPLAY_NAME_ZH = '案图 · 诉讼可视化'
@@ -107,11 +110,11 @@ export function buildSkillFolder(version = repoVersion(), { slim = false } = {})
   const out = slim ? SLIM_OUT : SKILL_OUT
   const root = slim ? SLIM_ROOT : SKILL_ROOT
 
-  if (!existsSync(ICON)) throw new Error('tools/workbuddy/src/icon.svg is missing')
+  if (!existsSync(ICON_PNG)) throw new Error('tools/workbuddy/src/icon.png is missing (512×512 PNG for the market avatar)')
   rmSync(out, { recursive: true, force: true })
   mkdirSync(out, { recursive: true })
   cpSync(SKILL_SOURCE, root, { recursive: true })
-  cpSync(ICON, join(root, 'icon.svg'))
+  cpSync(ICON_PNG, join(root, 'icon.png'))
   // The viewer page is 2.3 MB of the 4.3: ship it compressed. The command line and make_html.py read either form.
   const viewer = join(root, 'assets/viewer.html')
   writeFileSync(`${viewer}.gz`, gzipSync(readFileSync(viewer), { level: 9 }))
@@ -164,12 +167,19 @@ export function checkSkillFolder(dir, version = repoVersion(), { slim = false } 
     readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name), depth + 1) : [depth]))
   const deep = walk(dir).filter((depth) => depth > 2).length
   if (deep) bad.push(`${deep} file(s) deeper than root / folder / file`)
-  for (const f of [...(slim ? [] : ['scripts/antu.mjs']), 'scripts/make_html.py', 'assets/viewer.html.gz', 'icon.svg', 'references/guide-fact.md', 'examples/fact-1-minimal.zh-CN.json']) {
+  for (const f of [...(slim ? [] : ['scripts/antu.mjs']), 'scripts/make_html.py', 'assets/viewer.html.gz', 'icon.png', 'references/guide-fact.md', 'examples/fact-1-minimal.zh-CN.json']) {
     if (!existsSync(join(dir, f))) bad.push(`${f}: missing`)
   }
-  if (existsSync(join(dir, 'icon.svg')) && readFileSync(join(dir, 'icon.svg')).length > 20_000) {
-    bad.push('icon.svg: larger than 20 KB')
+  if (existsSync(join(dir, 'icon.png'))) {
+    const iconBytes = readFileSync(join(dir, 'icon.png'))
+    if (iconBytes.length > ICON_MAX_BYTES) bad.push(`icon.png: ${iconBytes.length} bytes; WorkBuddy takes ${ICON_MAX_BYTES} at most`)
+    if (iconBytes[0] !== 0x89 || iconBytes[1] !== 0x50) bad.push('icon.png: must be a PNG (JPG also allowed by the platform; we ship PNG)')
+    // IHDR width/height are big-endian at bytes 16..23 of a standard PNG
+    const w = iconBytes.readUInt32BE(16)
+    const h = iconBytes.readUInt32BE(20)
+    if (w !== ICON_SIZE_PX || h !== ICON_SIZE_PX) bad.push(`icon.png: ${w}×${h}; WorkBuddy asks for ${ICON_SIZE_PX}×${ICON_SIZE_PX}`)
   }
+  if (existsSync(join(dir, 'icon.svg'))) bad.push('icon.svg: ship icon.png only — the market avatar rejects SVG')
   const wantName = slim ? DISPLAY_NAME_SLIM_ZH : DISPLAY_NAME_ZH
   const wantNameEn = slim ? DISPLAY_NAME_SLIM_EN : DISPLAY_NAME_EN
   if (!front.includes(`display_name: ${yamlDouble(wantName)}`) && !front.includes(`display_name: ${wantName}`)) {

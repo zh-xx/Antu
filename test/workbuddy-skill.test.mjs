@@ -1,7 +1,7 @@
 // The WorkBuddy skill package (tools/workbuddy): platform header fields, size cap, gzipped viewer.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { spawnSync } from 'node:child_process'
 import { gunzipSync } from 'node:zlib'
@@ -39,7 +39,8 @@ test("the skill package is the general skill with WorkBuddy's header and section
   assert.equal(text.match(/^description_zh: (.*)$/m)[1], yamlDouble(DESCRIPTION_ZH))
   assert.equal(text.match(/^description_en: (.*)$/m)[1], yamlDouble(DESCRIPTION_EN))
   assert.match(text, /^author: Jicheng$/m)
-  assert.equal(readFileSync(join(skillDir, 'icon.svg'), 'utf8'), readFileSync('tools/workbuddy/src/icon.svg', 'utf8'))
+  assert.deepEqual(readFileSync(join(skillDir, 'icon.png')), readFileSync('tools/workbuddy/src/icon.png'))
+  assert.equal(existsSync(join(skillDir, 'icon.svg')), false)
   const general = readFileSync('skills/antu/SKILL.md', 'utf8')
   assert.ok(text.includes('## 2. Write the JSON'), 'the body of the general skill is kept')
   assert.ok(general.includes('## 2. Write the JSON'))
@@ -138,7 +139,7 @@ test('the slim skill carries no command line, runs the pinned npm package with n
   assert.ok(bytesOf(slim) < 1_500_000, `${bytesOf(slim)} bytes`)
   const text = readFileSync(join(slim, 'SKILL.md'), 'utf8')
   assert.equal(text.match(/^display_name: (.*)$/m)[1], yamlDouble(DISPLAY_NAME_SLIM_ZH))
-  assert.equal(readFileSync(join(slim, 'icon.svg'), 'utf8'), readFileSync('tools/workbuddy/src/icon.svg', 'utf8'))
+  assert.deepEqual(readFileSync(join(slim, 'icon.png')), readFileSync('tools/workbuddy/src/icon.png'))
   assert.ok(text.includes(`npx -y -p @zh-xx/antu@${version} antu `))
   assert.ok(!/node <skill-dir>\/scripts\/antu\.mjs/.test(text))
   assert.ok(statSync(join(buildSkillFolder(), 'scripts/antu.mjs')).size > 1_000_000)

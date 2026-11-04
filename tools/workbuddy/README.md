@@ -16,10 +16,10 @@ node tools/workbuddy/build.mjs --check    # build the folders and check them aga
 
 1. **The skill** (`antu-workbuddy-skill-<version>.zip`, market name **案图 · 诉讼可视化** / **Antu · Legal Diagrams**):
    the general skill with the header fields the platform asks (`display_name`, `description_zh`, `description_en`,
-   `version`, `author`), the same `icon.svg` the old connector used, and a short section "In WorkBuddy". Content is
-   not copied by hand. It needs **Node 18 or newer** on the user's machine; with only Python 3 it falls back to
-   `scripts/make_html.py` (it makes the page and checks nothing); with neither it says so. If `antu_*` tools are
-   already available in the session, the skill tells the model to use those instead.
+   `version`, `author`), a market avatar `icon.png` (512×512, ≤ 500 KB; SVG is rejected), and a short section
+   "In WorkBuddy". Content is not copied by hand. It needs **Node 18 or newer** on the user's machine; with only
+   Python 3 it falls back to `scripts/make_html.py` (it makes the page and checks nothing); with neither it says so.
+   If `antu_*` tools are already available in the session, the skill tells the model to use those instead.
 
 **Size.** WorkBuddy refuses a skill over **3 MB unzipped**. So this package ships `assets/viewer.html` compressed
 (`viewer.html.gz`); the command line and `make_html.py` read either form. The build stops if the package passes

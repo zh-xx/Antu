@@ -7,7 +7,7 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ### Added
 
-- **WorkBuddy skill package restored** on the release (`antu-workbuddy-skill-<version>.zip`): platform header fields, `icon.svg`, gzipped viewer under 3 MB, same content as `skills/antu/`. Market names **案图 · 诉讼可视化** / **Antu · Legal Diagrams**; capability blurbs speak to non-technical users (four diagram kinds and what they clarify—no JSON jargon). The MCP connector zip stays retired. Slim skill remains a reserve build, not attached.
+- **WorkBuddy skill package restored** on the release (`antu-workbuddy-skill-<version>.zip`): platform header fields, `icon.png` avatar (512×512, ≤ 500 KB; SVG is rejected), gzipped viewer under 3 MB, same content as `skills/antu/`. Market names **案图 · 诉讼可视化** / **Antu · Legal Diagrams**; capability blurbs speak to non-technical users (four diagram kinds and what they clarify—no JSON jargon). The MCP connector zip stays retired. Slim skill remains a reserve build, not attached.
 
 ### Changed
 
