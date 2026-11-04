@@ -41,17 +41,15 @@ export const DISPLAY_NAME_SLIM_ZH = '案图 · 诉讼可视化（精简）'
 export const DISPLAY_NAME_SLIM_EN = 'Antu · Legal Diagrams (slim)'
 
 /**
- * Platform-facing capability blurbs (description_zh / description_en). Kept under ~140 characters.
- * Sourced from the product About line; reconfirm with the maintainer if the market listing changes.
+ * Platform-facing capability blurbs (description_zh / description_en) for non-technical WorkBuddy users:
+ * diagram kinds and what they help with — no JSON / tooling jargon.
  */
 export const DESCRIPTION_ZH =
-  '案图 · 诉讼可视化：把案件 JSON 画成一张可离线打开的 HTML 图——时间线、程序流程、主体关系与裁判说理——供 AI Agent 与法律专业人士使用。'
+  '案图帮你画法律图：案情时间线、程序流程、主体关系、裁判说理，一张图说清一件事，可保存、可转发。'
 export const DESCRIPTION_EN =
-  'Antu · Legal Diagrams turns case JSON into one offline HTML diagram—timelines, procedures, relationships, and court reasoning.'
-export const DESCRIPTION_SLIM_ZH =
-  '案图 · 诉讼可视化：把案件 JSON 画成可离线 HTML 图（时间线、程序、关系、说理）。命令行从 npm 取，需 Node 18+。'
-export const DESCRIPTION_SLIM_EN =
-  'Antu · Legal Diagrams: offline HTML case diagrams from JSON. CLI via npm (Node 18+), or Python 3 fallback.'
+  'Turn a case into clear visuals: what happened, how the process runs, who is connected, and how the court reasoned—four diagram types you can open and share offline.'
+export const DESCRIPTION_SLIM_ZH = DESCRIPTION_ZH
+export const DESCRIPTION_SLIM_EN = DESCRIPTION_EN
 
 export const repoVersion = () => JSON.parse(readFileSync(join(HERE, '../../package.json'), 'utf8')).version
 
