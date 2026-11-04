@@ -5,7 +5,7 @@
 // ============================================================
 
 /** Body taught to the model: Host wire names, not the CLI. */
-export const SKILL_CONTENT = `# Antu diagrams (DeepSeek Harness)
+export const SKILL_CONTENT = `# Antu · Legal Diagrams (DeepSeek Harness)
 
 Use the **Host tools** registered by \`@zh-xx/antu-dsh\` — not shell commands and not \`npx\`.
 

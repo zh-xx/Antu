@@ -367,7 +367,7 @@ async function flowchart() {
   if (!view2) throw new Error('the judgment has no 本院认为 paragraph')
   const html = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>案图 Antu · 法律文书，一眼看清</title>
+<title>案图 · 诉讼可视化</title>
 <style>${css}
 ${read(`${HERE}lenses.css`)}</style>
 <script>try { const t = localStorage.getItem('antu.site.theme'); if (t) document.documentElement.dataset.theme = t } catch {}</script></head><body class="lx">
@@ -447,7 +447,7 @@ ${read(`${HERE}lenses.css`)}</style>
   <div class="panel" role="tabpanel" id="panel-dsh" aria-labelledby="tab-dsh" hidden>
    <p class="way-d" data-i18n="dshT">在 DeepSeek Harness 里，打开“插件”→“添加插件”，粘贴下面的包名，点“安装”</p>
    <div class="copybox"><div class="cb-bar"><span class="cb-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="cb-name">package</span><button class="copy" data-for="dshText" data-i18n="copy">复制</button></div><pre id="dshText">@zh-xx/antu-dsh</pre></div>
-   <p class="way-d way-n" data-i18n="dshN">装好后，在“已安装”里打开“案图 Antu”。需要 DSH 0.2.0-rc.2 或更新。</p>
+   <p class="way-d way-n" data-i18n="dshN">装好后，在“已安装”里打开“案图 · 诉讼可视化”。需要 DSH 0.2.0-rc.2 或更新。</p>
    <p class="way-d way-n"><a href="https://github.com/zh-xx/Antu/blob/main/tools/dsh/README.md" data-i18n="dshL1">使用说明</a> · <a href="https://www.npmjs.com/package/@zh-xx/antu-dsh">npm</a></p>
   </div>
  </div>
@@ -467,7 +467,7 @@ ${read(`${HERE}lenses.css`)}</style>
 </section>
 
 <footer class="pfoot">
- <span data-i18n="foot">案图 Antu · 开源（AGPL-3.0-or-later）· 0.x 早期版本，仍在变化</span>
+ <span data-i18n="foot">案图 · 诉讼可视化 · 开源（AGPL-3.0-or-later）· 0.x 早期版本，仍在变化</span>
  <a href="https://github.com/zh-xx/Antu">GitHub</a>
 </footer>
 <script>window.__LENS__ = ${JSON.stringify(L).replace(/</g, '\\u003c')}</script>

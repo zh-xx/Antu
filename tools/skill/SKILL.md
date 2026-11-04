@@ -12,7 +12,7 @@ metadata:
   version: "{{version}}"
 ---
 
-# Antu: legal diagrams from JSON
+# Antu · Legal Diagrams
 
 You write the JSON; the engine draws it. The result is **one HTML file** that opens in any browser with no install and
 no network, prints, and can be forwarded. Nothing is uploaded anywhere. This skill is Antu **{{version}}**; the pages it

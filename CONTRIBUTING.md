@@ -95,6 +95,19 @@ The rules are in [spec/versioning.md](spec/versioning.md), the record of changes
   (`.github/workflows/release.yml`); it creates the tag `vX.Y.Z` and the release from the version in `package.json`,
   with the notes taken from the CHANGELOG section of that version. Do not tag by hand.
 
+## Display names
+
+Human-facing product names (READMEs, plugin lists, page titles, footers, about copy):
+
+| | Chinese | English |
+| --- | --- | --- |
+| **Full** | 案图 · 诉讼可视化 | Antu · Legal Diagrams |
+| **Short** | 案图 | Antu |
+
+Use the **full** name where a cold reader must see what the product does (marketplace / plugin title, README H1, site document title and footer). Use the **short** name for brand marks, in-UI chrome (`untitled`, tab labels, `· Antu` document-title suffixes), and running prose once the product is already named.
+
+Do **not** rename machine identifiers to match: npm `@zh-xx/antu` / `@zh-xx/antu-dsh`, CLI `antu` / `antu-mcp`, MCP / Host tools `antu_*`, skill folder `skills/antu`, repository `zh-xx/Antu`, or TypeScript names such as `AntuSpec`.
+
 ## Directories
 
 - `spec/`: design documents for people (mostly English, with `.zh-CN.md` counterparts); `spec/agent/`: notes for
