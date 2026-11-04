@@ -8,7 +8,9 @@ name: Release
 #
 # What it does: reads the version in package.json at that commit, makes the tag v<version> and a GitHub release whose
 # notes are the section of CHANGELOG.md with the same version; packs skills/antu/ (the agent skill) into
-# antu-skill-<version>.zip and attaches it to the release, for clients that "import a local skill package".
+# antu-skill-<version>.zip and attaches it to the release, for clients that "import a local skill package";
+# and builds the WorkBuddy skill package (tools/workbuddy/) and attaches antu-workbuddy-skill-<version>.zip.
+# The WorkBuddy MCP connector zip is retired and is not built or attached.
 #
 # Before it publishes, it stops unless:
 #   - the commit is on main, the version looks like X.Y.Z, the tag does not exist yet, CHANGELOG has a non-empty section;
@@ -17,7 +19,8 @@ name: Release
 #     last release and is rebuilt in the release PR, so forgetting that stops here;
 #   - the zip it just packed has no file deeper than root / folder / file (some hosts refuse the whole package, #234);
 #   - the zip it just packed, unpacked into an empty folder, passes the skill's own checks
-#     (tools/verify/skill-cli.mjs --skill): what users download is what was tested.
+#     (tools/verify/skill-cli.mjs --skill): what users download is what was tested;
+#   - the same for the WorkBuddy skill zip (depth and unpacked skill checks).
 # What it does not do: change any file, publish anywhere else, delete anything.
 #
 # Dry run: with dry_run ticked it does every check and packs and tests the zip, but creates no tag and no release
@@ -147,6 +150,32 @@ jobs:
           unzip -q "antu-skill-${{ steps.check.outputs.version }}.zip" -d "$dir"
           node tools/verify/skill-cli.mjs --skill "$dir/antu"
 
+      # WorkBuddy skill package only (tools/workbuddy/): the MCP connector zip is retired.
+      # Made from skills/antu/, which was just checked to be this version's build; tested like the skill zip above.
+      - name: Build the WorkBuddy skill package
+        run: node tools/workbuddy/build.mjs
+
+      - name: Check the WorkBuddy skill zip is two folders deep at most
+        run: |
+          set -euo pipefail
+          zip="tools/workbuddy/antu-workbuddy-skill-${{ steps.check.outputs.version }}.zip"
+          deep="$(unzip -Z1 "$zip" | sed 's|^antu/||' | grep -v '/$' | awk -F/ 'NF>2' || true)"
+          if [ -n "$deep" ]; then
+            echo "$zip has files deeper than root / folder / file:" >&2
+            echo "$deep" >&2
+            exit 1
+          fi
+          echo "$zip: no file deeper than root / folder / file ($(unzip -Z1 "$zip" | grep -vc '/$') files)."
+
+      - name: Test the packed WorkBuddy skill zip, unpacked into an empty folder
+        env:
+          ANTU_REQUIRE_PYTHON: '1'
+        run: |
+          set -euo pipefail
+          dir="$(mktemp -d)"
+          unzip -q "tools/workbuddy/antu-workbuddy-skill-${{ steps.check.outputs.version }}.zip" -d "$dir"
+          node tools/verify/skill-cli.mjs --skill "$dir/antu"
+
       - name: Create the tag and the release
         if: ${{ inputs.dry_run != true }}
         env:
@@ -155,6 +184,7 @@ jobs:
           set -euo pipefail
           gh release create "${{ steps.check.outputs.tag }}" \
             "antu-skill-${{ steps.check.outputs.version }}.zip" \
+            "tools/workbuddy/antu-workbuddy-skill-${{ steps.check.outputs.version }}.zip" \
             --target "${{ steps.check.outputs.sha }}" \
             --title "${{ steps.check.outputs.version }}" \
             --notes-file release-notes.md

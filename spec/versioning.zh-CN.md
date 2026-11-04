@@ -85,7 +85,7 @@
 1. 变更经 pull request 上 `main`；每个 PR 说明是否触动契约。发行用的 pull request 写明**取哪个号、为什么**，维护者在跑发行前确认号码（第一次带许可证的发行曾标成 0.6.0 未经此步，后改号为 0.5.1）。
 2. 破坏契约的变更同时抬该类型的 `specVersion`（在 `schema.js`，changelog 写如何迁移）。
 3. 发行单独一个小 PR：`package.json`（及 `package-lock.json`）的 `version`、`CHANGELOG.md` 新小节，以及用 `npm run build:skill` 重建的 agent skill（见下）。同一 PR 把各设计文档状态行对照代码，并在「对照 … 检查过」里写入新发行号（见「设计文档的状态」）。
-4. 合并后跑 **Release** 工作流（Actions → Run workflow；默认是 `main` 最新提交）。它读该提交 `package.json` 的 `version`；若提交不在 `main`、标签已存在、或 `CHANGELOG.md` 没有该版本小节则拒绝；然后创建标签 `vX.Y.Z` 与 GitHub release，说明取自该小节，并把 skill 附为 `antu-skill-X.Y.Z.zip`。若该提交上检查未通过或未跑完也拒绝（合并后等 CI），若 `skills/antu/` 不是该版本构建应写出的内容、或打出的 zip 解到空目录后通不过 skill 自检（`tools/verify/skill-cli.mjs --skill`）也拒绝。不从分支发行，不手打标签。
+4. 合并后跑 **Release** 工作流（Actions → Run workflow；默认是 `main` 最新提交）。它读该提交 `package.json` 的 `version`；若提交不在 `main`、标签已存在、或 `CHANGELOG.md` 没有该版本小节则拒绝；然后创建标签 `vX.Y.Z` 与 GitHub release，说明取自该小节，并把通用 skill 附为 `antu-skill-X.Y.Z.zip`、WorkBuddy 技能版附为 `antu-workbuddy-skill-X.Y.Z.zip`（MCP 连接器 zip 不再附上）。若该提交上检查未通过或未跑完也拒绝（合并后等 CI），若 `skills/antu/` 不是该版本构建应写出的内容、或打出的 zip 解到空目录后通不过 skill 自检（`tools/verify/skill-cli.mjs --skill`）也拒绝。不从分支发行，不手打标签。
 
 5. 已发行的版本再发 npm 包 `@zh-xx/antu` 及其 MCP registry 条目，用单独的 **Publish npm** 工作流（Actions → Run workflow）。若提交不在 `main`、标签 `vX.Y.Z` 不在该提交上、或检查未通过则拒绝；构建并打包测试（`tools/verify/npm-pack.mjs`），展示将要发布的内容。**默认是 dry run**：发到 npm 不可撤回，真正发布须有意选择，并等维护者批准 `npm` 环境。包、`server.json` 与 skill 携带 `package.json` 的同一版本（`test/npm-package.test.mjs`）。包的第一个版本不能用工作流身份，因为 npm 不能把尚不存在的包的受信发布者指到本工作流：由维护者手发，或同一工作流开 `use_token` 并用 `npm` 环境里的短时 token（事后删除）。之后每个版本都不用 token。设置写在 `.github/workflows/publish-npm.yml` 顶部。
 
