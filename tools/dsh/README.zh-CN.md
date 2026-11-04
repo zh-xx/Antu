@@ -114,7 +114,7 @@ dsh plugin --profile <name> add /abs/path/to/zh-xx-antu-dsh-<version>.tgz
         serverName: antu
         transport: stdio
         command: npx
-        args: ['-y', '-p', '@zh-xx/antu@0.18.0', 'antu-mcp']
+        args: ['-y', '-p', '@zh-xx/antu@0.19.0', 'antu-mcp']
         failOnStartupError: true
 ```
 
@@ -123,7 +123,7 @@ dsh plugin --profile <name> add /abs/path/to/zh-xx-antu-dsh-<version>.tgz
 ### 这一权宜之计的限制（依赖它之前请读）
 
 - 需要**系统 Node 与网络**跑 `npx`（Desktop 内嵌 Node 本身不够）。
-- 钉死包版本（上面的 `@0.18.0`）；`@latest` 每台机器会漂。
+- 钉死包版本（上面的 `@0.19.0`）；`@latest` 每台机器会漂。
 - 工具名是 `mcp__antu__antu_validate` … — 不是最终的 Host 名。
 - 对 `antu_render`，传**会话工作区内的绝对 `outPath`**。默认相对路径跟 MCP 进程 cwd，不是会话目录。
 - `antu_preview` 需要机器上有基于 Chromium 的浏览器；必要时在该行的 `env` 设 `ANTU_CHROME`。

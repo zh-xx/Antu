@@ -5,6 +5,14 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+### Changed
+
+### Fixed
+
+## 0.19.0
+
+This is a **minor** release: hosts gain embed view-state for fact and relationship, and `normalize(spec)` now repairs fact and relationship marks the same way it already did for procedure. Procedure flowchart layout caps search and yields in the browser so large flows stay responsive. Human-facing names become **案图 · 诉讼可视化** / **Antu · Legal Diagrams**, with a short About blurb in the READMEs. WorkBuddy open-platform packages are retired from the release; only `antu-skill-<version>.zip` is attached. Nothing breaks a file or a tool call written for 0.18.x: the additions are new host options / helpers, layout behaviour, docs, and packaging.
+
 ### Added
 
 - **Chinese counterparts for high-traffic human docs** (#334): `spec/theme.zh-CN.md`, `spec/versioning.zh-CN.md`, `CONTRIBUTING.zh-CN.md` (summary pointing at the English source of truth), and `tools/dsh/README.zh-CN.md`. English pages stay authoritative; agent guides under `spec/agent/` remain English-only.
@@ -15,10 +23,10 @@ what breaks a file or a tool call written for the version before, with how to br
 ### Changed
 
 - **About blurb**: short product line is now *Antu · Legal Diagrams turns case JSON into one offline HTML diagram—timelines, procedures, relationships, and court reasoning—for AI agents and legal professionals.* (Chinese: *案图 · 诉讼可视化：把案件 JSON 画成一张可离线打开的 HTML 图——时间线、程序流程、主体关系与裁判说理——供 AI Agent 与法律专业人士使用。*) Used in README openers, `AGENTS.md`, and `package.json` description.
-- **Display names** (human-facing only): full **案图 · 诉讼可视化** / **Antu · Legal Diagrams**; short **案图** / **Antu**. READMEs, DSH plugin locale titles, hero draft titles/footers, skill source heading, and CONTRIBUTING name the full form where a cold reader must see what it does. Machine ids (`antu`, `@zh-xx/antu`, `antu_*`, `skills/antu`) are unchanged. The committed `skills/antu/` zip content updates on the next release rebuild.
+- **Display names** (human-facing only): full **案图 · 诉讼可视化** / **Antu · Legal Diagrams**; short **案图** / **Antu**. READMEs, DSH plugin locale titles, hero draft titles/footers, skill source heading, and CONTRIBUTING name the full form where a cold reader must see what it does. Machine ids (`antu`, `@zh-xx/antu`, `antu_*`, `skills/antu`) are unchanged. The committed `skills/antu/` zip content updates with this release rebuild.
 - **Embed browser verify prefers condition waits** (#335): `browser.waitUntil` in `tools/lib/chrome.mjs` and in-page `until` polls in `tools/verify/embed.mjs` replace most fixed `setTimeout` settles (theme/kind/select/fit/dock/view-state). Timeout bounds for races stay.
 - **CONTRIBUTING TypeScript section slimmed** (#333): coexistence rules and what `npm run typecheck` covers stay; the #227 slice chronicle moves to the CHANGELOG history, not the contributor entry.
-- **Status honesty for agents and justification §5** (#331): `AGENTS.md` points at documented unfinished surfaces (#329–#335) and parked issues instead of “pick an open issue”; justification schema §5 no longer claims validation has no code (EN + zh-CN). Diagram `experimental` registry statuses are unchanged pending a maintainer promotion call.
+- **Status honesty for agents and justification §5** (#331): `AGENTS.md` points at documented unfinished surfaces and parked issues instead of “pick an open issue”; justification schema §5 no longer claims validation has no code (EN + zh-CN). Diagram `experimental` registry statuses are unchanged pending a maintainer promotion call.
 
 ### Removed
 

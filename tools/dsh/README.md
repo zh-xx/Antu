@@ -129,7 +129,7 @@ existing MCP server with a **configuration-only** bundle (official template:
         serverName: antu
         transport: stdio
         command: npx
-        args: ['-y', '-p', '@zh-xx/antu@0.18.0', 'antu-mcp']
+        args: ['-y', '-p', '@zh-xx/antu@0.19.0', 'antu-mcp']
         failOnStartupError: true
 ```
 
@@ -138,7 +138,7 @@ Install with DSH's `plugin_manager` → `install_bundle` and the **absolute** pa
 ### Limits of this stopgap (read before relying on it)
 
 - Needs **system Node and network** for `npx` (Desktop's embedded Node is not enough by itself).
-- Pin the package version (`@0.18.0` above); `@latest` drifts per machine.
+- Pin the package version (`@0.19.0` above); `@latest` drifts per machine.
 - Tools appear as `mcp__antu__antu_validate`, … — not the final Host names.
 - For `antu_render`, pass an **absolute `outPath` inside the session workspace**. The default relative path
   follows the MCP process cwd, which is not the session folder.
