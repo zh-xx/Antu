@@ -497,7 +497,7 @@ export async function checkEmbed(t) {
       // this check is about dockPlace, not about that chip staying on the bar.
       root.querySelector('.antu-dock-reset')?.click()
       await untilLook((n) => !root.querySelector('.antu-dock-reset'), 'reset chip still on the bar')
-      // English flowchart capsule grew with the Current/Mainline trial segment; 1800 leaves room
+      // English flowchart capsule grew with the ELK/Mainline trial segment; 1800 leaves room
       // for the minimap (same idea as checkDockClearance after issue 124).
       host.style.width = '520px'
       await untilLook(

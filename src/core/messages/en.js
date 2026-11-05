@@ -129,7 +129,7 @@ export const en = {
   'flow.linkCurved': 'Curved',
   'flow.linkStyle': 'Link style',
   'flow.engine': 'Engine (trial)',
-  'flow.engineCurrent': 'Current',
+  'flow.engineCurrent': 'ELK',
   'flow.engineMainline': 'Mainline',
   'rule.tableTitle': 'Rules',
   'rule.tableNote': 'What may happen along the way; not steps of the flow',

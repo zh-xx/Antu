@@ -108,7 +108,7 @@ export const zh = {
   'flow.linkCurved': '曲线',
   'flow.linkStyle': '连线样式',
   'flow.engine': '引擎（试验）',
-  'flow.engineCurrent': '现有',
+  'flow.engineCurrent': 'ELK',
   'flow.engineMainline': 'Mainline',
   'rule.tableTitle': '条款',
   'rule.tableNote': '流程中可能出现的情形，不属于流程步骤',
