@@ -395,7 +395,8 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   }
 
   // Decision branches sit on the fork's row (centres aligned → 0-bend side link);
-  // siblings share the lane and stack one per row.
+  // siblings share the lane and stack one per row. A later decision on a free stretch of
+  // the same track still aligns to its own fork (max with the lane cursor), not the prior hang.
   /** @type {Map<number, number>} */
   const laneCursorY = new Map()
   for (const it of intervals) {
@@ -404,11 +405,12 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     const fork = byId.get(it.h.from)
     const sameRow = Boolean(it.h.rootOnSpine && fork?.kind === 'decision' && leave && it.h.boxes.length)
     let by
-    if (laneCursorY.has(lane)) by = /** @type {number} */ (laneCursorY.get(lane))
-    else if (sameRow) {
+    if (sameRow) {
       const h0 = frameSize(byId.get(it.h.boxes[0])).h
-      by = leave.y + leave.h / 2 - h0 / 2
-    } else by = leave ? leave.y + leave.h + LAYER_GAP : 0
+      const forkY = leave.y + leave.h / 2 - h0 / 2
+      by = Math.max(laneCursorY.get(lane) ?? -Infinity, forkY)
+    } else if (laneCursorY.has(lane)) by = /** @type {number} */ (laneCursorY.get(lane))
+    else by = leave ? leave.y + leave.h + LAYER_GAP : 0
     const lx =
       branchSign < 0
         ? spineX0 - LANE_GAP - laneLeft[lane] - (laneW[lane] ?? 0)

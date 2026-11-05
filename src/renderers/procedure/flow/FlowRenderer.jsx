@@ -119,7 +119,7 @@ export default function ProcedureFlow({ spec }) {
   const stagesView = useViewValue('view.flow.stages', storedFields.stages, FIELD_DEFAULTS.stages)
   const rulesView = useViewValue('view.flow.rules', storedFields.rules, FIELD_DEFAULTS.rules)
   // Layout engine: 'current' (ELK) or 'mainline' (spine-first prototype, issue 190).
-  // Mainline always applies when chosen (no stage data → one implicit column); Stages only folds columns.
+  // Mainline always applies when chosen; Stages on folds columns, Stages off → one straight trunk.
   const engineView = useViewValue('view.flow.engine', storedFields.engine, 'current')
   const fieldView = { conditions: conditionsView, detail: detailView, mainLine: mainLineView, states: statesView, stages: stagesView, rules: rulesView }
   const fields = Object.fromEntries(Object.entries(fieldView).map(([key, view]) => [key, view.value]))

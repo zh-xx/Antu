@@ -19,6 +19,7 @@ what breaks a file or a tool call written for the version before, with how to br
 - **Stages paint switch no longer swaps the flowchart layout engine**: column / Mainline paths follow stage *data*; turning off stage bands only hides the boxes (#190 review).
 - **Mainline keeps a straight spine**: trunk centres share one axis per column (≤ 2 px); with no stage data the graph is one implicit column. Branches yield — polish must not shove the trunk.
 - **Mainline pins `kind:end` on the spine terminus** (rule-only stubs included) and places a decision's first side-hop on the fork's row for a 0-bend forward/back; sibling branches share one vertical track.
+- **Mainline with Stages off is one straight trunk**: the Stages switch folds the spine into columns when on; off (or no stage data) keeps a single implicit column. Current still uses stage-column data when bands are hidden.
 - **Embed `select` / `focus` before the card is painted**: a held host ask that lands a frame early retries briefly instead of being answered `false` once and lost.
 
 ## 0.19.0

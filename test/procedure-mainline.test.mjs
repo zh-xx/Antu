@@ -110,14 +110,15 @@ test('mainline: every labelled connection has labelAt (paint must not crash)', (
   }
 })
 
-test('stages off hides bands but keeps the column / mainline path when data has stage columns', () => {
-  let diverged = 0
+test('stages off: Mainline is one straight spine; Current keeps columns but hides bands', () => {
+  let checked = 0
   for (const f of files) {
     const spec = load(f)
     const present = (spec.stages ?? []).filter((st) => spec.nodes.some((n) => n.stageId === st.id))
     const ids = new Set((spec.stages ?? []).map((s) => s.id))
     const hasColumns = present.length > 1 && spec.nodes.every((n) => n.stageId && ids.has(n.stageId))
     if (!hasColumns) continue
+    checked += 1
 
     const offCurrent = buildProcedureGraph(spec, { stages: false }, undefined, 'vertical')
     const offMainline = buildProcedureGraph(spec, { stages: false, engine: 'mainline' }, undefined, 'vertical')
@@ -125,6 +126,14 @@ test('stages off hides bands but keeps the column / mainline path when data has 
     assert.equal(offMainline.stageBoxes.length, 0, `${f}: stages off → no painted boxes (mainline)`)
     assert.equal(offCurrent.nodes.length, offMainline.nodes.length, f)
 
+    // Mainline with Stages off: no fold → one trunk (centres share one axis across the whole spine)
+    const byId = new Map(offMainline.nodes.map((n) => [n.id, n]))
+    const vals = offMainline.spine.map((id) => centre(byId.get(id), 'vertical'))
+    assert.ok(vals.length >= 2, `${f}: expected a spine`)
+    const span = Math.max(...vals) - Math.min(...vals)
+    assert.ok(span <= 2, `${f}: stages-off mainline spine centre span ${span.toFixed(2)}px > 2`)
+
+    // Current still uses stage columns (data path); geometry must differ from the straight trunk
     let same = 0
     for (let i = 0; i < offCurrent.nodes.length; i += 1) {
       if (
@@ -134,9 +143,9 @@ test('stages off hides bands but keeps the column / mainline path when data has 
         same += 1
       }
     }
-    if (same < offCurrent.nodes.length) diverged += 1
+    assert.ok(same < offCurrent.nodes.length, `${f}: stages-off mainline must not match current columns`)
   }
-  assert.ok(diverged > 0, 'expected at least one multi-stage example where mainline still diverges with bands off')
+  assert.ok(checked > 0, 'expected multi-stage examples')
 })
 
 /** Centre of a flowchart node (the spine axis is the shared centre, not the left edge). */

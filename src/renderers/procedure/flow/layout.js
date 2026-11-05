@@ -435,16 +435,16 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     { 'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX' },
     { 'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF' },
   ]
-  // Stage *data* decides the column layout path; the Stages *switch* only decides whether boxes paint.
-  // Coupling the two made "turn off stage bands" silently swap engines (issue 190 review).
+  // Current (ELK): stage *data* decides the column path; the Stages *switch* only paints boxes.
+  // Coupling those made "turn off bands" silently leave columns for Mainline too (issue 190) —
+  // Mainline treats Stages as the fold switch: off / no stage data → one straight trunk.
   const hasStageColumns = presentStages.length > 1 && nodes.every((n) => stageById.has(n.stageId))
-  // Mainline-first (issue 190): opt-in via dock / preset. Stages only fold the spine into columns;
-  // with no usable stage columns the whole graph is one implicit stage (straight spine, no band).
+  // Mainline-first (issue 190): opt-in via dock / preset. Stages fold the spine into columns when
+  // the reader keeps them on and the data has them; otherwise one implicit stage (straight spine).
   const useMainline = fields?.engine === 'mainline'
-  const mainlineStages =
-    presentStages.length >= 1 && nodes.every((n) => stageById.has(n.stageId))
-      ? presentStages
-      : [{ id: '__implicit__', label: '' }]
+  const foldMainline =
+    showStages && presentStages.length >= 1 && nodes.every((n) => stageById.has(n.stageId))
+  const mainlineStages = foldMainline ? presentStages : [{ id: '__implicit__', label: '' }]
   const mainlineNodes =
     mainlineStages.length === 1 && mainlineStages[0].id === '__implicit__'
       ? nodes.map((n) => ({ ...n, stageId: '__implicit__' }))
