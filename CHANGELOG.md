@@ -7,6 +7,7 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ### Added
 
+- **Three non-contract procedure examples** for Mainline demos: work-injury recognition / labour-capacity appraisal (`administrative`), civil litigation first instance (`litigation`), and the fictional Lin Fang v Zhao Lei lending suit (pairs with the fact example). Each has `.zh-CN` / `.en`.
 - **WorkBuddy skill package restored** on the release (`antu-workbuddy-skill-<version>.zip`): platform header fields, `icon.png` avatar (512×512, ≤ 500 KB; SVG is rejected), gzipped viewer under 3 MB, same content as `skills/antu/`. Market names **案图 · 诉讼可视化** / **Antu · Legal Diagrams**; capability blurbs speak to non-technical users (four diagram kinds and what they clarify—no JSON jargon). The MCP connector zip stays retired. Slim skill remains a reserve build, not attached.
 - **`docs/` tree** (split from `spec/`): architecture, reference manuals (including layout engines), fact rendering essays, and DSH plan / conventions move out of `spec/` so that folder keeps **contracts** only. Indexes: `docs/README.md`, `spec/README.md` (EN + zh-CN).
 - **Mainline-first flowchart prototype** (#190): spine-first column layout beside the default ELK path (`src/renderers/procedure/flow/mainline.js`). Opt-in via dock **ELK / Mainline** (also `fields.engine = 'mainline'` / `view.flow.engine`) when the data has stage columns. Shared main-line walk in `spine.js`. Compare with `node tools/layout-scan/run.mjs`. Default layout unchanged.

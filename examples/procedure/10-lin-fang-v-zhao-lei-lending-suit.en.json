@@ -1,0 +1,155 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "Lin Fang v Zhao Lei private lending · first-instance procedure (fictional)",
+  "domain": "litigation",
+  "actors": [
+    { "id": "a-1", "name": "Lin Fang", "role": "Plaintiff (lender)" },
+    { "id": "a-2", "name": "Zhao Lei", "role": "Defendant (borrower)" },
+    { "id": "a-3", "name": "Sample District People's Court", "role": "First-instance court" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "Filing and defence" },
+    { "id": "st-2", "label": "Evidence and mediation" },
+    { "id": "st-3", "label": "Hearing and judgment" },
+    { "id": "st-4", "label": "Effect and enforcement" }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "case",
+      "name": "First-instance judgment",
+      "loc": { "caseNo": "(2031) Sample Civil First 1", "court": "Sample District People's Court, Sample City, Sample Province" }
+    },
+    {
+      "id": "s-2",
+      "type": "contract",
+      "name": "Two IOUs",
+      "loc": { "file": "IOU" }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "Lin Fang sues for repayment of RMB 80,000 principal",
+      "detail": "Two IOUs of RMB 40,000 each past due",
+      "stageId": "st-1",
+      "actorIds": ["a-1"],
+      "sourceIds": ["s-2"]
+    },
+    {
+      "id": "n-2",
+      "kind": "step",
+      "label": "Court accepts the case and serves process",
+      "detail": "(2031) Sample Civil First 1",
+      "stageId": "st-1",
+      "actorIds": ["a-3"],
+      "sourceIds": ["s-1"]
+    },
+    {
+      "id": "n-3",
+      "kind": "step",
+      "label": "Zhao Lei files a defence",
+      "detail": "Contests part of the funds routed through a third party",
+      "stageId": "st-1",
+      "actorIds": ["a-2"]
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "Parties file IOUs, transfers and chat records",
+      "stageId": "st-2",
+      "actorIds": ["a-1", "a-2"],
+      "sourceIds": ["s-2"]
+    },
+    {
+      "id": "n-5",
+      "kind": "decision",
+      "label": "Pre-trial mediation successful?",
+      "stageId": "st-2",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-6",
+      "kind": "step",
+      "label": "Hearing: prove delivery and due dates of both loans",
+      "stageId": "st-3",
+      "actorIds": ["a-1", "a-2", "a-3"]
+    },
+    {
+      "id": "n-7",
+      "kind": "decision",
+      "label": "Does the second loan via a third party still count as lending?",
+      "stageId": "st-3",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "Both loan relationships found established",
+      "detail": "Principal of RMB 80,000 upheld",
+      "stageId": "st-3",
+      "actorIds": ["a-3"],
+      "outcome": "positive",
+      "sourceIds": ["s-1"]
+    },
+    {
+      "id": "n-9",
+      "kind": "step",
+      "label": "Judgment: Zhao Lei to repay the principal",
+      "stageId": "st-3",
+      "actorIds": ["a-3"],
+      "sourceIds": ["s-1"]
+    },
+    {
+      "id": "n-10",
+      "kind": "decision",
+      "label": "Does Zhao Lei appeal?",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-11",
+      "kind": "step",
+      "label": "Apply for compulsory enforcement",
+      "stageId": "st-4",
+      "actorIds": ["a-1"]
+    },
+    {
+      "id": "n-12",
+      "kind": "end",
+      "label": "Judgment effective; debt paid or enforcement done",
+      "stageId": "st-4",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-13",
+      "kind": "end",
+      "label": "Second instance begins",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-14",
+      "kind": "end",
+      "label": "Settled by mediation",
+      "stageId": "st-2",
+      "outcome": "positive"
+    }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "main": true },
+    { "from": "n-4", "to": "n-5", "main": true },
+    { "from": "n-5", "to": "n-14", "condition": "Mediation succeeds" },
+    { "from": "n-5", "to": "n-6", "condition": "Continue to hearing", "main": true },
+    { "from": "n-6", "to": "n-7", "main": true },
+    { "from": "n-7", "to": "n-8", "condition": "Established", "main": true },
+    { "from": "n-7", "to": "n-8", "condition": "Partly established" },
+    { "from": "n-8", "to": "n-9", "main": true },
+    { "from": "n-9", "to": "n-10", "main": true },
+    { "from": "n-10", "to": "n-11", "condition": "No appeal", "main": true },
+    { "from": "n-10", "to": "n-13", "condition": "Appeal" },
+    { "from": "n-11", "to": "n-12", "main": true }
+  ]
+}

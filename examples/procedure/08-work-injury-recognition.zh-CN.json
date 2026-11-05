@@ -1,0 +1,179 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "工伤认定与劳动能力鉴定 · 行政程序",
+  "domain": "administrative",
+  "actors": [
+    { "id": "a-1", "name": "职工", "role": "申请人" },
+    { "id": "a-2", "name": "用人单位", "role": "单位" },
+    { "id": "a-3", "name": "社会保险行政部门", "role": "认定机关" },
+    { "id": "a-4", "name": "劳动能力鉴定委员会", "role": "鉴定机构" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "申请与受理" },
+    { "id": "st-2", "label": "调查与认定" },
+    { "id": "st-3", "label": "劳动能力鉴定" },
+    { "id": "st-4", "label": "待遇与救济" }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "statute",
+      "name": "工伤保险条例（示意）",
+      "loc": { "file": "工伤保险条例", "clause": 17 }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "事故伤害或确诊职业病",
+      "stageId": "st-1",
+      "sourceIds": ["s-1"]
+    },
+    {
+      "id": "n-2",
+      "kind": "step",
+      "label": "单位或职工提出工伤认定申请",
+      "detail": "单位一般 30 日内；逾期可由职工申请",
+      "stageId": "st-1",
+      "actorIds": ["a-1", "a-2"]
+    },
+    {
+      "id": "n-3",
+      "kind": "decision",
+      "label": "材料是否齐全、是否属于受理范围",
+      "stageId": "st-1",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "一次性补正材料",
+      "stageId": "st-1",
+      "actorIds": ["a-1", "a-2"],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-5",
+      "kind": "step",
+      "label": "予以受理并书面告知",
+      "stageId": "st-1",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-6",
+      "kind": "step",
+      "label": "调查核实、调取证据",
+      "stageId": "st-2",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-7",
+      "kind": "decision",
+      "label": "是否认定为工伤",
+      "stageId": "st-2",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "作出认定工伤决定并送达",
+      "stageId": "st-2",
+      "actorIds": ["a-3"],
+      "outcome": "positive"
+    },
+    {
+      "id": "n-9",
+      "kind": "step",
+      "label": "作出不予认定决定并送达",
+      "stageId": "st-2",
+      "actorIds": ["a-3"],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-10",
+      "kind": "decision",
+      "label": "伤情稳定后是否申请劳动能力鉴定",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-11",
+      "kind": "step",
+      "label": "向鉴定委员会提出鉴定申请",
+      "stageId": "st-3",
+      "actorIds": ["a-1", "a-2"]
+    },
+    {
+      "id": "n-12",
+      "kind": "step",
+      "label": "组织专家鉴定、出具鉴定结论",
+      "stageId": "st-3",
+      "actorIds": ["a-4"]
+    },
+    {
+      "id": "n-13",
+      "kind": "decision",
+      "label": "对鉴定结论是否申请再次鉴定",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-14",
+      "kind": "step",
+      "label": "省级再次鉴定（最终结论）",
+      "stageId": "st-3",
+      "actorIds": ["a-4"]
+    },
+    {
+      "id": "n-15",
+      "kind": "step",
+      "label": "按等级落实工伤保险待遇",
+      "stageId": "st-4",
+      "actorIds": ["a-1", "a-2"],
+      "outcome": "positive"
+    },
+    {
+      "id": "n-16",
+      "kind": "end",
+      "label": "待遇落实完毕",
+      "stageId": "st-4",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-17",
+      "kind": "end",
+      "label": "不服认定：复议或诉讼",
+      "stageId": "st-4",
+      "outcome": "negative"
+    },
+    {
+      "id": "n-18",
+      "kind": "end",
+      "label": "不受理或放弃申请",
+      "stageId": "st-1",
+      "outcome": "negative"
+    }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-5", "condition": "受理", "main": true },
+    { "from": "n-3", "to": "n-4", "condition": "材料不全" },
+    { "from": "n-3", "to": "n-18", "condition": "不予受理" },
+    { "from": "n-4", "to": "n-3" },
+    { "from": "n-5", "to": "n-6", "main": true },
+    { "from": "n-6", "to": "n-7", "main": true },
+    { "from": "n-7", "to": "n-8", "condition": "认定工伤", "main": true },
+    { "from": "n-7", "to": "n-9", "condition": "不予认定" },
+    { "from": "n-9", "to": "n-17" },
+    { "from": "n-8", "to": "n-10", "main": true },
+    { "from": "n-10", "to": "n-11", "condition": "申请鉴定", "main": true },
+    { "from": "n-10", "to": "n-15", "condition": "暂不鉴定" },
+    { "from": "n-11", "to": "n-12", "main": true },
+    { "from": "n-12", "to": "n-13", "main": true },
+    { "from": "n-13", "to": "n-15", "condition": "无异议", "main": true },
+    { "from": "n-13", "to": "n-14", "condition": "再次鉴定" },
+    { "from": "n-14", "to": "n-15", "main": true },
+    { "from": "n-15", "to": "n-16", "main": true }
+  ]
+}

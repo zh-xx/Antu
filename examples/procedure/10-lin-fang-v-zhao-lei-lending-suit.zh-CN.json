@@ -1,0 +1,155 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "林芳诉赵磊民间借贷纠纷 · 一审程序（虚构）",
+  "domain": "litigation",
+  "actors": [
+    { "id": "a-1", "name": "林芳", "role": "原告（出借人）" },
+    { "id": "a-2", "name": "赵磊", "role": "被告（借款人）" },
+    { "id": "a-3", "name": "示例区人民法院", "role": "一审法院" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "起诉与应诉" },
+    { "id": "st-2", "label": "举证与调解" },
+    { "id": "st-3", "label": "开庭与裁判" },
+    { "id": "st-4", "label": "生效与执行" }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "case",
+      "name": "本案一审判决",
+      "loc": { "caseNo": "（2031）示民初1号", "court": "示例省示例市示例区人民法院" }
+    },
+    {
+      "id": "s-2",
+      "type": "contract",
+      "name": "借条两份",
+      "loc": { "file": "借条" }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "林芳起诉请求偿还本金 8 万元",
+      "detail": "两笔各 4 万元借条已到期未还",
+      "stageId": "st-1",
+      "actorIds": ["a-1"],
+      "sourceIds": ["s-2"]
+    },
+    {
+      "id": "n-2",
+      "kind": "step",
+      "label": "法院立案受理并送达",
+      "detail": "（2031）示民初1号",
+      "stageId": "st-1",
+      "actorIds": ["a-3"],
+      "sourceIds": ["s-1"]
+    },
+    {
+      "id": "n-3",
+      "kind": "step",
+      "label": "赵磊提交答辩状",
+      "detail": "抗辩部分款项经案外人转付、性质有争议",
+      "stageId": "st-1",
+      "actorIds": ["a-2"]
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "双方提交借条、转账与聊天记录",
+      "stageId": "st-2",
+      "actorIds": ["a-1", "a-2"],
+      "sourceIds": ["s-2"]
+    },
+    {
+      "id": "n-5",
+      "kind": "decision",
+      "label": "庭前调解是否达成协议",
+      "stageId": "st-2",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-6",
+      "kind": "step",
+      "label": "开庭审理：查明两笔借款交付与到期",
+      "stageId": "st-3",
+      "actorIds": ["a-1", "a-2", "a-3"]
+    },
+    {
+      "id": "n-7",
+      "kind": "decision",
+      "label": "第二笔经案外人转付是否成立借贷",
+      "stageId": "st-3",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "认定两笔借款关系均成立",
+      "detail": "支持本金 80,000 元",
+      "stageId": "st-3",
+      "actorIds": ["a-3"],
+      "outcome": "positive",
+      "sourceIds": ["s-1"]
+    },
+    {
+      "id": "n-9",
+      "kind": "step",
+      "label": "宣判：判令赵磊偿还本金",
+      "stageId": "st-3",
+      "actorIds": ["a-3"],
+      "sourceIds": ["s-1"]
+    },
+    {
+      "id": "n-10",
+      "kind": "decision",
+      "label": "赵磊是否上诉",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-11",
+      "kind": "step",
+      "label": "申请强制执行",
+      "stageId": "st-4",
+      "actorIds": ["a-1"]
+    },
+    {
+      "id": "n-12",
+      "kind": "end",
+      "label": "判决生效、债务清偿或执行完毕",
+      "stageId": "st-4",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-13",
+      "kind": "end",
+      "label": "进入二审",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-14",
+      "kind": "end",
+      "label": "调解结案",
+      "stageId": "st-2",
+      "outcome": "positive"
+    }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "main": true },
+    { "from": "n-4", "to": "n-5", "main": true },
+    { "from": "n-5", "to": "n-14", "condition": "调解成功" },
+    { "from": "n-5", "to": "n-6", "condition": "继续审理", "main": true },
+    { "from": "n-6", "to": "n-7", "main": true },
+    { "from": "n-7", "to": "n-8", "condition": "成立", "main": true },
+    { "from": "n-7", "to": "n-8", "condition": "部分成立" },
+    { "from": "n-8", "to": "n-9", "main": true },
+    { "from": "n-9", "to": "n-10", "main": true },
+    { "from": "n-10", "to": "n-11", "condition": "不上诉", "main": true },
+    { "from": "n-10", "to": "n-13", "condition": "上诉" },
+    { "from": "n-11", "to": "n-12", "main": true }
+  ]
+}
