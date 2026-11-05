@@ -90,3 +90,35 @@ test('default engine is unchanged when fields.engine is omitted', () => {
     assert.equal(a.nodes[i].position.y, b.nodes[i].position.y)
   }
 })
+
+test('mainline: every labelled connection has labelAt (paint must not crash)', () => {
+  // Regression for the EPC edge that had label but null labelAt — ConnectionLayerNode reads .x
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), fields, undefined, dir)
+      for (const c of g.connections) {
+        if (!c.label) {
+          assert.equal(c.labelAt, null, `${f} / ${dir}: ${c.id} has no label so labelAt stays null`)
+          continue
+        }
+        assert.ok(c.labelAt, `${f} / ${dir}: ${c.id} labelled but labelAt is null`)
+        assert.ok(c.labelSize, `${f} / ${dir}: ${c.id} labelled but labelSize is null`)
+        assert.equal(typeof c.labelAt.x, 'number')
+        assert.equal(typeof c.labelAt.y, 'number')
+      }
+    }
+  }
+})
+
+test('mainline with stages off matches current (engines identical outside columnMode)', () => {
+  for (const f of files) {
+    const spec = load(f)
+    const a = buildProcedureGraph(spec, { stages: false }, undefined, 'vertical')
+    const b = buildProcedureGraph(spec, { stages: false, engine: 'mainline' }, undefined, 'vertical')
+    assert.equal(a.nodes.length, b.nodes.length, f)
+    for (let i = 0; i < a.nodes.length; i += 1) {
+      assert.equal(a.nodes[i].position.x, b.nodes[i].position.x, `${f}: ${a.nodes[i].id}`)
+      assert.equal(a.nodes[i].position.y, b.nodes[i].position.y, `${f}: ${a.nodes[i].id}`)
+    }
+  }
+})

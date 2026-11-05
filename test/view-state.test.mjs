@@ -59,7 +59,7 @@ test('a valid view state passes at every level', () => {
     theme: 'legal',
     lang: 'zh',
     shell: { headerFolded: true, dockFolded: false },
-    view: { flow: { states: true, conditions: false, detail: true, mainLine: false, stages: true, rules: false, orientation: 'horizontal', linkStyle: 'curved' }, route: { labels: true, states: false } },
+    view: { flow: { states: true, conditions: false, detail: true, mainLine: false, stages: true, rules: false, orientation: 'horizontal', linkStyle: 'curved', engine: 'mainline' }, route: { labels: true, states: false } },
   }
   assert.equal(viewStateProblem(good, 'options.locked'), '')
   assert.equal(viewStateProblem({}, 'options.locked'), '')
@@ -76,7 +76,8 @@ test('an unknown key or a wrong value names the field and what is allowed', () =
   assert.equal(viewStateProblem({ view: { flow: { states: 1 } } }, 'options.locked'), 'options.locked.view.flow.states must be a boolean')
   assert.equal(viewStateProblem({ view: { flow: { orientation: 'diagonal' } } }, 'options.locked'), 'options.locked.view.flow.orientation must be one of: vertical, horizontal')
   assert.equal(viewStateProblem({ view: { flow: { linkStyle: 'wavy' } } }, 'options.locked'), 'options.locked.view.flow.linkStyle must be one of: straight, curved')
-  assert.equal(viewStateProblem({ view: { flow: { nope: true } } }, 'options.locked'), 'options.locked.view.flow.nope is not an option: states, conditions, detail, mainLine, stages, rules, orientation, linkStyle')
+  assert.equal(viewStateProblem({ view: { flow: { nope: true } } }, 'options.locked'), 'options.locked.view.flow.nope is not an option: states, conditions, detail, mainLine, stages, rules, orientation, linkStyle, engine')
+  assert.equal(viewStateProblem({ view: { flow: { engine: 'elk' } } }, 'options.locked'), 'options.locked.view.flow.engine must be one of: current, mainline')
   assert.equal(viewStateProblem({ view: { route: { labels: 'x' } } }, 'options.locked'), 'options.locked.view.route.labels must be a boolean')
   assert.equal(viewStateProblem({ view: { route: { nope: true } } }, 'options.locked'), 'options.locked.view.route.nope is not an option: labels, states')
   assert.equal(viewStateProblem({ view: { fact: { nope: true } } }, 'options.locked'), 'options.locked.view.fact.nope is not an option: summary, actors, sources, grid, stagger, orientation, byParty')

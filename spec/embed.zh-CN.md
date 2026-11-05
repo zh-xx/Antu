@@ -133,7 +133,8 @@ interface AntuViewState {
   shell?: { headerFolded?: boolean; dockFolded?: boolean }
   view?: {
     flow?: { states?: boolean; conditions?: boolean; detail?: boolean; mainLine?: boolean; stages?: boolean; rules?: boolean;
-             orientation?: 'vertical' | 'horizontal'; linkStyle?: 'straight' | 'curved' }
+             orientation?: 'vertical' | 'horizontal'; linkStyle?: 'straight' | 'curved';
+             engine?: 'current' | 'mainline' }
     route?: { labels?: boolean; states?: boolean }
     fact?: { summary?: boolean; actors?: boolean; sources?: boolean; grid?: boolean; stagger?: boolean;
              orientation?: 'vertical' | 'horizontal'; byParty?: boolean }
@@ -181,6 +182,7 @@ interface AntuViewState {
 | 流程图开关 | `view.flow.states` · `.conditions` · `.detail` · `.mainLine` · `.stages` · `.rules` | `flowFieldsByDiagram` |
 | 流程图方向 | `view.flow.orientation` | `orientations` |
 | 流程图连线样式 | `view.flow.linkStyle` | `linkStyle` |
+| 流程图布局引擎 | `view.flow.engine`（`current` \| `mainline`；试验，仅分阶段列模式） | `flowFieldsByDiagram` |
 | 路线图条件标签 | `view.route.labels` | `procedureRouteFieldsByDiagram` |
 | 路线图状态 | `view.route.states` | `procedureRouteFieldsByDiagram` |
 | 事实图卡片字段 | `view.fact.summary` · `.actors` · `.sources` | `fields` |

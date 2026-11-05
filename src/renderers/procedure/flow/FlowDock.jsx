@@ -5,10 +5,11 @@
 //  The controls are the ones listed in spec/procedure/schema-draft.md §6.2, in the four shapes
 //  of docs/fact/rendering.md §4.2 (no new shapes invented):
 //    condition labels / node detail / main line / states / stage bands / rules   independent switches → chips
-//    orientation, link style (straight / curved)                         two exclusive options → segmented
+//    orientation, link style (straight / curved), layout engine (trial)  exclusive options → segmented
 //    language, print, export image                                       shared with every dock (shell/DockParts.jsx)
 //  The stage-band and rule switches only appear when the data has stages / rules: a switch
-//  that can change nothing is noise.
+//  that can change nothing is noise. The engine switch appears only in columnMode (stages on,
+//  more than one stage, every node staged) — outside that, mainline and current are identical.
 // ============================================================
 
 import { useLang } from '../../../shell/LangContext.jsx'
@@ -35,12 +36,20 @@ const LINK_STYLES = [
   ['curved', 'flow.linkCurved'],
 ]
 
+const ENGINES = [
+  ['current', 'flow.engineCurrent'],
+  ['mainline', 'flow.engineMainline'],
+]
+
 /**
  * @param {{
  *   fields?: Record<string, unknown>,
  *   onToggleField: (key: string, value: boolean) => void,
  *   hasStages?: boolean,
  *   hasRules?: boolean,
+ *   showEngine?: boolean,
+ *   engine?: string,
+ *   onToggleEngine?: (next: string) => void,
  *   orientation?: string,
  *   onToggleOrientation: (next: string) => void,
  *   linkStyle?: string,
@@ -55,6 +64,9 @@ export default function FlowDock({
   onToggleField,
   hasStages = false,
   hasRules = false,
+  showEngine = false,
+  engine = 'current',
+  onToggleEngine,
   orientation = 'vertical',
   onToggleOrientation,
   linkStyle = 'straight',
@@ -84,6 +96,11 @@ export default function FlowDock({
         {!locked.orientation && <DockSegmented options={ORIENTATIONS} value={orientation} onChange={onToggleOrientation} />}
 
         {!locked.linkStyle && <DockSegmented options={LINK_STYLES} value={linkStyle} onChange={onToggleLinkStyle} title={t('flow.linkStyle')} />}
+
+        {/* Engine trial: only when columnMode can apply (showEngine); title notes the limit */}
+        {showEngine && !locked.engine && onToggleEngine && (
+          <DockSegmented options={ENGINES} value={engine} onChange={onToggleEngine} title={t('flow.engine')} />
+        )}
 
         <span className="antu-dock-sep" />
 

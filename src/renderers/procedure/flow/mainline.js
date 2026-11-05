@@ -11,7 +11,8 @@
 //    5. light polish.
 //
 //  Does not cut branches (unlike route). Does not call ELK on the main path.
-//  Enabled with fields.engine === 'mainline' (internal switch; not a schema field).
+//  Enabled with fields.engine === 'mainline' (dock switch + preset; not a schema field).
+//  Only applies in columnMode (stages on, more than one stage, every node staged).
 // ============================================================
 
 import { straighten } from './straighten.js'
@@ -190,6 +191,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   const all = straighten(connections, placed, titles, true, diamonds, { borders, within })
   connections.splice(0, connections.length, ...all)
   polishLinks(ctx)
+  ensureConnectionLabels(connections, nodeRects, titles, borders)
   yield
 
   let width = cx - COLUMN_GAP + PAD
@@ -434,6 +436,9 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     within: () => ({ x: -1e6, y: -1e6, w: 2e6, h: 2e6 }),
     boxOf: () => null,
   })
+  // polish.js only re-places labels that already have a spot; mainline starts with none
+  // (unlike ELK). Fill every labelled link before the stage is packed into the picture.
+  ensureConnectionLabels(connections, [...placed.values()])
 
   // Normalise to 0,0 and measure
   let x0 = Infinity
@@ -465,6 +470,24 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     if (c.labelAt) c.labelAt = { x: c.labelAt.x - x0, y: c.labelAt.y - y0 }
   }
   return { placed, connections, width: Math.max(spineW, x1 - x0), height: Math.max(spineH, y1 - y0) }
+}
+
+/**
+ * Every connection with a label must carry labelAt: the paint layer reads `.x` / `.y`.
+ * @param {object[]} connections
+ * @param {{ x: number, y: number, w: number, h: number }[]} nodeRects
+ * @param {object[]} [blocks]
+ * @param {object[]} [borders]
+ */
+function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = []) {
+  for (const c of connections) {
+    if (!c.labelSize || c.labelAt) continue
+    const others = connections.filter((o) => o !== c)
+    const labels = others
+      .filter((o) => o.labelAt && o.labelSize)
+      .map((o) => ({ x: o.labelAt.x, y: o.labelAt.y, w: o.labelSize.width, h: o.labelSize.height }))
+    c.labelAt = placeLabel(c.points, c.labelSize, nodeRects, [...blocks, ...labels], others, borders)
+  }
 }
 
 function elbow(a, b, _fromDiamond) {

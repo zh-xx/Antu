@@ -118,14 +118,30 @@ export default function ProcedureFlow({ spec }) {
   const statesView = useViewValue('view.flow.states', storedFields.states, statesByDefault())
   const stagesView = useViewValue('view.flow.stages', storedFields.stages, FIELD_DEFAULTS.stages)
   const rulesView = useViewValue('view.flow.rules', storedFields.rules, FIELD_DEFAULTS.rules)
+  // Layout engine: 'current' (ELK) or 'mainline' (spine-first prototype, issue 190). Only
+  // meaningful in columnMode; the dock hides the switch otherwise.
+  const engineView = useViewValue('view.flow.engine', storedFields.engine, 'current')
   const fieldView = { conditions: conditionsView, detail: detailView, mainLine: mainLineView, states: statesView, stages: stagesView, rules: rulesView }
   const fields = Object.fromEntries(Object.entries(fieldView).map(([key, view]) => [key, view.value]))
+  const engine = engineView.value === 'mainline' ? 'mainline' : 'current'
   const toggleField = (key, value) => {
     fieldView[key].touch()
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], [key]: value } }
     setFieldPrefs(map)
     prefs.write({ flowFieldsByDiagram: map })
   }
+  const toggleEngine = (next) => {
+    engineView.touch()
+    const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], engine: next } }
+    setFieldPrefs(map)
+    prefs.write({ flowFieldsByDiagram: map })
+  }
+  // Same predicate as layout.js columnMode (minus the live stages switch): only then does
+  // mainline diverge from the current engine, so the dock must not offer a no-op control.
+  const stageIdSet = new Set((spec.stages ?? []).map((s) => s.id))
+  const columnCapable =
+    hasStages && (spec.stages?.length ?? 0) > 1 && (spec.nodes ?? []).every((n) => n.stageId && stageIdSet.has(n.stageId))
+  const showEngine = columnCapable && !!fields.stages
 
   // Orientation: remembered per diagram, as with the timeline. With nothing chosen a
   // flowchart reads top to bottom (§6.1): the main line runs down the centre of the screen.
@@ -150,20 +166,24 @@ export default function ProcedureFlow({ spec }) {
   }
 
   // Geometry yields to the event loop while it runs (issue 330). Keep the last layout on
-  // screen while a toggle recomputes, so the page stays interactive. Detail / stages / rules
-  // move geometry; condition labels and the main-line highlight are paint only.
+  // screen while a toggle recomputes, so the page stays interactive. Detail / stages / rules /
+  // engine move geometry; condition labels and the main-line highlight are paint only.
   const [layout, setLayout] = useState(EMPTY_LAYOUT)
   const layoutReq = useRef(0)
   useEffect(() => {
     const id = ++layoutReq.current
     let cancelled = false
-    layoutProcedureAsync(spec, { detail: fields.detail, stages: fields.stages, rules: fields.rules }, orientation).then((next) => {
+    layoutProcedureAsync(
+      spec,
+      { detail: fields.detail, stages: fields.stages, rules: fields.rules, engine },
+      orientation,
+    ).then((next) => {
       if (!cancelled && id === layoutReq.current) setLayout(next)
     })
     return () => {
       cancelled = true
     }
-  }, [spec, fields.detail, fields.stages, fields.rules, orientation])
+  }, [spec, fields.detail, fields.stages, fields.rules, engine, orientation])
 
   const [hoveredId, setHoveredId] = useState(/** @type {string | null} */ (null))
   const [pinnedId, setPinnedId] = useState(/** @type {string | null} */ (null))
@@ -241,6 +261,7 @@ export default function ProcedureFlow({ spec }) {
     ...Object.fromEntries(Object.entries(fieldView).filter(([, view]) => view.locked).map(([key]) => [key, true])),
     orientation: orientationView.locked,
     linkStyle: linkStyleView.locked,
+    engine: engineView.locked,
   }
 
   return (
@@ -268,6 +289,9 @@ export default function ProcedureFlow({ spec }) {
             onToggleField={toggleField}
             hasStages={hasStages}
             hasRules={hasRules}
+            showEngine={showEngine}
+            engine={engine}
+            onToggleEngine={toggleEngine}
             orientation={orientation}
             onToggleOrientation={toggleOrientation}
             linkStyle={linkStyleValue}

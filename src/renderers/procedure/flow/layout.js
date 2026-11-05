@@ -439,7 +439,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   // runs down inside a stage and the stages run across, so the picture is not one long strip.
   // Otherwise, one graph as before.
   const columnMode = showStages && presentStages.length > 1 && nodes.every((n) => stageById.has(n.stageId))
-  // Mainline-first (issue 190): internal switch only — fields.engine === 'mainline'. Default stays ELK.
+  // Mainline-first (issue 190): fields.engine === 'mainline' (dock / preset). Only in columnMode; default stays ELK.
   const useMainline = columnMode && fields?.engine === 'mainline'
   // The column layout has no `cost` / `stageTitles`, the single graph has; both are read below
   /** @type {any} */

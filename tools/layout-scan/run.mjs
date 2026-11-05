@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // ============================================================
-//  tools/layout-scan/run.mjs — compare current layout vs Mainline-first (#190)
+//  tools/layout-scan/run.mjs — compare current layout vs Mainline-first (issue 190)
 //
 //  Usage: node tools/layout-scan/run.mjs
-//  Writes JSON summary to stdout. Metrics follow #186/#189 style (bends, overlaps,
-//  main-line bends inside a stage vs at boundaries, wall time).
+//  Writes JSON summary to stdout.
+//
+//  Mainline only diverges in columnMode (stages on, >1 stage, every node staged).
+//  Rows outside that mode are marked applicable: false — engines are identical there.
 // ============================================================
 
 import { readFileSync, readdirSync } from 'node:fs'
@@ -16,6 +18,14 @@ const DIR = 'examples/procedure'
 const files = readdirSync(DIR)
   .filter((f) => f.endsWith('.zh-CN.json'))
   .sort()
+
+/** Same predicate as layout.js columnMode with stages shown. */
+const columnCapable = (spec) => {
+  const stages = spec.stages ?? []
+  if (stages.length <= 1) return false
+  const ids = new Set(stages.map((s) => s.id))
+  return (spec.nodes ?? []).every((n) => n.stageId && ids.has(n.stageId))
+}
 
 const overlapCount = (g) => {
   const boxes = g.nodes.map((n) => ({
@@ -69,43 +79,86 @@ const scan = (spec, fields, dir) => {
     mainBoundBent,
     width: Math.round(g.size.width),
     height: Math.round(g.size.height),
+    positions: g.nodes.map((n) => [n.id, n.position.x, n.position.y]),
   }
 }
 
+const dropPositions = (m) => {
+  const { positions: _p, ...rest } = m
+  return rest
+}
+
+const samePositions = (a, b) => {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i][0] !== b[i][0] || a[i][1] !== b[i][1] || a[i][2] !== b[i][2]) return false
+  }
+  return true
+}
+
 const rows = []
+const stagesOff = []
 for (const f of files) {
   const spec = JSON.parse(readFileSync(`${DIR}/${f}`, 'utf8'))
+  const capable = columnCapable(spec)
   for (const dir of ['vertical', 'horizontal']) {
+    const current = scan(spec, {}, dir)
+    const mainline = scan(spec, { engine: 'mainline' }, dir)
     rows.push({
       file: f,
       orientation: dir,
-      current: scan(spec, {}, dir),
-      mainline: scan(spec, { engine: 'mainline' }, dir),
+      mode: 'stages-on',
+      applicable: capable,
+      note: capable
+        ? 'columnMode: engines may diverge'
+        : 'N/A — not columnMode (0–1 stage or unstaged nodes); engines identical by construction',
+      current: dropPositions(current),
+      mainline: dropPositions(mainline),
+      identical: samePositions(current.positions, mainline.positions),
+    })
+
+    const offCurrent = scan(spec, { stages: false }, dir)
+    const offMainline = scan(spec, { stages: false, engine: 'mainline' }, dir)
+    stagesOff.push({
+      file: f,
+      orientation: dir,
+      mode: 'stages-off',
+      applicable: false,
+      note: 'N/A — stages off forces the single-graph path; engines identical',
+      identical: samePositions(offCurrent.positions, offMainline.positions),
+      current: dropPositions(offCurrent),
+      mainline: dropPositions(offMainline),
     })
   }
 }
 
-const sum = (key, eng) => rows.reduce((s, r) => s + r[eng][key], 0)
+const applicable = rows.filter((r) => r.applicable)
+const sum = (list, key, eng) => list.reduce((s, r) => s + r[eng][key], 0)
 const summary = {
+  note:
+    'Totals under `columnMode` only (stages on, >1 stage, every node staged). See `stagesOff` for the N/A path where engines are identical.',
   files: files.length,
   orientations: 2,
+  columnModeRows: applicable.length,
   current: {
-    overlaps: sum('overlaps', 'current'),
-    bends: sum('bends', 'current'),
-    mainInBent: sum('mainInBent', 'current'),
-    mainIn: sum('mainIn', 'current'),
-    mainBoundBent: sum('mainBoundBent', 'current'),
-    ms: Math.round(sum('ms', 'current') * 10) / 10,
+    overlaps: sum(applicable, 'overlaps', 'current'),
+    bends: sum(applicable, 'bends', 'current'),
+    mainInBent: sum(applicable, 'mainInBent', 'current'),
+    mainIn: sum(applicable, 'mainIn', 'current'),
+    mainBoundBent: sum(applicable, 'mainBoundBent', 'current'),
+    ms: Math.round(sum(applicable, 'ms', 'current') * 10) / 10,
   },
   mainline: {
-    overlaps: sum('overlaps', 'mainline'),
-    bends: sum('bends', 'mainline'),
-    mainInBent: sum('mainInBent', 'mainline'),
-    mainIn: sum('mainIn', 'mainline'),
-    mainBoundBent: sum('mainBoundBent', 'mainline'),
-    ms: Math.round(sum('ms', 'mainline') * 10) / 10,
+    overlaps: sum(applicable, 'overlaps', 'mainline'),
+    bends: sum(applicable, 'bends', 'mainline'),
+    mainInBent: sum(applicable, 'mainInBent', 'mainline'),
+    mainIn: sum(applicable, 'mainIn', 'mainline'),
+    mainBoundBent: sum(applicable, 'mainBoundBent', 'mainline'),
+    ms: Math.round(sum(applicable, 'ms', 'mainline') * 10) / 10,
   },
+  stagesOffIdentical: stagesOff.every((r) => r.identical),
   rows,
+  stagesOff,
 }
 
 console.log(JSON.stringify(summary, null, 2))
