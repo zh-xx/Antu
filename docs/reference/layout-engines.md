@@ -4,7 +4,7 @@
 > engines exist in the industry, what Antu has already measured, and what is out of scope.
 > Related: the canvas is React Flow (`docs/reference/react-flow-features.md`); architecture §6
 > (`docs/architecture/v0-architecture.md`); the ELK door is `src/renderers/procedure/flow/elk.js`.
-> Open direction only: issue [#190](https://github.com/zh-xx/Antu/issues/190) (main line first).
+> Open direction only: issue [#190](https://github.com/zh-xx/Antu/issues/190) (**Mainline-first**).
 
 Status markers: **✅ in use** | **considered** | **not needed**
 
@@ -132,8 +132,9 @@ two belong here.
 
 ## 6. Out of scope
 
-- Implementing issue #190 (main line first for flow). Recorded for discussion; `route`
-  already follows that order for the same JSON.
+- Implementing **Mainline-first** (issue #190) for flow. Recorded for discussion; `route`
+  already follows that order for the same JSON. Pairing while both exist: **current layout**
+  (ELK + polish) vs **Mainline-first**.
 - Adding a second third-party layout dependency without a **measured** comparison on the
   same corpus that justified ELK.
 - React Flow features → [`docs/reference/react-flow-features.md`](react-flow-features.md); themes, paper size, or JSON schemas → `spec/`.
