@@ -346,7 +346,13 @@ export async function checkEmbed(t) {
       const ruleEl = (x) => root.querySelector('[data-pin-id="rule:' + CSS.escape(x) + '"]')
       const ring = (el) => (el ? getComputedStyle(el).outlineStyle : 'missing')
       const lastSelect = () => events.filter((e) => e.type === 'select').at(-1)?.id
-      await until(() => nodeEl(id) && lastSelect() === id)
+      // Card may paint a frame after ready; retry select until the pin event lands (Canvas also rAF-retries).
+      await until(() => {
+        if (!nodeEl(id)) return false
+        if (lastSelect() === id) return true
+        h.select(id)
+        return lastSelect() === id
+      })
       const out = { refused, early, folded: !!root.querySelector('.antu-header-card.is-folded') }
       out.earlyPinned = [lastSelect() === id, nodeEl(id)?.querySelector('.antu-pn')?.getAttribute('aria-expanded')]
       out.unknown = h.select('no such item')

@@ -391,17 +391,35 @@ export default function Canvas({
     const elementOf = (id) => canvasRef.current?.querySelector(selectorOf(id))
     const markSelected = (target) =>
       setNodes((prev) => prev.map((n) => (!!n.selected === (n.id === target) ? n : { ...n, selected: n.id === target })))
+    /** A held select/focus can land before React Flow paints the node; retry a few frames (issue 335). */
+    let selectRetry = 0
+    let focusRetry = 0
+    let selectRaf = 0
+    let focusRaf = 0
     const offSelect = commands.on('select', (id) => {
       // a kind no reader can pin anything in (the route map) has nobody to answer
       if (!commands.has('pin')) return false
       if (id === null) {
+        if (selectRaf) cancelAnimationFrame(selectRaf)
+        selectRaf = 0
+        selectRetry = 0
         commands.run('pin', null)
         markSelected(null)
         return true
       }
       const { spec, graph: g } = latestRef.current
       const target = pinTargetOf(spec, g.nodes, id)
-      if (!target || !elementOf(target)) return false
+      if (!target) return false
+      if (!elementOf(target)) {
+        // Held select is flushed once when the handler registers; if the card is not in the DOM yet
+        // the pin would be lost — retry briefly instead of answering false forever.
+        if (selectRetry < 60) {
+          selectRetry += 1
+          selectRaf = requestAnimationFrame(() => commands.run('select', id))
+        }
+        return false
+      }
+      selectRetry = 0
       commands.run('pin', target)
       markSelected(target)
       return true
@@ -411,7 +429,14 @@ export default function Canvas({
       const el = nodesOfItem(spec, g.nodes, id).map(elementOf).find(Boolean)
       const rf = rfRef.current
       const box = canvasRef.current?.getBoundingClientRect()
-      if (!el || !rf || !box?.width) return false
+      if (!el || !rf || !box?.width) {
+        if (typeof id === 'string' && nodesOfItem(spec, g.nodes, id).length && focusRetry < 60) {
+          focusRetry += 1
+          focusRaf = requestAnimationFrame(() => commands.run('focus', id))
+        }
+        return false
+      }
+      focusRetry = 0
       const rect = el.getBoundingClientRect()
       const zoom = rf.getZoom()
       const centre = rf.screenToFlowPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
@@ -421,6 +446,8 @@ export default function Canvas({
       return true
     })
     return () => {
+      if (selectRaf) cancelAnimationFrame(selectRaf)
+      if (focusRaf) cancelAnimationFrame(focusRaf)
       offSelect()
       offFocus()
     }
