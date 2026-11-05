@@ -4,16 +4,17 @@
 //
 //  Prototype beside the current ELK + polish column layout. Same JSON, same output
 //  shape as layoutColumnsGen. Order:
-//    1. fix the main line in each stage as a straight vertical column;
-//    2. hang branches in lanes on the side away from the next stage;
-//    3. stack leftover "pocket" nodes (off-line sub-graphs) beside the hangs;
+//    1. fix the main line in each stage as a straight vertical column (axis pinned);
+//    2. hang branches in lanes on the side away from the next stage (or to the right
+//       when there is only one column); branches yield — the spine never moves for them;
+//    3. stack leftover "pocket" nodes beside the hangs;
 //    4. set stage boxes side by side; route cross-stage links with router.js;
-//    5. light polish.
+//    5. light polish, then re-pin the spine axis (polish must not leave the trunk bent).
 //
 //  Does not cut branches (unlike route). Does not call ELK on the main path.
 //  Enabled with fields.engine === 'mainline' (dock switch + preset; not a schema field).
-//  Applies when the data has stage columns (more than one stage, every node staged), whether
-//  or not the Stages switch paints the bands.
+//  Stages only fold the spine into columns; with no usable stage data the caller passes one
+//  implicit stage (`__implicit__`) so the whole graph is a single straight trunk.
 // ============================================================
 
 import { straighten } from './straighten.js'
@@ -79,14 +80,15 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   const outG = new Map(nodes.map((n) => [n.id, []]))
   for (const g of groups) outG.get(g.from)?.push(g)
 
-  /** @type {Array<{ st: object, ids: Set<string>, placed: Map, connections: object[], width: number, height: number }>} */
+  /** @type {Array<{ st: object, ids: Set<string>, spineIds: string[], placed: Map, connections: object[], width: number, height: number }>} */
   const segments = []
 
   for (let si = 0; si < stages.length; si += 1) {
     const st = stages[si]
     const own = nodes.filter((n) => n.stageId === st.id)
     const ownIds = new Set(own.map((n) => n.id))
-    // Branch side: away from the next column (next is to the right → hang left = -1)
+    // Branch side: away from the next column (next is to the right → hang left = -1).
+    // A lone column (only stage / implicit) hangs to the right — there is no "next" to clear.
     const branchSign = si < stages.length - 1 ? -1 : 1
     const seg = layoutStageMainline({
       own,
@@ -100,7 +102,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
       branchSign,
       byId,
     })
-    segments.push({ st, ids: ownIds, ...seg })
+    segments.push({ st, ids: ownIds, spineIds: spineList.filter((id) => ownIds.has(id)), ...seg })
     yield
   }
 
@@ -113,16 +115,21 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   const placed = new Map()
   const boxes = []
   const connections = []
+  const spineByStage = new Map()
   let cx = PAD
   for (const st of stages) {
     const segs = segments.filter((seg) => seg.st === st)
     const content = segs.reduce((s, seg) => s + seg.width, 0) + COLUMN_GAP * Math.max(0, segs.length - 1)
-    const titleW = textEm(st.label) * STAGE_TITLE_FONT + STAGE_PAD * 2
-    const w = Math.max(content + PAD_C0 + STAGE_PAD, vertical ? titleW : 0, vertical ? COLUMN_MIN_W : 0)
-    const h = Math.max(Math.max(...segs.map((seg) => seg.height)) + PAD_A0 + STAGE_PAD, vertical ? 0 : titleW)
+    const implicit = st.id === '__implicit__'
+    const titleW = implicit ? 0 : textEm(st.label) * STAGE_TITLE_FONT + STAGE_PAD * 2
+    const padA = implicit ? PAD : PAD_A0
+    const padC = implicit ? PAD : PAD_C0
+    const w = Math.max(content + padC + STAGE_PAD, vertical ? titleW : 0, vertical && !implicit ? COLUMN_MIN_W : 0)
+    const h = Math.max(Math.max(...segs.map((seg) => seg.height), 0) + padA + STAGE_PAD, vertical ? 0 : titleW)
     boxes.push({ stageId: st.id, label: st.label, x: cx, y: PAD, w, h })
-    let ox = cx + PAD_C0 + (w - PAD_C0 - STAGE_PAD - content) / 2
-    const oy = PAD + PAD_A0
+    let ox = cx + padC + (w - padC - STAGE_PAD - content) / 2
+    const oy = PAD + padA
+    const spineIds = []
     for (const seg of segs) {
       for (const [id, r] of seg.placed) placed.set(id, { ...r, x: r.x + ox, y: r.y + oy })
       for (const c of seg.connections) {
@@ -132,19 +139,21 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
           labelAt: c.labelAt ? { x: c.labelAt.x + ox, y: c.labelAt.y + oy } : null,
         })
       }
+      spineIds.push(...seg.spineIds)
       ox += seg.width + COLUMN_GAP
     }
+    spineByStage.set(st.id, spineIds)
     cx += w + COLUMN_GAP
   }
   const tallest = Math.max(...boxes.map((b) => b.h), 0)
 
-  const borders = boxes.flatMap(edgesOf)
+  const borders = boxes.filter((b) => b.stageId !== '__implicit__').flatMap(edgesOf)
   const boxOfStage = new Map(boxes.map((b) => [b.stageId, b]))
   const within = (c) => {
     const a = byId.get(c.from)?.stageId
     return a && a === byId.get(c.to)?.stageId ? boxOfStage.get(a) : null
   }
-  const titles = boxes.map((b) => titleBoxOf(b, b.label, vertical))
+  const titles = boxes.filter((b) => b.stageId !== '__implicit__').map((b) => titleBoxOf(b, b.label, vertical))
   const nodeRects = [...placed.values()]
   const labelRect = (c) => (c.labelAt ? { x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height } : null)
   const ctx = {
@@ -192,7 +201,12 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   const all = straighten(connections, placed, titles, true, diamonds, { borders, within })
   connections.splice(0, connections.length, ...all)
   polishLinks(ctx)
-  ensureConnectionLabels(connections, nodeRects, titles, borders)
+  // Polish may shove trunk nodes aside to clear a branch: put the axis back, branches yield.
+  for (const ids of spineByStage.values()) {
+    pinSpineAxis(placed, ids, connections)
+    pushBranchesOffSpine(placed, ids)
+  }
+  ensureConnectionLabels(connections, [...placed.values()], titles, borders)
   yield
 
   let width = cx - COLUMN_GAP + PAD
@@ -437,6 +451,9 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     within: () => ({ x: -1e6, y: -1e6, w: 2e6, h: 2e6 }),
     boxOf: () => null,
   })
+  // Hard constraint: the trunk axis stays fixed; polish may have shoved spine nodes for a branch.
+  pinSpineAxis(placed, spineHere, connections)
+  pushBranchesOffSpine(placed, spineHere)
   // polish.js only re-places labels that already have a spot; mainline starts with none
   // (unlike ELK). Fill every labelled link before the stage is packed into the picture.
   ensureConnectionLabels(connections, [...placed.values()])
@@ -471,6 +488,99 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     if (c.labelAt) c.labelAt = { x: c.labelAt.x - x0, y: c.labelAt.y - y0 }
   }
   return { placed, connections, width: Math.max(spineW, x1 - x0), height: Math.max(spineH, y1 - y0) }
+}
+
+/**
+ * Pin every spine node to one vertical axis (shared centre x). Rebuild main links as straight;
+ * nudge other link ends that left a moved spine node. Branches must yield — never the trunk.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {string[]} spineIds
+ * @param {object[]} [connections]
+ */
+function pinSpineAxis(placed, spineIds, connections = []) {
+  const ids = spineIds.filter((id) => placed.has(id))
+  if (ids.length === 0) return
+  let axisSum = 0
+  for (const id of ids) {
+    const r = placed.get(id)
+    if (!r) continue
+    axisSum += r.x + r.w / 2
+  }
+  const axis = axisSum / ids.length
+  /** @type {Map<string, number>} */
+  const dxOf = new Map()
+  for (const id of ids) {
+    const r = placed.get(id)
+    if (!r) continue
+    const dx = axis - (r.x + r.w / 2)
+    if (Math.abs(dx) < 0.01) continue
+    dxOf.set(id, dx)
+    placed.set(id, { ...r, x: r.x + dx })
+  }
+  const spineSet = new Set(ids)
+  for (const c of connections) {
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b || !c.points?.length) continue
+    if (c.kind === 'main' && spineSet.has(c.from) && spineSet.has(c.to)) {
+      const x0 = a.x + a.w / 2
+      const x1 = b.x + b.w / 2
+      c.points =
+        Math.abs(x0 - x1) < 0.5
+          ? [
+              [x0, a.y + a.h],
+              [x1, b.y],
+            ]
+          : [
+              [x0, a.y + a.h],
+              [x0, (a.y + a.h + b.y) / 2],
+              [x1, (a.y + a.h + b.y) / 2],
+              [x1, b.y],
+            ]
+      continue
+    }
+    const da = dxOf.get(c.from) ?? 0
+    const db = dxOf.get(c.to) ?? 0
+    if (!da && !db) continue
+    const pts = c.points.map((p) => [...p])
+    if (da) {
+      pts[0][0] += da
+      if (pts.length > 1 && Math.abs(pts[1][0] - (pts[0][0] - da)) < 0.5) pts[1][0] += da
+    }
+    if (db) {
+      const last = pts.length - 1
+      pts[last][0] += db
+      if (last > 0 && Math.abs(pts[last - 1][0] - (pts[last][0] - db)) < 0.5) pts[last - 1][0] += db
+    }
+    c.points = pts
+  }
+}
+
+/**
+ * If a non-spine node overlaps the pinned trunk, shove it into the nearer side lane.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {string[]} spineIds
+ */
+function pushBranchesOffSpine(placed, spineIds) {
+  const spineSet = new Set(spineIds)
+  /** @type {{ x: number, y: number, w: number, h: number }[]} */
+  const spines = []
+  for (const id of spineIds) {
+    const r = placed.get(id)
+    if (r) spines.push(r)
+  }
+  if (!spines.length) return
+  const axis = spines.reduce((s, r) => s + r.x + r.w / 2, 0) / spines.length
+  const clear = 10
+  for (const [id, r] of [...placed]) {
+    if (spineSet.has(id)) continue
+    for (const s of spines) {
+      if (!(r.x < s.x + s.w - 0.5 && s.x < r.x + r.w - 0.5 && r.y < s.y + s.h - 0.5 && s.y < r.y + r.h - 0.5)) continue
+      const next = r.x + r.w / 2 < axis ? { ...r, x: s.x - clear - r.w } : { ...r, x: s.x + s.w + clear }
+      placed.set(id, next)
+      break
+    }
+  }
 }
 
 /**

@@ -42,7 +42,7 @@ Thirteen ways of drawing. **ELK appears in three**; the other ten are Antu’s o
 | Fact | `timeline` | Custom grid (row = time slot; column = side × party) | `src/renderers/fact/timeline/layout.js`, `grid.js` |
 | Fact | `chronicle` | Custom single-column spine (time · spine · card) | `src/renderers/fact/chronicle/layout.js` |
 | Fact | `scale` | Custom proportional time axis and lanes | `src/renderers/fact/scale/layout.js` |
-| Procedure | `flow` | **ELK layered** per stage column (default); optional **Mainline-first** prototype (`fields.engine = 'mainline'` / dock switch, #190) places the spine first then hangs branches — no ELK on that path; when the data has stage columns (>1 stage, every node staged), independent of whether bands are painted | `layout.js`, `columns.js`, `mainline.js`, `spine.js`, `elk.js`, `router.js`, `straighten.js`, `polish.js` |
+| Procedure | `flow` | **ELK layered** per stage column (default); optional **Mainline-first** prototype (`fields.engine = 'mainline'` / dock switch, #190) pins a straight spine then hangs branches — no ELK on that path; stages only fold the spine into columns (no stage data → one implicit column) | `layout.js`, `columns.js`, `mainline.js`, `spine.js`, `elk.js`, `router.js`, `straighten.js`, `polish.js` |
 | Procedure | `route` | Custom spine-first (no ELK): main line left → right, branches hang below | `src/renderers/procedure/route/layout.js` |
 | Relationship | `graph` | **ELK layered per camp**; camps side by side; every relation routed by Antu | `src/renderers/relationship/graph/layout.js` |
 | Relationship | `focus` | Custom rings around a centre party; islands below | `src/renderers/relationship/focus/layout.js` |

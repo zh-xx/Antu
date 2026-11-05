@@ -17,6 +17,7 @@ what breaks a file or a tool call written for the version before, with how to br
 
 - **Mainline labelled links no longer crash the page**: connections with a `label` always get a `labelAt`; the link layer also skips a missing spot instead of reading `.x` on null.
 - **Stages paint switch no longer swaps the flowchart layout engine**: column / Mainline paths follow stage *data*; turning off stage bands only hides the boxes (#190 review).
+- **Mainline keeps a straight spine**: trunk centres share one axis per column (≤ 2 px); with no stage data the graph is one implicit column. Branches yield — polish must not shove the trunk.
 
 ## 0.19.0
 

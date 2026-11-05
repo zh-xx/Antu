@@ -75,8 +75,8 @@ test('mainline: main links inside a stage bend rarely (by construction)', () => 
     }
   }
   assert.ok(total > 0, 'expected main links inside stages')
-  // Prototype target: better than or comparable to ELK's ~13% allowance; currently ~8/112
-  assert.ok(bent / total <= 0.15, `${bent} of ${total} main links inside a stage bend under mainline`)
+  // Spine axis is pinned: in-stage main links must stay straight (0 bends)
+  assert.equal(bent, 0, `${bent} of ${total} main links inside a stage still bend under mainline`)
 })
 
 test('default engine is unchanged when fields.engine is omitted', () => {
@@ -110,27 +110,20 @@ test('mainline: every labelled connection has labelAt (paint must not crash)', (
   }
 })
 
-test('stages off hides bands but keeps the column layout path when data has stage columns', () => {
+test('stages off hides bands but keeps the column / mainline path when data has stage columns', () => {
   let diverged = 0
   for (const f of files) {
     const spec = load(f)
     const present = (spec.stages ?? []).filter((st) => spec.nodes.some((n) => n.stageId === st.id))
     const ids = new Set((spec.stages ?? []).map((s) => s.id))
     const hasColumns = present.length > 1 && spec.nodes.every((n) => n.stageId && ids.has(n.stageId))
+    if (!hasColumns) continue
 
     const offCurrent = buildProcedureGraph(spec, { stages: false }, undefined, 'vertical')
     const offMainline = buildProcedureGraph(spec, { stages: false, engine: 'mainline' }, undefined, 'vertical')
     assert.equal(offCurrent.stageBoxes.length, 0, `${f}: stages off → no painted boxes`)
     assert.equal(offMainline.stageBoxes.length, 0, `${f}: stages off → no painted boxes (mainline)`)
     assert.equal(offCurrent.nodes.length, offMainline.nodes.length, f)
-
-    if (!hasColumns) {
-      for (let i = 0; i < offCurrent.nodes.length; i += 1) {
-        assert.equal(offCurrent.nodes[i].position.x, offMainline.nodes[i].position.x, `${f}: ${offCurrent.nodes[i].id}`)
-        assert.equal(offCurrent.nodes[i].position.y, offMainline.nodes[i].position.y, `${f}: ${offCurrent.nodes[i].id}`)
-      }
-      continue
-    }
 
     let same = 0
     for (let i = 0; i < offCurrent.nodes.length; i += 1) {
@@ -144,4 +137,54 @@ test('stages off hides bands but keeps the column layout path when data has stag
     if (same < offCurrent.nodes.length) diverged += 1
   }
   assert.ok(diverged > 0, 'expected at least one multi-stage example where mainline still diverges with bands off')
+})
+
+/** Centre of a flowchart node (the spine axis is the shared centre, not the left edge). */
+const centre = (n, dir) =>
+  dir === 'vertical' ? n.position.x + n.data.w / 2 : n.position.y + n.data.h / 2
+
+test('mainline: spine axis is straight inside each stage (centre span ≤ 2px)', () => {
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const spec = load(f)
+      const g = buildProcedureGraph(spec, fields, undefined, dir)
+      const byId = new Map(g.nodes.map((n) => [n.id, n]))
+      const stageOf = new Map(spec.nodes.map((n) => [n.id, n.stageId]))
+      /** @type {Map<string, number[]>} */
+      const axes = new Map()
+      for (const id of g.spine) {
+        const st = stageOf.get(id) ?? '__none__'
+        if (!axes.has(st)) axes.set(st, [])
+        axes.get(st).push(centre(byId.get(id), dir))
+      }
+      for (const [st, vals] of axes) {
+        if (vals.length < 2) continue
+        const span = Math.max(...vals) - Math.min(...vals)
+        assert.ok(span <= 2, `${f} / ${dir} / ${st}: spine centre span ${span.toFixed(2)}px > 2`)
+      }
+    }
+  }
+})
+
+test('mainline: with stage data stripped, one implicit column stays on a straight spine', () => {
+  for (const f of files) {
+    const raw = load(f)
+    const stripped = {
+      ...raw,
+      stages: [],
+      nodes: raw.nodes.map(({ stageId: _s, ...n }) => n),
+      rules: (raw.rules ?? []).map(({ stageIds: _s, ...r }) => r),
+    }
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(stripped, fields, undefined, dir)
+      assert.deepEqual(g.errors, [], `${f} / ${dir}: stripped stages must still lay out`)
+      assert.equal(g.stageBoxes.length, 0, `${f}: implicit stage is never painted`)
+      assert.equal(g.nodes.length, raw.nodes.length)
+      const byId = new Map(g.nodes.map((n) => [n.id, n]))
+      const vals = g.spine.map((id) => centre(byId.get(id), dir))
+      assert.ok(vals.length >= 2, `${f}: expected a spine`)
+      const span = Math.max(...vals) - Math.min(...vals)
+      assert.ok(span <= 2, `${f} / ${dir}: implicit spine centre span ${span.toFixed(2)}px > 2`)
+    }
+  }
 })

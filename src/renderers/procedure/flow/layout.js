@@ -435,19 +435,28 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     { 'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX' },
     { 'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF' },
   ]
-  // Stage *data* decides the layout path; the Stages *switch* only decides whether boxes paint.
+  // Stage *data* decides the column layout path; the Stages *switch* only decides whether boxes paint.
   // Coupling the two made "turn off stage bands" silently swap engines (issue 190 review).
   const hasStageColumns = presentStages.length > 1 && nodes.every((n) => stageById.has(n.stageId))
-  // Mainline-first (issue 190): fields.engine === 'mainline' (dock / preset). Needs stage columns; default stays ELK.
-  const useMainline = hasStageColumns && fields?.engine === 'mainline'
+  // Mainline-first (issue 190): opt-in via dock / preset. Stages only fold the spine into columns;
+  // with no usable stage columns the whole graph is one implicit stage (straight spine, no band).
+  const useMainline = fields?.engine === 'mainline'
+  const mainlineStages =
+    presentStages.length >= 1 && nodes.every((n) => stageById.has(n.stageId))
+      ? presentStages
+      : [{ id: '__implicit__', label: '' }]
+  const mainlineNodes =
+    mainlineStages.length === 1 && mainlineStages[0].id === '__implicit__'
+      ? nodes.map((n) => ({ ...n, stageId: '__implicit__' }))
+      : nodes
   // The column layout has no `cost` / `stageTitles`, the single graph has; both are read below
   /** @type {any} */
   let best = null
   if (useMainline) {
     best = yield* layoutMainlineGen({
-      nodes,
+      nodes: mainlineNodes,
       groups,
-      stages: presentStages,
+      stages: mainlineStages,
       labelBox,
       vertical,
       spine,
@@ -463,13 +472,13 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     }
   }
   // The last passes over the links (polish.js), as in the column layout
-  if (!hasStageColumns) {
+  if (!useMainline && !hasStageColumns) {
     polishSingle(best, diamonds, vertical, byId)
     yield
   }
   const { placed, size } = best
-  // Paint only: hide stage bands when the reader turned Stages off (layout still used the columns)
-  const stageBoxes = showStages ? best.stageBoxes : []
+  // Paint only: hide bands when Stages is off, and never paint the synthetic implicit stage
+  const stageBoxes = (showStages ? best.stageBoxes : []).filter((b) => b.stageId !== '__implicit__')
   const connections = best.connections.map((c) => ({ ...c, d: toPathD(c.points), dCurve: toCurveD(c.points) }))
 
   // Boxes in along/across coordinates (along = the direction the layers run)

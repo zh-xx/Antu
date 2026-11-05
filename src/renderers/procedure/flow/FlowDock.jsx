@@ -8,8 +8,8 @@
 //    orientation, link style (straight / curved), layout engine (trial)  exclusive options → segmented
 //    language, print, export image                                       shared with every dock (shell/DockParts.jsx)
 //  The stage-band and rule switches only appear when the data has stages / rules: a switch
-//  that can change nothing is noise. The engine switch appears when the data has stage columns
-//  (more than one stage, every node staged) — independent of whether stage bands are painted.
+//  that can change nothing is noise. The engine switch is always offered: Mainline lays a straight
+//  spine (one implicit column when the data has no stage columns); Stages only folds that spine.
 // ============================================================
 
 import { useLang } from '../../../shell/LangContext.jsx'

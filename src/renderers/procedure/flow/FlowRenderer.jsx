@@ -118,8 +118,8 @@ export default function ProcedureFlow({ spec }) {
   const statesView = useViewValue('view.flow.states', storedFields.states, statesByDefault())
   const stagesView = useViewValue('view.flow.stages', storedFields.stages, FIELD_DEFAULTS.stages)
   const rulesView = useViewValue('view.flow.rules', storedFields.rules, FIELD_DEFAULTS.rules)
-  // Layout engine: 'current' (ELK columns) or 'mainline' (spine-first prototype, issue 190).
-  // Shown whenever the data has stage columns — independent of the Stages paint switch.
+  // Layout engine: 'current' (ELK) or 'mainline' (spine-first prototype, issue 190).
+  // Mainline always applies when chosen (no stage data → one implicit column); Stages only folds columns.
   const engineView = useViewValue('view.flow.engine', storedFields.engine, 'current')
   const fieldView = { conditions: conditionsView, detail: detailView, mainLine: mainLineView, states: statesView, stages: stagesView, rules: rulesView }
   const fields = Object.fromEntries(Object.entries(fieldView).map(([key, view]) => [key, view.value]))
@@ -136,10 +136,7 @@ export default function ProcedureFlow({ spec }) {
     setFieldPrefs(map)
     prefs.write({ flowFieldsByDiagram: map })
   }
-  // Same predicate as layout.js hasStageColumns: only then do the engines diverge.
-  const stageIdSet = new Set((spec.stages ?? []).map((s) => s.id))
-  const showEngine =
-    hasStages && (spec.stages?.length ?? 0) > 1 && (spec.nodes ?? []).every((n) => n.stageId && stageIdSet.has(n.stageId))
+  const showEngine = true
 
   // Orientation: remembered per diagram, as with the timeline. With nothing chosen a
   // flowchart reads top to bottom (§6.1): the main line runs down the centre of the screen.
