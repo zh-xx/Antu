@@ -401,9 +401,10 @@ function checkData() {
   // not affect it. **A new major type's design draft must be added here too**: miss it and that
   // one has no leak check. spec/procedure/schema-draft was missed once, found only when
   // procedure was translated.
-  const humanDocs = ['spec/fact/schema-draft', 'spec/fact/timeline-rules', 'spec/fact/rendering',
-    'spec/source-schema-draft', 'spec/v0-architecture', 'spec/mcp-server', 'spec/embed',
-    'spec/react-flow-features', 'spec/procedure/schema-draft', 'spec/relationship/schema-draft',
+  const humanDocs = ['spec/fact/schema-draft', 'spec/fact/timeline-rules', 'docs/fact/rendering',
+    'spec/source-schema-draft', 'docs/architecture/v0-architecture', 'spec/mcp-server', 'spec/embed',
+    'docs/reference/react-flow-features', 'docs/reference/layout-engines', 'docs/dsh/dsh-plugin',
+    'docs/dsh/dsh-conventions', 'spec/procedure/schema-draft', 'spec/relationship/schema-draft',
     'spec/justification/schema-draft']
   const leaked2 = humanDocs.filter((n) => serverSrc.includes(n))
   truthy('no human-facing design document leaks into MCP', leaked2.length === 0)
@@ -879,7 +880,7 @@ async function checkExport(browser, spec) {
 
   // The page is certainly in its default presentation state (a fresh browser profile has no
   // preferences): only the summary field on, direction by slot count, rows staggered
-  // (vertical only, spec/fact/rendering.md §8.1).
+  // (vertical only, docs/fact/rendering.md §8.1).
   const orientation = spec.slots.length >= 5 ? 'vertical' : 'horizontal'
   const graph = buildFactGraph(
     spec,
@@ -1215,7 +1216,7 @@ async function checkRender(sampleFile) {
 
     // The label card is always shown (the "heading" switch was withdrawn, see rendering §10.2)
     truthy('the label card is always shown on screen', await browser.eval(`!!document.querySelector('.antu-header-card')`))
-    // The heading switch was removed (see spec/fact/rendering.md §10.2), and an assertion
+    // The heading switch was removed (see docs/fact/rendering.md §10.2), and an assertion
     // that looked for the text "题头" had gone dead: that string no longer exists in either
     // dictionary, so `some(... === '题头')` was false in both languages and the check passed
     // unconditionally. Written structurally instead, so it cannot rot that way: the dock is
@@ -1235,7 +1236,7 @@ async function checkRender(sampleFile) {
     truthy('measured the dock control blocks', dockShape)
     if (dockShape) {
       // Five blocks: field toggles · orientation (with Stagger when vertical) · grid · language · export.
-      // The grid block is offered only while the rows are not staggered (spec/fact/rendering.md §8.1), so a
+      // The grid block is offered only while the rows are not staggered (docs/fact/rendering.md §8.1), so a
       // vertical page, staggered by default, has four. (There is no view menu: placement rules v1 have no views.)
       // The export action is separated off on its own, because it is the only **action** in
       // the dock while everything else is a state toggle.

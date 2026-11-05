@@ -1,5 +1,5 @@
 // The trial's tools keep a model in its folders, the script's checks find what they are meant to, and the whole flow
-// runs with the stand-in model (tools/trial/, spec/trial.md).
+// runs with the stand-in model (tools/trial/, docs/architecture/trial.md).
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'

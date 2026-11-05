@@ -12,7 +12,7 @@ computes the geometry, produces the output, **and takes a look at the result**.
 **One: there is no "generate JSON" tool in the MCP.**
 
 The engine does not generate JSON; that is a founding principle of the project (see
-`spec/v0-architecture.md` §1). Reading documents, extracting facts and writing JSON is the
+`docs/architecture/v0-architecture.md` §1). Reading documents, extracting facts and writing JSON is the
 agent's job. The server only provides **specification, examples, validation, geometry,
 rendering and preview**. It does not write data on the agent's behalf.
 
@@ -116,7 +116,7 @@ Only that one. Whatever is under `spec/agent/` is here; nothing from the level a
 ever appears.
 
 **An assertion in the verifier guards that line**: the name of no human-facing document
-(`spec/fact/schema-draft.md`, `spec/v0-architecture.md`, …) may appear in the MCP server
+(`spec/fact/schema-draft.md`, `docs/architecture/v0-architecture.md`, …) may appear in the MCP server
 code.
 
 ### Why not hand-copy a "specification for agents"

@@ -8,7 +8,7 @@
 //  The model gets the skill and the request of the case (tools/trial/cases.json), works in its own folder, and
 //  everything is kept in runs/<time>-<model>-<case>/ (not committed): transcript.json, work/ (spec.json,
 //  diagram.html), final-*.txt (the command line run once more by this script), preview.png, report.json.
-//  The rules of the trial are in spec/trial.md.
+//  The rules of the trial are in docs/architecture/trial.md.
 // ============================================================
 
 import { spawnSync } from 'node:child_process'

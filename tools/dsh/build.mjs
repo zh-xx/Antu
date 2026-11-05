@@ -170,7 +170,7 @@ function syncPackageJson() {
   const pkg = JSON.parse(readFileSync(path, 'utf8'))
   const version = rootVersion()
   pkg.version = version
-  // Publishable as @zh-xx/antu-dsh (spec/dsh-plugin.md P2.x step 5); the first version goes out with a release.
+  // Publishable as @zh-xx/antu-dsh (docs/dsh/dsh-plugin.md P2.x step 5); the first version goes out with a release.
   delete pkg.private
   pkg.publishConfig = { access: 'public' }
   pkg.license = 'AGPL-3.0-or-later'

@@ -1,8 +1,8 @@
 # DSH 插件（`@zh-xx/antu-dsh`）
 
-规划：[spec/dsh-plugin.zh-CN.md](../../spec/dsh-plugin.zh-CN.md)（英文 [spec/dsh-plugin.md](../../spec/dsh-plugin.md)）。
-DSH 约定（资源地址、provider、席位）：[spec/dsh-conventions.zh-CN.md](../../spec/dsh-conventions.zh-CN.md)
-（英文 [spec/dsh-conventions.md](../../spec/dsh-conventions.md)）。
+规划：[docs/dsh/dsh-plugin.zh-CN.md](../../docs/dsh/dsh-plugin.zh-CN.md)（英文 [docs/dsh/dsh-plugin.md](../../docs/dsh/dsh-plugin.md)）。
+DSH 约定（资源地址、provider、席位）：[docs/dsh/dsh-conventions.zh-CN.md](../../docs/dsh/dsh-conventions.zh-CN.md)
+（英文 [docs/dsh/dsh-conventions.md](../../docs/dsh/dsh-conventions.md)）。
 总 issue：[#79](https://github.com/zh-xx/Antu/issues/79)。英文版 [README.md](./README.md) 为准。
 
 **已在 npm 上发布为 `@zh-xx/antu-dsh`**（自 0.16.1 起；插件与仓库同版本号，并精确依赖同一版本的 `@zh-xx/antu`）：`dsh plugin --profile <name> add @zh-xx/antu-dsh`，然后重启 DSH。要试自己的构建，用** tarball**（`npm run build:dsh`，见下）。
@@ -30,7 +30,7 @@ tools/dsh/
 
 `npm run build:dsh` 总会重建 embed，写出 `package/index.js`、`package/client.js`、
 `package/lib/*`、`package/client.embed.js`，并打包 `tools/dsh/zh-xx-antu-dsh-<version>.tgz`。
-`package/` 下的生成文件与 tarball 不提交（`spec/dsh-plugin.md`）。
+`package/` 下的生成文件与 tarball 不提交（`docs/dsh/dsh-plugin.md`）。
 
 ## 测过的环境
 

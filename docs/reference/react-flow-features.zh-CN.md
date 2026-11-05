@@ -2,7 +2,7 @@
 
 > 用途：查“它有哪些能力、我们现在用没用、打算用在哪”。
 > 版本：`@xyflow/react` 12。官方文档 <https://reactflow.dev>
-> 相关：为什么选它见 `spec/fact/rendering.md` §6。
+> 相关：为什么选它见 `docs/fact/rendering.md` §6。
 
 状态标记：**✅ 已在用** ｜ **计划用** ｜ **用不上**
 
@@ -168,9 +168,9 @@ const maxZoom = 3   // 上限只用来防止放大到荒唐的程度
 
 | 事情 | 由谁做 |
 |---|---|
-| 节点摆哪里（自动布局） | **不是 React Flow**。用 dagre 或 elkjs，或自己算（fact 图就是自己算的网格） |
+| 节点摆哪里（自动布局） | **不是 React Flow**。见 [`docs/reference/layout-engines.zh-CN.md`](layout-engines.zh-CN.md)：有的画法用 elkjs，有的用案图自研规则（事实时间图就是自己算的网格） |
 | 导出图片 | 截图靠 `html-to-image`；但**范围要自己算**——React Flow 的 `getNodesBounds` 会把两个 1×1 装饰节点算进去，不能用 |
-| 我们自己的排布规则 | `src/renderers/fact/timeline/grid.js`，与 React Flow 无关 |
+| 我们自己的排布规则 | 见 [`docs/reference/layout-engines.zh-CN.md`](layout-engines.zh-CN.md)；例如 `src/renderers/fact/timeline/grid.js`，与 React Flow 无关 |
 
 ## 九、当前进度备忘
 

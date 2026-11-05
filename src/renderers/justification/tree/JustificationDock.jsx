@@ -3,7 +3,7 @@
 //  src/renderers/justification/tree/JustificationDock.jsx — the justification tree's control capsule
 //
 //  The controls are the ones listed in spec/justification/schema-draft.md §6.2, in the same shapes as
-//  every other dock (spec/fact/rendering.md §4.2, no new shapes invented):
+//  every other dock (docs/fact/rendering.md §4.2, no new shapes invented):
 //    link labels                                    an independent switch → a chip (only when a link has one)
 //    orientation, link style (straight / curved)    two exclusive options → segmented
 //    language, export image                         shared with every dock (shell/DockParts.jsx)

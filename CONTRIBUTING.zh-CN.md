@@ -36,7 +36,8 @@ npm run verify       # 含浏览器渲染与整段 MCP 跑通
 
 ## 目录
 
-- `spec/`：给人看的设计文档（多为英文，配 `.zh-CN.md`）；`spec/agent/`：给 agent 的说明，**只保留英文**（见 `spec/agent/README.md`）。
+- `spec/`：**契约**（schema、版本号、embed / MCP、主题 / 纸张规则）；`spec/agent/`：给 agent 的说明，**只保留英文**（见 `spec/agent/README.md`）。索引：`spec/README.zh-CN.md`。
+- `docs/`：架构、参考手册、渲染长文、DSH 规划 / 约定（不是 JSON 契约）。索引：`docs/README.zh-CN.md`。
 - `skills/antu/`：给 agent 的 skill，**生成，勿手改**（`npm run build:skill`）。
 - `examples/`：`agent/<type>/` 最小示例，`<type>/` 完整案例。
 - `src/renderers/<type>/schema.js`：该类型暴露的 knowledge。

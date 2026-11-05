@@ -98,7 +98,7 @@ Tools: `antu_schema`, `antu_guide`, `antu_examples`, `antu_validate`, `antu_layo
 
 ### DeepSeek Harness (DSH)
 
-A native DSH plugin, [`@zh-xx/antu-dsh`](https://www.npmjs.com/package/@zh-xx/antu-dsh) (Host tools + a chat card with a picker of the way of drawing), is on npm: `dsh plugin --profile <name> add @zh-xx/antu-dsh`, then restart DSH. It needs DSH 0.2.0-rc.2 or newer. How it works and how it is tested: [spec/dsh-plugin.md](spec/dsh-plugin.md) and [tools/dsh/README.md](tools/dsh/README.md). A profile that cannot use the plugin can still attach `antu-mcp` with a configuration-only bundle; the recipe and its limits are in [tools/dsh/README.md](tools/dsh/README.md).
+A native DSH plugin, [`@zh-xx/antu-dsh`](https://www.npmjs.com/package/@zh-xx/antu-dsh) (Host tools + a chat card with a picker of the way of drawing), is on npm: `dsh plugin --profile <name> add @zh-xx/antu-dsh`, then restart DSH. It needs DSH 0.2.0-rc.2 or newer. How it works and how it is tested: [docs/dsh/dsh-plugin.md](docs/dsh/dsh-plugin.md) and [tools/dsh/README.md](tools/dsh/README.md). A profile that cannot use the plugin can still attach `antu-mcp` with a configuration-only bundle; the recipe and its limits are in [tools/dsh/README.md](tools/dsh/README.md).
 
 ## In an Application
 
@@ -115,9 +115,9 @@ const diagram = mount(element, spec, { lang: 'en', onEvent: (e) => console.log(e
 
 ## Documentation
 
-- Design documents for people, under [`spec/`](spec/): [architecture](spec/v0-architecture.md), [the source types](spec/source-schema-draft.md), [themes](spec/theme.md), [paper size](spec/paper.md), [the MCP server](spec/mcp-server.md), [embedding in an application](spec/embed.md), [the DSH plugin plan](spec/dsh-plugin.md), and the diagrams ([fact](spec/fact/), [procedure](spec/procedure/schema-draft.md), [relationship](spec/relationship/schema-draft.md), [justification](spec/justification/schema-draft.md)). The notes for Agents are under [`spec/agent/`](spec/agent/).
-- [CHANGELOG.md](CHANGELOG.md) and the versioning rules in [spec/versioning.md](spec/versioning.md).
-- Known problems and requests are tracked as [GitHub issues](https://github.com/zh-xx/Antu/issues). Working rules for contributors are in [CONTRIBUTING.md](CONTRIBUTING.md).
+- **Contracts** under [`spec/`](spec/) (what makes a JSON file or API call valid): [versioning](spec/versioning.md), [themes](spec/theme.md), [paper size](spec/paper.md), [the MCP server](spec/mcp-server.md), [embedding](spec/embed.md), [source types](spec/source-schema-draft.md), and the diagram schemas ([fact](spec/fact/), [procedure](spec/procedure/schema-draft.md), [relationship](spec/relationship/schema-draft.md), [justification](spec/justification/schema-draft.md)). Agent mechanism notes: [`spec/agent/`](spec/agent/).
+- **Design and reference** under [`docs/`](docs/): [architecture](docs/architecture/v0-architecture.md), [layout engines](docs/reference/layout-engines.md), [React Flow features](docs/reference/react-flow-features.md), [fact rendering](docs/fact/rendering.md), [DSH plugin plan](docs/dsh/dsh-plugin.md) (install notes in [tools/dsh/README.md](tools/dsh/README.md)).
+- [CHANGELOG.md](CHANGELOG.md). Known problems: [GitHub issues](https://github.com/zh-xx/Antu/issues). Working rules: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Security
 

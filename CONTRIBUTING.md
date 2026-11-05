@@ -110,8 +110,10 @@ Do **not** rename machine identifiers to match: npm `@zh-xx/antu` / `@zh-xx/antu
 
 ## Directories
 
-- `spec/`: design documents for people (mostly English, with `.zh-CN.md` counterparts); `spec/agent/`: notes for
-  agents, English only.
+- `spec/`: **contracts** (schemas, versioning, embed / MCP, theme / paper rules); `spec/agent/`: notes for
+  agents, English only. Index: `spec/README.md`.
+- `docs/`: architecture, reference manuals, rendering essays, DSH plan / conventions (not the JSON contract).
+  Index: `docs/README.md`.
 - `skills/antu/`: the skill for agents, **generated, do not edit by hand** (`npm run build:skill`; the only hand-written
   parts are the two files under `tools/skill/`); it is the state of the last release and is rebuilt only in a release
   pull request.

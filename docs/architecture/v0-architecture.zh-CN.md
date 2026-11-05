@@ -171,6 +171,7 @@ JSON (信封) ──> [校验门卫] ──> 按大类路由 ──> 注册表�
 - 底层渲染技术：React Flow（已选定，事实图已在用）。
 - 布局：**各子类自负**，不用统一布局库。事实图的时间图自己算网格（`src/renderers/fact/timeline/grid.js`）；
   程序图的流程图把每个阶段单独交给 ELK 的分层算法排（elkjs，`src/renderers/procedure/flow/elk.js`），是按实测交叉数在 dagre 与手写排布之间选出的，阶段之间的线由自写的正交寻路走（`flow/router.js`，见 `spec/procedure/schema-draft.zh-CN.md` §6.1）；自上而下读的关系图各画法共用一套分层排布（`src/renderers/relationship/layered.js`）和一个线条层（`LineLayerNode.jsx`）。
+  每种画法属于哪一类、还考虑过哪些引擎，见 [`docs/reference/layout-engines.zh-CN.md`](../reference/layout-engines.zh-CN.md)。
 - 渲染器内部负责"语义 → React Flow nodes/edges"的翻译（翻译发生在渲染器内，不在规范内）。
 
 ## 6.1 产物形态：一个自包含的 HTML
@@ -224,7 +225,7 @@ Agent 读案件材料 ──> 生成一份 fact JSON ──> 一个自包含的 
 - [x] 信封层共享；内容层语义独立；公共约定层规则共享
 - [x] **schema 只到大类**；子类是渲染层的划分，任意合法 JSON 都能用该大类的任意子类渲染（§3）
 - [x] **产物是自包含 HTML**：一个 JSON 一个文件，页面内无网络请求，离线可看（§6.1）
-- [x] **不要侧栏**：画布占满，左上角标签卡 + 底部控制胶囊 + 缩放/缩略图，共四处浮层（`spec/fact/rendering.md` §4）
+- [x] **不要侧栏**：画布占满，左上角标签卡 + 底部控制胶囊 + 缩放/缩略图，共四处浮层（`docs/fact/rendering.md` §4）
 - [x] **来源只标出处、不跳转**；原始材料不打包（§6.1）
 - [x] 取舍原则：业务语言优先于渲染器统一
 - [x] 技术栈：React 19 + Vite + @xyflow/react 12 + elkjs（程序图流程图的布局；原先计划用 dagre），JSX，useState

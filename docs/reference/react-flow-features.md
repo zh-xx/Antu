@@ -2,7 +2,7 @@
 
 > Purpose: to look up "what it can do, whether we use it, and where we intend to use it".
 > Version: `@xyflow/react` 12. Official docs <https://reactflow.dev>
-> Related: why it was chosen is in `spec/fact/rendering.md` §6.
+> Related: why it was chosen is in `docs/fact/rendering.md` §6.
 
 Status markers: **✅ in use** | **planned** | **not needed**
 
@@ -178,9 +178,9 @@ Easily confused, so listed separately:
 
 | Concern | Whose job |
 |---|---|
-| Where nodes go (automatic layout) | **not React Flow**. Use dagre or elkjs, or compute it yourself (the fact diagram computes its own grid) |
+| Where nodes go (automatic layout) | **not React Flow**. See [`docs/reference/layout-engines.md`](layout-engines.md): elkjs for some kinds, Antu’s own rules for others (the fact timeline computes its own grid) |
 | Exporting an image | screenshotting uses `html-to-image`; but **the extent is ours to compute**: React Flow's `getNodesBounds` would count the two 1×1 decorative nodes, so it cannot be used |
-| Our own layout rules | `src/renderers/fact/timeline/grid.js`, unrelated to React Flow |
+| Our own layout rules | See [`docs/reference/layout-engines.md`](layout-engines.md); e.g. `src/renderers/fact/timeline/grid.js`, unrelated to React Flow |
 
 ## 9. Progress notes
 

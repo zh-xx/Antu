@@ -9,7 +9,7 @@ Display names: full **Antu · Legal Diagrams** / **案图 · 诉讼可视化**; 
 - Code: https://github.com/zh-xx/Antu (default branch: main)
 - npm: @zh-xx/antu ; DSH plugin: @zh-xx/antu-dsh
 - Secrets: never commit to the repo
-- Deeper docs: README.md, CLAUDE.md, spec/
+- Deeper docs: README.md, CLAUDE.md, spec/ (contracts), docs/ (design & reference)
 
 ## How to run
 - Node ≥ 18; npm install

@@ -3,7 +3,7 @@
 > Status: **v1.1, confirmed** (sponsor, 2026-09; status line checked against 0.19.0). v1: the five items in §7 were approved exactly as proposed. v1.1 adds the optional rule layer of §11 (contingent clauses written as `rules`, not as branches); every v1 JSON is still valid. The seven real contracts were rewritten with it (§11.4). This is what the implementation follows. Besides the flowchart there is a second way of drawing the same JSON, the route map (§6.1a, implemented as a first attempt).
 > Names, enum values and requiredness can still move if the renderer turns something up, but a change from here is a schema revision rather than a draft edit.
 > The file keeps the `schema-draft` name for consistency with the fact one (and because the tooling refers to it by that name); the status is what says v1.1.
-> Basis: the shared conventions layer of `spec/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (different domain semantics → controlled enum, no new top-level type).
+> Basis: the shared conventions layer of `docs/architecture/v0-architecture.md` (id references / everything carries a label / loose where optional), and the classification of differences in its §3 (different domain semantics → controlled enum, no new top-level type).
 > Scope: procedure = **a path and its possible branches**. What has already happened → `fact`; who stands in what relation to whom → `relationship`; norms + facts → a conclusion → `justification`.
 > The first sub-type: `flow` (flowchart). This draft serves this one top-level type only; the sub-type split is in §6.
 
@@ -289,7 +289,7 @@ other                   other
 ```
 
 Why contract flows and litigation procedures **share one schema and are separated by enum** instead
-of opening a fifth top-level type: `spec/v0-architecture.md` §3 fixes the test, and **the only condition
+of opening a fifth top-level type: `docs/architecture/v0-architecture.md` §3 fixes the test, and **the only condition
 for becoming a new top-level type is that "the element structure does not fit the existing types"**.
 Contract flows and litigation procedures are both "steps + conditional branches"; their element
 structure is identical and it fits, so it can only be a controlled enum.
@@ -484,7 +484,7 @@ it again next time. What must be distinguished:
 ## 6. Presentation (the renderer's job)
 
 The data layer does not care about any of this. The same JSON under a different drawing method: not
-one character of the data changes (the hard constraint in §3 of `spec/v0-architecture.md`).
+one character of the data changes (the hard constraint in §3 of `docs/architecture/v0-architecture.md`).
 
 ### 6.1 The first sub-type, `flow` (flowchart)
 
@@ -648,7 +648,7 @@ heavy for a normal end. This is the one place the document theme may carry meani
 The route map has the same switch, for its hanging boxes and its stations.
 
 The rules for the four control forms (menu / toggle / segmented / action) follow §4.2 of
-`spec/fact/rendering.md`; no separate set is invented. The language switch sits beside them, the
+`docs/fact/rendering.md`; no separate set is invented. The language switch sits beside them, the
 same one the timeline has.
 
 ### 6.3 How scale is computed, and what to do when it will not fit

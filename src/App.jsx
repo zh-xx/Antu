@@ -240,7 +240,7 @@ export default function App({ spec: given, kind: hostKind = null, kinds: allowed
           <div className="antu-app" data-theme={printedTheme} style={appStyle}>
       {/* The label card has no switch of its own on the page. It used to control both
           "whether it shows on screen" and "whether the export carries it"; now the
-          export never carries the heading (spec/fact/rendering.md §10.2 changed),
+          export never carries the heading (docs/fact/rendering.md §10.2 changed),
           so the switch has no meaning. A host that draws its own title may leave it out. */}
       {showHeader && (
         <DiagramHeader

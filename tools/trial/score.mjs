@@ -1,5 +1,5 @@
 // What can be told about a run without judging it: the checks that are not a matter of opinion. The judgement of
-// the picture, of faithfulness and of what the model told the user is made by reading the run (spec/trial.md).
+// the picture, of faithfulness and of what the model told the user is made by reading the run (docs/architecture/trial.md).
 
 const walk = (v, f, key = '') => {
   if (Array.isArray(v)) v.forEach((x) => walk(x, f, key))

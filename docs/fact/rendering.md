@@ -222,7 +222,7 @@ Measured on the examples (1600 × 900, off → on): Fang Yuan 7.0 → 10.8 px, t
 
 **The same fact JSON can be drawn in several ways**; they are parallel renderers, each with its own rendering rules,
 but they all consume the same schema. The timeline is the first; swimlane and other ways of drawing will be added later.
-(Why a sub-type is not a data type, and that hard constraint, are in `spec/v0-architecture.md` §3.)
+(Why a sub-type is not a data type, and that hard constraint, are in `docs/architecture/v0-architecture.md` §3.)
 
 In the interface it sits on **the same row as the label card at the top left**, not in the bottom control dock:
 
