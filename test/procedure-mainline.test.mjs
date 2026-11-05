@@ -110,15 +110,38 @@ test('mainline: every labelled connection has labelAt (paint must not crash)', (
   }
 })
 
-test('mainline with stages off matches current (engines identical outside columnMode)', () => {
+test('stages off hides bands but keeps the column layout path when data has stage columns', () => {
+  let diverged = 0
   for (const f of files) {
     const spec = load(f)
-    const a = buildProcedureGraph(spec, { stages: false }, undefined, 'vertical')
-    const b = buildProcedureGraph(spec, { stages: false, engine: 'mainline' }, undefined, 'vertical')
-    assert.equal(a.nodes.length, b.nodes.length, f)
-    for (let i = 0; i < a.nodes.length; i += 1) {
-      assert.equal(a.nodes[i].position.x, b.nodes[i].position.x, `${f}: ${a.nodes[i].id}`)
-      assert.equal(a.nodes[i].position.y, b.nodes[i].position.y, `${f}: ${a.nodes[i].id}`)
+    const present = (spec.stages ?? []).filter((st) => spec.nodes.some((n) => n.stageId === st.id))
+    const ids = new Set((spec.stages ?? []).map((s) => s.id))
+    const hasColumns = present.length > 1 && spec.nodes.every((n) => n.stageId && ids.has(n.stageId))
+
+    const offCurrent = buildProcedureGraph(spec, { stages: false }, undefined, 'vertical')
+    const offMainline = buildProcedureGraph(spec, { stages: false, engine: 'mainline' }, undefined, 'vertical')
+    assert.equal(offCurrent.stageBoxes.length, 0, `${f}: stages off → no painted boxes`)
+    assert.equal(offMainline.stageBoxes.length, 0, `${f}: stages off → no painted boxes (mainline)`)
+    assert.equal(offCurrent.nodes.length, offMainline.nodes.length, f)
+
+    if (!hasColumns) {
+      for (let i = 0; i < offCurrent.nodes.length; i += 1) {
+        assert.equal(offCurrent.nodes[i].position.x, offMainline.nodes[i].position.x, `${f}: ${offCurrent.nodes[i].id}`)
+        assert.equal(offCurrent.nodes[i].position.y, offMainline.nodes[i].position.y, `${f}: ${offCurrent.nodes[i].id}`)
+      }
+      continue
     }
+
+    let same = 0
+    for (let i = 0; i < offCurrent.nodes.length; i += 1) {
+      if (
+        offCurrent.nodes[i].position.x === offMainline.nodes[i].position.x &&
+        offCurrent.nodes[i].position.y === offMainline.nodes[i].position.y
+      ) {
+        same += 1
+      }
+    }
+    if (same < offCurrent.nodes.length) diverged += 1
   }
+  assert.ok(diverged > 0, 'expected at least one multi-stage example where mainline still diverges with bands off')
 })

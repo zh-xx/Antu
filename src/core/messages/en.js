@@ -128,7 +128,7 @@ export const en = {
   'flow.linkStraight': 'Straight',
   'flow.linkCurved': 'Curved',
   'flow.linkStyle': 'Link style',
-  'flow.engine': 'Engine (trial; staged columns only)',
+  'flow.engine': 'Engine (trial; needs stage columns in the data)',
   'flow.engineCurrent': 'Current',
   'flow.engineMainline': 'Mainline',
   'rule.tableTitle': 'Rules',

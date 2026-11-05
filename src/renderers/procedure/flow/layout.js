@@ -435,12 +435,11 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     { 'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX' },
     { 'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF' },
   ]
-  // With stages drawn, and every node in one, the stages become columns (columns.js): the flow
-  // runs down inside a stage and the stages run across, so the picture is not one long strip.
-  // Otherwise, one graph as before.
-  const columnMode = showStages && presentStages.length > 1 && nodes.every((n) => stageById.has(n.stageId))
-  // Mainline-first (issue 190): fields.engine === 'mainline' (dock / preset). Only in columnMode; default stays ELK.
-  const useMainline = columnMode && fields?.engine === 'mainline'
+  // Stage *data* decides the layout path; the Stages *switch* only decides whether boxes paint.
+  // Coupling the two made "turn off stage bands" silently swap engines (issue 190 review).
+  const hasStageColumns = presentStages.length > 1 && nodes.every((n) => stageById.has(n.stageId))
+  // Mainline-first (issue 190): fields.engine === 'mainline' (dock / preset). Needs stage columns; default stays ELK.
+  const useMainline = hasStageColumns && fields?.engine === 'mainline'
   // The column layout has no `cost` / `stageTitles`, the single graph has; both are read below
   /** @type {any} */
   let best = null
@@ -453,7 +452,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       vertical,
       spine,
     })
-  } else if (columnMode) {
+  } else if (hasStageColumns) {
     best = yield* layoutColumnsGen({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
   } else {
     for (const placement of PLACEMENTS) {
@@ -464,11 +463,13 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     }
   }
   // The last passes over the links (polish.js), as in the column layout
-  if (!columnMode) {
+  if (!hasStageColumns) {
     polishSingle(best, diamonds, vertical, byId)
     yield
   }
-  const { placed, stageBoxes, size } = best
+  const { placed, size } = best
+  // Paint only: hide stage bands when the reader turned Stages off (layout still used the columns)
+  const stageBoxes = showStages ? best.stageBoxes : []
   const connections = best.connections.map((c) => ({ ...c, d: toPathD(c.points), dCurve: toCurveD(c.points) }))
 
   // Boxes in along/across coordinates (along = the direction the layers run)

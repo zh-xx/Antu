@@ -12,7 +12,8 @@
 //
 //  Does not cut branches (unlike route). Does not call ELK on the main path.
 //  Enabled with fields.engine === 'mainline' (dock switch + preset; not a schema field).
-//  Only applies in columnMode (stages on, more than one stage, every node staged).
+//  Applies when the data has stage columns (more than one stage, every node staged), whether
+//  or not the Stages switch paints the bands.
 // ============================================================
 
 import { straighten } from './straighten.js'

@@ -107,7 +107,7 @@ export const zh = {
   'flow.linkStraight': '折线',
   'flow.linkCurved': '曲线',
   'flow.linkStyle': '连线样式',
-  'flow.engine': '引擎（试验；仅分阶段模式）',
+  'flow.engine': '引擎（试验；数据需有阶段列）',
   'flow.engineCurrent': '现有',
   'flow.engineMainline': 'Mainline',
   'rule.tableTitle': '条款',
