@@ -40,7 +40,7 @@
 | 事实 | `timeline` | 自研网格（行=时间槽；列=阵营×当事人） | `src/renderers/fact/timeline/layout.js`、`grid.js` |
 | 事实 | `chronicle` | 自研单列脊线（时间 · 脊 · 卡片） | `src/renderers/fact/chronicle/layout.js` |
 | 事实 | `scale` | 自研比例时间轴 + 泳道 | `src/renderers/fact/scale/layout.js` |
-| 程序 | `flow` | 每阶段一列交给 **ELK layered**；阶段间自研桥接，再 straighten / polish / 正交路由 | `src/renderers/procedure/flow/layout.js`、`columns.js`、`elk.js`、`router.js`、`straighten.js`、`polish.js` |
+| 程序 | `flow` | 默认每阶段 **ELK layered**；可选 **Mainline-first** 原型（`fields.engine = 'mainline'`，#190）先钉主线再挂支线，该路径不用 ELK | `layout.js`、`columns.js`、`mainline.js`、`spine.js`、`elk.js`、`router.js`、`straighten.js`、`polish.js` |
 | 程序 | `route` | 自研主线优先（**不用 ELK**）：主线从左到右，支线往下挂 | `src/renderers/procedure/route/layout.js` |
 | 关系 | `graph` | **按阵营分块 ELK layered**；阵营横排；关系线由案图正交路由 | `src/renderers/relationship/graph/layout.js` |
 | 关系 | `focus` | 自研环层；孤岛排在下方 | `src/renderers/relationship/focus/layout.js` |
@@ -91,7 +91,7 @@
 | yFiles 等商用正交套件 | 分层 + 正交 | 用不上 | 授权成本 |
 | AntV G6 / cytoscape 当画布壳 | 多种插件 | 用不上 | 画布已是 React Flow；布局是另一层 |
 
-对程序 **flow** 来说，用另一家**分层**引擎换掉 ELK，很难在这份语料上打赢它。若改选**另一家族**（例如 `route` 已经在用的主线优先自研几何），那是产品读法的决定——见 issue #190；该 issue 是讨论方向，本文不把它当成已定方案。
+程序 **flow** 已有 Mainline-first 旁路原型（`fields.engine = 'mainline'`，见 `mainline.js`）。对照：`node tools/layout-scan/run.mjs`。在计量翻转之前默认仍是 ELK。用另一家**分层**第三方引擎换掉 ELK，很难在这份语料上打赢它。
 
 ---
 
@@ -110,7 +110,7 @@
 
 ## 六、不在本文范围
 
-- 去实现 issue #190（flow 主线优先）。只作讨论记录；同一份 JSON 的 `route` 已经按主线优先来排。
+- 在语料门槛通过前，把 flowchart **默认**翻成 Mainline-first（#190）。原型需显式打开；`route` 已是另一套主线优先读法。
 - 在没有像当初选 ELK 那样**用同一语料测过**之前，再加第二个第三方布局依赖。
 - React Flow 特性 → [`docs/reference/react-flow-features.zh-CN.md`](react-flow-features.zh-CN.md)；主题、纸张、JSON 规范 → `spec/`。
 

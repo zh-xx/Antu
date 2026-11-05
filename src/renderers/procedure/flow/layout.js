@@ -26,10 +26,12 @@
 //  contracts 01 and 03; ELK gives 0 and 2 (see elk.js).
 // ============================================================
 
-import { validateProcedure, hintsOfProcedure, ruleEndIds } from './rules.js'
+import { validateProcedure, hintsOfProcedure } from './rules.js'
 import { elkLayoutSync } from './elk.js'
 import { straighten, linkCost } from './straighten.js'
 import { layoutColumnsGen } from './columns.js'
+import { layoutMainlineGen } from './mainline.js'
+import { analyseProcedureGraph, edgeKey } from './spine.js'
 import { polishLinks } from './polish.js'
 import { edgesOf } from './router.js'
 import { layoutRuleTable } from './ruleTable.js'
@@ -51,8 +53,6 @@ import {
   sizeOf,
   TABLE_GAP,
 } from './metrics.js'
-
-const keyOf = (e) => `${e.from}|${e.to}|${e.condition ?? ''}`
 
 /**
  * Draw a polyline point list as an SVG d (with rounded corners).
@@ -235,77 +235,10 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   }
 
   const nodes = spec.nodes
-  const stageById = new Map((spec.stages ?? []).map((s) => [s.id, s]))
-  const byId = new Map(nodes.map((n) => [n.id, n]))
   const ids = nodes.map((n) => n.id)
-
-  const outE = new Map(ids.map((id) => [id, []]))
-  const inE = new Map(ids.map((id) => [id, []]))
-  spec.edges.forEach((e, index) => {
-    outE.get(e.from).push({ ...e, index })
-    inE.get(e.to).push({ ...e, index })
-  })
-
-  // ① recognise back edges: DFS; an edge into a node "still on the current path" is a back
-  // edge. Drawn dashed: a loop back reads differently from the way forward.
-  const back = new Set()
-  const color = new Map()
-  const walk = (u) => {
-    color.set(u, 1)
-    for (const e of outE.get(u)) {
-      const c = color.get(e.to) ?? 0
-      if (c === 1) back.add(keyOf(e))
-      else if (c === 0) walk(e.to)
-    }
-    color.set(u, 2)
-  }
-  // Start from the entries: a search that happened to start mid-flow (whatever node is written
-  // first) would take the edge back into its own start for the loop and call a forward edge
-  // "back". Only nodes no entry reaches are started from afterwards.
-  const starters = [...ids.filter((id) => inE.get(id).length === 0), ...ids]
-  for (const id of starters) if ((color.get(id) ?? 0) === 0) walk(id)
-
-  // An end reached only through a rule has no incoming edge, but it is not an entry
-  const ruleEnds = new Set([...ruleEndIds(spec)].filter((id) => byId.has(id) && inE.get(id).length === 0))
-
-  // ② the main line: walk the main edges; when none is marked main, infer it as
-  // "the first unconditional, unvisited outgoing edge"
-  const entries = ids.filter((id) => inE.get(id).length === 0 && !ruleEnds.has(id))
-  const spine = []
-  const spineSet = new Set()
-  {
-    let cur = entries[0]
-    const guard = new Set()
-    while (cur !== undefined && !guard.has(cur)) {
-      guard.add(cur)
-      spine.push(cur)
-      spineSet.add(cur)
-      if (byId.get(cur).kind === 'end') break
-      const outs = outE.get(cur)
-      const pick =
-        outs.find((e) => e.main === true) ??
-        outs.find((e) => !e.condition && !guard.has(e.to)) ??
-        outs.find((e) => !guard.has(e.to))
-      cur = pick?.to
-    }
-  }
-  // An edge is on the main line when it joins two consecutive main-line nodes, marked or inferred
-  const spineNext = new Map(spine.slice(0, -1).map((id, i) => [id, spine[i + 1]]))
-
-  // Several edges between the same pair of nodes become one link, conditions side by side (§6.1)
-  const grouped = new Map()
-  for (const e of spec.edges) {
-    const k = `${e.from}|${e.to}`
-    if (!grouped.has(k)) grouped.set(k, [])
-    grouped.get(k).push(e)
-  }
-  const groups = [...grouped.values()].map((group) => {
-    const { from, to } = group[0]
-    const isBack = back.has(keyOf(group[0]))
-    const labels = group.map((e) => e.condition).filter(Boolean)
-    const isMain = !isBack && spineNext.get(from) === to
-    return { from, to, isBack, isMain, merged: group.length, label: labels.length ? labels.join(' / ') : '' }
-  })
+  const stageById = new Map((spec.stages ?? []).map((s) => [s.id, s]))
+  // ① back edges and ② the main line (shared with Mainline-first and route; spine.js)
+  const { byId, back, ruleEnds, spine, spineSet, groups } = analyseProcedureGraph(spec)
 
   // ③ ELK. Each stage is a box (an ELK compound node) holding its nodes, drawn with its title:
   // the grouping reads at a glance, and ELK routes links across the boxes and keeps labels
@@ -506,10 +439,22 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   // runs down inside a stage and the stages run across, so the picture is not one long strip.
   // Otherwise, one graph as before.
   const columnMode = showStages && presentStages.length > 1 && nodes.every((n) => stageById.has(n.stageId))
+  // Mainline-first (#190): internal switch only — fields.engine === 'mainline'. Default stays ELK.
+  const useMainline = columnMode && fields?.engine === 'mainline'
   // The column layout has no `cost` / `stageTitles`, the single graph has; both are read below
   /** @type {any} */
   let best = null
-  if (columnMode) {
+  if (useMainline) {
+    best = yield* layoutMainlineGen({
+      nodes,
+      groups,
+      stages: presentStages,
+      ruleEnds,
+      labelBox,
+      vertical,
+      spine,
+    })
+  } else if (columnMode) {
     best = yield* layoutColumnsGen({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
   } else {
     for (const placement of PLACEMENTS) {
@@ -538,7 +483,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     }),
   )
 
-  const backList = spec.edges.filter((e) => back.has(keyOf(e)))
+  const backList = spec.edges.filter((e) => back.has(edgeKey(e)))
 
   // Layers, read back from where ELK put the nodes (for the stats and the popover direction)
   const alongOf = (id) => Math.round(boxes.get(id)?.a0 ?? 0)
