@@ -35,6 +35,16 @@ const load = (f) => JSON.parse(readFileSync(`${DIR}/${f}`, 'utf8'))
 const byPrefix = (prefix) => files.find((f) => f.startsWith(prefix))
 const base = () => load(byPrefix('02-'))
 const some = (errs, re) => errs.some((e) => re.test(e))
+/** Ends reached only through rules (no flow edge) are not painted on the canvas. */
+const paintedNodeCount = (spec) => {
+  const edged = new Set()
+  for (const e of spec.edges ?? []) {
+    edged.add(e.from)
+    edged.add(e.to)
+  }
+  const ruleOnly = new Set((spec.rules ?? []).map((r) => r.endId).filter((id) => id && !edged.has(id)))
+  return spec.nodes.filter((n) => !ruleOnly.has(n.id)).length
+}
 
 test('procedure corpus: validation passes for all of them', () => {
   // This one reports "not a single file found" first, with the reason, so the later
@@ -58,7 +68,7 @@ test('procedure corpus: both orientations lay out and no nodes overlap', () => {
       assert.deepEqual(g.errors, [], `${f} / ${dir} does not lay out`)
       assert.equal(g.edges.length, 0, 'edges are always empty: links are drawn by our own layer')
       assert.ok(g.size.width > 0 && g.size.height > 0, `${f} / ${dir} size must be positive`)
-      assert.equal(g.nodes.length, load(f).nodes.length, `${f}: not one node may be lost`)
+      assert.equal(g.nodes.length, paintedNodeCount(load(f)), `${f}: every flow node is painted (rule-only ends stay off)`)
 
       // no overlap: two nodes along the same direction must not sit on each other
       const boxes = g.nodes.map((n) => ({
@@ -566,7 +576,16 @@ test('stage boxes hold their own nodes and never overlap', () => {
         assert.equal(g.stageBoxes.length, 0, `${f}: no stages, no boxes`)
         continue
       }
-      const used = new Set(spec.nodes.map((n) => n.stageId).filter(Boolean))
+      // Stages that only hold a rule-only end are not painted (nothing left to box).
+      const edged = new Set()
+      for (const e of spec.edges ?? []) {
+        edged.add(e.from)
+        edged.add(e.to)
+      }
+      const ruleOnly = new Set((spec.rules ?? []).map((r) => r.endId).filter((id) => id && !edged.has(id)))
+      const used = new Set(
+        spec.nodes.filter((n) => n.stageId && !ruleOnly.has(n.id)).map((n) => n.stageId),
+      )
       assert.equal(g.stageBoxes.length, used.size, `${f}/${dir}: one box per stage that has nodes`)
       for (const b of g.stageBoxes) {
         assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.w <= g.size.width && b.y + b.h <= g.size.height, `${f}/${dir}: box ${b.label} leaves the content`)
@@ -671,12 +690,19 @@ test('rules become a table under the diagram: every rule once, grouped by the en
   }
 })
 
-test('an end the rules lead to says how many; the scope is written out', () => {
+test('an end the rules lead to is named in the table; the scope is written out', () => {
   const g = buildProcedureGraph(loadRules('03-labour-outsourcing-contract.zh-CN.json'))
-  const end = g.nodes.find((n) => n.data.ruleCount > 0)
-  assert.ok(end, 'the end the termination rules lead to carries their count')
-  assert.equal(end.data.ruleCount, 3, 'three termination grounds')
-  // No link runs from the table into the diagram: the table and the count point at each other
+  // Rule-only ends are not painted; the rules table still groups their rows under the end's label.
+  assert.equal(
+    g.nodes.some((n) => n.id === 'n-16'),
+    false,
+    'rule-only end stays off the canvas',
+  )
+  const group = g.ruleTable.groups.find((gr) => gr.endId === 'n-16')
+  assert.ok(group, 'the termination end heads a rules-table group')
+  assert.equal(group.rows.length, 3, 'three termination grounds')
+  assert.ok(group.endLabel, 'the group names the end')
+  // No link runs from the table into the diagram: the table and the diagram point at each other by name
   assert.equal(g.connections.filter((c) => !g.nodes.some((n) => n.id === c.from)).length, 0)
   // A rule over one stage names it; over several, the first and the last; over none, throughout
   const rows = g.ruleTable.groups.flatMap((gr) => gr.rows)

@@ -234,22 +234,23 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     }
   }
 
-  const nodes = spec.nodes
-  const ids = nodes.map((n) => n.id)
   const stageById = new Map((spec.stages ?? []).map((s) => [s.id, s]))
   // ① back edges and ② the main line (shared with Mainline-first and route; spine.js)
   const { byId, back, ruleEnds, spine, spineSet, groups } = analyseProcedureGraph(spec)
+  // Ends reached only through rules have no flow edges. Painting them as islands on the
+  // canvas confuses readers (no arrow in or out). They stay addressable for the rules table
+  // via byId; they are not laid out or drawn.
+  const nodes = spec.nodes.filter((n) => !ruleEnds.has(n.id))
+  const ids = nodes.map((n) => n.id)
 
   // ③ ELK. Each stage is a box (an ELK compound node) holding its nodes, drawn with its title:
   // the grouping reads at a glance, and ELK routes links across the boxes and keeps labels
-  // clear of them. A node with no stage stays outside every box. An end reached only through
-  // rules goes in the last layer of its box.
+  // clear of them. A node with no stage stays outside every box.
   const showStages = fields?.stages !== false && stageById.size > 0
   const presentStages = (spec.stages ?? []).filter((st) => nodes.some((n) => n.stageId === st.id))
   const leaf = (n) => {
     const { w, h } = sizeOf(n)
-    const opts = ruleEnds.has(n.id) ? { 'elk.layered.layering.layerConstraint': 'LAST' } : {}
-    return { id: n.id, width: w, height: h, layoutOptions: opts }
+    return { id: n.id, width: w, height: h, layoutOptions: {} }
   }
   // Spacing is read per parent: without repeating it here, the inside of a box would fall
   // back to ELK's defaults and be laid out looser than the rest

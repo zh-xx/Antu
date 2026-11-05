@@ -9,7 +9,9 @@
 //       when there is only one column); a decision's first hop sits on the fork's row
 //       (0-bend side link / back); siblings share one vertical track; branches yield —
 //       the spine never moves for them;
-//    3. pin kind:end (including rule-only stubs) on the spine terminus, never in a lane;
+//    3. branch-exit ends stay in their hang lane (so the leave→…→end chain stays one path);
+//       main-line ends already on the spine stay there. Rule-only ends (no flow edges) are
+//       omitted upstream — they belong in the rules table, not as islands on the canvas;
 //    4. stack leftover "pocket" nodes beside the hangs;
 //    5. set stage boxes side by side; route cross-stage links with router.js;
 //    6. light polish, then re-pin the spine axis (polish must not leave the trunk bent).
@@ -37,8 +39,8 @@ import {
   sizeOf,
 } from './metrics.js'
 
-/** Gap between the spine column and the first branch lane */
-const LANE_GAP = 36
+/** Gap between the spine column and the first branch lane (room for a condition label on the hop) */
+const LANE_GAP = 112
 /** Extra room between two branch lanes */
 const LANE_SEP = 28
 
@@ -313,27 +315,18 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     h.boxes = boxes
   }
 
-  // Ends belong on the spine terminus (stubs for rule-only ends), never in a hang lane.
-  /** @type {string[]} */
-  const peeledEnds = []
-  for (const h of hangs) {
-    const kept = []
-    for (const id of h.boxes) {
-      if (byId.get(id)?.kind === 'end') peeledEnds.push(id)
-      else kept.push(id)
-    }
-    h.boxes = kept
-  }
+  // Branch-exit ends stay in hang.boxes (one continuous leave→…→end path). Do not peel them
+  // onto the spine: that left hang steps with a dangling stub and an end that looked unlinked.
+  // Only ends still unplaced after hangs (rare; e.g. a lone stage of ends) sit on the terminus.
   /** @type {string[]} */
   const endTerminus = []
   {
-    const seenEnd = new Set(spineHere)
-    for (const id of [...peeledEnds, ...own.filter((n) => n.kind === 'end').map((n) => n.id)]) {
-      if (seenEnd.has(id) || !ownIds.has(id)) continue
-      seenEnd.add(id)
-      endTerminus.push(id)
+    const claimed = new Set([...spineHere, ...hangs.flatMap((h) => h.boxes)])
+    for (const n of own) {
+      if (n.kind !== 'end' || claimed.has(n.id)) continue
+      endTerminus.push(n.id)
+      claimed.add(n.id)
     }
-    // Fold terminus widths into the spine column before lanes are measured.
     for (const id of endTerminus) {
       spineW = Math.max(spineW, frameSize(byId.get(id)).w)
     }
@@ -443,7 +436,7 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   }
   const spineColumn = [...spineHere, ...endTerminus.filter((id) => placed.has(id))]
 
-  // Pockets: remaining own nodes not drawn (never ends — those are on the terminus)
+  // Pockets: remaining own nodes not drawn (branch ends already sit in hang boxes)
   const leftover = own.filter((n) => !drawn.has(n.id))
   if (leftover.length) {
     const pocketX =

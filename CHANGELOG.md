@@ -23,7 +23,9 @@ what breaks a file or a tool call written for the version before, with how to br
 - **Mainline with Stages off is one straight trunk**: the Stages switch folds the spine into columns when on; off (or no stage data) keeps a single implicit column. Current still uses stage-column data when bands are hidden.
 - **Embed `select` / `focus` before the card is painted**: a held host ask that lands a frame early retries briefly instead of being answered `false` once and lost.
 - **Flowchart engine dock labels name both engines**: **ELK** / **Mainline** (was Current / 现有).
-- **Mainline connection labels no longer sit under nodes**: after spine / same-row geometry settles, labels are re-placed; short same-row hops bias the text toward the destination so a wide label does not straddle the source diamond.
+- **Mainline connection labels no longer sit under nodes**: after spine / same-row geometry settles, labels are re-placed; short same-row hops bias the text toward the destination so a wide label does not straddle the source diamond. Labels also stay near their segment (no far leaps).
+- **Rule-only ends stay off the flowchart**: an end reached only through `rules[].endId` (no flow edge) is named in the rules table and is no longer painted as an unlinked island.
+- **Mainline keeps branch-exit ends in the hang lane**: peeling every `kind:end` onto the spine left hang steps with a dangling stub and ends that looked unlinked; the leave→…→end chain stays one path.
 
 ## 0.19.0
 
