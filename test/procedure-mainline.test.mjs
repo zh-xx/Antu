@@ -31,7 +31,7 @@ test('spine.js agrees with the default layout on the main line', () => {
   }
 })
 
-test('mainline: seven contracts, both orientations, no overlap, every node present', () => {
+test('mainline: corpus, both orientations, no overlap, every node present', () => {
   for (const f of files) {
     for (const dir of ['vertical', 'horizontal']) {
       const spec = load(f)
@@ -278,4 +278,38 @@ test('mainline: in-stage decision branches bend ≤1 (≥95%); same-row backs ar
   assert.ok(branchOk / branchTotal >= 0.95, `only ${branchOk} of ${branchTotal} in-stage decision branches bend ≤1`)
   assert.ok(backSameRow > 0, 'expected at least one same-row back to a decision')
   assert.equal(backBent, 0, `${backBent} of ${backSameRow} same-row backs still bend`)
+})
+
+test('mainline: connection labels stay clear of nodes (both orientations, stages on/off)', () => {
+  const overlap = (a, b) =>
+    a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5
+  let labelled = 0
+  for (const f of files) {
+    const spec = load(f)
+    for (const stagesOn of [true, false]) {
+      for (const dir of ['vertical', 'horizontal']) {
+        const g = buildProcedureGraph(spec, { ...fields, stages: stagesOn }, undefined, dir)
+        const nodes = g.nodes.map((n) => ({
+          id: n.id,
+          x: n.position.x,
+          y: n.position.y,
+          w: n.data.w,
+          h: n.data.h,
+        }))
+        for (const c of g.connections) {
+          if (!c.label) continue
+          labelled += 1
+          assert.ok(c.labelAt, `${f} / stages=${stagesOn} / ${dir}: ${c.id} missing labelAt`)
+          const L = { x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height }
+          for (const n of nodes) {
+            assert.ok(
+              !overlap(L, n),
+              `${f} / stages=${stagesOn} / ${dir}: label «${c.label}» (${c.id}) overlaps ${n.id}`,
+            )
+          }
+        }
+      }
+    }
+  }
+  assert.ok(labelled > 0, 'expected labelled connections in the corpus')
 })

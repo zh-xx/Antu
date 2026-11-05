@@ -726,27 +726,71 @@ export function placeLabel(points, size, nodeRects, blocks, links, borders = [],
     links.filter((c) => segsOf(c.points).some((s) => segHits(s, r, 3))).length * 10 +
     borders.filter((s) => segHits(s, r, 3)).length * 5 +
     (segsOf(points).some((s) => segHits(s, r, 1)) ? 30 : 0)
-  // Every spot beside every long enough segment: the middle first, then near the ends, then
-  // every few pixels along; tight to the line, then a little further off
+  // Every spot beside every segment: the middle first, then near the ends, then every few pixels
+  // along; tight to the line, then a little further off. Short hops (Mainline same-row branches)
+  // are often shorter than the label: try a centred offset and destination-biased anchors so the
+  // text sits in the open lane beside the target instead of straddling the source diamond.
   let best = null
   for (const [p, q] of segsOf(points)) {
     const horizontal = Math.abs(p[1] - q[1]) < 0.5
     const len = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1])
+    if (len < 2) continue
     const need = horizontal ? w : h
-    if (len < need + 8) continue
-    const dir = horizontal ? Math.sign(q[0] - p[0]) : Math.sign(q[1] - p[1])
-    const spots = [(len - need) / 2, 6, len - need - 6]
-    for (let t = 6; t <= len - need - 6; t += 8) spots.push(t)
-    for (const off of [4, 14]) {
+    const dir = horizontal ? Math.sign(q[0] - p[0]) || 1 : Math.sign(q[1] - p[1]) || 1
+    const short = len < need + 8
+    const spots = short
+      ? [(len - Math.min(need, len)) / 2]
+      : [(len - need) / 2, 6, len - need - 6]
+    if (!short) {
+      for (let t = 6; t <= len - need - 6; t += 8) spots.push(t)
+    }
+    // Diamonds are tall: a same-row exit at the centre needs a large perpendicular step to clear the box.
+    const offs = short ? [4, 14, 28, 44, 64, 88, 112, 140, 180] : [4, 14, 28]
+    // Short hop: several along-axis anchors. Prefer destination-side so a wide label does not
+    // stick back into the source (centring on a 60 px gap with a 120 px label always does).
+    const shortAnchors = short
+      ? horizontal
+        ? [
+            (p[0] + q[0]) / 2 - w / 2,
+            dir > 0 ? q[0] - w : q[0],
+            dir > 0 ? q[0] - w / 2 : q[0] - w / 2,
+            dir > 0 ? p[0] : p[0] - w,
+            dir > 0 ? q[0] - w - 8 : q[0] + 8,
+          ]
+        : [
+            (p[1] + q[1]) / 2 - h / 2,
+            dir > 0 ? q[1] - h : q[1],
+            dir > 0 ? q[1] - h / 2 : q[1] - h / 2,
+            dir > 0 ? p[1] : p[1] - h,
+            dir > 0 ? q[1] - h - 8 : q[1] + 8,
+          ]
+      : null
+    for (const off of offs) {
       for (const t of spots) {
         for (const side of [1, -1]) {
-          const r = horizontal
-            ? { x: dir > 0 ? p[0] + t : p[0] - t - w, y: side < 0 ? p[1] - off - h : p[1] + off, w, h }
-            : { x: side < 0 ? p[0] - off - w : p[0] + off, y: dir > 0 ? p[1] + t : p[1] - t - h, w, h }
-          const bad = badness(r)
-          if (bad === 0) return { x: r.x, y: r.y }
-          // Longer segments first on a tie: a label reads with the long run of its line
-          if (!best || bad < best.bad || (bad === best.bad && len > best.len)) best = { bad, len, x: r.x, y: r.y }
+          const along = Math.max(0, Math.min(t, Math.max(0, len - (horizontal ? w : h))))
+          const base = horizontal
+            ? {
+                x: dir > 0 ? p[0] + along : p[0] - along - w,
+                y: side < 0 ? p[1] - off - h : p[1] + off,
+                w,
+                h,
+              }
+            : {
+                x: side < 0 ? p[0] - off - w : p[0] + off,
+                y: dir > 0 ? p[1] + along : p[1] - along - h,
+                w,
+                h,
+              }
+          const candidates = short
+            ? shortAnchors.map((a) => (horizontal ? { ...base, x: a } : { ...base, y: a }))
+            : [base]
+          for (const r of candidates) {
+            const bad = badness(r)
+            if (bad === 0) return { x: r.x, y: r.y }
+            // Longer segments first on a tie: a label reads with the long run of its line
+            if (!best || bad < best.bad || (bad === best.bad && len > best.len)) best = { bad, len, x: r.x, y: r.y }
+          }
         }
       }
     }
@@ -764,10 +808,52 @@ export function placeLabel(points, size, nodeRects, blocks, links, borders = [],
       if (!best || bad < best.bad) best = { bad, len, x: r.x, y: r.y }
     }
   }
-  if (best) return { x: best.x, y: best.y }
-  // No segment long enough: beside the middle of the longest one
+  if (best && best.bad < 50) return { x: best.x, y: best.y }
+  // No clear beside-spot (short same-row hops are common under Mainline): try offsets around the
+  // longest segment's middle that still clear nodes; prefer those over sitting on a box.
   const [p, q] = segsOf(points).sort(
     (a, b) => Math.abs(b[1][0] - b[0][0]) + Math.abs(b[1][1] - b[0][1]) - (Math.abs(a[1][0] - a[0][0]) + Math.abs(a[1][1] - a[0][1])),
   )[0]
-  return { x: Math.max(PAD / 2, (p[0] + q[0]) / 2 + 4), y: Math.max(PAD / 2, (p[1] + q[1]) / 2 - h / 2) }
+  const mx = (p[0] + q[0]) / 2
+  const my = (p[1] + q[1]) / 2
+  const probes = [
+    [4, -h - 4],
+    [4, 4],
+    [-w - 4, -h - 4],
+    [-w - 4, 4],
+    [w / 2 + 4, -h - 4],
+    [-w / 2 - 4, -h - 4],
+    [w / 2 + 4, 4],
+    [-w / 2 - 4, 4],
+    [0, -h - 14],
+    [0, 14],
+    [14, 0],
+    [-w - 14, 0],
+    // Farther probes for short same-row hops beside tall diamonds / packed rows
+    [0, -h - 44],
+    [0, 44],
+    [0, -h - 88],
+    [0, 88],
+    [w / 2 + 20, -h - 44],
+    [-w / 2 - 20, -h - 44],
+    [w / 2 + 20, 44],
+    [-w / 2 - 20, 44],
+    [q[0] - mx - w / 2, -h - 28],
+    [q[0] - mx - w / 2, 28],
+    [q[0] - mx, -h - 28],
+    [q[0] - mx, 28],
+  ]
+  let clear = null
+  for (const [dx, dy] of probes) {
+    const r = { x: Math.max(PAD / 2, mx + dx - w / 2), y: Math.max(PAD / 2, my + dy), w, h }
+    const bad = badness(r)
+    if (bad === 0) return { x: r.x, y: r.y }
+    if ((!clear || bad < clear.bad) && bad < 50) clear = { bad, x: r.x, y: r.y }
+  }
+  if (clear) return { x: clear.x, y: clear.y }
+  // Prefer any beside-spot that is clear of nodes (bad < 50) even if it still grazes a link —
+  // sitting on a box (bad ≥ 50) is worse than a line-touching label.
+  if (best && best.bad < 50) return { x: best.x, y: best.y }
+  if (best) return { x: best.x, y: best.y }
+  return { x: Math.max(PAD / 2, mx + 4), y: Math.max(PAD / 2, my - h / 2) }
 }

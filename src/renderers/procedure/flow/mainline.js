@@ -211,7 +211,8 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   }
   // straighten/polish prefer diamond-point routes; same-row forks stay side-horizontal.
   restoreSameRowLinks(placed, connections, diamonds)
-  ensureConnectionLabels(connections, [...placed.values()], titles, borders)
+  // Routes moved after the per-stage label pass: drop stale spots and place again.
+  ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true })
   yield
 
   let width = cx - COLUMN_GAP + PAD
@@ -530,9 +531,8 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   pushBranchesOffSpine(placed, spineColumn)
   // Polish / pin can rewrite side links; put same-row decision branches and backs back to 0-bend.
   restoreSameRowLinks(placed, connections, diamonds)
-  // polish.js only re-places labels that already have a spot; mainline starts with none
-  // (unlike ELK). Fill every labelled link before the stage is packed into the picture.
-  ensureConnectionLabels(connections, [...placed.values()])
+  // Fill / refresh every labelled link after the last geometry change (stale labelAt hides under nodes).
+  ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true })
 
   // Normalise to 0,0 and measure
   let x0 = Infinity
@@ -667,19 +667,29 @@ function pushBranchesOffSpine(placed, spineIds) {
 
 /**
  * Every connection with a label must carry labelAt: the paint layer reads `.x` / `.y`.
+ * With `force`, clear existing spots first so a later geometry pass (pin / same-row restore)
+ * cannot leave a label sitting on a node.
  * @param {object[]} connections
  * @param {{ x: number, y: number, w: number, h: number }[]} nodeRects
  * @param {object[]} [blocks]
  * @param {object[]} [borders]
+ * @param {{ force?: boolean }} [opts]
  */
-function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = []) {
+function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = [], opts = {}) {
+  if (opts.force) {
+    for (const c of connections) {
+      if (c.labelSize) c.labelAt = null
+    }
+  }
   for (const c of connections) {
     if (!c.labelSize || c.labelAt) continue
     const others = connections.filter((o) => o !== c)
     const labels = others
       .filter((o) => o.labelAt && o.labelSize)
       .map((o) => ({ x: o.labelAt.x, y: o.labelAt.y, w: o.labelSize.width, h: o.labelSize.height }))
-    c.labelAt = placeLabel(c.points, c.labelSize, nodeRects, [...blocks, ...labels], others, borders)
+    c.labelAt = placeLabel(c.points, c.labelSize, nodeRects, [...blocks, ...labels], others, borders, {
+      onLine: true,
+    })
   }
 }
 

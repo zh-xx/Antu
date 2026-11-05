@@ -5,7 +5,7 @@
 //  Two things must be pinned:
 //    1. validation catches bad data and points at the right place (errors carry the
 //       field path and the node id)
-//    2. layout works out (7 real contracts, both orientations, no overlapping nodes,
+//    2. layout works out (10 procedure examples, both orientations, no overlapping nodes,
 //       the main line is a straight line)
 // ============================================================
 
@@ -24,7 +24,7 @@ const DIR = 'examples/procedure'
 // Examples are stored in pairs (<name>.zh-CN.json and <name>.en.json, see
 // examples/README.md). **Only one language is scanned here**: the two have an identical
 // graph structure and differ only in text values, so scanning both would run every
-// assertion twice. And with a language suffix on every file name, "7 documents" no
+// assertion twice. And with a language suffix on every file name, "10 documents" no
 // longer equals the number of JSON files in the directory.
 const LANG = '.zh-CN.json'
 const files = readdirSync(DIR)
@@ -36,7 +36,7 @@ const byPrefix = (prefix) => files.find((f) => f.startsWith(prefix))
 const base = () => load(byPrefix('02-'))
 const some = (errs, re) => errs.some((e) => re.test(e))
 
-test('seven real contracts: validation passes for all of them', () => {
+test('procedure corpus: validation passes for all of them', () => {
   // This one reports "not a single file found" first, with the reason, so the later
   // assertions do not all go red and hide the root cause. It really happened once:
   // tests were run while the examples were being renamed to <name>.zh-CN.json.
@@ -45,13 +45,13 @@ test('seven real contracts: validation passes for all of them', () => {
     `no *${LANG} files under examples/procedure. This happens while the paired rename ` +
       '(<name>.zh-CN.json / <name>.en.json) is still in progress; it recovers once done.',
   )
-  assert.equal(files.length, 7, 'the corpus is 7 documents; if fewer, look again')
+  assert.equal(files.length, 10, 'the corpus is 10 documents; if fewer, look again')
   for (const f of files) {
     assert.deepEqual(validateProcedure(load(f)), [], `${f} should have no errors`)
   }
 })
 
-test('seven real contracts: both orientations lay out and no nodes overlap', () => {
+test('procedure corpus: both orientations lay out and no nodes overlap', () => {
   for (const f of files) {
     for (const dir of ['vertical', 'horizontal']) {
       const g = buildProcedureGraph(load(f), {}, undefined, dir)

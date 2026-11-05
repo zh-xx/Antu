@@ -23,6 +23,7 @@ what breaks a file or a tool call written for the version before, with how to br
 - **Mainline with Stages off is one straight trunk**: the Stages switch folds the spine into columns when on; off (or no stage data) keeps a single implicit column. Current still uses stage-column data when bands are hidden.
 - **Embed `select` / `focus` before the card is painted**: a held host ask that lands a frame early retries briefly instead of being answered `false` once and lost.
 - **Flowchart engine dock labels name both engines**: **ELK** / **Mainline** (was Current / 现有).
+- **Mainline connection labels no longer sit under nodes**: after spine / same-row geometry settles, labels are re-placed; short same-row hops bias the text toward the destination so a wide label does not straddle the source diamond.
 
 ## 0.19.0
 

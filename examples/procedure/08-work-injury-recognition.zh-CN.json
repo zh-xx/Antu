@@ -143,7 +143,7 @@
       "id": "n-17",
       "kind": "end",
       "label": "不服认定：复议或诉讼",
-      "stageId": "st-4",
+      "stageId": "st-2",
       "outcome": "negative"
     },
     {
@@ -151,6 +151,13 @@
       "kind": "end",
       "label": "不受理或放弃申请",
       "stageId": "st-1",
+      "outcome": "negative"
+    },
+    {
+      "id": "n-19",
+      "kind": "end",
+      "label": "暂不鉴定，另行主张待遇",
+      "stageId": "st-3",
       "outcome": "negative"
     }
   ],
@@ -168,7 +175,7 @@
     { "from": "n-9", "to": "n-17" },
     { "from": "n-8", "to": "n-10", "main": true },
     { "from": "n-10", "to": "n-11", "condition": "申请鉴定", "main": true },
-    { "from": "n-10", "to": "n-15", "condition": "暂不鉴定" },
+    { "from": "n-10", "to": "n-19", "condition": "暂不鉴定" },
     { "from": "n-11", "to": "n-12", "main": true },
     { "from": "n-12", "to": "n-13", "main": true },
     { "from": "n-13", "to": "n-15", "condition": "无异议", "main": true },
