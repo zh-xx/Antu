@@ -2,7 +2,7 @@
 // ============================================================
 //  src/renderers/procedure/flow/spine.js — back edges, main line, and grouped links
 //
-//  Shared by the current flowchart layout and Mainline-first (#190): both views must
+//  Shared by the current flowchart layout and Mainline-first (issue 190): both views must
 //  agree on which nodes are on the main line and which edges are loops. Pure structure,
 //  no geometry.
 // ============================================================

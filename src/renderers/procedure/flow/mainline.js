@@ -1,6 +1,6 @@
 // @ts-check
 // ============================================================
-//  src/renderers/procedure/flow/mainline.js — Mainline-first flowchart layout (#190)
+//  src/renderers/procedure/flow/mainline.js — Mainline-first flowchart layout (issue 190)
 //
 //  Prototype beside the current ELK + polish column layout. Same JSON, same output
 //  shape as layoutColumnsGen. Order:
@@ -22,7 +22,6 @@ import { titleBoxOf, toReal } from './columns.js'
 import { textEm } from '../../fact/cardGeometry.js'
 import {
   LAYER_GAP,
-  NODE_GAP,
   STAGE_PAD_TOP,
   STAGE_PAD,
   STAGE_TITLE_FONT,
@@ -48,7 +47,7 @@ function finishMainline(gen) {
 }
 
 /**
- * @param {object} p same args as layoutColumns
+ * @param {object} args same shape as layoutColumns, plus `spine: string[]`
  * @returns {{ placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object }}
  */
 export function layoutMainline(args) {
@@ -422,6 +421,7 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
       merged: g.merged,
       points,
       label: g.label,
+      /** @type {{ x: number, y: number } | null} */
       labelAt: null,
       labelSize: g.label ? { width: Math.min(120, textEm(g.label) * 12 + 12), height: 16 } : null,
     })
