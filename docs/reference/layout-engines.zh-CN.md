@@ -3,7 +3,7 @@
 > 用途：查每一种画法用的是哪一类**布局家族**、业界有哪些第三方引擎、案图已经测过什么、以及什么不在范围内。
 > 相关：画布是 React Flow（`docs/reference/react-flow-features.zh-CN.md`）；架构 §6（`docs/architecture/v0-architecture.zh-CN.md`）；
 > ELK 的入口在 `src/renderers/procedure/flow/elk.js`。
-> 仅作方向讨论：issue [#190](https://github.com/zh-xx/Antu/issues/190)（主线优先）。
+> 仅作方向讨论：issue [#190](https://github.com/zh-xx/Antu/issues/190)（英文专名 **Mainline-first**；中文可称主线优先）。
 > 英文稿权威：[layout-engines.md](layout-engines.md)。
 
 状态标记：**✅ 已在用** ｜ **考虑过** ｜ **用不上**
@@ -110,7 +110,7 @@
 
 ## 六、不在本文范围
 
-- 去实现 issue #190（flow 主线优先）。只作讨论记录；同一份 JSON 的 `route` 已经按主线优先来排。
+- 去实现 **Mainline-first**（issue #190）用于 flow。只作讨论记录；同一份 JSON 的 `route` 已经按主线优先来排。并行期成对称呼：**current layout**（现行：ELK + polish）与 **Mainline-first**。
 - 在没有像当初选 ELK 那样**用同一语料测过**之前，再加第二个第三方布局依赖。
 - React Flow 特性 → [`docs/reference/react-flow-features.zh-CN.md`](react-flow-features.zh-CN.md)；主题、纸张、JSON 规范 → `spec/`。
 
