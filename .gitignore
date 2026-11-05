@@ -42,4 +42,3 @@ cases/
 
 # Local verification screenshots / probes (once committed by mistake with #271; keep out)
 evidence/
-out-verify-embed/
