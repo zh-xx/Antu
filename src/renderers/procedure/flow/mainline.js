@@ -6,10 +6,13 @@
 //  shape as layoutColumnsGen. Order:
 //    1. fix the main line in each stage as a straight vertical column (axis pinned);
 //    2. hang branches in lanes on the side away from the next stage (or to the right
-//       when there is only one column); branches yield — the spine never moves for them;
-//    3. stack leftover "pocket" nodes beside the hangs;
-//    4. set stage boxes side by side; route cross-stage links with router.js;
-//    5. light polish, then re-pin the spine axis (polish must not leave the trunk bent).
+//       when there is only one column); a decision's first hop sits on the fork's row
+//       (0-bend side link / back); siblings share one vertical track; branches yield —
+//       the spine never moves for them;
+//    3. pin kind:end (including rule-only stubs) on the spine terminus, never in a lane;
+//    4. stack leftover "pocket" nodes beside the hangs;
+//    5. set stage boxes side by side; route cross-stage links with router.js;
+//    6. light polish, then re-pin the spine axis (polish must not leave the trunk bent).
 //
 //  Does not cut branches (unlike route). Does not call ELK on the main path.
 //  Enabled with fields.engine === 'mainline' (dock switch + preset; not a schema field).
@@ -102,7 +105,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
       branchSign,
       byId,
     })
-    segments.push({ st, ids: ownIds, spineIds: spineList.filter((id) => ownIds.has(id)), ...seg })
+    segments.push({ st, ids: ownIds, ...seg })
     yield
   }
 
@@ -206,6 +209,8 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
     pinSpineAxis(placed, ids, connections)
     pushBranchesOffSpine(placed, ids)
   }
+  // straighten/polish prefer diamond-point routes; same-row forks stay side-horizontal.
+  restoreSameRowLinks(placed, connections, diamonds)
   ensureConnectionLabels(connections, [...placed.values()], titles, borders)
   yield
 
@@ -307,7 +312,33 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     h.boxes = boxes
   }
 
-  // Interval lanes along the spine index
+  // Ends belong on the spine terminus (stubs for rule-only ends), never in a hang lane.
+  /** @type {string[]} */
+  const peeledEnds = []
+  for (const h of hangs) {
+    const kept = []
+    for (const id of h.boxes) {
+      if (byId.get(id)?.kind === 'end') peeledEnds.push(id)
+      else kept.push(id)
+    }
+    h.boxes = kept
+  }
+  /** @type {string[]} */
+  const endTerminus = []
+  {
+    const seenEnd = new Set(spineHere)
+    for (const id of [...peeledEnds, ...own.filter((n) => n.kind === 'end').map((n) => n.id)]) {
+      if (seenEnd.has(id) || !ownIds.has(id)) continue
+      seenEnd.add(id)
+      endTerminus.push(id)
+    }
+    // Fold terminus widths into the spine column before lanes are measured.
+    for (const id of endTerminus) {
+      spineW = Math.max(spineW, frameSize(byId.get(id)).w)
+    }
+  }
+
+  // Interval lanes along the spine index. Sibling branches from the same decision share one track.
   const intervals = hangs
     .filter((h) => h.boxes.length)
     .map((h) => {
@@ -318,11 +349,21 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   intervals.sort((p, q) => p.a - q.a || p.b - q.b)
   const laneOf = new Map()
   const laneEnds = []
+  /** @type {Map<string, number>} decision-from → shared lane */
+  const decisionLane = new Map()
   for (const it of intervals) {
+    const fromDec = it.h.rootOnSpine && byId.get(it.h.from)?.kind === 'decision'
+    if (fromDec && decisionLane.has(it.h.from)) {
+      const lane = /** @type {number} */ (decisionLane.get(it.h.from))
+      laneOf.set(it.h, lane)
+      laneEnds[lane] = Math.max(laneEnds[lane] ?? 0, it.b)
+      continue
+    }
     let lane = 0
     while (laneEnds[lane] !== undefined && laneEnds[lane] > it.a) lane += 1
     laneEnds[lane] = it.b
     laneOf.set(it.h, lane)
+    if (fromDec) decisionLane.set(it.h.from, lane)
   }
 
   // Measure lane widths and place hang boxes
@@ -353,10 +394,21 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     placed.set(id, { ...r, x: spineX0 + (spineW - r.w) / 2 })
   }
 
+  // Decision branches sit on the fork's row (centres aligned → 0-bend side link);
+  // siblings share the lane and stack one per row.
+  /** @type {Map<number, number>} */
+  const laneCursorY = new Map()
   for (const it of intervals) {
     const lane = laneOf.get(it.h)
     const leave = placed.get(it.h.from)
-    let by = leave ? leave.y + leave.h + LAYER_GAP : 0
+    const fork = byId.get(it.h.from)
+    const sameRow = Boolean(it.h.rootOnSpine && fork?.kind === 'decision' && leave && it.h.boxes.length)
+    let by
+    if (laneCursorY.has(lane)) by = /** @type {number} */ (laneCursorY.get(lane))
+    else if (sameRow) {
+      const h0 = frameSize(byId.get(it.h.boxes[0])).h
+      by = leave.y + leave.h / 2 - h0 / 2
+    } else by = leave ? leave.y + leave.h + LAYER_GAP : 0
     const lx =
       branchSign < 0
         ? spineX0 - LANE_GAP - laneLeft[lane] - (laneW[lane] ?? 0)
@@ -368,9 +420,27 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
       drawn.add(id)
       by += h + LAYER_GAP
     }
+    laneCursorY.set(lane, by)
   }
 
-  // Pockets: remaining own nodes not drawn
+  // Place terminus ends on the spine axis after the last spine node (stacked if several).
+  let endY =
+    spineHere.length > 0
+      ? (() => {
+          const last = placed.get(spineHere[spineHere.length - 1])
+          return last ? last.y + last.h + LAYER_GAP : 0
+        })()
+      : 0
+  for (const id of endTerminus) {
+    if (drawn.has(id)) continue
+    const { w, h } = frameSize(byId.get(id))
+    placed.set(id, { x: spineX0 + (spineW - w) / 2, y: endY, w, h })
+    drawn.add(id)
+    endY += h + LAYER_GAP
+  }
+  const spineColumn = [...spineHere, ...endTerminus.filter((id) => placed.has(id))]
+
+  // Pockets: remaining own nodes not drawn (never ends — those are on the terminus)
   const leftover = own.filter((n) => !drawn.has(n.id))
   if (leftover.length) {
     const pocketX =
@@ -394,7 +464,7 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     }
   }
 
-  // Inner connections: main straight; others elbow then polish
+  // Inner connections: main straight; same-row branch/back horizontal; others elbow then polish
   const inner = groups.filter((g) => ownIds.has(g.from) && ownIds.has(g.to))
   const connections = []
   for (const g of inner) {
@@ -419,6 +489,8 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
               [x1, (y0 + y1) / 2],
               [x1, y1],
             ]
+    } else if (sameRowLink(a, b)) {
+      points = sideHorizontal(a, b)
     } else if (g.isBack) {
       const side = branchSign < 0 ? Math.min(a.x, b.x) - 24 : Math.max(a.x + a.w, b.x + b.w) + 24
       points = [
@@ -452,8 +524,10 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     boxOf: () => null,
   })
   // Hard constraint: the trunk axis stays fixed; polish may have shoved spine nodes for a branch.
-  pinSpineAxis(placed, spineHere, connections)
-  pushBranchesOffSpine(placed, spineHere)
+  pinSpineAxis(placed, spineColumn, connections)
+  pushBranchesOffSpine(placed, spineColumn)
+  // Polish / pin can rewrite side links; put same-row decision branches and backs back to 0-bend.
+  restoreSameRowLinks(placed, connections, diamonds)
   // polish.js only re-places labels that already have a spot; mainline starts with none
   // (unlike ELK). Fill every labelled link before the stage is packed into the picture.
   ensureConnectionLabels(connections, [...placed.values()])
@@ -487,7 +561,13 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     c.points = c.points.map(([x, y]) => [x - x0, y - y0])
     if (c.labelAt) c.labelAt = { x: c.labelAt.x - x0, y: c.labelAt.y - y0 }
   }
-  return { placed, connections, width: Math.max(spineW, x1 - x0), height: Math.max(spineH, y1 - y0) }
+  return {
+    placed,
+    connections,
+    spineIds: spineColumn,
+    width: Math.max(spineW, x1 - x0),
+    height: Math.max(spineH, y1 - y0),
+  }
 }
 
 /**
@@ -601,7 +681,46 @@ function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = [
   }
 }
 
+/** Two boxes share a row when their vertical centres align (decision branch / back). */
+function sameRowLink(a, b) {
+  return Math.abs(a.y + a.h / 2 - (b.y + b.h / 2)) < 2
+}
+
+/** Straight side-to-side link between same-row boxes (0 bends). */
+function sideHorizontal(a, b) {
+  const ay = a.y + a.h / 2
+  const by = b.y + b.h / 2
+  if (a.x + a.w / 2 <= b.x + b.w / 2) {
+    return [
+      [a.x + a.w, ay],
+      [b.x, by],
+    ]
+  }
+  return [
+    [a.x, ay],
+    [b.x + b.w, by],
+  ]
+}
+
+/**
+ * After polish/straighten, put decision↔same-row neighbour links back to a side horizontal.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ */
+function restoreSameRowLinks(placed, connections, diamonds) {
+  for (const c of connections) {
+    if (c.kind !== 'branch' && c.kind !== 'back') continue
+    if (!diamonds.has(c.from) && !diamonds.has(c.to)) continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b || !sameRowLink(a, b)) continue
+    c.points = sideHorizontal(a, b)
+  }
+}
+
 function elbow(a, b, _fromDiamond) {
+  if (sameRowLink(a, b)) return sideHorizontal(a, b)
   const ax = a.x + a.w / 2
   const ay = a.y + a.h
   const bx = b.x + b.w / 2

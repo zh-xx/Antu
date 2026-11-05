@@ -188,3 +188,85 @@ test('mainline: with stage data stripped, one implicit column stays on a straigh
     }
   }
 })
+
+test('mainline: kind:end sits on the stage spine axis (terminus, including rule-only stubs)', () => {
+  for (const f of files) {
+    const spec = load(f)
+    const ends = spec.nodes.filter((n) => n.kind === 'end')
+    if (!ends.length) continue
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(spec, fields, undefined, dir)
+      const byId = new Map(g.nodes.map((n) => [n.id, n]))
+      const stageOf = new Map(spec.nodes.map((n) => [n.id, n.stageId ?? '__implicit__']))
+      /** @type {Map<string, number[]>} */
+      const axes = new Map()
+      for (const id of g.spine) {
+        const st = stageOf.get(id) ?? '__implicit__'
+        if (!axes.has(st)) axes.set(st, [])
+        axes.get(st).push(centre(byId.get(id), dir))
+      }
+      // Stages whose only trunk nodes are rule-only ends: those ends share one axis.
+      /** @type {Map<string, number[]>} */
+      const endAxes = new Map()
+      for (const end of ends) {
+        const st = stageOf.get(end.id) ?? '__implicit__'
+        if (!endAxes.has(st)) endAxes.set(st, [])
+        endAxes.get(st).push(centre(byId.get(end.id), dir))
+      }
+      for (const end of ends) {
+        const n = byId.get(end.id)
+        assert.ok(n, `${f}: missing end ${end.id}`)
+        const st = stageOf.get(end.id) ?? '__implicit__'
+        const vals = axes.get(st) ?? []
+        const c = centre(n, dir)
+        if (vals.length) {
+          const axis = vals.reduce((s, v) => s + v, 0) / vals.length
+          assert.ok(Math.abs(c - axis) <= 2, `${f} / ${dir}: end ${end.id} centre ${c.toFixed(1)} off spine axis ${axis.toFixed(1)}`)
+        } else {
+          const eVals = endAxes.get(st) ?? [c]
+          const span = Math.max(...eVals) - Math.min(...eVals)
+          assert.ok(span <= 2, `${f} / ${dir}: lone-stage ends in ${st} span ${span.toFixed(2)}px`)
+        }
+      }
+    }
+  }
+})
+
+test('mainline: in-stage decision branches bend ≤1 (≥95%); same-row backs are straight', () => {
+  let branchTotal = 0
+  let branchOk = 0
+  let backSameRow = 0
+  let backBent = 0
+  for (const f of files) {
+    const spec = load(f)
+    const kindOf = new Map(spec.nodes.map((n) => [n.id, n.kind]))
+    const stageOf = new Map(spec.nodes.map((n) => [n.id, n.stageId]))
+    for (const stagesOn of [true, false]) {
+      const g = buildProcedureGraph(spec, { ...fields, stages: stagesOn }, undefined, 'vertical')
+      const byId = new Map(g.nodes.map((n) => [n.id, n]))
+      for (const c of g.connections) {
+        if (
+          c.kind === 'branch' &&
+          kindOf.get(c.from) === 'decision' &&
+          stageOf.get(c.from) === stageOf.get(c.to)
+        ) {
+          branchTotal += 1
+          if (bendsOf(c.points) <= 1) branchOk += 1
+        }
+        if (c.kind === 'back' && kindOf.get(c.to) === 'decision') {
+          const a = byId.get(c.from)
+          const b = byId.get(c.to)
+          if (!a || !b) continue
+          const sameRow = Math.abs(a.position.y + a.data.h / 2 - (b.position.y + b.data.h / 2)) < 2
+          if (!sameRow) continue
+          backSameRow += 1
+          if (bendsOf(c.points) > 0) backBent += 1
+        }
+      }
+    }
+  }
+  assert.ok(branchTotal > 0, 'expected in-stage decision branch links')
+  assert.ok(branchOk / branchTotal >= 0.95, `only ${branchOk} of ${branchTotal} in-stage decision branches bend ≤1`)
+  assert.ok(backSameRow > 0, 'expected at least one same-row back to a decision')
+  assert.equal(backBent, 0, `${backBent} of ${backSameRow} same-row backs still bend`)
+})
