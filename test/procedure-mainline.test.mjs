@@ -397,6 +397,39 @@ test('mainline: free side faces are not shared when a decision has two exits', (
   assert.ok(rj === 'E' || rj === 'W', `hang rejoin enters a side face of n-15, got ${rj}`)
 })
 
+test('mainline: side-corridor back label sits on the vertical ink (stages off)', () => {
+  // 03 n-5→n-3「否，下月继续」: chip on the left vertical run, not below the short stub by the diamond.
+  const spec = load('03-labour-outsourcing-contract.zh-CN.json')
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const c = g.connections.find((e) => e.id === 'c:n-5->n-3')
+  assert.ok(c?.labelAt && c.labelSize)
+  const L = { x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height }
+  const cx = L.x + L.w / 2
+  const cy = L.y + L.h / 2
+  // Nearest segment should be the long vertical (same x, different y).
+  let onVert = false
+  let best = Infinity
+  for (let i = 0; i < c.points.length - 1; i += 1) {
+    const [p, q] = [c.points[i], c.points[i + 1]]
+    const dx = q[0] - p[0]
+    const dy = q[1] - p[1]
+    const len2 = dx * dx + dy * dy
+    const t = len2 < 1e-9 ? 0 : Math.max(0, Math.min(1, ((cx - p[0]) * dx + (cy - p[1]) * dy) / len2))
+    const d = Math.hypot(cx - p[0] - t * dx, cy - p[1] - t * dy)
+    if (d < best) {
+      best = d
+      onVert = Math.abs(dx) < 0.5 && Math.abs(dy) > 1
+    }
+  }
+  assert.ok(onVert, 'label should sit on the vertical corridor')
+  assert.ok(best <= 1, `on-ink chip centre should be on the stroke, dist=${best.toFixed(1)}`)
+  for (const n of g.nodes) {
+    const r = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
+    const hit = L.x < r.x + r.w - 0.5 && r.x < L.x + L.w - 0.5 && L.y < r.y + r.h - 0.5 && r.y < L.y + L.h - 0.5
+    assert.ok(!hit, `label must not overlap ${n.id}`)
+  }
+})
+
 test('mainline: hang→spine rejoin uses hang lane (leave N/S, 1 bend, spine side entry)', () => {
   // Hang boxes may use N/S; spine keeps N/S for the trunk. Prefer: leave travel face → hang column
   // → spine mid → side face (1 bend). Outer corridor only when that lane is blocked.

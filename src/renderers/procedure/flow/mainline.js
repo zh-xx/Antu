@@ -579,6 +579,8 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   restoreSameRowLinks(placed, connections, diamonds)
   // Linked boxes prefer shared centres; every port sits on a face centre (polish must not leave a skew).
   preferCenteredLinks(placed, connections, diamonds, spineIdSet)
+  // Side-channel / outer-corridor backs: push the vertical run outward until an on-ink label fits.
+  clearCorridorForLabels(placed, connections)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -837,22 +839,110 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
   rebuildIncidentLinks(placed, connections, moved, diamonds, spineIds)
 }
 /**
- * Midpoint of the longest segment that can hold the label — preferred when the chip sits ON the ink.
+ * On-ink chip: prefer the longest clear run. Slide along each segment to avoid nodes; vertical
+ * corridor runs outrank short stubs so a back like「否，下月继续」sits on the side channel.
+ * @param {number[][]} points
+ * @param {{ width: number, height: number }} size
+ * @param {{ x: number, y: number, w: number, h: number }[]} [nodeRects]
  * @returns {{ x: number, y: number } | null}
  */
-function labelOnLongestSegment(points, size) {
+function labelOnLongestSegment(points, size, nodeRects = []) {
   const { width: w, height: h } = size
-  let best = null
+  const overlaps = (r) =>
+    nodeRects.some((n) => r.x < n.x + n.w - 0.5 && n.x < r.x + r.w - 0.5 && r.y < n.y + n.h - 0.5 && n.y < r.y + r.h - 0.5)
+  /** @type {{ x: number, y: number, len: number, vert: boolean }[]} */
+  const candidates = []
   for (let i = 0; i < points.length - 1; i += 1) {
     const [p, q] = [points[i], points[i + 1]]
     const horiz = Math.abs(p[1] - q[1]) < 0.5
     const len = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1])
     const need = horiz ? w : h
     if (len < need + 8) continue
-    const r = { x: (p[0] + q[0]) / 2 - w / 2, y: (p[1] + q[1]) / 2 - h / 2, w, h, len }
-    if (!best || len > best.len) best = r
+    const room = len - need
+    // Mid first, then slide toward either end in steps.
+    const alongs = [room / 2]
+    for (let t = 4; t <= room - 4; t += Math.max(4, Math.floor(room / 6))) alongs.push(t)
+    alongs.push(0, Math.max(0, room))
+    const seen = new Set()
+    for (const along of alongs) {
+      const a = Math.max(0, Math.min(room, along))
+      const key = a.toFixed(1)
+      if (seen.has(key)) continue
+      seen.add(key)
+      const r = horiz
+        ? {
+            x: (q[0] >= p[0] ? p[0] + a : p[0] - a - w),
+            y: (p[1] + q[1]) / 2 - h / 2,
+            w,
+            h,
+          }
+        : {
+            x: (p[0] + q[0]) / 2 - w / 2,
+            y: (q[1] >= p[1] ? p[1] + a : p[1] - a - h),
+            w,
+            h,
+          }
+      if (overlaps(r)) continue
+      candidates.push({ x: r.x, y: r.y, len, vert: !horiz })
+    }
   }
-  return best ? { x: best.x, y: best.y } : null
+  if (!candidates.length) return null
+  // Prefer longer runs; on a tie, prefer a vertical corridor over a short stub.
+  candidates.sort((a, b) => b.len - a.len || Number(b.vert) - Number(a.vert))
+  return { x: candidates[0].x, y: candidates[0].y }
+}
+
+/**
+ * For U-shaped side / outer corridors, push the vertical run outward until an on-ink label
+ * fits on it (lengthens the horizontal stubs). No-op when a clear on-line spot already exists.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ */
+function clearCorridorForLabels(placed, connections) {
+  const nodeRects = [...placed.values()]
+  for (const c of connections) {
+    if (!c.labelSize || !c.points || c.points.length < 4) continue
+    if (labelOnLongestSegment(c.points, c.labelSize, nodeRects)) continue
+    const { width: lw, height: lh } = c.labelSize
+    // Find the longest vertical run (the corridor).
+    let vi = -1
+    let vLen = 0
+    for (let i = 0; i < c.points.length - 1; i += 1) {
+      const [p, q] = [c.points[i], c.points[i + 1]]
+      if (Math.abs(p[0] - q[0]) >= 0.5) continue
+      const len = Math.abs(q[1] - p[1])
+      if (len > vLen) {
+        vLen = len
+        vi = i
+      }
+    }
+    if (vi < 0 || vLen < lh + 8) continue
+    const [p, q] = [c.points[vi], c.points[vi + 1]]
+    const midY = (p[1] + q[1]) / 2
+    // Which way is "outward": away from the other points' average x.
+    let avgX = 0
+    for (const [x] of c.points) avgX += x
+    avgX /= c.points.length
+    const curX = p[0]
+    const outward = curX <= avgX ? -1 : 1
+    const overlaps = (r) =>
+      nodeRects.some((n) => r.x < n.x + n.w - 0.5 && n.x < r.x + r.w - 0.5 && r.y < n.y + n.h - 0.5 && n.y < r.y + r.h - 0.5)
+    let x = curX
+    let fitted = false
+    for (let step = 0; step < 24; step += 1) {
+      x = curX + outward * (OUTER_GAP / 2) * (step + 1)
+      const chip = { x: x - lw / 2, y: midY - lh / 2, w: lw, h: lh }
+      if (!overlaps(chip)) {
+        fitted = true
+        break
+      }
+    }
+    if (!fitted) continue
+    // Rewrite every point that sat on the old corridor x.
+    for (const pt of c.points) {
+      if (Math.abs(pt[0] - curX) < 0.5) pt[0] = x
+    }
+  }
 }
 
 /**
@@ -879,10 +969,10 @@ function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = [
     const labels = others
       .filter((o) => o.labelAt && o.labelSize)
       .map((o) => ({ x: o.labelAt.x, y: o.labelAt.y, w: o.labelSize.width, h: o.labelSize.height }))
-    // Prefer sitting ON the longest run (opaque chip hides the stroke under the text).
+    // Prefer sitting ON the longest clear run (opaque chip hides the stroke under the text).
     if (opts.preferOnLine) {
-      const on = labelOnLongestSegment(c.points, c.labelSize)
-      if (on && !overlapsNode({ ...on, w: c.labelSize.width, h: c.labelSize.height })) {
+      const on = labelOnLongestSegment(c.points, c.labelSize, nodeRects)
+      if (on) {
         c.labelAt = on
         continue
       }
