@@ -446,38 +446,83 @@ test('mainline: hang→spine rejoin uses hang lane (leave N/S, 1 bend, spine sid
     if (onB && Math.abs(x - cx) < 1) return 'S'
     return `?(${x},${y})`
   }
-  // 03 n-7→n-2 upward: leave top, run in hang lane, enter spine side.
+  /** @type {{ file: string, id: string, leave: 'N' | 'S' }[]} */
+  const cases = [
+    { file: '03-labour-outsourcing-contract.zh-CN.json', id: 'c:n-7->n-2', leave: 'N' }, // upward distant
+    { file: '07-share-acquisition-agreement.zh-CN.json', id: 'c:n-13->n-14', leave: 'S' }, // downward distant
+    { file: '05-premises-lease.zh-CN.json', id: 'c:n-25->n-22', leave: 'N' }, // upward rejoin
+    { file: '08-work-injury-recognition.zh-CN.json', id: 'c:n-14->n-15', leave: 'S' }, // near downward
+  ]
+  for (const { file, id, leave } of cases) {
+    const spec = load(file)
+    const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+    const byId = new Map(g.nodes.map((n) => [n.id, n]))
+    const c = g.connections.find((e) => e.id === id)
+    assert.ok(c, `${file}: missing ${id}`)
+    const hang = byId.get(c.from)
+    const spineN = byId.get(c.to)
+    assert.ok(hang && spineN)
+    assert.ok(g.spine.includes(c.to), `${file}: ${c.to} should be on spine`)
+    assert.equal(g.spine.includes(c.from), false, `${file}: ${c.from} should be hang`)
+    assert.equal(face(hang, c.points[0]), leave, `${file} ${id} leave`)
+    const enter = face(spineN, c.points[c.points.length - 1])
+    assert.ok(enter === 'E' || enter === 'W', `${file} ${id} spine side entry, got ${enter}`)
+    assert.ok(bendsOf(c.points) <= 1, `${file} ${id} hang-lane ≤1 bend, got ${bendsOf(c.points)}`)
+    const hangCx = hang.position.x + hang.data.w / 2
+    assert.ok(Math.abs(c.points[1][0] - hangCx) < 1, `${file} ${id} vertical on hang centre`)
+  }
+  // Trunk N/S on the upward target stay free of the rejoin.
   {
     const spec = load('03-labour-outsourcing-contract.zh-CN.json')
     const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
     const byId = new Map(g.nodes.map((n) => [n.id, n]))
-    const c = g.connections.find((e) => e.id === 'c:n-7->n-2')
-    const hang = byId.get('n-7')
     const spine = byId.get('n-2')
-    assert.ok(c && hang && spine)
-    assert.equal(face(hang, c.points[0]), 'N')
-    const enter = face(spine, c.points[c.points.length - 1])
-    assert.ok(enter === 'E' || enter === 'W', `spine side entry, got ${enter}`)
-    assert.ok(bendsOf(c.points) <= 1, `hang-lane rejoin ≤1 bend, got ${bendsOf(c.points)}`)
-    const hangCx = hang.position.x + hang.data.w / 2
-    assert.ok(Math.abs(c.points[1][0] - hangCx) < 1, 'vertical run stays on hang centre')
     const mainIn = g.connections.find((e) => e.id === 'c:n-1->n-2')
     const mainOut = g.connections.find((e) => e.id === 'c:n-2->n-3')
     assert.equal(face(spine, mainIn.points[mainIn.points.length - 1]), 'N')
     assert.equal(face(spine, mainOut.points[0]), 'S')
   }
-  // 07 n-13→n-14 downward: leave bottom, same hang-lane pattern.
-  {
-    const spec = load('07-share-acquisition-agreement.zh-CN.json')
-    const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
-    const byId = new Map(g.nodes.map((n) => [n.id, n]))
-    const c = g.connections.find((e) => e.id === 'c:n-13->n-14')
-    const hang = byId.get('n-13')
-    const spine = byId.get('n-14')
-    assert.ok(c && hang && spine)
-    assert.equal(face(hang, c.points[0]), 'S')
-    const enter = face(spine, c.points[c.points.length - 1])
-    assert.ok(enter === 'E' || enter === 'W', `spine side entry, got ${enter}`)
-    assert.ok(bendsOf(c.points) <= 1, `hang-lane rejoin ≤1 bend, got ${bendsOf(c.points)}`)
+})
+
+test('mainline: stages-off hang→spine never enters trunk N/S (corpus)', () => {
+  // Every hang→spine hop: spine end is E/W. Off-row hops leave hang on N/S (travel face), ≤2 bends.
+  const face = (n, [x, y]) => {
+    const cx = n.position.x + n.data.w / 2
+    const cy = n.position.y + n.data.h / 2
+    if (Math.abs(x - n.position.x) < 1 && Math.abs(y - cy) < 1) return 'W'
+    if (Math.abs(x - (n.position.x + n.data.w)) < 1 && Math.abs(y - cy) < 1) return 'E'
+    if (Math.abs(y - n.position.y) < 1 && Math.abs(x - cx) < 1) return 'N'
+    if (Math.abs(y - (n.position.y + n.data.h)) < 1 && Math.abs(x - cx) < 1) return 'S'
+    return '?'
   }
+  let hops = 0
+  for (const f of files) {
+    const spec = load(f)
+    const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+    const spine = new Set(g.spine)
+    const byId = new Map(g.nodes.map((n) => [n.id, n]))
+    for (const c of g.connections) {
+      if (spine.has(c.from) || !spine.has(c.to)) continue
+      hops += 1
+      const hang = byId.get(c.from)
+      const sp = byId.get(c.to)
+      assert.ok(hang && sp, `${f} ${c.id}`)
+      const enter = face(sp, c.points[c.points.length - 1])
+      assert.ok(enter === 'E' || enter === 'W', `${f} ${c.id}: spine enter ${enter}, want E/W`)
+      const sameRow = Math.abs(hang.position.y + hang.data.h / 2 - (sp.position.y + sp.data.h / 2)) < 2
+      if (sameRow) {
+        assert.equal(bendsOf(c.points), 0, `${f} ${c.id}: same-row hang→spine should be straight`)
+        continue
+      }
+      const leave = face(hang, c.points[0])
+      assert.ok(leave === 'N' || leave === 'S', `${f} ${c.id}: off-row hang leave ${leave}, want N/S`)
+      assert.ok(bendsOf(c.points) <= 2, `${f} ${c.id}: ≤2 bends, got ${bendsOf(c.points)}`)
+      // Hang-lane (1 bend) keeps the vertical on the hang centre; outer corridor (2) is the fallback.
+      if (bendsOf(c.points) <= 1) {
+        const hangCx = hang.position.x + hang.data.w / 2
+        assert.ok(Math.abs(c.points[1][0] - hangCx) < 1, `${f} ${c.id}: hang-lane vertical on hang cx`)
+      }
+    }
+  }
+  assert.ok(hops >= 4, `expected several hang→spine hops, got ${hops}`)
 })
