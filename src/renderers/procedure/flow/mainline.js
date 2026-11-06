@@ -214,7 +214,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   // straighten/polish prefer diamond-point routes; same-row forks stay side-horizontal.
   restoreSameRowLinks(placed, connections, diamonds)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
-  ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true })
+  ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
   yield
 
   let width = cx - COLUMN_GAP + PAD
@@ -381,8 +381,18 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   }
   const hangsW = laneW.length ? laneW.reduce((s, w) => s + w, 0) + LANE_SEP * (laneW.length - 1) : 0
 
+  // Room on the leave hop for a condition label sitting ON the segment (not beside it).
+  // Widen the spine↔lane gap when a labelled same-row exit needs more than LANE_GAP.
+  let hopGap = LANE_GAP
+  for (const it of intervals) {
+    const leave = it.h.leave
+    if (!leave?.label || !it.h.rootOnSpine) continue
+    const need = Math.min(120, textEm(leave.label) * 12 + 12) + 24
+    hopGap = Math.max(hopGap, need)
+  }
+
   // Spine column starts after hangs when hanging to the left
-  const spineX0 = branchSign < 0 ? hangsW + (hangsW ? LANE_GAP : 0) : 0
+  const spineX0 = branchSign < 0 ? hangsW + (hangsW ? hopGap : 0) : 0
   for (const id of spineHere) {
     const r = placed.get(id)
     placed.set(id, { ...r, x: spineX0 + (spineW - r.w) / 2 })
@@ -407,8 +417,8 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     else by = leave ? leave.y + leave.h + LAYER_GAP : 0
     const lx =
       branchSign < 0
-        ? spineX0 - LANE_GAP - laneLeft[lane] - (laneW[lane] ?? 0)
-        : spineX0 + spineW + LANE_GAP + laneLeft[lane]
+        ? spineX0 - hopGap - laneLeft[lane] - (laneW[lane] ?? 0)
+        : spineX0 + spineW + hopGap + laneLeft[lane]
     for (const id of it.h.boxes) {
       if (drawn.has(id)) continue
       const { w, h } = frameSize(byId.get(id))
@@ -440,7 +450,7 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   const leftover = own.filter((n) => !drawn.has(n.id))
   if (leftover.length) {
     const pocketX =
-      branchSign < 0 ? Math.min(0, ...[...placed.values()].map((r) => r.x)) - LANE_GAP : spineX0 + spineW + LANE_GAP + hangsW + (hangsW ? LANE_GAP : 0)
+      branchSign < 0 ? Math.min(0, ...[...placed.values()].map((r) => r.x)) - hopGap : spineX0 + spineW + hopGap + hangsW + (hangsW ? hopGap : 0)
     let py = 0
     let pw = 0
     for (const n of leftover) {
@@ -524,8 +534,11 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   pushBranchesOffSpine(placed, spineColumn)
   // Polish / pin can rewrite side links; put same-row decision branches and backs back to 0-bend.
   restoreSameRowLinks(placed, connections, diamonds)
-  // Fill / refresh every labelled link after the last geometry change (stale labelAt hides under nodes).
-  ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true })
+  // Labelled hops shorter than their text: push the hang end away so the label can sit ON the ink.
+  lengthenLabeledHops(placed, connections, new Set(spineColumn), branchSign)
+  restoreSameRowLinks(placed, connections, diamonds)
+  // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
+  ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
   // Normalise to 0,0 and measure
   let x0 = Infinity
@@ -659,6 +672,94 @@ function pushBranchesOffSpine(placed, spineIds) {
 }
 
 /**
+ * If a labelled link's longest run is shorter than the label, stretch it: same-row / elbow
+ * hops push the non-spine end away from the trunk; vertical spine gaps push the lower box down.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} spineIds
+ * @param {number} branchSign
+ */
+function lengthenLabeledHops(placed, connections, spineIds, branchSign) {
+  const PAD_LABEL = 16
+  for (const c of connections) {
+    if (!c.labelSize || !c.points?.length) continue
+    const { width: lw, height: lh } = c.labelSize
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b) continue
+    // Longest axis-aligned run
+    let bestLen = 0
+    let bestHoriz = true
+    for (let i = 0; i < c.points.length - 1; i += 1) {
+      const [p, q] = [c.points[i], c.points[i + 1]]
+      const horiz = Math.abs(p[1] - q[1]) < 0.5
+      const len = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1])
+      if (len > bestLen) {
+        bestLen = len
+        bestHoriz = horiz
+      }
+    }
+    const need = (bestHoriz ? lw : lh) + PAD_LABEL
+    if (bestLen >= need) continue
+
+    const deficit = need - bestLen
+    if (bestHoriz) {
+      // Push the hang (non-spine) box away from the trunk so the side hop grows.
+      const fromSpine = spineIds.has(c.from)
+      const toSpine = spineIds.has(c.to)
+      if (fromSpine === toSpine) continue
+      const hangId = fromSpine ? c.to : c.from
+      const r = placed.get(hangId)
+      if (!r) continue
+      placed.set(hangId, { ...r, x: r.x + branchSign * deficit })
+      const a2 = placed.get(c.from)
+      const b2 = placed.get(c.to)
+      if (sameRowLink(a2, b2)) c.points = sideHorizontal(a2, b2)
+      else c.points = elbow(a2, b2, false)
+    } else {
+      // Vertical: push the lower box down (and everything below it in the same column later via pin).
+      const upper = a.y <= b.y ? a : b
+      const lowerId = a.y <= b.y ? c.to : c.from
+      const lower = placed.get(lowerId)
+      if (!lower) continue
+      // Only stretch when the two boxes nearly share an axis (spine or stacked hang).
+      if (Math.abs(upper.x + upper.w / 2 - (lower.x + lower.w / 2)) > Math.max(upper.w, lower.w)) continue
+      const dy = deficit
+      placed.set(lowerId, { ...lower, y: lower.y + dy })
+      // Nudge later nodes in the same vertical stack that sat below the old lower edge.
+      const oldBottom = lower.y + lower.h
+      for (const [id, r] of placed) {
+        if (id === lowerId) continue
+        if (Math.abs(r.x + r.w / 2 - (lower.x + lower.w / 2)) > 2) continue
+        if (r.y + 0.5 >= oldBottom) placed.set(id, { ...r, y: r.y + dy })
+      }
+      const a2 = placed.get(c.from)
+      const b2 = placed.get(c.to)
+      c.points = elbow(a2, b2, false)
+    }
+  }
+}
+
+/**
+ * Midpoint of the longest segment that can hold the label — preferred when the chip sits ON the ink.
+ * @returns {{ x: number, y: number } | null}
+ */
+function labelOnLongestSegment(points, size) {
+  const { width: w, height: h } = size
+  let best = null
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const [p, q] = [points[i], points[i + 1]]
+    const horiz = Math.abs(p[1] - q[1]) < 0.5
+    const len = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1])
+    const need = horiz ? w : h
+    if (len < need + 8) continue
+    const r = { x: (p[0] + q[0]) / 2 - w / 2, y: (p[1] + q[1]) / 2 - h / 2, w, h, len }
+    if (!best || len > best.len) best = r
+  }
+  return best ? { x: best.x, y: best.y } : null
+}
+
+/**
  * Every connection with a label must carry labelAt: the paint layer reads `.x` / `.y`.
  * With `force`, clear existing spots first so a later geometry pass (pin / same-row restore)
  * cannot leave a label sitting on a node.
@@ -666,7 +767,7 @@ function pushBranchesOffSpine(placed, spineIds) {
  * @param {{ x: number, y: number, w: number, h: number }[]} nodeRects
  * @param {object[]} [blocks]
  * @param {object[]} [borders]
- * @param {{ force?: boolean }} [opts]
+ * @param {{ force?: boolean, preferOnLine?: boolean }} [opts]
  */
 function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = [], opts = {}) {
   if (opts.force) {
@@ -674,12 +775,22 @@ function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = [
       if (c.labelSize) c.labelAt = null
     }
   }
+  const overlapsNode = (r) =>
+    nodeRects.some((n) => r.x < n.x + n.w - 0.5 && n.x < r.x + r.w - 0.5 && r.y < n.y + n.h - 0.5 && n.y < r.y + r.h - 0.5)
   for (const c of connections) {
     if (!c.labelSize || c.labelAt) continue
     const others = connections.filter((o) => o !== c)
     const labels = others
       .filter((o) => o.labelAt && o.labelSize)
       .map((o) => ({ x: o.labelAt.x, y: o.labelAt.y, w: o.labelSize.width, h: o.labelSize.height }))
+    // Prefer sitting ON the longest run (opaque chip hides the stroke under the text).
+    if (opts.preferOnLine) {
+      const on = labelOnLongestSegment(c.points, c.labelSize)
+      if (on && !overlapsNode({ ...on, w: c.labelSize.width, h: c.labelSize.height })) {
+        c.labelAt = on
+        continue
+      }
+    }
     c.labelAt = placeLabel(c.points, c.labelSize, nodeRects, [...blocks, ...labels], others, borders, {
       onLine: true,
     })
