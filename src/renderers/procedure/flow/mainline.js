@@ -13,9 +13,9 @@
 //    3. branch-exit ends stay in their hang lane (so the leave→…→end chain stays one path);
 //       main-line ends already on the spine stay there. Rule-only ends (no flow edges) are
 //       omitted upstream — they belong in the rules table, not as islands on the canvas;
-//    4. a hang that rejoins the spine enters a free side face (not the trunk's top/bottom);
-//       distant / upward rejoins take an outer corridor on the hang side (sparse U-turn)
-//       so the mid elbow does not cut through the trunk or share N/S with the main line;
+//    4. a hang that rejoins the spine enters a free side face (not the trunk's top/bottom).
+//       Hang boxes may use N/S freely: leave top/bottom, run in the hang lane to the spine
+//       mid-height, then enter the side (1 bend). Outer corridor only when that lane is blocked;
 //    5. stack leftover "pocket" nodes beside the hangs;
 //    6. set stage boxes side by side; route cross-stage links with router.js;
 //    7. light polish, then re-pin the spine axis (polish must not leave the trunk bent).
@@ -47,11 +47,9 @@ import {
 const LANE_GAP = 112
 /** Extra room between two branch lanes */
 const LANE_SEP = 28
-/** Clearance outside the hang box for a distant rejoin corridor */
+/** Clearance outside the hang box for a distant rejoin corridor (fallback when hang lane blocked) */
 const OUTER_GAP = 28
-/** Clear vertical gap (hang bottom → spine top) that marks a downward rejoin as distant */
-const DISTANT_GAP = 160
-/** Centre-to-centre fallback when boxes overlap in y but the hop still spans far */
+/** Centre-to-centre span above which spine→hang prefers the hang-lane / corridor helper */
 const DISTANT_DY = 280
 
 /**
@@ -962,10 +960,27 @@ function sideChannel(a, b, preferLeft = false) {
 }
 
 /**
- * Outer corridor for a hang ↔ spine hop: leave the hang on the face facing the travel
- * (bottom when going down, top when going up — never a side stub that immediately turns),
- * run outside the hang column, enter the spine on its hang-side face (trunk keeps N/S).
- * Sparse U-turn = 2 bends.
+ * Preferred hang → spine rejoin: hang may use N/S. Leave the travel face, run in the hang
+ * lane to the spine mid-height, enter the spine's hang-side face (1 bend). Never touches trunk N/S.
+ * @param {{ x: number, y: number, w: number, h: number }} a hang
+ * @param {{ x: number, y: number, w: number, h: number }} b spine
+ * @param {boolean} hangOnRight
+ */
+function hangLaneRejoin(a, b, hangOnRight) {
+  const acx = a.x + a.w / 2
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const goingDown = bcy >= acy
+  return [
+    [acx, goingDown ? a.y + a.h : a.y],
+    [acx, bcy],
+    [hangOnRight ? b.x + b.w : b.x, bcy],
+  ]
+}
+
+/**
+ * Outer corridor fallback when the hang lane is blocked: leave travel face, run outside the hang
+ * column, enter the spine side face (2 bends).
  * @param {{ x: number, y: number, w: number, h: number }} a hang box
  * @param {{ x: number, y: number, w: number, h: number }} b spine box
  * @param {boolean} hangOnRight hang sits to the right of the spine
@@ -988,21 +1003,39 @@ function outerCorridor(a, b, hangOnRight, depth = 0) {
   ]
 }
 
+/** True when another box sits on the hang's vertical lane between leaveY and targetY. */
+function hangLaneBlocked(a, leaveY, targetY, placed, fromId, toId) {
+  if (!placed) return false
+  const acx = a.x + a.w / 2
+  const lo = Math.min(leaveY, targetY)
+  const hi = Math.max(leaveY, targetY)
+  if (hi <= lo + 0.5) return false
+  for (const [id, r] of placed) {
+    if (id === fromId || id === toId) continue
+    if (Math.abs(r.x + r.w / 2 - acx) > r.w / 2 + 2) continue
+    if (r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return true
+  }
+  return false
+}
+
 /**
- * True when a hang↔spine hop should take the outer corridor.
- * Upward rejoins are always "distant" for routing (caller handles that); here we detect a far
- * downward hop: a clear gap under the hang, a large centre span, or a same-column blocker.
+ * Hang → spine route: prefer hang-lane (1 bend); outer corridor only if that lane is blocked.
+ * @param {{ x: number, y: number, w: number, h: number }} a hang
+ * @param {{ x: number, y: number, w: number, h: number }} b spine
+ * @param {boolean} hangOnRight
+ * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} placed
+ * @param {string | null | undefined} fromId
+ * @param {string | null | undefined} toId
  */
-function isDistantHangSpine(a, b, placed, fromId, toId) {
+function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId) {
+  const acx = a.x + a.w / 2
   const acy = a.y + a.h / 2
   const bcy = b.y + b.h / 2
-  const dy = Math.abs(acy - bcy)
-  if (dy >= DISTANT_DY) return true
-  // Hang above spine: gap from hang bottom to spine top.
-  if (a.y + a.h <= b.y + 0.5 && b.y - (a.y + a.h) >= DISTANT_GAP) return true
-  // Hang below spine: gap from spine bottom to hang top.
-  if (b.y + b.h <= a.y + 0.5 && a.y - (b.y + b.h) >= DISTANT_GAP) return true
-  return columnBlocked(a, b, placed, fromId, toId)
+  const leaveY = bcy >= acy ? a.y + a.h : a.y
+  if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
+    return hangLaneRejoin(a, b, hangOnRight)
+  }
+  return outerCorridor(a, b, hangOnRight)
 }
 
 /**
@@ -1037,26 +1070,23 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
       [bcx, down ? b.y : b.y + b.h],
     ]
   }
-  // Hang ↔ spine: trunk owns N/S on the spine end. Distant / upward rejoins take the outer corridor.
+  // Hang → spine: trunk owns N/S on the spine; hang may leave N/S. Prefer hang-lane (1 bend).
   if (!fromSpine && toSpine) {
-    const hangOnRight = acx > bcx
-    const hangBelow = acy > bcy
-    if (hangBelow || isDistantHangSpine(a, b, placed, fromId, toId)) {
-      return outerCorridor(a, b, hangOnRight)
-    }
-    // Near downward: leave bottom centre of hang, enter the free side face of the spine.
-    if (a.y + a.h <= b.y + 0.5) {
-      return [
-        [acx, a.y + a.h],
-        [acx, bcy],
-        [hangOnRight ? b.x + b.w : b.x, bcy],
-      ]
-    }
+    return routeHangToSpine(a, b, acx > bcx, placed, fromId, toId)
   }
-  // Spine → hang: only distant hops take the outer corridor (near keeps the short side-entry below).
-  if (fromSpine && !toSpine && isDistantHangSpine(a, b, placed, fromId, toId)) {
-    // outerCorridor is hang→spine; reverse for the spine→hang direction.
-    return outerCorridor(b, a, bcx > acx).slice().reverse()
+  // Spine → hang (not same-row): reverse of hang→spine when the hop is off the fork row.
+  if (fromSpine && !toSpine && !sameRowLink(a, b)) {
+    const hangOnRight = bcx > acx
+    // Near: leave spine side, enter hang top/bottom facing the spine (existing short path below).
+    const hang = b
+    const spine = a
+    const hcy = hang.y + hang.h / 2
+    const scy = spine.y + spine.h / 2
+    const leaveY = scy >= hcy ? hang.y + hang.h : hang.y
+    // Far / blocked hang-lane: use the hang→spine helper reversed.
+    if (Math.abs(scy - hcy) >= DISTANT_DY || hangLaneBlocked(hang, leaveY, scy, placed, toId, fromId)) {
+      return routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId).slice().reverse()
+    }
   }
   // Source above target: leave bottom centre, enter top centre.
   if (a.y + a.h <= b.y + 0.5) {
