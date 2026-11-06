@@ -14,6 +14,8 @@
 //       main-line ends already on the spine stay there. Rule-only ends (no flow edges) are
 //       omitted upstream — they belong in the rules table, not as islands on the canvas;
 //    4. a hang that rejoins the spine enters a free side face (not the trunk's top/bottom);
+//       distant / upward rejoins take an outer corridor on the hang side (sparse U-turn)
+//       so the mid elbow does not cut through the trunk or share N/S with the main line;
 //    5. stack leftover "pocket" nodes beside the hangs;
 //    6. set stage boxes side by side; route cross-stage links with router.js;
 //    7. light polish, then re-pin the spine axis (polish must not leave the trunk bent).
@@ -45,6 +47,12 @@ import {
 const LANE_GAP = 112
 /** Extra room between two branch lanes */
 const LANE_SEP = 28
+/** Clearance outside the hang box for a distant rejoin corridor */
+const OUTER_GAP = 28
+/** Clear vertical gap (hang bottom → spine top) that marks a downward rejoin as distant */
+const DISTANT_GAP = 160
+/** Centre-to-centre fallback when boxes overlap in y but the hop still spans far */
+const DISTANT_DY = 280
 
 /**
  * Drain a mainline generator without pausing (Node / MCP / tests).
@@ -954,10 +962,50 @@ function sideChannel(a, b, preferLeft = false) {
 }
 
 /**
+ * Outer corridor for a hang ↔ spine hop: leave/enter the hang-side faces, run outside the hang
+ * column (never through the trunk, never on the spine's N/S ports). Sparse U-turn = 2 bends.
+ * @param {{ x: number, y: number, w: number, h: number }} a
+ * @param {{ x: number, y: number, w: number, h: number }} b
+ * @param {boolean} hangOnRight hang sits to the right of the spine
+ * @param {number} [depth] extra outward offset when several corridors stack
+ */
+function outerCorridor(a, b, hangOnRight, depth = 0) {
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const outer = hangOnRight
+    ? Math.max(a.x + a.w, b.x + b.w) + OUTER_GAP + depth
+    : Math.min(a.x, b.x) - OUTER_GAP - depth
+  return [
+    [hangOnRight ? a.x + a.w : a.x, acy],
+    [outer, acy],
+    [outer, bcy],
+    [hangOnRight ? b.x + b.w : b.x, bcy],
+  ]
+}
+
+/**
+ * True when a hang↔spine hop should take the outer corridor.
+ * Upward rejoins are always "distant" for routing (caller handles that); here we detect a far
+ * downward hop: a clear gap under the hang, a large centre span, or a same-column blocker.
+ */
+function isDistantHangSpine(a, b, placed, fromId, toId) {
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const dy = Math.abs(acy - bcy)
+  if (dy >= DISTANT_DY) return true
+  // Hang above spine: gap from hang bottom to spine top.
+  if (a.y + a.h <= b.y + 0.5 && b.y - (a.y + a.h) >= DISTANT_GAP) return true
+  // Hang below spine: gap from spine bottom to hang top.
+  if (b.y + b.h <= a.y + 0.5 && a.y - (b.y + b.h) >= DISTANT_GAP) return true
+  return columnBlocked(a, b, placed, fromId, toId)
+}
+
+/**
  * Orthogonal route between two boxes, ports on face centres. Prefer same-row / same-column
  * (0-bend); otherwise leave the facing side of the source and enter the facing side of the target.
  * When a same-column hop would cut through another box, take a side channel instead.
  * Hang → spine rejoins enter a free side face so they do not share the trunk's top/bottom port.
+ * Distant / upward hang↔spine hops use an outer corridor on the hang side.
  * @param {{ x: number, y: number, w: number, h: number }} a
  * @param {{ x: number, y: number, w: number, h: number }} b
  * @param {boolean} [fromDiamond]
@@ -984,14 +1032,25 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
       [bcx, down ? b.y : b.y + b.h],
     ]
   }
-  // Hang above a spine target: leave bottom centre, enter the free side face (trunk owns N/S).
-  if (!fromSpine && toSpine && a.y + a.h <= b.y + 0.5) {
-    const fromRight = acx > bcx
-    return [
-      [acx, a.y + a.h],
-      [acx, bcy],
-      [fromRight ? b.x + b.w : b.x, bcy],
-    ]
+  // Hang ↔ spine: trunk owns N/S on the spine end. Distant / upward rejoins take the outer corridor.
+  if (!fromSpine && toSpine) {
+    const hangOnRight = acx > bcx
+    const hangBelow = acy > bcy
+    if (hangBelow || isDistantHangSpine(a, b, placed, fromId, toId)) {
+      return outerCorridor(a, b, hangOnRight)
+    }
+    // Near downward: leave bottom centre of hang, enter the free side face of the spine.
+    if (a.y + a.h <= b.y + 0.5) {
+      return [
+        [acx, a.y + a.h],
+        [acx, bcy],
+        [hangOnRight ? b.x + b.w : b.x, bcy],
+      ]
+    }
+  }
+  // Spine → hang: only distant hops take the outer corridor (near keeps the short side-entry below).
+  if (fromSpine && !toSpine && isDistantHangSpine(a, b, placed, fromId, toId)) {
+    return outerCorridor(a, b, bcx > acx)
   }
   // Source above target: leave bottom centre, enter top centre.
   if (a.y + a.h <= b.y + 0.5) {
@@ -1004,7 +1063,7 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
       [bcx, b.y],
     ]
   }
-  // Spine source below a hang target: leave free side face, enter top of hang.
+  // Spine source below a hang target (near): leave free side face, enter top of hang.
   if (fromSpine && !toSpine && b.y + b.h <= a.y + 0.5) {
     const toRight = bcx > acx
     return [

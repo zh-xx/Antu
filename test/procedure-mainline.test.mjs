@@ -396,3 +396,57 @@ test('mainline: free side faces are not shared when a decision has two exits', (
   const rj = endOn(rejoin, 'n-15')
   assert.ok(rj === 'E' || rj === 'W', `hang rejoin enters a side face of n-15, got ${rj}`)
 })
+
+test('mainline: distant hang→spine rejoin takes an outer corridor (stages off)', () => {
+  // 03 n-7→n-2: auto-renew hang returns to「服务期开始」, spanning several spine stations.
+  // Must not enter the trunk's N/S (shared with n-1→n-2 / n-2→n-3); run outside the hang column.
+  const spec = load('03-labour-outsourcing-contract.zh-CN.json')
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  const face = (n, [x, y]) => {
+    const cx = n.position.x + n.data.w / 2
+    const cy = n.position.y + n.data.h / 2
+    const onL = Math.abs(x - n.position.x) < 1
+    const onR = Math.abs(x - (n.position.x + n.data.w)) < 1
+    const onT = Math.abs(y - n.position.y) < 1
+    const onB = Math.abs(y - (n.position.y + n.data.h)) < 1
+    if (onL && Math.abs(y - cy) < 1) return 'W'
+    if (onR && Math.abs(y - cy) < 1) return 'E'
+    if (onT && Math.abs(x - cx) < 1) return 'N'
+    if (onB && Math.abs(x - cx) < 1) return 'S'
+    return `?(${x},${y})`
+  }
+  const c = g.connections.find((e) => e.id === 'c:n-7->n-2')
+  assert.ok(c, 'expected distant back n-7→n-2')
+  assert.equal(c.kind, 'back')
+  const hang = byId.get('n-7')
+  const spine = byId.get('n-2')
+  assert.ok(hang && spine)
+  const leave = face(hang, c.points[0])
+  const enter = face(spine, c.points[c.points.length - 1])
+  assert.ok(leave === 'E' || leave === 'W', `distant rejoin leaves hang on a side face, got ${leave}`)
+  assert.ok(enter === 'E' || enter === 'W', `distant rejoin enters spine on a side face, got ${enter}`)
+  assert.equal(leave, enter, 'outer corridor keeps the same hang-side face at both ends')
+  assert.ok(bendsOf(c.points) <= 2, `outer corridor is a sparse U-turn, got ${bendsOf(c.points)} bends`)
+  // Vertical run sits outside the hang box (not through the trunk mid-column).
+  const hangRight = hang.position.x + hang.data.w / 2 > spine.position.x + spine.data.w / 2
+  let outerX = null
+  for (let i = 0; i < c.points.length - 1; i += 1) {
+    const [p, q] = [c.points[i], c.points[i + 1]]
+    if (Math.abs(p[0] - q[0]) < 0.5 && Math.abs(p[1] - q[1]) > 1) {
+      outerX = p[0]
+      break
+    }
+  }
+  assert.ok(outerX != null, 'expected a vertical outer run')
+  if (hangRight) {
+    assert.ok(outerX >= hang.position.x + hang.data.w - 0.5, `outer run x=${outerX} must be ≥ hang right ${hang.position.x + hang.data.w}`)
+  } else {
+    assert.ok(outerX <= hang.position.x + 0.5, `outer run x=${outerX} must be ≤ hang left ${hang.position.x}`)
+  }
+  // Trunk ports on n-2 stay free of the rejoin.
+  const mainIn = g.connections.find((e) => e.id === 'c:n-1->n-2')
+  const mainOut = g.connections.find((e) => e.id === 'c:n-2->n-3')
+  assert.equal(face(spine, mainIn.points[mainIn.points.length - 1]), 'N')
+  assert.equal(face(spine, mainOut.points[0]), 'S')
+})
