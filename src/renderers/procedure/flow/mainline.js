@@ -854,8 +854,11 @@ function labelOnLongestSegment(points, size, nodeRects = []) {
   const candidates = []
   for (let i = 0; i < points.length - 1; i += 1) {
     const [p, q] = [points[i], points[i + 1]]
-    const horiz = Math.abs(p[1] - q[1]) < 0.5
-    const len = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1])
+    const dx = q[0] - p[0]
+    const dy = q[1] - p[1]
+    // Dominant axis — a 1px jog must not flip a long run into the other orientation.
+    const horiz = Math.abs(dx) >= Math.abs(dy)
+    const len = Math.abs(horiz ? dx : dy)
     const need = horiz ? w : h
     if (len < need + 8) continue
     const room = len - need
@@ -871,14 +874,14 @@ function labelOnLongestSegment(points, size, nodeRects = []) {
       seen.add(key)
       const r = horiz
         ? {
-            x: (q[0] >= p[0] ? p[0] + a : p[0] - a - w),
+            x: (dx >= 0 ? p[0] + a : p[0] - a - w),
             y: (p[1] + q[1]) / 2 - h / 2,
             w,
             h,
           }
         : {
             x: (p[0] + q[0]) / 2 - w / 2,
-            y: (q[1] >= p[1] ? p[1] + a : p[1] - a - h),
+            y: (dy >= 0 ? p[1] + a : p[1] - a - h),
             w,
             h,
           }
@@ -904,13 +907,15 @@ function clearCorridorForLabels(placed, connections) {
     if (!c.labelSize || !c.points || c.points.length < 4) continue
     if (labelOnLongestSegment(c.points, c.labelSize, nodeRects)) continue
     const { width: lw, height: lh } = c.labelSize
-    // Find the longest vertical run (the corridor).
+    // Find the longest vertical run (the corridor) — dominant axis, not a 1px jog.
     let vi = -1
     let vLen = 0
     for (let i = 0; i < c.points.length - 1; i += 1) {
       const [p, q] = [c.points[i], c.points[i + 1]]
-      if (Math.abs(p[0] - q[0]) >= 0.5) continue
-      const len = Math.abs(q[1] - p[1])
+      const dx = q[0] - p[0]
+      const dy = q[1] - p[1]
+      if (Math.abs(dy) < Math.abs(dx)) continue
+      const len = Math.abs(dy)
       if (len > vLen) {
         vLen = len
         vi = i
