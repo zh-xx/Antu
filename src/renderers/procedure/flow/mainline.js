@@ -962,22 +962,27 @@ function sideChannel(a, b, preferLeft = false) {
 }
 
 /**
- * Outer corridor for a hang ↔ spine hop: leave/enter the hang-side faces, run outside the hang
- * column (never through the trunk, never on the spine's N/S ports). Sparse U-turn = 2 bends.
- * @param {{ x: number, y: number, w: number, h: number }} a
- * @param {{ x: number, y: number, w: number, h: number }} b
+ * Outer corridor for a hang ↔ spine hop: leave the hang on the face facing the travel
+ * (bottom when going down, top when going up — never a side stub that immediately turns),
+ * run outside the hang column, enter the spine on its hang-side face (trunk keeps N/S).
+ * Sparse U-turn = 2 bends.
+ * @param {{ x: number, y: number, w: number, h: number }} a hang box
+ * @param {{ x: number, y: number, w: number, h: number }} b spine box
  * @param {boolean} hangOnRight hang sits to the right of the spine
  * @param {number} [depth] extra outward offset when several corridors stack
  */
 function outerCorridor(a, b, hangOnRight, depth = 0) {
+  const acx = a.x + a.w / 2
   const acy = a.y + a.h / 2
   const bcy = b.y + b.h / 2
+  const goingDown = bcy >= acy
+  const leaveY = goingDown ? a.y + a.h : a.y
   const outer = hangOnRight
     ? Math.max(a.x + a.w, b.x + b.w) + OUTER_GAP + depth
     : Math.min(a.x, b.x) - OUTER_GAP - depth
   return [
-    [hangOnRight ? a.x + a.w : a.x, acy],
-    [outer, acy],
+    [acx, leaveY],
+    [outer, leaveY],
     [outer, bcy],
     [hangOnRight ? b.x + b.w : b.x, bcy],
   ]
@@ -1050,7 +1055,8 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
   }
   // Spine → hang: only distant hops take the outer corridor (near keeps the short side-entry below).
   if (fromSpine && !toSpine && isDistantHangSpine(a, b, placed, fromId, toId)) {
-    return outerCorridor(a, b, bcx > acx)
+    // outerCorridor is hang→spine; reverse for the spine→hang direction.
+    return outerCorridor(b, a, bcx > acx).slice().reverse()
   }
   // Source above target: leave bottom centre, enter top centre.
   if (a.y + a.h <= b.y + 0.5) {

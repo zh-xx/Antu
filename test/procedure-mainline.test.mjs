@@ -424,9 +424,9 @@ test('mainline: distant hang→spine rejoin takes an outer corridor (stages off)
   assert.ok(hang && spine)
   const leave = face(hang, c.points[0])
   const enter = face(spine, c.points[c.points.length - 1])
-  assert.ok(leave === 'E' || leave === 'W', `distant rejoin leaves hang on a side face, got ${leave}`)
+  // Upward: leave the hang's top; enter the spine on the hang-side face (not trunk N/S).
+  assert.equal(leave, 'N', `upward distant rejoin leaves hang on top, got ${leave}`)
   assert.ok(enter === 'E' || enter === 'W', `distant rejoin enters spine on a side face, got ${enter}`)
-  assert.equal(leave, enter, 'outer corridor keeps the same hang-side face at both ends')
   assert.ok(bendsOf(c.points) <= 2, `outer corridor is a sparse U-turn, got ${bendsOf(c.points)} bends`)
   // Vertical run sits outside the hang box (not through the trunk mid-column).
   const hangRight = hang.position.x + hang.data.w / 2 > spine.position.x + spine.data.w / 2
@@ -449,4 +449,32 @@ test('mainline: distant hang→spine rejoin takes an outer corridor (stages off)
   const mainOut = g.connections.find((e) => e.id === 'c:n-2->n-3')
   assert.equal(face(spine, mainIn.points[mainIn.points.length - 1]), 'N')
   assert.equal(face(spine, mainOut.points[0]), 'S')
+})
+
+test('mainline: downward distant rejoin leaves the hang on the bottom (stages off)', () => {
+  // 07 n-13→n-14: 「差额从调整款中扣除」goes down to spine; leave S, not a right-side stub that turns.
+  const spec = load('07-share-acquisition-agreement.zh-CN.json')
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  const face = (n, [x, y]) => {
+    const cx = n.position.x + n.data.w / 2
+    const cy = n.position.y + n.data.h / 2
+    const onL = Math.abs(x - n.position.x) < 1
+    const onR = Math.abs(x - (n.position.x + n.data.w)) < 1
+    const onT = Math.abs(y - n.position.y) < 1
+    const onB = Math.abs(y - (n.position.y + n.data.h)) < 1
+    if (onL && Math.abs(y - cy) < 1) return 'W'
+    if (onR && Math.abs(y - cy) < 1) return 'E'
+    if (onT && Math.abs(x - cx) < 1) return 'N'
+    if (onB && Math.abs(x - cx) < 1) return 'S'
+    return `?(${x},${y})`
+  }
+  const c = g.connections.find((e) => e.id === 'c:n-13->n-14')
+  assert.ok(c)
+  const hang = byId.get('n-13')
+  const spine = byId.get('n-14')
+  assert.equal(face(hang, c.points[0]), 'S', 'downward distant leave is bottom centre')
+  const enter = face(spine, c.points[c.points.length - 1])
+  assert.ok(enter === 'E' || enter === 'W', `enters spine side face, got ${enter}`)
+  assert.ok(bendsOf(c.points) <= 2)
 })
