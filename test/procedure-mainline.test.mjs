@@ -352,3 +352,47 @@ test('mainline: connection labels stay clear of nodes and near their segment', (
   }
   assert.ok(labelled > 0, 'expected labelled connections in the corpus')
 })
+
+test('mainline: free side faces are not shared when a decision has two exits', () => {
+  // Work-injury n-3: trunk owns N/S; 材料不全 (+back) and 不予受理 must take opposite E/W faces.
+  // n-15: hang rejoin from n-14 must enter a side face, not share the trunk top with n-13.
+  const spec = load('08-work-injury-recognition.zh-CN.json')
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  const face = (n, [x, y]) => {
+    const cx = n.position.x + n.data.w / 2
+    const cy = n.position.y + n.data.h / 2
+    const onL = Math.abs(x - n.position.x) < 1
+    const onR = Math.abs(x - (n.position.x + n.data.w)) < 1
+    const onT = Math.abs(y - n.position.y) < 1
+    const onB = Math.abs(y - (n.position.y + n.data.h)) < 1
+    if (onL && Math.abs(y - cy) < 1) return 'W'
+    if (onR && Math.abs(y - cy) < 1) return 'E'
+    if (onT && Math.abs(x - cx) < 1) return 'N'
+    if (onB && Math.abs(x - cx) < 1) return 'S'
+    return `?(${x},${y})`
+  }
+  const endOn = (c, nodeId) => {
+    const n = byId.get(nodeId)
+    const pt = c.from === nodeId ? c.points[0] : c.points[c.points.length - 1]
+    return face(n, pt)
+  }
+  const leave4 = g.connections.find((c) => c.id === 'c:n-3->n-4')
+  const leave18 = g.connections.find((c) => c.id === 'c:n-3->n-18')
+  const back = g.connections.find((c) => c.id === 'c:n-4->n-3')
+  assert.ok(leave4 && leave18 && back)
+  const f4 = endOn(leave4, 'n-3')
+  const f18 = endOn(leave18, 'n-3')
+  const fb = endOn(back, 'n-3')
+  assert.ok(f4 === 'E' || f4 === 'W', `材料不全 leaves on a side face, got ${f4}`)
+  assert.ok(f18 === 'E' || f18 === 'W', `不予受理 leaves on a side face, got ${f18}`)
+  assert.notEqual(f4, f18, `two free side exits must not share a face (${f4})`)
+  assert.equal(fb, f4, 'loop back shares the 材料不全 face (bidirectional hop)')
+
+  const mainIn = g.connections.find((c) => c.id === 'c:n-13->n-15')
+  const rejoin = g.connections.find((c) => c.id === 'c:n-14->n-15')
+  assert.ok(mainIn && rejoin)
+  assert.equal(endOn(mainIn, 'n-15'), 'N', 'trunk enters n-15 from the top')
+  const rj = endOn(rejoin, 'n-15')
+  assert.ok(rj === 'E' || rj === 'W', `hang rejoin enters a side face of n-15, got ${rj}`)
+})
