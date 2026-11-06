@@ -1271,7 +1271,8 @@
   box-sizing: border-box;
   padding: 1px 6px;
   border-radius: min(4px, var(--antu-pill-radius, 4px));
-  background: var(--antu-label-bg, rgba(255, 255, 255, .85));
+  /* Opaque chip: on-line labels must hide the stroke under the text (not see-through). */
+  background: var(--antu-label-bg, var(--antu-canvas, #fff));
   font-size: var(--antu-type-label);
   line-height: 16px;
   color: var(--antu-text);
@@ -1449,7 +1450,7 @@
   box-sizing: border-box;
   padding: 1px 6px;
   border-radius: 4px;
-  background: var(--antu-label-bg, rgba(255, 255, 255, .85));
+  background: var(--antu-label-bg, var(--antu-canvas, #fff));
   font-size: var(--antu-type-label);
   line-height: 16px;
   color: var(--antu-text);

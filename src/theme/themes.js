@@ -90,7 +90,8 @@ export const THEMES = {
       body: '"FangSong", "STFangsong", "FangSong_GB2312", "Songti SC", "SimSun", "Noto Serif CJK SC", "Source Han Serif SC", serif',
       head: '"SimHei", "Heiti SC", "STHeiti", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
     },
-    color: { ink: '#111111', ink2: '#2b2b2b', ink3: '#4d4d4d', ink4: '#767676', bg: '#ffffff', canvas: '#ffffff', frame: '#111111', line: '#c9c9c9', chip: '#f0f0f0', side1: '#111111', side2: '#555555', axis: '#767676', dots: '#e8ebef', mini: '#cbd5e1', miniGhost: '#eef1f5', exportBg: '#ffffff', labelBg: 'rgba(255, 255, 255, 0.85)' },
+    // labelBg is opaque (canvas colour): on-line chips must hide the stroke under the text.
+    color: { ink: '#111111', ink2: '#2b2b2b', ink3: '#4d4d4d', ink4: '#767676', bg: '#ffffff', canvas: '#ffffff', frame: '#111111', line: '#c9c9c9', chip: '#f0f0f0', side1: '#111111', side2: '#555555', axis: '#767676', dots: '#e8ebef', mini: '#cbd5e1', miniGhost: '#eef1f5', exportBg: '#ffffff', labelBg: '#ffffff' },
     radius: { person: 18, company: 3, organization: 3, government: 3, other: 3, pill: 2, group: 12 },
     entity: {
       person: { stroke: '#111111', fill: '#ffffff', width: 1.3 },
@@ -134,7 +135,7 @@ export const THEMES = {
       body: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
       head: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
     },
-    color: { ink: '#0f172a', ink2: '#475569', ink3: '#64748b', ink4: '#94a3b8', bg: '#fbfcfd', canvas: '#fbfcfd', frame: '#e2e8f0', line: '#e8ebef', chip: '#f1f4f8', side1: '#475569', side2: '#64748b', axis: '#94a3b8', dots: '#e8ebef', mini: '#cbd5e1', miniGhost: '#eef1f5', exportBg: '#ffffff', labelBg: 'rgba(255, 255, 255, 0.85)' },
+    color: { ink: '#0f172a', ink2: '#475569', ink3: '#64748b', ink4: '#94a3b8', bg: '#fbfcfd', canvas: '#fbfcfd', frame: '#e2e8f0', line: '#e8ebef', chip: '#f1f4f8', side1: '#475569', side2: '#64748b', axis: '#94a3b8', dots: '#e8ebef', mini: '#cbd5e1', miniGhost: '#eef1f5', exportBg: '#ffffff', labelBg: '#fbfcfd' },
     radius: { person: 14, company: 8, organization: 8, government: 6, other: 8, pill: 12, group: 12 },
     entity: {
       person: { stroke: '#94a3b8', fill: '#f1f5f9', width: 1 },
@@ -175,7 +176,7 @@ export const THEMES = {
       body: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
       head: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
     },
-    color: { ink: '#13233f', ink2: '#2d4366', ink3: '#5b6f8f', ink4: '#8aa0c4', bg: '#ffffff', canvas: '#ffffff', frame: '#c7d2e4', line: '#dbe3f0', chip: '#eef3fb', side1: '#1f3f7f', side2: '#9a1b1b', axis: '#8aa0c4', dots: '#e8ebef', mini: '#cbd5e1', miniGhost: '#eef1f5', exportBg: '#ffffff', labelBg: 'rgba(255, 255, 255, 0.85)' },
+    color: { ink: '#13233f', ink2: '#2d4366', ink3: '#5b6f8f', ink4: '#8aa0c4', bg: '#ffffff', canvas: '#ffffff', frame: '#c7d2e4', line: '#dbe3f0', chip: '#eef3fb', side1: '#1f3f7f', side2: '#9a1b1b', axis: '#8aa0c4', dots: '#e8ebef', mini: '#cbd5e1', miniGhost: '#eef1f5', exportBg: '#ffffff', labelBg: '#ffffff' },
     radius: { person: 14, company: 3, organization: 4, government: 3, other: 4, pill: 4, group: 6 },
     entity: {
       person: { stroke: '#2f5aa8', fill: '#eef3fb', width: 1 },
@@ -228,7 +229,7 @@ export const THEMES = {
       body: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
       head: 'system-ui, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif',
     },
-    color: { ink: '#e6ebf2', ink2: '#b6c0cf', ink3: '#8b97a9', ink4: '#6b778a', bg: '#14181f', canvas: '#14181f', frame: '#2a3240', line: '#262d38', chip: '#1e2530', side1: '#9fb3d1', side2: '#7f8aa0', axis: '#6b778a', dots: '#232a35', mini: '#4a5568', miniGhost: '#232a35', exportBg: '#14181f', labelBg: 'rgba(20, 24, 31, 0.85)' },
+    color: { ink: '#e6ebf2', ink2: '#b6c0cf', ink3: '#8b97a9', ink4: '#6b778a', bg: '#14181f', canvas: '#14181f', frame: '#2a3240', line: '#262d38', chip: '#1e2530', side1: '#9fb3d1', side2: '#7f8aa0', axis: '#6b778a', dots: '#232a35', mini: '#4a5568', miniGhost: '#232a35', exportBg: '#14181f', labelBg: '#14181f' },
     radius: { person: 14, company: 8, organization: 8, government: 6, other: 8, pill: 12, group: 12 },
     entity: {
       person: { stroke: '#8b97a9', fill: '#1f2733', width: 1 },
