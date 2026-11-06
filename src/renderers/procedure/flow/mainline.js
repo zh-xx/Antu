@@ -213,6 +213,8 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   }
   // straighten/polish prefer diamond-point routes; same-row forks stay side-horizontal.
   restoreSameRowLinks(placed, connections, diamonds)
+  // Final: linked boxes share centres; every port on a face centre (after polish skew).
+  preferCenteredLinks(placed, connections, diamonds)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
   yield
@@ -535,8 +537,10 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   // Polish / pin can rewrite side links; put same-row decision branches and backs back to 0-bend.
   restoreSameRowLinks(placed, connections, diamonds)
   // Labelled hops shorter than their text: push the hang end away so the label can sit ON the ink.
-  lengthenLabeledHops(placed, connections, new Set(spineColumn), branchSign)
+  lengthenLabeledHops(placed, connections, new Set(spineColumn), branchSign, diamonds)
   restoreSameRowLinks(placed, connections, diamonds)
+  // Linked boxes prefer shared centres; every port sits on a face centre (polish must not leave a skew).
+  preferCenteredLinks(placed, connections, diamonds)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -672,15 +676,73 @@ function pushBranchesOffSpine(placed, spineIds) {
 }
 
 /**
+ * Rebuild every link that touches a moved node, attaching at face centres.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} moved
+ * @param {Set<string>} diamonds
+ */
+function rebuildIncidentLinks(placed, connections, moved, diamonds) {
+  if (!moved.size) return
+  for (const c of connections) {
+    if (!moved.has(c.from) && !moved.has(c.to)) continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b) continue
+    c.points = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to)
+  }
+}
+
+/**
+ * Prefer centred links: snap a decision's near hang back onto the fork row when that does
+ * not overlap another box, then rebuild branch/back ports onto face centres. Main trunk
+ * routes from polish stay put; backs that would cut through a same-column box keep a side channel.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ */
+function preferCenteredLinks(placed, connections, diamonds) {
+  const overlaps = (a, b) =>
+    a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5
+  for (const c of connections) {
+    if (c.kind !== 'branch' && c.kind !== 'back') continue
+    if (!diamonds.has(c.from) && !diamonds.has(c.to)) continue
+    const fork = diamonds.has(c.from) ? placed.get(c.from) : placed.get(c.to)
+    const hang = diamonds.has(c.from) ? placed.get(c.to) : placed.get(c.from)
+    const hangId = diamonds.has(c.from) ? c.to : c.from
+    if (!fork || !hang) continue
+    const forkCy = fork.y + fork.h / 2
+    const hangCy = hang.y + hang.h / 2
+    // Already centred, or a deep stack — leave the stack alone.
+    if (Math.abs(forkCy - hangCy) < 2 || Math.abs(forkCy - hangCy) > fork.h) continue
+    const next = { ...hang, y: forkCy - hang.h / 2 }
+    if ([...placed].some(([id, r]) => id !== hangId && overlaps(next, r))) continue
+    placed.set(hangId, next)
+  }
+  for (const c of connections) {
+    // Spine mains keep their polished routes; only re-centre branch / back ports.
+    if (c.kind === 'main') continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b) continue
+    c.points = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to)
+  }
+}
+
+/**
  * If a labelled link's longest run is shorter than the label, stretch it: same-row / elbow
  * hops push the non-spine end away from the trunk; vertical spine gaps push the lower box down.
+ * After any move, rebuild every incident link so ports stay on face centres.
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {object[]} connections
  * @param {Set<string>} spineIds
  * @param {number} branchSign
+ * @param {Set<string>} diamonds
  */
-function lengthenLabeledHops(placed, connections, spineIds, branchSign) {
+function lengthenLabeledHops(placed, connections, spineIds, branchSign, diamonds = new Set()) {
   const PAD_LABEL = 16
+  /** @type {Set<string>} */
+  const moved = new Set()
   for (const c of connections) {
     if (!c.labelSize || !c.points?.length) continue
     const { width: lw, height: lh } = c.labelSize
@@ -712,12 +774,9 @@ function lengthenLabeledHops(placed, connections, spineIds, branchSign) {
       const r = placed.get(hangId)
       if (!r) continue
       placed.set(hangId, { ...r, x: r.x + branchSign * deficit })
-      const a2 = placed.get(c.from)
-      const b2 = placed.get(c.to)
-      if (sameRowLink(a2, b2)) c.points = sideHorizontal(a2, b2)
-      else c.points = elbow(a2, b2, false)
+      moved.add(hangId)
     } else {
-      // Vertical: push the lower box down (and everything below it in the same column later via pin).
+      // Vertical: push the lower box down.
       const upper = a.y <= b.y ? a : b
       const lowerId = a.y <= b.y ? c.to : c.from
       const lower = placed.get(lowerId)
@@ -726,20 +785,21 @@ function lengthenLabeledHops(placed, connections, spineIds, branchSign) {
       if (Math.abs(upper.x + upper.w / 2 - (lower.x + lower.w / 2)) > Math.max(upper.w, lower.w)) continue
       const dy = deficit
       placed.set(lowerId, { ...lower, y: lower.y + dy })
+      moved.add(lowerId)
       // Nudge later nodes in the same vertical stack that sat below the old lower edge.
       const oldBottom = lower.y + lower.h
       for (const [id, r] of placed) {
         if (id === lowerId) continue
         if (Math.abs(r.x + r.w / 2 - (lower.x + lower.w / 2)) > 2) continue
-        if (r.y + 0.5 >= oldBottom) placed.set(id, { ...r, y: r.y + dy })
+        if (r.y + 0.5 >= oldBottom) {
+          placed.set(id, { ...r, y: r.y + dy })
+          moved.add(id)
+        }
       }
-      const a2 = placed.get(c.from)
-      const b2 = placed.get(c.to)
-      c.points = elbow(a2, b2, false)
     }
   }
+  rebuildIncidentLinks(placed, connections, moved, diamonds)
 }
-
 /**
  * Midpoint of the longest segment that can hold the label — preferred when the chip sits ON the ink.
  * @returns {{ x: number, y: number } | null}
@@ -835,23 +895,92 @@ function restoreSameRowLinks(placed, connections, diamonds) {
   }
 }
 
-function elbow(a, b, _fromDiamond) {
-  if (sameRowLink(a, b)) return sideHorizontal(a, b)
-  const ax = a.x + a.w / 2
-  const ay = a.y + a.h
-  const bx = b.x + b.w / 2
-  const by = b.y
-  if (Math.abs(ax - bx) < 0.5) return [
-    [ax, ay],
-    [bx, by],
-  ]
-  const mid = (ay + by) / 2
+/** True when another placed box sits between a and b on (near) the shared column. */
+function columnBlocked(a, b, placed, fromId, toId) {
+  if (!placed) return false
+  const top = Math.min(a.y + a.h, b.y + b.h)
+  const bot = Math.max(a.y, b.y)
+  if (bot <= top + 0.5) return false
+  const cx = (a.x + a.w / 2 + b.x + b.w / 2) / 2
+  for (const [id, r] of placed) {
+    if (id === fromId || id === toId) continue
+    if (Math.abs(r.x + r.w / 2 - cx) > Math.max(r.w, a.w, b.w) / 2 + 2) continue
+    if (r.y + r.h > top + 0.5 && r.y < bot - 0.5) return true
+  }
+  return false
+}
+
+/** Side-channel U-turn: leave/enter face centres, run beside both boxes (avoids same-column blockers). */
+function sideChannel(a, b, preferLeft = false) {
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const side = preferLeft ? Math.min(a.x, b.x) - 24 : Math.max(a.x + a.w, b.x + b.w) + 24
   return [
-    [ax, ay],
-    [ax, mid],
-    [bx, mid],
-    [bx, by],
+    [preferLeft ? a.x : a.x + a.w, acy],
+    [side, acy],
+    [side, bcy],
+    [preferLeft ? b.x : b.x + b.w, bcy],
   ]
+}
+
+/**
+ * Orthogonal route between two boxes, ports on face centres. Prefer same-row / same-column
+ * (0-bend); otherwise leave the facing side of the source and enter the facing side of the target.
+ * When a same-column hop would cut through another box, take a side channel instead.
+ */
+function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, toId = null) {
+  if (sameRowLink(a, b)) return sideHorizontal(a, b)
+  const acx = a.x + a.w / 2
+  const acy = a.y + a.h / 2
+  const bcx = b.x + b.w / 2
+  const bcy = b.y + b.h / 2
+  const blocked = columnBlocked(a, b, placed, fromId, toId)
+  // Same column: straight vertical when clear; otherwise side channel so labels stay off the blocker.
+  if (Math.abs(acx - bcx) < 0.5) {
+    if (blocked) return sideChannel(a, b, acx > 40)
+    const down = bcy >= acy
+    return [
+      [acx, down ? a.y + a.h : a.y],
+      [bcx, down ? b.y : b.y + b.h],
+    ]
+  }
+  // Source above target (common hang → spine rejoin): leave bottom centre, enter top centre.
+  if (a.y + a.h <= b.y + 0.5) {
+    if (blocked) return sideChannel(a, b, acx > bcx)
+    const mid = (a.y + a.h + b.y) / 2
+    return [
+      [acx, a.y + a.h],
+      [acx, mid],
+      [bcx, mid],
+      [bcx, b.y],
+    ]
+  }
+  // Source below target: leave top centre, enter bottom centre.
+  if (b.y + b.h <= a.y + 0.5) {
+    if (blocked) return sideChannel(a, b, acx > bcx)
+    const mid = (b.y + b.h + a.y) / 2
+    return [
+      [acx, a.y],
+      [acx, mid],
+      [bcx, mid],
+      [bcx, b.y + b.h],
+    ]
+  }
+  // Side-by-side but not same-row: leave nearer side centre → enter nearer side centre.
+  const aRight = acx <= bcx
+  const ax = aRight ? a.x + a.w : a.x
+  const bx = aRight ? b.x : b.x + b.w
+  const mid = (ax + bx) / 2
+  return [
+    [ax, acy],
+    [mid, acy],
+    [mid, bcy],
+    [bx, bcy],
+  ]
+}
+
+function elbow(a, b, fromDiamond) {
+  return routeCentered(a, b, fromDiamond)
 }
 
 function fallbackRoute(a, b) {
