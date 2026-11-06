@@ -772,7 +772,8 @@ function preferCenteredLinks(placed, connections, diamonds, spineIds = null) {
  * @param {Set<string>} diamonds
  */
 function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()) {
-  const PAD_LABEL = 16
+  // On-line chips hide the stroke under the text; keep a short stub of ink on each side.
+  const INK_PAD = 20
   /** @type {Set<string>} */
   const moved = new Set()
   for (const c of connections) {
@@ -793,7 +794,7 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
         bestHoriz = horiz
       }
     }
-    const need = (bestHoriz ? lw : lh) + PAD_LABEL
+    const need = (bestHoriz ? lw : lh) + 2 * INK_PAD
     if (bestLen >= need) continue
 
     const deficit = need - bestLen
@@ -811,25 +812,18 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
       placed.set(hangId, { ...r, x: r.x + away * deficit })
       moved.add(hangId)
     } else {
-      // Vertical: push the lower box down.
+      // Vertical (incl. labelled spine hops like 「受理」): open the gap so the chip does not
+      // cover the whole segment. Stretch when the two boxes nearly share an axis.
       const upper = a.y <= b.y ? a : b
-      const lowerId = a.y <= b.y ? c.to : c.from
-      const lower = placed.get(lowerId)
-      if (!lower) continue
-      // Only stretch when the two boxes nearly share an axis (spine or stacked hang).
+      const lower = a.y <= b.y ? b : a
       if (Math.abs(upper.x + upper.w / 2 - (lower.x + lower.w / 2)) > Math.max(upper.w, lower.w)) continue
+      const cut = upper.y + upper.h
       const dy = deficit
-      placed.set(lowerId, { ...lower, y: lower.y + dy })
-      moved.add(lowerId)
-      // Nudge later nodes in the same vertical stack that sat below the old lower edge.
-      const oldBottom = lower.y + lower.h
+      // Push every box at/below the gap — spine and hangs — so later same-row forks stay aligned.
       for (const [id, r] of placed) {
-        if (id === lowerId) continue
-        if (Math.abs(r.x + r.w / 2 - (lower.x + lower.w / 2)) > 2) continue
-        if (r.y + 0.5 >= oldBottom) {
-          placed.set(id, { ...r, y: r.y + dy })
-          moved.add(id)
-        }
+        if (r.y + 0.5 < cut) continue
+        placed.set(id, { ...r, y: r.y + dy })
+        moved.add(id)
       }
     }
   }
