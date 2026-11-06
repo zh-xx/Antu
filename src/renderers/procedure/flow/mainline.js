@@ -1074,8 +1074,35 @@ function hangLaneRejoin(a, b, hangOnRight) {
 }
 
 /**
- * Outer corridor fallback when the hang lane is blocked: leave travel face, run outside the hang
- * column, enter the spine side face (2 bends).
+ * Inward gutter when the hang lane is blocked: leave the face toward the spine, run between
+ * hang and trunk, enter the spine side. Avoids a far outer U with a tiny vertical jog
+ * (e.g. purchase-contract「协商是否成功」→「甲方付款」).
+ * @param {{ x: number, y: number, w: number, h: number }} a hang
+ * @param {{ x: number, y: number, w: number, h: number }} b spine
+ * @param {boolean} hangOnRight
+ */
+function gutterRejoin(a, b, hangOnRight) {
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const ax = hangOnRight ? a.x : a.x + a.w
+  const bx = hangOnRight ? b.x + b.w : b.x
+  if (Math.abs(acy - bcy) < 2) {
+    return [
+      [ax, acy],
+      [bx, bcy],
+    ]
+  }
+  const gutterX = (ax + bx) / 2
+  return [
+    [ax, acy],
+    [gutterX, acy],
+    [gutterX, bcy],
+    [bx, bcy],
+  ]
+}
+
+/**
+ * Outer corridor last resort: leave travel face, run outside the hang column, enter spine side.
  * @param {{ x: number, y: number, w: number, h: number }} a hang box
  * @param {{ x: number, y: number, w: number, h: number }} b spine box
  * @param {boolean} hangOnRight hang sits to the right of the spine
@@ -1113,8 +1140,27 @@ function hangLaneBlocked(a, leaveY, targetY, placed, fromId, toId) {
   return false
 }
 
+/** True when a box sits on the inward gutter x between hang and spine over the y span. */
+function gutterBlocked(a, b, hangOnRight, placed, fromId, toId) {
+  if (!placed) return false
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const ax = hangOnRight ? a.x : a.x + a.w
+  const bx = hangOnRight ? b.x + b.w : b.x
+  const gutterX = (ax + bx) / 2
+  const lo = Math.min(acy, bcy)
+  const hi = Math.max(acy, bcy)
+  for (const [id, r] of placed) {
+    if (id === fromId || id === toId) continue
+    if (r.x > gutterX + 2 || r.x + r.w < gutterX - 2) continue
+    if (hi <= lo + 0.5) continue
+    if (r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return true
+  }
+  return false
+}
+
 /**
- * Hang → spine route: prefer hang-lane (1 bend); outer corridor only if that lane is blocked.
+ * Hang → spine: hang-lane (1 bend) → inward gutter → outer corridor (last resort).
  * @param {{ x: number, y: number, w: number, h: number }} a hang
  * @param {{ x: number, y: number, w: number, h: number }} b spine
  * @param {boolean} hangOnRight
@@ -1123,12 +1169,14 @@ function hangLaneBlocked(a, leaveY, targetY, placed, fromId, toId) {
  * @param {string | null | undefined} toId
  */
 function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId) {
-  const acx = a.x + a.w / 2
   const acy = a.y + a.h / 2
   const bcy = b.y + b.h / 2
   const leaveY = bcy >= acy ? a.y + a.h : a.y
   if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
     return hangLaneRejoin(a, b, hangOnRight)
+  }
+  if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
+    return gutterRejoin(a, b, hangOnRight)
   }
   return outerCorridor(a, b, hangOnRight)
 }

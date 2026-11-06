@@ -484,6 +484,39 @@ test('mainline: hang→spine rejoin uses hang lane (leave N/S, 1 bend, spine sid
   }
 })
 
+test('mainline: blocked hang-lane uses inward gutter (purchase-contract)', () => {
+  // 02 n-9→n-6「是」: n-8 sits on the hang column above the diamond, so hang-lane is blocked.
+  // Prefer the gutter between hang and spine (leave W, enter E) — not a far outer U with a tiny jog.
+  const spec = load('02-purchase-contract.zh-CN.json')
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  const face = (n, [x, y]) => {
+    const cx = n.position.x + n.data.w / 2
+    const cy = n.position.y + n.data.h / 2
+    if (Math.abs(x - n.position.x) < 1 && Math.abs(y - cy) < 1) return 'W'
+    if (Math.abs(x - (n.position.x + n.data.w)) < 1 && Math.abs(y - cy) < 1) return 'E'
+    if (Math.abs(y - n.position.y) < 1 && Math.abs(x - cx) < 1) return 'N'
+    if (Math.abs(y - (n.position.y + n.data.h)) < 1 && Math.abs(x - cx) < 1) return 'S'
+    return '?'
+  }
+  const c = g.connections.find((e) => e.id === 'c:n-9->n-6')
+  const hang = byId.get('n-9')
+  const spine = byId.get('n-6')
+  assert.ok(c && hang && spine)
+  assert.equal(face(hang, c.points[0]), 'W', 'gutter leaves toward the spine')
+  assert.equal(face(spine, c.points[c.points.length - 1]), 'E')
+  assert.ok(bendsOf(c.points) <= 2)
+  const hangCx = hang.position.x + hang.data.w / 2
+  const spineRight = spine.position.x + spine.data.w
+  // Vertical run (if any) sits between spine and hang — not outside the hang column.
+  for (let i = 0; i < c.points.length - 1; i += 1) {
+    const [p, q] = [c.points[i], c.points[i + 1]]
+    if (Math.abs(p[0] - q[0]) >= 0.5 || Math.abs(p[1] - q[1]) <= 1) continue
+    assert.ok(p[0] < hangCx - 1, `gutter x=${p[0]} should be inward of hang cx ${hangCx}`)
+    assert.ok(p[0] > spineRight - 1, `gutter x=${p[0]} should be outside spine right ${spineRight}`)
+  }
+})
+
 test('mainline: stages-off hang→spine never enters trunk N/S (corpus)', () => {
   // Every hang→spine hop: spine end is E/W. Off-row hops leave hang on N/S (travel face), ≤2 bends.
   const face = (n, [x, y]) => {
@@ -515,10 +548,16 @@ test('mainline: stages-off hang→spine never enters trunk N/S (corpus)', () => 
         continue
       }
       const leave = face(hang, c.points[0])
-      assert.ok(leave === 'N' || leave === 'S', `${f} ${c.id}: off-row hang leave ${leave}, want N/S`)
+      const towardSpine =
+        hang.position.x + hang.data.w / 2 > sp.position.x + sp.data.w / 2 ? 'W' : 'E'
+      // Hang-lane / outer leave N/S; inward gutter leaves the face toward the spine.
+      assert.ok(
+        leave === 'N' || leave === 'S' || leave === towardSpine,
+        `${f} ${c.id}: off-row hang leave ${leave}, want N/S or ${towardSpine}`,
+      )
       assert.ok(bendsOf(c.points) <= 2, `${f} ${c.id}: ≤2 bends, got ${bendsOf(c.points)}`)
-      // Hang-lane (1 bend) keeps the vertical on the hang centre; outer corridor (2) is the fallback.
-      if (bendsOf(c.points) <= 1) {
+      // Hang-lane (leave N/S, 1 bend) keeps the vertical on the hang centre.
+      if ((leave === 'N' || leave === 'S') && bendsOf(c.points) <= 1) {
         const hangCx = hang.position.x + hang.data.w / 2
         assert.ok(Math.abs(c.points[1][0] - hangCx) < 1, `${f} ${c.id}: hang-lane vertical on hang cx`)
       }
