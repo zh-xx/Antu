@@ -808,9 +808,10 @@ export function placeLabel(points, size, nodeRects, blocks, links, borders = [],
                 w,
                 h,
               }
-          const candidates = short
-            ? shortAnchors.map((a) => (horizontal ? { ...base, x: a } : { ...base, y: a }))
-            : [base]
+          const candidates =
+            short && shortAnchors
+              ? shortAnchors.map((a) => (horizontal ? { ...base, x: a } : { ...base, y: a }))
+              : [base]
           for (const r of candidates) {
             if (consider(r, len)) return { x: r.x, y: r.y }
           }

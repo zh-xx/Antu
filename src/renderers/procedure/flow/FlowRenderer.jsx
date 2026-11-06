@@ -132,8 +132,10 @@ export default function ProcedureFlow({ spec }) {
   }
   // Trial layout engine is toggled from the label-card About panel (not the dock). Re-read when it writes.
   useEffect(() => {
-    const sync = (/** @type {CustomEvent} */ ev) => {
-      if (ev.detail?.specKey && ev.detail.specKey !== specKey) return
+    /** @param {Event} ev */
+    const sync = (ev) => {
+      const detail = /** @type {CustomEvent<{ specKey?: string }> } */ (ev).detail
+      if (detail?.specKey && detail.specKey !== specKey) return
       setFieldPrefs(prefs.read().flowFieldsByDiagram || {})
     }
     window.addEventListener('antu:flow-fields', sync)

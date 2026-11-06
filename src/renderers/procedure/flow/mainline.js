@@ -361,8 +361,9 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   for (const it of intervals) {
     signOf.set(it.h, branchSign)
     if (it.h.rootOnSpine && byId.get(it.h.from)?.kind === 'decision') {
-      if (!forkIntervals.has(it.h.from)) forkIntervals.set(it.h.from, [])
-      forkIntervals.get(it.h.from).push(it)
+      const list = forkIntervals.get(it.h.from)
+      if (list) list.push(it)
+      else forkIntervals.set(it.h.from, [it])
     }
   }
   for (const its of forkIntervals.values()) {
@@ -712,9 +713,9 @@ function pushBranchesOffSpine(placed, spineIds) {
  * @param {object[]} connections
  * @param {Set<string>} moved
  * @param {Set<string>} diamonds
- * @param {Set<string>} [spineIds]
+ * @param {Set<string> | undefined} [spineIds]
  */
-function rebuildIncidentLinks(placed, connections, moved, diamonds, spineIds = null) {
+function rebuildIncidentLinks(placed, connections, moved, diamonds, spineIds) {
   if (!moved.size) return
   for (const c of connections) {
     if (!moved.has(c.from) && !moved.has(c.to)) continue
@@ -732,9 +733,9 @@ function rebuildIncidentLinks(placed, connections, moved, diamonds, spineIds = n
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {object[]} connections
  * @param {Set<string>} diamonds
- * @param {Set<string>} [spineIds]
+ * @param {Set<string> | undefined} [spineIds]
  */
-function preferCenteredLinks(placed, connections, diamonds, spineIds = null) {
+function preferCenteredLinks(placed, connections, diamonds, spineIds) {
   const overlaps = (a, b) =>
     a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5
   for (const c of connections) {
@@ -957,7 +958,13 @@ function sideChannel(a, b, preferLeft = false) {
  * (0-bend); otherwise leave the facing side of the source and enter the facing side of the target.
  * When a same-column hop would cut through another box, take a side channel instead.
  * Hang → spine rejoins enter a free side face so they do not share the trunk's top/bottom port.
- * @param {Set<string> | null} [spineIds]
+ * @param {{ x: number, y: number, w: number, h: number }} a
+ * @param {{ x: number, y: number, w: number, h: number }} b
+ * @param {boolean} [fromDiamond]
+ * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} [placed]
+ * @param {string | null | undefined} [fromId]
+ * @param {string | null | undefined} [toId]
+ * @param {Set<string> | null | undefined} [spineIds]
  */
 function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, toId = null, spineIds = null) {
   if (sameRowLink(a, b)) return sideHorizontal(a, b)
