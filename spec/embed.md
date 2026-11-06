@@ -146,7 +146,8 @@ interface AntuViewState {
   shell?: { headerFolded?: boolean; dockFolded?: boolean }
   view?: {
     flow?: { states?: boolean; conditions?: boolean; detail?: boolean; mainLine?: boolean; stages?: boolean; rules?: boolean;
-             orientation?: 'vertical' | 'horizontal'; linkStyle?: 'straight' | 'curved' }
+             orientation?: 'vertical' | 'horizontal'; linkStyle?: 'straight' | 'curved';
+             engine?: 'current' | 'mainline' }
     route?: { labels?: boolean; states?: boolean }
     fact?: { summary?: boolean; actors?: boolean; sources?: boolean; grid?: boolean; stagger?: boolean;
              orientation?: 'vertical' | 'horizontal'; byParty?: boolean }
@@ -194,6 +195,7 @@ A write through `prefs.write` is allowed by the name of its prefs key. A write w
 | Flowchart switches | `view.flow.states` · `.conditions` · `.detail` · `.mainLine` · `.stages` · `.rules` | `flowFieldsByDiagram` |
 | Flowchart orientation | `view.flow.orientation` | `orientations` |
 | Flowchart link style | `view.flow.linkStyle` | `linkStyle` |
+| Flowchart layout engine | `view.flow.engine` (`current` \| `mainline`; trial; UI in the label-card About panel) | `flowFieldsByDiagram` |
 | Route map condition labels | `view.route.labels` | `procedureRouteFieldsByDiagram` |
 | Route map states | `view.route.states` | `procedureRouteFieldsByDiagram` |
 | Fact card fields | `view.fact.summary` · `.actors` · `.sources` | `fields` |

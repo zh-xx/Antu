@@ -118,14 +118,29 @@ export default function ProcedureFlow({ spec }) {
   const statesView = useViewValue('view.flow.states', storedFields.states, statesByDefault())
   const stagesView = useViewValue('view.flow.stages', storedFields.stages, FIELD_DEFAULTS.stages)
   const rulesView = useViewValue('view.flow.rules', storedFields.rules, FIELD_DEFAULTS.rules)
+  // Layout engine: 'current' (ELK) or 'mainline' (spine-first prototype, issue 190).
+  // Mainline always applies when chosen; Stages on folds columns, Stages off → one straight trunk.
+  const engineView = useViewValue('view.flow.engine', storedFields.engine, 'current')
   const fieldView = { conditions: conditionsView, detail: detailView, mainLine: mainLineView, states: statesView, stages: stagesView, rules: rulesView }
   const fields = Object.fromEntries(Object.entries(fieldView).map(([key, view]) => [key, view.value]))
+  const engine = engineView.value === 'mainline' ? 'mainline' : 'current'
   const toggleField = (key, value) => {
     fieldView[key].touch()
     const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], [key]: value } }
     setFieldPrefs(map)
     prefs.write({ flowFieldsByDiagram: map })
   }
+  // Trial layout engine is toggled from the label-card About panel (not the dock). Re-read when it writes.
+  useEffect(() => {
+    /** @param {Event} ev */
+    const sync = (ev) => {
+      const detail = /** @type {CustomEvent<{ specKey?: string }> } */ (ev).detail
+      if (detail?.specKey && detail.specKey !== specKey) return
+      setFieldPrefs(prefs.read().flowFieldsByDiagram || {})
+    }
+    window.addEventListener('antu:flow-fields', sync)
+    return () => window.removeEventListener('antu:flow-fields', sync)
+  }, [prefs, specKey])
 
   // Orientation: remembered per diagram, as with the timeline. With nothing chosen a
   // flowchart reads top to bottom (§6.1): the main line runs down the centre of the screen.
@@ -150,20 +165,24 @@ export default function ProcedureFlow({ spec }) {
   }
 
   // Geometry yields to the event loop while it runs (issue 330). Keep the last layout on
-  // screen while a toggle recomputes, so the page stays interactive. Detail / stages / rules
-  // move geometry; condition labels and the main-line highlight are paint only.
+  // screen while a toggle recomputes, so the page stays interactive. Detail / stages / rules /
+  // engine move geometry; condition labels and the main-line highlight are paint only.
   const [layout, setLayout] = useState(EMPTY_LAYOUT)
   const layoutReq = useRef(0)
   useEffect(() => {
     const id = ++layoutReq.current
     let cancelled = false
-    layoutProcedureAsync(spec, { detail: fields.detail, stages: fields.stages, rules: fields.rules }, orientation).then((next) => {
+    layoutProcedureAsync(
+      spec,
+      { detail: fields.detail, stages: fields.stages, rules: fields.rules, engine },
+      orientation,
+    ).then((next) => {
       if (!cancelled && id === layoutReq.current) setLayout(next)
     })
     return () => {
       cancelled = true
     }
-  }, [spec, fields.detail, fields.stages, fields.rules, orientation])
+  }, [spec, fields.detail, fields.stages, fields.rules, engine, orientation])
 
   const [hoveredId, setHoveredId] = useState(/** @type {string | null} */ (null))
   const [pinnedId, setPinnedId] = useState(/** @type {string | null} */ (null))

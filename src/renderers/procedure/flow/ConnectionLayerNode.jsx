@@ -88,9 +88,10 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
 
       {showConditions &&
         connections
-          .filter((c) => c.label)
+          // labelAt can be null if a layout path forgot to place it; skip rather than crash the page
+          .filter((c) => c.label && c.labelAt && c.labelSize)
           .map((c) => (
-            // The box ELK reserved for it, clear of every node: drawn exactly there
+            // The box the layout reserved for it, clear of every node: drawn exactly there
             <span
               key={c.id}
               className={`antu-plabel k-${c.kind}`}

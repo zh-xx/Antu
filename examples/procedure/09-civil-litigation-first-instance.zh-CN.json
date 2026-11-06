@@ -1,0 +1,167 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "民事诉讼 · 普通程序（一审示意）",
+  "domain": "litigation",
+  "actors": [
+    { "id": "a-1", "name": "原告", "role": "起诉方" },
+    { "id": "a-2", "name": "被告", "role": "应诉方" },
+    { "id": "a-3", "name": "人民法院", "role": "审判机关" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "起诉与受理" },
+    { "id": "st-2", "label": "审前准备" },
+    { "id": "st-3", "label": "开庭审理" },
+    { "id": "st-4", "label": "裁判与上诉" }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "statute",
+      "name": "民事诉讼法（示意）",
+      "loc": { "file": "民事诉讼法" }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "原告提起诉讼",
+      "detail": "提交起诉状与证据",
+      "stageId": "st-1",
+      "actorIds": ["a-1"],
+      "sourceIds": ["s-1"]
+    },
+    {
+      "id": "n-2",
+      "kind": "decision",
+      "label": "是否符合起诉条件",
+      "stageId": "st-1",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-3",
+      "kind": "step",
+      "label": "裁定不予受理或驳回起诉",
+      "stageId": "st-1",
+      "actorIds": ["a-3"],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "立案受理并送达起诉状副本",
+      "stageId": "st-1",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-5",
+      "kind": "step",
+      "label": "被告提交答辩状",
+      "detail": "可在答辩期内提出管辖异议",
+      "stageId": "st-2",
+      "actorIds": ["a-2"]
+    },
+    {
+      "id": "n-6",
+      "kind": "step",
+      "label": "证据交换 / 庭前会议",
+      "stageId": "st-2",
+      "actorIds": ["a-1", "a-2", "a-3"]
+    },
+    {
+      "id": "n-7",
+      "kind": "decision",
+      "label": "是否调解成功",
+      "stageId": "st-2",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "制作调解书并送达",
+      "stageId": "st-2",
+      "actorIds": ["a-3"],
+      "outcome": "positive"
+    },
+    {
+      "id": "n-9",
+      "kind": "step",
+      "label": "开庭：法庭调查与辩论",
+      "stageId": "st-3",
+      "actorIds": ["a-1", "a-2", "a-3"]
+    },
+    {
+      "id": "n-10",
+      "kind": "step",
+      "label": "最后陈述、休庭评议",
+      "stageId": "st-3",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-11",
+      "kind": "step",
+      "label": "宣告判决或裁定",
+      "stageId": "st-4",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-12",
+      "kind": "decision",
+      "label": "当事人是否在上诉期内上诉",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-13",
+      "kind": "step",
+      "label": "移送二审",
+      "stageId": "st-4",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-14",
+      "kind": "end",
+      "label": "一审判决生效",
+      "stageId": "st-4",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-15",
+      "kind": "end",
+      "label": "进入二审程序",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-16",
+      "kind": "end",
+      "label": "调解结案",
+      "stageId": "st-2",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-17",
+      "kind": "end",
+      "label": "案件未进入实体审理",
+      "stageId": "st-1",
+      "outcome": "negative"
+    }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-4", "condition": "受理", "main": true },
+    { "from": "n-2", "to": "n-3", "condition": "不予受理 / 驳回" },
+    { "from": "n-3", "to": "n-17" },
+    { "from": "n-4", "to": "n-5", "main": true },
+    { "from": "n-5", "to": "n-6", "main": true },
+    { "from": "n-6", "to": "n-7", "main": true },
+    { "from": "n-7", "to": "n-8", "condition": "调解成功" },
+    { "from": "n-7", "to": "n-9", "condition": "继续审理", "main": true },
+    { "from": "n-8", "to": "n-16" },
+    { "from": "n-9", "to": "n-10", "main": true },
+    { "from": "n-10", "to": "n-11", "main": true },
+    { "from": "n-11", "to": "n-12", "main": true },
+    { "from": "n-12", "to": "n-14", "condition": "不上诉", "main": true },
+    { "from": "n-12", "to": "n-13", "condition": "上诉" },
+    { "from": "n-13", "to": "n-15" }
+  ]
+}

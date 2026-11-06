@@ -42,7 +42,7 @@ Thirteen ways of drawing. **ELK appears in three**; the other ten are Antu’s o
 | Fact | `timeline` | Custom grid (row = time slot; column = side × party) | `src/renderers/fact/timeline/layout.js`, `grid.js` |
 | Fact | `chronicle` | Custom single-column spine (time · spine · card) | `src/renderers/fact/chronicle/layout.js` |
 | Fact | `scale` | Custom proportional time axis and lanes | `src/renderers/fact/scale/layout.js` |
-| Procedure | `flow` | **ELK layered** per stage column; Antu bridges stages, then straighten / polish / orthogonal router | `src/renderers/procedure/flow/layout.js`, `columns.js`, `elk.js`, `router.js`, `straighten.js`, `polish.js` |
+| Procedure | `flow` | **ELK layered** per stage column (default); optional **Mainline-first** prototype (`fields.engine = 'mainline'` / About-panel switch, #190) pins a straight spine then hangs branches — no ELK on that path; Stages on folds the spine into columns, Stages off / no stage data → one straight implicit column | `layout.js`, `columns.js`, `mainline.js`, `spine.js`, `elk.js`, `router.js`, `straighten.js`, `polish.js` |
 | Procedure | `route` | Custom spine-first (no ELK): main line left → right, branches hang below | `src/renderers/procedure/route/layout.js` |
 | Relationship | `graph` | **ELK layered per camp**; camps side by side; every relation routed by Antu | `src/renderers/relationship/graph/layout.js` |
 | Relationship | `focus` | Custom rings around a centre party; islands below | `src/renderers/relationship/focus/layout.js` |
@@ -108,10 +108,10 @@ hardest). The earlier hand-written layout gave **12 and 38** on contracts 01 and
 | yFiles / commercial orthogonal suites | layered + ortho | not needed | Licence cost |
 | AntV G6 / cytoscape as the paint shell | various plugins | not needed | React Flow is already the shell; layout is separate |
 
-For procedure **flow**, swapping ELK for another **layered** engine is unlikely to beat it
-on this corpus. Choosing a **different family** (for example spine-first custom geometry,
-which `route` already uses) is a product decision about how the picture should read — see
-issue #190; that issue is a direction for discussion, not a commitment in this note.
+For procedure **flow**, a Mainline-first prototype now lives beside the default
+(`fields.engine = 'mainline'`; see `mainline.js`). Compare with
+`node tools/layout-scan/run.mjs`. It is not the default until measured flip criteria say so.
+Swapping ELK for another **layered** third-party engine remains unlikely to beat it on this corpus.
 
 ---
 
@@ -132,9 +132,10 @@ two belong here.
 
 ## 6. Out of scope
 
-- Implementing **Mainline-first** (issue #190) for flow. Recorded for discussion; `route`
-  already follows that order for the same JSON. Pairing while both exist: **current layout**
-  (ELK + polish) vs **Mainline-first**.
+- Flipping the flowchart **default** to Mainline-first before corpus gates (#190). The
+  prototype is opt-in (`fields.engine = 'mainline'` / About-panel **ELK / Mainline**); pairing while both exist:
+  **current layout** (ELK + polish) vs **Mainline-first**. `route` already follows spine-first
+  for a different read of the same JSON.
 - Adding a second third-party layout dependency without a **measured** comparison on the
   same corpus that justified ELK.
 - React Flow features → [`docs/reference/react-flow-features.md`](react-flow-features.md); themes, paper size, or JSON schemas → `spec/`.

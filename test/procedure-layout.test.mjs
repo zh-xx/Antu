@@ -5,7 +5,7 @@
 //  Two things must be pinned:
 //    1. validation catches bad data and points at the right place (errors carry the
 //       field path and the node id)
-//    2. layout works out (7 real contracts, both orientations, no overlapping nodes,
+//    2. layout works out (10 procedure examples, both orientations, no overlapping nodes,
 //       the main line is a straight line)
 // ============================================================
 
@@ -24,7 +24,7 @@ const DIR = 'examples/procedure'
 // Examples are stored in pairs (<name>.zh-CN.json and <name>.en.json, see
 // examples/README.md). **Only one language is scanned here**: the two have an identical
 // graph structure and differ only in text values, so scanning both would run every
-// assertion twice. And with a language suffix on every file name, "7 documents" no
+// assertion twice. And with a language suffix on every file name, "10 documents" no
 // longer equals the number of JSON files in the directory.
 const LANG = '.zh-CN.json'
 const files = readdirSync(DIR)
@@ -35,8 +35,18 @@ const load = (f) => JSON.parse(readFileSync(`${DIR}/${f}`, 'utf8'))
 const byPrefix = (prefix) => files.find((f) => f.startsWith(prefix))
 const base = () => load(byPrefix('02-'))
 const some = (errs, re) => errs.some((e) => re.test(e))
+/** Ends reached only through rules (no flow edge) are not painted on the canvas. */
+const paintedNodeCount = (spec) => {
+  const edged = new Set()
+  for (const e of spec.edges ?? []) {
+    edged.add(e.from)
+    edged.add(e.to)
+  }
+  const ruleOnly = new Set((spec.rules ?? []).map((r) => r.endId).filter((id) => id && !edged.has(id)))
+  return spec.nodes.filter((n) => !ruleOnly.has(n.id)).length
+}
 
-test('seven real contracts: validation passes for all of them', () => {
+test('procedure corpus: validation passes for all of them', () => {
   // This one reports "not a single file found" first, with the reason, so the later
   // assertions do not all go red and hide the root cause. It really happened once:
   // tests were run while the examples were being renamed to <name>.zh-CN.json.
@@ -45,20 +55,20 @@ test('seven real contracts: validation passes for all of them', () => {
     `no *${LANG} files under examples/procedure. This happens while the paired rename ` +
       '(<name>.zh-CN.json / <name>.en.json) is still in progress; it recovers once done.',
   )
-  assert.equal(files.length, 7, 'the corpus is 7 documents; if fewer, look again')
+  assert.equal(files.length, 10, 'the corpus is 10 documents; if fewer, look again')
   for (const f of files) {
     assert.deepEqual(validateProcedure(load(f)), [], `${f} should have no errors`)
   }
 })
 
-test('seven real contracts: both orientations lay out and no nodes overlap', () => {
+test('procedure corpus: both orientations lay out and no nodes overlap', () => {
   for (const f of files) {
     for (const dir of ['vertical', 'horizontal']) {
       const g = buildProcedureGraph(load(f), {}, undefined, dir)
       assert.deepEqual(g.errors, [], `${f} / ${dir} does not lay out`)
       assert.equal(g.edges.length, 0, 'edges are always empty: links are drawn by our own layer')
       assert.ok(g.size.width > 0 && g.size.height > 0, `${f} / ${dir} size must be positive`)
-      assert.equal(g.nodes.length, load(f).nodes.length, `${f}: not one node may be lost`)
+      assert.equal(g.nodes.length, paintedNodeCount(load(f)), `${f}: every flow node is painted (rule-only ends stay off)`)
 
       // no overlap: two nodes along the same direction must not sit on each other
       const boxes = g.nodes.map((n) => ({
@@ -566,7 +576,16 @@ test('stage boxes hold their own nodes and never overlap', () => {
         assert.equal(g.stageBoxes.length, 0, `${f}: no stages, no boxes`)
         continue
       }
-      const used = new Set(spec.nodes.map((n) => n.stageId).filter(Boolean))
+      // Stages that only hold a rule-only end are not painted (nothing left to box).
+      const edged = new Set()
+      for (const e of spec.edges ?? []) {
+        edged.add(e.from)
+        edged.add(e.to)
+      }
+      const ruleOnly = new Set((spec.rules ?? []).map((r) => r.endId).filter((id) => id && !edged.has(id)))
+      const used = new Set(
+        spec.nodes.filter((n) => n.stageId && !ruleOnly.has(n.id)).map((n) => n.stageId),
+      )
       assert.equal(g.stageBoxes.length, used.size, `${f}/${dir}: one box per stage that has nodes`)
       for (const b of g.stageBoxes) {
         assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.w <= g.size.width && b.y + b.h <= g.size.height, `${f}/${dir}: box ${b.label} leaves the content`)
@@ -671,12 +690,19 @@ test('rules become a table under the diagram: every rule once, grouped by the en
   }
 })
 
-test('an end the rules lead to says how many; the scope is written out', () => {
+test('an end the rules lead to is named in the table; the scope is written out', () => {
   const g = buildProcedureGraph(loadRules('03-labour-outsourcing-contract.zh-CN.json'))
-  const end = g.nodes.find((n) => n.data.ruleCount > 0)
-  assert.ok(end, 'the end the termination rules lead to carries their count')
-  assert.equal(end.data.ruleCount, 3, 'three termination grounds')
-  // No link runs from the table into the diagram: the table and the count point at each other
+  // Rule-only ends are not painted; the rules table still groups their rows under the end's label.
+  assert.equal(
+    g.nodes.some((n) => n.id === 'n-16'),
+    false,
+    'rule-only end stays off the canvas',
+  )
+  const group = g.ruleTable.groups.find((gr) => gr.endId === 'n-16')
+  assert.ok(group, 'the termination end heads a rules-table group')
+  assert.equal(group.rows.length, 3, 'three termination grounds')
+  assert.ok(group.endLabel, 'the group names the end')
+  // No link runs from the table into the diagram: the table and the diagram point at each other by name
   assert.equal(g.connections.filter((c) => !g.nodes.some((n) => n.id === c.from)).length, 0)
   // A rule over one stage names it; over several, the first and the last; over none, throughout
   const rows = g.ruleTable.groups.flatMap((gr) => gr.rows)

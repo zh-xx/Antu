@@ -1,0 +1,167 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "Civil litigation · ordinary procedure (first instance, illustrative)",
+  "domain": "litigation",
+  "actors": [
+    { "id": "a-1", "name": "Plaintiff", "role": "Claimant" },
+    { "id": "a-2", "name": "Defendant", "role": "Respondent" },
+    { "id": "a-3", "name": "People's court", "role": "Trial court" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "Filing and acceptance" },
+    { "id": "st-2", "label": "Pre-trial preparation" },
+    { "id": "st-3", "label": "Hearing" },
+    { "id": "st-4", "label": "Judgment and appeal" }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "statute",
+      "name": "Civil Procedure Law (illustrative)",
+      "loc": { "file": "Civil Procedure Law" }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "Plaintiff files the action",
+      "detail": "Complaint and evidence",
+      "stageId": "st-1",
+      "actorIds": ["a-1"],
+      "sourceIds": ["s-1"]
+    },
+    {
+      "id": "n-2",
+      "kind": "decision",
+      "label": "Does the filing meet the conditions?",
+      "stageId": "st-1",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-3",
+      "kind": "step",
+      "label": "Ruling: refuse acceptance or dismiss the action",
+      "stageId": "st-1",
+      "actorIds": ["a-3"],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "Accept the case and serve the complaint",
+      "stageId": "st-1",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-5",
+      "kind": "step",
+      "label": "Defendant files a defence",
+      "detail": "May raise a jurisdiction objection within the defence period",
+      "stageId": "st-2",
+      "actorIds": ["a-2"]
+    },
+    {
+      "id": "n-6",
+      "kind": "step",
+      "label": "Evidence exchange / pre-trial conference",
+      "stageId": "st-2",
+      "actorIds": ["a-1", "a-2", "a-3"]
+    },
+    {
+      "id": "n-7",
+      "kind": "decision",
+      "label": "Is mediation successful?",
+      "stageId": "st-2",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "Issue and serve a mediation statement",
+      "stageId": "st-2",
+      "actorIds": ["a-3"],
+      "outcome": "positive"
+    },
+    {
+      "id": "n-9",
+      "kind": "step",
+      "label": "Hearing: fact-finding and oral argument",
+      "stageId": "st-3",
+      "actorIds": ["a-1", "a-2", "a-3"]
+    },
+    {
+      "id": "n-10",
+      "kind": "step",
+      "label": "Closing statements and deliberation",
+      "stageId": "st-3",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-11",
+      "kind": "step",
+      "label": "Pronounce judgment or ruling",
+      "stageId": "st-4",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-12",
+      "kind": "decision",
+      "label": "Appeal within the appeal period?",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-13",
+      "kind": "step",
+      "label": "Transfer to second instance",
+      "stageId": "st-4",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-14",
+      "kind": "end",
+      "label": "First-instance judgment takes effect",
+      "stageId": "st-4",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-15",
+      "kind": "end",
+      "label": "Second-instance proceedings begin",
+      "stageId": "st-4"
+    },
+    {
+      "id": "n-16",
+      "kind": "end",
+      "label": "Settled by mediation",
+      "stageId": "st-2",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-17",
+      "kind": "end",
+      "label": "Case never reaches the merits",
+      "stageId": "st-1",
+      "outcome": "negative"
+    }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-4", "condition": "Accept", "main": true },
+    { "from": "n-2", "to": "n-3", "condition": "Refuse / dismiss" },
+    { "from": "n-3", "to": "n-17" },
+    { "from": "n-4", "to": "n-5", "main": true },
+    { "from": "n-5", "to": "n-6", "main": true },
+    { "from": "n-6", "to": "n-7", "main": true },
+    { "from": "n-7", "to": "n-8", "condition": "Mediation succeeds" },
+    { "from": "n-7", "to": "n-9", "condition": "Continue to hearing", "main": true },
+    { "from": "n-8", "to": "n-16" },
+    { "from": "n-9", "to": "n-10", "main": true },
+    { "from": "n-10", "to": "n-11", "main": true },
+    { "from": "n-11", "to": "n-12", "main": true },
+    { "from": "n-12", "to": "n-14", "condition": "No appeal", "main": true },
+    { "from": "n-12", "to": "n-13", "condition": "Appeal" },
+    { "from": "n-13", "to": "n-15" }
+  ]
+}

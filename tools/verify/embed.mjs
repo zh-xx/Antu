@@ -346,7 +346,13 @@ export async function checkEmbed(t) {
       const ruleEl = (x) => root.querySelector('[data-pin-id="rule:' + CSS.escape(x) + '"]')
       const ring = (el) => (el ? getComputedStyle(el).outlineStyle : 'missing')
       const lastSelect = () => events.filter((e) => e.type === 'select').at(-1)?.id
-      await until(() => nodeEl(id) && lastSelect() === id)
+      // Card may paint a frame after ready; retry select until the pin event lands (Canvas also rAF-retries).
+      await until(() => {
+        if (!nodeEl(id)) return false
+        if (lastSelect() === id) return true
+        h.select(id)
+        return lastSelect() === id
+      })
       const out = { refused, early, folded: !!root.querySelector('.antu-header-card.is-folded') }
       out.earlyPinned = [lastSelect() === id, nodeEl(id)?.querySelector('.antu-pn')?.getAttribute('aria-expanded')]
       out.unknown = h.select('no such item')
@@ -480,29 +486,36 @@ export async function checkEmbed(t) {
         const hit = (a, b) => !!(a && b && a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5)
         return { minimap: !!mini, wrapped: !!root.querySelector('.antu-dock-capsule.is-wrapped'), clear: !hit(cap, mini) && !hit(cap, zoom), inside: !!cap && cap.left >= box.left - 0.5 && cap.right <= box.right + 0.5 }
       }
+      const untilLook = async (pred, step) => {
+        try {
+          await until(() => pred(look()))
+        } catch (e) {
+          throw new Error(step + ': ' + JSON.stringify(look()))
+        }
+      }
       // Earlier steps turn Rules on, which brings the long "Restore…" chip (~200 px). Clear it first:
       // this check is about dockPlace, not about that chip staying on the bar.
       root.querySelector('.antu-dock-reset')?.click()
-      await until(() => !root.querySelector('.antu-dock-reset'))
-      // English flowchart capsule (conditions…rules + Sources + export) is ~1100 px; 1600 leaves room
-      // for the minimap (same "wide" floor as checkDockClearance after issue 124).
+      await untilLook((n) => !root.querySelector('.antu-dock-reset'), 'reset chip still on the bar')
+      // English flowchart capsule grew with the ELK/Mainline trial segment; 1800 leaves room
+      // for the minimap (same idea as checkDockClearance after issue 124).
       host.style.width = '520px'
-      await until(() => {
-        const n = look()
-        return n.minimap === false && n.wrapped === true && n.clear === true && n.inside === true
-      })
+      await untilLook(
+        (n) => n.minimap === false && n.wrapped === true && n.clear === true && n.inside === true,
+        'narrow 520',
+      )
       const narrow = look()
-      host.style.width = '1600px'
-      await until(() => {
-        const w = look()
-        return w.minimap === true && w.wrapped === false && w.clear === true && w.inside === true
-      })
+      host.style.width = '1800px'
+      await untilLook(
+        (n) => n.minimap === true && n.wrapped === false && n.clear === true && n.inside === true,
+        'wide 1800',
+      )
       const wide = look()
       host.style.width = '1000px'
       return { narrow, wide }
     })()`, { awaitPromise: true })
     eq('embed: the host narrows to 520 px: the minimap gives way, the capsule wraps, clear and on the canvas', resized.narrow, { minimap: false, wrapped: true, clear: true, inside: true })
-    eq('embed: and widens to 1600 px: the capsule is on one line again and the minimap comes back', resized.wide, { minimap: true, wrapped: false, clear: true, inside: true })
+    eq('embed: and widens to 1800 px: the capsule is on one line again and the minimap comes back', resized.wide, { minimap: true, wrapped: false, clear: true, inside: true })
 
     // ---- a host configuring what the reader sees: initial, locked, persist (issue 200) ----
     const viewState = await browser.eval(`(async () => {

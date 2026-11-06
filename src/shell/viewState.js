@@ -29,6 +29,8 @@ const FLOW = {
   rules: { bool: true },
   orientation: { enum: ['vertical', 'horizontal'] },
   linkStyle: { enum: ['straight', 'curved'] },
+  // Mainline-first trial (issue 190): only diverges in columnMode; default is current (ELK)
+  engine: { enum: ['current', 'mainline'] },
 }
 
 /** The route map's switches */

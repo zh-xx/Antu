@@ -48,14 +48,15 @@ agent 照抄结构不会撞到"摆不下"。MCP 的 `antu_examples` 默认给的
 | `lin-fang-v-zhao-lei-private-lending.*` | 虚构案例（林芳诉赵磊），民间借贷 |
 | `sample-*.json` | 示意数据：三个时间点、无分组、同侧双主体、两侧各两个主体、四方四个时间点、建设工程付款与结算 |
 
-八批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 7 对、`procedure/` 7 对、`agent/procedure/` 7 对、`relationship/` 5 对、`agent/relationship/` 5 对、`justification/` 2 对、`agent/justification/` 6 对。
+八批示例**已全部成对**：`fact/` 11 对、`agent/fact/` 7 对、`procedure/` 10 对、`agent/procedure/` 7 对、`relationship/` 5 对、`agent/relationship/` 5 对、`justification/` 2 对、`agent/justification/` 6 对。
 
 MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 
 ## 给人和调试用的：`procedure/`
 
-七份真实合同的履行流程，取自法析（faxi）的黄金样本，逐份对着它已生成的
-`business_flowchart.mmd` 反推。**写程序图时以它们为准**，schema 定稿的验收标准就是这七份。
+前七份是真实合同的履行流程，取自法析（faxi）的黄金样本，逐份对着它已生成的
+`business_flowchart.mmd` 反推。**写合同类程序图时以它们为准**，schema 定稿的验收标准就是这七份。
+其后三份是行政 / 诉讼示意与虚构个案，用来对照 Mainline-first（有阶段 / 无阶段）。
 
 | 文件（同名前缀） | 节点 / 边 | 阶段 / 条款 | 特点 |
 |---|---|---|---|
@@ -66,6 +67,9 @@ MCP 的 `antu_examples` 传 `group="real"` 列出这一批。
 | `05-premises-lease.*` | 19 / 19 | 4 / 4 | 14 层，3 个终点，2 条回边 |
 | `06-epc-general-contract.*` | 21 / 21 | 4 / 4 | 15 层，2 个判定点，2 条回边 |
 | `07-share-acquisition-agreement.*` | 21 / 20 | 4 / 4 | 5 个终点，一个节点 4 条出边，没有回边 |
+| `08-work-injury-recognition.*` | 18 / 20 | 4 / 0 | 工伤认定 + 劳动能力鉴定（`administrative`） |
+| `09-civil-litigation-first-instance.*` | 17 / 16 | 4 / 0 | 民事诉讼普通程序一审示意（`litigation`） |
+| `10-lin-fang-v-zhao-lei-lending-suit.*` | 14 / 14 | 4 / 0 | 林芳诉赵磊民间借贷一审（虚构个案，对接 `fact/`） |
 
 ## 给 agent 的：`agent/procedure/`
 

@@ -1,0 +1,186 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "Work-injury recognition and labour-capacity appraisal · administrative procedure",
+  "domain": "administrative",
+  "actors": [
+    { "id": "a-1", "name": "Employee", "role": "Applicant" },
+    { "id": "a-2", "name": "Employer", "role": "Unit" },
+    { "id": "a-3", "name": "Social insurance authority", "role": "Recognition body" },
+    { "id": "a-4", "name": "Labour-capacity appraisal committee", "role": "Appraisal body" }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "Application and acceptance" },
+    { "id": "st-2", "label": "Investigation and recognition" },
+    { "id": "st-3", "label": "Labour-capacity appraisal" },
+    { "id": "st-4", "label": "Benefits and remedies" }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "statute",
+      "name": "Work-related Injury Insurance Regulations (illustrative)",
+      "loc": { "file": "Work-related Injury Insurance Regulations", "clause": 17 }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "Accident injury or occupational disease diagnosed",
+      "stageId": "st-1",
+      "sourceIds": ["s-1"]
+    },
+    {
+      "id": "n-2",
+      "kind": "step",
+      "label": "Employer or employee applies for recognition",
+      "detail": "Employer usually within 30 days; employee may apply if overdue",
+      "stageId": "st-1",
+      "actorIds": ["a-1", "a-2"]
+    },
+    {
+      "id": "n-3",
+      "kind": "decision",
+      "label": "Materials complete and within acceptance scope?",
+      "stageId": "st-1",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "One-time supplement of materials",
+      "stageId": "st-1",
+      "actorIds": ["a-1", "a-2"],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-5",
+      "kind": "step",
+      "label": "Accept and notify in writing",
+      "stageId": "st-1",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-6",
+      "kind": "step",
+      "label": "Investigate and collect evidence",
+      "stageId": "st-2",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-7",
+      "kind": "decision",
+      "label": "Recognise as work-related injury?",
+      "stageId": "st-2",
+      "actorIds": ["a-3"]
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "Issue recognition decision and serve",
+      "stageId": "st-2",
+      "actorIds": ["a-3"],
+      "outcome": "positive"
+    },
+    {
+      "id": "n-9",
+      "kind": "step",
+      "label": "Issue non-recognition decision and serve",
+      "stageId": "st-2",
+      "actorIds": ["a-3"],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-10",
+      "kind": "decision",
+      "label": "Apply for labour-capacity appraisal after condition stabilises?",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-11",
+      "kind": "step",
+      "label": "Apply to the appraisal committee",
+      "stageId": "st-3",
+      "actorIds": ["a-1", "a-2"]
+    },
+    {
+      "id": "n-12",
+      "kind": "step",
+      "label": "Expert appraisal and written conclusion",
+      "stageId": "st-3",
+      "actorIds": ["a-4"]
+    },
+    {
+      "id": "n-13",
+      "kind": "decision",
+      "label": "Apply for re-appraisal of the conclusion?",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-14",
+      "kind": "step",
+      "label": "Provincial re-appraisal (final)",
+      "stageId": "st-3",
+      "actorIds": ["a-4"]
+    },
+    {
+      "id": "n-15",
+      "kind": "step",
+      "label": "Pay work-injury insurance benefits by grade",
+      "stageId": "st-4",
+      "actorIds": ["a-1", "a-2"],
+      "outcome": "positive"
+    },
+    {
+      "id": "n-16",
+      "kind": "end",
+      "label": "Benefits completed",
+      "stageId": "st-4",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-17",
+      "kind": "end",
+      "label": "Challenge recognition: review or lawsuit",
+      "stageId": "st-2",
+      "outcome": "negative"
+    },
+    {
+      "id": "n-18",
+      "kind": "end",
+      "label": "Not accepted or application abandoned",
+      "stageId": "st-1",
+      "outcome": "negative"
+    },
+    {
+      "id": "n-19",
+      "kind": "end",
+      "label": "Defer appraisal; claim benefits otherwise",
+      "stageId": "st-3",
+      "outcome": "negative"
+    }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-5", "condition": "Accept", "main": true },
+    { "from": "n-3", "to": "n-4", "condition": "Incomplete materials" },
+    { "from": "n-3", "to": "n-18", "condition": "Refuse acceptance" },
+    { "from": "n-4", "to": "n-3" },
+    { "from": "n-5", "to": "n-6", "main": true },
+    { "from": "n-6", "to": "n-7", "main": true },
+    { "from": "n-7", "to": "n-8", "condition": "Recognise", "main": true },
+    { "from": "n-7", "to": "n-9", "condition": "Refuse" },
+    { "from": "n-9", "to": "n-17" },
+    { "from": "n-8", "to": "n-10", "main": true },
+    { "from": "n-10", "to": "n-11", "condition": "Apply for appraisal", "main": true },
+    { "from": "n-10", "to": "n-19", "condition": "Defer appraisal" },
+    { "from": "n-11", "to": "n-12", "main": true },
+    { "from": "n-12", "to": "n-13", "main": true },
+    { "from": "n-13", "to": "n-15", "condition": "No objection", "main": true },
+    { "from": "n-13", "to": "n-14", "condition": "Re-appraisal" },
+    { "from": "n-14", "to": "n-15", "main": true },
+    { "from": "n-15", "to": "n-16", "main": true }
+  ]
+}
