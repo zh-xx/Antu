@@ -182,7 +182,7 @@ interface AntuViewState {
 | 流程图开关 | `view.flow.states` · `.conditions` · `.detail` · `.mainLine` · `.stages` · `.rules` | `flowFieldsByDiagram` |
 | 流程图方向 | `view.flow.orientation` | `orientations` |
 | 流程图连线样式 | `view.flow.linkStyle` | `linkStyle` |
-| 流程图布局引擎 | `view.flow.engine`（`current` \| `mainline`；试验，仅分阶段列模式） | `flowFieldsByDiagram` |
+| 流程图布局引擎 | `view.flow.engine`（`current` \| `mainline`；试验；界面在标签卡「关于这张图」） | `flowFieldsByDiagram` |
 | 路线图条件标签 | `view.route.labels` | `procedureRouteFieldsByDiagram` |
 | 路线图状态 | `view.route.states` | `procedureRouteFieldsByDiagram` |
 | 事实图卡片字段 | `view.fact.summary` · `.actors` · `.sources` | `fields` |

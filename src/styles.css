@@ -948,6 +948,18 @@
   line-height: 1.45;
   color: var(--antu-text);
 }
+/* Trial flowchart layout (ELK / Mainline): tucked under About, not the everyday dock. */
+.antu-header-about-trial {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--antu-line-soft, var(--antu-line));
+}
+.antu-header-about-trial-label {
+  margin: 0 0 6px;
+  font-size: var(--antu-type-tag);
+  color: var(--antu-text-3);
+}
+.antu-header-about-trial .antu-dock-seg { width: 100%; }
 
 /* ---------- 渲染器不可用时的兜底 ---------- */
 .antu-fallback {

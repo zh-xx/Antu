@@ -19,7 +19,7 @@
 //    7. light polish, then re-pin the spine axis (polish must not leave the trunk bent).
 //
 //  Does not cut branches (unlike route). Does not call ELK on the main path.
-//  Enabled with fields.engine === 'mainline' (dock switch + preset; not a schema field).
+//  Enabled with fields.engine === 'mainline' (About-panel switch + preset; not a schema field).
 //  Stages only fold the spine into columns; with no usable stage data the caller passes one
 //  implicit stage (`__implicit__`) so the whole graph is a single straight trunk.
 // ============================================================

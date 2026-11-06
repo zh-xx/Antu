@@ -130,13 +130,15 @@ export default function ProcedureFlow({ spec }) {
     setFieldPrefs(map)
     prefs.write({ flowFieldsByDiagram: map })
   }
-  const toggleEngine = (next) => {
-    engineView.touch()
-    const map = { ...fieldPrefs, [specKey]: { ...fieldPrefs[specKey], engine: next } }
-    setFieldPrefs(map)
-    prefs.write({ flowFieldsByDiagram: map })
-  }
-  const showEngine = true
+  // Trial layout engine is toggled from the label-card About panel (not the dock). Re-read when it writes.
+  useEffect(() => {
+    const sync = (/** @type {CustomEvent} */ ev) => {
+      if (ev.detail?.specKey && ev.detail.specKey !== specKey) return
+      setFieldPrefs(prefs.read().flowFieldsByDiagram || {})
+    }
+    window.addEventListener('antu:flow-fields', sync)
+    return () => window.removeEventListener('antu:flow-fields', sync)
+  }, [prefs, specKey])
 
   // Orientation: remembered per diagram, as with the timeline. With nothing chosen a
   // flowchart reads top to bottom (§6.1): the main line runs down the centre of the screen.
@@ -256,7 +258,6 @@ export default function ProcedureFlow({ spec }) {
     ...Object.fromEntries(Object.entries(fieldView).filter(([, view]) => view.locked).map(([key]) => [key, true])),
     orientation: orientationView.locked,
     linkStyle: linkStyleView.locked,
-    engine: engineView.locked,
   }
 
   return (
@@ -284,9 +285,6 @@ export default function ProcedureFlow({ spec }) {
             onToggleField={toggleField}
             hasStages={hasStages}
             hasRules={hasRules}
-            showEngine={showEngine}
-            engine={engine}
-            onToggleEngine={toggleEngine}
             orientation={orientation}
             onToggleOrientation={toggleOrientation}
             linkStyle={linkStyleValue}

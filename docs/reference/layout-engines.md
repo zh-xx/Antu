@@ -42,7 +42,7 @@ Thirteen ways of drawing. **ELK appears in three**; the other ten are Antu’s o
 | Fact | `timeline` | Custom grid (row = time slot; column = side × party) | `src/renderers/fact/timeline/layout.js`, `grid.js` |
 | Fact | `chronicle` | Custom single-column spine (time · spine · card) | `src/renderers/fact/chronicle/layout.js` |
 | Fact | `scale` | Custom proportional time axis and lanes | `src/renderers/fact/scale/layout.js` |
-| Procedure | `flow` | **ELK layered** per stage column (default); optional **Mainline-first** prototype (`fields.engine = 'mainline'` / dock switch, #190) pins a straight spine then hangs branches — no ELK on that path; Stages on folds the spine into columns, Stages off / no stage data → one straight implicit column | `layout.js`, `columns.js`, `mainline.js`, `spine.js`, `elk.js`, `router.js`, `straighten.js`, `polish.js` |
+| Procedure | `flow` | **ELK layered** per stage column (default); optional **Mainline-first** prototype (`fields.engine = 'mainline'` / About-panel switch, #190) pins a straight spine then hangs branches — no ELK on that path; Stages on folds the spine into columns, Stages off / no stage data → one straight implicit column | `layout.js`, `columns.js`, `mainline.js`, `spine.js`, `elk.js`, `router.js`, `straighten.js`, `polish.js` |
 | Procedure | `route` | Custom spine-first (no ELK): main line left → right, branches hang below | `src/renderers/procedure/route/layout.js` |
 | Relationship | `graph` | **ELK layered per camp**; camps side by side; every relation routed by Antu | `src/renderers/relationship/graph/layout.js` |
 | Relationship | `focus` | Custom rings around a centre party; islands below | `src/renderers/relationship/focus/layout.js` |
@@ -133,7 +133,7 @@ two belong here.
 ## 6. Out of scope
 
 - Flipping the flowchart **default** to Mainline-first before corpus gates (#190). The
-  prototype is opt-in (`fields.engine = 'mainline'` / dock switch); pairing while both exist:
+  prototype is opt-in (`fields.engine = 'mainline'` / About-panel **ELK / Mainline**); pairing while both exist:
   **current layout** (ELK + polish) vs **Mainline-first**. `route` already follows spine-first
   for a different read of the same JSON.
 - Adding a second third-party layout dependency without a **measured** comparison on the

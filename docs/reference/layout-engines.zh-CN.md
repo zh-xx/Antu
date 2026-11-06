@@ -40,7 +40,7 @@
 | 事实 | `timeline` | 自研网格（行=时间槽；列=阵营×当事人） | `src/renderers/fact/timeline/layout.js`、`grid.js` |
 | 事实 | `chronicle` | 自研单列脊线（时间 · 脊 · 卡片） | `src/renderers/fact/chronicle/layout.js` |
 | 事实 | `scale` | 自研比例时间轴 + 泳道 | `src/renderers/fact/scale/layout.js` |
-| 程序 | `flow` | 默认每阶段 **ELK layered**；可选 **Mainline-first** 原型（`fields.engine = 'mainline'` / 底栏开关，#190）钉直主干再挂支线，该路径不用 ELK；打开「阶段」时把主干折成列，关掉 / 无阶段数据 → 一条直的隐式列 | `layout.js`、`columns.js`、`mainline.js`、`spine.js`、`elk.js`、`router.js`、`straighten.js`、`polish.js` |
+| 程序 | `flow` | 默认每阶段 **ELK layered**；可选 **Mainline-first** 原型（`fields.engine = 'mainline'` / 「关于这张图」里的开关，#190）钉直主干再挂支线，该路径不用 ELK；打开「阶段」时把主干折成列，关掉 / 无阶段数据 → 一条直的隐式列 | `layout.js`、`columns.js`、`mainline.js`、`spine.js`、`elk.js`、`router.js`、`straighten.js`、`polish.js` |
 | 程序 | `route` | 自研主线优先（**不用 ELK**）：主线从左到右，支线往下挂 | `src/renderers/procedure/route/layout.js` |
 | 关系 | `graph` | **按阵营分块 ELK layered**；阵营横排；关系线由案图正交路由 | `src/renderers/relationship/graph/layout.js` |
 | 关系 | `focus` | 自研环层；孤岛排在下方 | `src/renderers/relationship/focus/layout.js` |
@@ -110,7 +110,7 @@
 
 ## 六、不在本文范围
 
-- 在语料门槛通过前，把 flowchart **默认**翻成 Mainline-first（#190）。原型需显式打开（`fields.engine = 'mainline'` / 底栏开关）；并行期成对称呼：**current layout**（现行：ELK + polish）与 **Mainline-first**。`route` 已是另一套主线优先读法。
+- 在语料门槛通过前，把 flowchart **默认**翻成 Mainline-first（#190）。原型需显式打开（`fields.engine = 'mainline'` / 「关于这张图」里的 **ELK / Mainline**）；并行期成对称呼：**current layout**（现行：ELK + polish）与 **Mainline-first**。`route` 已是另一套主线优先读法。
 - 在没有像当初选 ELK 那样**用同一语料测过**之前，再加第二个第三方布局依赖。
 - React Flow 特性 → [`docs/reference/react-flow-features.zh-CN.md`](react-flow-features.zh-CN.md)；主题、纸张、JSON 规范 → `spec/`。
 

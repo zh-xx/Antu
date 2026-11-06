@@ -29,7 +29,14 @@ import KindIcon from './KindIcon.jsx'
 import { useTheme, THEME_IDS } from '../theme/ThemeContext.jsx'
 import { themeOf } from '../theme/themes.js'
 import { isInside, useEnv, useViewValue } from './env.js'
-import { readSpecPref, writeSpecPref } from './prefs.js'
+import { readSpecPref, writeSpecPref, specMapOf } from './prefs.js'
+import { DockSegmented } from './DockParts.jsx'
+
+/** Trial flowchart layout engines (issue 190). Shown only in About for procedure/flow. */
+const FLOW_ENGINES = [
+  ['current', 'flow.engineCurrent'],
+  ['mainline', 'flow.engineMainline'],
+]
 
 /**
  * @param {object} props
@@ -82,6 +89,27 @@ export default function DiagramHeader({
   const step = (d) => onSelectKind(kinds[(index + d + kinds.length) % kinds.length].kind)
 
   const about = useMemo(() => diagramAboutOf(type, kind), [type, kind])
+  // Flowchart layout engine (ELK / Mainline trial): only for procedure/flow, and only in About —
+  // not the everyday dock (issue 190). Local state so the segmented control re-paints after a click;
+  // the canvas picks up the same prefs write via `antu:flow-fields`.
+  const showFlowEngine = type === 'procedure' && kind === 'flow'
+  const flowFieldsMap = specMapOf(prefs.read().flowFieldsByDiagram, 'flowFieldsByDiagram')
+  const storedFlowEngine = flowFieldsMap[specKey]?.engine
+  const engineView = useViewValue('view.flow.engine', storedFlowEngine, 'current')
+  const [flowEngine, setFlowEngine] = useState(() => (engineView.value === 'mainline' ? 'mainline' : 'current'))
+  useEffect(() => {
+    setFlowEngine(engineView.value === 'mainline' ? 'mainline' : 'current')
+  }, [engineView.value, specKey])
+  const toggleFlowEngine = (next) => {
+    const value = next === 'mainline' ? 'mainline' : 'current'
+    engineView.touch()
+    setFlowEngine(value)
+    const prev = specMapOf(prefs.read().flowFieldsByDiagram, 'flowFieldsByDiagram')
+    const map = { ...prev, [specKey]: { ...(prev[specKey] || {}), engine: value } }
+    prefs.write({ flowFieldsByDiagram: map })
+    window.dispatchEvent(new CustomEvent('antu:flow-fields', { detail: { specKey } }))
+    onPrefsChanged()
+  }
 
   const toggleAbout = () => {
     setOpen(false)
@@ -257,6 +285,17 @@ export default function DiagramHeader({
               </dd>
             </div>
           </dl>
+          {showFlowEngine && !engineView.locked && (
+            <div className="antu-header-about-trial">
+              <div className="antu-header-about-trial-label">{t('flow.engine')}</div>
+              <DockSegmented
+                options={FLOW_ENGINES}
+                value={flowEngine}
+                onChange={toggleFlowEngine}
+                title={t('flow.engine')}
+              />
+            </div>
+          )}
         </aside>
       )}
     </div>
