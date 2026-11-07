@@ -1426,11 +1426,19 @@ function gutterBlocked(a, b, hangOnRight, placed, fromId, toId) {
 function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDiamond = false) {
   const acy = a.y + a.h / 2
   const bcy = b.y + b.h / 2
-  if (!fromDiamond) {
-    const leaveY = bcy >= acy ? a.y + a.h : a.y
-    if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
-      return hangLaneRejoin(a, b, hangOnRight)
+  // Decision side-exit → spine: prefer inward (toward trunk) so a right hang leaves west —
+  // outward-first U crosses the hang column for no gain (L2「异议是否成立」否).
+  if (fromDiamond) {
+    if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
+      return gutterRejoin(a, b, hangOnRight)
     }
+    const between = interLaneCorridor(a, b, hangOnRight, placed, fromId, toId)
+    if (between) return between
+    return gutterRejoin(a, b, hangOnRight)
+  }
+  const leaveY = bcy >= acy ? a.y + a.h : a.y
+  if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
+    return hangLaneRejoin(a, b, hangOnRight)
   }
   // Prefer the gap before the next outer hang column when clear — avoids far-outer cutting
   // through that column on the return row (S3). Falls through when no outer neighbour.
@@ -1439,8 +1447,6 @@ function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDiamond =
   if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
     return gutterRejoin(a, b, hangOnRight)
   }
-  // Diamond fallback: still leave a side face (never N/S), even if corridor/gutter busy.
-  if (fromDiamond) return gutterRejoin(a, b, hangOnRight)
   return outerCorridor(a, b, hangOnRight)
 }
 

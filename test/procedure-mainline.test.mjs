@@ -709,9 +709,10 @@ test('mainline: L2 decision hang→spine leaves side face (not N/S)', () => {
   const rejoin = g.connections.find((e) => e.id === 'c:n-13->n-6')
   assert.ok(rejoin, '异议否 → 保全决策')
   const leave = face(byId.get('n-13'), rejoin.points[0])
-  assert.ok(leave === 'W' || leave === 'E', `否 must leave side face, got ${leave}`)
+  // Right-side hang: leave west toward the spine (inward), not east into an outer U.
+  assert.equal(leave, 'W', `否 should leave west toward spine, got ${leave}`)
   const enter = face(byId.get('n-6'), rejoin.points[rejoin.points.length - 1])
-  assert.ok(enter === 'W' || enter === 'E', `spine enter must be side face, got ${enter}`)
+  assert.equal(enter, 'E', `spine enter from the hang side, got ${enter}`)
 })
 
 test('mainline: L1 branch-exit ends stay in hang lane (not canvas top)', () => {
