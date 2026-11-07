@@ -419,14 +419,16 @@ function layoutStageMainline({
 
   // Overlapping regions on the same side: flip onto a free opposite face when possible.
   // Nested → only the contained hang moves; non-nested → the later leave moves.
+  // Only spine-rooted hangs participate: child hangs (sibling leaves off a hang box) inherit
+  // the parent's side/lane below so a branch-exit end cannot migrate to the opposite face.
   // Interval containment can invert for child hangs (estimated span); never flip a spine-rooted
   // hang because a child hang's interval appears to contain it. Loop+back keeps preferred.
   const byLeave = [...intervals].sort((p, q) => p.a - q.a || p.b - q.b)
   for (const it of byLeave) {
-    if (isLoopHang(it.h)) continue
+    if (isLoopHang(it.h) || !it.h.rootOnSpine) continue
     const sign = /** @type {number} */ (signOf.get(it.h))
     for (const other of byLeave) {
-      if (other === it || other.a > it.a) continue
+      if (other === it || other.a > it.a || !other.h.rootOnSpine) continue
       if (signOf.get(other.h) !== sign) continue
       if (!regionOverlaps(it, other)) continue
       // Interval-container stays on this face.
@@ -437,6 +439,7 @@ function layoutStageMainline({
       const oppBusy = intervals.some(
         (o) =>
           o !== it &&
+          o.h.rootOnSpine &&
           signOf.get(o.h) === opp &&
           regionOverlaps(it, o) &&
           !regionContains(it, o) &&
@@ -456,6 +459,7 @@ function layoutStageMainline({
   }
 
   // Pack lanes per side: shorter / contained intervals claim inner lanes first.
+  // Child hangs are packed with their parent (same column), not as extra competing regions.
   /** @type {Map<object, number>} */
   const laneOf = new Map()
   /** @type {Map<number, number[]>} sign → lane end spine-index */
@@ -465,7 +469,9 @@ function layoutStageMainline({
   ])
   /** @type {Array<{ region: object, reason: string }>} */
   const spineOpenRequests = []
-  const bySpan = [...intervals].sort((p, q) => p.b - p.a - (q.b - q.a) || p.a - q.a || p.b - q.b)
+  const bySpan = [...intervals]
+    .filter((it) => it.h.rootOnSpine)
+    .sort((p, q) => p.b - p.a - (q.b - q.a) || p.a - q.a || p.b - q.b)
   for (const it of bySpan) {
     const sign = /** @type {number} */ (signOf.get(it.h))
     const ends = /** @type {number[]} */ (laneEndsBySign.get(sign))
@@ -473,6 +479,17 @@ function layoutStageMainline({
     while (ends[lane] !== undefined && ends[lane] > it.a) lane += 1
     ends[lane] = Math.max(ends[lane] ?? it.b, it.b)
     laneOf.set(it.h, lane)
+  }
+  for (const it of intervals) {
+    if (it.h.rootOnSpine && laneOf.has(it.h)) continue
+    const parent = intervals.find((o) => o.h !== it.h && o.h.boxes.includes(it.h.from))
+    if (parent && laneOf.has(parent.h)) {
+      signOf.set(it.h, /** @type {number} */ (signOf.get(parent.h)))
+      laneOf.set(it.h, /** @type {number} */ (laneOf.get(parent.h)))
+    } else {
+      if (!signOf.has(it.h)) signOf.set(it.h, branchSign)
+      if (!laneOf.has(it.h)) laneOf.set(it.h, 0)
+    }
   }
   // Hook only (issue 190 B3): record when same-side overlap remains after flip — spine may open later.
   for (const it of intervals) {
@@ -528,6 +545,11 @@ function layoutStageMainline({
 
   // Decision branches sit on the fork's row (centres aligned → 0-bend side link).
   // Lane keys are scoped by side so opposite-face siblings do not stack on one cursor.
+  //
+  // Place spine-rooted hangs before child hangs. Hang discovery records a sibling leave as a
+  // child hang *before* the parent hang object, so a naive intervals walk drew the child first
+  // while `from` (a box still inside the parent) was unplaced → `by = 0` parked branch-exit
+  // ends at the canvas top and forced cross-spine routes (L1 litigation / issue 190).
   /** @type {Map<string, number>} */
   const laneCursorY = new Map()
   const laneKey = (sign, lane) => `${sign}:${lane}`
@@ -537,7 +559,7 @@ function layoutStageMainline({
     for (let i = 0; i < lane; i += 1) acc += (widths[i] ?? 0) + LANE_SEP
     return acc
   }
-  for (const it of intervals) {
+  const placeHang = (it) => {
     const sign = /** @type {number} */ (signOf.get(it.h))
     const lane = /** @type {number} */ (laneOf.get(it.h))
     const widths = /** @type {number[]} */ (laneWBySign.get(sign))
@@ -564,6 +586,24 @@ function layoutStageMainline({
       by += h + LAYER_GAP
     }
     laneCursorY.set(key, by)
+  }
+  const pending = [...intervals]
+  while (pending.length) {
+    let progress = 0
+    for (let i = 0; i < pending.length; ) {
+      const it = pending[i]
+      if (!it.h.rootOnSpine && !placed.has(it.h.from)) {
+        i += 1
+        continue
+      }
+      pending.splice(i, 1)
+      placeHang(it)
+      progress += 1
+    }
+    if (!progress) {
+      // Broken / cyclic child anchor — place one best-effort so layout still finishes.
+      placeHang(/** @type {(typeof pending)[0]} */ (pending.shift()))
+    }
   }
 
   // Place terminus ends on the spine axis after the last spine node (stacked if several).

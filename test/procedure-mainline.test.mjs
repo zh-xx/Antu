@@ -690,6 +690,31 @@ test('mainline: L1 litigation nested hang flips (DeepSeek fixture)', () => {
   assert.deepEqual(hits, [], `L1 gate: no box hits, got ${hits.join(', ')}`)
 })
 
+test('mainline: L1 branch-exit ends stay in hang lane (not canvas top)', () => {
+  // Decision sibling ends (管辖异议终结 / 保全不准终结) used to place at y≈0 because the
+  // child hang drew before its parent fork box existed, and could flip to the opposite face.
+  // They must stay in the parent hang column, below the hang chain — not at the canvas top.
+  const spec = JSON.parse(readFileSync('preview/synthetic-rejoin/fixtures/L1-litigation-nested-hang.zh-CN.json', 'utf8'))
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  assert.deepEqual(g.errors, [])
+  const spineTop = Math.min(...g.spine.map((id) => byId.get(id).position.y))
+  const cx = (id) => byId.get(id).position.x + byId.get(id).data.w / 2
+  const spineCx = cx('n-5')
+
+  const end15 = byId.get('n-15')
+  const end20 = byId.get('n-20')
+  assert.ok(end15.position.y > spineTop + 40, `n-15 must not sit at canvas top (y=${end15.position.y})`)
+  assert.ok(end20.position.y > spineTop + 40, `n-20 must not sit at canvas top (y=${end20.position.y})`)
+  assert.ok(cx('n-15') > spineCx, '管辖异议终结 stays on right with 管辖 hang')
+  assert.ok(cx('n-20') < spineCx, '保全不准终结 stays on left with 保全 hang')
+  // Same hang column as the chain (not a distant pocket / opposite face).
+  assert.ok(Math.abs(cx('n-15') - cx('n-14')) < 40, 'n-15 shares 管辖 lane with n-14')
+  assert.ok(Math.abs(cx('n-20') - cx('n-19')) < 40, 'n-20 shares 保全 lane with n-19')
+  assert.ok(end15.position.y >= byId.get('n-14').position.y - 1, 'n-15 below/at 裁定移送管辖')
+  assert.ok(end20.position.y >= byId.get('n-19').position.y - 1, 'n-20 below/at 保全准许')
+})
+
 test('mainline: stages-off hang→spine never enters trunk N/S (corpus)', () => {
   // Every hang→spine hop: spine end is E/W. Off-row hops leave hang on N/S (travel face), ≤2 bends.
   const face = (n, [x, y]) => {
