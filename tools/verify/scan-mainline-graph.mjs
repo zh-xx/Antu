@@ -62,6 +62,9 @@ try {
 
 const { buildProcedureGraph } = await import(resolve(REPO, 'src/renderers/procedure/flow/layout.js'))
 const { bendsOf } = await import(resolve(REPO, 'src/renderers/procedure/flow/straighten.js'))
+const { distDiamondOutline, onDiamondOutline } = await import(
+  resolve(REPO, 'src/renderers/procedure/flow/diamondPorts.js'),
+)
 
 const fields = { engine: 'mainline', stages: false }
 const tag = process.env.SCAN_TAG || 'scan'
@@ -78,32 +81,19 @@ function sha256(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex')
 }
 
+/** Bounding-box face centres (= diamond vertices for decision nodes). */
 function faceOf(n, [x, y], tol = 1.5) {
-  // Legal leave/enter may sit anywhere on a face (not only the mid-point). Fan-out /
-  // face-stagger for sibling diamond branches relies on this (07 n-3).
-  const bx = n.position.x
-  const by = n.position.y
-  const w = n.data.w
-  const h = n.data.h
-  const onW = Math.abs(x - bx) < tol && y >= by - tol && y <= by + h + tol
-  const onE = Math.abs(x - (bx + w)) < tol && y >= by - tol && y <= by + h + tol
-  const onN = Math.abs(y - by) < tol && x >= bx - tol && x <= bx + w + tol
-  const onS = Math.abs(y - (by + h)) < tol && x >= bx - tol && x <= bx + w + tol
-  // Corner: prefer the side whose mid is closer to the point.
-  const hits = [
-    onW && 'W',
-    onE && 'E',
-    onN && 'N',
-    onS && 'S',
-  ].filter(Boolean)
-  if (hits.length === 1) return hits[0]
-  if (hits.length > 1) {
-    const cx = bx + w / 2
-    const cy = by + h / 2
-    const score = { W: Math.abs(y - cy), E: Math.abs(y - cy), N: Math.abs(x - cx), S: Math.abs(x - cx) }
-    return hits.sort((a, b) => score[a] - score[b])[0]
-  }
+  const cx = n.position.x + n.data.w / 2
+  const cy = n.position.y + n.data.h / 2
+  if (Math.abs(x - n.position.x) < tol && Math.abs(y - cy) < 2) return 'W'
+  if (Math.abs(x - (n.position.x + n.data.w)) < tol && Math.abs(y - cy) < 2) return 'E'
+  if (Math.abs(y - n.position.y) < tol && Math.abs(x - cx) < 2) return 'N'
+  if (Math.abs(y - (n.position.y + n.data.h)) < tol && Math.abs(x - cx) < 2) return 'S'
   return '?'
+}
+
+function isDecisionNode(n) {
+  return n?.data?.node?.kind === 'decision' || n?.kind === 'decision'
 }
 
 function boxOverlap(a, b, pad = 0.5) {
@@ -162,11 +152,20 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     const from = byId.get(c.from)
     const to = byId.get(c.to)
     if (from && to) {
-      const lf = faceOf(from, c.points[0])
-      const ef = faceOf(to, c.points[c.points.length - 1])
+      const p0 = c.points[0]
+      const p1 = c.points[c.points.length - 1]
+      const lf = faceOf(from, p0)
+      const ef = faceOf(to, p1)
       if (lf === '?' || ef === '?') badPorts.push(`${c.id}:${lf}->${ef}`)
-      const d0 = distBox(from, c.points[0])
-      const d1 = distBox(to, c.points[c.points.length - 1])
+      // Decision nodes: hard-gate against bbox-edge anchors that miss the painted diamond.
+      if (isDecisionNode(from) && !onDiamondOutline(from, p0)) {
+        badPorts.push(`${c.id}:leave-off-diamond`)
+      }
+      if (isDecisionNode(to) && !onDiamondOutline(to, p1)) {
+        badPorts.push(`${c.id}:enter-off-diamond`)
+      }
+      const d0 = isDecisionNode(from) ? distDiamondOutline(from, p0) : distBox(from, p0)
+      const d1 = isDecisionNode(to) ? distDiamondOutline(to, p1) : distBox(to, p1)
       if (d0 > 1.5 || d1 > 1.5) endpointGaps.push(`${c.id}:${d0.toFixed(1)}/${d1.toFixed(1)}`)
     }
     if (c.label && !c.labelAt) missingLabels.push(c.id)

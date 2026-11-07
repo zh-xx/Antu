@@ -220,36 +220,67 @@ test('production exhausted both-blocked: no unchecked gutter; returned path is p
   assert.equal(pathClear(pts, placed, 'hang', 'spine'), true)
 })
 
-test('07 decision: sibling branches do not share one leave pixel when a free face or face stagger clears', () => {
-  // Baseline de0ec80 shared n-3 leave among branches (corpus WARN). Production fans the longer
-  // sibling onto a free face (V) or along-face stagger (H) without raising crossings.
+test('07 decision: preexisting shared leave among sibling branches (corpus WARN; not silently zeroed)', () => {
+  // Baseline de0ec80 and current production share an n-3 leave among branches when four
+  // incident edges already occupy N/E/S/W (incoming trunk + main out + two sides). Free
+  // outgoing pixel ≠ free port. Fan-out onto N while trunk enters N is rejected; keep WARN.
   const spec = JSON.parse(readFileSync('examples/procedure/07-share-acquisition-agreement.zh-CN.json', 'utf8'))
   for (const dir of ['vertical', 'horizontal']) {
     const g = buildProcedureGraph(spec, fields, undefined, dir)
     assert.equal(edgeCrossings(g).length, 0, dir)
     const leave = new Map()
+    const incident = []
     for (const c of g.connections) {
-      if (c.from !== 'n-3' || !c.points?.length) continue
-      const k = `${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`
-      if (!leave.has(k)) leave.set(k, [])
-      leave.get(k).push(c.id)
+      if (!c.points?.length) continue
+      if (c.from === 'n-3') {
+        const k = `${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`
+        if (!leave.has(k)) leave.set(k, [])
+        leave.get(k).push(c.id)
+        incident.push({ id: c.id, kind: c.kind, end: 'leave', pt: c.points[0] })
+      }
+      if (c.to === 'n-3') {
+        incident.push({ id: c.id, kind: c.kind, end: 'enter', pt: c.points.at(-1) })
+      }
     }
     const shared = [...leave.entries()].filter(([, ids]) => ids.length > 1)
-    assert.deepEqual(shared, [], `${dir} shared leave: ${JSON.stringify(shared)}`)
+    assert.ok(shared.length >= 1, `${dir}: expected preexisting shared leave WARN class`)
+    // Ownership among ALL incident edges (incoming trunk + outgoing): four diamond vertices.
+    assert.ok(incident.some((e) => e.end === 'enter'), `${dir}: missing incoming trunk enter on n-3`)
+    assert.ok(incident.filter((e) => e.end === 'leave').length >= 3, `${dir}: expected ≥3 leaves from n-3`)
   }
 })
 
-test('production exhausted absolute fallback: still returns attached outer when every clear corridor fails', () => {
-  // Seal hang and spine inside a contiguous obstacle field so finite outer/wrap/side search
-  // cannot pathClear. Production must still emit an attached polyline (connectivity), not
-  // null/undefined — residual hits are expected and must be reported by scan, not hidden.
+test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex passes', async () => {
+  const { onDiamondOutline, distDiamondOutline, diamondVertices } = await import(
+    '../src/renderers/procedure/flow/diamondPorts.js',
+  )
+  const n = {
+    position: { x: 100, y: 200 },
+    data: { w: 120, h: 80, node: { kind: 'decision' } },
+  }
+  const v = diamondVertices(n)
+  assert.equal(onDiamondOutline(n, v.N), true)
+  assert.equal(onDiamondOutline(n, v.E), true)
+  assert.equal(distDiamondOutline(n, v.S) < 0.01, true)
+  // On bbox top edge but not at N vertex → painted diamond misses this point.
+  const bboxOnOffDiamond = [n.position.x + 8, n.position.y]
+  assert.equal(onDiamondOutline(n, bboxOnOffDiamond), false)
+  assert.ok(distDiamondOutline(n, bboxOnOffDiamond) > 1.5)
+  // On bbox right edge mid-height but shifted off E vertex along the side.
+  const bboxEOff = [n.position.x + n.data.w, n.position.y + 8]
+  assert.equal(onDiamondOutline(n, bboxEOff), false)
+})
+
+test('production absolute fallback: connectivity kept; residual !pathClear is NOT hardconstraint-ok', () => {
+  // Seal hang/spine so finite corridors cannot pathClear. Production still returns an attached
+  // polyline (no silent edge drop). That residual is a documented unsafe fallback — scan/gates
+  // must treat it as residual, never as clearance success.
   const a = { x: 200, y: 200, w: 60, h: 60 }
   const b = { x: 40, y: 360, w: 60, h: 40 }
   const hangOnRight = true
   const placed = new Map([
     ['hang', a],
     ['spine', b],
-    // Fill the plane around both boxes with overlapping walls (finite depth cannot escape).
     ['w1', { x: 0, y: 0, w: 400, h: 180 }],
     ['w2', { x: 0, y: 180, w: 180, h: 280 }],
     ['w3', { x: 280, y: 180, w: 120, h: 280 }],
@@ -257,8 +288,7 @@ test('production exhausted absolute fallback: still returns attached outer when 
     ['w5', { x: 100, y: 260, w: 80, h: 80 }],
   ])
   const pts = routeHangToSpine(a, b, hangOnRight, placed, 'hang', 'spine', true)
-  assert.ok(Array.isArray(pts) && pts.length >= 2, 'fallback must return a polyline')
-  // Endpoints remain on (near) the hang/spine boxes — graph edge is not dropped.
+  assert.ok(Array.isArray(pts) && pts.length >= 2, 'must not drop the edge')
   const near = (p, box) => {
     const dx = p[0] < box.x ? box.x - p[0] : p[0] > box.x + box.w ? p[0] - (box.x + box.w) : 0
     const dy = p[1] < box.y ? box.y - p[1] : p[1] > box.y + box.h ? p[1] - (box.y + box.h) : 0
@@ -266,13 +296,12 @@ test('production exhausted absolute fallback: still returns attached outer when 
   }
   assert.equal(near(pts[0], a) || near(pts.at(-1), a), true)
   assert.equal(near(pts[0], b) || near(pts.at(-1), b), true)
-  // Document residual: absolute fallback is allowed to be !pathClear when search is exhausted.
-  // Prefer clear when any finite corridor works (covered by the both-blocked test above).
-  if (pathClear(pts, placed, 'hang', 'spine')) {
-    // Acceptable if a deep corridor still cleared — do not require residual hits.
-    return
-  }
-  assert.equal(pathClear(pts, placed, 'hang', 'spine'), false)
+  const clear = pathClear(pts, placed, 'hang', 'spine')
+  assert.equal(
+    clear,
+    false,
+    'sealed impossible geometry must leave residual hits (unsafe fallback ≠ hardconstraint pass)',
+  )
 })
 
 test('mainline: input-order stability — reverse nodes+edges (canonical ids; mainline unchanged)', () => {
