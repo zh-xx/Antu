@@ -6,10 +6,11 @@
 //  shape as layoutColumnsGen. Order:
 //    1. fix the main line in each stage as a straight vertical column (axis pinned);
 //    2. hang branches in lanes as branch regions [leave, rejoin] along the spine index
-//       (issue 190 C4). Preferred side is away from the next stage (or right when alone). Nested
-//       intervals share a side (shorter/contained → inner lane; container → outer); overlapping
-//       non-nested prefer opposite sides when free. Lane order follows containment, not start
-//       time. Each box has four face ports (N/S/E/W); the trunk usually owns N+S, so a
+//       (issue 190 C4). Preferred side is away from the next stage (or right when alone).
+//       Overlapping regions prefer opposite sides when free (nested: flip the contained hang;
+//       otherwise flip the later leave). Same-side fallback uses containment lanes
+//       (shorter/contained → inner; container → outer). Lane order follows containment, not
+//       start time. Each box has four face ports (N/S/E/W); the trunk usually owns N+S, so a
 //       decision's side exits take E/W — when both are free, two exits do not share one
 //       face (loop+back may share a side as a bidirectional hop). First hop sits on the
 //       fork's row (0-bend); branches yield — the spine never moves for them;
@@ -46,13 +47,27 @@ import {
   COLUMN_MIN_W,
   sizeOf,
 } from './metrics.js'
+import {
+  OUTER_GAP,
+  hangLaneBlocked,
+  routeHangToSpine,
+  pathClear,
+  pathCrossCount,
+  pathLength,
+  pathBendCount,
+  sideHorizontal,
+  clearSideHorizontal,
+  clearSideChannel,
+  clearOuterCorridor,
+  clearWrapAround,
+  diamondOuterSide,
+  firstClearPath,
+} from './hangSpineRoute.js'
 
 /** Gap between the spine column and the first branch lane (room for a condition label on the hop) */
 const LANE_GAP = 112
 /** Extra room between two branch lanes */
 const LANE_SEP = 28
-/** Clearance outside the hang box for a distant rejoin corridor (fallback when hang lane blocked) */
-const OUTER_GAP = 28
 /** Centre-to-centre span above which spine→hang prefers the hang-lane / corridor helper */
 const DISTANT_DY = 280
 
@@ -229,6 +244,12 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   // Final: linked boxes share centres; every port on a face centre (after polish skew).
   const allSpine = new Set([...spineByStage.values()].flat())
   preferCenteredLinks(placed, connections, diamonds, allSpine)
+  // straighten/polish above can reintroduce edge crossings that per-stage repair already
+  // cleared (L4 horizontal n-7→n-8 vs settlement). Crossing repair must run on the combined
+  // frame before labels lock geometry.
+  repairEdgeCrossings(placed, connections, diamonds, allSpine)
+  restoreSameRowLinks(placed, connections, diamonds)
+  repairEdgeCrossings(placed, connections, diamonds, allSpine)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
   yield
@@ -286,10 +307,12 @@ function layoutStageMainline({
   }
   const spineH = y > 0 ? y - LAYER_GAP : 0
 
-  // Hangs: leave the spine, follow until spine / end / already drawn (no cut)
+  // Hangs: leave the spine, follow until spine / end / already drawn (no cut).
+  // Outgoing leave order is sorted by target id so input edge order cannot flip sides/lanes.
   const hangs = []
   for (const u of spineHere) {
-    for (const g of outG.get(u) ?? []) {
+    const leaves = [...(outG.get(u) ?? [])].sort((p, q) => String(p.to).localeCompare(String(q.to)))
+    for (const g of leaves) {
       if (!ownIds.has(g.to) && !g.isBack) continue // cross-stage later
       if (g.isMain || g.isBack) continue
       if (spineAt.has(g.to) && ownIds.has(g.to)) continue // arc / jump along or to spine — routed later
@@ -306,7 +329,9 @@ function layoutStageMainline({
         seen.add(cur)
         boxes.push(cur)
         if (byId.get(cur).kind === 'end') break
-        const outs = (outG.get(cur) ?? []).filter((e) => !e.isBack && ownIds.has(e.to))
+        const outs = (outG.get(cur) ?? [])
+          .filter((e) => !e.isBack && ownIds.has(e.to))
+          .sort((p, q) => Number(!!q.isMain) - Number(!!p.isMain) || String(p.to).localeCompare(String(q.to)))
         const next = outs.find((e) => e.isMain) ?? outs[0]
         if (!next) break
         // Sibling outs from a hang box become further hangs rooted at this box (one level)
@@ -376,8 +401,8 @@ function layoutStageMainline({
 
   // Branch regions: one hang → one [leave, rejoin] interval along the spine index (issue 190 C4).
   // Side and lane are decided here (before placement / local routing). Dead ends are half-open
-  // (estimated span from box count). Nested → same side, contained inner; overlap non-nested →
-  // opposite sides when free. Lane pack order is by span (containment), not leave time.
+  // (estimated span from box count). Overlap (incl. nested) → opposite sides when free; same-side
+  // fallback packs by span (containment), not leave time.
   const intervals = hangs
     .filter((h) => h.boxes.length)
     .map((h) => {
@@ -410,30 +435,46 @@ function layoutStageMainline({
   for (const its of forkIntervals.values()) {
     if (its.length < 2) continue
     // Loop+back keeps the preferred face; remaining exits alternate onto the free opposite face.
-    const ordered = [...its].sort((p, q) => Number(isLoopHang(q.h)) - Number(isLoopHang(p.h)))
+    const ordered = [...its].sort(
+      (p, q) =>
+        Number(isLoopHang(q.h)) - Number(isLoopHang(p.h)) ||
+        String(p.h.leave?.to ?? '').localeCompare(String(q.h.leave?.to ?? '')) ||
+        String(p.h.from).localeCompare(String(q.h.from)),
+    )
     ordered.forEach((it, i) => {
       signOf.set(it.h, i % 2 === 0 ? branchSign : -branchSign)
     })
   }
 
-  // Overlapping non-nested regions on the same side: flip the later leave onto the free face.
-  // Nested pairs stay same-side. Earlier regions are stable — an unrelated hang should not flip them.
-  const byLeave = [...intervals].sort((p, q) => p.a - q.a || p.b - q.b)
+  // Overlapping regions on the same side: flip onto a free opposite face when possible.
+  // Nested → only the contained hang moves; non-nested → the later leave moves.
+  // Only spine-rooted hangs participate: child hangs (sibling leaves off a hang box) inherit
+  // the parent's side/lane below so a branch-exit end cannot migrate to the opposite face.
+  // Interval containment can invert for child hangs (estimated span); never flip a spine-rooted
+  // hang because a child hang's interval appears to contain it. Loop+back keeps preferred.
+  const byLeave = [...intervals].sort(
+    (p, q) =>
+      p.a - q.a ||
+      p.b - q.b ||
+      String(p.h.from).localeCompare(String(q.h.from)) ||
+      String(p.h.leave?.to ?? '').localeCompare(String(q.h.leave?.to ?? '')),
+  )
   for (const it of byLeave) {
+    if (isLoopHang(it.h) || !it.h.rootOnSpine) continue
     const sign = /** @type {number} */ (signOf.get(it.h))
     for (const other of byLeave) {
-      if (other === it || other.a > it.a) continue
+      if (other === it || other.a > it.a || !other.h.rootOnSpine) continue
       if (signOf.get(other.h) !== sign) continue
       if (!regionOverlaps(it, other)) continue
-      if (regionContains(it, other) || regionContains(other, it)) continue
+      // Interval-container stays on this face.
+      if (regionContains(it, other)) continue
+      // Child-span artifact: spine-rooted hang looks "inside" a child hang — skip.
+      if (regionContains(other, it) && it.h.rootOnSpine && !other.h.rootOnSpine) continue
       const opp = -sign
+      // Opposite face is busy on any overlap (incl. containment). Containment lanes are the
+      // same-side fallback when we cannot flip — do not treat a containing opposite region as free.
       const oppBusy = intervals.some(
-        (o) =>
-          o !== it &&
-          signOf.get(o.h) === opp &&
-          regionOverlaps(it, o) &&
-          !regionContains(it, o) &&
-          !regionContains(o, it),
+        (o) => o !== it && o.h.rootOnSpine && signOf.get(o.h) === opp && regionOverlaps(it, o),
       )
       if (!oppBusy) signOf.set(it.h, opp)
       break
@@ -449,6 +490,7 @@ function layoutStageMainline({
   }
 
   // Pack lanes per side: shorter / contained intervals claim inner lanes first.
+  // Child hangs are packed with their parent (same column), not as extra competing regions.
   /** @type {Map<object, number>} */
   const laneOf = new Map()
   /** @type {Map<number, number[]>} sign → lane end spine-index */
@@ -458,7 +500,16 @@ function layoutStageMainline({
   ])
   /** @type {Array<{ region: object, reason: string }>} */
   const spineOpenRequests = []
-  const bySpan = [...intervals].sort((p, q) => p.b - p.a - (q.b - q.a) || p.a - q.a || p.b - q.b)
+  const bySpan = [...intervals]
+    .filter((it) => it.h.rootOnSpine)
+    .sort(
+      (p, q) =>
+        p.b - p.a - (q.b - q.a) ||
+        p.a - q.a ||
+        p.b - q.b ||
+        String(p.h.from).localeCompare(String(q.h.from)) ||
+        String(p.h.leave?.to ?? '').localeCompare(String(q.h.leave?.to ?? '')),
+    )
   for (const it of bySpan) {
     const sign = /** @type {number} */ (signOf.get(it.h))
     const ends = /** @type {number[]} */ (laneEndsBySign.get(sign))
@@ -466,6 +517,17 @@ function layoutStageMainline({
     while (ends[lane] !== undefined && ends[lane] > it.a) lane += 1
     ends[lane] = Math.max(ends[lane] ?? it.b, it.b)
     laneOf.set(it.h, lane)
+  }
+  for (const it of intervals) {
+    if (it.h.rootOnSpine && laneOf.has(it.h)) continue
+    const parent = intervals.find((o) => o.h !== it.h && o.h.boxes.includes(it.h.from))
+    if (parent && laneOf.has(parent.h)) {
+      signOf.set(it.h, /** @type {number} */ (signOf.get(parent.h)))
+      laneOf.set(it.h, /** @type {number} */ (laneOf.get(parent.h)))
+    } else {
+      if (!signOf.has(it.h)) signOf.set(it.h, branchSign)
+      if (!laneOf.has(it.h)) laneOf.set(it.h, 0)
+    }
   }
   // Hook only (issue 190 B3): record when same-side overlap remains after flip — spine may open later.
   for (const it of intervals) {
@@ -504,6 +566,28 @@ function layoutStageMainline({
   const leftW = sideWidth(-1)
   const rightW = sideWidth(1)
 
+  // Decision-sibling single ends (e.g.「不准」→终结) sit on the fork's row to the right of the
+  // diamond (0-bend), not stacked under the continuing hang chain. Skip boxes the parent hang
+  // already owns (shared terminus). Room toward the spine uses hopGap; room further out uses
+  // an outer spur on that side.
+  const isSideEndHang = (it) => {
+    if (it.h.rootOnSpine || it.h.boxes.length !== 1) return false
+    if (byId.get(it.h.from)?.kind !== 'decision') return false
+    const id = it.h.boxes[0]
+    if (byId.get(id)?.kind !== 'end') return false
+    // Shared terminus already owned by the parent hang chain stays in-lane.
+    return !intervals.some((o) => o.h.rootOnSpine && o.h.boxes.includes(id))
+  }
+  let sideEndInner = 0
+  for (const it of intervals) {
+    if (!isSideEndHang(it)) continue
+    const need = frameSize(byId.get(it.h.boxes[0])).w + LANE_SEP
+    const sign = /** @type {number} */ (signOf.get(it.h))
+    // Absolute-right of the diamond: left hang → into the spine gutter (widen hopGap).
+    // Right hang → past the lane (final bbox grows from the placed end).
+    if (sign < 0) sideEndInner = Math.max(sideEndInner, need)
+  }
+
   // Room on the leave hop for a condition label sitting ON the segment (not beside it).
   let hopGap = LANE_GAP
   for (const it of intervals) {
@@ -512,6 +596,7 @@ function layoutStageMainline({
     const need = Math.min(120, textEm(leave.label) * 12 + 12) + 24
     hopGap = Math.max(hopGap, need)
   }
+  if (sideEndInner) hopGap = Math.max(hopGap, sideEndInner + 24)
 
   const spineX0 = leftW ? leftW + hopGap : 0
   for (const id of spineHere) {
@@ -521,6 +606,11 @@ function layoutStageMainline({
 
   // Decision branches sit on the fork's row (centres aligned → 0-bend side link).
   // Lane keys are scoped by side so opposite-face siblings do not stack on one cursor.
+  //
+  // Place spine-rooted hangs before child hangs. Hang discovery records a sibling leave as a
+  // child hang *before* the parent hang object, so a naive intervals walk drew the child first
+  // while `from` (a box still inside the parent) was unplaced → `by = 0` parked branch-exit
+  // ends at the canvas top and forced cross-spine routes (L1 litigation / issue 190).
   /** @type {Map<string, number>} */
   const laneCursorY = new Map()
   const laneKey = (sign, lane) => `${sign}:${lane}`
@@ -530,12 +620,81 @@ function layoutStageMainline({
     for (let i = 0; i < lane; i += 1) acc += (widths[i] ?? 0) + LANE_SEP
     return acc
   }
-  for (const it of intervals) {
+  const placeHang = (it) => {
     const sign = /** @type {number} */ (signOf.get(it.h))
     const lane = /** @type {number} */ (laneOf.get(it.h))
     const widths = /** @type {number[]} */ (laneWBySign.get(sign))
     const leave = placed.get(it.h.from)
     const fork = byId.get(it.h.from)
+    // Sibling end off a hang decision: same row, prefer absolute-right of the diamond (0-bend).
+    // If that slot overlaps an already-placed box (e.g. left-hang end crossing into a right hang),
+    // nudge further right, then fall back to outward (away from spine) until clear.
+    if (isSideEndHang(it) && leave) {
+      const id = it.h.boxes[0]
+      if (drawn.has(id)) return
+      const { w, h } = frameSize(byId.get(id))
+      const y = leave.y + leave.h / 2 - h / 2
+      const overlaps = (x0) => {
+        for (const [oid, r] of placed) {
+          if (oid === id) continue
+          if (x0 + 0.5 < r.x + r.w && r.x + 0.5 < x0 + w && y + 0.5 < r.y + r.h && r.y + 0.5 < y + h) return true
+        }
+        return false
+      }
+      // Prefer the free same-row slot nearest the diamond. Interleave right/left. Never jump
+      // past a foreign same-row box to the far side — that packs an end beyond another hang
+      // column and forces rejoins to cross leave edges (L4 n-16 past n-10).
+      const jumpsPastForeign = (x0) => {
+        const cy = y + h / 2
+        for (const [oid, r] of placed) {
+          if (oid === id || oid === it.h.from) continue
+          if (Math.abs(r.y + r.h / 2 - cy) > Math.max(r.h, h) / 2 + 2) continue
+          if (leave.x + leave.w <= r.x + 0.5 && x0 + 0.5 >= r.x + r.w) return true
+          if (leave.x + 0.5 >= r.x + r.w && x0 + w <= r.x + 0.5) return true
+        }
+        return false
+      }
+      let x = leave.x + leave.w + LANE_SEP
+      let found = false
+      for (let i = 0; i < 12; i += 1) {
+        const right = leave.x + leave.w + LANE_SEP + i * (w + LANE_SEP)
+        const left = leave.x - LANE_SEP - w - i * (w + LANE_SEP)
+        if (!overlaps(right) && !jumpsPastForeign(right)) {
+          x = right
+          found = true
+          break
+        }
+        if (!overlaps(left) && !jumpsPastForeign(left)) {
+          x = left
+          found = true
+          break
+        }
+      }
+      if (!found) {
+        // No same-row gap without jumping a foreign hang: stack below the fork, preferring the
+        // inward (spine-facing) column so the outer rejoin corridor stays open.
+        let yStack = leave.y + leave.h + LAYER_GAP
+        const inward = sign > 0 ? leave.x - LANE_SEP - w : leave.x + leave.w + LANE_SEP
+        const under = leave.x + (leave.w - w) / 2
+        const overlapsAt = (x0, y0) => {
+          for (const [oid, r] of placed) {
+            if (oid === id) continue
+            if (x0 + 0.5 < r.x + r.w && r.x + 0.5 < x0 + w && y0 + 0.5 < r.y + r.h && r.y + 0.5 < y0 + h)
+              return true
+          }
+          return false
+        }
+        x = inward
+        if (overlapsAt(x, yStack)) x = under
+        for (let i = 0; i < 12 && overlapsAt(x, yStack); i += 1) yStack += h + LAYER_GAP
+        placed.set(id, { x, y: yStack, w, h })
+        drawn.add(id)
+        return
+      }
+      placed.set(id, { x, y, w, h })
+      drawn.add(id)
+      return
+    }
     const sameRow = Boolean(it.h.rootOnSpine && fork?.kind === 'decision' && leave && it.h.boxes.length)
     const key = laneKey(sign, lane)
     let by
@@ -557,6 +716,24 @@ function layoutStageMainline({
       by += h + LAYER_GAP
     }
     laneCursorY.set(key, by)
+  }
+  const pending = [...intervals]
+  while (pending.length) {
+    let progress = 0
+    for (let i = 0; i < pending.length; ) {
+      const it = pending[i]
+      if (!it.h.rootOnSpine && !placed.has(it.h.from)) {
+        i += 1
+        continue
+      }
+      pending.splice(i, 1)
+      placeHang(it)
+      progress += 1
+    }
+    if (!progress) {
+      // Broken / cyclic child anchor — place one best-effort so layout still finishes.
+      placeHang(/** @type {(typeof pending)[0]} */ (pending.shift()))
+    }
   }
 
   // Place terminus ends on the spine axis after the last spine node (stacked if several).
@@ -604,12 +781,14 @@ function layoutStageMainline({
 
   // Inner connections: main straight; same-row branch/back horizontal; hang→spine rejoins enter
   // a free side face (trunk owns N/S); others elbow then polish.
+  // Route non-mains with awareness of already-accepted polylines so rejoins prefer 0-crossing corridors.
   const inner = groups.filter((g) => ownIds.has(g.from) && ownIds.has(g.to))
   const connections = []
   for (const g of inner) {
     const a = placed.get(g.from)
     const b = placed.get(g.to)
     if (!a || !b) continue
+    const others = connections.map((c) => c.points)
     let points
     if (g.isMain) {
       const x0 = a.x + a.w / 2
@@ -629,9 +808,17 @@ function layoutStageMainline({
               [x1, y1],
             ]
     } else if (sameRowLink(a, b)) {
-      points = sideHorizontal(a, b)
+      points =
+        clearSideHorizontal(a, b, placed, g.from, g.to, 16, others) || sideHorizontal(a, b)
     } else {
-      points = routeCentered(a, b, diamonds.has(g.from), placed, g.from, g.to, spineIdSet)
+      points = routeCentered(a, b, diamonds.has(g.from), placed, g.from, g.to, spineIdSet, others)
+    }
+    // Connectivity stub if corridors exhausted (null). Mark residual — layout.js must not
+    // treat this ink as a clearance success (falls back to current/ELK when any residual).
+    let routeExhausted = false
+    if (!points?.length) {
+      points = fallbackRoute(a, b)
+      routeExhausted = true
     }
     connections.push({
       id: `c:${g.from}->${g.to}`,
@@ -640,6 +827,7 @@ function layoutStageMainline({
       kind: g.isBack ? 'back' : g.isMain ? 'main' : 'branch',
       merged: g.merged,
       points,
+      routeExhausted,
       label: g.label,
       /** @type {{ x: number, y: number } | null} */
       labelAt: null,
@@ -667,6 +855,23 @@ function layoutStageMainline({
   restoreSameRowLinks(placed, connections, diamonds)
   // Side-channel / outer-corridor backs: push the vertical run outward until an on-ink label fits.
   clearCorridorForLabels(placed, connections)
+  // Final gate: repair foreign-box cuts, then reduce edge crossings without reintroducing hits.
+  // Region/lane placement already ran; this only repairs residual ink, never drops edges.
+  for (const c of connections) {
+    if (c.kind === 'main') continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b || !c.points?.length) continue
+    if (pathClear(c.points, placed, c.from, c.to)) continue
+    const others = connections.filter((o) => o !== c).map((o) => o.points)
+    const reroute = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to, spineIdSet, others)
+    if (reroute && reroute.length >= 2 && pathClear(reroute, placed, c.from, c.to)) c.points = reroute
+  }
+  repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
+  restoreSameRowLinks(placed, connections, diamonds)
+  // Crossing repair must be last geometry pass: restoreSameRowLinks can still rewrite ink
+  // (even crossing-aware) and must not leave a higher-cross state than repair achieved.
+  repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -816,7 +1021,17 @@ function rebuildIncidentLinks(placed, connections, moved, diamonds, spineIds) {
     const a = placed.get(c.from)
     const b = placed.get(c.to)
     if (!a || !b) continue
-    c.points = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to, spineIds)
+    const pts = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to, spineIds)
+    if (pts?.length) {
+      c.points = pts
+      c.routeExhausted = false
+    } else if (!c.points?.length) {
+      c.points = fallbackRoute(a, b)
+      c.routeExhausted = true
+    } else {
+      // Keep prior ink; flag residual if it still hits so layout boundary can fall back.
+      c.routeExhausted = !pathClear(c.points, placed, c.from, c.to)
+    }
   }
 }
 
@@ -853,7 +1068,17 @@ function preferCenteredLinks(placed, connections, diamonds, spineIds) {
     const a = placed.get(c.from)
     const b = placed.get(c.to)
     if (!a || !b) continue
-    c.points = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to, spineIds)
+    const others = connections.filter((o) => o !== c).map((o) => o.points)
+    const pts = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to, spineIds, others)
+    if (pts?.length) {
+      c.points = pts
+      c.routeExhausted = false
+    } else if (!c.points?.length) {
+      c.points = fallbackRoute(a, b)
+      c.routeExhausted = true
+    } else {
+      c.routeExhausted = !pathClear(c.points, placed, c.from, c.to)
+    }
   }
 }
 
@@ -1082,8 +1307,6 @@ function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = [
       if (c.labelSize) c.labelAt = null
     }
   }
-  const overlapsNode = (r) =>
-    nodeRects.some((n) => r.x < n.x + n.w - 0.5 && n.x < r.x + r.w - 0.5 && r.y < n.y + n.h - 0.5 && n.y < r.y + r.h - 0.5)
   for (const c of connections) {
     if (!c.labelSize || c.labelAt) continue
     const others = connections.filter((o) => o !== c)
@@ -1109,24 +1332,12 @@ function sameRowLink(a, b) {
   return Math.abs(a.y + a.h / 2 - (b.y + b.h / 2)) < 2
 }
 
-/** Straight side-to-side link between same-row boxes (0 bends). */
-function sideHorizontal(a, b) {
-  const ay = a.y + a.h / 2
-  const by = b.y + b.h / 2
-  if (a.x + a.w / 2 <= b.x + b.w / 2) {
-    return [
-      [a.x + a.w, ay],
-      [b.x, by],
-    ]
-  }
-  return [
-    [a.x, ay],
-    [b.x + b.w, by],
-  ]
-}
-
 /**
- * After polish/straighten, put decision↔same-row neighbour links back to a side horizontal.
+ * After polish/straighten, put decision↔same-row neighbour links back to a clear side route.
+ * Never force a 0-bend that cuts through a foreign box (L3/L4 nested ends, 07 same-row).
+ * Crossing-aware: pass other polylines into clearSideHorizontal and never replace a path with
+ * one that has more edge crossings (L4 H n-7→n-8: post-repair south U was overwritten by a
+ * box-clear north U that reintroduced 3 settlement crossings).
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {object[]} connections
  * @param {Set<string>} diamonds
@@ -1138,7 +1349,14 @@ function restoreSameRowLinks(placed, connections, diamonds) {
     const a = placed.get(c.from)
     const b = placed.get(c.to)
     if (!a || !b || !sameRowLink(a, b)) continue
-    c.points = sideHorizontal(a, b)
+    const others = connections.filter((o) => o !== c).map((o) => o.points)
+    const before = c.points?.length ? pathCrossCount(c.points, others) : Infinity
+    const clear = clearSideHorizontal(a, b, placed, c.from, c.to, 16, others)
+    if (!clear) continue
+    const after = pathCrossCount(clear, others)
+    // Keep existing when the restore candidate is strictly worse on crossings.
+    if (after > before) continue
+    c.points = clear
   }
 }
 
@@ -1157,213 +1375,190 @@ function columnBlocked(a, b, placed, fromId, toId) {
   return false
 }
 
-/** Side-channel U-turn: leave/enter face centres, run beside both boxes (avoids same-column blockers). */
-function sideChannel(a, b, preferLeft = false) {
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const side = preferLeft ? Math.min(a.x, b.x) - 24 : Math.max(a.x + a.w, b.x + b.w) + 24
-  return [
-    [preferLeft ? a.x : a.x + a.w, acy],
-    [side, acy],
-    [side, bcy],
-    [preferLeft ? b.x : b.x + b.w, bcy],
-  ]
-}
+// Hang→spine / clear same-row helpers live in hangSpineRoute.js (production + tests).
 
 /**
- * Preferred hang → spine rejoin: hang may use N/S. Leave the travel face, run in the hang
- * lane to the spine mid-height, enter the spine's hang-side face (1 bend). Never touches trunk N/S.
- * @param {{ x: number, y: number, w: number, h: number }} a hang
- * @param {{ x: number, y: number, w: number, h: number }} b spine
- * @param {boolean} hangOnRight
+ * Candidate alternate polylines for one non-main edge (box-clear preferred, crossing-aware).
+ * @returns {Array<number[][] | null | undefined>}
  */
-function hangLaneRejoin(a, b, hangOnRight) {
+function crossingRepairAlts(c, placed, diamonds, spineIds, others) {
+  const a = placed.get(c.from)
+  const b = placed.get(c.to)
+  if (!a || !b) return []
   const acx = a.x + a.w / 2
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const goingDown = bcy >= acy
-  return [
-    [acx, goingDown ? a.y + a.h : a.y],
-    [acx, bcy],
-    [hangOnRight ? b.x + b.w : b.x, bcy],
-  ]
-}
-
-/**
- * Inward gutter when the hang lane is blocked: leave the face toward the spine, run between
- * hang and trunk, enter the spine side. Avoids a far outer U with a tiny vertical jog
- * (e.g. purchase-contract「协商是否成功」→「甲方付款」).
- * @param {{ x: number, y: number, w: number, h: number }} a hang
- * @param {{ x: number, y: number, w: number, h: number }} b spine
- * @param {boolean} hangOnRight
- */
-function gutterRejoin(a, b, hangOnRight) {
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const ax = hangOnRight ? a.x : a.x + a.w
-  const bx = hangOnRight ? b.x + b.w : b.x
-  if (Math.abs(acy - bcy) < 2) {
-    return [
-      [ax, acy],
-      [bx, bcy],
-    ]
-  }
-  const gutterX = (ax + bx) / 2
-  return [
-    [ax, acy],
-    [gutterX, acy],
-    [gutterX, bcy],
-    [bx, bcy],
-  ]
-}
-
-/**
- * Outer corridor last resort: leave travel face, run outside the hang column, enter spine side.
- * @param {{ x: number, y: number, w: number, h: number }} a hang box
- * @param {{ x: number, y: number, w: number, h: number }} b spine box
- * @param {boolean} hangOnRight hang sits to the right of the spine
- * @param {number} [depth] extra outward offset when several corridors stack
- */
-function outerCorridor(a, b, hangOnRight, depth = 0) {
-  const acx = a.x + a.w / 2
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const goingDown = bcy >= acy
-  const leaveY = goingDown ? a.y + a.h : a.y
-  const outer = hangOnRight
-    ? Math.max(a.x + a.w, b.x + b.w) + OUTER_GAP + depth
-    : Math.min(a.x, b.x) - OUTER_GAP - depth
-  return [
-    [acx, leaveY],
-    [outer, leaveY],
-    [outer, bcy],
-    [hangOnRight ? b.x + b.w : b.x, bcy],
-  ]
-}
-
-/**
- * Outward corridor: leave the hang face *away* from the spine, run vertical, enter spine side.
- * Channel x is the gap before the next outer hang column when one exists; otherwise just
- * outside this hang (`OUTER_GAP`) when that return stays clear. Covers S3 right (inter-lane)
- * and S3 left-leave (hang alone on the left → 回并左出).
- * @returns {number[][] | null}
- */
-function interLaneCorridor(a, b, hangOnRight, placed, fromId, toId) {
-  if (!placed) return null
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const hangOuter = hangOnRight ? a.x + a.w : a.x
-  const lo = Math.min(acy, bcy)
-  const hi = Math.max(acy, bcy)
-  let nearestInner = hangOnRight ? Infinity : -Infinity
-  let found = false
-  for (const [id, r] of placed) {
-    if (id === fromId || id === toId) continue
-    // Must sit further out than this hang and overlap the vertical run (or the leave row).
-    const further = hangOnRight ? r.x >= hangOuter - 1 : r.x + r.w <= hangOuter + 1
-    if (!further) continue
-    if (r.y + r.h <= lo + 0.5 || r.y >= hi - 0.5) {
-      // Still count a neighbour that overlaps the hang box row (blocks the leave stub).
-      if (r.y + r.h <= a.y + 0.5 || r.y >= a.y + a.h - 0.5) continue
-    }
-    found = true
-    if (hangOnRight) nearestInner = Math.min(nearestInner, r.x)
-    else nearestInner = Math.max(nearestInner, r.x + r.w)
-  }
-  let mid
-  if (found) {
-    const gap = hangOnRight ? nearestInner - hangOuter : hangOuter - nearestInner
-    if (gap < 8) return null
-    mid = hangOnRight ? hangOuter + gap / 2 : hangOuter - gap / 2
+  const bcx = b.x + b.w / 2
+  const hangOnRight = acx > bcx
+  const fromDiamond = diamonds.has(c.from)
+  const fromSpine = spineIds?.has(c.from)
+  const toSpine = spineIds?.has(c.to)
+  /** @type {Array<number[][] | null | undefined>} */
+  const alts = []
+  if (!fromSpine && toSpine) {
+    alts.push(routeHangToSpine(a, b, hangOnRight, placed, c.from, c.to, fromDiamond, others))
+    alts.push(diamondOuterSide(a, b, hangOnRight, placed, c.from, c.to, 32, others))
+    alts.push(clearOuterCorridor(a, b, hangOnRight, placed, c.from, c.to, 32, others))
+    alts.push(clearOuterCorridor(a, b, !hangOnRight, placed, c.from, c.to, 32, others))
+    alts.push(diamondOuterSide(a, b, !hangOnRight, placed, c.from, c.to, 32, others))
+    alts.push(clearWrapAround(a, b, hangOnRight, placed, c.from, c.to, 48, others))
+  } else if (fromSpine && !toSpine) {
+    const rev = routeHangToSpine(b, a, bcx > acx, placed, c.to, c.from, diamonds.has(c.to), others)
+    if (rev) alts.push(rev.slice().reverse())
+    const outerRev = clearOuterCorridor(b, a, bcx > acx, placed, c.to, c.from, 32, others)
+    if (outerRev) alts.push(outerRev.slice().reverse())
+    alts.push(clearSideChannel(a, b, acx > bcx, placed, c.from, c.to, 32, others))
+    const wrapRev = clearWrapAround(b, a, bcx > acx, placed, c.to, c.from, 48, others)
+    if (wrapRev) alts.push(wrapRev.slice().reverse())
   } else {
-    // Alone on this side: still prefer leaving away from the spine when the U clears.
-    mid = hangOnRight ? hangOuter + OUTER_GAP : hangOuter - OUTER_GAP
+    alts.push(clearSideChannel(a, b, acx > bcx, placed, c.from, c.to, 48, others))
+    alts.push(clearSideHorizontal(a, b, placed, c.from, c.to, 48, others))
+    alts.push(routeCentered(a, b, fromDiamond, placed, c.from, c.to, spineIds, others))
+    alts.push(clearWrapAround(a, b, hangOnRight, placed, c.from, c.to, 48, others))
+    // Far below/above U between any two boxes (helps horizontal dense hangs).
+    {
+      const acy = a.y + a.h / 2
+      const bcy = b.y + b.h / 2
+      for (const preferAbove of [false, true]) {
+        for (let d = 0; d <= 24; d += 1) {
+          const gap = 40 + d * 20
+          const rail = preferAbove ? Math.min(a.y, b.y) - gap : Math.max(a.y + a.h, b.y + b.h) + gap
+          alts.push([
+            [a.x + a.w / 2, preferAbove ? a.y : a.y + a.h],
+            [a.x + a.w / 2, rail],
+            [b.x + b.w / 2, rail],
+            [b.x + b.w / 2, preferAbove ? b.y : b.y + b.h],
+          ])
+          alts.push([
+            [acx > bcx ? a.x : a.x + a.w, acy],
+            [acx > bcx ? a.x : a.x + a.w, rail],
+            [acx > bcx ? b.x + b.w : b.x, rail],
+            [acx > bcx ? b.x + b.w : b.x, bcy],
+          ])
+        }
+      }
+    }
   }
-  // Vertical / return must stay clear of every foreign box.
-  const spineFace = hangOnRight ? b.x + b.w : b.x
-  for (const [id, r] of placed) {
-    if (id === fromId || id === toId) continue
-    if (mid > r.x + 0.5 && mid < r.x + r.w - 0.5 && r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return null
-    // Horizontal at bcy from mid toward spine: must not enter a box.
-    const hLo = Math.min(mid, spineFace)
-    const hHi = Math.max(mid, spineFace)
-    if (bcy > r.y + 0.5 && bcy < r.y + r.h - 0.5 && hHi > r.x + 0.5 && hLo < r.x + r.w - 0.5) return null
-  }
-  return [
-    [hangOuter, acy],
-    [mid, acy],
-    [mid, bcy],
-    [spineFace, bcy],
-  ]
-}
-
-/** True when another box sits on the hang's vertical lane between leaveY and targetY. */
-function hangLaneBlocked(a, leaveY, targetY, placed, fromId, toId) {
-  if (!placed) return false
-  const acx = a.x + a.w / 2
-  const lo = Math.min(leaveY, targetY)
-  const hi = Math.max(leaveY, targetY)
-  if (hi <= lo + 0.5) return false
-  for (const [id, r] of placed) {
-    if (id === fromId || id === toId) continue
-    if (Math.abs(r.x + r.w / 2 - acx) > r.w / 2 + 2) continue
-    if (r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return true
-  }
-  return false
-}
-
-/** True when a box sits on the inward gutter x between hang and spine over the y span. */
-function gutterBlocked(a, b, hangOnRight, placed, fromId, toId) {
-  if (!placed) return false
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const ax = hangOnRight ? a.x : a.x + a.w
-  const bx = hangOnRight ? b.x + b.w : b.x
-  const gutterX = (ax + bx) / 2
-  const lo = Math.min(acy, bcy)
-  const hi = Math.max(acy, bcy)
-  for (const [id, r] of placed) {
-    if (id === fromId || id === toId) continue
-    if (r.x > gutterX + 2 || r.x + r.w < gutterX - 2) continue
-    if (hi <= lo + 0.5) continue
-    if (r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return true
-  }
-  return false
+  return alts
 }
 
 /**
- * Hang → spine: hang-lane (1 bend) → between-lane corridor (leave away from spine) →
- * inward gutter → outer corridor (last resort).
- * @param {{ x: number, y: number, w: number, h: number }} a hang
- * @param {{ x: number, y: number, w: number, h: number }} b spine
- * @param {boolean} hangOnRight
- * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} placed
- * @param {string | null | undefined} fromId
- * @param {string | null | undefined} toId
+ * Re-route non-main edges that still cross others, preferring outer corridors that are
+ * pathClear and strictly fewer crossings. Never drops edges; never accepts a box-hitting alt.
+ * A second phase ignores one crossing partner at a time so mutual blockers can unlock.
  */
-function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId) {
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const leaveY = bcy >= acy ? a.y + a.h : a.y
-  if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
-    return hangLaneRejoin(a, b, hangOnRight)
+function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
+  const applyBest = (c, others, before, { allowLengthImprove = false } = {}) => {
+    let best = null
+    let bestCross = before
+    let bestBends = Infinity
+    let bestLen = Infinity
+    const beforeBends = c.points?.length ? pathBendCount(c.points) : Infinity
+    const beforeLen = c.points?.length ? pathLength(c.points) : Infinity
+    for (const pts of crossingRepairAlts(c, placed, diamonds, spineIds, others)) {
+      if (!pts || pts.length < 2) continue
+      // Reject non-orthogonal polylines (diagonal false friends from sideHorizontal).
+      let ortho = true
+      for (let i = 0; i < pts.length - 1; i += 1) {
+        const [p, q] = [pts[i], pts[i + 1]]
+        if (Math.abs(p[0] - q[0]) >= 0.5 && Math.abs(p[1] - q[1]) >= 0.5) {
+          ortho = false
+          break
+        }
+      }
+      if (!ortho) continue
+      if (!pathClear(pts, placed, c.from, c.to)) continue
+      const cross = pathCrossCount(pts, others)
+      const bends = pathBendCount(pts)
+      const len = pathLength(pts)
+      // Prefer fewer crossings; then fewer bends; then shorter length (no gratuitous wrap).
+      if (
+        cross < bestCross ||
+        (cross === bestCross && bends < bestBends) ||
+        (cross === bestCross && bends === bestBends && len < bestLen)
+      ) {
+        bestCross = cross
+        bestBends = bends
+        bestLen = len
+        best = pts
+      }
+    }
+    if (!best) return false
+    const betterCross = bestCross < before
+    const betterBend = bestCross === before && bestBends < beforeBends
+    const betterLen = allowLengthImprove && bestCross === before && bestBends <= beforeBends && bestLen < beforeLen - 0.5
+    if (betterCross || betterBend || betterLen) {
+      c.points = best
+      return true
+    }
+    return false
   }
-  // Prefer the gap before the next outer hang column when clear — avoids far-outer cutting
-  // through that column on the return row (S3). Falls through when no outer neighbour.
-  const between = interLaneCorridor(a, b, hangOnRight, placed, fromId, toId)
-  if (between) return between
-  if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
-    return gutterRejoin(a, b, hangOnRight)
+  for (let pass = 0; pass < 6; pass += 1) {
+    let changed = false
+    for (const c of connections) {
+      if (c.kind === 'main') continue
+      if (!c.points?.length) continue
+      const others = connections.filter((o) => o !== c).map((o) => o.points)
+      const before = pathCrossCount(c.points, others)
+      if (before === 0) continue
+      if (applyBest(c, others, before)) changed = true
+    }
+    if (!changed) break
   }
-  return outerCorridor(a, b, hangOnRight)
+  // Mutual unlock: ignore ALL current crossing partners so a clear corridor can land, then
+  // re-route each partner against the new geometry (L4 horizontal n-7→n-8 vs settlement cluster).
+  for (const c of connections) {
+    if (c.kind === 'main' || !c.points?.length) continue
+    const partners = connections.filter((o) => o !== c && pathCrossCount(c.points, [o.points]) > 0)
+    if (!partners.length) continue
+    const partnerIds = new Set(partners.map((p) => p.id))
+    const othersSans = connections.filter((o) => o !== c && !partnerIds.has(o.id)).map((o) => o.points)
+    const before = pathCrossCount(
+      c.points,
+      connections.filter((o) => o !== c).map((o) => o.points),
+    )
+    const snapshot = new Map(connections.map((e) => [e.id, e.points]))
+    if (!applyBest(c, othersSans, before)) continue
+    const totalCross = () =>
+      connections.reduce(
+        (n, e, i) =>
+          n +
+          pathCrossCount(
+            e.points,
+            connections.filter((_, j) => j > i).map((o) => o.points),
+          ),
+        0,
+      )
+    const preTotal = totalCross()
+    for (const partner of partners) {
+      const partnerOthers = connections.filter((o) => o !== partner).map((o) => o.points)
+      // Force a search even when the partner currently looks fine against the unlocked edge.
+      applyBest(partner, partnerOthers, pathCrossCount(partner.points, partnerOthers) + 1)
+    }
+    const postTotal = totalCross()
+    const stillHitsPartners = partners.some((p) => pathCrossCount(c.points, [p.points]) > 0)
+    if (postTotal > preTotal || stillHitsPartners) {
+      for (const e of connections) {
+        if (snapshot.has(e.id)) e.points = snapshot.get(e.id)
+      }
+    }
+  }
+  // Length shorten at equal crossings: firstClearPath / hangOnRight-first can lock a long
+  // wrap when a shorter outer-face U also clears (L4 n-15→n-13). Never raise crossings.
+  for (let pass = 0; pass < 4; pass += 1) {
+    let changed = false
+    for (const c of connections) {
+      if (c.kind === 'main' || !c.points?.length) continue
+      const others = connections.filter((o) => o !== c).map((o) => o.points)
+      const before = pathCrossCount(c.points, others)
+      if (applyBest(c, others, before, { allowLengthImprove: true })) changed = true
+    }
+    if (!changed) break
+  }
 }
 
 /**
  * Orthogonal route between two boxes, ports on face centres. Prefer same-row / same-column
- * (0-bend); otherwise leave the facing side of the source and enter the facing side of the target.
- * When a same-column hop would cut through another box, take a side channel instead.
- * Hang → spine rejoins enter a free side face so they do not share the trunk's top/bottom port.
- * Distant / upward hang↔spine hops use an outer corridor on the hang side.
+ * (0-bend) when clear; otherwise leave/enter facing sides. Every candidate is pathClear-checked
+ * before accept; side/outer channels escalate when the preferred ink hits a foreign box.
  * @param {{ x: number, y: number, w: number, h: number }} a
  * @param {{ x: number, y: number, w: number, h: number }} b
  * @param {boolean} [fromDiamond]
@@ -1371,9 +1566,12 @@ function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId) {
  * @param {string | null | undefined} [fromId]
  * @param {string | null | undefined} [toId]
  * @param {Set<string> | null | undefined} [spineIds]
+ * @param {number[][][] | null | undefined} [others]
  */
-function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, toId = null, spineIds = null) {
-  if (sameRowLink(a, b)) return sideHorizontal(a, b)
+function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, toId = null, spineIds = null, others = null) {
+  if (sameRowLink(a, b)) {
+    return clearSideHorizontal(a, b, placed, fromId, toId) || sideHorizontal(a, b)
+  }
   const acx = a.x + a.w / 2
   const acy = a.y + a.h / 2
   const bcx = b.x + b.w / 2
@@ -1381,79 +1579,107 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
   const blocked = columnBlocked(a, b, placed, fromId, toId)
   const fromSpine = Boolean(spineIds && fromId && spineIds.has(fromId))
   const toSpine = Boolean(spineIds && toId && spineIds.has(toId))
-  // Same column: straight vertical when clear; otherwise side channel so labels stay off the blocker.
+  /** @type {Array<number[][] | null | undefined>} */
+  const candidates = []
+
+  // Same column: straight vertical when clear; otherwise side channel.
   if (Math.abs(acx - bcx) < 0.5) {
-    if (blocked) return sideChannel(a, b, acx > 40)
-    const down = bcy >= acy
-    return [
-      [acx, down ? a.y + a.h : a.y],
-      [bcx, down ? b.y : b.y + b.h],
-    ]
+    if (!blocked) {
+      const down = bcy >= acy
+      candidates.push([
+        [acx, down ? a.y + a.h : a.y],
+        [bcx, down ? b.y : b.y + b.h],
+      ])
+    }
+    candidates.push(clearSideChannel(a, b, acx > 40, placed, fromId, toId))
+    const hit = firstClearPath(candidates, placed, fromId, toId, others)
+    if (hit) return hit
+    return clearSideChannel(a, b, acx > 40, placed, fromId, toId) || candidates.find(Boolean) || sideHorizontal(a, b)
   }
-  // Hang → spine: trunk owns N/S on the spine; hang may leave N/S. Prefer hang-lane (1 bend).
+  // Hang → spine
   if (!fromSpine && toSpine) {
-    return routeHangToSpine(a, b, acx > bcx, placed, fromId, toId)
+    return routeHangToSpine(a, b, acx > bcx, placed, fromId, toId, fromDiamond, others)
   }
-  // Spine → hang (not same-row): reverse of hang→spine when the hop is off the fork row.
+  // Spine → hang (not same-row): reverse of hang→spine when far / blocked.
   if (fromSpine && !toSpine && !sameRowLink(a, b)) {
     const hangOnRight = bcx > acx
-    // Near: leave spine side, enter hang top/bottom facing the spine (existing short path below).
     const hang = b
     const spine = a
     const hcy = hang.y + hang.h / 2
     const scy = spine.y + spine.h / 2
     const leaveY = scy >= hcy ? hang.y + hang.h : hang.y
-    // Far / blocked hang-lane: use the hang→spine helper reversed.
     if (Math.abs(scy - hcy) >= DISTANT_DY || hangLaneBlocked(hang, leaveY, scy, placed, toId, fromId)) {
-      return routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId).slice().reverse()
+      const fwd = routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId, false, others)
+      return fwd?.length ? fwd.slice().reverse() : null
     }
   }
-  // Source above target: leave bottom centre, enter top centre.
+  // Source above target
   if (a.y + a.h <= b.y + 0.5) {
-    if (blocked) return sideChannel(a, b, acx > bcx)
-    const mid = (a.y + a.h + b.y) / 2
-    return [
-      [acx, a.y + a.h],
-      [acx, mid],
-      [bcx, mid],
-      [bcx, b.y],
-    ]
+    if (!blocked) {
+      const mid = (a.y + a.h + b.y) / 2
+      candidates.push([
+        [acx, a.y + a.h],
+        [acx, mid],
+        [bcx, mid],
+        [bcx, b.y],
+      ])
+    }
+    candidates.push(clearSideChannel(a, b, acx > bcx, placed, fromId, toId))
+    const hit = firstClearPath(candidates, placed, fromId, toId, others)
+    if (hit) return hit
   }
-  // Spine source below a hang target (near): leave free side face, enter top of hang.
+  // Spine source below a hang target (near)
   if (fromSpine && !toSpine && b.y + b.h <= a.y + 0.5) {
     const toRight = bcx > acx
-    return [
+    candidates.push([
       [toRight ? a.x + a.w : a.x, acy],
       [bcx, acy],
       [bcx, b.y + b.h],
-    ]
+    ])
   }
-  // Source below target: leave top centre, enter bottom centre.
+  // Source below target
   if (b.y + b.h <= a.y + 0.5) {
-    if (blocked) return sideChannel(a, b, acx > bcx)
-    const mid = (b.y + b.h + a.y) / 2
-    return [
-      [acx, a.y],
-      [acx, mid],
-      [bcx, mid],
-      [bcx, b.y + b.h],
-    ]
+    if (!blocked) {
+      const mid = (b.y + b.h + a.y) / 2
+      candidates.push([
+        [acx, a.y],
+        [acx, mid],
+        [bcx, mid],
+        [bcx, b.y + b.h],
+      ])
+    }
+    candidates.push(clearSideChannel(a, b, acx > bcx, placed, fromId, toId))
+    // Also try hang→spine style outer when leaving a hang column upward through siblings.
+    candidates.push(routeHangToSpine(a, b, acx > bcx, placed, fromId, toId, fromDiamond, others))
+    const hit = firstClearPath(candidates, placed, fromId, toId, others)
+    if (hit) return hit
   }
-  // Side-by-side but not same-row: leave nearer side centre → enter nearer side centre.
-  const aRight = acx <= bcx
-  const ax = aRight ? a.x + a.w : a.x
-  const bx = aRight ? b.x : b.x + b.w
-  const mid = (ax + bx) / 2
-  return [
-    [ax, acy],
-    [mid, acy],
-    [mid, bcy],
-    [bx, bcy],
-  ]
-}
-
-function elbow(a, b, fromDiamond) {
-  return routeCentered(a, b, fromDiamond)
+  // Side-by-side but not same-row
+  {
+    const aRight = acx <= bcx
+    const ax = aRight ? a.x + a.w : a.x
+    const bx = aRight ? b.x : b.x + b.w
+    const mid = (ax + bx) / 2
+    candidates.push([
+      [ax, acy],
+      [mid, acy],
+      [mid, bcy],
+      [bx, bcy],
+    ])
+    candidates.push(clearSideChannel(a, b, !aRight, placed, fromId, toId))
+  }
+  const clear = firstClearPath(candidates, placed, fromId, toId, others)
+  if (clear) return clear
+  // Exhausted: only accept a pathClear side channel — never an unchecked mid-column cut.
+  const side = clearSideChannel(a, b, acx > bcx, placed, fromId, toId, 64)
+  // Exhausted non-hang corridors: keep the historic sideHorizontal last resort.
+  // mainlineInkInvalid only rejects missing polylines / explicit routeExhausted stubs
+  // (hang→spine null via routeHangToSpine); it does NOT blanket-reject residual !pathClear
+  // on this last-resort ink — that residual track stays separate from C.
+  if (side) return side
+  const anyClear = candidates.find((p) => p && p.length >= 2 && pathClear(p, placed, fromId, toId))
+  if (anyClear) return anyClear
+  return sideHorizontal(a, b)
 }
 
 function fallbackRoute(a, b) {

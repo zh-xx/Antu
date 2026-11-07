@@ -16,7 +16,8 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ### Fixed
 
-- **Mainline branch regions pick side/lane before routing** (#190 C4): each hang claims a spine-index interval `[leave, rejoin]` (back-edge rejoins included); nested intervals share a side with the shorter/contained hang on the inner lane; overlapping non-nested hangs prefer opposite sides when free. Stops outer-corridor rejoins from cutting through an earlier hang column (synthetic S3).
+- **Mainline nested hangs flip to a free opposite side** (issue 190 C4): a contained rejoin hang moves off its container’s face when the other side is free (synthetic S3: 外挂 left, 内挂 right, without `mainlineHangSide`). Same-side containment lanes remain the fallback when the opposite face is busy.
+- **Mainline branch regions pick side/lane before routing** (issue 190 C4): each hang claims a spine-index interval `[leave, rejoin]` (back-edge rejoins included); overlapping regions prefer opposite sides when free; same-side fallback packs by containment (shorter/contained → inner lane).
 - **Mainline hang→spine can use the between-lane corridor**: when the hang lane is blocked and another hang column sits further out, leave away from the spine into the lane gap, run vertical there, then enter the spine side — clearer than a far-outer U that cuts the outer column (synthetic S3「回并」). If the hang sits alone on that side, the same outward leave still applies when the U clears (left-side hang → 回并左出).
 - **Mainline labelled links no longer crash the page**: connections with a `label` always get a `labelAt`; the link layer also skips a missing spot instead of reading `.x` on null.
 - **Stages paint switch no longer swaps the flowchart layout engine**: column / Mainline paths follow stage *data*; turning off stage bands only hides the boxes (#190 review).

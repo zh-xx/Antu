@@ -1,0 +1,369 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "海城精密设备有限公司诉江北智造科技有限公司买卖合同货款纠纷一审示意",
+  "domain": "litigation",
+  "actors": [
+    {
+      "id": "a-plaintiff",
+      "name": "原告",
+      "role": "海城精密设备有限公司"
+    },
+    {
+      "id": "a-defendant",
+      "name": "被告",
+      "role": "江北智造科技有限公司"
+    },
+    {
+      "id": "a-court",
+      "name": "法院",
+      "role": "审理法院"
+    }
+  ],
+  "sources": [
+    {
+      "id": "src-statute-1",
+      "type": "statute",
+      "name": "《中华人民共和国民事诉讼法》相关条文（示意）",
+      "loc": {
+        "file": "示意条文，仅用于结构展示"
+      }
+    }
+  ],
+  "stages": [
+    {
+      "id": "s-filing",
+      "label": "起诉受理"
+    },
+    {
+      "id": "s-jurisdiction",
+      "label": "管辖异议"
+    },
+    {
+      "id": "s-preservation",
+      "label": "财产保全"
+    },
+    {
+      "id": "s-trial",
+      "label": "审理裁判"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "原告起诉",
+      "stageId": "s-filing",
+      "actorIds": [
+        "a-plaintiff"
+      ]
+    },
+    {
+      "id": "n-2",
+      "kind": "decision",
+      "label": "审查起诉条件",
+      "stageId": "s-filing",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-3",
+      "kind": "step",
+      "label": "立案受理",
+      "stageId": "s-filing",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "送达应诉材料",
+      "stageId": "s-filing",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-5",
+      "kind": "decision",
+      "label": "是否申请财产保全",
+      "stageId": "s-preservation",
+      "actorIds": [
+        "a-defendant"
+      ]
+    },
+    {
+      "id": "n-6",
+      "kind": "step",
+      "label": "审前准备",
+      "stageId": "s-trial",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-7",
+      "kind": "step",
+      "label": "开庭审理",
+      "stageId": "s-trial",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "宣判",
+      "stageId": "s-trial",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-9",
+      "kind": "decision",
+      "label": "是否上诉",
+      "stageId": "s-trial",
+      "actorIds": [
+        "a-plaintiff"
+      ]
+    },
+    {
+      "id": "n-10",
+      "kind": "end",
+      "label": "一审终结",
+      "stageId": "s-trial",
+      "actorIds": [
+        "a-court"
+      ],
+      "outcome": "positive"
+    },
+    {
+      "id": "n-11",
+      "kind": "step",
+      "label": "被告提出管辖异议",
+      "stageId": "s-jurisdiction",
+      "actorIds": [
+        "a-defendant"
+      ]
+    },
+    {
+      "id": "n-12",
+      "kind": "step",
+      "label": "管辖异议审查",
+      "stageId": "s-jurisdiction",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-13",
+      "kind": "decision",
+      "label": "异议是否成立",
+      "stageId": "s-jurisdiction",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-14",
+      "kind": "step",
+      "label": "裁定移送管辖",
+      "stageId": "s-jurisdiction",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-15",
+      "kind": "end",
+      "label": "管辖异议枝终结（负面）",
+      "stageId": "s-jurisdiction",
+      "actorIds": [
+        "a-court"
+      ],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-16",
+      "kind": "step",
+      "label": "保全申请",
+      "stageId": "s-preservation",
+      "actorIds": [
+        "a-defendant"
+      ]
+    },
+    {
+      "id": "n-17",
+      "kind": "step",
+      "label": "保全审查",
+      "stageId": "s-preservation",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-18",
+      "kind": "decision",
+      "label": "是否准许保全",
+      "stageId": "s-preservation",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-19",
+      "kind": "step",
+      "label": "保全准许/完成",
+      "stageId": "s-preservation",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-20",
+      "kind": "end",
+      "label": "保全不准终结",
+      "stageId": "s-preservation",
+      "actorIds": [
+        "a-court"
+      ],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-21",
+      "kind": "step",
+      "label": "移送二审",
+      "stageId": "s-trial",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-22",
+      "kind": "end",
+      "label": "上诉移送终结",
+      "stageId": "s-trial",
+      "actorIds": [
+        "a-court"
+      ],
+      "outcome": "negative"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n-1",
+      "to": "n-2",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-3",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-11",
+      "condition": "是"
+    },
+    {
+      "from": "n-3",
+      "to": "n-4",
+      "main": true
+    },
+    {
+      "from": "n-4",
+      "to": "n-5",
+      "main": true
+    },
+    {
+      "from": "n-5",
+      "to": "n-6",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-5",
+      "to": "n-16",
+      "condition": "是"
+    },
+    {
+      "from": "n-6",
+      "to": "n-7",
+      "main": true
+    },
+    {
+      "from": "n-7",
+      "to": "n-8",
+      "main": true
+    },
+    {
+      "from": "n-8",
+      "to": "n-9",
+      "main": true
+    },
+    {
+      "from": "n-9",
+      "to": "n-10",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-9",
+      "to": "n-21",
+      "condition": "是"
+    },
+    {
+      "from": "n-21",
+      "to": "n-22"
+    },
+    {
+      "from": "n-11",
+      "to": "n-12"
+    },
+    {
+      "from": "n-12",
+      "to": "n-13"
+    },
+    {
+      "from": "n-13",
+      "to": "n-14",
+      "condition": "是"
+    },
+    {
+      "from": "n-14",
+      "to": "n-15"
+    },
+    {
+      "from": "n-13",
+      "to": "n-15",
+      "condition": "否"
+    },
+    {
+      "from": "n-16",
+      "to": "n-17"
+    },
+    {
+      "from": "n-17",
+      "to": "n-18"
+    },
+    {
+      "from": "n-18",
+      "to": "n-19",
+      "condition": "准许"
+    },
+    {
+      "from": "n-18",
+      "to": "n-20",
+      "condition": "不准"
+    },
+    {
+      "from": "n-19",
+      "to": "n-4",
+      "condition": "回并"
+    }
+  ]
+}
