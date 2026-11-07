@@ -79,12 +79,30 @@ function sha256(path) {
 }
 
 function faceOf(n, [x, y], tol = 1.5) {
-  const cx = n.position.x + n.data.w / 2
-  const cy = n.position.y + n.data.h / 2
-  if (Math.abs(x - n.position.x) < tol && Math.abs(y - cy) < 2) return 'W'
-  if (Math.abs(x - (n.position.x + n.data.w)) < tol && Math.abs(y - cy) < 2) return 'E'
-  if (Math.abs(y - n.position.y) < tol && Math.abs(x - cx) < 2) return 'N'
-  if (Math.abs(y - (n.position.y + n.data.h)) < tol && Math.abs(x - cx) < 2) return 'S'
+  // Legal leave/enter may sit anywhere on a face (not only the mid-point). Fan-out /
+  // face-stagger for sibling diamond branches relies on this (07 n-3).
+  const bx = n.position.x
+  const by = n.position.y
+  const w = n.data.w
+  const h = n.data.h
+  const onW = Math.abs(x - bx) < tol && y >= by - tol && y <= by + h + tol
+  const onE = Math.abs(x - (bx + w)) < tol && y >= by - tol && y <= by + h + tol
+  const onN = Math.abs(y - by) < tol && x >= bx - tol && x <= bx + w + tol
+  const onS = Math.abs(y - (by + h)) < tol && x >= bx - tol && x <= bx + w + tol
+  // Corner: prefer the side whose mid is closer to the point.
+  const hits = [
+    onW && 'W',
+    onE && 'E',
+    onN && 'N',
+    onS && 'S',
+  ].filter(Boolean)
+  if (hits.length === 1) return hits[0]
+  if (hits.length > 1) {
+    const cx = bx + w / 2
+    const cy = by + h / 2
+    const score = { W: Math.abs(y - cy), E: Math.abs(y - cy), N: Math.abs(x - cx), S: Math.abs(x - cx) }
+    return hits.sort((a, b) => score[a] - score[b])[0]
+  }
   return '?'
 }
 
