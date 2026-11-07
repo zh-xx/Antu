@@ -78,7 +78,7 @@ export function layoutMainline(args) {
  * Mainline-first column layout as a generator (yields between heavy routing steps).
  * @returns {Generator<void, { placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object }, unknown>}
  */
-export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, spine }) {
+export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, spine, fields }) {
   const byId = new Map(nodes.map((n) => [n.id, n]))
   const PAD_A0 = vertical ? STAGE_PAD_TOP : STAGE_PAD
   const PAD_C0 = vertical ? STAGE_PAD : STAGE_PAD_TOP
@@ -118,6 +118,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
       diamonds,
       branchSign,
       byId,
+      forceHangSide: fields?.mainlineHangSide ?? null,
     })
     segments.push({ st, ids: ownIds, ...seg })
     yield
@@ -252,7 +253,19 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
 /**
  * Lay out one stage: spine first, then branch lanes, then pockets.
  */
-function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, frameSize, diamonds, branchSign, byId }) {
+function layoutStageMainline({
+  own,
+  ownIds,
+  groups,
+  outG,
+  spineAt,
+  spineList,
+  frameSize,
+  diamonds,
+  branchSign,
+  byId,
+  forceHangSide = null,
+}) {
   const placed = new Map()
   const drawn = new Set()
 
@@ -424,6 +437,14 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
       )
       if (!oppBusy) signOf.set(it.h, opp)
       break
+    }
+  }
+
+  // Preview / experiment override: force hang side by spine fork id (e.g. { 'n-4': -1 } = left).
+  if (forceHangSide && typeof forceHangSide === 'object') {
+    for (const it of intervals) {
+      const forced = forceHangSide[it.h.from]
+      if (forced === 1 || forced === -1) signOf.set(it.h, forced)
     }
   }
 
