@@ -104,6 +104,28 @@ export function engineVersion() {
 }
 
 /**
+ * Source tree SHA for offline HTML provenance. Prefer ANTU_SOURCE_SHA (CI / evidence
+ * scripts); else `git rev-parse HEAD` when running inside the repo. Packaged npm builds
+ * may omit this — then null, never a fabricated hash.
+ * @returns {string | null}
+ */
+export function sourceSha() {
+  const env = typeof process !== 'undefined' ? process.env?.ANTU_SOURCE_SHA : undefined
+  if (env && /^[0-9a-f]{7,40}$/i.test(env.trim())) return env.trim().toLowerCase()
+  if (PACKAGED) return null
+  try {
+    const sha = execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd: REPO,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    return /^[0-9a-f]{7,40}$/i.test(sha) ? sha.toLowerCase() : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * A viewer template: the same page as buildHtml gives, with the data left out for someone else to fill in
  * (an agent that has no Node: it swaps SPEC_MARKER for the JSON). One page, two ways to make it.
  */
@@ -113,6 +135,13 @@ export function buildViewerHtml({ js, css } = {}) {
 
 export function buildHtml(spec, { js, css, preset } = {}) {
   const title = escapeHtml(spec?.title || 'Antu')
+  const sha = sourceSha()
+  const buildMeta = sha
+    ? `<meta name="antu-source-sha" content="${escapeHtml(sha)}">\n`
+    : ''
+  const buildScript = sha
+    ? `<script>window.__ANTU_BUILD__ = ${escapeForScript(JSON.stringify({ sourceSha: sha, engineVersion: engineVersion() }))};</script>\n`
+    : ''
   return `<!DOCTYPE html>
 <!-- lang is the document language, not the data language. The UI can be switched at
      runtime (see src/core/i18n.js), so index.html rewrites this attribute on boot to
@@ -124,7 +153,7 @@ export function buildHtml(spec, { js, css, preset } = {}) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title} · Antu</title>
 <meta name="generator" content="antu ${engineVersion()}">
-<script type="text/plain" id="antu-license">
+${buildMeta}<script type="text/plain" id="antu-license">
 ${escapeEngineCode(licenseNotice(engineVersion()))}
 </script>
 <style>
@@ -135,8 +164,7 @@ ${css}</style>
 <body>
 <div id="root"></div>
 <script>window.__ANTU_SPEC__ = ${spec === undefined ? SPEC_MARKER : escapeForScript(JSON.stringify(spec))};</script>
-${preset ? `<script>window.__ANTU_PRESET__ = ${escapeForScript(JSON.stringify(preset))};</script>` : ''}
-<script>${escapeEngineCode(js)}</script>
+${preset ? `<script>window.__ANTU_PRESET__ = ${escapeForScript(JSON.stringify(preset))};</script>\n` : ''}${buildScript}<script>${escapeEngineCode(js)}</script>
 </body>
 </html>
 `

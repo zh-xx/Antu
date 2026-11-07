@@ -53,6 +53,8 @@ import {
   routeHangToSpine,
   pathClear,
   pathCrossCount,
+  pathLength,
+  pathBendCount,
   sideHorizontal,
   clearSideHorizontal,
   clearSideChannel,
@@ -248,6 +250,8 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   repairEdgeCrossings(placed, connections, diamonds, allSpine)
   restoreSameRowLinks(placed, connections, diamonds)
   repairEdgeCrossings(placed, connections, diamonds, allSpine)
+  // Combined-frame polish/restore can re-share a diamond leave; re-home again here.
+  separateSharedLeavePorts(placed, connections, diamonds)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
   yield
@@ -862,6 +866,9 @@ function layoutStageMainline({
   // Crossing repair must be last geometry pass: restoreSameRowLinks can still rewrite ink
   // (even crossing-aware) and must not leave a higher-cross state than repair achieved.
   repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
+  // Fan out diamond sibling leaves that still share one face pixel onto a free face when a
+  // 0-cross clear corridor exists (07 n-3: third branch can leave N instead of sharing E).
+  separateSharedLeavePorts(placed, connections, diamonds)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -1331,6 +1338,204 @@ function restoreSameRowLinks(placed, connections, diamonds) {
   }
 }
 
+/**
+ * Leave-face tag for a point on (near) a placed box. Used only for shared-port fan-out.
+ * @param {{ x: number, y: number, w: number, h: number }} box
+ * @param {number[]} p
+ * @returns {'N' | 'S' | 'E' | 'W' | null}
+ */
+function leaveFaceOf(box, p) {
+  const [x, y] = p
+  const cx = box.x + box.w / 2
+  const cy = box.y + box.h / 2
+  if (Math.abs(y - box.y) < 1.5 && Math.abs(x - cx) <= box.w / 2 + 1) return 'N'
+  if (Math.abs(y - (box.y + box.h)) < 1.5 && Math.abs(x - cx) <= box.w / 2 + 1) return 'S'
+  if (Math.abs(x - box.x) < 1.5 && Math.abs(y - cy) <= box.h / 2 + 1) return 'W'
+  if (Math.abs(x - (box.x + box.w)) < 1.5 && Math.abs(y - cy) <= box.h / 2 + 1) return 'E'
+  return null
+}
+
+/**
+ * Orthogonal free-face corridors from diamond `a` to `b` (N/S leave preferred when E/W is crowded).
+ * @returns {number[][][]}
+ */
+function freeFaceLeaveAlts(a, b, preferNS) {
+  const acx = a.x + a.w / 2
+  const acy = a.y + a.h / 2
+  const bcx = b.x + b.w / 2
+  const bcy = b.y + b.h / 2
+  /** @type {number[][][]} */
+  const out = []
+  const pushNS = (preferAbove) => {
+    for (let d = 0; d <= 8; d += 1) {
+      const gap = OUTER_GAP + d * 16
+      const rail = preferAbove ? Math.min(a.y, b.y) - gap : Math.max(a.y + a.h, b.y + b.h) + gap
+      out.push([
+        [acx, preferAbove ? a.y : a.y + a.h],
+        [acx, rail],
+        [bcx, rail],
+        [bcx, preferAbove ? b.y : b.y + b.h],
+      ])
+      out.push([
+        [acx, preferAbove ? a.y : a.y + a.h],
+        [acx, rail],
+        [(b.x < a.x ? b.x + b.w : b.x), rail],
+        [(b.x < a.x ? b.x + b.w : b.x), bcy],
+      ])
+    }
+  }
+  const pushEW = (preferRight) => {
+    for (let d = 0; d <= 8; d += 1) {
+      const gap = OUTER_GAP + d * 16
+      const rail = preferRight ? Math.max(a.x + a.w, b.x + b.w) + gap : Math.min(a.x, b.x) - gap
+      out.push([
+        [preferRight ? a.x + a.w : a.x, acy],
+        [rail, acy],
+        [rail, bcy],
+        [preferRight ? b.x + b.w : b.x, bcy],
+      ])
+      out.push([
+        [preferRight ? a.x + a.w : a.x, acy],
+        [rail, acy],
+        [rail, (b.y < a.y ? b.y + b.h : b.y)],
+        [bcx, (b.y < a.y ? b.y + b.h : b.y)],
+      ])
+    }
+  }
+  if (preferNS) {
+    pushNS(true)
+    pushNS(false)
+    pushEW(true)
+    pushEW(false)
+  } else {
+    pushEW(true)
+    pushEW(false)
+    pushNS(true)
+    pushNS(false)
+  }
+  return out
+}
+
+/**
+ * When several diamond branches leave the same face pixel, try moving secondary edges onto a
+ * free face with a 0-cross pathClear corridor. Does not invent a port stagger that would cut
+ * boxes; if no free-face candidate exists, the shared leave stands (baseline-proven class).
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {Array<{ id?: string, kind?: string, from: string, to: string, points?: number[][] }>} connections
+ * @param {Set<string>} diamonds
+ */
+function separateSharedLeavePorts(placed, connections, diamonds) {
+  /** @type {Map<string, typeof connections>} */
+  const groups = new Map()
+  for (const c of connections) {
+    if (c.kind === 'main' || !c.points?.length || !diamonds.has(c.from)) continue
+    const a = placed.get(c.from)
+    if (!a) continue
+    const face = leaveFaceOf(a, c.points[0])
+    if (!face) continue
+    const key = `${c.from}@${face}@${Math.round(c.points[0][0])},${Math.round(c.points[0][1])}`
+    const bucket = groups.get(key)
+    if (bucket) bucket.push(c)
+    else groups.set(key, [c])
+  }
+  /** Leave pixels already used by any edge from the same diamond (incl. main). */
+  const takenLeave = (fromId, except) => {
+    /** @type {number[][]} */
+    const pts = []
+    for (const o of connections) {
+      if (o === except || o.from !== fromId || !o.points?.length) continue
+      pts.push(o.points[0])
+    }
+    return pts
+  }
+  const sharesLeave = (p0, taken) =>
+    taken.some((t) => Math.abs(p0[0] - t[0]) < 0.5 && Math.abs(p0[1] - t[1]) < 0.5)
+
+  for (const siblings of groups.values()) {
+    if (siblings.length < 2) continue
+    // Keep the shortest ink on the shared face; rehome longer siblings onto a free face.
+    siblings.sort((x, y) => pathLength(x.points || []) - pathLength(y.points || []))
+    for (let i = 1; i < siblings.length; i += 1) {
+      const c = siblings[i]
+      const cur = c.points
+      if (!cur?.length) continue
+      const a = placed.get(c.from)
+      const b = placed.get(c.to)
+      if (!a || !b) continue
+      const others = connections.filter((o) => o !== c).map((o) => o.points)
+      const beforeCross = pathCrossCount(cur, others)
+      const face = leaveFaceOf(a, cur[0])
+      const preferNS = face === 'E' || face === 'W'
+      const taken = takenLeave(c.from, c)
+      /** @type {number[][] | null} */
+      let best = null
+      let bestCross = Infinity
+      let bestBends = Infinity
+      let bestLen = Infinity
+      for (const pts of freeFaceLeaveAlts(a, b, preferNS)) {
+        if (!pts || pts.length < 2) continue
+        if (!pathClear(pts, placed, c.from, c.to)) continue
+        const cross = pathCrossCount(pts, others)
+        if (cross > beforeCross) continue
+        if (sharesLeave(pts[0], taken)) continue
+        const bends = pathBendCount(pts)
+        const len = pathLength(pts)
+        if (
+          cross < bestCross ||
+          (cross === bestCross && bends < bestBends) ||
+          (cross === bestCross && bends === bestBends && len < bestLen)
+        ) {
+          best = pts
+          bestCross = cross
+          bestBends = bends
+          bestLen = len
+        }
+      }
+      // Free-face exhausted: stagger leave along the shared face (same corridor shape).
+      if (!best && face) {
+        const n = siblings.length
+        const span = face === 'E' || face === 'W' ? a.h : a.w
+        const margin = Math.min(12, span / (n + 2))
+        const usable = Math.max(span - 2 * margin, n * 4)
+        const step = usable / (n + 1)
+        const slot = i + 1 // keeper stays near centre-ish slot 1..; secondaries use later slots
+        const off = margin + step * slot
+        /** @type {number[]} */
+        let leave
+        if (face === 'E') leave = [a.x + a.w, Math.round(a.y + off)]
+        else if (face === 'W') leave = [a.x, Math.round(a.y + off)]
+        else if (face === 'N') leave = [Math.round(a.x + off), a.y]
+        else leave = [Math.round(a.x + off), a.y + a.h]
+        if (!sharesLeave(leave, taken)) {
+          const nudged = cur.map((p) => [...p])
+          const old = nudged[0]
+          nudged[0] = [...leave]
+          if (nudged.length >= 2) {
+            if (Math.abs(nudged[1][0] - old[0]) < 0.5) {
+              for (let k = 1; k < nudged.length; k += 1) {
+                if (Math.abs(nudged[k][0] - old[0]) < 0.5) nudged[k][0] = leave[0]
+                else break
+              }
+            } else if (Math.abs(nudged[1][1] - old[1]) < 0.5) {
+              for (let k = 1; k < nudged.length; k += 1) {
+                if (Math.abs(nudged[k][1] - old[1]) < 0.5) nudged[k][1] = leave[1]
+                else break
+              }
+            }
+          }
+          if (
+            pathClear(nudged, placed, c.from, c.to) &&
+            pathCrossCount(nudged, others) <= beforeCross
+          ) {
+            best = nudged
+          }
+        }
+      }
+      if (best) c.points = best
+    }
+  }
+}
+
 /** True when another placed box sits between a and b on (near) the shared column. */
 function columnBlocked(a, b, placed, fromId, toId) {
   if (!placed) return false
@@ -1417,23 +1622,13 @@ function crossingRepairAlts(c, placed, diamonds, spineIds, others) {
  * A second phase ignores one crossing partner at a time so mutual blockers can unlock.
  */
 function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
-  const bendCount = (pts) => {
-    let n = 0
-    for (let i = 1; i < pts.length - 1; i += 1) {
-      const dx1 = pts[i][0] - pts[i - 1][0]
-      const dy1 = pts[i][1] - pts[i - 1][1]
-      const dx2 = pts[i + 1][0] - pts[i][0]
-      const dy2 = pts[i + 1][1] - pts[i][1]
-      const a = Math.abs(dx1) > Math.abs(dy1) ? 'H' : 'V'
-      const b = Math.abs(dx2) > Math.abs(dy2) ? 'H' : 'V'
-      if (a !== b) n += 1
-    }
-    return n
-  }
-  const applyBest = (c, others, before) => {
+  const applyBest = (c, others, before, { allowLengthImprove = false } = {}) => {
     let best = null
     let bestCross = before
     let bestBends = Infinity
+    let bestLen = Infinity
+    const beforeBends = c.points?.length ? pathBendCount(c.points) : Infinity
+    const beforeLen = c.points?.length ? pathLength(c.points) : Infinity
     for (const pts of crossingRepairAlts(c, placed, diamonds, spineIds, others)) {
       if (!pts || pts.length < 2) continue
       // Reject non-orthogonal polylines (diagonal false friends from sideHorizontal).
@@ -1448,15 +1643,25 @@ function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
       if (!ortho) continue
       if (!pathClear(pts, placed, c.from, c.to)) continue
       const cross = pathCrossCount(pts, others)
-      const bends = bendCount(pts)
-      // Prefer fewer crossings; among ties, prefer fewer bends (short legal routes).
-      if (cross < bestCross || (cross === bestCross && bends < bestBends)) {
+      const bends = pathBendCount(pts)
+      const len = pathLength(pts)
+      // Prefer fewer crossings; then fewer bends; then shorter length (no gratuitous wrap).
+      if (
+        cross < bestCross ||
+        (cross === bestCross && bends < bestBends) ||
+        (cross === bestCross && bends === bestBends && len < bestLen)
+      ) {
         bestCross = cross
         bestBends = bends
+        bestLen = len
         best = pts
       }
     }
-    if (best && (bestCross < before || (bestCross === before && bestBends < bendCount(c.points)))) {
+    if (!best) return false
+    const betterCross = bestCross < before
+    const betterBend = bestCross === before && bestBends < beforeBends
+    const betterLen = allowLengthImprove && bestCross === before && bestBends <= beforeBends && bestLen < beforeLen - 0.5
+    if (betterCross || betterBend || betterLen) {
       c.points = best
       return true
     }
@@ -1511,6 +1716,18 @@ function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
         if (snapshot.has(e.id)) e.points = snapshot.get(e.id)
       }
     }
+  }
+  // Length shorten at equal crossings: firstClearPath / hangOnRight-first can lock a long
+  // wrap when a shorter outer-face U also clears (L4 n-15→n-13). Never raise crossings.
+  for (let pass = 0; pass < 4; pass += 1) {
+    let changed = false
+    for (const c of connections) {
+      if (c.kind === 'main' || !c.points?.length) continue
+      const others = connections.filter((o) => o !== c).map((o) => o.points)
+      const before = pathCrossCount(c.points, others)
+      if (applyBest(c, others, before, { allowLengthImprove: true })) changed = true
+    }
+    if (!changed) break
   }
 }
 

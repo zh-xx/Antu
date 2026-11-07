@@ -220,6 +220,61 @@ test('production exhausted both-blocked: no unchecked gutter; returned path is p
   assert.equal(pathClear(pts, placed, 'hang', 'spine'), true)
 })
 
+test('07 decision: sibling branches do not share one leave pixel when a free face or face stagger clears', () => {
+  // Baseline de0ec80 shared n-3 leave among branches (corpus WARN). Production fans the longer
+  // sibling onto a free face (V) or along-face stagger (H) without raising crossings.
+  const spec = JSON.parse(readFileSync('examples/procedure/07-share-acquisition-agreement.zh-CN.json', 'utf8'))
+  for (const dir of ['vertical', 'horizontal']) {
+    const g = buildProcedureGraph(spec, fields, undefined, dir)
+    assert.equal(edgeCrossings(g).length, 0, dir)
+    const leave = new Map()
+    for (const c of g.connections) {
+      if (c.from !== 'n-3' || !c.points?.length) continue
+      const k = `${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`
+      if (!leave.has(k)) leave.set(k, [])
+      leave.get(k).push(c.id)
+    }
+    const shared = [...leave.entries()].filter(([, ids]) => ids.length > 1)
+    assert.deepEqual(shared, [], `${dir} shared leave: ${JSON.stringify(shared)}`)
+  }
+})
+
+test('production exhausted absolute fallback: still returns attached outer when every clear corridor fails', () => {
+  // Seal hang and spine inside a contiguous obstacle field so finite outer/wrap/side search
+  // cannot pathClear. Production must still emit an attached polyline (connectivity), not
+  // null/undefined — residual hits are expected and must be reported by scan, not hidden.
+  const a = { x: 200, y: 200, w: 60, h: 60 }
+  const b = { x: 40, y: 360, w: 60, h: 40 }
+  const hangOnRight = true
+  const placed = new Map([
+    ['hang', a],
+    ['spine', b],
+    // Fill the plane around both boxes with overlapping walls (finite depth cannot escape).
+    ['w1', { x: 0, y: 0, w: 400, h: 180 }],
+    ['w2', { x: 0, y: 180, w: 180, h: 280 }],
+    ['w3', { x: 280, y: 180, w: 120, h: 280 }],
+    ['w4', { x: 180, y: 420, w: 100, h: 80 }],
+    ['w5', { x: 100, y: 260, w: 80, h: 80 }],
+  ])
+  const pts = routeHangToSpine(a, b, hangOnRight, placed, 'hang', 'spine', true)
+  assert.ok(Array.isArray(pts) && pts.length >= 2, 'fallback must return a polyline')
+  // Endpoints remain on (near) the hang/spine boxes — graph edge is not dropped.
+  const near = (p, box) => {
+    const dx = p[0] < box.x ? box.x - p[0] : p[0] > box.x + box.w ? p[0] - (box.x + box.w) : 0
+    const dy = p[1] < box.y ? box.y - p[1] : p[1] > box.y + box.h ? p[1] - (box.y + box.h) : 0
+    return Math.hypot(dx, dy) < 2
+  }
+  assert.equal(near(pts[0], a) || near(pts.at(-1), a), true)
+  assert.equal(near(pts[0], b) || near(pts.at(-1), b), true)
+  // Document residual: absolute fallback is allowed to be !pathClear when search is exhausted.
+  // Prefer clear when any finite corridor works (covered by the both-blocked test above).
+  if (pathClear(pts, placed, 'hang', 'spine')) {
+    // Acceptable if a deep corridor still cleared — do not require residual hits.
+    return
+  }
+  assert.equal(pathClear(pts, placed, 'hang', 'spine'), false)
+})
+
 test('mainline: input-order stability — reverse nodes+edges (canonical ids; mainline unchanged)', () => {
   // Shuffle: reverse both nodes[] and edges[] arrays only. Inferred spine / hang membership
   // must be identical; translated node centres must match.

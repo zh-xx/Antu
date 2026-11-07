@@ -631,9 +631,37 @@ export function clearWrapAround(a, b, hangOnRight, placed, fromId, toId, maxDept
   return others ? best : null
 }
 
+/** Path length (sum of segment lengths). Used to prefer short legal corridors. */
+export function pathLength(pts) {
+  if (!pts || pts.length < 2) return 0
+  let n = 0
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    n += Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
+  }
+  return n
+}
+
+/** Orthogonal bend count (direction changes). */
+export function pathBendCount(pts) {
+  if (!pts || pts.length < 3) return 0
+  let n = 0
+  for (let i = 1; i < pts.length - 1; i += 1) {
+    const dx1 = pts[i][0] - pts[i - 1][0]
+    const dy1 = pts[i][1] - pts[i - 1][1]
+    const dx2 = pts[i + 1][0] - pts[i][0]
+    const dy2 = pts[i + 1][1] - pts[i][1]
+    const a = Math.abs(dx1) > Math.abs(dy1) ? 'H' : 'V'
+    const b = Math.abs(dx2) > Math.abs(dy2) ? 'H' : 'V'
+    if (a !== b) n += 1
+  }
+  return n
+}
+
 /**
- * First pathClear candidate among `candidates`, else null.
- * When `others` is provided, prefer a clear path with 0 crossings; else fewest crossings.
+ * Best pathClear candidate among `candidates`, else null.
+ * When `others` is provided: fewer crossings, then fewer bends, then shorter length
+ * (rule-engine direction: validity first, then crossing, bend, length).
+ * Without `others`: first clear candidate (legacy).
  * @param {Array<number[][] | null | undefined>} candidates
  * @param {number[][][] | null | undefined} [others] other edge polylines already routed
  */
@@ -641,14 +669,23 @@ export function firstClearPath(candidates, placed, fromId, toId, others = null) 
   /** @type {number[][] | null} */
   let best = null
   let bestCross = Infinity
+  let bestBends = Infinity
+  let bestLen = Infinity
   for (const pts of candidates) {
     if (!pts || pts.length < 2) continue
     if (!pathClear(pts, placed, fromId, toId)) continue
     if (!others) return pts
     const cross = pathCrossCount(pts, others)
-    if (cross === 0) return pts
-    if (cross < bestCross) {
+    const bends = pathBendCount(pts)
+    const len = pathLength(pts)
+    if (
+      cross < bestCross ||
+      (cross === bestCross && bends < bestBends) ||
+      (cross === bestCross && bends === bestBends && len < bestLen)
+    ) {
       bestCross = cross
+      bestBends = bends
+      bestLen = len
       best = pts
     }
   }
