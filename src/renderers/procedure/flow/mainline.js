@@ -6,7 +6,7 @@
 //  shape as layoutColumnsGen. Order:
 //    1. fix the main line in each stage as a straight vertical column (axis pinned);
 //    2. hang branches in lanes as branch regions [leave, rejoin] along the spine index
-//       (#190 C4). Preferred side is away from the next stage (or right when alone). Nested
+//       (issue 190 C4). Preferred side is away from the next stage (or right when alone). Nested
 //       intervals share a side (shorter/contained → inner lane; container → outer); overlapping
 //       non-nested prefer opposite sides when free. Lane order follows containment, not start
 //       time. Each box has four face ports (N/S/E/W); the trunk usually owns N+S, so a
@@ -374,7 +374,7 @@ function layoutStageMainline({
     }
   }
 
-  // Branch regions: one hang → one [leave, rejoin] interval along the spine index (#190 C4).
+  // Branch regions: one hang → one [leave, rejoin] interval along the spine index (issue 190 C4).
   // Side and lane are decided here (before placement / local routing). Dead ends are half-open
   // (estimated span from box count). Nested → same side, contained inner; overlap non-nested →
   // opposite sides when free. Lane pack order is by span (containment), not leave time.
@@ -467,7 +467,7 @@ function layoutStageMainline({
     ends[lane] = Math.max(ends[lane] ?? it.b, it.b)
     laneOf.set(it.h, lane)
   }
-  // Hook only (#190 B3): record when same-side overlap remains after flip — spine may open later.
+  // Hook only (issue 190 B3): record when same-side overlap remains after flip — spine may open later.
   for (const it of intervals) {
     const sign = /** @type {number} */ (signOf.get(it.h))
     const peers = intervals.filter(
