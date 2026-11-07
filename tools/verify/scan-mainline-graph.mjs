@@ -7,14 +7,18 @@ import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { execSync } from 'node:child_process'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const REPO = resolve(process.env.SCAN_REPO || resolve(__dirname, '../..'))
 
-// Prefer local hangSpineRoute segHits when available (patched tree); else inline audited copy.
 let segHitsBox
+let orthoSegsCross
+let pathCrossCount
 try {
-  ;({ segHitsBox } = await import(resolve(REPO, 'src/renderers/procedure/flow/hangSpineRoute.js')))
+  ;({ segHitsBox, orthoSegsCross, pathCrossCount } = await import(
+    resolve(REPO, 'src/renderers/procedure/flow/hangSpineRoute.js')
+  ))
 } catch {
   segHitsBox = (p, q, box, pad = 0.5) => {
     const [x1, y1] = p
@@ -32,6 +36,28 @@ try {
     if (Math.abs(x1 - x2) < 0.5) return x1 > bx + pad && x1 < bx + bw - pad && maxy > by + pad && miny < by + bh - pad
     return false
   }
+  orthoSegsCross = (a, b) => {
+    const [p, q] = a
+    const [r, s] = b
+    const av = Math.abs(p[0] - q[0]) < 0.5
+    const bv = Math.abs(r[0] - s[0]) < 0.5
+    if (av === bv) return false
+    const [v0, v1, h0, h1] = av ? [p, q, r, s] : [r, s, p, q]
+    return (
+      v0[0] > Math.min(h0[0], h1[0]) + 0.5 &&
+      v0[0] < Math.max(h0[0], h1[0]) - 0.5 &&
+      h0[1] > Math.min(v0[1], v1[1]) + 0.5 &&
+      h0[1] < Math.max(v0[1], v1[1]) - 0.5
+    )
+  }
+  pathCrossCount = (pts, others = []) => {
+    const segs = (p) => p.slice(1).map((q, i) => [p[i], q])
+    let n = 0
+    for (const o of others) {
+      for (const s of segs(pts)) for (const t of segs(o)) if (orthoSegsCross(s, t)) n += 1
+    }
+    return n
+  }
 }
 
 const { buildProcedureGraph } = await import(resolve(REPO, 'src/renderers/procedure/flow/layout.js'))
@@ -40,7 +66,12 @@ const { bendsOf } = await import(resolve(REPO, 'src/renderers/procedure/flow/str
 const fields = { engine: 'mainline', stages: false }
 const tag = process.env.SCAN_TAG || 'scan'
 const outDir = process.env.SCAN_OUT_DIR || join('/opt/cursor/artifacts/pr359-accept/metrics', tag)
-const head = process.env.GIT_HEAD || 'unknown'
+let head = process.env.GIT_HEAD || 'unknown'
+try {
+  if (head === 'unknown') head = execSync('git rev-parse HEAD', { cwd: REPO }).toString().trim()
+} catch {
+  /* keep unknown */
+}
 mkdirSync(outDir, { recursive: true })
 
 function sha256(path) {
@@ -74,6 +105,16 @@ function orthoOk(points) {
   return true
 }
 
+function distBox(n, p) {
+  const x = n.position.x
+  const y = n.position.y
+  const w = n.data.w
+  const h = n.data.h
+  const dx = p[0] < x ? x - p[0] : p[0] > x + w ? p[0] - (x + w) : 0
+  const dy = p[1] < y ? y - p[1] : p[1] > y + h ? p[1] - (y + h) : 0
+  return Math.hypot(dx, dy)
+}
+
 function scan(spec, dir = 'vertical', engineFields = fields) {
   const t0 = Date.now()
   const g = buildProcedureGraph(spec, { ...engineFields }, undefined, dir)
@@ -82,27 +123,60 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
   const spine = new Set(g.spine)
   const hits = []
   const badOrtho = []
+  const diagonals = []
+  const zeroLen = []
   const badPorts = []
   const spineBends = []
+  const crossings = []
+  const endpointGaps = []
+  const missingLabels = []
+  let bendTotal = 0
   for (const c of g.connections) {
-    if (!c.points?.length) continue
-    if (!orthoOk(c.points)) badOrtho.push(c.id)
+    if (!c.points?.length) {
+      zeroLen.push(c.id)
+      continue
+    }
+    if (!orthoOk(c.points)) {
+      badOrtho.push(c.id)
+      diagonals.push(c.id)
+    }
+    bendTotal += bendsOf(c.points)
     const from = byId.get(c.from)
     const to = byId.get(c.to)
     if (from && to) {
       const lf = faceOf(from, c.points[0])
       const ef = faceOf(to, c.points[c.points.length - 1])
       if (lf === '?' || ef === '?') badPorts.push(`${c.id}:${lf}->${ef}`)
+      const d0 = distBox(from, c.points[0])
+      const d1 = distBox(to, c.points[c.points.length - 1])
+      if (d0 > 1.5 || d1 > 1.5) endpointGaps.push(`${c.id}:${d0.toFixed(1)}/${d1.toFixed(1)}`)
     }
+    if (c.label && !c.labelAt) missingLabels.push(c.id)
     if (c.kind === 'main' && spine.has(c.from) && spine.has(c.to)) {
       const b = bendsOf(c.points)
       if (b !== 0) spineBends.push(`${c.id}:${b}`)
     }
     for (let i = 0; i < c.points.length - 1; i += 1) {
+      const [p, q] = [c.points[i], c.points[i + 1]]
+      if (Math.hypot(p[0] - q[0], p[1] - q[1]) < 0.01) zeroLen.push(`${c.id}#${i}`)
       for (const n of g.nodes) {
         if (n.id === c.from || n.id === c.to) continue
         const box = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
-        if (segHitsBox(c.points[i], c.points[i + 1], box)) hits.push(`${c.id}@${n.id}`)
+        if (segHitsBox(p, q, box)) hits.push(`${c.id}@${n.id}`)
+      }
+    }
+  }
+  const cs = g.connections.filter((c) => c.points?.length >= 2)
+  for (let i = 0; i < cs.length; i += 1) {
+    for (let j = i + 1; j < cs.length; j += 1) {
+      const a = cs[i].points
+      const b = cs[j].points
+      for (let u = 0; u < a.length - 1; u += 1) {
+        for (let v = 0; v < b.length - 1; v += 1) {
+          if (orthoSegsCross([a[u], a[u + 1]], [b[v], b[v + 1]])) {
+            crossings.push(`${cs[i].id} x ${cs[j].id}`)
+          }
+        }
       }
     }
   }
@@ -124,29 +198,55 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     const m = id.match(/^c:(.+)->(.+)$/)
     return m && !connPairs.has(`${m[1]}->${m[2]}`)
   })
+  // S3-specific extras when present
+  let s3 = null
+  const rejoin = g.connections.find((c) => c.id === 'c:n-21->n-3')
+  if (rejoin && byId.has('n-21')) {
+    const from = byId.get('n-21')
+    const [x, y] = rejoin.points[0]
+    const cy = from.position.y + from.data.h / 2
+    const leaveW = Math.abs(x - from.position.x) < 1.5 && Math.abs(y - cy) < 2
+    const leaveE = Math.abs(x - (from.position.x + from.data.w)) < 1.5 && Math.abs(y - cy) < 2
+    s3 = {
+      rejoinBends: bendsOf(rejoin.points),
+      leaveEW: leaveW || leaveE,
+      points: rejoin.points,
+    }
+  }
+  const hitList = [...new Set(hits)]
+  const crossList = [...new Set(crossings)]
   return {
     errors: g.errors,
     ms,
     nodes: g.nodes.length,
     edges: g.connections.length,
     spineBends,
-    hits: [...new Set(hits)],
+    hits: hitList,
+    crossings: crossList,
     overlaps,
     badOrtho,
+    diagonals,
+    zeroLen: [...new Set(zeroLen)],
     badPorts: badPorts.slice(0, 20),
+    endpointGaps,
+    missingLabels,
     missingNodes,
     missingEdges,
+    bendTotal,
+    s3,
     ok:
       !g.errors?.length &&
-      hits.length === 0 &&
+      hitList.length === 0 &&
       overlaps.length === 0 &&
       spineBends.length === 0 &&
       badOrtho.length === 0 &&
-      missingNodes.length === 0,
+      missingNodes.length === 0 &&
+      missingEdges.length === 0 &&
+      endpointGaps.length === 0,
   }
 }
 
-// Detector self-check (fail the scan process if detector is broken)
+// Detector self-check
 {
   const box = { x: 10, y: 10, w: 20, h: 20 }
   const checks = [
@@ -154,6 +254,19 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     [segHitsBox([20, 0], [20, 40], box) === true, 'vert-hit'],
     [segHitsBox([0, 5], [40, 5], box) === false, 'above'],
     [segHitsBox([50, 0], [50, 40], box) === false, 'beside'],
+    [
+      orthoSegsCross(
+        [
+          [0, 10],
+          [20, 10],
+        ],
+        [
+          [10, 0],
+          [10, 20],
+        ],
+      ) === true,
+      'cross',
+    ],
   ]
   for (const [ok, name] of checks) {
     if (!ok) {
@@ -187,6 +300,7 @@ const report = {
   fields,
   command: process.argv.join(' '),
   scannedAt: new Date().toISOString(),
+  node: process.version,
   cases: [],
 }
 const inputHashes = {}
@@ -197,36 +311,19 @@ for (const path of fixtures.sort()) {
   inputHashes[basename(path)] = sha256(path)
   const vertical = scan(spec, 'vertical')
   const horizontal = scan(spec, 'horizontal')
-  const stagesOn = scan(spec, 'vertical', { engine: 'mainline', stages: true })
   report.cases.push({
     path,
     title: spec.title,
     inputSha256: inputHashes[basename(path)],
     vertical,
-    horizontal: {
-      ok: horizontal.ok,
-      hits: horizontal.hits.length,
-      overlaps: horizontal.overlaps.length,
-      spineBends: horizontal.spineBends.length,
-      hitList: horizontal.hits,
-    },
-    stagesOn: {
-      ok: stagesOn.ok,
-      hits: stagesOn.hits.length,
-      hitList: stagesOn.hits,
-      errors: stagesOn.errors,
-    },
+    horizontal,
   })
-  const mark = vertical.ok ? 'OK' : 'FAIL'
+  const mark = vertical.ok && horizontal.hits.length === 0 ? 'OK' : 'FAIL'
   console.log(
     mark,
     basename(path),
-    `hits=${vertical.hits.length}`,
-    `ov=${vertical.overlaps.length}`,
-    `spineB=${vertical.spineBends.length}`,
-    `stagesOnHits=${stagesOn.hits.length}`,
-    `ms=${vertical.ms}`,
-    vertical.hits.slice(0, 4).join(',') || '',
+    `V:hits=${vertical.hits.length},cross=${vertical.crossings.length},gap=${vertical.endpointGaps.length},spineB=${vertical.spineBends.length}`,
+    `H:hits=${horizontal.hits.length},cross=${horizontal.crossings.length},gap=${horizontal.endpointGaps.length}`,
   )
 }
 
@@ -235,13 +332,13 @@ const outJson = join(outDir, `${tag}-scan.json`)
 const outSum = join(outDir, `${tag}-fail-summary.txt`)
 const outMeta = join(outDir, `${tag}-meta.json`)
 writeFileSync(outJson, JSON.stringify(report, null, 2))
-const fails = report.cases.filter((c) => !c.vertical.ok)
+const fails = report.cases.filter((c) => !c.vertical.ok || c.horizontal.hits.length > 0)
 writeFileSync(
   outSum,
   fails
     .map(
       (c) =>
-        `${c.path}\n  sha=${c.inputSha256}\n  hits=${c.vertical.hits.join('|')}\n  ov=${c.vertical.overlaps.join('|')}\n  spine=${c.vertical.spineBends.join('|')}\n  err=${JSON.stringify(c.vertical.errors)}\n`,
+        `${c.path}\n  sha=${c.inputSha256}\n  V hits=${c.vertical.hits.join('|')} cross=${c.vertical.crossings.join('|')} gaps=${c.vertical.endpointGaps.join('|')}\n  H hits=${c.horizontal.hits.join('|')} cross=${c.horizontal.crossings.join('|')}\n`,
     )
     .join('\n') || 'none',
 )
@@ -257,6 +354,8 @@ writeFileSync(
       caseCount: report.cases.length,
       failCount: fails.length,
       scannedAt: report.scannedAt,
+      node: process.version,
+      superseded: false,
     },
     null,
     2,
