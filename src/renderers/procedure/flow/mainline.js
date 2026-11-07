@@ -47,13 +47,16 @@ import {
   COLUMN_MIN_W,
   sizeOf,
 } from './metrics.js'
+import {
+  OUTER_GAP,
+  hangLaneBlocked,
+  routeHangToSpine,
+} from './hangSpineRoute.js'
 
 /** Gap between the spine column and the first branch lane (room for a condition label on the hop) */
 const LANE_GAP = 112
 /** Extra room between two branch lanes */
 const LANE_SEP = 28
-/** Clearance outside the hang box for a distant rejoin corridor (fallback when hang lane blocked) */
-const OUTER_GAP = 28
 /** Centre-to-centre span above which spine→hang prefers the hang-lane / corridor helper */
 const DISTANT_DY = 280
 
@@ -436,14 +439,10 @@ function layoutStageMainline({
       // Child-span artifact: spine-rooted hang looks "inside" a child hang — skip.
       if (regionContains(other, it) && it.h.rootOnSpine && !other.h.rootOnSpine) continue
       const opp = -sign
+      // Opposite face is busy on any overlap (incl. containment). Containment lanes are the
+      // same-side fallback when we cannot flip — do not treat a containing opposite region as free.
       const oppBusy = intervals.some(
-        (o) =>
-          o !== it &&
-          o.h.rootOnSpine &&
-          signOf.get(o.h) === opp &&
-          regionOverlaps(it, o) &&
-          !regionContains(it, o) &&
-          !regionContains(o, it),
+        (o) => o !== it && o.h.rootOnSpine && signOf.get(o.h) === opp && regionOverlaps(it, o),
       )
       if (!oppBusy) signOf.set(it.h, opp)
       break
@@ -536,6 +535,8 @@ function layoutStageMainline({
     if (it.h.rootOnSpine || it.h.boxes.length !== 1) return false
     if (byId.get(it.h.from)?.kind !== 'decision') return false
     const id = it.h.boxes[0]
+    if (byId.get(id)?.kind !== 'end') return false
+    // Shared terminus already owned by the parent hang chain stays in-lane.
     return !intervals.some((o) => o.h.rootOnSpine && o.h.boxes.includes(id))
   }
   let sideEndInner = 0
@@ -1249,206 +1250,7 @@ function sideChannel(a, b, preferLeft = false) {
   ]
 }
 
-/**
- * Preferred hang → spine rejoin: hang may use N/S. Leave the travel face, run in the hang
- * lane to the spine mid-height, enter the spine's hang-side face (1 bend). Never touches trunk N/S.
- * @param {{ x: number, y: number, w: number, h: number }} a hang
- * @param {{ x: number, y: number, w: number, h: number }} b spine
- * @param {boolean} hangOnRight
- */
-function hangLaneRejoin(a, b, hangOnRight) {
-  const acx = a.x + a.w / 2
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const goingDown = bcy >= acy
-  return [
-    [acx, goingDown ? a.y + a.h : a.y],
-    [acx, bcy],
-    [hangOnRight ? b.x + b.w : b.x, bcy],
-  ]
-}
-
-/**
- * Inward gutter when the hang lane is blocked: leave the face toward the spine, run between
- * hang and trunk, enter the spine side. Avoids a far outer U with a tiny vertical jog
- * (e.g. purchase-contract「协商是否成功」→「甲方付款」).
- * @param {{ x: number, y: number, w: number, h: number }} a hang
- * @param {{ x: number, y: number, w: number, h: number }} b spine
- * @param {boolean} hangOnRight
- */
-function gutterRejoin(a, b, hangOnRight) {
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const ax = hangOnRight ? a.x : a.x + a.w
-  const bx = hangOnRight ? b.x + b.w : b.x
-  if (Math.abs(acy - bcy) < 2) {
-    return [
-      [ax, acy],
-      [bx, bcy],
-    ]
-  }
-  const gutterX = (ax + bx) / 2
-  return [
-    [ax, acy],
-    [gutterX, acy],
-    [gutterX, bcy],
-    [bx, bcy],
-  ]
-}
-
-/**
- * Outer corridor last resort: leave travel face, run outside the hang column, enter spine side.
- * @param {{ x: number, y: number, w: number, h: number }} a hang box
- * @param {{ x: number, y: number, w: number, h: number }} b spine box
- * @param {boolean} hangOnRight hang sits to the right of the spine
- * @param {number} [depth] extra outward offset when several corridors stack
- */
-function outerCorridor(a, b, hangOnRight, depth = 0) {
-  const acx = a.x + a.w / 2
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const goingDown = bcy >= acy
-  const leaveY = goingDown ? a.y + a.h : a.y
-  const outer = hangOnRight
-    ? Math.max(a.x + a.w, b.x + b.w) + OUTER_GAP + depth
-    : Math.min(a.x, b.x) - OUTER_GAP - depth
-  return [
-    [acx, leaveY],
-    [outer, leaveY],
-    [outer, bcy],
-    [hangOnRight ? b.x + b.w : b.x, bcy],
-  ]
-}
-
-/**
- * Outward corridor: leave the hang face *away* from the spine, run vertical, enter spine side.
- * Channel x is the gap before the next outer hang column when one exists; otherwise just
- * outside this hang (`OUTER_GAP`) when that return stays clear. Covers S3 right (inter-lane)
- * and S3 left-leave (hang alone on the left → 回并左出).
- * @returns {number[][] | null}
- */
-function interLaneCorridor(a, b, hangOnRight, placed, fromId, toId) {
-  if (!placed) return null
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const hangOuter = hangOnRight ? a.x + a.w : a.x
-  const lo = Math.min(acy, bcy)
-  const hi = Math.max(acy, bcy)
-  let nearestInner = hangOnRight ? Infinity : -Infinity
-  let found = false
-  for (const [id, r] of placed) {
-    if (id === fromId || id === toId) continue
-    // Must sit further out than this hang and overlap the vertical run (or the leave row).
-    const further = hangOnRight ? r.x >= hangOuter - 1 : r.x + r.w <= hangOuter + 1
-    if (!further) continue
-    if (r.y + r.h <= lo + 0.5 || r.y >= hi - 0.5) {
-      // Still count a neighbour that overlaps the hang box row (blocks the leave stub).
-      if (r.y + r.h <= a.y + 0.5 || r.y >= a.y + a.h - 0.5) continue
-    }
-    found = true
-    if (hangOnRight) nearestInner = Math.min(nearestInner, r.x)
-    else nearestInner = Math.max(nearestInner, r.x + r.w)
-  }
-  let mid
-  if (found) {
-    const gap = hangOnRight ? nearestInner - hangOuter : hangOuter - nearestInner
-    if (gap < 8) return null
-    mid = hangOnRight ? hangOuter + gap / 2 : hangOuter - gap / 2
-  } else {
-    // Alone on this side: still prefer leaving away from the spine when the U clears.
-    mid = hangOnRight ? hangOuter + OUTER_GAP : hangOuter - OUTER_GAP
-  }
-  // Vertical / return must stay clear of every foreign box.
-  const spineFace = hangOnRight ? b.x + b.w : b.x
-  for (const [id, r] of placed) {
-    if (id === fromId || id === toId) continue
-    if (mid > r.x + 0.5 && mid < r.x + r.w - 0.5 && r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return null
-    // Horizontal at bcy from mid toward spine: must not enter a box.
-    const hLo = Math.min(mid, spineFace)
-    const hHi = Math.max(mid, spineFace)
-    if (bcy > r.y + 0.5 && bcy < r.y + r.h - 0.5 && hHi > r.x + 0.5 && hLo < r.x + r.w - 0.5) return null
-  }
-  return [
-    [hangOuter, acy],
-    [mid, acy],
-    [mid, bcy],
-    [spineFace, bcy],
-  ]
-}
-
-/** True when another box sits on the hang's vertical lane between leaveY and targetY. */
-function hangLaneBlocked(a, leaveY, targetY, placed, fromId, toId) {
-  if (!placed) return false
-  const acx = a.x + a.w / 2
-  const lo = Math.min(leaveY, targetY)
-  const hi = Math.max(leaveY, targetY)
-  if (hi <= lo + 0.5) return false
-  for (const [id, r] of placed) {
-    if (id === fromId || id === toId) continue
-    if (Math.abs(r.x + r.w / 2 - acx) > r.w / 2 + 2) continue
-    if (r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return true
-  }
-  return false
-}
-
-/** True when a box sits on the inward gutter x between hang and spine over the y span. */
-function gutterBlocked(a, b, hangOnRight, placed, fromId, toId) {
-  if (!placed) return false
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const ax = hangOnRight ? a.x : a.x + a.w
-  const bx = hangOnRight ? b.x + b.w : b.x
-  const gutterX = (ax + bx) / 2
-  const lo = Math.min(acy, bcy)
-  const hi = Math.max(acy, bcy)
-  for (const [id, r] of placed) {
-    if (id === fromId || id === toId) continue
-    if (r.x > gutterX + 2 || r.x + r.w < gutterX - 2) continue
-    if (hi <= lo + 0.5) continue
-    if (r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return true
-  }
-  return false
-}
-
-/**
- * Hang → spine: hang-lane (1 bend) → between-lane corridor (leave away from spine) →
- * inward gutter → outer corridor (last resort).
- * Decision sources skip hang-lane N/S leave: the hang chain already owns those ports, so an
- * upward N leave looks like an *in*-edge on the diamond (L2「异议是否成立」否).
- * @param {{ x: number, y: number, w: number, h: number }} a hang
- * @param {{ x: number, y: number, w: number, h: number }} b spine
- * @param {boolean} hangOnRight
- * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} placed
- * @param {string | null | undefined} fromId
- * @param {string | null | undefined} toId
- * @param {boolean} [fromDiamond]
- */
-function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDiamond = false) {
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  // Decision side-exit → spine: prefer inward (toward trunk) so a right hang leaves west —
-  // outward-first U crosses the hang column for no gain (L2「异议是否成立」否).
-  if (fromDiamond) {
-    if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
-      return gutterRejoin(a, b, hangOnRight)
-    }
-    const between = interLaneCorridor(a, b, hangOnRight, placed, fromId, toId)
-    if (between) return between
-    return gutterRejoin(a, b, hangOnRight)
-  }
-  const leaveY = bcy >= acy ? a.y + a.h : a.y
-  if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
-    return hangLaneRejoin(a, b, hangOnRight)
-  }
-  // Prefer the gap before the next outer hang column when clear — avoids far-outer cutting
-  // through that column on the return row (S3). Falls through when no outer neighbour.
-  const between = interLaneCorridor(a, b, hangOnRight, placed, fromId, toId)
-  if (between) return between
-  if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
-    return gutterRejoin(a, b, hangOnRight)
-  }
-  return outerCorridor(a, b, hangOnRight)
-}
+// Hang→spine corridors live in hangSpineRoute.js (production + unit tests share one path).
 
 /**
  * Orthogonal route between two boxes, ports on face centres. Prefer same-row / same-column
