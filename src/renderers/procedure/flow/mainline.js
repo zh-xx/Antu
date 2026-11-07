@@ -1491,7 +1491,7 @@ function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
  * @param {string | null | undefined} [fromId]
  * @param {string | null | undefined} [toId]
  * @param {Set<string> | null | undefined} [spineIds]
- * @param {number[][][]} [others]
+ * @param {number[][][] | null | undefined} [others]
  */
 function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, toId = null, spineIds = null, others = null) {
   if (sameRowLink(a, b)) {

@@ -597,8 +597,9 @@ test('mainline: S3 nested hang flips to opposite side (auto)', () => {
   assert.equal(face(byId.get('n-4'), leaveOut.points[0]), 'W', '外挂 fork leaves left')
   assert.equal(face(byId.get('n-2'), leaveIs.points[0]), 'E', '内挂 fork leaves right')
   assert.ok(bendsOf(rejoin.points) <= 2, `回并 ≤2 bends, got ${bendsOf(rejoin.points)}`)
-  // Decision hang→spine prefers inward (toward trunk): left hang leaves E, enters spine W.
-  assert.equal(face(byId.get('n-21'), rejoin.points[0]), 'E', '回并 leaves east toward spine')
+  // Outer free face: left hang leaves W (away from trunk / parent's same-row「是」), enters spine W.
+  // Inward E leave crossed the leave hop (parent visual review); outer-left clears with ≤2 bends.
+  assert.equal(face(byId.get('n-21'), rejoin.points[0]), 'W', '回并 leaves west on outer free face')
   assert.equal(face(byId.get('n-3'), rejoin.points[rejoin.points.length - 1]), 'W')
 
   for (const c of g.connections.filter((e) => e.kind === 'main')) {

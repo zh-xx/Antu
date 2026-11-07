@@ -178,6 +178,14 @@ export function outerCorridor(a, b, hangOnRight, depth = 0, railY = undefined) {
  * Search outer X and return-rail Y until the U clears every foreign box.
  * Prefer spine mid-height; else rails above/below hang and spine boxes.
  * When `others` is set, prefer a box-clear path with 0 edge crossings.
+ * @param {{ x: number, y: number, w: number, h: number }} a
+ * @param {{ x: number, y: number, w: number, h: number }} b
+ * @param {boolean} hangOnRight
+ * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} placed
+ * @param {string | null | undefined} fromId
+ * @param {string | null | undefined} toId
+ * @param {number} [maxDepth]
+ * @param {number[][][] | null | undefined} [others]
  * @returns {number[][] | null}
  */
 export function clearOuterCorridor(a, b, hangOnRight, placed, fromId, toId, maxDepth = 16, others = null) {
@@ -216,6 +224,7 @@ export function clearOuterCorridor(a, b, hangOnRight, placed, fromId, toId, maxD
  * @param {string | null | undefined} fromId
  * @param {string | null | undefined} toId
  * @param {number} [maxDepth]
+ * @param {number[][][] | null | undefined} [others]
  * @returns {number[][] | null}
  */
 export function diamondOuterSide(a, b, hangOnRight, placed = null, fromId = null, toId = null, maxDepth = 12, others = null) {
@@ -267,6 +276,7 @@ export function diamondOuterSide(a, b, hangOnRight, placed = null, fromId = null
 /**
  * Outward corridor: leave the hang face away from the spine when clear.
  * @returns {number[][] | null}
+ * @param {number[][][] | null | undefined} [others]
  */
 export function interLaneCorridor(a, b, hangOnRight, placed, fromId, toId, others = null) {
   if (!placed) return null
@@ -408,6 +418,13 @@ export function rowBlocked(a, b, placed, fromId, toId) {
  * Same-row route that clears foreign boxes: prefer 0-bend; else U above then below,
  * escalating the corridor offset until pathClear. Returns null if none clear.
  * When `others` is set, prefer a box-clear path with 0 edge crossings.
+ * @param {{ x: number, y: number, w: number, h: number }} a
+ * @param {{ x: number, y: number, w: number, h: number }} b
+ * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} placed
+ * @param {string | null | undefined} fromId
+ * @param {string | null | undefined} toId
+ * @param {number} [maxDepth]
+ * @param {number[][][] | null | undefined} [others]
  * @returns {number[][] | null}
  */
 export function clearSideHorizontal(a, b, placed, fromId, toId, maxDepth = 16, others = null) {
@@ -453,6 +470,14 @@ export function clearSideHorizontal(a, b, placed, fromId, toId, maxDepth = 16, o
 /**
  * Side-channel U with escalating depth until clear. PreferLeft chooses initial side.
  * When `others` is set, prefer a box-clear path with 0 edge crossings.
+ * @param {{ x: number, y: number, w: number, h: number }} a
+ * @param {{ x: number, y: number, w: number, h: number }} b
+ * @param {boolean} preferLeft
+ * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} placed
+ * @param {string | null | undefined} fromId
+ * @param {string | null | undefined} toId
+ * @param {number} [maxDepth]
+ * @param {number[][][] | null | undefined} [others]
  * @returns {number[][] | null}
  */
 export function clearSideChannel(a, b, preferLeft, placed, fromId, toId, maxDepth = 16, others = null) {
@@ -525,6 +550,7 @@ export function pathCrossCount(pts, others = []) {
  * far side of the spine, enter the opposite face. Used when same-side U corridors cannot avoid
  * both boxes and leave-edge crossings (dense nested hangs like L4).
  * @returns {number[][] | null}
+ * @param {number[][][] | null | undefined} [others]
  */
 export function clearWrapAround(a, b, hangOnRight, placed, fromId, toId, maxDepth = 24, others = null) {
   if (!placed) return null
@@ -609,7 +635,7 @@ export function clearWrapAround(a, b, hangOnRight, placed, fromId, toId, maxDept
  * First pathClear candidate among `candidates`, else null.
  * When `others` is provided, prefer a clear path with 0 crossings; else fewest crossings.
  * @param {Array<number[][] | null | undefined>} candidates
- * @param {number[][][]} [others] other edge polylines already routed
+ * @param {number[][][] | null | undefined} [others] other edge polylines already routed
  */
 export function firstClearPath(candidates, placed, fromId, toId, others = null) {
   /** @type {number[][] | null} */
@@ -644,7 +670,7 @@ export function firstClearPath(candidates, placed, fromId, toId, others = null) 
  * @param {string | null | undefined} fromId
  * @param {string | null | undefined} toId
  * @param {boolean} [fromDiamond]
- * @param {number[][][]} [others] already-routed polylines (crossing preference)
+ * @param {number[][][] | null | undefined} [others] already-routed polylines (crossing preference)
  */
 export function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDiamond = false, others = null) {
   if (fromDiamond) {
@@ -685,16 +711,22 @@ export function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDi
   if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
     candidates.push(hangLaneRejoin(a, b, hangOnRight))
   }
+  // Prefer outer-face E/W leave (same helper as diamond) before N/S outer U: for a left hang
+  // that is the free W face, which avoids crossing the parent's same-row leave (user S3 note;
+  // also L1 step rejoins). Mirrored right hangs use E. Not fixture-hardcoded — hangOnRight.
+  candidates.push(diamondOuterSide(a, b, hangOnRight, placed, fromId, toId, 12, others))
   candidates.push(clearOuterCorridor(a, b, hangOnRight, placed, fromId, toId, 16, others))
   candidates.push(interLaneCorridor(a, b, hangOnRight, placed, fromId, toId, others))
   if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
     candidates.push(gutterRejoin(a, b, hangOnRight))
   }
   candidates.push(clearOuterCorridor(a, b, !hangOnRight, placed, fromId, toId, 16, others))
+  candidates.push(diamondOuterSide(a, b, !hangOnRight, placed, fromId, toId, 12, others))
   candidates.push(clearWrapAround(a, b, hangOnRight, placed, fromId, toId, 24, others))
   const clear = firstClearPath(candidates, placed, fromId, toId, others)
   if (clear) return clear
   const deep =
+    diamondOuterSide(a, b, hangOnRight, placed, fromId, toId, 64, others) ||
     clearOuterCorridor(a, b, hangOnRight, placed, fromId, toId, 64, others) ||
     clearWrapAround(a, b, hangOnRight, placed, fromId, toId, 64, others) ||
     clearOuterCorridor(a, b, !hangOnRight, placed, fromId, toId, 64, others) ||
