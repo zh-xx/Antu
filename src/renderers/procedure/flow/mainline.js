@@ -1242,10 +1242,10 @@ function outerCorridor(a, b, hangOnRight, depth = 0) {
 }
 
 /**
- * Between-lane corridor: leave the hang face *away* from the spine into the gap before the
- * next outer hang column, run vertical there, then enter the spine side. Unlike far-outer,
- * the return horizontal starts inside the outer column so it does not cut through it
- * (synthetic S3:「外挂是否回并」右出夹道回并).
+ * Outward corridor: leave the hang face *away* from the spine, run vertical, enter spine side.
+ * Channel x is the gap before the next outer hang column when one exists; otherwise just
+ * outside this hang (`OUTER_GAP`) when that return stays clear. Covers S3 right (inter-lane)
+ * and S3 left-leave (hang alone on the left → 回并左出).
  * @returns {number[][] | null}
  */
 function interLaneCorridor(a, b, hangOnRight, placed, fromId, toId) {
@@ -1270,21 +1270,25 @@ function interLaneCorridor(a, b, hangOnRight, placed, fromId, toId) {
     if (hangOnRight) nearestInner = Math.min(nearestInner, r.x)
     else nearestInner = Math.max(nearestInner, r.x + r.w)
   }
-  if (!found) return null
-  const gap = hangOnRight ? nearestInner - hangOuter : hangOuter - nearestInner
-  if (gap < 8) return null
-  const mid = hangOnRight ? hangOuter + gap / 2 : hangOuter - gap / 2
+  let mid
+  if (found) {
+    const gap = hangOnRight ? nearestInner - hangOuter : hangOuter - nearestInner
+    if (gap < 8) return null
+    mid = hangOnRight ? hangOuter + gap / 2 : hangOuter - gap / 2
+  } else {
+    // Alone on this side: still prefer leaving away from the spine when the U clears.
+    mid = hangOnRight ? hangOuter + OUTER_GAP : hangOuter - OUTER_GAP
+  }
   // Vertical / return must stay clear of every foreign box.
+  const spineFace = hangOnRight ? b.x + b.w : b.x
   for (const [id, r] of placed) {
     if (id === fromId || id === toId) continue
     if (mid > r.x + 0.5 && mid < r.x + r.w - 0.5 && r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return null
     // Horizontal at bcy from mid toward spine: must not enter a box.
-    const spineFace = hangOnRight ? b.x + b.w : b.x
     const hLo = Math.min(mid, spineFace)
     const hHi = Math.max(mid, spineFace)
     if (bcy > r.y + 0.5 && bcy < r.y + r.h - 0.5 && hHi > r.x + 0.5 && hLo < r.x + r.w - 0.5) return null
   }
-  const spineFace = hangOnRight ? b.x + b.w : b.x
   return [
     [hangOuter, acy],
     [mid, acy],

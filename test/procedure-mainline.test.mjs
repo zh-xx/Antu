@@ -564,6 +564,36 @@ test('mainline: blocked hang-lane uses inward gutter (purchase-contract)', () =>
   }
 })
 
+test('mainline: S3 left-leave hang — 回并 leaves west (away from spine)', () => {
+  // When the 外挂 hang is forced left of the spine, hang-lane is blocked by 外挂列挡板;
+  // outward corridor (no further-left column) leaves W, clears boxes, enters spine W.
+  const spec = JSON.parse(readFileSync('preview/synthetic-rejoin/fixtures/S3-outer-leave-left.zh-CN.json', 'utf8'))
+  const g = buildProcedureGraph(
+    spec,
+    { ...fields, stages: false, mainlineHangSide: { 'n-4': -1 } },
+    undefined,
+    'vertical',
+  )
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  const face = (n, [x, y]) => {
+    const ncx = n.position.x + n.data.w / 2
+    const ncy = n.position.y + n.data.h / 2
+    if (Math.abs(x - n.position.x) < 1 && Math.abs(y - ncy) < 1) return 'W'
+    if (Math.abs(x - (n.position.x + n.data.w)) < 1 && Math.abs(y - ncy) < 1) return 'E'
+    if (Math.abs(y - n.position.y) < 1 && Math.abs(x - ncx) < 1) return 'N'
+    if (Math.abs(y - (n.position.y + n.data.h)) < 1 && Math.abs(x - ncx) < 1) return 'S'
+    return '?'
+  }
+  const fork = g.connections.find((e) => e.id === 'c:n-4->n-20')
+  const rejoin = g.connections.find((e) => e.id === 'c:n-21->n-3')
+  assert.ok(fork && rejoin)
+  assert.equal(face(byId.get('n-4'), fork.points[0]), 'W', '是 leaves left from spine fork')
+  assert.equal(face(byId.get('n-21'), rejoin.points[0]), 'W', '回并 leaves west away from spine')
+  assert.equal(face(byId.get('n-3'), rejoin.points[rejoin.points.length - 1]), 'W')
+  assert.ok(bendsOf(rejoin.points) <= 2)
+  assert.ok(byId.get('n-20').position.x + byId.get('n-20').data.w / 2 < byId.get('n-4').position.x)
+})
+
 test('mainline: S3 branch regions — nested hang inner lane, rejoin clears boxes', () => {
   // Synthetic S3 (#190 C4): long dead-end hang contains a shorter rejoin hang on the spine index.
   // Contained → inner lane; container → outer. Both「是」same-row leaves;「回并」≤2 bends, no box hits.
