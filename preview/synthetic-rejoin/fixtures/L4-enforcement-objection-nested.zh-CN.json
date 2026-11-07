@@ -1,0 +1,407 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "林某申请执行赵某房款·案外人异议一审执行示意（执行异议·房屋买卖）",
+  "domain": "litigation",
+  "actors": [
+    {
+      "id": "a-applicant",
+      "name": "申请执行人",
+      "role": "林某"
+    },
+    {
+      "id": "a-respondent",
+      "name": "被执行人",
+      "role": "赵某"
+    },
+    {
+      "id": "a-outsider",
+      "name": "案外人",
+      "role": "房屋买受人（异议人）"
+    },
+    {
+      "id": "a-court",
+      "name": "执行法院",
+      "role": "执行法院"
+    }
+  ],
+  "sources": [
+    {
+      "id": "src-statute-1",
+      "type": "statute",
+      "name": "《中华人民共和国民事诉讼法》执行程序相关条文（示意）",
+      "loc": {
+        "file": "示意条文，仅用于结构展示"
+      }
+    },
+    {
+      "id": "src-judicial-1",
+      "type": "judicial_interpretation",
+      "name": "最高人民法院关于人民法院办理执行异议和复议案件若干问题的规定（示意）",
+      "loc": {
+        "file": "示意条文，仅用于结构展示"
+      }
+    }
+  ],
+  "stages": [
+    {
+      "id": "s-apply",
+      "label": "申请执行"
+    },
+    {
+      "id": "s-filing",
+      "label": "执行立案"
+    },
+    {
+      "id": "s-investigate",
+      "label": "查控财产"
+    },
+    {
+      "id": "s-objection",
+      "label": "案外人异议审查"
+    },
+    {
+      "id": "s-auction",
+      "label": "拍卖变价"
+    },
+    {
+      "id": "s-settlement",
+      "label": "执行和解"
+    },
+    {
+      "id": "s-distribution",
+      "label": "案款分配"
+    },
+    {
+      "id": "s-termination",
+      "label": "执行终结"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "林某申请执行赵某房款",
+      "stageId": "s-apply",
+      "actorIds": [
+        "a-applicant"
+      ]
+    },
+    {
+      "id": "n-2",
+      "kind": "step",
+      "label": "执行立案受理",
+      "stageId": "s-filing",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-3",
+      "kind": "step",
+      "label": "查控房产及存款",
+      "stageId": "s-investigate",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-4",
+      "kind": "decision",
+      "label": "是否案外人异议",
+      "stageId": "s-objection",
+      "actorIds": [
+        "a-outsider",
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-5",
+      "kind": "step",
+      "label": "异议审查受理",
+      "stageId": "s-objection",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-6",
+      "kind": "step",
+      "label": "组织异议听证",
+      "stageId": "s-objection",
+      "actorIds": [
+        "a-court",
+        "a-outsider",
+        "a-applicant"
+      ]
+    },
+    {
+      "id": "n-7",
+      "kind": "decision",
+      "label": "异议是否成立",
+      "stageId": "s-objection",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "裁定中止对该房屋执行",
+      "stageId": "s-objection",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-9",
+      "kind": "end",
+      "label": "异议成立阻却执行（负面终结）",
+      "stageId": "s-objection",
+      "actorIds": [
+        "a-court"
+      ],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-10",
+      "kind": "step",
+      "label": "裁定驳回异议",
+      "stageId": "s-objection",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-11",
+      "kind": "step",
+      "label": "启动房屋拍卖变价",
+      "stageId": "s-auction",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-12",
+      "kind": "step",
+      "label": "拍卖成交/以物抵债",
+      "stageId": "s-auction",
+      "actorIds": [
+        "a-court",
+        "a-applicant"
+      ]
+    },
+    {
+      "id": "n-13",
+      "kind": "decision",
+      "label": "是否执行和解",
+      "stageId": "s-settlement",
+      "actorIds": [
+        "a-applicant",
+        "a-respondent"
+      ]
+    },
+    {
+      "id": "n-14",
+      "kind": "decision",
+      "label": "是否达成和解",
+      "stageId": "s-settlement",
+      "actorIds": [
+        "a-applicant",
+        "a-respondent"
+      ]
+    },
+    {
+      "id": "n-15",
+      "kind": "step",
+      "label": "制作执行和解协议",
+      "stageId": "s-settlement",
+      "actorIds": [
+        "a-applicant",
+        "a-respondent"
+      ]
+    },
+    {
+      "id": "n-16",
+      "kind": "end",
+      "label": "和解不成终结（负面）",
+      "stageId": "s-settlement",
+      "actorIds": [
+        "a-court"
+      ],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-17",
+      "kind": "step",
+      "label": "制作分配方案",
+      "stageId": "s-distribution",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-18",
+      "kind": "step",
+      "label": "案款发放分配",
+      "stageId": "s-distribution",
+      "actorIds": [
+        "a-court",
+        "a-applicant"
+      ]
+    },
+    {
+      "id": "n-19",
+      "kind": "decision",
+      "label": "是否终本",
+      "stageId": "s-termination",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-20",
+      "kind": "step",
+      "label": "裁定终结本次执行程序",
+      "stageId": "s-termination",
+      "actorIds": [
+        "a-court"
+      ]
+    },
+    {
+      "id": "n-21",
+      "kind": "end",
+      "label": "执行终结（终本）",
+      "stageId": "s-termination",
+      "actorIds": [
+        "a-court"
+      ],
+      "outcome": "positive"
+    },
+    {
+      "id": "n-22",
+      "kind": "end",
+      "label": "执行终结（执行完毕）",
+      "stageId": "s-termination",
+      "actorIds": [
+        "a-court"
+      ],
+      "outcome": "positive"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n-1",
+      "to": "n-2",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-3",
+      "main": true
+    },
+    {
+      "from": "n-3",
+      "to": "n-4",
+      "main": true
+    },
+    {
+      "from": "n-4",
+      "to": "n-5",
+      "condition": "是"
+    },
+    {
+      "from": "n-4",
+      "to": "n-11",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-5",
+      "to": "n-6"
+    },
+    {
+      "from": "n-6",
+      "to": "n-7"
+    },
+    {
+      "from": "n-7",
+      "to": "n-8",
+      "condition": "是"
+    },
+    {
+      "from": "n-8",
+      "to": "n-9"
+    },
+    {
+      "from": "n-7",
+      "to": "n-10",
+      "condition": "否"
+    },
+    {
+      "from": "n-10",
+      "to": "n-11"
+    },
+    {
+      "from": "n-11",
+      "to": "n-12",
+      "main": true
+    },
+    {
+      "from": "n-12",
+      "to": "n-13",
+      "main": true
+    },
+    {
+      "from": "n-13",
+      "to": "n-14",
+      "condition": "是"
+    },
+    {
+      "from": "n-13",
+      "to": "n-17",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-14",
+      "to": "n-15",
+      "condition": "达成"
+    },
+    {
+      "from": "n-15",
+      "to": "n-13",
+      "condition": "回并"
+    },
+    {
+      "from": "n-14",
+      "to": "n-16",
+      "condition": "不成"
+    },
+    {
+      "from": "n-17",
+      "to": "n-18",
+      "main": true
+    },
+    {
+      "from": "n-18",
+      "to": "n-19",
+      "main": true
+    },
+    {
+      "from": "n-19",
+      "to": "n-20",
+      "condition": "是"
+    },
+    {
+      "from": "n-20",
+      "to": "n-21"
+    },
+    {
+      "from": "n-19",
+      "to": "n-22",
+      "condition": "否",
+      "main": true
+    }
+  ]
+}
