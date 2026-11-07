@@ -215,11 +215,27 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
   }
   const hitList = [...new Set(hits)]
   const crossList = [...new Set(crossings)]
+  // Shared face-centre leave: two non-main edges leaving the same port point on one node.
+  const leavePorts = new Map()
+  for (const c of g.connections) {
+    if (!c.points?.length || c.kind === 'main') continue
+    const key = `${c.from}@${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`
+    if (!leavePorts.has(key)) leavePorts.set(key, [])
+    leavePorts.get(key).push(c.id)
+  }
+  const sharedPorts = [...leavePorts.entries()]
+    .filter(([, ids]) => ids.length > 1)
+    .map(([k, ids]) => `${k}:{${ids.join(',')}}`)
+  // Spec may list duplicate from→to pairs; compare unique pairs to painted connections.
+  const specEdgeUniq = new Set((spec.edges || []).map((e) => `${e.from}->${e.to}`))
+  const connUniq = new Set(g.connections.map((c) => `${c.from}->${c.to}`))
+  const edgeCountMatch = specEdgeUniq.size === connUniq.size && missingEdges.length === 0
   return {
     errors: g.errors,
     ms,
     nodes: g.nodes.length,
     edges: g.connections.length,
+    specEdgeUniq: specEdgeUniq.size,
     spineBends,
     hits: hitList,
     crossings: crossList,
@@ -234,6 +250,8 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     missingEdges,
     bendTotal,
     s3,
+    sharedPorts,
+    edgeCountMatch,
     ok:
       !g.errors?.length &&
       hitList.length === 0 &&
@@ -243,11 +261,15 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
       badOrtho.length === 0 &&
       missingNodes.length === 0 &&
       missingEdges.length === 0 &&
-      endpointGaps.length === 0,
+      endpointGaps.length === 0 &&
+      missingLabels.length === 0 &&
+      badPorts.length === 0 &&
+      edgeCountMatch,
   }
 }
 
-// Detector self-check
+// Detector self-check: known cross / non-cross / vertex-touch / T-junction / polyline.
+// Geometry is style-agnostic (solid vs dashed ink uses the same polylines).
 {
   const box = { x: 10, y: 10, w: 20, h: 20 }
   const checks = [
@@ -255,19 +277,14 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     [segHitsBox([20, 0], [20, 40], box) === true, 'vert-hit'],
     [segHitsBox([0, 5], [40, 5], box) === false, 'above'],
     [segHitsBox([50, 0], [50, 40], box) === false, 'beside'],
-    [
-      orthoSegsCross(
-        [
-          [0, 10],
-          [20, 10],
-        ],
-        [
-          [10, 0],
-          [10, 20],
-        ],
-      ) === true,
-      'cross',
-    ],
+    [orthoSegsCross([[0, 10], [20, 10]], [[10, 0], [10, 20]]) === true, 'proper-cross'],
+    // Vertex-only touch must NOT count as a crossing (polyline join / T stub).
+    [orthoSegsCross([[0, 10], [10, 10]], [[10, 10], [10, 20]]) === false, 'vertex-touch'],
+    [orthoSegsCross([[0, 10], [20, 10]], [[10, 10], [10, 20]]) === false, 'T-junction'],
+    [orthoSegsCross([[0, 10], [20, 10]], [[0, 0], [0, 20]]) === false, 'endpoint-on-horiz'],
+    // Polyline with a vertical run that properly crosses a foreign horizontal (dashed or solid — same geometry).
+    [pathCrossCount([[0, 0], [0, 30], [30, 30]], [[[-10, 15], [40, 15]]]) === 1, 'polyline-vs-seg'],
+    [pathCrossCount([[0, 0], [0, 20], [20, 20]], [[[0, 20], [20, 20]]]) === 0, 'shared-seg-no-cross'],
   ]
   for (const [ok, name] of checks) {
     if (!ok) {
@@ -321,13 +338,27 @@ for (const path of fixtures.sort()) {
   })
   // Hard gate: both orients must be box-clear AND crossing-free (plus vertical.ok extras).
   // Previously H crossings were logged but not failed — L4-H could report OK with 3 crosses.
-  const mark = vertical.ok && horizontal.ok ? 'OK' : 'FAIL'
+  // Nested hang acceptance fixtures also reject shared leave ports; corpus may still warn.
+  const base = basename(path)
+  const nestedGate = /^(S\d|L\d|H1)/.test(base)
+  const sharedFail =
+    nestedGate && (vertical.sharedPorts.length > 0 || horizontal.sharedPorts.length > 0)
+  const mark = vertical.ok && horizontal.ok && !sharedFail ? 'OK' : 'FAIL'
+  const warnShared =
+    vertical.sharedPorts.length || horizontal.sharedPorts.length
+      ? ` sharedPorts V=${vertical.sharedPorts.length} H=${horizontal.sharedPorts.length}`
+      : ''
   console.log(
     mark,
-    basename(path),
+    base,
     `V:hits=${vertical.hits.length},cross=${vertical.crossings.length},gap=${vertical.endpointGaps.length},spineB=${vertical.spineBends.length}`,
     `H:hits=${horizontal.hits.length},cross=${horizontal.crossings.length},gap=${horizontal.endpointGaps.length}`,
+    warnShared,
   )
+  if (warnShared && mark === 'OK') console.log('  WARN shared leave ports (corpus; not nested gate)', {
+    V: vertical.sharedPorts,
+    H: horizontal.sharedPorts,
+  })
 }
 
 report.inputHashes = inputHashes
@@ -335,15 +366,30 @@ const outJson = join(outDir, `${tag}-scan.json`)
 const outSum = join(outDir, `${tag}-fail-summary.txt`)
 const outMeta = join(outDir, `${tag}-meta.json`)
 writeFileSync(outJson, JSON.stringify(report, null, 2))
-const fails = report.cases.filter((c) => !c.vertical.ok || !c.horizontal.ok)
+const fails = report.cases.filter((c) => {
+  const base = basename(c.path)
+  const nestedGate = /^(S\d|L\d|H1)/.test(base)
+  const sharedFail =
+    nestedGate && (c.vertical.sharedPorts.length > 0 || c.horizontal.sharedPorts.length > 0)
+  return !c.vertical.ok || !c.horizontal.ok || sharedFail
+})
+const warns = report.cases.filter(
+  (c) =>
+    (c.vertical.sharedPorts.length > 0 || c.horizontal.sharedPorts.length > 0) &&
+    !fails.includes(c),
+)
 writeFileSync(
   outSum,
-  fails
-    .map(
+  [
+    ...fails.map(
       (c) =>
-        `${c.path}\n  sha=${c.inputSha256}\n  V hits=${c.vertical.hits.join('|')} cross=${c.vertical.crossings.join('|')} gaps=${c.vertical.endpointGaps.join('|')}\n  H hits=${c.horizontal.hits.join('|')} cross=${c.horizontal.crossings.join('|')}\n`,
-    )
-    .join('\n') || 'none',
+        `${c.path}\n  sha=${c.inputSha256}\n  V hits=${c.vertical.hits.join('|')} cross=${c.vertical.crossings.join('|')} gaps=${c.vertical.endpointGaps.join('|')} shared=${c.vertical.sharedPorts.join('|')}\n  H hits=${c.horizontal.hits.join('|')} cross=${c.horizontal.crossings.join('|')} shared=${c.horizontal.sharedPorts.join('|')}\n`,
+    ),
+    ...warns.map(
+      (c) =>
+        `WARN-shared-ports ${c.path}\n  V ${c.vertical.sharedPorts.join('|')}\n  H ${c.horizontal.sharedPorts.join('|')}\n`,
+    ),
+  ].join('\n') || 'none',
 )
 writeFileSync(
   outMeta,
