@@ -632,6 +632,64 @@ test('mainline: S3 nested hang flips to opposite side (auto)', () => {
   assert.deepEqual(hits, [], `S3 gate: no box hits, got ${hits.join(', ')}`)
 })
 
+test('mainline: L1 litigation nested hang flips (DeepSeek fixture)', () => {
+  // Legal-shaped S3 topology: 管辖异议 long dead hang contains 财产保全 short upward rejoin.
+  // Contained 保全 flips left; 管辖 stays right; 回并 leaves west; 0 box hits.
+  const spec = JSON.parse(readFileSync('preview/synthetic-rejoin/fixtures/L1-litigation-nested-hang.zh-CN.json', 'utf8'))
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  assert.deepEqual(g.errors, [])
+  const cx = (id) => byId.get(id).position.x + byId.get(id).data.w / 2
+  assert.ok(cx('n-16') < cx('n-5'), '财产保全 hang left of spine')
+  assert.ok(cx('n-11') > cx('n-5'), '管辖异议 hang stays on preferred right')
+  const face = (n, [x, y]) => {
+    const ncx = n.position.x + n.data.w / 2
+    const ncy = n.position.y + n.data.h / 2
+    if (Math.abs(x - n.position.x) < 1 && Math.abs(y - ncy) < 1) return 'W'
+    if (Math.abs(x - (n.position.x + n.data.w)) < 1 && Math.abs(y - ncy) < 1) return 'E'
+    if (Math.abs(y - n.position.y) < 1 && Math.abs(x - ncx) < 1) return 'N'
+    if (Math.abs(y - (n.position.y + n.data.h)) < 1 && Math.abs(x - ncx) < 1) return 'S'
+    return '?'
+  }
+  const leaveJ = g.connections.find((e) => e.id === 'c:n-2->n-11')
+  const leaveP = g.connections.find((e) => e.id === 'c:n-5->n-16')
+  const rejoin = g.connections.find((e) => e.id === 'c:n-19->n-4')
+  assert.ok(leaveJ && leaveP && rejoin)
+  assert.equal(face(byId.get('n-2'), leaveJ.points[0]), 'E', '管辖 fork leaves right')
+  assert.equal(face(byId.get('n-5'), leaveP.points[0]), 'W', '保全 fork leaves left')
+  assert.equal(face(byId.get('n-19'), rejoin.points[0]), 'W', '回并 leaves west away from spine')
+  assert.ok(bendsOf(rejoin.points) <= 2, `回并 ≤2 bends, got ${bendsOf(rejoin.points)}`)
+  for (const c of g.connections.filter((e) => e.kind === 'main')) {
+    assert.equal(bendsOf(c.points), 0, `${c.id} spine bend`)
+  }
+  const segHits = (p, q, box, pad = 0.5) => {
+    const [x1, y1] = p
+    const [x2, y2] = q
+    const minx = Math.min(x1, x2)
+    const maxx = Math.max(x1, x2)
+    const miny = Math.min(y1, y2)
+    const maxy = Math.max(y1, y2)
+    const bx = box.position.x
+    const by = box.position.y
+    const bw = box.data.w
+    const bh = box.data.h
+    if (maxx < bx + pad || minx > bx + bw - pad || maxy < by + pad || miny > by + bh - pad) return false
+    if (Math.abs(y1 - y2) < 0.5) return y1 > by + pad && y1 < by + bh - pad && maxx > bx + pad && minx < bx + bw - pad
+    if (Math.abs(x1 - x2) < 0.5) return x1 > bx + pad && x1 < bx + bw - pad && maxy > by + pad && miny < by + bh - pad
+    return false
+  }
+  const hits = []
+  for (const c of [leaveJ, leaveP, rejoin]) {
+    for (let i = 0; i < c.points.length - 1; i += 1) {
+      for (const n of g.nodes) {
+        if (n.id === c.from || n.id === c.to) continue
+        if (segHits(c.points[i], c.points[i + 1], n)) hits.push(`${c.id}@${n.id}`)
+      }
+    }
+  }
+  assert.deepEqual(hits, [], `L1 gate: no box hits, got ${hits.join(', ')}`)
+})
+
 test('mainline: stages-off hang→spine never enters trunk N/S (corpus)', () => {
   // Every hang→spine hop: spine end is E/W. Off-row hops leave hang on N/S (travel face), ≤2 bends.
   const face = (n, [x, y]) => {

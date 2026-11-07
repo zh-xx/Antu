@@ -49,6 +49,7 @@ JS
 | `S1-hang-lane-clear` | n-5→n-3「回并」 | hang-lane (clear) |
 | `S2-gutter-blocked-lane` | n-9→n-6「是」 | inward gutter |
 | `S3-outer-gutter-blocked` | n-21→n-3「回并」 | nested auto side-flip: 外挂 left, 内挂 right; 回并 leaves west (was same-side / far-outer cutting boxes) |
+| `L1-litigation-nested-hang` | n-19→n-4「回并」 | DeepSeek-authored 买卖合同一审: 管辖异议 long dead hang (right) contains 财产保全 short rejoin hang (auto-flips left); upward back-edge rejoin |
 | `S4-hang-lane-upward` | n-7→n-2 | hang-lane upward |
 
 ## HTML outputs
