@@ -20,7 +20,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import Canvas from '../../../shell/Canvas.jsx'
-import { usePrefs, useViewValue } from '../../../shell/env.js'
+import { usePrefs, usePreset, useViewValue } from '../../../shell/env.js'
 import { specKeyOf } from '../../../shell/prefs.js'
 import { useSpecPref } from '../../relationship/useSpecPref.js'
 import { PreviewContext } from '../../../shell/previewContext.js'
@@ -100,7 +100,10 @@ const DECORATION = {
 
 export default function ProcedureFlow({ spec }) {
   const prefs = usePrefs()
+  const preset = usePreset()
   const specKey = specKeyOf(spec)
+  // Preview-only override (not a dock switch): force hang side by spine fork id.
+  const mainlineHangSide = preset?.fields?.mainlineHangSide ?? null
   const hasStages = Array.isArray(spec?.stages) && spec.stages.length > 0
   const hasRules = Array.isArray(spec?.rules) && spec.rules.length > 0
 
@@ -174,7 +177,7 @@ export default function ProcedureFlow({ spec }) {
     let cancelled = false
     layoutProcedureAsync(
       spec,
-      { detail: fields.detail, stages: fields.stages, rules: fields.rules, engine },
+      { detail: fields.detail, stages: fields.stages, rules: fields.rules, engine, mainlineHangSide },
       orientation,
     ).then((next) => {
       if (!cancelled && id === layoutReq.current) setLayout(next)
@@ -182,7 +185,7 @@ export default function ProcedureFlow({ spec }) {
     return () => {
       cancelled = true
     }
-  }, [spec, fields.detail, fields.stages, fields.rules, engine, orientation])
+  }, [spec, fields.detail, fields.stages, fields.rules, engine, mainlineHangSide, orientation])
 
   const [hoveredId, setHoveredId] = useState(/** @type {string | null} */ (null))
   const [pinnedId, setPinnedId] = useState(/** @type {string | null} */ (null))
