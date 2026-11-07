@@ -461,6 +461,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       labelBox,
       vertical,
       spine,
+      fields,
     })
   } else if (hasStageColumns) {
     best = yield* layoutColumnsGen({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })

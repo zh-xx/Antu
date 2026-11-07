@@ -1,0 +1,34 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "合成 · 向上远距挂枝列（hang-lane up）",
+  "domain": "contract-performance",
+  "actors": [
+    { "id": "a-1", "name": "服务方", "role": "乙方" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "note", "name": "synthetic S4", "loc": { "file": "S4-hang-lane-upward.zh-CN.json" } }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "服务期" },
+    { "id": "st-2", "label": "续期旁路" }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "签约", "stageId": "st-1" },
+    { "id": "n-2", "kind": "step", "label": "服务期开始", "stageId": "st-1", "actorIds": ["a-1"] },
+    { "id": "n-3", "kind": "step", "label": "履约中", "stageId": "st-1", "actorIds": ["a-1"] },
+    { "id": "n-4", "kind": "step", "label": "本月结算", "stageId": "st-1", "actorIds": ["a-1"] },
+    { "id": "n-5", "kind": "decision", "label": "是否走续期旁路", "stageId": "st-1" },
+    { "id": "n-6", "kind": "end", "label": "服务结束", "stageId": "st-1", "outcome": "neutral" },
+    { "id": "n-7", "kind": "step", "label": "合同自动续期一年", "stageId": "st-2" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "main": true },
+    { "from": "n-3", "to": "n-4", "main": true },
+    { "from": "n-4", "to": "n-5", "main": true },
+    { "from": "n-5", "to": "n-6", "condition": "否", "main": true },
+    { "from": "n-5", "to": "n-7", "condition": "是" },
+    { "from": "n-7", "to": "n-2" }
+  ]
+}

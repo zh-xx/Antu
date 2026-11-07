@@ -5,8 +5,11 @@
 //  Prototype beside the current ELK + polish column layout. Same JSON, same output
 //  shape as layoutColumnsGen. Order:
 //    1. fix the main line in each stage as a straight vertical column (axis pinned);
-//    2. hang branches in lanes; preferred side is away from the next stage (or right when
-//       alone). Each box has four face ports (N/S/E/W); the trunk usually owns N+S, so a
+//    2. hang branches in lanes as branch regions [leave, rejoin] along the spine index
+//       (issue 190 C4). Preferred side is away from the next stage (or right when alone). Nested
+//       intervals share a side (shorter/contained → inner lane; container → outer); overlapping
+//       non-nested prefer opposite sides when free. Lane order follows containment, not start
+//       time. Each box has four face ports (N/S/E/W); the trunk usually owns N+S, so a
 //       decision's side exits take E/W — when both are free, two exits do not share one
 //       face (loop+back may share a side as a bidirectional hop). First hop sits on the
 //       fork's row (0-bend); branches yield — the spine never moves for them;
@@ -15,7 +18,8 @@
 //       omitted upstream — they belong in the rules table, not as islands on the canvas;
 //    4. a hang that rejoins the spine enters a free side face (not the trunk's top/bottom).
 //       Hang boxes may use N/S freely: leave top/bottom, run in the hang lane to the spine
-//       mid-height, then enter the side (1 bend). Outer corridor only when that lane is blocked;
+//       mid-height, then enter the side (1 bend). If blocked: between-lane corridor (leave away
+//       from the spine into the next-lane gap) → inward gutter → far outer;
 //    5. stack leftover "pocket" nodes beside the hangs;
 //    6. set stage boxes side by side; route cross-stage links with router.js;
 //    7. light polish, then re-pin the spine axis (polish must not leave the trunk bent).
@@ -74,7 +78,7 @@ export function layoutMainline(args) {
  * Mainline-first column layout as a generator (yields between heavy routing steps).
  * @returns {Generator<void, { placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object }, unknown>}
  */
-export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, spine }) {
+export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, spine, fields }) {
   const byId = new Map(nodes.map((n) => [n.id, n]))
   const PAD_A0 = vertical ? STAGE_PAD_TOP : STAGE_PAD
   const PAD_C0 = vertical ? STAGE_PAD : STAGE_PAD_TOP
@@ -114,6 +118,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
       diamonds,
       branchSign,
       byId,
+      forceHangSide: fields?.mainlineHangSide ?? null,
     })
     segments.push({ st, ids: ownIds, ...seg })
     yield
@@ -248,7 +253,19 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
 /**
  * Lay out one stage: spine first, then branch lanes, then pockets.
  */
-function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, frameSize, diamonds, branchSign, byId }) {
+function layoutStageMainline({
+  own,
+  ownIds,
+  groups,
+  outG,
+  spineAt,
+  spineList,
+  frameSize,
+  diamonds,
+  branchSign,
+  byId,
+  forceHangSide = null,
+}) {
   const placed = new Map()
   const drawn = new Set()
 
@@ -326,6 +343,20 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     h.boxes = boxes
   }
 
+  // Back-edge rejoins are skipped while walking the hang chain (`!e.isBack`). Attach them
+  // here so each hang region knows its spine [leave, rejoin] interval (incl. upward loops).
+  for (const h of hangs) {
+    if (h.rejoin || !h.boxes.length) continue
+    const nodes = h.leave?.to ? [h.leave.to, ...h.boxes.filter((id) => id !== h.leave.to)] : h.boxes
+    for (const id of nodes) {
+      const back = (outG.get(id) ?? []).find((e) => e.isBack && spineAt.has(e.to) && ownIds.has(e.to))
+      if (back) {
+        h.rejoin = back.to
+        break
+      }
+    }
+  }
+
   // Branch-exit ends stay in hang.boxes (one continuous leave→…→end path). Do not peel them
   // onto the spine: that left hang steps with a dangling stub and an end that looked unlinked.
   // Only ends still unplaced after hangs (rare; e.g. a lone stage of ends) sit on the terminus.
@@ -343,9 +374,10 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     }
   }
 
-  // Interval lanes along the spine index. Side (±1) is chosen per hang: preferred side is
-  // branchSign; a decision with two free side faces puts a second exit on the opposite face
-  // so ports are not shared when both E/W are free. Loop hangs (leave + back) keep preferred.
+  // Branch regions: one hang → one [leave, rejoin] interval along the spine index (issue 190 C4).
+  // Side and lane are decided here (before placement / local routing). Dead ends are half-open
+  // (estimated span from box count). Nested → same side, contained inner; overlap non-nested →
+  // opposite sides when free. Lane pack order is by span (containment), not leave time.
   const intervals = hangs
     .filter((h) => h.boxes.length)
     .map((h) => {
@@ -353,7 +385,10 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
       const b = h.rejoin && spineAt.has(h.rejoin) ? spineAt.get(h.rejoin) : a + Math.max(1, h.boxes.length)
       return { h, a: Math.min(a, b), b: Math.max(a, b) }
     })
-  intervals.sort((p, q) => p.a - q.a || p.b - q.b)
+
+  const regionOverlaps = (p, q) => !(p.b < q.a || q.b < p.a)
+  const regionContains = (outer, inner) =>
+    outer.a <= inner.a && outer.b >= inner.b && (outer.a < inner.a || outer.b > inner.b)
 
   const isLoopHang = (h) => {
     const to = h.leave?.to
@@ -381,7 +416,39 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     })
   }
 
-  // Pack lanes per side so left and right stacks do not fight over one track.
+  // Overlapping non-nested regions on the same side: flip the later leave onto the free face.
+  // Nested pairs stay same-side. Earlier regions are stable — an unrelated hang should not flip them.
+  const byLeave = [...intervals].sort((p, q) => p.a - q.a || p.b - q.b)
+  for (const it of byLeave) {
+    const sign = /** @type {number} */ (signOf.get(it.h))
+    for (const other of byLeave) {
+      if (other === it || other.a > it.a) continue
+      if (signOf.get(other.h) !== sign) continue
+      if (!regionOverlaps(it, other)) continue
+      if (regionContains(it, other) || regionContains(other, it)) continue
+      const opp = -sign
+      const oppBusy = intervals.some(
+        (o) =>
+          o !== it &&
+          signOf.get(o.h) === opp &&
+          regionOverlaps(it, o) &&
+          !regionContains(it, o) &&
+          !regionContains(o, it),
+      )
+      if (!oppBusy) signOf.set(it.h, opp)
+      break
+    }
+  }
+
+  // Preview / experiment override: force hang side by spine fork id (e.g. { 'n-4': -1 } = left).
+  if (forceHangSide && typeof forceHangSide === 'object') {
+    for (const it of intervals) {
+      const forced = forceHangSide[it.h.from]
+      if (forced === 1 || forced === -1) signOf.set(it.h, forced)
+    }
+  }
+
+  // Pack lanes per side: shorter / contained intervals claim inner lanes first.
   /** @type {Map<object, number>} */
   const laneOf = new Map()
   /** @type {Map<number, number[]>} sign → lane end spine-index */
@@ -389,14 +456,32 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
     [1, []],
     [-1, []],
   ])
-  for (const it of intervals) {
+  /** @type {Array<{ region: object, reason: string }>} */
+  const spineOpenRequests = []
+  const bySpan = [...intervals].sort((p, q) => p.b - p.a - (q.b - q.a) || p.a - q.a || p.b - q.b)
+  for (const it of bySpan) {
     const sign = /** @type {number} */ (signOf.get(it.h))
     const ends = /** @type {number[]} */ (laneEndsBySign.get(sign))
     let lane = 0
     while (ends[lane] !== undefined && ends[lane] > it.a) lane += 1
-    ends[lane] = it.b
+    ends[lane] = Math.max(ends[lane] ?? it.b, it.b)
     laneOf.set(it.h, lane)
   }
+  // Hook only (issue 190 B3): record when same-side overlap remains after flip — spine may open later.
+  for (const it of intervals) {
+    const sign = /** @type {number} */ (signOf.get(it.h))
+    const peers = intervals.filter(
+      (o) =>
+        o !== it &&
+        signOf.get(o.h) === sign &&
+        regionOverlaps(it, o) &&
+        !regionContains(it, o) &&
+        !regionContains(o, it) &&
+        laneOf.get(o.h) === laneOf.get(it.h),
+    )
+    if (peers.length) spineOpenRequests.push({ region: it, reason: 'same-side-overlap-lane' })
+  }
+  void spineOpenRequests
 
   /** @type {Map<number, number[]>} sign → lane widths */
   const laneWBySign = new Map([
@@ -1156,6 +1241,62 @@ function outerCorridor(a, b, hangOnRight, depth = 0) {
   ]
 }
 
+/**
+ * Outward corridor: leave the hang face *away* from the spine, run vertical, enter spine side.
+ * Channel x is the gap before the next outer hang column when one exists; otherwise just
+ * outside this hang (`OUTER_GAP`) when that return stays clear. Covers S3 right (inter-lane)
+ * and S3 left-leave (hang alone on the left → 回并左出).
+ * @returns {number[][] | null}
+ */
+function interLaneCorridor(a, b, hangOnRight, placed, fromId, toId) {
+  if (!placed) return null
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const hangOuter = hangOnRight ? a.x + a.w : a.x
+  const lo = Math.min(acy, bcy)
+  const hi = Math.max(acy, bcy)
+  let nearestInner = hangOnRight ? Infinity : -Infinity
+  let found = false
+  for (const [id, r] of placed) {
+    if (id === fromId || id === toId) continue
+    // Must sit further out than this hang and overlap the vertical run (or the leave row).
+    const further = hangOnRight ? r.x >= hangOuter - 1 : r.x + r.w <= hangOuter + 1
+    if (!further) continue
+    if (r.y + r.h <= lo + 0.5 || r.y >= hi - 0.5) {
+      // Still count a neighbour that overlaps the hang box row (blocks the leave stub).
+      if (r.y + r.h <= a.y + 0.5 || r.y >= a.y + a.h - 0.5) continue
+    }
+    found = true
+    if (hangOnRight) nearestInner = Math.min(nearestInner, r.x)
+    else nearestInner = Math.max(nearestInner, r.x + r.w)
+  }
+  let mid
+  if (found) {
+    const gap = hangOnRight ? nearestInner - hangOuter : hangOuter - nearestInner
+    if (gap < 8) return null
+    mid = hangOnRight ? hangOuter + gap / 2 : hangOuter - gap / 2
+  } else {
+    // Alone on this side: still prefer leaving away from the spine when the U clears.
+    mid = hangOnRight ? hangOuter + OUTER_GAP : hangOuter - OUTER_GAP
+  }
+  // Vertical / return must stay clear of every foreign box.
+  const spineFace = hangOnRight ? b.x + b.w : b.x
+  for (const [id, r] of placed) {
+    if (id === fromId || id === toId) continue
+    if (mid > r.x + 0.5 && mid < r.x + r.w - 0.5 && r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return null
+    // Horizontal at bcy from mid toward spine: must not enter a box.
+    const hLo = Math.min(mid, spineFace)
+    const hHi = Math.max(mid, spineFace)
+    if (bcy > r.y + 0.5 && bcy < r.y + r.h - 0.5 && hHi > r.x + 0.5 && hLo < r.x + r.w - 0.5) return null
+  }
+  return [
+    [hangOuter, acy],
+    [mid, acy],
+    [mid, bcy],
+    [spineFace, bcy],
+  ]
+}
+
 /** True when another box sits on the hang's vertical lane between leaveY and targetY. */
 function hangLaneBlocked(a, leaveY, targetY, placed, fromId, toId) {
   if (!placed) return false
@@ -1191,7 +1332,8 @@ function gutterBlocked(a, b, hangOnRight, placed, fromId, toId) {
 }
 
 /**
- * Hang → spine: hang-lane (1 bend) → inward gutter → outer corridor (last resort).
+ * Hang → spine: hang-lane (1 bend) → between-lane corridor (leave away from spine) →
+ * inward gutter → outer corridor (last resort).
  * @param {{ x: number, y: number, w: number, h: number }} a hang
  * @param {{ x: number, y: number, w: number, h: number }} b spine
  * @param {boolean} hangOnRight
@@ -1206,6 +1348,10 @@ function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId) {
   if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
     return hangLaneRejoin(a, b, hangOnRight)
   }
+  // Prefer the gap before the next outer hang column when clear — avoids far-outer cutting
+  // through that column on the return row (S3). Falls through when no outer neighbour.
+  const between = interLaneCorridor(a, b, hangOnRight, placed, fromId, toId)
+  if (between) return between
   if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
     return gutterRejoin(a, b, hangOnRight)
   }

@@ -1,0 +1,49 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "合成 · gutter 也被挡走外侧走廊",
+  "domain": "contract-performance",
+  "actors": [
+    { "id": "a-1", "name": "甲方", "role": "买方" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "note", "name": "synthetic S3", "loc": { "file": "S3-outer-gutter-blocked.zh-CN.json" } }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "主干" },
+    { "id": "st-2", "label": "内车道挂枝" },
+    { "id": "st-3", "label": "外车道回并" }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "开始", "stageId": "st-1" },
+    { "id": "n-2", "kind": "decision", "label": "是否先内挂", "stageId": "st-1" },
+    { "id": "n-3", "kind": "step", "label": "主干续走", "stageId": "st-1" },
+    { "id": "n-4", "kind": "decision", "label": "是否外挂回并", "stageId": "st-1" },
+    { "id": "n-5", "kind": "step", "label": "主干付款", "stageId": "st-1", "actorIds": ["a-1"] },
+    { "id": "n-6", "kind": "end", "label": "完成", "stageId": "st-1", "outcome": "positive" },
+    { "id": "n-10", "kind": "step", "label": "内挂挡板甲", "stageId": "st-2" },
+    { "id": "n-11", "kind": "step", "label": "内挂挡板乙", "stageId": "st-2" },
+    { "id": "n-12", "kind": "step", "label": "内挂挡板丙", "stageId": "st-2" },
+    { "id": "n-13", "kind": "step", "label": "内挂挡板丁", "stageId": "st-2" },
+    { "id": "n-14", "kind": "end", "label": "内挂终止", "stageId": "st-2", "outcome": "negative" },
+    { "id": "n-20", "kind": "step", "label": "外挂列挡板", "stageId": "st-3" },
+    { "id": "n-21", "kind": "decision", "label": "外挂是否回并", "stageId": "st-3" },
+    { "id": "n-22", "kind": "end", "label": "外挂终止", "stageId": "st-3", "outcome": "negative" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "condition": "否", "main": true },
+    { "from": "n-2", "to": "n-10", "condition": "是" },
+    { "from": "n-3", "to": "n-4", "main": true },
+    { "from": "n-4", "to": "n-5", "condition": "否", "main": true },
+    { "from": "n-4", "to": "n-20", "condition": "是" },
+    { "from": "n-5", "to": "n-6", "main": true },
+    { "from": "n-10", "to": "n-11" },
+    { "from": "n-11", "to": "n-12" },
+    { "from": "n-12", "to": "n-13" },
+    { "from": "n-13", "to": "n-14" },
+    { "from": "n-20", "to": "n-21" },
+    { "from": "n-21", "to": "n-3", "condition": "回并" },
+    { "from": "n-21", "to": "n-22", "condition": "放弃" }
+  ]
+}
