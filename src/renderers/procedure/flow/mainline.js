@@ -1672,9 +1672,10 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
   if (clear) return clear
   // Exhausted: only accept a pathClear side channel — never an unchecked mid-column cut.
   const side = clearSideChannel(a, b, acx > bcx, placed, fromId, toId, 64)
-  // Exhausted non-hang corridors: keep the historic sideHorizontal last resort. Ink that
-  // still hits a foreign box is rejected at the layout boundary (mainlineInkInvalid /
-  // pathClear) — hang→spine exhaustion alone returns null (via routeHangToSpine).
+  // Exhausted non-hang corridors: keep the historic sideHorizontal last resort.
+  // mainlineInkInvalid only rejects missing polylines / explicit routeExhausted stubs
+  // (hang→spine null via routeHangToSpine); it does NOT blanket-reject residual !pathClear
+  // on this last-resort ink — that residual track stays separate from C.
   if (side) return side
   const anyClear = candidates.find((p) => p && p.length >= 2 && pathClear(p, placed, fromId, toId))
   if (anyClear) return anyClear

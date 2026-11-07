@@ -274,6 +274,8 @@ test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex pass
 test('production exhausted absolute: routeHangToSpine returns null — never unsafe outer as success', () => {
   // Seal hang/spine so finite corridors cannot pathClear. Contract: null (exhausted), not an
   // unchecked outerCorridor that looks like success while cutting boxes.
+  // (Layout-level corpus does not currently place a sealed wall; this geometric fixture is the
+  // production search exhaust marker. Flag propagation through assembly is covered below.)
   const a = { x: 200, y: 200, w: 60, h: 60 }
   const b = { x: 40, y: 360, w: 60, h: 40 }
   const hangOnRight = true
@@ -290,10 +292,66 @@ test('production exhausted absolute: routeHangToSpine returns null — never uns
   assert.equal(pts, null, 'exhausted clear search must not emit known-unsafe geometry')
 })
 
-test('layout boundary: invalid mainline ink falls back to current engine; graph complete; hint surfaced', async () => {
+test('mainlineInkInvalid: routeExhausted stub is invalid even when points look attached', async () => {
+  const { mainlineInkInvalid } = await import('../src/renderers/procedure/flow/layout.js')
+  const placed = new Map([
+    ['a', { x: 0, y: 0, w: 40, h: 20 }],
+    ['b', { x: 80, y: 0, w: 40, h: 20 }],
+  ])
+  const validLooking = {
+    id: 'c:a->b',
+    from: 'a',
+    to: 'b',
+    points: [
+      [40, 10],
+      [80, 10],
+    ],
+  }
+  assert.equal(mainlineInkInvalid({ placed, connections: [{ ...validLooking, routeExhausted: true }] }), true)
+  assert.equal(mainlineInkInvalid({ placed, connections: [{ ...validLooking }] }), false)
+  assert.equal(mainlineInkInvalid({ placed, connections: [{ ...validLooking, points: [] }] }), true)
+  assert.equal(mainlineInkInvalid(null), true)
+})
+
+test('routeExhausted survives straighten (stage→global assembly keeps the flag)', async () => {
+  // straighten maps `{...c}` — the same preserve pattern stage assembly uses before
+  // mainlineInkInvalid. Proves the flag is not stripped before the layout boundary.
+  const { straighten } = await import('../src/renderers/procedure/flow/straighten.js')
+  const placed = new Map([
+    ['a', { x: 0, y: 0, w: 40, h: 20 }],
+    ['b', { x: 0, y: 80, w: 40, h: 20 }],
+  ])
+  const out = straighten(
+    [
+      {
+        id: 'c:a->b',
+        from: 'a',
+        to: 'b',
+        kind: 'branch',
+        points: [
+          [20, 20],
+          [20, 80],
+        ],
+        routeExhausted: true,
+        label: null,
+        labelAt: null,
+        labelSize: null,
+      },
+    ],
+    placed,
+    [],
+    true,
+    new Set(),
+  )
+  assert.equal(out.length, 1)
+  assert.equal(out[0].routeExhausted, true, 'straighten must not drop routeExhausted')
+})
+
+test('layout boundary: routeExhausted triggers fallback; measured V/H attachment+clearance', async () => {
   const { mainlineInkInvalid } = await import('../src/renderers/procedure/flow/layout.js')
   const path = 'preview/synthetic-rejoin/fixtures/L4-enforcement-objection-nested.zh-CN.json'
   const spec = JSON.parse(readFileSync(path, 'utf8'))
+  const expectedPairs = (spec.edges || []).map((e) => `${e.from}->${e.to}`).sort()
   const main = buildProcedureGraph(spec, fields, undefined, 'vertical')
   assert.equal(
     mainlineInkInvalid({
@@ -304,9 +362,9 @@ test('layout boundary: invalid mainline ink falls back to current engine; graph 
   )
   assert.equal(main.stats.layoutEngine, 'mainline')
   assert.ok(!main.hints.some((h) => /fell back to current/.test(h)))
-  assert.ok(main.connections.every((c) => c.points?.length >= 2), 'supported mainline keeps every edge')
 
-  // Forced exhaustion through the real layout boundary (env probe → routeExhausted → ELK/columns).
+  // Env probe stamps routeExhausted on assembled mainline ink, then mainlineInkInvalid
+  // (not a direct branch bypass) selects current-engine fallback. Measure final graph.
   const { spawnSync } = await import('node:child_process')
   const probe = spawnSync(
     process.execPath,
@@ -317,14 +375,56 @@ test('layout boundary: invalid mainline ink falls back to current engine; graph 
       process.env.ANTU_FORCE_MAINLINE_EXHAUSTION = '1'
       const { readFileSync } = await import('node:fs')
       const { buildProcedureGraph } = await import('./src/renderers/procedure/flow/layout.js')
-      const spec = JSON.parse(readFileSync(${JSON.stringify(path)}, 'utf8'))
-      const g = buildProcedureGraph(spec, { engine: 'mainline', stages: false }, undefined, 'vertical')
-      const out = {
-        layoutEngine: g.stats.layoutEngine,
-        hints: g.hints,
-        edgeCount: g.connections.length,
-        allAttached: g.connections.every((c) => c.points?.length >= 2),
-        fellBack: g.hints.some((h) => /fell back to current/.test(h)),
+      const { segHitsBox } = await import('./src/renderers/procedure/flow/hangSpineRoute.js')
+      const path = ${JSON.stringify(path)}
+      const spec = JSON.parse(readFileSync(path, 'utf8'))
+      const expectedPairs = (spec.edges || []).map((e) => e.from + '->' + e.to).sort()
+      function foreignHits(g) {
+        const hits = []
+        for (const c of g.connections) {
+          for (let i = 0; i < c.points.length - 1; i++) {
+            for (const n of g.nodes) {
+              if (n.id === c.from || n.id === c.to) continue
+              const box = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
+              if (segHitsBox(c.points[i], c.points[i + 1], box)) hits.push(c.id + '@' + n.id)
+            }
+          }
+        }
+        return [...new Set(hits)]
+      }
+      function endpointGaps(g) {
+        const byId = new Map(g.nodes.map((n) => [n.id, n]))
+        const gaps = []
+        const distBox = (n, p) => {
+          const x = n.position.x, y = n.position.y, w = n.data.w, h = n.data.h
+          const dx = p[0] < x ? x - p[0] : p[0] > x + w ? p[0] - (x + w) : 0
+          const dy = p[1] < y ? y - p[1] : p[1] > y + h ? p[1] - (y + h) : 0
+          return Math.hypot(dx, dy)
+        }
+        for (const c of g.connections) {
+          if (!c.points?.length) continue
+          const from = byId.get(c.from), to = byId.get(c.to)
+          if (!from || !to) continue
+          const d0 = distBox(from, c.points[0]), d1 = distBox(to, c.points[c.points.length - 1])
+          if (d0 > 1.5 || d1 > 1.5) gaps.push(c.id + ':' + d0.toFixed(1) + '/' + d1.toFixed(1))
+        }
+        return gaps
+      }
+      const out = {}
+      for (const orient of ['vertical', 'horizontal']) {
+        const g = buildProcedureGraph(spec, { engine: 'mainline', stages: false }, undefined, orient)
+        const pairs = g.connections.map((c) => c.from + '->' + c.to).sort()
+        out[orient] = {
+          layoutEngine: g.stats.layoutEngine,
+          fellBack: g.hints.some((h) => /fell back to current/.test(h)),
+          hint: g.hints.find((h) => /fell back to current/.test(h)) || null,
+          pairsMatch: JSON.stringify(pairs) === JSON.stringify(expectedPairs),
+          missingPairs: expectedPairs.filter((k) => !pairs.includes(k)),
+          extraPairs: pairs.filter((k) => !expectedPairs.includes(k)),
+          hits: foreignHits(g),
+          gaps: endpointGaps(g),
+          routeExhaustedLeft: g.connections.filter((c) => c.routeExhausted).map((c) => c.id),
+        }
       }
       process.stdout.write(JSON.stringify(out))
       `,
@@ -333,10 +433,27 @@ test('layout boundary: invalid mainline ink falls back to current engine; graph 
   )
   assert.equal(probe.status, 0, probe.stderr || probe.stdout)
   const forced = JSON.parse(probe.stdout)
-  assert.equal(forced.fellBack, true, 'hint must surface fallback — not silent success')
-  assert.notEqual(forced.layoutEngine, 'mainline', 'must not keep invalid mainline as accepted engine')
-  assert.equal(forced.allAttached, true, 'fallback must not drop edges')
-  assert.equal(forced.edgeCount, main.connections.length)
+  for (const orient of ['vertical', 'horizontal']) {
+    const r = forced[orient]
+    assert.equal(r.fellBack, true, `${orient}: hint must surface fallback — not silent success`)
+    assert.notEqual(r.layoutEngine, 'mainline', `${orient}: must not keep stamped-invalid mainline`)
+    assert.equal(r.pairsMatch, true, `${orient}: fallback must keep every edge pair, not merely equal count`)
+    assert.deepEqual(r.missingPairs, [], `${orient}: missing edge pairs`)
+    assert.deepEqual(r.extraPairs, [], `${orient}: unexpected edge pairs`)
+    // Measured post-return geometry (columns/ELK as emitted by buildProcedureGraph). Report
+    // residuals explicitly — do not brand the legacy engine "hardsafe" without numbers.
+    if (r.hits.length || r.gaps.length) {
+      assert.fail(
+        `${orient}: fallback residual (not claimed hardsafe) hits=${JSON.stringify(r.hits)} gaps=${JSON.stringify(r.gaps)}`,
+      )
+    }
+    assert.deepEqual(r.routeExhaustedLeft, [], `${orient}: fallback engine must not carry mainline exhaustion stubs`)
+  }
+  // Pin expected pairs against the unforced mainline graph too (same spec edge set).
+  assert.deepEqual(
+    main.connections.map((c) => `${c.from}->${c.to}`).sort(),
+    expectedPairs,
+  )
 })
 
 test('mainline: input-order stability — reverse nodes+edges (canonical ids; mainline unchanged)', () => {

@@ -467,16 +467,22 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     })
     layoutEngine = 'mainline'
     // Hard validity: never accept known-unsafe mainline ink as a successful layout.
-    // Exhausted hang→spine corridors mark routeExhausted — fall back to the validated
-    // current-engine path (columns when stage data folds, else ELK) so the graph stays
-    // complete without accepting an exhaustion stub as clearance success.
-    // ANTU_FORCE_MAINLINE_EXHAUSTION=1: CI probe only — force the fallback branch (not a product switch).
-    // CI probe only (Node). Avoid bare `process` for tsc without @types/node in this project.
+    // Production chain: routeHangToSpine null → layoutStage stub + routeExhausted → stage
+    // assembly spreads the flag → straighten ({...c}) keeps it → mainlineInkInvalid →
+    // fall back to current engine (columns when stage data folds, else ELK). Completeness
+    // and clearance of that fallback are measured post-return in tests — not assumed hardsafe.
+    // ANTU_FORCE_MAINLINE_EXHAUSTION=1 (CI only): stamp one routeExhausted on the assembled
+    // mainline result so the real mainlineInkInvalid path runs (does not bypass the flag).
     const forceExhaust =
       typeof globalThis !== 'undefined' &&
       /** @type {{ process?: { env?: Record<string, string | undefined> } }} */ (globalThis).process
         ?.env?.ANTU_FORCE_MAINLINE_EXHAUSTION === '1'
-    if (forceExhaust || mainlineInkInvalid(best)) {
+    if (forceExhaust && best?.connections?.length) {
+      const i = best.connections.findIndex((c) => c.points?.length >= 2)
+      const at = i >= 0 ? i : 0
+      best.connections[at] = { ...best.connections[at], routeExhausted: true }
+    }
+    if (mainlineInkInvalid(best)) {
       hints.push(
         'mainline hang→spine exhausted without a clear corridor; fell back to current (ELK/columns) layout — residual mainline ink was not accepted as valid',
       )
