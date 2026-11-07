@@ -13,7 +13,9 @@
 //    3. branch-exit ends stay in their hang lane (so the leave→…→end chain stays one path);
 //       main-line ends already on the spine stay there. Rule-only ends (no flow edges) are
 //       omitted upstream — they belong in the rules table, not as islands on the canvas;
-//    4. a hang that rejoins the spine enters a free side face (not the trunk's top/bottom);
+//    4. a hang that rejoins the spine enters a free side face (not the trunk's top/bottom).
+//       Hang boxes may use N/S freely: leave top/bottom, run in the hang lane to the spine
+//       mid-height, then enter the side (1 bend). Outer corridor only when that lane is blocked;
 //    5. stack leftover "pocket" nodes beside the hangs;
 //    6. set stage boxes side by side; route cross-stage links with router.js;
 //    7. light polish, then re-pin the spine axis (polish must not leave the trunk bent).
@@ -45,6 +47,10 @@ import {
 const LANE_GAP = 112
 /** Extra room between two branch lanes */
 const LANE_SEP = 28
+/** Clearance outside the hang box for a distant rejoin corridor (fallback when hang lane blocked) */
+const OUTER_GAP = 28
+/** Centre-to-centre span above which spine→hang prefers the hang-lane / corridor helper */
+const DISTANT_DY = 280
 
 /**
  * Drain a mainline generator without pausing (Node / MCP / tests).
@@ -568,11 +574,14 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   pushBranchesOffSpine(placed, spineColumn)
   // Polish / pin can rewrite side links; put same-row decision branches and backs back to 0-bend.
   restoreSameRowLinks(placed, connections, diamonds)
-  // Labelled hops shorter than their text: push the hang end away so the label can sit ON the ink.
-  lengthenLabeledHops(placed, connections, spineIdSet, diamonds)
-  restoreSameRowLinks(placed, connections, diamonds)
   // Linked boxes prefer shared centres; every port sits on a face centre (polish must not leave a skew).
   preferCenteredLinks(placed, connections, diamonds, spineIdSet)
+  // Labelled hops shorter than their text: after centres settle (same-row hang↔hang can be only
+  // LANE_SEP wide), push so the chip still leaves a stub of ink on each side.
+  lengthenLabeledHops(placed, connections, spineIdSet, diamonds)
+  restoreSameRowLinks(placed, connections, diamonds)
+  // Side-channel / outer-corridor backs: push the vertical run outward until an on-ink label fits.
+  clearCorridorForLabels(placed, connections)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -764,8 +773,10 @@ function preferCenteredLinks(placed, connections, diamonds, spineIds) {
 }
 
 /**
- * If a labelled link's longest run is shorter than the label, stretch it: same-row / elbow
- * hops push the non-spine end away from the trunk; vertical spine gaps push the lower box down.
+ * If a labelled link's longest run is shorter than the label, stretch it so the chip still
+ * leaves a stub of ink on each side (local floor; hang↔hang included). Spine↔hang: push the
+ * hang away from the trunk. Hang↔hang: push the outer hang further out. Vertical: open the
+ * gap by shifting everything below. Spine↔spine horizontal is left alone (trunk stays put).
  * After any move, rebuild every incident link so ports stay on face centres.
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {object[]} connections
@@ -777,8 +788,18 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
   const INK_PAD = 20
   /** @type {Set<string>} */
   const moved = new Set()
+  let spineCx = 0
+  let spineN = 0
+  for (const id of spineIds) {
+    const r = placed.get(id)
+    if (!r) continue
+    spineCx += r.x + r.w / 2
+    spineN += 1
+  }
+  if (spineN) spineCx /= spineN
   for (const c of connections) {
     if (!c.labelSize || !c.points?.length) continue
+    // DEBUG
     const { width: lw, height: lh } = c.labelSize
     const a = placed.get(c.from)
     const b = placed.get(c.to)
@@ -800,18 +821,36 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
 
     const deficit = need - bestLen
     if (bestHoriz) {
-      // Push the hang (non-spine) box away from the trunk so the side hop grows.
       const fromSpine = spineIds.has(c.from)
       const toSpine = spineIds.has(c.to)
-      if (fromSpine === toSpine) continue
-      const hangId = fromSpine ? c.to : c.from
-      const spineId = fromSpine ? c.from : c.to
-      const r = placed.get(hangId)
-      const s = placed.get(spineId)
-      if (!r || !s) continue
-      const away = r.x + r.w / 2 >= s.x + s.w / 2 ? 1 : -1
-      placed.set(hangId, { ...r, x: r.x + away * deficit })
-      moved.add(hangId)
+      if (fromSpine !== toSpine) {
+        // Spine ↔ hang: push the hang away from the trunk so the side hop grows.
+        const hangId = fromSpine ? c.to : c.from
+        const spineId = fromSpine ? c.from : c.to
+        const r = placed.get(hangId)
+        const s = placed.get(spineId)
+        if (!r || !s) continue
+        const away = r.x + r.w / 2 >= s.x + s.w / 2 ? 1 : -1
+        placed.set(hangId, { ...r, x: r.x + away * deficit })
+        moved.add(hangId)
+      } else if (!fromSpine && !toSpine) {
+        // Hang ↔ hang: grow the gap by pushing the outer box further from the spine.
+        const leftId = a.x <= b.x ? c.from : c.to
+        const rightId = a.x <= b.x ? c.to : c.from
+        const left = placed.get(leftId)
+        const right = placed.get(rightId)
+        if (!left || !right) continue
+        const leftCx = left.x + left.w / 2
+        const rightCx = right.x + right.w / 2
+        if (Math.abs(rightCx - spineCx) >= Math.abs(leftCx - spineCx)) {
+          placed.set(rightId, { ...right, x: right.x + deficit })
+          moved.add(rightId)
+        } else {
+          placed.set(leftId, { ...left, x: left.x - deficit })
+          moved.add(leftId)
+        }
+      }
+      // Both on the spine: never shove the trunk for a label.
     } else {
       // Vertical (incl. labelled spine hops like 「受理」): open the gap so the chip does not
       // cover the whole segment. Stretch when the two boxes nearly share an axis.
@@ -831,22 +870,115 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
   rebuildIncidentLinks(placed, connections, moved, diamonds, spineIds)
 }
 /**
- * Midpoint of the longest segment that can hold the label — preferred when the chip sits ON the ink.
+ * On-ink chip: prefer the longest clear run. Slide along each segment to avoid nodes; vertical
+ * corridor runs outrank short stubs so a back like「否，下月继续」sits on the side channel.
+ * @param {number[][]} points
+ * @param {{ width: number, height: number }} size
+ * @param {{ x: number, y: number, w: number, h: number }[]} [nodeRects]
  * @returns {{ x: number, y: number } | null}
  */
-function labelOnLongestSegment(points, size) {
+function labelOnLongestSegment(points, size, nodeRects = []) {
   const { width: w, height: h } = size
-  let best = null
+  const overlaps = (r) =>
+    nodeRects.some((n) => r.x < n.x + n.w - 0.5 && n.x < r.x + r.w - 0.5 && r.y < n.y + n.h - 0.5 && n.y < r.y + r.h - 0.5)
+  /** @type {{ x: number, y: number, len: number, vert: boolean }[]} */
+  const candidates = []
   for (let i = 0; i < points.length - 1; i += 1) {
     const [p, q] = [points[i], points[i + 1]]
-    const horiz = Math.abs(p[1] - q[1]) < 0.5
-    const len = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1])
+    const dx = q[0] - p[0]
+    const dy = q[1] - p[1]
+    // Dominant axis — a 1px jog must not flip a long run into the other orientation.
+    const horiz = Math.abs(dx) >= Math.abs(dy)
+    const len = Math.abs(horiz ? dx : dy)
     const need = horiz ? w : h
     if (len < need + 8) continue
-    const r = { x: (p[0] + q[0]) / 2 - w / 2, y: (p[1] + q[1]) / 2 - h / 2, w, h, len }
-    if (!best || len > best.len) best = r
+    const room = len - need
+    // Mid first, then slide toward either end in steps.
+    const alongs = [room / 2]
+    for (let t = 4; t <= room - 4; t += Math.max(4, Math.floor(room / 6))) alongs.push(t)
+    alongs.push(0, Math.max(0, room))
+    const seen = new Set()
+    for (const along of alongs) {
+      const a = Math.max(0, Math.min(room, along))
+      const key = a.toFixed(1)
+      if (seen.has(key)) continue
+      seen.add(key)
+      const r = horiz
+        ? {
+            x: (dx >= 0 ? p[0] + a : p[0] - a - w),
+            y: (p[1] + q[1]) / 2 - h / 2,
+            w,
+            h,
+          }
+        : {
+            x: (p[0] + q[0]) / 2 - w / 2,
+            y: (dy >= 0 ? p[1] + a : p[1] - a - h),
+            w,
+            h,
+          }
+      if (overlaps(r)) continue
+      candidates.push({ x: r.x, y: r.y, len, vert: !horiz })
+    }
   }
-  return best ? { x: best.x, y: best.y } : null
+  if (!candidates.length) return null
+  // Prefer longer runs; on a tie, prefer a vertical corridor over a short stub.
+  candidates.sort((a, b) => b.len - a.len || Number(b.vert) - Number(a.vert))
+  return { x: candidates[0].x, y: candidates[0].y }
+}
+
+/**
+ * For U-shaped side / outer corridors, push the vertical run outward until an on-ink label
+ * fits on it (lengthens the horizontal stubs). No-op when a clear on-line spot already exists.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ */
+function clearCorridorForLabels(placed, connections) {
+  const nodeRects = [...placed.values()]
+  for (const c of connections) {
+    if (!c.labelSize || !c.points || c.points.length < 4) continue
+    if (labelOnLongestSegment(c.points, c.labelSize, nodeRects)) continue
+    const { width: lw, height: lh } = c.labelSize
+    // Find the longest vertical run (the corridor) — dominant axis, not a 1px jog.
+    let vi = -1
+    let vLen = 0
+    for (let i = 0; i < c.points.length - 1; i += 1) {
+      const [p, q] = [c.points[i], c.points[i + 1]]
+      const dx = q[0] - p[0]
+      const dy = q[1] - p[1]
+      if (Math.abs(dy) < Math.abs(dx)) continue
+      const len = Math.abs(dy)
+      if (len > vLen) {
+        vLen = len
+        vi = i
+      }
+    }
+    if (vi < 0 || vLen < lh + 8) continue
+    const [p, q] = [c.points[vi], c.points[vi + 1]]
+    const midY = (p[1] + q[1]) / 2
+    // Which way is "outward": away from the other points' average x.
+    let avgX = 0
+    for (const [x] of c.points) avgX += x
+    avgX /= c.points.length
+    const curX = p[0]
+    const outward = curX <= avgX ? -1 : 1
+    const overlaps = (r) =>
+      nodeRects.some((n) => r.x < n.x + n.w - 0.5 && n.x < r.x + r.w - 0.5 && r.y < n.y + n.h - 0.5 && n.y < r.y + r.h - 0.5)
+    let x = curX
+    let fitted = false
+    for (let step = 0; step < 24; step += 1) {
+      x = curX + outward * (OUTER_GAP / 2) * (step + 1)
+      const chip = { x: x - lw / 2, y: midY - lh / 2, w: lw, h: lh }
+      if (!overlaps(chip)) {
+        fitted = true
+        break
+      }
+    }
+    if (!fitted) continue
+    // Rewrite every point that sat on the old corridor x.
+    for (const pt of c.points) {
+      if (Math.abs(pt[0] - curX) < 0.5) pt[0] = x
+    }
+  }
 }
 
 /**
@@ -873,10 +1005,10 @@ function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = [
     const labels = others
       .filter((o) => o.labelAt && o.labelSize)
       .map((o) => ({ x: o.labelAt.x, y: o.labelAt.y, w: o.labelSize.width, h: o.labelSize.height }))
-    // Prefer sitting ON the longest run (opaque chip hides the stroke under the text).
+    // Prefer sitting ON the longest clear run (opaque chip hides the stroke under the text).
     if (opts.preferOnLine) {
-      const on = labelOnLongestSegment(c.points, c.labelSize)
-      if (on && !overlapsNode({ ...on, w: c.labelSize.width, h: c.labelSize.height })) {
+      const on = labelOnLongestSegment(c.points, c.labelSize, nodeRects)
+      if (on) {
         c.labelAt = on
         continue
       }
@@ -954,10 +1086,138 @@ function sideChannel(a, b, preferLeft = false) {
 }
 
 /**
+ * Preferred hang → spine rejoin: hang may use N/S. Leave the travel face, run in the hang
+ * lane to the spine mid-height, enter the spine's hang-side face (1 bend). Never touches trunk N/S.
+ * @param {{ x: number, y: number, w: number, h: number }} a hang
+ * @param {{ x: number, y: number, w: number, h: number }} b spine
+ * @param {boolean} hangOnRight
+ */
+function hangLaneRejoin(a, b, hangOnRight) {
+  const acx = a.x + a.w / 2
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const goingDown = bcy >= acy
+  return [
+    [acx, goingDown ? a.y + a.h : a.y],
+    [acx, bcy],
+    [hangOnRight ? b.x + b.w : b.x, bcy],
+  ]
+}
+
+/**
+ * Inward gutter when the hang lane is blocked: leave the face toward the spine, run between
+ * hang and trunk, enter the spine side. Avoids a far outer U with a tiny vertical jog
+ * (e.g. purchase-contract「协商是否成功」→「甲方付款」).
+ * @param {{ x: number, y: number, w: number, h: number }} a hang
+ * @param {{ x: number, y: number, w: number, h: number }} b spine
+ * @param {boolean} hangOnRight
+ */
+function gutterRejoin(a, b, hangOnRight) {
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const ax = hangOnRight ? a.x : a.x + a.w
+  const bx = hangOnRight ? b.x + b.w : b.x
+  if (Math.abs(acy - bcy) < 2) {
+    return [
+      [ax, acy],
+      [bx, bcy],
+    ]
+  }
+  const gutterX = (ax + bx) / 2
+  return [
+    [ax, acy],
+    [gutterX, acy],
+    [gutterX, bcy],
+    [bx, bcy],
+  ]
+}
+
+/**
+ * Outer corridor last resort: leave travel face, run outside the hang column, enter spine side.
+ * @param {{ x: number, y: number, w: number, h: number }} a hang box
+ * @param {{ x: number, y: number, w: number, h: number }} b spine box
+ * @param {boolean} hangOnRight hang sits to the right of the spine
+ * @param {number} [depth] extra outward offset when several corridors stack
+ */
+function outerCorridor(a, b, hangOnRight, depth = 0) {
+  const acx = a.x + a.w / 2
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const goingDown = bcy >= acy
+  const leaveY = goingDown ? a.y + a.h : a.y
+  const outer = hangOnRight
+    ? Math.max(a.x + a.w, b.x + b.w) + OUTER_GAP + depth
+    : Math.min(a.x, b.x) - OUTER_GAP - depth
+  return [
+    [acx, leaveY],
+    [outer, leaveY],
+    [outer, bcy],
+    [hangOnRight ? b.x + b.w : b.x, bcy],
+  ]
+}
+
+/** True when another box sits on the hang's vertical lane between leaveY and targetY. */
+function hangLaneBlocked(a, leaveY, targetY, placed, fromId, toId) {
+  if (!placed) return false
+  const acx = a.x + a.w / 2
+  const lo = Math.min(leaveY, targetY)
+  const hi = Math.max(leaveY, targetY)
+  if (hi <= lo + 0.5) return false
+  for (const [id, r] of placed) {
+    if (id === fromId || id === toId) continue
+    if (Math.abs(r.x + r.w / 2 - acx) > r.w / 2 + 2) continue
+    if (r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return true
+  }
+  return false
+}
+
+/** True when a box sits on the inward gutter x between hang and spine over the y span. */
+function gutterBlocked(a, b, hangOnRight, placed, fromId, toId) {
+  if (!placed) return false
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const ax = hangOnRight ? a.x : a.x + a.w
+  const bx = hangOnRight ? b.x + b.w : b.x
+  const gutterX = (ax + bx) / 2
+  const lo = Math.min(acy, bcy)
+  const hi = Math.max(acy, bcy)
+  for (const [id, r] of placed) {
+    if (id === fromId || id === toId) continue
+    if (r.x > gutterX + 2 || r.x + r.w < gutterX - 2) continue
+    if (hi <= lo + 0.5) continue
+    if (r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return true
+  }
+  return false
+}
+
+/**
+ * Hang → spine: hang-lane (1 bend) → inward gutter → outer corridor (last resort).
+ * @param {{ x: number, y: number, w: number, h: number }} a hang
+ * @param {{ x: number, y: number, w: number, h: number }} b spine
+ * @param {boolean} hangOnRight
+ * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} placed
+ * @param {string | null | undefined} fromId
+ * @param {string | null | undefined} toId
+ */
+function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId) {
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const leaveY = bcy >= acy ? a.y + a.h : a.y
+  if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
+    return hangLaneRejoin(a, b, hangOnRight)
+  }
+  if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
+    return gutterRejoin(a, b, hangOnRight)
+  }
+  return outerCorridor(a, b, hangOnRight)
+}
+
+/**
  * Orthogonal route between two boxes, ports on face centres. Prefer same-row / same-column
  * (0-bend); otherwise leave the facing side of the source and enter the facing side of the target.
  * When a same-column hop would cut through another box, take a side channel instead.
  * Hang → spine rejoins enter a free side face so they do not share the trunk's top/bottom port.
+ * Distant / upward hang↔spine hops use an outer corridor on the hang side.
  * @param {{ x: number, y: number, w: number, h: number }} a
  * @param {{ x: number, y: number, w: number, h: number }} b
  * @param {boolean} [fromDiamond]
@@ -984,14 +1244,23 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
       [bcx, down ? b.y : b.y + b.h],
     ]
   }
-  // Hang above a spine target: leave bottom centre, enter the free side face (trunk owns N/S).
-  if (!fromSpine && toSpine && a.y + a.h <= b.y + 0.5) {
-    const fromRight = acx > bcx
-    return [
-      [acx, a.y + a.h],
-      [acx, bcy],
-      [fromRight ? b.x + b.w : b.x, bcy],
-    ]
+  // Hang → spine: trunk owns N/S on the spine; hang may leave N/S. Prefer hang-lane (1 bend).
+  if (!fromSpine && toSpine) {
+    return routeHangToSpine(a, b, acx > bcx, placed, fromId, toId)
+  }
+  // Spine → hang (not same-row): reverse of hang→spine when the hop is off the fork row.
+  if (fromSpine && !toSpine && !sameRowLink(a, b)) {
+    const hangOnRight = bcx > acx
+    // Near: leave spine side, enter hang top/bottom facing the spine (existing short path below).
+    const hang = b
+    const spine = a
+    const hcy = hang.y + hang.h / 2
+    const scy = spine.y + spine.h / 2
+    const leaveY = scy >= hcy ? hang.y + hang.h : hang.y
+    // Far / blocked hang-lane: use the hang→spine helper reversed.
+    if (Math.abs(scy - hcy) >= DISTANT_DY || hangLaneBlocked(hang, leaveY, scy, placed, toId, fromId)) {
+      return routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId).slice().reverse()
+    }
   }
   // Source above target: leave bottom centre, enter top centre.
   if (a.y + a.h <= b.y + 0.5) {
@@ -1004,7 +1273,7 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
       [bcx, b.y],
     ]
   }
-  // Spine source below a hang target: leave free side face, enter top of hang.
+  // Spine source below a hang target (near): leave free side face, enter top of hang.
   if (fromSpine && !toSpine && b.y + b.h <= a.y + 0.5) {
     const toRight = bcx > acx
     return [

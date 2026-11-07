@@ -396,3 +396,219 @@ test('mainline: free side faces are not shared when a decision has two exits', (
   const rj = endOn(rejoin, 'n-15')
   assert.ok(rj === 'E' || rj === 'W', `hang rejoin enters a side face of n-15, got ${rj}`)
 })
+
+test('mainline: side-corridor back label sits on the vertical ink (stages off)', () => {
+  // 03 n-5→n-3「否，下月继续」: chip on the left vertical run, not below the short stub by the diamond.
+  const spec = load('03-labour-outsourcing-contract.zh-CN.json')
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const c = g.connections.find((e) => e.id === 'c:n-5->n-3')
+  assert.ok(c?.labelAt && c.labelSize)
+  const L = { x: c.labelAt.x, y: c.labelAt.y, w: c.labelSize.width, h: c.labelSize.height }
+  const cx = L.x + L.w / 2
+  const cy = L.y + L.h / 2
+  // Nearest segment should be the long vertical (same x, different y).
+  let onVert = false
+  let best = Infinity
+  for (let i = 0; i < c.points.length - 1; i += 1) {
+    const [p, q] = [c.points[i], c.points[i + 1]]
+    const dx = q[0] - p[0]
+    const dy = q[1] - p[1]
+    const len2 = dx * dx + dy * dy
+    const t = len2 < 1e-9 ? 0 : Math.max(0, Math.min(1, ((cx - p[0]) * dx + (cy - p[1]) * dy) / len2))
+    const d = Math.hypot(cx - p[0] - t * dx, cy - p[1] - t * dy)
+    if (d < best) {
+      best = d
+      onVert = Math.abs(dx) < 0.5 && Math.abs(dy) > 1
+    }
+  }
+  assert.ok(onVert, 'label should sit on the vertical corridor')
+  assert.ok(best <= 1, `on-ink chip centre should be on the stroke, dist=${best.toFixed(1)}`)
+  for (const n of g.nodes) {
+    const r = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
+    const hit = L.x < r.x + r.w - 0.5 && r.x < L.x + L.w - 0.5 && L.y < r.y + r.h - 0.5 && r.y < L.y + L.h - 0.5
+    assert.ok(!hit, `label must not overlap ${n.id}`)
+  }
+})
+
+test('mainline: labelled hang↔hang hop keeps ink stubs beside the chip', () => {
+  // Synthetic S1: decision「支线是否回并」→ end「支线终止」on a neighbour hang lane used to be
+  // only LANE_SEP wide, so「结束」hid the whole stroke. Floor: longest run ≥ label + 2×20.
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: 'ink-floor hang-hang',
+    domain: 'contract-performance',
+    actors: [{ id: 'a-1', name: '甲方', role: '买方' }],
+    sources: [{ id: 's-1', type: 'note', name: 't', loc: { file: 't' } }],
+    stages: [
+      { id: 'st-1', label: '主干' },
+      { id: 'st-2', label: '挂枝' },
+    ],
+    nodes: [
+      { id: 'n-1', kind: 'start', label: '开始', stageId: 'st-1' },
+      { id: 'n-2', kind: 'decision', label: '是否走支线', stageId: 'st-1' },
+      { id: 'n-3', kind: 'step', label: '主干付款', stageId: 'st-1', actorIds: ['a-1'] },
+      { id: 'n-4', kind: 'end', label: '完成', stageId: 'st-1', outcome: 'positive' },
+      { id: 'n-5', kind: 'decision', label: '支线是否回并', stageId: 'st-2' },
+      { id: 'n-6', kind: 'end', label: '支线终止', stageId: 'st-2', outcome: 'negative' },
+    ],
+    edges: [
+      { from: 'n-1', to: 'n-2', main: true },
+      { from: 'n-2', to: 'n-3', condition: '否', main: true },
+      { from: 'n-2', to: 'n-5', condition: '是' },
+      { from: 'n-5', to: 'n-3', condition: '回并' },
+      { from: 'n-5', to: 'n-6', condition: '结束' },
+      { from: 'n-3', to: 'n-4', main: true },
+    ],
+  }
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const spine = new Set(g.spine)
+  const c = g.connections.find((e) => e.id === 'c:n-5->n-6')
+  assert.ok(c?.labelSize && c.points?.length, 'labelled hang↔hang edge')
+  assert.equal(spine.has('n-5'), false)
+  assert.equal(spine.has('n-6'), false)
+  let bestLen = 0
+  for (let i = 0; i < c.points.length - 1; i += 1) {
+    const [p, q] = [c.points[i], c.points[i + 1]]
+    bestLen = Math.max(bestLen, Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]))
+  }
+  const INK_PAD = 20
+  const need = c.labelSize.width + 2 * INK_PAD
+  assert.ok(bestLen + 0.5 >= need, `hang↔hang「结束」run ${bestLen} < floor ${need}`)
+})
+
+test('mainline: hang→spine rejoin uses hang lane (leave N/S, 1 bend, spine side entry)', () => {
+  // Hang boxes may use N/S; spine keeps N/S for the trunk. Prefer: leave travel face → hang column
+  // → spine mid → side face (1 bend). Outer corridor only when that lane is blocked.
+  const face = (n, [x, y]) => {
+    const cx = n.position.x + n.data.w / 2
+    const cy = n.position.y + n.data.h / 2
+    const onL = Math.abs(x - n.position.x) < 1
+    const onR = Math.abs(x - (n.position.x + n.data.w)) < 1
+    const onT = Math.abs(y - n.position.y) < 1
+    const onB = Math.abs(y - (n.position.y + n.data.h)) < 1
+    if (onL && Math.abs(y - cy) < 1) return 'W'
+    if (onR && Math.abs(y - cy) < 1) return 'E'
+    if (onT && Math.abs(x - cx) < 1) return 'N'
+    if (onB && Math.abs(x - cx) < 1) return 'S'
+    return `?(${x},${y})`
+  }
+  /** @type {{ file: string, id: string, leave: 'N' | 'S' }[]} */
+  const cases = [
+    { file: '03-labour-outsourcing-contract.zh-CN.json', id: 'c:n-7->n-2', leave: 'N' }, // upward distant
+    { file: '07-share-acquisition-agreement.zh-CN.json', id: 'c:n-13->n-14', leave: 'S' }, // downward distant
+    { file: '05-premises-lease.zh-CN.json', id: 'c:n-25->n-22', leave: 'N' }, // upward rejoin
+    { file: '08-work-injury-recognition.zh-CN.json', id: 'c:n-14->n-15', leave: 'S' }, // near downward
+  ]
+  for (const { file, id, leave } of cases) {
+    const spec = load(file)
+    const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+    const byId = new Map(g.nodes.map((n) => [n.id, n]))
+    const c = g.connections.find((e) => e.id === id)
+    assert.ok(c, `${file}: missing ${id}`)
+    const hang = byId.get(c.from)
+    const spineN = byId.get(c.to)
+    assert.ok(hang && spineN)
+    assert.ok(g.spine.includes(c.to), `${file}: ${c.to} should be on spine`)
+    assert.equal(g.spine.includes(c.from), false, `${file}: ${c.from} should be hang`)
+    assert.equal(face(hang, c.points[0]), leave, `${file} ${id} leave`)
+    const enter = face(spineN, c.points[c.points.length - 1])
+    assert.ok(enter === 'E' || enter === 'W', `${file} ${id} spine side entry, got ${enter}`)
+    assert.ok(bendsOf(c.points) <= 1, `${file} ${id} hang-lane ≤1 bend, got ${bendsOf(c.points)}`)
+    const hangCx = hang.position.x + hang.data.w / 2
+    assert.ok(Math.abs(c.points[1][0] - hangCx) < 1, `${file} ${id} vertical on hang centre`)
+  }
+  // Trunk N/S on the upward target stay free of the rejoin.
+  {
+    const spec = load('03-labour-outsourcing-contract.zh-CN.json')
+    const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+    const byId = new Map(g.nodes.map((n) => [n.id, n]))
+    const spine = byId.get('n-2')
+    const mainIn = g.connections.find((e) => e.id === 'c:n-1->n-2')
+    const mainOut = g.connections.find((e) => e.id === 'c:n-2->n-3')
+    assert.equal(face(spine, mainIn.points[mainIn.points.length - 1]), 'N')
+    assert.equal(face(spine, mainOut.points[0]), 'S')
+  }
+})
+
+test('mainline: blocked hang-lane uses inward gutter (purchase-contract)', () => {
+  // 02 n-9→n-6「是」: n-8 sits on the hang column above the diamond, so hang-lane is blocked.
+  // Prefer the gutter between hang and spine (leave W, enter E) — not a far outer U with a tiny jog.
+  const spec = load('02-purchase-contract.zh-CN.json')
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  const face = (n, [x, y]) => {
+    const cx = n.position.x + n.data.w / 2
+    const cy = n.position.y + n.data.h / 2
+    if (Math.abs(x - n.position.x) < 1 && Math.abs(y - cy) < 1) return 'W'
+    if (Math.abs(x - (n.position.x + n.data.w)) < 1 && Math.abs(y - cy) < 1) return 'E'
+    if (Math.abs(y - n.position.y) < 1 && Math.abs(x - cx) < 1) return 'N'
+    if (Math.abs(y - (n.position.y + n.data.h)) < 1 && Math.abs(x - cx) < 1) return 'S'
+    return '?'
+  }
+  const c = g.connections.find((e) => e.id === 'c:n-9->n-6')
+  const hang = byId.get('n-9')
+  const spine = byId.get('n-6')
+  assert.ok(c && hang && spine)
+  assert.equal(face(hang, c.points[0]), 'W', 'gutter leaves toward the spine')
+  assert.equal(face(spine, c.points[c.points.length - 1]), 'E')
+  assert.ok(bendsOf(c.points) <= 2)
+  const hangCx = hang.position.x + hang.data.w / 2
+  const spineRight = spine.position.x + spine.data.w
+  // Vertical run (if any) sits between spine and hang — not outside the hang column.
+  for (let i = 0; i < c.points.length - 1; i += 1) {
+    const [p, q] = [c.points[i], c.points[i + 1]]
+    if (Math.abs(p[0] - q[0]) >= 0.5 || Math.abs(p[1] - q[1]) <= 1) continue
+    assert.ok(p[0] < hangCx - 1, `gutter x=${p[0]} should be inward of hang cx ${hangCx}`)
+    assert.ok(p[0] > spineRight - 1, `gutter x=${p[0]} should be outside spine right ${spineRight}`)
+  }
+})
+
+test('mainline: stages-off hang→spine never enters trunk N/S (corpus)', () => {
+  // Every hang→spine hop: spine end is E/W. Off-row hops leave hang on N/S (travel face), ≤2 bends.
+  const face = (n, [x, y]) => {
+    const cx = n.position.x + n.data.w / 2
+    const cy = n.position.y + n.data.h / 2
+    if (Math.abs(x - n.position.x) < 1 && Math.abs(y - cy) < 1) return 'W'
+    if (Math.abs(x - (n.position.x + n.data.w)) < 1 && Math.abs(y - cy) < 1) return 'E'
+    if (Math.abs(y - n.position.y) < 1 && Math.abs(x - cx) < 1) return 'N'
+    if (Math.abs(y - (n.position.y + n.data.h)) < 1 && Math.abs(x - cx) < 1) return 'S'
+    return '?'
+  }
+  let hops = 0
+  for (const f of files) {
+    const spec = load(f)
+    const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+    const spine = new Set(g.spine)
+    const byId = new Map(g.nodes.map((n) => [n.id, n]))
+    for (const c of g.connections) {
+      if (spine.has(c.from) || !spine.has(c.to)) continue
+      hops += 1
+      const hang = byId.get(c.from)
+      const sp = byId.get(c.to)
+      assert.ok(hang && sp, `${f} ${c.id}`)
+      const enter = face(sp, c.points[c.points.length - 1])
+      assert.ok(enter === 'E' || enter === 'W', `${f} ${c.id}: spine enter ${enter}, want E/W`)
+      const sameRow = Math.abs(hang.position.y + hang.data.h / 2 - (sp.position.y + sp.data.h / 2)) < 2
+      if (sameRow) {
+        assert.equal(bendsOf(c.points), 0, `${f} ${c.id}: same-row hang→spine should be straight`)
+        continue
+      }
+      const leave = face(hang, c.points[0])
+      const towardSpine =
+        hang.position.x + hang.data.w / 2 > sp.position.x + sp.data.w / 2 ? 'W' : 'E'
+      // Hang-lane / outer leave N/S; inward gutter leaves the face toward the spine.
+      assert.ok(
+        leave === 'N' || leave === 'S' || leave === towardSpine,
+        `${f} ${c.id}: off-row hang leave ${leave}, want N/S or ${towardSpine}`,
+      )
+      assert.ok(bendsOf(c.points) <= 2, `${f} ${c.id}: ≤2 bends, got ${bendsOf(c.points)}`)
+      // Hang-lane (leave N/S, 1 bend) keeps the vertical on the hang centre.
+      if ((leave === 'N' || leave === 'S') && bendsOf(c.points) <= 1) {
+        const hangCx = hang.position.x + hang.data.w / 2
+        assert.ok(Math.abs(c.points[1][0] - hangCx) < 1, `${f} ${c.id}: hang-lane vertical on hang cx`)
+      }
+    }
+  }
+  assert.ok(hops >= 4, `expected several hang→spine hops, got ${hops}`)
+})
