@@ -108,27 +108,50 @@ export function gutterRejoin(a, b, hangOnRight) {
  * @param {{ x: number, y: number, w: number, h: number }} b
  * @param {boolean} hangOnRight
  * @param {number} [depth]
+ * @param {number} [railY] vertical rail y for the return (defaults to spine mid-height)
  */
-export function outerCorridor(a, b, hangOnRight, depth = 0) {
+export function outerCorridor(a, b, hangOnRight, depth = 0, railY = undefined) {
   const acx = a.x + a.w / 2
   const acy = a.y + a.h / 2
   const bcy = b.y + b.h / 2
   const goingDown = bcy >= acy
   const leaveY = goingDown ? a.y + a.h : a.y
+  const rail = railY === undefined ? bcy : railY
   const outer = hangOnRight
     ? Math.max(a.x + a.w, b.x + b.w) + OUTER_GAP + depth
     : Math.min(a.x, b.x) - OUTER_GAP - depth
   return [
     [acx, leaveY],
     [outer, leaveY],
-    [outer, bcy],
-    [hangOnRight ? b.x + b.w : b.x, bcy],
+    [outer, rail],
+    [hangOnRight ? b.x + b.w : b.x, rail],
   ]
 }
 
 /**
- * Diamond hang→spine outer side: leave E/W (not N/S), escalate outward until leave/vertical/return
- * clear every foreign box. Returns null when no clear outer channel exists (honest failure).
+ * Search outer X and return-rail Y until the U clears every foreign box.
+ * Prefer spine mid-height; else rails above/below hang and spine boxes.
+ * @returns {number[][] | null}
+ */
+export function clearOuterCorridor(a, b, hangOnRight, placed, fromId, toId, maxDepth = 16) {
+  const bcy = b.y + b.h / 2
+  const rails = [bcy]
+  for (let k = 1; k <= 10; k += 1) {
+    const gap = 20 + k * 16
+    rails.push(Math.min(a.y, b.y) - gap, Math.max(a.y + a.h, b.y + b.h) + gap)
+  }
+  for (const railY of rails) {
+    for (let d = 0; d <= maxDepth; d += 1) {
+      const pts = outerCorridor(a, b, hangOnRight, d * 16, railY)
+      if (pathClear(pts, placed, fromId, toId)) return pts
+    }
+  }
+  return null
+}
+
+/**
+ * Diamond hang→spine outer side: leave E/W (not N/S), escalate outward and return-rail Y until
+ * leave/vertical/return clear every foreign box. Returns null when no clear channel exists.
  * @param {{ x: number, y: number, w: number, h: number }} a
  * @param {{ x: number, y: number, w: number, h: number }} b
  * @param {boolean} hangOnRight
@@ -143,15 +166,22 @@ export function diamondOuterSide(a, b, hangOnRight, placed = null, fromId = null
   const bcy = b.y + b.h / 2
   const leaveX = hangOnRight ? a.x + a.w : a.x
   const spineFace = hangOnRight ? b.x + b.w : b.x
-  for (let d = 0; d <= maxDepth; d += 1) {
-    const outer = hangOnRight ? leaveX + OUTER_GAP + d * 16 : leaveX - OUTER_GAP - d * 16
-    const pts = [
-      [leaveX, acy],
-      [outer, acy],
-      [outer, bcy],
-      [spineFace, bcy],
-    ]
-    if (pathClear(pts, placed, fromId, toId)) return pts
+  const rails = [bcy]
+  for (let k = 1; k <= 8; k += 1) {
+    const gap = 20 + k * 16
+    rails.push(Math.min(a.y, b.y) - gap, Math.max(a.y + a.h, b.y + b.h) + gap)
+  }
+  for (const railY of rails) {
+    for (let d = 0; d <= maxDepth; d += 1) {
+      const outer = hangOnRight ? leaveX + OUTER_GAP + d * 16 : leaveX - OUTER_GAP - d * 16
+      const pts = [
+        [leaveX, acy],
+        [outer, acy],
+        [outer, railY],
+        [spineFace, railY],
+      ]
+      if (pathClear(pts, placed, fromId, toId)) return pts
+    }
   }
   return null
 }
@@ -189,14 +219,21 @@ export function interLaneCorridor(a, b, hangOnRight, placed, fromId, toId) {
     mid = hangOnRight ? hangOuter + OUTER_GAP : hangOuter - OUTER_GAP
   }
   const spineFace = hangOnRight ? b.x + b.w : b.x
-  const pts = [
-    [hangOuter, acy],
-    [mid, acy],
-    [mid, bcy],
-    [spineFace, bcy],
-  ]
-  if (!pathClear(pts, placed, fromId, toId)) return null
-  return pts
+  const rails = [bcy]
+  for (let k = 1; k <= 8; k += 1) {
+    const gap = 20 + k * 16
+    rails.push(Math.min(a.y, b.y) - gap, Math.max(a.y + a.h, b.y + b.h) + gap)
+  }
+  for (const railY of rails) {
+    const pts = [
+      [hangOuter, acy],
+      [mid, acy],
+      [mid, railY],
+      [spineFace, railY],
+    ]
+    if (pathClear(pts, placed, fromId, toId)) return pts
+  }
+  return null
 }
 
 /** True when another box sits on the hang's vertical lane between leaveY and targetY. */
@@ -234,12 +271,112 @@ export function gutterBlocked(a, b, hangOnRight, placed, fromId, toId) {
 }
 
 /**
+ * Straight side-to-side link between same-row boxes (0 bends). Does not check obstacles.
+ * @param {{ x: number, y: number, w: number, h: number }} a
+ * @param {{ x: number, y: number, w: number, h: number }} b
+ */
+export function sideHorizontal(a, b) {
+  const ay = a.y + a.h / 2
+  const by = b.y + b.h / 2
+  if (a.x + a.w / 2 <= b.x + b.w / 2) {
+    return [
+      [a.x + a.w, ay],
+      [b.x, by],
+    ]
+  }
+  return [
+    [a.x, ay],
+    [b.x + b.w, by],
+  ]
+}
+
+/** True when another box sits on the shared mid-row between a and b. */
+export function rowBlocked(a, b, placed, fromId, toId) {
+  if (!placed) return false
+  const y = (a.y + a.h / 2 + b.y + b.h / 2) / 2
+  const lo = Math.min(a.x + a.w, b.x + b.w)
+  const hi = Math.max(a.x, b.x)
+  if (hi <= lo + 0.5) return false
+  for (const [id, r] of placed) {
+    if (id === fromId || id === toId) continue
+    if (y <= r.y + 0.5 || y >= r.y + r.h - 0.5) continue
+    if (r.x + r.w > lo + 0.5 && r.x < hi - 0.5) return true
+  }
+  return false
+}
+
+/**
+ * Same-row route that clears foreign boxes: prefer 0-bend; else U above then below,
+ * escalating the corridor offset until pathClear. Returns null if none clear.
+ * @returns {number[][] | null}
+ */
+export function clearSideHorizontal(a, b, placed, fromId, toId, maxDepth = 16) {
+  const straight = sideHorizontal(a, b)
+  if (pathClear(straight, placed, fromId, toId)) return straight
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const aRight = a.x + a.w / 2 <= b.x + b.w / 2
+  const ax = aRight ? a.x + a.w : a.x
+  const bx = aRight ? b.x : b.x + b.w
+  for (const preferAbove of [true, false]) {
+    for (let d = 0; d <= maxDepth; d += 1) {
+      const gap = 24 + d * 16
+      const rail = preferAbove
+        ? Math.min(a.y, b.y) - gap
+        : Math.max(a.y + a.h, b.y + b.h) + gap
+      const pts = [
+        [ax, acy],
+        [ax, rail],
+        [bx, rail],
+        [bx, bcy],
+      ]
+      if (pathClear(pts, placed, fromId, toId)) return pts
+    }
+  }
+  return null
+}
+
+/**
+ * Side-channel U with escalating depth until clear. PreferLeft chooses initial side.
+ * @returns {number[][] | null}
+ */
+export function clearSideChannel(a, b, preferLeft, placed, fromId, toId, maxDepth = 16) {
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  for (const left of preferLeft ? [true, false] : [false, true]) {
+    for (let d = 0; d <= maxDepth; d += 1) {
+      const gap = 24 + d * 16
+      const side = left ? Math.min(a.x, b.x) - gap : Math.max(a.x + a.w, b.x + b.w) + gap
+      const pts = [
+        [left ? a.x : a.x + a.w, acy],
+        [side, acy],
+        [side, bcy],
+        [left ? b.x : b.x + b.w, bcy],
+      ]
+      if (pathClear(pts, placed, fromId, toId)) return pts
+    }
+  }
+  return null
+}
+
+/**
+ * First pathClear candidate among `candidates`, else null.
+ * @param {Array<number[][] | null | undefined>} candidates
+ */
+export function firstClearPath(candidates, placed, fromId, toId) {
+  for (const pts of candidates) {
+    if (!pts || pts.length < 2) continue
+    if (pathClear(pts, placed, fromId, toId)) return pts
+  }
+  return null
+}
+
+/**
  * Hang → spine: hang-lane → between-lane → inward gutter → outer.
  * Decision sources skip hang-lane N/S leave (fromDiamond): prefer clear inward gutter, then
  * clear outward corridor, then validated diamond outer side. Never legalize a blocked gutter.
- * When every E/W channel fails, escalate to N/S outerCorridor (honest residual) only if clear,
- * else the furthest validated diamond attempt is impossible — return a far outerCorridor that
- * still may hit (caller polish may repair); prefer returning the first pathClear candidate.
+ * Every returned polyline is pathClear when a clear channel exists; only if search is exhausted
+ * do we emit a structural E/W placeholder (never a known-blocked gutter).
  *
  * @param {{ x: number, y: number, w: number, h: number }} a hang
  * @param {{ x: number, y: number, w: number, h: number }} b spine
@@ -253,44 +390,39 @@ export function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDi
   const acy = a.y + a.h / 2
   const bcy = b.y + b.h / 2
   if (fromDiamond) {
+    const candidates = []
     if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
-      const g = gutterRejoin(a, b, hangOnRight)
-      if (pathClear(g, placed, fromId, toId)) return g
+      candidates.push(gutterRejoin(a, b, hangOnRight))
     }
-    const between = interLaneCorridor(a, b, hangOnRight, placed, fromId, toId)
-    if (between) return between
-    const outerSide = diamondOuterSide(a, b, hangOnRight, placed, fromId, toId)
-    if (outerSide) return outerSide
-    // Honest escalation: N/S outerCorridor when every E/W channel fails and that path clears.
-    for (let d = 0; d <= 12; d += 1) {
-      const oc = outerCorridor(a, b, hangOnRight, d * 16)
-      if (pathClear(oc, placed, fromId, toId)) return oc
-    }
-    // No validated channel remains. Still must emit a polyline for layout — never re-enter a
-    // known-blocked gutter (H1). Prefer the deepest E/W outer candidate (may still hit); the
-    // caller/polish may repair. Blind unvalidated OUTER_GAP is not used as a "success".
-    const deep = diamondOuterSide(a, b, hangOnRight, placed, fromId, toId, 40)
-    if (deep) return deep
-    // Emit deepest unchecked E/W geometry only as a last structural placeholder (ports E/W).
+    candidates.push(interLaneCorridor(a, b, hangOnRight, placed, fromId, toId))
+    candidates.push(diamondOuterSide(a, b, hangOnRight, placed, fromId, toId))
+    candidates.push(clearOuterCorridor(a, b, hangOnRight, placed, fromId, toId))
+    candidates.push(clearOuterCorridor(a, b, !hangOnRight, placed, fromId, toId))
+    const clear = firstClearPath(candidates, placed, fromId, toId)
+    if (clear) return clear
+    // Exhausted: E/W structural placeholder — never re-enter known-blocked gutter (H1).
     const leaveX = hangOnRight ? a.x + a.w : a.x
     const outer = hangOnRight ? leaveX + OUTER_GAP + 40 * 16 : leaveX - OUTER_GAP - 40 * 16
-    const acy2 = a.y + a.h / 2
-    const bcy2 = b.y + b.h / 2
     return [
-      [leaveX, acy2],
-      [outer, acy2],
-      [outer, bcy2],
-      [hangOnRight ? b.x + b.w : b.x, bcy2],
+      [leaveX, acy],
+      [outer, acy],
+      [outer, bcy],
+      [hangOnRight ? b.x + b.w : b.x, bcy],
     ]
   }
   const leaveY = bcy >= acy ? a.y + a.h : a.y
+  const candidates = []
   if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
-    return hangLaneRejoin(a, b, hangOnRight)
+    candidates.push(hangLaneRejoin(a, b, hangOnRight))
   }
-  const between = interLaneCorridor(a, b, hangOnRight, placed, fromId, toId)
-  if (between) return between
+  candidates.push(interLaneCorridor(a, b, hangOnRight, placed, fromId, toId))
   if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
-    return gutterRejoin(a, b, hangOnRight)
+    candidates.push(gutterRejoin(a, b, hangOnRight))
   }
-  return outerCorridor(a, b, hangOnRight)
+  candidates.push(clearOuterCorridor(a, b, hangOnRight, placed, fromId, toId))
+  candidates.push(clearOuterCorridor(a, b, !hangOnRight, placed, fromId, toId))
+  const clear = firstClearPath(candidates, placed, fromId, toId)
+  if (clear) return clear
+  // Exhausted: deepest same-side outer (may still hit) over hang-lane through boxes.
+  return outerCorridor(a, b, hangOnRight, 160)
 }

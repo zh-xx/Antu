@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Full-graph geometric scan for Mainline stages-off (PR #359 acceptance).
 // Usage:
-//   GIT_HEAD=<sha> SCAN_TAG=baseline|after SCAN_OUT_DIR=<dir> node preview/pr359-accept/scan-graph.mjs
+//   GIT_HEAD=<sha> SCAN_TAG=baseline|after SCAN_OUT_DIR=<dir> node tools/verify/scan-mainline-graph.mjs
 // Writes ONLY under SCAN_OUT_DIR (immutable separate dirs). Never overwrites sibling tags.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs'
 import { createHash } from 'node:crypto'

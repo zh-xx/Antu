@@ -51,6 +51,11 @@ import {
   OUTER_GAP,
   hangLaneBlocked,
   routeHangToSpine,
+  pathClear,
+  sideHorizontal,
+  clearSideHorizontal,
+  clearSideChannel,
+  firstClearPath,
 } from './hangSpineRoute.js'
 
 /** Gap between the spine column and the first branch lane (room for a condition label on the hop) */
@@ -290,10 +295,12 @@ function layoutStageMainline({
   }
   const spineH = y > 0 ? y - LAYER_GAP : 0
 
-  // Hangs: leave the spine, follow until spine / end / already drawn (no cut)
+  // Hangs: leave the spine, follow until spine / end / already drawn (no cut).
+  // Outgoing leave order is sorted by target id so input edge order cannot flip sides/lanes.
   const hangs = []
   for (const u of spineHere) {
-    for (const g of outG.get(u) ?? []) {
+    const leaves = [...(outG.get(u) ?? [])].sort((p, q) => String(p.to).localeCompare(String(q.to)))
+    for (const g of leaves) {
       if (!ownIds.has(g.to) && !g.isBack) continue // cross-stage later
       if (g.isMain || g.isBack) continue
       if (spineAt.has(g.to) && ownIds.has(g.to)) continue // arc / jump along or to spine — routed later
@@ -310,7 +317,9 @@ function layoutStageMainline({
         seen.add(cur)
         boxes.push(cur)
         if (byId.get(cur).kind === 'end') break
-        const outs = (outG.get(cur) ?? []).filter((e) => !e.isBack && ownIds.has(e.to))
+        const outs = (outG.get(cur) ?? [])
+          .filter((e) => !e.isBack && ownIds.has(e.to))
+          .sort((p, q) => Number(!!q.isMain) - Number(!!p.isMain) || String(p.to).localeCompare(String(q.to)))
         const next = outs.find((e) => e.isMain) ?? outs[0]
         if (!next) break
         // Sibling outs from a hang box become further hangs rooted at this box (one level)
@@ -414,7 +423,12 @@ function layoutStageMainline({
   for (const its of forkIntervals.values()) {
     if (its.length < 2) continue
     // Loop+back keeps the preferred face; remaining exits alternate onto the free opposite face.
-    const ordered = [...its].sort((p, q) => Number(isLoopHang(q.h)) - Number(isLoopHang(p.h)))
+    const ordered = [...its].sort(
+      (p, q) =>
+        Number(isLoopHang(q.h)) - Number(isLoopHang(p.h)) ||
+        String(p.h.leave?.to ?? '').localeCompare(String(q.h.leave?.to ?? '')) ||
+        String(p.h.from).localeCompare(String(q.h.from)),
+    )
     ordered.forEach((it, i) => {
       signOf.set(it.h, i % 2 === 0 ? branchSign : -branchSign)
     })
@@ -426,7 +440,13 @@ function layoutStageMainline({
   // the parent's side/lane below so a branch-exit end cannot migrate to the opposite face.
   // Interval containment can invert for child hangs (estimated span); never flip a spine-rooted
   // hang because a child hang's interval appears to contain it. Loop+back keeps preferred.
-  const byLeave = [...intervals].sort((p, q) => p.a - q.a || p.b - q.b)
+  const byLeave = [...intervals].sort(
+    (p, q) =>
+      p.a - q.a ||
+      p.b - q.b ||
+      String(p.h.from).localeCompare(String(q.h.from)) ||
+      String(p.h.leave?.to ?? '').localeCompare(String(q.h.leave?.to ?? '')),
+  )
   for (const it of byLeave) {
     if (isLoopHang(it.h) || !it.h.rootOnSpine) continue
     const sign = /** @type {number} */ (signOf.get(it.h))
@@ -470,7 +490,14 @@ function layoutStageMainline({
   const spineOpenRequests = []
   const bySpan = [...intervals]
     .filter((it) => it.h.rootOnSpine)
-    .sort((p, q) => p.b - p.a - (q.b - q.a) || p.a - q.a || p.b - q.b)
+    .sort(
+      (p, q) =>
+        p.b - p.a - (q.b - q.a) ||
+        p.a - q.a ||
+        p.b - q.b ||
+        String(p.h.from).localeCompare(String(q.h.from)) ||
+        String(p.h.leave?.to ?? '').localeCompare(String(q.h.leave?.to ?? '')),
+    )
   for (const it of bySpan) {
     const sign = /** @type {number} */ (signOf.get(it.h))
     const ends = /** @type {number[]} */ (laneEndsBySign.get(sign))
@@ -587,13 +614,27 @@ function layoutStageMainline({
     const widths = /** @type {number[]} */ (laneWBySign.get(sign))
     const leave = placed.get(it.h.from)
     const fork = byId.get(it.h.from)
-    // Sibling end off a hang decision: same row, to the right of the diamond (0-bend).
+    // Sibling end off a hang decision: same row, prefer absolute-right of the diamond (0-bend).
+    // If that slot overlaps an already-placed box (e.g. left-hang end crossing into a right hang),
+    // nudge further right, then fall back to outward (away from spine) until clear.
     if (isSideEndHang(it) && leave) {
       const id = it.h.boxes[0]
       if (drawn.has(id)) return
       const { w, h } = frameSize(byId.get(id))
-      const x = leave.x + leave.w + LANE_SEP
       const y = leave.y + leave.h / 2 - h / 2
+      const overlaps = (x0) => {
+        for (const [oid, r] of placed) {
+          if (oid === id) continue
+          if (x0 + 0.5 < r.x + r.w && r.x + 0.5 < x0 + w && y + 0.5 < r.y + r.h && r.y + 0.5 < y + h) return true
+        }
+        return false
+      }
+      let x = leave.x + leave.w + LANE_SEP
+      for (let i = 0; i < 12 && overlaps(x); i += 1) x += w + LANE_SEP
+      if (overlaps(x)) {
+        x = leave.x - LANE_SEP - w
+        for (let i = 0; i < 12 && overlaps(x); i += 1) x -= w + LANE_SEP
+      }
       placed.set(id, { x, y, w, h })
       drawn.add(id)
       return
@@ -709,7 +750,7 @@ function layoutStageMainline({
               [x1, y1],
             ]
     } else if (sameRowLink(a, b)) {
-      points = sideHorizontal(a, b)
+      points = clearSideHorizontal(a, b, placed, g.from, g.to) || sideHorizontal(a, b)
     } else {
       points = routeCentered(a, b, diamonds.has(g.from), placed, g.from, g.to, spineIdSet)
     }
@@ -747,6 +788,18 @@ function layoutStageMainline({
   restoreSameRowLinks(placed, connections, diamonds)
   // Side-channel / outer-corridor backs: push the vertical run outward until an on-ink label fits.
   clearCorridorForLabels(placed, connections)
+  // Final gate: any link that still cuts a foreign box is re-routed with obstacle-aware helpers.
+  // Region/lane placement already ran; this only repairs residual ink, never drops edges.
+  for (const c of connections) {
+    if (c.kind === 'main') continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b || !c.points?.length) continue
+    if (pathClear(c.points, placed, c.from, c.to)) continue
+    const reroute = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to, spineIdSet)
+    if (reroute?.length >= 2 && pathClear(reroute, placed, c.from, c.to)) c.points = reroute
+  }
+  restoreSameRowLinks(placed, connections, diamonds)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -1162,8 +1215,6 @@ function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = [
       if (c.labelSize) c.labelAt = null
     }
   }
-  const overlapsNode = (r) =>
-    nodeRects.some((n) => r.x < n.x + n.w - 0.5 && n.x < r.x + r.w - 0.5 && r.y < n.y + n.h - 0.5 && n.y < r.y + r.h - 0.5)
   for (const c of connections) {
     if (!c.labelSize || c.labelAt) continue
     const others = connections.filter((o) => o !== c)
@@ -1189,24 +1240,9 @@ function sameRowLink(a, b) {
   return Math.abs(a.y + a.h / 2 - (b.y + b.h / 2)) < 2
 }
 
-/** Straight side-to-side link between same-row boxes (0 bends). */
-function sideHorizontal(a, b) {
-  const ay = a.y + a.h / 2
-  const by = b.y + b.h / 2
-  if (a.x + a.w / 2 <= b.x + b.w / 2) {
-    return [
-      [a.x + a.w, ay],
-      [b.x, by],
-    ]
-  }
-  return [
-    [a.x, ay],
-    [b.x + b.w, by],
-  ]
-}
-
 /**
- * After polish/straighten, put decision↔same-row neighbour links back to a side horizontal.
+ * After polish/straighten, put decision↔same-row neighbour links back to a clear side route.
+ * Never force a 0-bend that cuts through a foreign box (L3/L4 nested ends, 07 same-row).
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {object[]} connections
  * @param {Set<string>} diamonds
@@ -1218,7 +1254,9 @@ function restoreSameRowLinks(placed, connections, diamonds) {
     const a = placed.get(c.from)
     const b = placed.get(c.to)
     if (!a || !b || !sameRowLink(a, b)) continue
-    c.points = sideHorizontal(a, b)
+    const clear = clearSideHorizontal(a, b, placed, c.from, c.to)
+    if (clear) c.points = clear
+    // If nothing clears, keep the existing (hopefully obstacle-aware) points.
   }
 }
 
@@ -1237,27 +1275,12 @@ function columnBlocked(a, b, placed, fromId, toId) {
   return false
 }
 
-/** Side-channel U-turn: leave/enter face centres, run beside both boxes (avoids same-column blockers). */
-function sideChannel(a, b, preferLeft = false) {
-  const acy = a.y + a.h / 2
-  const bcy = b.y + b.h / 2
-  const side = preferLeft ? Math.min(a.x, b.x) - 24 : Math.max(a.x + a.w, b.x + b.w) + 24
-  return [
-    [preferLeft ? a.x : a.x + a.w, acy],
-    [side, acy],
-    [side, bcy],
-    [preferLeft ? b.x : b.x + b.w, bcy],
-  ]
-}
-
-// Hang→spine corridors live in hangSpineRoute.js (production + unit tests share one path).
+// Hang→spine / clear same-row helpers live in hangSpineRoute.js (production + tests).
 
 /**
  * Orthogonal route between two boxes, ports on face centres. Prefer same-row / same-column
- * (0-bend); otherwise leave the facing side of the source and enter the facing side of the target.
- * When a same-column hop would cut through another box, take a side channel instead.
- * Hang → spine rejoins enter a free side face so they do not share the trunk's top/bottom port.
- * Distant / upward hang↔spine hops use an outer corridor on the hang side.
+ * (0-bend) when clear; otherwise leave/enter facing sides. Every candidate is pathClear-checked
+ * before accept; side/outer channels escalate when the preferred ink hits a foreign box.
  * @param {{ x: number, y: number, w: number, h: number }} a
  * @param {{ x: number, y: number, w: number, h: number }} b
  * @param {boolean} [fromDiamond]
@@ -1267,7 +1290,9 @@ function sideChannel(a, b, preferLeft = false) {
  * @param {Set<string> | null | undefined} [spineIds]
  */
 function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, toId = null, spineIds = null) {
-  if (sameRowLink(a, b)) return sideHorizontal(a, b)
+  if (sameRowLink(a, b)) {
+    return clearSideHorizontal(a, b, placed, fromId, toId) || sideHorizontal(a, b)
+  }
   const acx = a.x + a.w / 2
   const acy = a.y + a.h / 2
   const bcx = b.x + b.w / 2
@@ -1275,80 +1300,103 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
   const blocked = columnBlocked(a, b, placed, fromId, toId)
   const fromSpine = Boolean(spineIds && fromId && spineIds.has(fromId))
   const toSpine = Boolean(spineIds && toId && spineIds.has(toId))
-  // Same column: straight vertical when clear; otherwise side channel so labels stay off the blocker.
+  /** @type {Array<number[][] | null | undefined>} */
+  const candidates = []
+
+  // Same column: straight vertical when clear; otherwise side channel.
   if (Math.abs(acx - bcx) < 0.5) {
-    if (blocked) return sideChannel(a, b, acx > 40)
-    const down = bcy >= acy
-    return [
-      [acx, down ? a.y + a.h : a.y],
-      [bcx, down ? b.y : b.y + b.h],
-    ]
+    if (!blocked) {
+      const down = bcy >= acy
+      candidates.push([
+        [acx, down ? a.y + a.h : a.y],
+        [bcx, down ? b.y : b.y + b.h],
+      ])
+    }
+    candidates.push(clearSideChannel(a, b, acx > 40, placed, fromId, toId))
+    const hit = firstClearPath(candidates, placed, fromId, toId)
+    if (hit) return hit
+    return clearSideChannel(a, b, acx > 40, placed, fromId, toId) || candidates.find(Boolean) || sideHorizontal(a, b)
   }
-  // Hang → spine: trunk owns N/S on the spine; hang may leave N/S. Prefer hang-lane (1 bend).
-  // Decision hang→spine leaves E/W (fromDiamond) so the chain keeps N/S.
+  // Hang → spine
   if (!fromSpine && toSpine) {
     return routeHangToSpine(a, b, acx > bcx, placed, fromId, toId, fromDiamond)
   }
-  // Spine → hang (not same-row): reverse of hang→spine when the hop is off the fork row.
+  // Spine → hang (not same-row): reverse of hang→spine when far / blocked.
   if (fromSpine && !toSpine && !sameRowLink(a, b)) {
     const hangOnRight = bcx > acx
-    // Near: leave spine side, enter hang top/bottom facing the spine (existing short path below).
     const hang = b
     const spine = a
     const hcy = hang.y + hang.h / 2
     const scy = spine.y + spine.h / 2
     const leaveY = scy >= hcy ? hang.y + hang.h : hang.y
-    // Far / blocked hang-lane: use the hang→spine helper reversed.
     if (Math.abs(scy - hcy) >= DISTANT_DY || hangLaneBlocked(hang, leaveY, scy, placed, toId, fromId)) {
       return routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId, false).slice().reverse()
     }
   }
-  // Source above target: leave bottom centre, enter top centre.
+  // Source above target
   if (a.y + a.h <= b.y + 0.5) {
-    if (blocked) return sideChannel(a, b, acx > bcx)
-    const mid = (a.y + a.h + b.y) / 2
-    return [
-      [acx, a.y + a.h],
-      [acx, mid],
-      [bcx, mid],
-      [bcx, b.y],
-    ]
+    if (!blocked) {
+      const mid = (a.y + a.h + b.y) / 2
+      candidates.push([
+        [acx, a.y + a.h],
+        [acx, mid],
+        [bcx, mid],
+        [bcx, b.y],
+      ])
+    }
+    candidates.push(clearSideChannel(a, b, acx > bcx, placed, fromId, toId))
+    const hit = firstClearPath(candidates, placed, fromId, toId)
+    if (hit) return hit
   }
-  // Spine source below a hang target (near): leave free side face, enter top of hang.
+  // Spine source below a hang target (near)
   if (fromSpine && !toSpine && b.y + b.h <= a.y + 0.5) {
     const toRight = bcx > acx
-    return [
+    candidates.push([
       [toRight ? a.x + a.w : a.x, acy],
       [bcx, acy],
       [bcx, b.y + b.h],
-    ]
+    ])
   }
-  // Source below target: leave top centre, enter bottom centre.
+  // Source below target
   if (b.y + b.h <= a.y + 0.5) {
-    if (blocked) return sideChannel(a, b, acx > bcx)
-    const mid = (b.y + b.h + a.y) / 2
-    return [
-      [acx, a.y],
-      [acx, mid],
-      [bcx, mid],
-      [bcx, b.y + b.h],
-    ]
+    if (!blocked) {
+      const mid = (b.y + b.h + a.y) / 2
+      candidates.push([
+        [acx, a.y],
+        [acx, mid],
+        [bcx, mid],
+        [bcx, b.y + b.h],
+      ])
+    }
+    candidates.push(clearSideChannel(a, b, acx > bcx, placed, fromId, toId))
+    // Also try hang→spine style outer when leaving a hang column upward through siblings.
+    candidates.push(routeHangToSpine(a, b, acx > bcx, placed, fromId, toId, fromDiamond))
+    const hit = firstClearPath(candidates, placed, fromId, toId)
+    if (hit) return hit
   }
-  // Side-by-side but not same-row: leave nearer side centre → enter nearer side centre.
-  const aRight = acx <= bcx
-  const ax = aRight ? a.x + a.w : a.x
-  const bx = aRight ? b.x : b.x + b.w
-  const mid = (ax + bx) / 2
-  return [
-    [ax, acy],
-    [mid, acy],
-    [mid, bcy],
-    [bx, bcy],
-  ]
-}
-
-function elbow(a, b, fromDiamond) {
-  return routeCentered(a, b, fromDiamond)
+  // Side-by-side but not same-row
+  {
+    const aRight = acx <= bcx
+    const ax = aRight ? a.x + a.w : a.x
+    const bx = aRight ? b.x : b.x + b.w
+    const mid = (ax + bx) / 2
+    candidates.push([
+      [ax, acy],
+      [mid, acy],
+      [mid, bcy],
+      [bx, bcy],
+    ])
+    candidates.push(clearSideChannel(a, b, !aRight, placed, fromId, toId))
+  }
+  const clear = firstClearPath(candidates, placed, fromId, toId)
+  if (clear) return clear
+  // Exhausted: side channel structural fallback (may still hit) over a known mid-column cut.
+  const side = clearSideChannel(a, b, acx > bcx, placed, fromId, toId)
+  if (side) return side
+  for (const p of candidates) {
+    if (p && p.length >= 2) return p
+  }
+  return sideHorizontal(a, b)
 }
 
 function fallbackRoute(a, b) {
