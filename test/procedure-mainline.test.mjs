@@ -564,39 +564,10 @@ test('mainline: blocked hang-lane uses inward gutter (purchase-contract)', () =>
   }
 })
 
-test('mainline: S3 left-leave hang — 回并 leaves west (away from spine)', () => {
-  // When the 外挂 hang is forced left of the spine, hang-lane is blocked by 外挂列挡板;
-  // outward corridor (no further-left column) leaves W, clears boxes, enters spine W.
-  const spec = JSON.parse(readFileSync('preview/synthetic-rejoin/fixtures/S3-outer-leave-left.zh-CN.json', 'utf8'))
-  const g = buildProcedureGraph(
-    spec,
-    { ...fields, stages: false, mainlineHangSide: { 'n-4': -1 } },
-    undefined,
-    'vertical',
-  )
-  const byId = new Map(g.nodes.map((n) => [n.id, n]))
-  const face = (n, [x, y]) => {
-    const ncx = n.position.x + n.data.w / 2
-    const ncy = n.position.y + n.data.h / 2
-    if (Math.abs(x - n.position.x) < 1 && Math.abs(y - ncy) < 1) return 'W'
-    if (Math.abs(x - (n.position.x + n.data.w)) < 1 && Math.abs(y - ncy) < 1) return 'E'
-    if (Math.abs(y - n.position.y) < 1 && Math.abs(x - ncx) < 1) return 'N'
-    if (Math.abs(y - (n.position.y + n.data.h)) < 1 && Math.abs(x - ncx) < 1) return 'S'
-    return '?'
-  }
-  const fork = g.connections.find((e) => e.id === 'c:n-4->n-20')
-  const rejoin = g.connections.find((e) => e.id === 'c:n-21->n-3')
-  assert.ok(fork && rejoin)
-  assert.equal(face(byId.get('n-4'), fork.points[0]), 'W', '是 leaves left from spine fork')
-  assert.equal(face(byId.get('n-21'), rejoin.points[0]), 'W', '回并 leaves west away from spine')
-  assert.equal(face(byId.get('n-3'), rejoin.points[rejoin.points.length - 1]), 'W')
-  assert.ok(bendsOf(rejoin.points) <= 2)
-  assert.ok(byId.get('n-20').position.x + byId.get('n-20').data.w / 2 < byId.get('n-4').position.x)
-})
-
-test('mainline: S3 branch regions — nested hang inner lane, rejoin clears boxes', () => {
-  // Synthetic S3 (#190 C4): long dead-end hang contains a shorter rejoin hang on the spine index.
-  // Contained → inner lane; container → outer. Both「是」same-row leaves;「回并」≤2 bends, no box hits.
+test('mainline: S3 nested hang flips to opposite side (auto)', () => {
+  // Synthetic S3 (issue 190 C4): long dead-end contains a shorter rejoin hang. Contained hang
+  // flips to the free opposite face — no mainlineHangSide override.「是」left to 外挂;「回并」
+  // leaves west; 内挂 stays on the preferred right; 0 box hits; spine 0-bend.
   const spec = JSON.parse(readFileSync('preview/synthetic-rejoin/fixtures/S3-outer-gutter-blocked.zh-CN.json', 'utf8'))
   const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
   const byId = new Map(g.nodes.map((n) => [n.id, n]))
@@ -605,8 +576,8 @@ test('mainline: S3 branch regions — nested hang inner lane, rejoin clears boxe
   assert.ok(spine.has('n-3') && spine.has('n-2') && spine.has('n-4'))
 
   const cx = (id) => byId.get(id).position.x + byId.get(id).data.w / 2
-  // Contained rejoin hang sits closer to the spine than the long dead-end container.
-  assert.ok(cx('n-20') < cx('n-10'), 'contained hang on inner lane; container on outer')
+  assert.ok(cx('n-20') < cx('n-4'), '外挂 hang left of spine')
+  assert.ok(cx('n-10') > cx('n-4'), '内挂 hang stays on preferred right')
 
   const face = (n, [x, y]) => {
     const ncx = n.position.x + n.data.w / 2
@@ -621,14 +592,14 @@ test('mainline: S3 branch regions — nested hang inner lane, rejoin clears boxe
   const leaveOut = g.connections.find((e) => e.id === 'c:n-4->n-20')
   const rejoin = g.connections.find((e) => e.id === 'c:n-21->n-3')
   assert.ok(leaveIs && leaveOut && rejoin)
-  assert.equal(bendsOf(leaveIs.points), 0, 'inner-fork「是」same-row leave')
-  assert.equal(bendsOf(leaveOut.points), 0, 'outer-fork「是」same-row leave')
+  assert.equal(bendsOf(leaveIs.points), 0, '内挂「是」same-row leave')
+  assert.equal(bendsOf(leaveOut.points), 0, '外挂「是」same-row leave')
+  assert.equal(face(byId.get('n-4'), leaveOut.points[0]), 'W', '外挂 fork leaves left')
+  assert.equal(face(byId.get('n-2'), leaveIs.points[0]), 'E', '内挂 fork leaves right')
   assert.ok(bendsOf(rejoin.points) <= 2, `回并 ≤2 bends, got ${bendsOf(rejoin.points)}`)
-  // Between-lane corridor: leave the face away from the spine into the gap before 内挂.
-  assert.equal(face(byId.get('n-21'), rejoin.points[0]), 'E', '回并 leaves east into inter-lane gap')
-  assert.equal(face(byId.get('n-3'), rejoin.points[rejoin.points.length - 1]), 'E')
+  assert.equal(face(byId.get('n-21'), rejoin.points[0]), 'W', '回并 leaves west away from spine')
+  assert.equal(face(byId.get('n-3'), rejoin.points[rejoin.points.length - 1]), 'W')
 
-  // Spine mains stay 0-bend.
   for (const c of g.connections.filter((e) => e.kind === 'main')) {
     assert.equal(bendsOf(c.points), 0, `${c.id} spine bend`)
   }

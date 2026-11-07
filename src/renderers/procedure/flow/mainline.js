@@ -6,10 +6,11 @@
 //  shape as layoutColumnsGen. Order:
 //    1. fix the main line in each stage as a straight vertical column (axis pinned);
 //    2. hang branches in lanes as branch regions [leave, rejoin] along the spine index
-//       (issue 190 C4). Preferred side is away from the next stage (or right when alone). Nested
-//       intervals share a side (shorter/contained → inner lane; container → outer); overlapping
-//       non-nested prefer opposite sides when free. Lane order follows containment, not start
-//       time. Each box has four face ports (N/S/E/W); the trunk usually owns N+S, so a
+//       (issue 190 C4). Preferred side is away from the next stage (or right when alone).
+//       Overlapping regions prefer opposite sides when free (nested: flip the contained hang;
+//       otherwise flip the later leave). Same-side fallback uses containment lanes
+//       (shorter/contained → inner; container → outer). Lane order follows containment, not
+//       start time. Each box has four face ports (N/S/E/W); the trunk usually owns N+S, so a
 //       decision's side exits take E/W — when both are free, two exits do not share one
 //       face (loop+back may share a side as a bidirectional hop). First hop sits on the
 //       fork's row (0-bend); branches yield — the spine never moves for them;
@@ -376,8 +377,8 @@ function layoutStageMainline({
 
   // Branch regions: one hang → one [leave, rejoin] interval along the spine index (issue 190 C4).
   // Side and lane are decided here (before placement / local routing). Dead ends are half-open
-  // (estimated span from box count). Nested → same side, contained inner; overlap non-nested →
-  // opposite sides when free. Lane pack order is by span (containment), not leave time.
+  // (estimated span from box count). Overlap (incl. nested) → opposite sides when free; same-side
+  // fallback packs by span (containment), not leave time.
   const intervals = hangs
     .filter((h) => h.boxes.length)
     .map((h) => {
@@ -416,16 +417,22 @@ function layoutStageMainline({
     })
   }
 
-  // Overlapping non-nested regions on the same side: flip the later leave onto the free face.
-  // Nested pairs stay same-side. Earlier regions are stable — an unrelated hang should not flip them.
+  // Overlapping regions on the same side: flip onto a free opposite face when possible.
+  // Nested → only the contained hang moves; non-nested → the later leave moves.
+  // Interval containment can invert for child hangs (estimated span); never flip a spine-rooted
+  // hang because a child hang's interval appears to contain it. Loop+back keeps preferred.
   const byLeave = [...intervals].sort((p, q) => p.a - q.a || p.b - q.b)
   for (const it of byLeave) {
+    if (isLoopHang(it.h)) continue
     const sign = /** @type {number} */ (signOf.get(it.h))
     for (const other of byLeave) {
       if (other === it || other.a > it.a) continue
       if (signOf.get(other.h) !== sign) continue
       if (!regionOverlaps(it, other)) continue
-      if (regionContains(it, other) || regionContains(other, it)) continue
+      // Interval-container stays on this face.
+      if (regionContains(it, other)) continue
+      // Child-span artifact: spine-rooted hang looks "inside" a child hang — skip.
+      if (regionContains(other, it) && it.h.rootOnSpine && !other.h.rootOnSpine) continue
       const opp = -sign
       const oppBusy = intervals.some(
         (o) =>
