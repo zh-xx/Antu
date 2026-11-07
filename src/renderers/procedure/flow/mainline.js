@@ -528,6 +528,26 @@ function layoutStageMainline({
   const leftW = sideWidth(-1)
   const rightW = sideWidth(1)
 
+  // Decision-sibling single ends (e.g.「不准」→终结) sit on the fork's row to the right of the
+  // diamond (0-bend), not stacked under the continuing hang chain. Skip boxes the parent hang
+  // already owns (shared terminus). Room toward the spine uses hopGap; room further out uses
+  // an outer spur on that side.
+  const isSideEndHang = (it) => {
+    if (it.h.rootOnSpine || it.h.boxes.length !== 1) return false
+    if (byId.get(it.h.from)?.kind !== 'decision') return false
+    const id = it.h.boxes[0]
+    return !intervals.some((o) => o.h.rootOnSpine && o.h.boxes.includes(id))
+  }
+  let sideEndInner = 0
+  for (const it of intervals) {
+    if (!isSideEndHang(it)) continue
+    const need = frameSize(byId.get(it.h.boxes[0])).w + LANE_SEP
+    const sign = /** @type {number} */ (signOf.get(it.h))
+    // Absolute-right of the diamond: left hang → into the spine gutter (widen hopGap).
+    // Right hang → past the lane (final bbox grows from the placed end).
+    if (sign < 0) sideEndInner = Math.max(sideEndInner, need)
+  }
+
   // Room on the leave hop for a condition label sitting ON the segment (not beside it).
   let hopGap = LANE_GAP
   for (const it of intervals) {
@@ -536,6 +556,7 @@ function layoutStageMainline({
     const need = Math.min(120, textEm(leave.label) * 12 + 12) + 24
     hopGap = Math.max(hopGap, need)
   }
+  if (sideEndInner) hopGap = Math.max(hopGap, sideEndInner + 24)
 
   const spineX0 = leftW ? leftW + hopGap : 0
   for (const id of spineHere) {
@@ -565,6 +586,17 @@ function layoutStageMainline({
     const widths = /** @type {number[]} */ (laneWBySign.get(sign))
     const leave = placed.get(it.h.from)
     const fork = byId.get(it.h.from)
+    // Sibling end off a hang decision: same row, to the right of the diamond (0-bend).
+    if (isSideEndHang(it) && leave) {
+      const id = it.h.boxes[0]
+      if (drawn.has(id)) return
+      const { w, h } = frameSize(byId.get(id))
+      const x = leave.x + leave.w + LANE_SEP
+      const y = leave.y + leave.h / 2 - h / 2
+      placed.set(id, { x, y, w, h })
+      drawn.add(id)
+      return
+    }
     const sameRow = Boolean(it.h.rootOnSpine && fork?.kind === 'decision' && leave && it.h.boxes.length)
     const key = laneKey(sign, lane)
     let by

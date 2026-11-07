@@ -707,12 +707,16 @@ test('mainline: L1 branch-exit ends stay in hang lane (not canvas top)', () => {
   assert.ok(end15.position.y > spineTop + 40, `n-15 must not sit at canvas top (y=${end15.position.y})`)
   assert.ok(end20.position.y > spineTop + 40, `n-20 must not sit at canvas top (y=${end20.position.y})`)
   assert.ok(cx('n-15') > spineCx, '管辖异议终结 stays on right with 管辖 hang')
-  assert.ok(cx('n-20') < spineCx, '保全不准终结 stays on left with 保全 hang')
-  // Same hang column as the chain (not a distant pocket / opposite face).
+  assert.ok(cx('n-20') < spineCx, '保全不准终结 stays left of spine (保全 hang)')
+  // Shared hang-chain terminus stays in the lane; pure sibling end sits same-row right of the diamond.
   assert.ok(Math.abs(cx('n-15') - cx('n-14')) < 40, 'n-15 shares 管辖 lane with n-14')
-  assert.ok(Math.abs(cx('n-20') - cx('n-19')) < 40, 'n-20 shares 保全 lane with n-19')
   assert.ok(end15.position.y >= byId.get('n-14').position.y - 1, 'n-15 below/at 裁定移送管辖')
-  assert.ok(end20.position.y >= byId.get('n-19').position.y - 1, 'n-20 below/at 保全准许')
+  const dec = byId.get('n-18')
+  assert.ok(Math.abs(end20.position.y + end20.data.h / 2 - (dec.position.y + dec.data.h / 2)) < 2, 'n-20 same row as 是否准许保全')
+  assert.ok(end20.position.x >= dec.position.x + dec.data.w - 1, 'n-20 to the right of 是否准许保全')
+  const leaveNo = g.connections.find((e) => e.id === 'c:n-18->n-20')
+  assert.ok(leaveNo)
+  assert.equal(bendsOf(leaveNo.points), 0, '不准 should be a straight same-row hop')
 })
 
 test('mainline: stages-off hang→spine never enters trunk N/S (corpus)', () => {
