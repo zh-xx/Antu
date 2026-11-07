@@ -690,6 +690,30 @@ test('mainline: L1 litigation nested hang flips (DeepSeek fixture)', () => {
   assert.deepEqual(hits, [], `L1 gate: no box hits, got ${hits.join(', ')}`)
 })
 
+test('mainline: L2 decision hang→spine leaves side face (not N/S)', () => {
+  // 「异议是否成立」否 → 是否申请财产保全 must leave W/E. Leaving N shares the hang-chain
+  // in-port and reads as an incoming arrow on the diamond.
+  const spec = JSON.parse(readFileSync('preview/synthetic-rejoin/fixtures/L2-labour-arbitration-nested.zh-CN.json', 'utf8'))
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  assert.deepEqual(g.errors, [])
+  const face = (n, [x, y]) => {
+    const ncx = n.position.x + n.data.w / 2
+    const ncy = n.position.y + n.data.h / 2
+    if (Math.abs(x - n.position.x) < 1 && Math.abs(y - ncy) < 1) return 'W'
+    if (Math.abs(x - (n.position.x + n.data.w)) < 1 && Math.abs(y - ncy) < 1) return 'E'
+    if (Math.abs(y - n.position.y) < 1 && Math.abs(x - ncx) < 1) return 'N'
+    if (Math.abs(y - (n.position.y + n.data.h)) < 1 && Math.abs(x - ncx) < 1) return 'S'
+    return '?'
+  }
+  const rejoin = g.connections.find((e) => e.id === 'c:n-13->n-6')
+  assert.ok(rejoin, '异议否 → 保全决策')
+  const leave = face(byId.get('n-13'), rejoin.points[0])
+  assert.ok(leave === 'W' || leave === 'E', `否 must leave side face, got ${leave}`)
+  const enter = face(byId.get('n-6'), rejoin.points[rejoin.points.length - 1])
+  assert.ok(enter === 'W' || enter === 'E', `spine enter must be side face, got ${enter}`)
+})
+
 test('mainline: L1 branch-exit ends stay in hang lane (not canvas top)', () => {
   // Decision sibling ends (管辖异议终结 / 保全不准终结) used to place at y≈0 because the
   // child hang drew before its parent fork box existed, and could flip to the opposite face.

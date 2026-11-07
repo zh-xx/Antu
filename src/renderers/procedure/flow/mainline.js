@@ -1413,19 +1413,24 @@ function gutterBlocked(a, b, hangOnRight, placed, fromId, toId) {
 /**
  * Hang → spine: hang-lane (1 bend) → between-lane corridor (leave away from spine) →
  * inward gutter → outer corridor (last resort).
+ * Decision sources skip hang-lane N/S leave: the hang chain already owns those ports, so an
+ * upward N leave looks like an *in*-edge on the diamond (L2「异议是否成立」否).
  * @param {{ x: number, y: number, w: number, h: number }} a hang
  * @param {{ x: number, y: number, w: number, h: number }} b spine
  * @param {boolean} hangOnRight
  * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} placed
  * @param {string | null | undefined} fromId
  * @param {string | null | undefined} toId
+ * @param {boolean} [fromDiamond]
  */
-function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId) {
+function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDiamond = false) {
   const acy = a.y + a.h / 2
   const bcy = b.y + b.h / 2
-  const leaveY = bcy >= acy ? a.y + a.h : a.y
-  if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
-    return hangLaneRejoin(a, b, hangOnRight)
+  if (!fromDiamond) {
+    const leaveY = bcy >= acy ? a.y + a.h : a.y
+    if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
+      return hangLaneRejoin(a, b, hangOnRight)
+    }
   }
   // Prefer the gap before the next outer hang column when clear — avoids far-outer cutting
   // through that column on the return row (S3). Falls through when no outer neighbour.
@@ -1434,6 +1439,8 @@ function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId) {
   if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
     return gutterRejoin(a, b, hangOnRight)
   }
+  // Diamond fallback: still leave a side face (never N/S), even if corridor/gutter busy.
+  if (fromDiamond) return gutterRejoin(a, b, hangOnRight)
   return outerCorridor(a, b, hangOnRight)
 }
 
@@ -1470,8 +1477,9 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
     ]
   }
   // Hang → spine: trunk owns N/S on the spine; hang may leave N/S. Prefer hang-lane (1 bend).
+  // Decision hang→spine leaves E/W (fromDiamond) so the chain keeps N/S.
   if (!fromSpine && toSpine) {
-    return routeHangToSpine(a, b, acx > bcx, placed, fromId, toId)
+    return routeHangToSpine(a, b, acx > bcx, placed, fromId, toId, fromDiamond)
   }
   // Spine → hang (not same-row): reverse of hang→spine when the hop is off the fork row.
   if (fromSpine && !toSpine && !sameRowLink(a, b)) {
@@ -1484,7 +1492,7 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
     const leaveY = scy >= hcy ? hang.y + hang.h : hang.y
     // Far / blocked hang-lane: use the hang→spine helper reversed.
     if (Math.abs(scy - hcy) >= DISTANT_DY || hangLaneBlocked(hang, leaveY, scy, placed, toId, fromId)) {
-      return routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId).slice().reverse()
+      return routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId, false).slice().reverse()
     }
   }
   // Source above target: leave bottom centre, enter top centre.
