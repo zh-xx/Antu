@@ -1,0 +1,32 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "合成 · 挂枝列畅通（hang-lane）",
+  "domain": "contract-performance",
+  "actors": [
+    { "id": "a-1", "name": "甲方", "role": "买方" }
+  ],
+  "sources": [
+    { "id": "s-1", "type": "note", "name": "synthetic S1", "loc": { "file": "S1-hang-lane-clear.zh-CN.json" } }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "主干" },
+    { "id": "st-2", "label": "挂枝" }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "开始", "stageId": "st-1" },
+    { "id": "n-2", "kind": "decision", "label": "是否走支线", "stageId": "st-1" },
+    { "id": "n-3", "kind": "step", "label": "主干付款", "stageId": "st-1", "actorIds": ["a-1"] },
+    { "id": "n-4", "kind": "end", "label": "完成", "stageId": "st-1", "outcome": "positive" },
+    { "id": "n-5", "kind": "decision", "label": "支线是否回并", "stageId": "st-2" },
+    { "id": "n-6", "kind": "end", "label": "支线终止", "stageId": "st-2", "outcome": "negative" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "condition": "否", "main": true },
+    { "from": "n-2", "to": "n-5", "condition": "是" },
+    { "from": "n-5", "to": "n-3", "condition": "回并" },
+    { "from": "n-5", "to": "n-6", "condition": "结束" },
+    { "from": "n-3", "to": "n-4", "main": true }
+  ]
+}
