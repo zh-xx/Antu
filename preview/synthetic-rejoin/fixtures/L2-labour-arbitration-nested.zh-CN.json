@@ -41,7 +41,6 @@
     { "id": "n-13", "kind": "decision", "label": "异议是否成立", "stageId": "st-2", "actorIds": ["a-3"] },
     { "id": "n-14", "kind": "step", "label": "决定移送其他仲裁委", "stageId": "st-2", "actorIds": ["a-3"] },
     { "id": "n-15", "kind": "end", "label": "本院程序移出", "stageId": "st-2", "outcome": "negative", "actorIds": ["a-3"] },
-    { "id": "n-23", "kind": "step", "label": "异议驳回后继续", "stageId": "st-2", "actorIds": ["a-3"] },
 
     { "id": "n-16", "kind": "step", "label": "提交保全申请", "stageId": "st-2", "actorIds": ["a-1"] },
     { "id": "n-17", "kind": "step", "label": "仲裁委移送法院审查", "stageId": "st-2", "actorIds": ["a-3"] },
@@ -68,8 +67,7 @@
     { "from": "n-12", "to": "n-13" },
     { "from": "n-13", "to": "n-14", "condition": "是" },
     { "from": "n-14", "to": "n-15" },
-    { "from": "n-13", "to": "n-23", "condition": "否" },
-    { "from": "n-23", "to": "n-6", "condition": "回并" },
+    { "from": "n-13", "to": "n-6", "condition": "否" },
 
     { "from": "n-16", "to": "n-17" },
     { "from": "n-17", "to": "n-18" },
