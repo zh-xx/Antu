@@ -48,7 +48,7 @@ JS
 |------|------------|----------------------|
 | `S1-hang-lane-clear` | n-5→n-3「回并」 | hang-lane (clear) |
 | `S2-gutter-blocked-lane` | n-9→n-6「是」 | inward gutter |
-| `S3-outer-gutter-blocked` | n-21→n-3「回并」 | branch regions: contained hang inner lane → inward gutter (was outer cutting boxes) |
+| `S3-outer-gutter-blocked` | n-21→n-3「回并」 | branch regions + between-lane corridor: leave E into lane gap (was far-outer cutting boxes) |
 | `S4-hang-lane-upward` | n-7→n-2 | hang-lane upward |
 
 ## HTML outputs

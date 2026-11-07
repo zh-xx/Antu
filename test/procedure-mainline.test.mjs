@@ -594,7 +594,9 @@ test('mainline: S3 branch regions — nested hang inner lane, rejoin clears boxe
   assert.equal(bendsOf(leaveIs.points), 0, 'inner-fork「是」same-row leave')
   assert.equal(bendsOf(leaveOut.points), 0, 'outer-fork「是」same-row leave')
   assert.ok(bendsOf(rejoin.points) <= 2, `回并 ≤2 bends, got ${bendsOf(rejoin.points)}`)
-  assert.ok(face(byId.get('n-3'), rejoin.points[rejoin.points.length - 1]) === 'E' || face(byId.get('n-3'), rejoin.points[rejoin.points.length - 1]) === 'W')
+  // Between-lane corridor: leave the face away from the spine into the gap before 内挂.
+  assert.equal(face(byId.get('n-21'), rejoin.points[0]), 'E', '回并 leaves east into inter-lane gap')
+  assert.equal(face(byId.get('n-3'), rejoin.points[rejoin.points.length - 1]), 'E')
 
   // Spine mains stay 0-bend.
   for (const c of g.connections.filter((e) => e.kind === 'main')) {

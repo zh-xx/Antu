@@ -17,6 +17,7 @@ what breaks a file or a tool call written for the version before, with how to br
 ### Fixed
 
 - **Mainline branch regions pick side/lane before routing** (#190 C4): each hang claims a spine-index interval `[leave, rejoin]` (back-edge rejoins included); nested intervals share a side with the shorter/contained hang on the inner lane; overlapping non-nested hangs prefer opposite sides when free. Stops outer-corridor rejoins from cutting through an earlier hang column (synthetic S3).
+- **Mainline hang→spine can use the between-lane corridor**: when the hang lane is blocked and another hang column sits further out, leave away from the spine into the lane gap, run vertical there, then enter the spine side — clearer than a far-outer U that cuts the outer column (synthetic S3「回并」).
 - **Mainline labelled links no longer crash the page**: connections with a `label` always get a `labelAt`; the link layer also skips a missing spot instead of reading `.x` on null.
 - **Stages paint switch no longer swaps the flowchart layout engine**: column / Mainline paths follow stage *data*; turning off stage bands only hides the boxes (#190 review).
 - **Mainline keeps a straight spine**: trunk centres share one axis per column (≤ 2 px); with no stage data the graph is one implicit column. Branches yield — polish must not shove the trunk.

@@ -18,7 +18,8 @@
 //       omitted upstream — they belong in the rules table, not as islands on the canvas;
 //    4. a hang that rejoins the spine enters a free side face (not the trunk's top/bottom).
 //       Hang boxes may use N/S freely: leave top/bottom, run in the hang lane to the spine
-//       mid-height, then enter the side (1 bend). Outer corridor only when that lane is blocked;
+//       mid-height, then enter the side (1 bend). If blocked: between-lane corridor (leave away
+//       from the spine into the next-lane gap) → inward gutter → far outer;
 //    5. stack leftover "pocket" nodes beside the hangs;
 //    6. set stage boxes side by side; route cross-stage links with router.js;
 //    7. light polish, then re-pin the spine axis (polish must not leave the trunk bent).
@@ -1219,6 +1220,58 @@ function outerCorridor(a, b, hangOnRight, depth = 0) {
   ]
 }
 
+/**
+ * Between-lane corridor: leave the hang face *away* from the spine into the gap before the
+ * next outer hang column, run vertical there, then enter the spine side. Unlike far-outer,
+ * the return horizontal starts inside the outer column so it does not cut through it
+ * (synthetic S3:「外挂是否回并」右出夹道回并).
+ * @returns {number[][] | null}
+ */
+function interLaneCorridor(a, b, hangOnRight, placed, fromId, toId) {
+  if (!placed) return null
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
+  const hangOuter = hangOnRight ? a.x + a.w : a.x
+  const lo = Math.min(acy, bcy)
+  const hi = Math.max(acy, bcy)
+  let nearestInner = hangOnRight ? Infinity : -Infinity
+  let found = false
+  for (const [id, r] of placed) {
+    if (id === fromId || id === toId) continue
+    // Must sit further out than this hang and overlap the vertical run (or the leave row).
+    const further = hangOnRight ? r.x >= hangOuter - 1 : r.x + r.w <= hangOuter + 1
+    if (!further) continue
+    if (r.y + r.h <= lo + 0.5 || r.y >= hi - 0.5) {
+      // Still count a neighbour that overlaps the hang box row (blocks the leave stub).
+      if (r.y + r.h <= a.y + 0.5 || r.y >= a.y + a.h - 0.5) continue
+    }
+    found = true
+    if (hangOnRight) nearestInner = Math.min(nearestInner, r.x)
+    else nearestInner = Math.max(nearestInner, r.x + r.w)
+  }
+  if (!found) return null
+  const gap = hangOnRight ? nearestInner - hangOuter : hangOuter - nearestInner
+  if (gap < 8) return null
+  const mid = hangOnRight ? hangOuter + gap / 2 : hangOuter - gap / 2
+  // Vertical / return must stay clear of every foreign box.
+  for (const [id, r] of placed) {
+    if (id === fromId || id === toId) continue
+    if (mid > r.x + 0.5 && mid < r.x + r.w - 0.5 && r.y + r.h > lo + 0.5 && r.y < hi - 0.5) return null
+    // Horizontal at bcy from mid toward spine: must not enter a box.
+    const spineFace = hangOnRight ? b.x + b.w : b.x
+    const hLo = Math.min(mid, spineFace)
+    const hHi = Math.max(mid, spineFace)
+    if (bcy > r.y + 0.5 && bcy < r.y + r.h - 0.5 && hHi > r.x + 0.5 && hLo < r.x + r.w - 0.5) return null
+  }
+  const spineFace = hangOnRight ? b.x + b.w : b.x
+  return [
+    [hangOuter, acy],
+    [mid, acy],
+    [mid, bcy],
+    [spineFace, bcy],
+  ]
+}
+
 /** True when another box sits on the hang's vertical lane between leaveY and targetY. */
 function hangLaneBlocked(a, leaveY, targetY, placed, fromId, toId) {
   if (!placed) return false
@@ -1254,7 +1307,8 @@ function gutterBlocked(a, b, hangOnRight, placed, fromId, toId) {
 }
 
 /**
- * Hang → spine: hang-lane (1 bend) → inward gutter → outer corridor (last resort).
+ * Hang → spine: hang-lane (1 bend) → between-lane corridor (leave away from spine) →
+ * inward gutter → outer corridor (last resort).
  * @param {{ x: number, y: number, w: number, h: number }} a hang
  * @param {{ x: number, y: number, w: number, h: number }} b spine
  * @param {boolean} hangOnRight
@@ -1269,6 +1323,10 @@ function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId) {
   if (!hangLaneBlocked(a, leaveY, bcy, placed, fromId, toId)) {
     return hangLaneRejoin(a, b, hangOnRight)
   }
+  // Prefer the gap before the next outer hang column when clear — avoids far-outer cutting
+  // through that column on the return row (S3). Falls through when no outer neighbour.
+  const between = interLaneCorridor(a, b, hangOnRight, placed, fromId, toId)
+  if (between) return between
   if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
     return gutterRejoin(a, b, hangOnRight)
   }
