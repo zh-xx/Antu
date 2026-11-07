@@ -2,7 +2,10 @@
 
 Offline Mainline diagrams for the four verified stages-off route classes.
 
-These are **synthetic / not shipped examples**. Each HTML page bakes in
+These are **synthetic / not shipped examples**. HTML is **local preview only**
+(gitignored under `preview/**/*.html`). Fixtures stay in the repo for tests.
+
+Each page bakes in
 `window.__ANTU_PRESET__ = { fields: { engine: 'mainline', stages: false } }`
 so it opens already on stages-off Mainline. Hard-refresh after open if a
 browser cached an older build.
@@ -11,8 +14,33 @@ browser cached an older build.
 
 | Path | Role |
 |------|------|
-| `fixtures/*.json` | Procedure specs |
-| `html/*-mainline.html` | Generated diagrams |
+| `fixtures/*.json` | Procedure specs (tracked) |
+| `html/*-mainline.html` | Generated locally — not committed |
+
+## Regenerate HTML
+
+```bash
+node --input-type=module <<'JS'
+import { readFileSync, mkdirSync } from 'node:fs'
+import { renderToFile } from './tools/lib/make-html.mjs'
+mkdirSync('preview/synthetic-rejoin/html', { recursive: true })
+const preset = { fields: { engine: 'mainline', stages: false } }
+for (const name of [
+  'S1-hang-lane-clear',
+  'S2-gutter-blocked-lane',
+  'S3-outer-gutter-blocked',
+  'S4-hang-lane-upward',
+]) {
+  const spec = JSON.parse(readFileSync(`preview/synthetic-rejoin/fixtures/${name}.zh-CN.json`, 'utf8'))
+  renderToFile(spec, {
+    outPath: `preview/synthetic-rejoin/html/${name}-mainline.html`,
+    preset,
+    quiet: true,
+  })
+  console.log('wrote', name)
+}
+JS
+```
 
 ## Route classes
 

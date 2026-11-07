@@ -16,6 +16,8 @@ build/
 # Generated diagrams: same name and folder as the source JSON, they are output and stay out of the repository
 # (the example data itself is committed, as examples/**/*.json)
 examples/**/*.html
+# Local Mainline preview HTML under preview/ (fixtures stay tracked)
+preview/**/*.html
 
 # Logs and caches
 *.log
