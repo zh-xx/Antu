@@ -430,6 +430,53 @@ test('mainline: side-corridor back label sits on the vertical ink (stages off)',
   }
 })
 
+test('mainline: labelled hang↔hang hop keeps ink stubs beside the chip', () => {
+  // Synthetic S1: decision「支线是否回并」→ end「支线终止」on a neighbour hang lane used to be
+  // only LANE_SEP wide, so「结束」hid the whole stroke. Floor: longest run ≥ label + 2×20.
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: 'ink-floor hang-hang',
+    domain: 'contract-performance',
+    actors: [{ id: 'a-1', name: '甲方', role: '买方' }],
+    sources: [{ id: 's-1', type: 'note', name: 't', loc: { file: 't' } }],
+    stages: [
+      { id: 'st-1', label: '主干' },
+      { id: 'st-2', label: '挂枝' },
+    ],
+    nodes: [
+      { id: 'n-1', kind: 'start', label: '开始', stageId: 'st-1' },
+      { id: 'n-2', kind: 'decision', label: '是否走支线', stageId: 'st-1' },
+      { id: 'n-3', kind: 'step', label: '主干付款', stageId: 'st-1', actorIds: ['a-1'] },
+      { id: 'n-4', kind: 'end', label: '完成', stageId: 'st-1', outcome: 'positive' },
+      { id: 'n-5', kind: 'decision', label: '支线是否回并', stageId: 'st-2' },
+      { id: 'n-6', kind: 'end', label: '支线终止', stageId: 'st-2', outcome: 'negative' },
+    ],
+    edges: [
+      { from: 'n-1', to: 'n-2', main: true },
+      { from: 'n-2', to: 'n-3', condition: '否', main: true },
+      { from: 'n-2', to: 'n-5', condition: '是' },
+      { from: 'n-5', to: 'n-3', condition: '回并' },
+      { from: 'n-5', to: 'n-6', condition: '结束' },
+      { from: 'n-3', to: 'n-4', main: true },
+    ],
+  }
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const spine = new Set(g.spine)
+  const c = g.connections.find((e) => e.id === 'c:n-5->n-6')
+  assert.ok(c?.labelSize && c.points?.length, 'labelled hang↔hang edge')
+  assert.equal(spine.has('n-5'), false)
+  assert.equal(spine.has('n-6'), false)
+  let bestLen = 0
+  for (let i = 0; i < c.points.length - 1; i += 1) {
+    const [p, q] = [c.points[i], c.points[i + 1]]
+    bestLen = Math.max(bestLen, Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]))
+  }
+  const INK_PAD = 20
+  const need = c.labelSize.width + 2 * INK_PAD
+  assert.ok(bestLen + 0.5 >= need, `hang↔hang「结束」run ${bestLen} < floor ${need}`)
+})
+
 test('mainline: hang→spine rejoin uses hang lane (leave N/S, 1 bend, spine side entry)', () => {
   // Hang boxes may use N/S; spine keeps N/S for the trunk. Prefer: leave travel face → hang column
   // → spine mid → side face (1 bend). Outer corridor only when that lane is blocked.

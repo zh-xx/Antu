@@ -574,11 +574,12 @@ function layoutStageMainline({ own, ownIds, groups, outG, spineAt, spineList, fr
   pushBranchesOffSpine(placed, spineColumn)
   // Polish / pin can rewrite side links; put same-row decision branches and backs back to 0-bend.
   restoreSameRowLinks(placed, connections, diamonds)
-  // Labelled hops shorter than their text: push the hang end away so the label can sit ON the ink.
-  lengthenLabeledHops(placed, connections, spineIdSet, diamonds)
-  restoreSameRowLinks(placed, connections, diamonds)
   // Linked boxes prefer shared centres; every port sits on a face centre (polish must not leave a skew).
   preferCenteredLinks(placed, connections, diamonds, spineIdSet)
+  // Labelled hops shorter than their text: after centres settle (same-row hang↔hang can be only
+  // LANE_SEP wide), push so the chip still leaves a stub of ink on each side.
+  lengthenLabeledHops(placed, connections, spineIdSet, diamonds)
+  restoreSameRowLinks(placed, connections, diamonds)
   // Side-channel / outer-corridor backs: push the vertical run outward until an on-ink label fits.
   clearCorridorForLabels(placed, connections)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
@@ -772,8 +773,10 @@ function preferCenteredLinks(placed, connections, diamonds, spineIds) {
 }
 
 /**
- * If a labelled link's longest run is shorter than the label, stretch it: same-row / elbow
- * hops push the non-spine end away from the trunk; vertical spine gaps push the lower box down.
+ * If a labelled link's longest run is shorter than the label, stretch it so the chip still
+ * leaves a stub of ink on each side (local floor; hang↔hang included). Spine↔hang: push the
+ * hang away from the trunk. Hang↔hang: push the outer hang further out. Vertical: open the
+ * gap by shifting everything below. Spine↔spine horizontal is left alone (trunk stays put).
  * After any move, rebuild every incident link so ports stay on face centres.
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {object[]} connections
@@ -785,8 +788,18 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
   const INK_PAD = 20
   /** @type {Set<string>} */
   const moved = new Set()
+  let spineCx = 0
+  let spineN = 0
+  for (const id of spineIds) {
+    const r = placed.get(id)
+    if (!r) continue
+    spineCx += r.x + r.w / 2
+    spineN += 1
+  }
+  if (spineN) spineCx /= spineN
   for (const c of connections) {
     if (!c.labelSize || !c.points?.length) continue
+    // DEBUG
     const { width: lw, height: lh } = c.labelSize
     const a = placed.get(c.from)
     const b = placed.get(c.to)
@@ -808,18 +821,36 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
 
     const deficit = need - bestLen
     if (bestHoriz) {
-      // Push the hang (non-spine) box away from the trunk so the side hop grows.
       const fromSpine = spineIds.has(c.from)
       const toSpine = spineIds.has(c.to)
-      if (fromSpine === toSpine) continue
-      const hangId = fromSpine ? c.to : c.from
-      const spineId = fromSpine ? c.from : c.to
-      const r = placed.get(hangId)
-      const s = placed.get(spineId)
-      if (!r || !s) continue
-      const away = r.x + r.w / 2 >= s.x + s.w / 2 ? 1 : -1
-      placed.set(hangId, { ...r, x: r.x + away * deficit })
-      moved.add(hangId)
+      if (fromSpine !== toSpine) {
+        // Spine ↔ hang: push the hang away from the trunk so the side hop grows.
+        const hangId = fromSpine ? c.to : c.from
+        const spineId = fromSpine ? c.from : c.to
+        const r = placed.get(hangId)
+        const s = placed.get(spineId)
+        if (!r || !s) continue
+        const away = r.x + r.w / 2 >= s.x + s.w / 2 ? 1 : -1
+        placed.set(hangId, { ...r, x: r.x + away * deficit })
+        moved.add(hangId)
+      } else if (!fromSpine && !toSpine) {
+        // Hang ↔ hang: grow the gap by pushing the outer box further from the spine.
+        const leftId = a.x <= b.x ? c.from : c.to
+        const rightId = a.x <= b.x ? c.to : c.from
+        const left = placed.get(leftId)
+        const right = placed.get(rightId)
+        if (!left || !right) continue
+        const leftCx = left.x + left.w / 2
+        const rightCx = right.x + right.w / 2
+        if (Math.abs(rightCx - spineCx) >= Math.abs(leftCx - spineCx)) {
+          placed.set(rightId, { ...right, x: right.x + deficit })
+          moved.add(rightId)
+        } else {
+          placed.set(leftId, { ...left, x: left.x - deficit })
+          moved.add(leftId)
+        }
+      }
+      // Both on the spine: never shove the trunk for a label.
     } else {
       // Vertical (incl. labelled spine hops like 「受理」): open the gap so the chip does not
       // cover the whole segment. Stretch when the two boxes nearly share an axis.
