@@ -697,8 +697,12 @@ export function firstClearPath(candidates, placed, fromId, toId, others = null) 
  * Decision sources (fromDiamond): clear inward gutter → clear outer diamond side →
  * clear outer U → inter-lane → opposite outer. Never legalize a blocked gutter (H1).
  * Non-diamond: hang-lane → inter-lane → gutter → outer.
- * Every returned polyline is pathClear-verified. Exhausted search escalates outer depth;
- * never emits an unchecked structural placeholder that can look successful while cutting boxes.
+ *
+ * Contract: every returned polyline is pathClear-verified. Exhausted search escalates
+ * outer depth, then clearSideChannel. If no clear corridor exists, returns **null** —
+ * never an unchecked outerCorridor that can cut boxes while looking like success.
+ * Callers / layout boundary must keep the edge (connectivity) via validated current-engine
+ * full-layout fallback or an explicit residual diagnostic — not silent unsafe ink.
  *
  * @param {{ x: number, y: number, w: number, h: number }} a hang
  * @param {{ x: number, y: number, w: number, h: number }} b spine
@@ -708,6 +712,7 @@ export function firstClearPath(candidates, placed, fromId, toId, others = null) 
  * @param {string | null | undefined} toId
  * @param {boolean} [fromDiamond]
  * @param {number[][][] | null | undefined} [others] already-routed polylines (crossing preference)
+ * @returns {number[][] | null}
  */
 export function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDiamond = false, others = null) {
   if (fromDiamond) {
@@ -733,13 +738,10 @@ export function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDi
       diamondOuterSide(a, b, !hangOnRight, placed, fromId, toId, 64, others) ||
       clearOuterCorridor(a, b, !hangOnRight, placed, fromId, toId, 64, others)
     if (deep && pathClear(deep, placed, fromId, toId)) return deep
-    // Absolute last resort still pathClear-checked via clearSideChannel around the pair.
     const side = clearSideChannel(a, b, !hangOnRight, placed, fromId, toId, 64)
     if (side) return side
-    // Preserve graph connectivity with the deepest same-side outer that attaches to the face;
-    // only reached when every finite corridor still hits — callers/scan must report residual.
-    const fallback = attachSpineEntry(outerCorridor(a, b, hangOnRight, 64 * 16), b, hangOnRight)
-    return fallback
+    // Exhausted: do not emit known-unsafe outerCorridor as success.
+    return null
   }
   const bcy = b.y + b.h / 2
   const acy = a.y + a.h / 2
@@ -769,5 +771,5 @@ export function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDi
     clearOuterCorridor(a, b, !hangOnRight, placed, fromId, toId, 64, others) ||
     clearSideChannel(a, b, !hangOnRight, placed, fromId, toId, 64)
   if (deep && pathClear(deep, placed, fromId, toId)) return deep
-  return attachSpineEntry(outerCorridor(a, b, hangOnRight, 64 * 16), b, hangOnRight)
+  return null
 }

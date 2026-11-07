@@ -271,10 +271,9 @@ test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex pass
   assert.equal(onDiamondOutline(n, bboxEOff), false)
 })
 
-test('production absolute fallback: connectivity kept; residual !pathClear is NOT hardconstraint-ok', () => {
-  // Seal hang/spine so finite corridors cannot pathClear. Production still returns an attached
-  // polyline (no silent edge drop). That residual is a documented unsafe fallback — scan/gates
-  // must treat it as residual, never as clearance success.
+test('production exhausted absolute: routeHangToSpine returns null — never unsafe outer as success', () => {
+  // Seal hang/spine so finite corridors cannot pathClear. Contract: null (exhausted), not an
+  // unchecked outerCorridor that looks like success while cutting boxes.
   const a = { x: 200, y: 200, w: 60, h: 60 }
   const b = { x: 40, y: 360, w: 60, h: 40 }
   const hangOnRight = true
@@ -288,20 +287,56 @@ test('production absolute fallback: connectivity kept; residual !pathClear is NO
     ['w5', { x: 100, y: 260, w: 80, h: 80 }],
   ])
   const pts = routeHangToSpine(a, b, hangOnRight, placed, 'hang', 'spine', true)
-  assert.ok(Array.isArray(pts) && pts.length >= 2, 'must not drop the edge')
-  const near = (p, box) => {
-    const dx = p[0] < box.x ? box.x - p[0] : p[0] > box.x + box.w ? p[0] - (box.x + box.w) : 0
-    const dy = p[1] < box.y ? box.y - p[1] : p[1] > box.y + box.h ? p[1] - (box.y + box.h) : 0
-    return Math.hypot(dx, dy) < 2
-  }
-  assert.equal(near(pts[0], a) || near(pts.at(-1), a), true)
-  assert.equal(near(pts[0], b) || near(pts.at(-1), b), true)
-  const clear = pathClear(pts, placed, 'hang', 'spine')
+  assert.equal(pts, null, 'exhausted clear search must not emit known-unsafe geometry')
+})
+
+test('layout boundary: invalid mainline ink falls back to current engine; graph complete; hint surfaced', async () => {
+  const { mainlineInkInvalid } = await import('../src/renderers/procedure/flow/layout.js')
+  const path = 'preview/synthetic-rejoin/fixtures/L4-enforcement-objection-nested.zh-CN.json'
+  const spec = JSON.parse(readFileSync(path, 'utf8'))
+  const main = buildProcedureGraph(spec, fields, undefined, 'vertical')
   assert.equal(
-    clear,
+    mainlineInkInvalid({
+      placed: new Map(main.nodes.map((n) => [n.id, { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }])),
+      connections: main.connections,
+    }),
     false,
-    'sealed impossible geometry must leave residual hits (unsafe fallback ≠ hardconstraint pass)',
   )
+  assert.equal(main.stats.layoutEngine, 'mainline')
+  assert.ok(!main.hints.some((h) => /fell back to current/.test(h)))
+  assert.ok(main.connections.every((c) => c.points?.length >= 2), 'supported mainline keeps every edge')
+
+  // Forced exhaustion through the real layout boundary (env probe → routeExhausted → ELK/columns).
+  const { spawnSync } = await import('node:child_process')
+  const probe = spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `
+      process.env.ANTU_FORCE_MAINLINE_EXHAUSTION = '1'
+      const { readFileSync } = await import('node:fs')
+      const { buildProcedureGraph } = await import('./src/renderers/procedure/flow/layout.js')
+      const spec = JSON.parse(readFileSync(${JSON.stringify(path)}, 'utf8'))
+      const g = buildProcedureGraph(spec, { engine: 'mainline', stages: false }, undefined, 'vertical')
+      const out = {
+        layoutEngine: g.stats.layoutEngine,
+        hints: g.hints,
+        edgeCount: g.connections.length,
+        allAttached: g.connections.every((c) => c.points?.length >= 2),
+        fellBack: g.hints.some((h) => /fell back to current/.test(h)),
+      }
+      process.stdout.write(JSON.stringify(out))
+      `,
+    ],
+    { cwd: new URL('..', import.meta.url).pathname, encoding: 'utf8' },
+  )
+  assert.equal(probe.status, 0, probe.stderr || probe.stdout)
+  const forced = JSON.parse(probe.stdout)
+  assert.equal(forced.fellBack, true, 'hint must surface fallback — not silent success')
+  assert.notEqual(forced.layoutEngine, 'mainline', 'must not keep invalid mainline as accepted engine')
+  assert.equal(forced.allAttached, true, 'fallback must not drop edges')
+  assert.equal(forced.edgeCount, main.connections.length)
 })
 
 test('mainline: input-order stability — reverse nodes+edges (canonical ids; mainline unchanged)', () => {

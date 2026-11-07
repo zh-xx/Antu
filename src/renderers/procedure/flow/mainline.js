@@ -813,6 +813,13 @@ function layoutStageMainline({
     } else {
       points = routeCentered(a, b, diamonds.has(g.from), placed, g.from, g.to, spineIdSet, others)
     }
+    // Connectivity stub if corridors exhausted (null). Mark residual — layout.js must not
+    // treat this ink as a clearance success (falls back to current/ELK when any residual).
+    let routeExhausted = false
+    if (!points?.length) {
+      points = fallbackRoute(a, b)
+      routeExhausted = true
+    }
     connections.push({
       id: `c:${g.from}->${g.to}`,
       from: g.from,
@@ -820,6 +827,7 @@ function layoutStageMainline({
       kind: g.isBack ? 'back' : g.isMain ? 'main' : 'branch',
       merged: g.merged,
       points,
+      routeExhausted,
       label: g.label,
       /** @type {{ x: number, y: number } | null} */
       labelAt: null,
@@ -857,7 +865,7 @@ function layoutStageMainline({
     if (pathClear(c.points, placed, c.from, c.to)) continue
     const others = connections.filter((o) => o !== c).map((o) => o.points)
     const reroute = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to, spineIdSet, others)
-    if (reroute?.length >= 2 && pathClear(reroute, placed, c.from, c.to)) c.points = reroute
+    if (reroute && reroute.length >= 2 && pathClear(reroute, placed, c.from, c.to)) c.points = reroute
   }
   repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
   restoreSameRowLinks(placed, connections, diamonds)
@@ -1013,7 +1021,17 @@ function rebuildIncidentLinks(placed, connections, moved, diamonds, spineIds) {
     const a = placed.get(c.from)
     const b = placed.get(c.to)
     if (!a || !b) continue
-    c.points = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to, spineIds)
+    const pts = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to, spineIds)
+    if (pts?.length) {
+      c.points = pts
+      c.routeExhausted = false
+    } else if (!c.points?.length) {
+      c.points = fallbackRoute(a, b)
+      c.routeExhausted = true
+    } else {
+      // Keep prior ink; flag residual if it still hits so layout boundary can fall back.
+      c.routeExhausted = !pathClear(c.points, placed, c.from, c.to)
+    }
   }
 }
 
@@ -1051,7 +1069,16 @@ function preferCenteredLinks(placed, connections, diamonds, spineIds) {
     const b = placed.get(c.to)
     if (!a || !b) continue
     const others = connections.filter((o) => o !== c).map((o) => o.points)
-    c.points = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to, spineIds, others)
+    const pts = routeCentered(a, b, diamonds.has(c.from), placed, c.from, c.to, spineIds, others)
+    if (pts?.length) {
+      c.points = pts
+      c.routeExhausted = false
+    } else if (!c.points?.length) {
+      c.points = fallbackRoute(a, b)
+      c.routeExhausted = true
+    } else {
+      c.routeExhausted = !pathClear(c.points, placed, c.from, c.to)
+    }
   }
 }
 
@@ -1582,7 +1609,8 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
     const scy = spine.y + spine.h / 2
     const leaveY = scy >= hcy ? hang.y + hang.h : hang.y
     if (Math.abs(scy - hcy) >= DISTANT_DY || hangLaneBlocked(hang, leaveY, scy, placed, toId, fromId)) {
-      return routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId, false, others).slice().reverse()
+      const fwd = routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId, false, others)
+      return fwd?.length ? fwd.slice().reverse() : null
     }
   }
   // Source above target
@@ -1644,6 +1672,9 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
   if (clear) return clear
   // Exhausted: only accept a pathClear side channel — never an unchecked mid-column cut.
   const side = clearSideChannel(a, b, acx > bcx, placed, fromId, toId, 64)
+  // Exhausted non-hang corridors: keep the historic sideHorizontal last resort. Ink that
+  // still hits a foreign box is rejected at the layout boundary (mainlineInkInvalid /
+  // pathClear) — hang→spine exhaustion alone returns null (via routeHangToSpine).
   if (side) return side
   const anyClear = candidates.find((p) => p && p.length >= 2 && pathClear(p, placed, fromId, toId))
   if (anyClear) return anyClear

@@ -453,6 +453,8 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   // The column layout has no `cost` / `stageTitles`, the single graph has; both are read below
   /** @type {any} */
   let best = null
+  /** @type {'mainline' | 'columns' | 'elk'} */
+  let layoutEngine
   if (useMainline) {
     best = yield* layoutMainlineGen({
       nodes: mainlineNodes,
@@ -463,8 +465,38 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       spine,
       fields,
     })
+    layoutEngine = 'mainline'
+    // Hard validity: never accept known-unsafe mainline ink as a successful layout.
+    // Exhausted hang→spine corridors mark routeExhausted — fall back to the validated
+    // current-engine path (columns when stage data folds, else ELK) so the graph stays
+    // complete without accepting an exhaustion stub as clearance success.
+    // ANTU_FORCE_MAINLINE_EXHAUSTION=1: CI probe only — force the fallback branch (not a product switch).
+    // CI probe only (Node). Avoid bare `process` for tsc without @types/node in this project.
+    const forceExhaust =
+      typeof globalThis !== 'undefined' &&
+      /** @type {{ process?: { env?: Record<string, string | undefined> } }} */ (globalThis).process
+        ?.env?.ANTU_FORCE_MAINLINE_EXHAUSTION === '1'
+    if (forceExhaust || mainlineInkInvalid(best)) {
+      hints.push(
+        'mainline hang→spine exhausted without a clear corridor; fell back to current (ELK/columns) layout — residual mainline ink was not accepted as valid',
+      )
+      if (hasStageColumns) {
+        best = yield* layoutColumnsGen({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
+        layoutEngine = 'columns'
+      } else {
+        best = null
+        for (const placement of PLACEMENTS) {
+          const tried = place(placement)
+          const cost = tried.connections.reduce((n, c) => n + linkCost(c, tried.placed, diamonds), 0)
+          if (!best || cost < best.cost) best = { ...tried, cost }
+          yield
+        }
+        layoutEngine = 'elk'
+      }
+    }
   } else if (hasStageColumns) {
     best = yield* layoutColumnsGen({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
+    layoutEngine = 'columns'
   } else {
     for (const placement of PLACEMENTS) {
       const tried = place(placement)
@@ -472,9 +504,10 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       if (!best || cost < best.cost) best = { ...tried, cost }
       yield
     }
+    layoutEngine = 'elk'
   }
   // The last passes over the links (polish.js), as in the column layout
-  if (!useMainline && !hasStageColumns) {
+  if (layoutEngine === 'elk') {
     polishSingle(best, diamonds, vertical, byId)
     yield
   }
@@ -565,6 +598,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     decisions: nodes.filter((n) => n.kind === 'decision').length,
     ends: nodes.filter((n) => n.kind === 'end').length,
     groupedEdges: spec.edges.length - connections.length,
+    layoutEngine,
   }
 
   return {
@@ -582,6 +616,23 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     size: { width: Math.ceil(size.width), height: Math.ceil(size.height) },
     stats,
   }
+}
+
+/**
+ * True when Mainline must not be accepted: missing polylines or explicit routeExhausted
+ * stubs from hang→spine corridor exhaustion. Does not reopen preexisting residual
+ * pathClear hits as a blanket reject — those stay a separate residual track; C only
+ * closes "absolute fallback emitted as clearance success".
+ * Exported for forced-exhaustion contract tests at the layout boundary.
+ * @param {{ placed?: Map<string, { x: number, y: number, w: number, h: number }>, connections?: Array<{ points?: number[][], from?: string, to?: string, routeExhausted?: boolean }> } | null | undefined} best
+ */
+export function mainlineInkInvalid(best) {
+  if (!best?.placed || !Array.isArray(best.connections)) return true
+  for (const c of best.connections) {
+    if (!c.points?.length) return true
+    if (c.routeExhausted) return true
+  }
+  return false
 }
 
 /**
