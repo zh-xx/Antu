@@ -237,6 +237,7 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     ok:
       !g.errors?.length &&
       hitList.length === 0 &&
+      crossList.length === 0 &&
       overlaps.length === 0 &&
       spineBends.length === 0 &&
       badOrtho.length === 0 &&
@@ -318,7 +319,9 @@ for (const path of fixtures.sort()) {
     vertical,
     horizontal,
   })
-  const mark = vertical.ok && horizontal.hits.length === 0 ? 'OK' : 'FAIL'
+  // Hard gate: both orients must be box-clear AND crossing-free (plus vertical.ok extras).
+  // Previously H crossings were logged but not failed — L4-H could report OK with 3 crosses.
+  const mark = vertical.ok && horizontal.ok ? 'OK' : 'FAIL'
   console.log(
     mark,
     basename(path),
@@ -332,7 +335,7 @@ const outJson = join(outDir, `${tag}-scan.json`)
 const outSum = join(outDir, `${tag}-fail-summary.txt`)
 const outMeta = join(outDir, `${tag}-meta.json`)
 writeFileSync(outJson, JSON.stringify(report, null, 2))
-const fails = report.cases.filter((c) => !c.vertical.ok || c.horizontal.hits.length > 0)
+const fails = report.cases.filter((c) => !c.vertical.ok || !c.horizontal.ok)
 writeFileSync(
   outSum,
   fails

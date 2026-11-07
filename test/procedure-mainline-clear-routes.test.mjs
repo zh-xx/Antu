@@ -149,13 +149,14 @@ test('mainline clear: L4 vertical — 0 crossings + attached endpoints (baseline
   assert.deepEqual(r.gaps, [])
 })
 
-test('mainline clear: L4 horizontal — 0 hits; crossings residual documented (≤3)', () => {
-  // Honest residual: stages-off horizontal still has n-7→n-8 × settlement cluster crossings
-  // after vertical-safe side-end packing. Baseline H had 0 cross with different side assignment.
+test('mainline clear: L4 horizontal — 0 hits, 0 crossings (baseline H had 0 cross / 4 hits)', () => {
+  // n-7→n-8 same-stack past n-10: north U crossed settlement (3). Crossing-aware restore +
+  // post-straighten repair picks a box-clear outer corridor with 0 crossings (non-regression
+  // vs baseline H cross=0; hits stay 0).
   const r = scanFile('preview/synthetic-rejoin/fixtures/L4-enforcement-objection-nested.zh-CN.json', 'horizontal')
   assert.deepEqual(r.hits, [])
   assert.deepEqual(r.gaps, [])
-  assert.ok(r.crossings.length <= 3, `L4 H crossings ${r.crossings.length} > 3`)
+  assert.deepEqual(r.crossings, [], `L4 H crossings ${r.crossings.join('|')}`)
 })
 
 test('mainline clear: S3 hard gates (0 hits, 0 crossings, straight spine, E/W leave, ≤2 bend rejoin)', () => {

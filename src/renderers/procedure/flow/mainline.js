@@ -242,6 +242,12 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   // Final: linked boxes share centres; every port on a face centre (after polish skew).
   const allSpine = new Set([...spineByStage.values()].flat())
   preferCenteredLinks(placed, connections, diamonds, allSpine)
+  // straighten/polish above can reintroduce edge crossings that per-stage repair already
+  // cleared (L4 horizontal n-7→n-8 vs settlement). Crossing repair must run on the combined
+  // frame before labels lock geometry.
+  repairEdgeCrossings(placed, connections, diamonds, allSpine)
+  restoreSameRowLinks(placed, connections, diamonds)
+  repairEdgeCrossings(placed, connections, diamonds, allSpine)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
   yield
@@ -800,7 +806,8 @@ function layoutStageMainline({
               [x1, y1],
             ]
     } else if (sameRowLink(a, b)) {
-      points = clearSideHorizontal(a, b, placed, g.from, g.to) || sideHorizontal(a, b)
+      points =
+        clearSideHorizontal(a, b, placed, g.from, g.to, 16, others) || sideHorizontal(a, b)
     } else {
       points = routeCentered(a, b, diamonds.has(g.from), placed, g.from, g.to, spineIdSet, others)
     }
@@ -852,6 +859,9 @@ function layoutStageMainline({
   }
   repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
   restoreSameRowLinks(placed, connections, diamonds)
+  // Crossing repair must be last geometry pass: restoreSameRowLinks can still rewrite ink
+  // (even crossing-aware) and must not leave a higher-cross state than repair achieved.
+  repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -1296,6 +1306,9 @@ function sameRowLink(a, b) {
 /**
  * After polish/straighten, put decision↔same-row neighbour links back to a clear side route.
  * Never force a 0-bend that cuts through a foreign box (L3/L4 nested ends, 07 same-row).
+ * Crossing-aware: pass other polylines into clearSideHorizontal and never replace a path with
+ * one that has more edge crossings (L4 H n-7→n-8: post-repair south U was overwritten by a
+ * box-clear north U that reintroduced 3 settlement crossings).
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {object[]} connections
  * @param {Set<string>} diamonds
@@ -1307,9 +1320,14 @@ function restoreSameRowLinks(placed, connections, diamonds) {
     const a = placed.get(c.from)
     const b = placed.get(c.to)
     if (!a || !b || !sameRowLink(a, b)) continue
-    const clear = clearSideHorizontal(a, b, placed, c.from, c.to)
-    if (clear) c.points = clear
-    // If nothing clears, keep the existing (hopefully obstacle-aware) points.
+    const others = connections.filter((o) => o !== c).map((o) => o.points)
+    const before = c.points?.length ? pathCrossCount(c.points, others) : Infinity
+    const clear = clearSideHorizontal(a, b, placed, c.from, c.to, 16, others)
+    if (!clear) continue
+    const after = pathCrossCount(clear, others)
+    // Keep existing when the restore candidate is strictly worse on crossings.
+    if (after > before) continue
+    c.points = clear
   }
 }
 
@@ -1399,9 +1417,23 @@ function crossingRepairAlts(c, placed, diamonds, spineIds, others) {
  * A second phase ignores one crossing partner at a time so mutual blockers can unlock.
  */
 function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
+  const bendCount = (pts) => {
+    let n = 0
+    for (let i = 1; i < pts.length - 1; i += 1) {
+      const dx1 = pts[i][0] - pts[i - 1][0]
+      const dy1 = pts[i][1] - pts[i - 1][1]
+      const dx2 = pts[i + 1][0] - pts[i][0]
+      const dy2 = pts[i + 1][1] - pts[i][1]
+      const a = Math.abs(dx1) > Math.abs(dy1) ? 'H' : 'V'
+      const b = Math.abs(dx2) > Math.abs(dy2) ? 'H' : 'V'
+      if (a !== b) n += 1
+    }
+    return n
+  }
   const applyBest = (c, others, before) => {
     let best = null
     let bestCross = before
+    let bestBends = Infinity
     for (const pts of crossingRepairAlts(c, placed, diamonds, spineIds, others)) {
       if (!pts || pts.length < 2) continue
       // Reject non-orthogonal polylines (diagonal false friends from sideHorizontal).
@@ -1416,13 +1448,15 @@ function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
       if (!ortho) continue
       if (!pathClear(pts, placed, c.from, c.to)) continue
       const cross = pathCrossCount(pts, others)
-      if (cross < bestCross) {
+      const bends = bendCount(pts)
+      // Prefer fewer crossings; among ties, prefer fewer bends (short legal routes).
+      if (cross < bestCross || (cross === bestCross && bends < bestBends)) {
         bestCross = cross
+        bestBends = bends
         best = pts
-        if (cross === 0) break
       }
     }
-    if (best) {
+    if (best && (bestCross < before || (bestCross === before && bestBends < bendCount(c.points)))) {
       c.points = best
       return true
     }
