@@ -222,34 +222,146 @@ test('production exhausted both-blocked: no unchecked gutter; returned path is p
   assert.equal(pathClear(pts, placed, 'hang', 'spine'), true)
 })
 
-test('07 decision: shared leave WARN until S2 joint re-route clears both siblings without extra crosses', () => {
-  // Semantic choice (issue 190 S2): multi-attach on free painted-outline sides — not trunk-face
-  // steal, not bbox fan-out. Naive per-edge stagger of one E sibling can raise crossings
-  // (n-6 trial); keep corpus WARN until a joint re-route lands. Scanner must stay honest.
+test('07 decision: joint S2 multi-attach clears shared leave; trunk face kept; outline ports', async () => {
+  // issue 190 S2: free-side outline multi-attach (not trunk-face steal). Joint resolve after
+  // combined-frame polish — naive per-edge first-point mutation is not enough.
+  const { onDiamondOutline } = await import('../src/renderers/procedure/flow/diamondPorts.js')
   const spec = JSON.parse(readFileSync('examples/procedure/07-share-acquisition-agreement.zh-CN.json', 'utf8'))
   for (const dir of ['vertical', 'horizontal']) {
     const g = buildProcedureGraph(spec, fields, undefined, dir)
     assert.equal(edgeCrossings(g).length, 0, dir)
+    assert.deepEqual(foreignHits(g), [], dir)
+    const n = g.nodes.find((x) => x.id === 'n-3')
+    const box = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
     const leave = new Map()
     const incident = []
     for (const c of g.connections) {
       if (!c.points?.length) continue
       if (c.from === 'n-3') {
+        assert.equal(onDiamondOutline(box, c.points[0]), true, `${dir} leave off outline ${c.id}`)
         const k = `${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`
         if (!leave.has(k)) leave.set(k, [])
         leave.get(k).push(c.id)
         incident.push({ id: c.id, kind: c.kind, end: 'leave', pt: c.points[0] })
       }
       if (c.to === 'n-3') {
+        assert.equal(onDiamondOutline(box, c.points.at(-1)), true, `${dir} enter off outline ${c.id}`)
         incident.push({ id: c.id, kind: c.kind, end: 'enter', pt: c.points.at(-1) })
       }
     }
     const shared = [...leave.entries()].filter(([, ids]) => ids.length > 1)
-    assert.ok(shared.length >= 1, `${dir}: expected shared leave WARN class until S2 joint clear`)
+    assert.deepEqual(shared, [], `${dir}: shared leave must be cleared by joint S2 resolve`)
     assert.ok(incident.some((e) => e.end === 'enter'), `${dir}: missing incoming trunk enter on n-3`)
     assert.ok(incident.filter((e) => e.end === 'leave').length >= 3, `${dir}: expected ≥3 leaves from n-3`)
-    // Trunk face never stolen: exactly one main leave from n-3.
     assert.equal(incident.filter((e) => e.end === 'leave' && e.kind === 'main').length, 1, dir)
+  }
+})
+
+test('S2 joint resolve: crowded diamond (≥3 branch leaves) — distinct outline ports, no trunk steal, V/H', async () => {
+  const { onDiamondOutline } = await import('../src/renderers/procedure/flow/diamondPorts.js')
+  // Independently authored minimal case (not a lab file copy): N/S trunk + 3 side exits.
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: 'synth-crowd-ports',
+    domain: 'contract-performance',
+    nodes: [
+      { id: 's', kind: 'start', label: 'S' },
+      { id: 'd', kind: 'decision', label: 'D' },
+      { id: 'm', kind: 'step', label: '主' },
+      { id: 'e', kind: 'end', label: 'E', outcome: 'positive' },
+      { id: 'a', kind: 'end', label: 'A', outcome: 'negative' },
+      { id: 'b', kind: 'end', label: 'B', outcome: 'negative' },
+      { id: 'c', kind: 'end', label: 'C', outcome: 'negative' },
+    ],
+    edges: [
+      { from: 's', to: 'd', main: true },
+      { from: 'd', to: 'm', condition: '主', main: true },
+      { from: 'm', to: 'e', main: true },
+      { from: 'd', to: 'a', condition: '1' },
+      { from: 'd', to: 'b', condition: '2' },
+      { from: 'd', to: 'c', condition: '3' },
+    ],
+  }
+  for (const dir of ['vertical', 'horizontal']) {
+    const g = buildProcedureGraph(spec, fields, undefined, dir)
+    assert.deepEqual(g.errors, [])
+    assert.deepEqual(foreignHits(g), [], dir)
+    assert.deepEqual(edgeCrossings(g), [], dir)
+    assert.deepEqual(endpointGaps(g), [], dir)
+    const pairs = new Set(g.connections.map((c) => `${c.from}->${c.to}`))
+    for (const e of spec.edges) assert.ok(pairs.has(`${e.from}->${e.to}`), `${dir} lost ${e.from}->${e.to}`)
+    const n = g.nodes.find((x) => x.id === 'd')
+    const box = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
+    const leave = new Map()
+    let mainLeave = 0
+    for (const c of g.connections) {
+      if (c.from !== 'd' || !c.points?.length) continue
+      assert.equal(onDiamondOutline(box, c.points[0]), true, `${dir} ${c.id}`)
+      if (c.kind === 'main') mainLeave += 1
+      else {
+        const k = `${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`
+        if (!leave.has(k)) leave.set(k, [])
+        leave.get(k).push(c.id)
+      }
+    }
+    assert.equal(mainLeave, 1, `${dir}: trunk leave stolen/duplicated`)
+    assert.equal(
+      [...leave.values()].filter((ids) => ids.length > 1).length,
+      0,
+      `${dir}: branch leaves still share a port ${JSON.stringify([...leave])}`,
+    )
+  }
+})
+
+test('S2 joint resolve: disconnected-component decision — no co-linear shared stem', async () => {
+  // B08 pattern (independently authored): second start→decision with yes/no both leaving one side.
+  const { onDiamondOutline } = await import('../src/renderers/procedure/flow/diamondPorts.js')
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: 'synth-multi-component-stem',
+    domain: 'other',
+    nodes: [
+      { id: 'a1', kind: 'start', label: '甲起' },
+      { id: 'a2', kind: 'step', label: '甲步' },
+      { id: 'a3', kind: 'end', label: '甲终', outcome: 'positive' },
+      { id: 'b1', kind: 'start', label: '乙起' },
+      { id: 'b2', kind: 'decision', label: '乙分支' },
+      { id: 'b3', kind: 'end', label: '乙主终', outcome: 'positive' },
+      { id: 'b4', kind: 'end', label: '乙支终', outcome: 'negative' },
+    ],
+    edges: [
+      { from: 'a1', to: 'a2', main: true },
+      { from: 'a2', to: 'a3', main: true },
+      { from: 'b1', to: 'b2', main: true },
+      { from: 'b2', to: 'b3', condition: '否', main: true },
+      { from: 'b2', to: 'b4', condition: '是' },
+    ],
+  }
+  for (const dir of ['vertical', 'horizontal']) {
+    const g = buildProcedureGraph(spec, fields, undefined, dir)
+    assert.deepEqual(g.errors, [])
+    assert.deepEqual(foreignHits(g), [], dir)
+    assert.deepEqual(edgeCrossings(g), [], dir)
+    const n = g.nodes.find((x) => x.id === 'b2')
+    const box = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
+    const leave = new Map()
+    const stems = []
+    for (const c of g.connections) {
+      if (c.from !== 'b2' || !c.points?.length || c.points.length < 2) continue
+      assert.equal(onDiamondOutline(box, c.points[0]), true, `${dir} ${c.id}`)
+      const k = `${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`
+      if (!leave.has(k)) leave.set(k, [])
+      leave.get(k).push(c.id)
+      const a = c.points[0]
+      const b = c.points[1]
+      stems.push(`${c.id}:${Math.sign(b[0] - a[0])},${Math.sign(b[1] - a[1])}@${k}`)
+    }
+    assert.equal([...leave.values()].filter((ids) => ids.length > 1).length, 0, `${dir} shared port`)
+    // Distinct first-leg keys (direction@port) — co-linear shared stem collapses ownership.
+    const stemKeys = stems.map((s) => s.split(':')[1])
+    assert.equal(new Set(stemKeys).size, stemKeys.length, `${dir} co-linear shared stem ${stems}`)
   }
 })
 
@@ -267,9 +379,8 @@ test('L4 V n-10→n-11 rejoin-facing adapt: shorter than wrap residual without n
 })
 
 test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex passes', async () => {
-  const { onDiamondOutline, distDiamondOutline, diamondVertices, staggerOnDiamondSide } = await import(
-    '../src/renderers/procedure/flow/diamondPorts.js',
-  )
+  const { onDiamondOutline, distDiamondOutline, diamondVertices, staggerOnDiamondSide, orthoRoutesFromPort } =
+    await import('../src/renderers/procedure/flow/diamondPorts.js')
   const n = {
     position: { x: 100, y: 200 },
     data: { w: 120, h: 80, node: { kind: 'decision' } },
@@ -292,6 +403,53 @@ test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex pass
   assert.equal(onDiamondOutline(n, s1), true)
   assert.ok(Math.hypot(s0[0] - s1[0], s0[1] - s1[1]) > 1)
   assert.ok(Math.hypot(s0[0] - v.E[0], s0[1] - v.E[1]) > 1)
+  // High-degree: distinct outline anchors (no clamp-duplicate).
+  const hi = [0, 1, 2, 3, 4].map((i) => staggerOnDiamondSide(n, 'E', i, 5))
+  for (const p of hi) assert.equal(onDiamondOutline(n, p), true)
+  const keys = new Set(hi.map((p) => `${p[0].toFixed(2)},${p[1].toFixed(2)}`))
+  assert.equal(keys.size, hi.length, `high-degree ports collided: ${[...keys]}`)
+  // orthoRoutesFromPort: never rewrite a 2-pt second vertex in place — first=port, last on target face.
+  const port = s0
+  const target = { x: 280, y: 210, w: 80, h: 40 }
+  const fromBox = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
+  const routes = orthoRoutesFromPort(port, target, fromBox, 28)
+  assert.ok(routes.length >= 4, 'expected multiple orthogonal candidates')
+  // Same-row align → short 2-point is offered; otherwise rebuild still starts at port.
+  const aligned = { x: 280, y: port[1] - 20, w: 80, h: 40 }
+  const short = orthoRoutesFromPort(port, aligned, fromBox, 28)
+  assert.ok(
+    short.some((r) => r.length === 2 && r[0][0] === port[0] && r[0][1] === port[1]),
+    'aligned target must offer 2-point without rewriting port',
+  )
+  for (const r of routes) {
+    assert.equal(r[0][0], port[0])
+    assert.equal(r[0][1], port[1])
+    const last = r.at(-1)
+    const onW = Math.abs(last[0] - target.x) < 0.01
+    const onE = Math.abs(last[0] - (target.x + target.w)) < 0.01
+    const onN = Math.abs(last[1] - target.y) < 0.01
+    const onS = Math.abs(last[1] - (target.y + target.h)) < 0.01
+    assert.ok(onW || onE || onN || onS, `enter not on target face ${last}`)
+  }
+})
+
+test('S2 order stability: repeated builds yield identical leave ports V/H', () => {
+  const spec = JSON.parse(readFileSync('examples/procedure/07-share-acquisition-agreement.zh-CN.json', 'utf8'))
+  for (const dir of ['vertical', 'horizontal']) {
+    const a = buildProcedureGraph(spec, fields, undefined, dir)
+    const b = buildProcedureGraph(spec, fields, undefined, dir)
+    const ports = (g) =>
+      g.connections
+        .filter((c) => c.from === 'n-3' && c.points?.length)
+        .map((c) => `${c.id}:${c.points[0][0].toFixed(2)},${c.points[0][1].toFixed(2)}`)
+        .sort()
+    assert.deepEqual(ports(a), ports(b), dir)
+    assert.deepEqual(
+      a.connections.map((c) => c.points),
+      b.connections.map((c) => c.points),
+      `${dir} full points`,
+    )
+  }
 })
 
 test('production exhausted absolute: routeHangToSpine returns null — never unsafe outer as success', () => {

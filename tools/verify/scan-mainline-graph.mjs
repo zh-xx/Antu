@@ -62,11 +62,14 @@ try {
 
 const { buildProcedureGraph } = await import(resolve(REPO, 'src/renderers/procedure/flow/layout.js'))
 const { bendsOf } = await import(resolve(REPO, 'src/renderers/procedure/flow/straighten.js'))
-const { distDiamondOutline, onDiamondOutline } = await import(
+const { distDiamondOutline, onDiamondOutline, diamondVertices } = await import(
   resolve(REPO, 'src/renderers/procedure/flow/diamondPorts.js'),
 )
 
-const fields = { engine: 'mainline', stages: false }
+const fields = {
+  engine: 'mainline',
+  stages: process.env.SCAN_STAGES === '1' || process.env.SCAN_STAGES === 'true',
+}
 const tag = process.env.SCAN_TAG || 'scan'
 const outDir = process.env.SCAN_OUT_DIR || join('/opt/cursor/artifacts/pr359-accept/metrics', tag)
 let head = process.env.GIT_HEAD || 'unknown'
@@ -85,10 +88,27 @@ function sha256(path) {
 function faceOf(n, [x, y], tol = 1.5) {
   const cx = n.position.x + n.data.w / 2
   const cy = n.position.y + n.data.h / 2
+  // Axis-aligned face centres (rectangles + diamond vertices).
   if (Math.abs(x - n.position.x) < tol && Math.abs(y - cy) < 2) return 'W'
   if (Math.abs(x - (n.position.x + n.data.w)) < tol && Math.abs(y - cy) < 2) return 'E'
   if (Math.abs(y - n.position.y) < tol && Math.abs(x - cx) < 2) return 'N'
   if (Math.abs(y - (n.position.y + n.data.h)) < tol && Math.abs(x - cx) < 2) return 'S'
+  // Decision multi-attach (S2): ports may sit on a painted outline *edge* between vertices.
+  // Classify by nearest cardinal vertex — still requires onDiamondOutline separately.
+  if (isDecisionNode(n) && typeof onDiamondOutline === 'function' && onDiamondOutline(n, [x, y])) {
+    const v = diamondVertices(n)
+    let best = '?'
+    let bestD = Infinity
+    for (const f of ['N', 'E', 'S', 'W']) {
+      const [vx, vy] = v[f]
+      const d = Math.hypot(x - vx, y - vy)
+      if (d < bestD) {
+        bestD = d
+        best = f
+      }
+    }
+    return best
+  }
   return '?'
 }
 
@@ -232,21 +252,119 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
   }
   const hitList = [...new Set(hits)]
   const crossList = [...new Set(crossings)]
-  // Shared face-centre leave: two non-main edges leaving the same port point on one node.
+  // Shared leave anchors: ALL incident leaves (main + branch). Distinct from "branch-only".
   const leavePorts = new Map()
+  const leavePortsBranch = new Map()
   for (const c of g.connections) {
-    if (!c.points?.length || c.kind === 'main') continue
+    if (!c.points?.length) continue
     const key = `${c.from}@${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`
     if (!leavePorts.has(key)) leavePorts.set(key, [])
     leavePorts.get(key).push(c.id)
+    if (c.kind !== 'main') {
+      if (!leavePortsBranch.has(key)) leavePortsBranch.set(key, [])
+      leavePortsBranch.get(key).push(c.id)
+    }
   }
   const sharedPorts = [...leavePorts.entries()]
     .filter(([, ids]) => ids.length > 1)
     .map(([k, ids]) => `${k}:{${ids.join(',')}}`)
+  const sharedPortsBranch = [...leavePortsBranch.entries()]
+    .filter(([, ids]) => ids.length > 1)
+    .map(([k, ids]) => `${k}:{${ids.join(',')}}`)
+  // Decision-only: rect face-centre multi-leave with immediate diverge is often permitted.
+  const sharedPortsDecision = sharedPorts.filter((s) => {
+    const id = s.split('@')[0]
+    return isDecisionNode(byId.get(id))
+  })
+
+  // Ambiguous co-linear shared source stem: same leave point + same first-leg direction.
+  // Distinct ports with parallel first legs are OK; same port + same direction is not.
+  const stemMap = new Map()
+  for (const c of g.connections) {
+    if (!c.points || c.points.length < 2) continue
+    const a = c.points[0]
+    const b = c.points[1]
+    const k = `${c.from}@${a[0].toFixed(1)},${a[1].toFixed(1)}:${Math.sign(b[0] - a[0])},${Math.sign(b[1] - a[1])}`
+    if (!stemMap.has(k)) stemMap.set(k, [])
+    stemMap.get(k).push(c.id)
+  }
+  const sharedStems = [...stemMap.entries()]
+    .filter(([, ids]) => ids.length > 1)
+    .map(([k, ids]) => `${k}:{${ids.join(',')}}`)
+  const sharedStemsDecision = sharedStems.filter((s) => {
+    const id = s.split('@')[0]
+    return isDecisionNode(byId.get(id))
+  })
+
+  // Label chip overlaps (axis-aligned bbox) when both labelAt + labelSize present.
+  const labelOverlaps = []
+  const labeled = g.connections.filter((c) => c.labelAt && c.labelSize)
+  for (let i = 0; i < labeled.length; i += 1) {
+    for (let j = i + 1; j < labeled.length; j += 1) {
+      const a = labeled[i]
+      const b = labeled[j]
+      const ax = a.labelAt[0] - a.labelSize[0] / 2
+      const ay = a.labelAt[1] - a.labelSize[1] / 2
+      const bx = b.labelAt[0] - b.labelSize[0] / 2
+      const by = b.labelAt[1] - b.labelSize[1] / 2
+      if (
+        ax < bx + b.labelSize[0] - 0.5 &&
+        bx < ax + a.labelSize[0] - 0.5 &&
+        ay < by + b.labelSize[1] - 0.5 &&
+        by < ay + a.labelSize[1] - 0.5
+      ) {
+        labelOverlaps.push(`${a.id}|${b.id}`)
+      }
+    }
+  }
+
   // Spec may list duplicate from→to pairs; compare unique pairs to painted connections.
   const specEdgeUniq = new Set((spec.edges || []).map((e) => `${e.from}->${e.to}`))
   const connUniq = new Set(g.connections.map((c) => `${c.from}->${c.to}`))
   const edgeCountMatch = specEdgeUniq.size === connUniq.size && missingEdges.length === 0
+
+  /** Port ownership + outline export for independent recomputation (optional). */
+  const geometry =
+    process.env.SCAN_EXPORT_GEOMETRY === '1'
+      ? {
+          nodes: g.nodes.map((n) => ({
+            id: n.id,
+            kind: n.data?.node?.kind || n.kind,
+            x: n.position.x,
+            y: n.position.y,
+            w: n.data.w,
+            h: n.data.h,
+            diamond: isDecisionNode(n),
+          })),
+          edges: g.connections.map((c) => {
+            const from = byId.get(c.from)
+            const to = byId.get(c.to)
+            const p0 = c.points?.[0]
+            const p1 = c.points?.at(-1)
+            return {
+              id: c.id,
+              from: c.from,
+              to: c.to,
+              kind: c.kind,
+              points: c.points,
+              leaveFace: from && p0 ? faceOf(from, p0) : null,
+              enterFace: to && p1 ? faceOf(to, p1) : null,
+              leaveOnOutline:
+                from && p0 && isDecisionNode(from) ? onDiamondOutline(from, p0) : null,
+              enterOnOutline: to && p1 && isDecisionNode(to) ? onDiamondOutline(to, p1) : null,
+              labelAt: c.labelAt || null,
+              labelSize: c.labelSize || null,
+            }
+          }),
+          unmeasured: [
+            'aesthetic-balance',
+            'stages-frame-gutter-semantics',
+            'permitted-rect-face-centre-multi-leave',
+            'permitted-parallel-distinct-port-stems',
+          ],
+        }
+      : undefined
+
   return {
     errors: g.errors,
     ms,
@@ -268,7 +386,15 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     bendTotal,
     s3,
     sharedPorts,
+    sharedPortsBranch,
+    sharedPortsDecision,
+    sharedStems,
+    sharedStemsDecision,
+    labelOverlaps,
     edgeCountMatch,
+    geometry,
+    // Hard geometric ok clears decision shared leave/stem. Rect multi-leave + label overlaps
+    // are reported (not hard-fail): often permitted or stages-limited.
     ok:
       !g.errors?.length &&
       hitList.length === 0 &&
@@ -281,7 +407,9 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
       endpointGaps.length === 0 &&
       missingLabels.length === 0 &&
       badPorts.length === 0 &&
-      edgeCountMatch,
+      edgeCountMatch &&
+      sharedPortsDecision.length === 0 &&
+      sharedStemsDecision.length === 0,
   }
 }
 
@@ -357,13 +485,13 @@ for (const path of fixtures.sort()) {
   // Previously H crossings were logged but not failed — L4-H could report OK with 3 crosses.
   // Nested hang acceptance fixtures also reject shared leave ports; corpus may still warn.
   const base = basename(path)
-  const nestedGate = /^(S\d|L\d|H1)/.test(base)
-  const sharedFail =
-    nestedGate && (vertical.sharedPorts.length > 0 || horizontal.sharedPorts.length > 0)
-  const mark = vertical.ok && horizontal.ok && !sharedFail ? 'OK' : 'FAIL'
+  const mark = vertical.ok && horizontal.ok ? 'OK' : 'FAIL'
   const warnShared =
-    vertical.sharedPorts.length || horizontal.sharedPorts.length
-      ? ` sharedPorts V=${vertical.sharedPorts.length} H=${horizontal.sharedPorts.length}`
+    vertical.sharedPorts.length ||
+    horizontal.sharedPorts.length ||
+    vertical.sharedStems?.length ||
+    horizontal.sharedStems?.length
+      ? ` sharedPorts V=${vertical.sharedPorts.length} H=${horizontal.sharedPorts.length} stemsDec V=${vertical.sharedStemsDecision?.length || 0} H=${horizontal.sharedStemsDecision?.length || 0}`
       : ''
   console.log(
     mark,
@@ -372,10 +500,11 @@ for (const path of fixtures.sort()) {
     `H:hits=${horizontal.hits.length},cross=${horizontal.crossings.length},gap=${horizontal.endpointGaps.length}`,
     warnShared,
   )
-  if (warnShared && mark === 'OK') console.log('  WARN shared leave ports (corpus; not nested gate)', {
-    V: vertical.sharedPorts,
-    H: horizontal.sharedPorts,
-  })
+  if (warnShared && mark === 'OK')
+    console.log('  NOTE non-decision shared leave / permitted rect multi-leave', {
+      V: vertical.sharedPorts,
+      H: horizontal.sharedPorts,
+    })
 }
 
 report.inputHashes = inputHashes
@@ -383,13 +512,7 @@ const outJson = join(outDir, `${tag}-scan.json`)
 const outSum = join(outDir, `${tag}-fail-summary.txt`)
 const outMeta = join(outDir, `${tag}-meta.json`)
 writeFileSync(outJson, JSON.stringify(report, null, 2))
-const fails = report.cases.filter((c) => {
-  const base = basename(c.path)
-  const nestedGate = /^(S\d|L\d|H1)/.test(base)
-  const sharedFail =
-    nestedGate && (c.vertical.sharedPorts.length > 0 || c.horizontal.sharedPorts.length > 0)
-  return !c.vertical.ok || !c.horizontal.ok || sharedFail
-})
+const fails = report.cases.filter((c) => !c.vertical.ok || !c.horizontal.ok)
 const warns = report.cases.filter(
   (c) =>
     (c.vertical.sharedPorts.length > 0 || c.horizontal.sharedPorts.length > 0) &&
@@ -400,11 +523,11 @@ writeFileSync(
   [
     ...fails.map(
       (c) =>
-        `${c.path}\n  sha=${c.inputSha256}\n  V hits=${c.vertical.hits.join('|')} cross=${c.vertical.crossings.join('|')} gaps=${c.vertical.endpointGaps.join('|')} shared=${c.vertical.sharedPorts.join('|')}\n  H hits=${c.horizontal.hits.join('|')} cross=${c.horizontal.crossings.join('|')} shared=${c.horizontal.sharedPorts.join('|')}\n`,
+        `${c.path}\n  sha=${c.inputSha256}\n  V hits=${c.vertical.hits.join('|')} cross=${c.vertical.crossings.join('|')} gaps=${c.vertical.endpointGaps.join('|')} sharedDec=${(c.vertical.sharedPortsDecision || []).join('|')} stemsDec=${(c.vertical.sharedStemsDecision || []).join('|')} badPorts=${c.vertical.badPorts.join('|')}\n  H hits=${c.horizontal.hits.join('|')} cross=${c.horizontal.crossings.join('|')} sharedDec=${(c.horizontal.sharedPortsDecision || []).join('|')} stemsDec=${(c.horizontal.sharedStemsDecision || []).join('|')} badPorts=${c.horizontal.badPorts.join('|')}\n`,
     ),
     ...warns.map(
       (c) =>
-        `WARN-shared-ports ${c.path}\n  V ${c.vertical.sharedPorts.join('|')}\n  H ${c.horizontal.sharedPorts.join('|')}\n`,
+        `NOTE-shared-ports-non-decision ${c.path}\n  V ${c.vertical.sharedPorts.join('|')}\n  H ${c.horizontal.sharedPorts.join('|')}\n`,
     ),
   ].join('\n') || 'none',
 )

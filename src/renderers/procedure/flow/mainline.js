@@ -63,7 +63,12 @@ import {
   diamondOuterSide,
   firstClearPath,
 } from './hangSpineRoute.js'
-import { diamondVertices, onDiamondOutline, staggerOnDiamondSide } from './diamondPorts.js'
+import {
+  diamondVertices,
+  onDiamondOutline,
+  staggerOnDiamondSide,
+  orthoRoutesFromPort,
+} from './diamondPorts.js'
 
 /** Gap between the spine column and the first branch lane (room for a condition label on the hop) */
 const LANE_GAP = 112
@@ -251,6 +256,9 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   repairEdgeCrossings(placed, connections, diamonds, allSpine)
   restoreSameRowLinks(placed, connections, diamonds)
   repairEdgeCrossings(placed, connections, diamonds, allSpine)
+  // Combined-frame polish/restore can re-collapse sibling leaves onto one diamond vertex
+  // (undoing the per-stage S2 resolve). Re-run joint multi-attach as the last geometry pass.
+  resolveSharedDiamondLeaves(placed, connections, diamonds, allSpine)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
   yield
@@ -898,9 +906,9 @@ function layoutStageMainline({
   // Crossing repair must be last geometry pass: restoreSameRowLinks can still rewrite ink
   // (even crossing-aware) and must not leave a higher-cross state than repair achieved.
   repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
-  // 07 / side-port exhaustion (S2): stagger sibling branch leaves that share one diamond
-  // vertex onto free outline edges — never move trunk N/S (V) or E/W (H) mains.
-  staggerSharedDiamondLeaves(placed, connections, diamonds, spineIdSet)
+  // 07 / side-port exhaustion (S2): jointly re-port sibling branch leaves that share one
+  // diamond vertex onto free outline edges — never move trunk N/S (V) or E/W (H) mains.
+  resolveSharedDiamondLeaves(placed, connections, diamonds, spineIdSet)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -1612,16 +1620,18 @@ function acceptClear(pts, placed, fromId, toId) {
 }
 
 /**
- * issue 190 S2 — multi-attach on free diamond outline sides when sibling branch leaves share one
- * vertex. Trunk main enter/leave keep N/S (vertical flow) or E/W (horizontal); only branch
- * leaves on a free cardinal side are staggered. Rejects any rewrite that leaves outline,
- * hits a box, or increases crossings.
+ * issue 190 S2 — joint multi-attach on free diamond outline sides when sibling branch leaves
+ * share one vertex (or share a source-stem prefix). Trunk faces (main enter/leave) stay reserved.
+ * Per-edge first-point mutation is insufficient: 2-point same-row siblings raise crosses and can
+ * rewrite the target endpoint. Instead assign distinct outline ports jointly, rebuild orthogonal
+ * routes from each port to a recomputed target enter, and accept only a whole-group improvement
+ * (lexico: shared leave anchors → crossings → bends → length).
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {object[]} connections
  * @param {Set<string>} diamonds
  * @param {Set<string>} spineIds
  */
-function staggerSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
+function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
   /** @type {Map<string, object[]>} */
   const byDiamond = new Map()
   for (const c of connections) {
@@ -1630,6 +1640,82 @@ function staggerSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
     if (list) list.push(c)
     else byDiamond.set(c.from, [c])
   }
+
+  const keyPt = (p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`
+
+  const scoreGroup = (group) => {
+    const ids = new Set(group.map((c) => c.id))
+    let shared = 0
+    const leave = new Map()
+    for (const c of group) {
+      const k = keyPt(c.points[0])
+      leave.set(k, (leave.get(k) || 0) + 1)
+    }
+    for (const n of leave.values()) if (n > 1) shared += n - 1
+    let crosses = 0
+    let bends = 0
+    let len = 0
+    for (let i = 0; i < group.length; i += 1) {
+      const pts = group[i].points
+      bends += pathBendCount(pts)
+      len += pathLength(pts)
+      const others = [
+        ...group.filter((_, j) => j !== i).map((c) => c.points),
+        // Exclude by connection id — trial clones are not === the live objects in `connections`.
+        ...connections.filter((o) => !ids.has(o.id)).map((o) => o.points),
+      ]
+      crosses += pathCrossCount(pts, others)
+    }
+    return { shared, crosses: crosses / 2, bends, len }
+  }
+
+  /** Lexico: shared leave (ambiguous overlap) → crossings → bends → length. */
+  const better = (a, b) => {
+    if (a.shared !== b.shared) return a.shared < b.shared
+    if (a.crosses !== b.crosses) return a.crosses < b.crosses
+    if (a.bends !== b.bends) return a.bends < b.bends
+    return a.len + 1e-6 < b.len
+  }
+
+  /**
+   * Ranked clear orthogonal routes from outline port → target. Never mutates a 2-point path's
+   * second vertex in place (that vertex is the target enter).
+   * @param {number[]} port
+   * @param {object} c
+   * @param {number[][][]} [extraOthers] already-accepted sibling trials (joint)
+   * @param {Set<string>} [skipIds]
+   * @param {number} [limit]
+   * @returns {number[][][]}
+   */
+  const routesFromPort = (port, c, extraOthers = [], skipIds = new Set(), limit = 8) => {
+    const b = placed.get(c.to)
+    const fromBox = placed.get(c.from)
+    if (!b || !fromBox) return []
+    const others = [
+      ...extraOthers,
+      ...connections.filter((o) => o !== c && !skipIds.has(o.id)).map((o) => o.points),
+    ]
+    /** @type {{ pts: number[][], key: [number, number, number] }[]} */
+    const ranked = []
+    const seen = new Set()
+    for (const gap of [20, 36, 56, 80]) {
+      for (const cand of orthoRoutesFromPort(port, b, fromBox, gap)) {
+        if (!cand || cand.length < 2) continue
+        if (!onDiamondOutline(fromBox, cand[0])) continue
+        if (!pathClear(cand, placed, c.from, c.to)) continue
+        const sig = cand.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join('>')
+        if (seen.has(sig)) continue
+        seen.add(sig)
+        const cross = pathCrossCount(cand, others)
+        const bends = pathBendCount(cand)
+        const len = pathLength(cand)
+        ranked.push({ pts: cand, key: [cross, bends, len] })
+      }
+    }
+    ranked.sort((a, b) => a.key[0] - b.key[0] || a.key[1] - b.key[1] || a.key[2] - b.key[2])
+    return ranked.slice(0, limit).map((r) => r.pts)
+  }
+
   for (const [id, leaves] of byDiamond) {
     if (leaves.length < 2) continue
     const box = placed.get(id)
@@ -1649,7 +1735,7 @@ function staggerSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
       }
       return bestD <= 2 ? best : null
     }
-    // Trunk faces occupied by main enter/leave — never stagger onto them.
+    // All incident main edges reserve trunk faces — never stagger onto them.
     const trunk = new Set()
     for (const c of connections) {
       if (c.kind !== 'main' || !c.points?.length) continue
@@ -1674,25 +1760,195 @@ function staggerSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
     for (const [face, group] of byFace) {
       if (group.length < 2) continue
       group.sort((a, b) => String(a.id).localeCompare(String(b.id)))
-      group.forEach((c, i) => {
-        const next = staggerOnDiamondSide(node, /** @type {'E'|'W'|'N'|'S'} */ (face), i, group.length)
-        if (!onDiamondOutline(node, next)) return
-        const old = c.points
-        const trial = [next, ...old.slice(1)]
-        if (trial.length < 2) return
-        if (!pathClear(trial, placed, c.from, c.to)) return
-        const others = connections.filter((o) => o !== c).map((o) => o.points)
-        if (pathCrossCount(trial, others) > pathCrossCount(old, others)) return
-        // Keep orthogonal first leg when possible: snap second point to axis through `next`.
-        if (trial.length >= 2) {
-          const [, q] = trial
-          if (Math.abs(old[0][0] - old[1][0]) < 0.5) trial[1] = [next[0], q[1]]
-          else if (Math.abs(old[0][1] - old[1][1]) < 0.5) trial[1] = [q[0], next[1]]
-          if (!pathClear(trial, placed, c.from, c.to)) return
-          if (pathCrossCount(trial, others) > pathCrossCount(old, others)) return
+      const baseline = scoreGroup(group)
+      if (baseline.shared === 0) {
+        // Still repair co-linear shared stems: identical first segment direction from same face.
+        const stems = group.filter((c) => c.points.length >= 2)
+        const stemKey = (c) => {
+          const a = c.points[0]
+          const b = c.points[1]
+          const dx = Math.sign(b[0] - a[0])
+          const dy = Math.sign(b[1] - a[1])
+          return `${dx},${dy}`
         }
-        c.points = trial
-      })
+        const byStem = new Map()
+        for (const c of stems) {
+          const k = stemKey(c)
+          if (!byStem.has(k)) byStem.set(k, [])
+          byStem.get(k).push(c)
+        }
+        if (![...byStem.values()].some((g) => g.length > 1)) continue
+      }
+
+      // Route shorter / same-row first so outer U siblings see them in `extraOthers`.
+      const order = [...group].sort(
+        (a, b) =>
+          (a.points?.length || 0) - (b.points?.length || 0) ||
+          String(a.id).localeCompare(String(b.id)),
+      )
+      const indexOf = new Map(group.map((c, i) => [c, i]))
+      const groupIds = new Set(group.map((c) => c.id))
+      /** @type {Map<object, number[]>} */
+      const portsByConn = new Map()
+      let portsOk = true
+      for (const c of order) {
+        const i = /** @type {number} */ (indexOf.get(c))
+        const port = staggerOnDiamondSide(node, /** @type {'E'|'W'|'N'|'S'} */ (face), i, group.length)
+        if (!onDiamondOutline(node, port)) {
+          portsOk = false
+          break
+        }
+        portsByConn.set(c, port)
+      }
+      if (!portsOk) continue
+      const portKeys = [...portsByConn.values()].map((p) => keyPt(p))
+      if (new Set(portKeys).size !== portKeys.length) continue
+
+      // Bounded joint search: try top-K routes per edge (DFS) for shared-first lexico win.
+      /** @type {Map<object, number[][]> | null} */
+      let bestProposed = null
+      /** @type {{ shared: number, crosses: number, bends: number, len: number } | null} */
+      let bestScore = null
+      const dfs = (idx, proposed) => {
+        if (idx >= order.length) {
+          const trialGroup = group.map((c) => ({ ...c, points: proposed.get(c) }))
+          const nextScore = scoreGroup(trialGroup)
+          if (nextScore.shared > 0) return
+          if (!bestScore || better(nextScore, bestScore)) {
+            bestScore = nextScore
+            bestProposed = new Map(proposed)
+          }
+          return
+        }
+        // Prune if we already have a zero-cross shared-clear solution.
+        if (bestScore && bestScore.shared === 0 && bestScore.crosses === 0) return
+        const c = order[idx]
+        const port = /** @type {number[]} */ (portsByConn.get(c))
+        const cands = routesFromPort(port, c, [...proposed.values()], groupIds, 6)
+        for (const route of cands) {
+          proposed.set(c, route)
+          dfs(idx + 1, proposed)
+          proposed.delete(c)
+        }
+      }
+      dfs(0, new Map())
+      if (!bestProposed || !bestScore || !better(bestScore, baseline)) continue
+
+      for (const c of group) {
+        c.points = /** @type {number[][]} */ (bestProposed.get(c))
+      }
+    }
+
+    // Branch leaves parked on a reserved trunk face (sharing the main enter/leave vertex)
+    // cannot steal that face — relocate them onto free sides instead.
+    const freeFaces = /** @type {('N'|'E'|'S'|'W')[]} */ (
+      ['N', 'E', 'S', 'W'].filter((f) => !trunk.has(f))
+    )
+    if (freeFaces.length === 0) continue
+    /** @type {object[]} */
+    const trunkParked = []
+    for (const c of leaves) {
+      if (c.kind === 'main' || !c.points?.length) continue
+      const f = faceOf(c.points[0])
+      if (f && trunk.has(f)) trunkParked.push(c)
+    }
+    if (trunkParked.length === 0) continue
+    trunkParked.sort((a, b) => String(a.id).localeCompare(String(b.id)))
+    // Occupancy on free faces from leaves already resolved there.
+    /** @type {Map<string, object[]>} */
+    const freeOcc = new Map(freeFaces.map((f) => [f, []]))
+    for (const c of leaves) {
+      if (trunkParked.includes(c) || !c.points?.length) continue
+      const f = faceOf(c.points[0])
+      if (f && freeOcc.has(f)) freeOcc.get(f).push(c)
+    }
+    const groupIds = new Set(trunkParked.map((c) => c.id))
+    // Count sharing against the live main leave port (not in trunkParked) as baseline debt.
+    const mainLeave = leaves.find((c) => c.kind === 'main')
+    const mainKey = mainLeave?.points?.[0] ? keyPt(mainLeave.points[0]) : null
+    const baselineParked = scoreGroup(trunkParked)
+    if (mainKey) {
+      for (const c of trunkParked) {
+        if (keyPt(c.points[0]) === mainKey) baselineParked.shared += 1
+      }
+    }
+    /** @type {Map<object, number[][]> | null} */
+    let bestParked = null
+    /** @type {{ shared: number, crosses: number, bends: number, len: number } | null} */
+    let bestParkedScore = null
+    // Existing leave anchors (main + free-face branches) — parked ports must not collide.
+    const reservedPorts = new Set()
+    for (const c of leaves) {
+      if (trunkParked.includes(c) || !c.points?.length) continue
+      reservedPorts.add(keyPt(c.points[0]))
+    }
+    // Assign each parked branch onto the least-occupied free face with a fresh outline slot.
+    const occCount = new Map(freeFaces.map((f) => [f, (freeOcc.get(f) || []).length]))
+    /** @type {{ c: object, face: 'N'|'E'|'S'|'W', port: number[] }[]} */
+    const assign = []
+    for (const c of trunkParked) {
+      const face = /** @type {'N'|'E'|'S'|'W'} */ (
+        [...freeFaces].sort(
+          (a, b) => (occCount.get(a) || 0) - (occCount.get(b) || 0) || a.localeCompare(b),
+        )[0]
+      )
+      let placedPort = /** @type {number[] | null} */ (null)
+      for (let slot = occCount.get(face) || 0; slot < (occCount.get(face) || 0) + 8; slot += 1) {
+        const count = Math.max(slot + 1, 2)
+        const port = staggerOnDiamondSide(node, face, slot, count)
+        if (!onDiamondOutline(node, port)) continue
+        const k = keyPt(port)
+        if (reservedPorts.has(k)) continue
+        if (assign.some((a) => keyPt(a.port) === k)) continue
+        placedPort = port
+        break
+      }
+      if (!placedPort) {
+        assign.length = 0
+        break
+      }
+      assign.push({ c, face, port: placedPort })
+      reservedPorts.add(keyPt(placedPort))
+      occCount.set(face, (occCount.get(face) || 0) + 1)
+    }
+    if (assign.length !== trunkParked.length) continue
+    const order = [...assign].sort(
+      (a, b) =>
+        (a.c.points?.length || 0) - (b.c.points?.length || 0) ||
+        String(a.c.id).localeCompare(String(b.c.id)),
+    )
+    const dfsPark = (idx, proposed) => {
+      if (idx >= order.length) {
+        const trial = trunkParked.map((c) => ({ ...c, points: proposed.get(c) }))
+        const sc = scoreGroup(trial)
+        if (sc.shared > 0) return
+        if (mainKey && [...proposed.values()].some((pts) => keyPt(pts[0]) === mainKey)) return
+        if (!bestParkedScore || better(sc, bestParkedScore)) {
+          bestParkedScore = sc
+          bestParked = new Map(proposed)
+        }
+        return
+      }
+      if (bestParkedScore && bestParkedScore.shared === 0 && bestParkedScore.crosses === 0) return
+      const { c, port } = order[idx]
+      const cands = routesFromPort(port, c, [...proposed.values()], groupIds, 6)
+      for (const route of cands) {
+        proposed.set(c, route)
+        dfsPark(idx + 1, proposed)
+        proposed.delete(c)
+      }
+    }
+    dfsPark(0, new Map())
+    // Accept any shared-clear relocation off the trunk face (ownership > tiny bend/len delta).
+    if (
+      bestParked &&
+      bestParkedScore &&
+      (better(bestParkedScore, baselineParked) ||
+        (baselineParked.shared > 0 && bestParkedScore.shared === 0))
+    ) {
+      for (const c of trunkParked) {
+        c.points = /** @type {number[][]} */ (bestParked.get(c))
+      }
     }
   }
   void spineIds
