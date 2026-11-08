@@ -264,7 +264,14 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   resolveSharedDiamondLeaves(placed, connections, diamonds, allSpine)
   // Separate long unrelated / same-source rail coincidences that joint leave-resolve missed.
   separateAmbiguousCorridors(placed, connections, diamonds, allSpine)
+  // Corridor jogs can introduce proper crosses that earlier repair never saw — re-run.
+  repairEdgeCrossings(placed, connections, diamonds, allSpine)
+  // Crossing repair can re-collapse rails; separate again before snap.
+  separateAmbiguousCorridors(placed, connections, diamonds, allSpine)
   snapDiamondEndpoints(placed, connections, diamonds)
+  // Snap may insert ortho bends that newly coincide with foreign rails (V11 H stages-on).
+  // Final geometry pass: never run crossing-repair after this (it reintroduces overlaps).
+  separateAmbiguousCorridors(placed, connections, diamonds, allSpine)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
   yield
@@ -916,7 +923,14 @@ function layoutStageMainline({
   // diamond vertex onto free outline edges — never move trunk N/S (V) or E/W (H) mains.
   resolveSharedDiamondLeaves(placed, connections, diamonds, spineIdSet)
   separateAmbiguousCorridors(placed, connections, diamonds, spineIdSet)
+  // Corridor jogs can introduce proper crosses that earlier repair never saw — re-run.
+  repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
+  // Crossing repair can re-collapse rails; separate again before snap.
+  separateAmbiguousCorridors(placed, connections, diamonds, spineIdSet)
   snapDiamondEndpoints(placed, connections, diamonds)
+  // Snap may insert ortho bends that newly coincide with foreign rails (V11 H stages-on).
+  // Final geometry pass: never run crossing-repair after this (it reintroduces overlaps).
+  separateAmbiguousCorridors(placed, connections, diamonds, spineIdSet)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -1687,8 +1701,26 @@ function snapDiamondEndpoints(placed, connections, diamonds) {
     }
     if (diamonds.has(c.to)) {
       const box = placed.get(c.to)
-      if (box) c.points[c.points.length - 1] = snap(box, c.points[c.points.length - 1], c.points[c.points.length - 2])
+      if (box) {
+        c.points[c.points.length - 1] = snap(
+          box,
+          c.points[c.points.length - 1],
+          c.points[c.points.length - 2],
+        )
+      }
     }
+    // Snapping a diamond vertex can break the adjacent ortho segment (V11 H stages-on
+    // collapsed n-2→n-10 into a 2-point diagonal). Insert a bend to restore axis-alignment.
+    const fixSeg = (i0, i1) => {
+      const p = c.points[i0]
+      const q = c.points[i1]
+      if (Math.abs(p[0] - q[0]) < 0.5 || Math.abs(p[1] - q[1]) < 0.5) return
+      const mid = /** @type {number[]} */ ([p[0], q[1]])
+      if (i0 < i1) c.points.splice(i1, 0, mid)
+      else c.points.splice(i0, 0, mid)
+    }
+    if (c.points.length >= 2) fixSeg(0, 1)
+    if (c.points.length >= 2) fixSeg(c.points.length - 2, c.points.length - 1)
   }
 }
 
@@ -1762,9 +1794,10 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
       ])
       /** @type {(number[][] | null | undefined)[]} */
       const alts = [...crossingRepairAlts(c, placed, diamonds, spineIds, others)]
-      // Nudge one overlapping interior rail at a time (keep endpoints; don't mix V/H in one trial).
-      if (beforePts.length >= 4) {
-        for (let i = 1; i < beforePts.length - 2; i += 1) {
+      // Nudge/jog overlapping rails. i=0 is the leave stub — keep the port fixed and jog
+      // immediately after it (V04b stages-on shared S-face stem). Interior i>=1 may whole-rail nudge.
+      if (beforePts.length >= 3) {
+        for (let i = 0; i < beforePts.length - 2; i += 1) {
           const p0 = beforePts[i]
           const q0 = beforePts[i + 1]
           const isVert = Math.abs(p0[0] - q0[0]) < 0.5
@@ -1785,24 +1818,45 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
             if (hitsForeign) break
           }
           if (!hitsForeign) continue
-          for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
-            const trial = beforePts.map((p) => /** @type {number[]} */ ([p[0], p[1]]))
-            if (isVert) {
-              trial[i][0] += delta
-              trial[i + 1][0] += delta
-            } else {
-              trial[i][1] += delta
-              trial[i + 1][1] += delta
+          // Whole-rail nudge: interior only (never move leave/enter endpoints).
+          if (i >= 1) {
+            for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
+              const trial = beforePts.map((p) => /** @type {number[]} */ ([p[0], p[1]]))
+              if (isVert) {
+                trial[i][0] += delta
+                trial[i + 1][0] += delta
+              } else {
+                trial[i][1] += delta
+                trial[i + 1][1] += delta
+              }
+              alts.push(trial)
             }
-            alts.push(trial)
           }
-          // Jog: keep the near end of the rail, offset only the overlapping span.
-          // Whole-rail nudge often raises a cross; a mid-rail jog can clear coincidence
-          // without sweeping into neighbouring edges (B10V stages-on n-8→n-9 ~ n-6→n-2).
+          // Leave-stub jog (i=0): port → perpendicular hop → parallel rail → rejoin at q0.
+          if (i === 0) {
+            for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
+              /** @type {number[][]} */
+              const trial = [[p0[0], p0[1]]]
+              if (isHoriz) {
+                trial.push([p0[0], p0[1] + delta])
+                trial.push([q0[0], p0[1] + delta])
+                trial.push([q0[0], q0[1]])
+              } else {
+                trial.push([p0[0] + delta, p0[1]])
+                trial.push([p0[0] + delta, q0[1]])
+                trial.push([q0[0], q0[1]])
+              }
+              for (let k = 2; k < beforePts.length; k += 1) {
+                trial.push([beforePts[k][0], beforePts[k][1]])
+              }
+              alts.push(trial)
+            }
+          }
+          // Mid-rail jog: keep the near end, offset only the overlapping span.
           const lo = isVert ? Math.min(p0[1], q0[1]) : Math.min(p0[0], q0[0])
           const hi = isVert ? Math.max(p0[1], q0[1]) : Math.max(p0[0], q0[0])
           const span = hi - lo
-          if (span >= COLLINEAR_AMBIGUOUS_MIN) {
+          if (span >= COLLINEAR_AMBIGUOUS_MIN && i >= 1) {
             for (const frac of [0.25, 0.4, 0.5, 0.6, 0.75]) {
               const split = lo + span * frac
               for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
@@ -1831,6 +1885,16 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
       }
       for (const pts of alts) {
         if (!pts || pts.length < 2) continue
+        // Reject diagonals from crossingRepairAlts (sideHorizontal false friends).
+        let ortho = true
+        for (let i = 0; i < pts.length - 1; i += 1) {
+          const [p, q] = [pts[i], pts[i + 1]]
+          if (Math.abs(p[0] - q[0]) >= 0.5 && Math.abs(p[1] - q[1]) >= 0.5) {
+            ortho = false
+            break
+          }
+        }
+        if (!ortho) continue
         if (!pathClear(pts, placed, c.from, c.to)) continue
         // Keep diamond leave/enter on outline when applicable.
         const fromBox = placed.get(c.from)
@@ -1860,6 +1924,92 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
         c.points = best
         moved = true
         break // re-scan; a move can introduce a new coincidence elsewhere
+      }
+    }
+    // Joint opposite half-nudge when single-edge moves all raise a cross (V10a H-on).
+    if (!moved) {
+      for (const tag of [...amb.unrelatedOverlaps, ...amb.branchSharedRails]) {
+        const m = tag.match(/^(c:[^~]+)~(c:[^:]+):/)
+        if (!m) continue
+        const ca = connections.find((c) => c.id === m[1])
+        const cb = connections.find((c) => c.id === m[2])
+        if (!ca?.points || !cb?.points) continue
+        if (ca.kind === 'main' && cb.kind === 'main') continue
+        // Find a shared overlapping interior rail pair (same orientation).
+        let pair = null
+        for (let i = 1; i < ca.points.length - 2 && !pair; i += 1) {
+          for (let j = 1; j < cb.points.length - 2; j += 1) {
+            const len = collinearOverlapLen(
+              ca.points[i],
+              ca.points[i + 1],
+              cb.points[j],
+              cb.points[j + 1],
+            )
+            if (len < COLLINEAR_AMBIGUOUS_MIN) continue
+            const aVert = Math.abs(ca.points[i][0] - ca.points[i + 1][0]) < 0.5
+            pair = { i, j, aVert }
+            break
+          }
+        }
+        if (!pair) continue
+        const beforeCross =
+          pathCrossCount(
+            ca.points,
+            connections.filter((o) => o !== ca).map((o) => o.points),
+          ) +
+          pathCrossCount(
+            cb.points,
+            connections.filter((o) => o !== cb).map((o) => o.points),
+          )
+        for (const half of [12, 16, 20, 24, 32, 40]) {
+          const ta = ca.points.map((p) => /** @type {number[]} */ ([p[0], p[1]]))
+          const tb = cb.points.map((p) => /** @type {number[]} */ ([p[0], p[1]]))
+          if (pair.aVert) {
+            ta[pair.i][0] += half
+            ta[pair.i + 1][0] += half
+            tb[pair.j][0] -= half
+            tb[pair.j + 1][0] -= half
+          } else {
+            ta[pair.i][1] += half
+            ta[pair.i + 1][1] += half
+            tb[pair.j][1] -= half
+            tb[pair.j + 1][1] -= half
+          }
+          if (!pathClear(ta, placed, ca.from, ca.to)) continue
+          if (!pathClear(tb, placed, cb.from, cb.to)) continue
+          const aFrom = placed.get(ca.from)
+          const bFrom = placed.get(cb.from)
+          const aTo = placed.get(ca.to)
+          const bTo = placed.get(cb.to)
+          if (diamonds.has(ca.from) && aFrom && !onDiamondOutline(aFrom, ta[0])) continue
+          if (diamonds.has(cb.from) && bFrom && !onDiamondOutline(bFrom, tb[0])) continue
+          if (diamonds.has(ca.to) && aTo && !onDiamondOutline(aTo, ta[ta.length - 1])) continue
+          if (diamonds.has(cb.to) && bTo && !onDiamondOutline(bTo, tb[tb.length - 1])) continue
+          const crossSum =
+            pathCrossCount(
+              ta,
+              connections.filter((o) => o !== ca).map((o) => (o === cb ? tb : o.points)),
+            ) +
+            pathCrossCount(
+              tb,
+              connections.filter((o) => o !== cb).map((o) => (o === ca ? ta : o.points)),
+            )
+          if (crossSum > beforeCross) continue
+          let ov = 0
+          for (let u = 0; u < ta.length - 1; u += 1) {
+            for (let v = 0; v < tb.length - 1; v += 1) {
+              if (collinearOverlapLen(ta[u], ta[u + 1], tb[v], tb[v + 1]) >= COLLINEAR_AMBIGUOUS_MIN) {
+                ov += 1
+              }
+            }
+          }
+          if (ov > 0) continue
+          ca.points = ta
+          cb.points = tb
+          moved = true
+          break
+        }
+        if (moved) break
       }
     }
     if (!moved) return

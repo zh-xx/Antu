@@ -420,6 +420,31 @@ test('strict collinear: B10 V stages-on must clear cascade-exposed unrelated rai
   assert.deepEqual(amb.sharedEndpointCorridors, [])
 })
 
+test('corridor separation must not introduce diagonal polylines (B12 H / B02 V-on)', () => {
+  const paths = [
+    ['/cursor/stores/self/antu-synthetic-lab/inputs/base/B12-stages-plus-loops.zh-CN.json', 'horizontal', false],
+    ['/cursor/stores/self/antu-synthetic-lab/inputs/base/B02-multioutlet-shared.zh-CN.json', 'vertical', true],
+    ['/cursor/stores/self/antu-synthetic-lab/inputs/base/B10-multi-backedges.zh-CN.json', 'horizontal', true],
+    ['/cursor/stores/self/antu-synthetic-lab/inputs/base/B04-correction-retrial-loop.zh-CN.json', 'vertical', true],
+  ]
+  for (const [path, orient, stages] of paths) {
+    const g = buildProcedureGraph(JSON.parse(readFileSync(path, 'utf8')), { engine: 'mainline', stages }, undefined, orient)
+    assert.deepEqual(g.errors, [])
+    assert.deepEqual(foreignHits(g), [])
+    assert.deepEqual(edgeCrossings(g), [], `crossings on ${path} ${orient} stages=${stages}`)
+    for (const c of g.connections) {
+      if (!c.points?.length) continue
+      for (let i = 0; i < c.points.length - 1; i += 1) {
+        const [p, q] = [c.points[i], c.points[i + 1]]
+        assert.ok(
+          Math.abs(p[0] - q[0]) < 0.5 || Math.abs(p[1] - q[1]) < 0.5,
+          `diagonal ${c.id} on ${path}: ${JSON.stringify([p, q])}`,
+        )
+      }
+    }
+  }
+})
+
 test('strict collinear: V08b V same-source distinct ports must not share a long rail', async () => {
   // Independent audit: n-b2→n-b3 and n-b2→n-b4 shared x=211 for 155.44u after distinct diamond ports.
   const { findCollinearAmbiguities } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
