@@ -259,19 +259,8 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   repairEdgeCrossings(placed, connections, diamonds, allSpine)
   restoreSameRowLinks(placed, connections, diamonds)
   repairEdgeCrossings(placed, connections, diamonds, allSpine)
-  // Combined-frame polish/restore can re-collapse sibling leaves onto one diamond vertex
-  // (undoing the per-stage S2 resolve). Re-run joint multi-attach as the last geometry pass.
-  resolveSharedDiamondLeaves(placed, connections, diamonds, allSpine)
-  // Separate long unrelated / same-source rail coincidences that joint leave-resolve missed.
-  separateAmbiguousCorridors(placed, connections, diamonds, allSpine)
-  // Corridor jogs can introduce proper crosses that earlier repair never saw — re-run.
-  repairEdgeCrossings(placed, connections, diamonds, allSpine)
-  // Crossing repair can re-collapse rails; separate again before snap.
-  separateAmbiguousCorridors(placed, connections, diamonds, allSpine)
-  snapDiamondEndpoints(placed, connections, diamonds)
-  // Snap may insert ortho bends that newly coincide with foreign rails (V11 H stages-on).
-  // Final geometry pass: never run crossing-repair after this (it reintroduces overlaps).
-  separateAmbiguousCorridors(placed, connections, diamonds, allSpine)
+  // Iterate S2 → corridor-separate → cross-repair until port/rail/cross settle (stages-on).
+  settleGeometryPasses(placed, connections, diamonds, allSpine)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
   yield
@@ -919,18 +908,8 @@ function layoutStageMainline({
   // Crossing repair must be last geometry pass: restoreSameRowLinks can still rewrite ink
   // (even crossing-aware) and must not leave a higher-cross state than repair achieved.
   repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
-  // 07 / side-port exhaustion (S2): jointly re-port sibling branch leaves that share one
-  // diamond vertex onto free outline edges — never move trunk N/S (V) or E/W (H) mains.
-  resolveSharedDiamondLeaves(placed, connections, diamonds, spineIdSet)
-  separateAmbiguousCorridors(placed, connections, diamonds, spineIdSet)
-  // Corridor jogs can introduce proper crosses that earlier repair never saw — re-run.
-  repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
-  // Crossing repair can re-collapse rails; separate again before snap.
-  separateAmbiguousCorridors(placed, connections, diamonds, spineIdSet)
-  snapDiamondEndpoints(placed, connections, diamonds)
-  // Snap may insert ortho bends that newly coincide with foreign rails (V11 H stages-on).
-  // Final geometry pass: never run crossing-repair after this (it reintroduces overlaps).
-  separateAmbiguousCorridors(placed, connections, diamonds, spineIdSet)
+  // Iterate S2 → corridor-separate → cross-repair until port/rail/cross settle.
+  settleGeometryPasses(placed, connections, diamonds, spineIdSet)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -1500,11 +1479,117 @@ function crossingRepairAlts(c, placed, diamonds, spineIds, others) {
 }
 
 /**
+ * Final settle: alternate shared-leave resolve, collinear-corridor separation, and
+ * crossing repair, then snap diamond endpoints and one last S2+separate. Avoids the
+ * oscillation where each single pass undoes another constraint.
+ */
+function settleGeometryPasses(placed, connections, diamonds, spineIds) {
+  for (let i = 0; i < 3; i += 1) {
+    resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds)
+    separateAmbiguousCorridors(placed, connections, diamonds, spineIds)
+    repairEdgeCrossings(placed, connections, diamonds, spineIds)
+  }
+  snapDiamondEndpoints(placed, connections, diamonds)
+  // Snap elbow insertion can clip a foreign box (V11 H n-2→n-10 through n-12).
+  for (const c of connections) {
+    if (c.kind === 'main' || !c.points?.length) continue
+    if (pathClear(c.points, placed, c.from, c.to)) continue
+    const others = connections.filter((o) => o !== c).map((o) => o.points)
+    const before = pathCrossCount(c.points, others)
+    let best = null
+    let bestKey = /** @type {[number, number, number]} */ ([Infinity, Infinity, Infinity])
+    for (const pts of crossingRepairAlts(c, placed, diamonds, spineIds, others)) {
+      if (!pts || pts.length < 2) continue
+      let ortho = true
+      for (let i = 0; i < pts.length - 1; i += 1) {
+        const [p, q] = [pts[i], pts[i + 1]]
+        if (Math.abs(p[0] - q[0]) >= 0.5 && Math.abs(p[1] - q[1]) >= 0.5) {
+          ortho = false
+          break
+        }
+      }
+      if (!ortho) continue
+      if (!pathClear(pts, placed, c.from, c.to)) continue
+      const fromBox = placed.get(c.from)
+      const toBox = placed.get(c.to)
+      if (diamonds.has(c.from) && fromBox && !onDiamondOutline(fromBox, pts[0])) continue
+      if (diamonds.has(c.to) && toBox && !onDiamondOutline(toBox, pts[pts.length - 1])) continue
+      // Keep leave port if already distinct.
+      if (diamonds.has(c.from) && c.points?.length) {
+        const want = `${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`
+        const got = `${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`
+        if (want !== got) {
+          // Prefer alts that keep the current leave; still allow if nothing else clears.
+          // Mark with a penalty via bends.
+        }
+      }
+      const cross = pathCrossCount(pts, others)
+      if (cross > before) continue
+      const key = /** @type {[number, number, number]} */ ([
+        cross,
+        pathBendCount(pts),
+        pathLength(pts),
+      ])
+      if (
+        key[0] < bestKey[0] ||
+        (key[0] === bestKey[0] && key[1] < bestKey[1]) ||
+        (key[0] === bestKey[0] && key[1] === bestKey[1] && key[2] + 1e-6 < bestKey[2])
+      ) {
+        bestKey = key
+        best = pts
+      }
+    }
+    // Also try orthoRoutesFromPort keeping the current leave port.
+    if (diamonds.has(c.from) && c.points?.length) {
+      const fromBox = placed.get(c.from)
+      const toBox = placed.get(c.to)
+      if (fromBox && toBox) {
+        for (const gap of [20, 36, 56, 80]) {
+          for (const cand of orthoRoutesFromPort(c.points[0], toBox, fromBox, gap)) {
+            if (!cand || cand.length < 2) continue
+            if (!pathClear(cand, placed, c.from, c.to)) continue
+            if (diamonds.has(c.to) && !onDiamondOutline(toBox, cand[cand.length - 1])) continue
+            const cross = pathCrossCount(cand, others)
+            if (cross > before) continue
+            const key = /** @type {[number, number, number]} */ ([
+              cross,
+              pathBendCount(cand),
+              pathLength(cand),
+            ])
+            if (
+              key[0] < bestKey[0] ||
+              (key[0] === bestKey[0] && key[1] < bestKey[1]) ||
+              (key[0] === bestKey[0] && key[1] === bestKey[1] && key[2] + 1e-6 < bestKey[2])
+            ) {
+              bestKey = key
+              best = cand
+            }
+          }
+        }
+      }
+    }
+    if (best) c.points = best
+  }
+  resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds)
+  separateAmbiguousCorridors(placed, connections, diamonds, spineIds)
+}
+
+/**
  * Re-route non-main edges that still cross others, preferring outer corridors that are
  * pathClear and strictly fewer crossings. Never drops edges; never accepts a box-hitting alt.
  * A second phase ignores one crossing partner at a time so mutual blockers can unlock.
  */
 function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
+  const leaveKey = (pts) => `${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`
+  const wouldShareLeave = (c, pts) => {
+    if (!diamonds.has(c.from) || !pts?.length) return false
+    const k = leaveKey(pts)
+    for (const o of connections) {
+      if (o === c || o.from !== c.from || !o.points?.length) continue
+      if (leaveKey(o.points) === k) return true
+    }
+    return false
+  }
   const applyBest = (c, others, before, { allowLengthImprove = false } = {}) => {
     let best = null
     let bestCross = before
@@ -1525,6 +1610,7 @@ function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
       }
       if (!ortho) continue
       if (!pathClear(pts, placed, c.from, c.to)) continue
+      if (wouldShareLeave(c, pts)) continue
       const cross = pathCrossCount(pts, others)
       const bends = pathBendCount(pts)
       const len = pathLength(pts)
@@ -1711,11 +1797,26 @@ function snapDiamondEndpoints(placed, connections, diamonds) {
     }
     // Snapping a diamond vertex can break the adjacent ortho segment (V11 H stages-on
     // collapsed n-2→n-10 into a 2-point diagonal). Insert a bend to restore axis-alignment.
+    // Prefer the elbow that stays pathClear; fall back to the other corner.
     const fixSeg = (i0, i1) => {
       const p = c.points[i0]
       const q = c.points[i1]
       if (Math.abs(p[0] - q[0]) < 0.5 || Math.abs(p[1] - q[1]) < 0.5) return
-      const mid = /** @type {number[]} */ ([p[0], q[1]])
+      const mids = [
+        /** @type {number[]} */ ([p[0], q[1]]),
+        /** @type {number[]} */ ([q[0], p[1]]),
+      ]
+      for (const mid of mids) {
+        const trial = c.points.map((pt) => /** @type {number[]} */ ([pt[0], pt[1]]))
+        if (i0 < i1) trial.splice(i1, 0, mid)
+        else trial.splice(i0, 0, mid)
+        if (pathClear(trial, placed, c.from, c.to)) {
+          c.points = trial
+          return
+        }
+      }
+      // Last resort: insert first elbow even if not clear — later repair may fix.
+      const mid = mids[0]
       if (i0 < i1) c.points.splice(i1, 0, mid)
       else c.points.splice(i0, 0, mid)
     }
@@ -1797,7 +1898,9 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
       // Nudge/jog overlapping rails. i=0 is the leave stub — keep the port fixed and jog
       // immediately after it (V04b stages-on shared S-face stem). Interior i>=1 may whole-rail nudge.
       if (beforePts.length >= 3) {
-        for (let i = 0; i < beforePts.length - 2; i += 1) {
+        // Include last segment (i = length-2): length-3 same-source rails share the
+        // corner→enter span (V02b); keep enter fixed via parallel stub rejoin.
+        for (let i = 0; i <= beforePts.length - 2; i += 1) {
           const p0 = beforePts[i]
           const q0 = beforePts[i + 1]
           const isVert = Math.abs(p0[0] - q0[0]) < 0.5
@@ -1818,8 +1921,9 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
             if (hitsForeign) break
           }
           if (!hitsForeign) continue
+          const isEnterSeg = i === beforePts.length - 2
           // Whole-rail nudge: interior only (never move leave/enter endpoints).
-          if (i >= 1) {
+          if (i >= 1 && !isEnterSeg) {
             for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
               const trial = beforePts.map((p) => /** @type {number[]} */ ([p[0], p[1]]))
               if (isVert) {
@@ -1832,11 +1936,12 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
               alts.push(trial)
             }
           }
-          // Leave-stub jog (i=0): port → perpendicular hop → parallel rail → rejoin at q0.
-          if (i === 0) {
+          // Leave-stub or enter-seg jog: keep port/enter fixed, run a parallel offset rail.
+          if (i === 0 || isEnterSeg) {
             for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
               /** @type {number[][]} */
-              const trial = [[p0[0], p0[1]]]
+              const trial = []
+              for (let k = 0; k <= i; k += 1) trial.push([beforePts[k][0], beforePts[k][1]])
               if (isHoriz) {
                 trial.push([p0[0], p0[1] + delta])
                 trial.push([q0[0], p0[1] + delta])
@@ -1846,7 +1951,7 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
                 trial.push([p0[0] + delta, q0[1]])
                 trial.push([q0[0], q0[1]])
               }
-              for (let k = 2; k < beforePts.length; k += 1) {
+              for (let k = i + 2; k < beforePts.length; k += 1) {
                 trial.push([beforePts[k][0], beforePts[k][1]])
               }
               alts.push(trial)
@@ -1856,7 +1961,7 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
           const lo = isVert ? Math.min(p0[1], q0[1]) : Math.min(p0[0], q0[0])
           const hi = isVert ? Math.max(p0[1], q0[1]) : Math.max(p0[0], q0[0])
           const span = hi - lo
-          if (span >= COLLINEAR_AMBIGUOUS_MIN && i >= 1) {
+          if (span >= COLLINEAR_AMBIGUOUS_MIN && i >= 1 && !isEnterSeg) {
             for (const frac of [0.25, 0.4, 0.5, 0.6, 0.75]) {
               const split = lo + span * frac
               for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
@@ -1901,6 +2006,20 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
         const toBox = placed.get(c.to)
         if (diamonds.has(c.from) && fromBox && !onDiamondOutline(fromBox, pts[0])) continue
         if (diamonds.has(c.to) && toBox && !onDiamondOutline(toBox, pts[pts.length - 1])) continue
+        // Do not re-collapse distinct decision leave ports onto one vertex.
+        if (diamonds.has(c.from)) {
+          const leaveKey = `${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`
+          let sharedLeave = false
+          for (const o of connections) {
+            if (o === c || o.from !== c.from || !o.points?.length) continue
+            const ok = `${o.points[0][0].toFixed(1)},${o.points[0][1].toFixed(1)}`
+            if (ok === leaveKey) {
+              sharedLeave = true
+              break
+            }
+          }
+          if (sharedLeave) continue
+        }
         const cross = pathCrossCount(pts, others)
         if (cross > beforeCross) continue
         const overlap = overlapAgainst(pts, c.id)
