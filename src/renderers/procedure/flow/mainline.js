@@ -1643,6 +1643,39 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
 
   const keyPt = (p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`
 
+  /** Count near-coincident ortho segment pairs (shared rail / ambiguous overlap). */
+  const sharedSegCount = (group) => {
+    let n = 0
+    const segs = (pts) => pts.slice(1).map((q, i) => [pts[i], q])
+    for (let i = 0; i < group.length; i += 1) {
+      for (let j = i + 1; j < group.length; j += 1) {
+        for (const [p, q] of segs(group[i].points)) {
+          for (const [r, s] of segs(group[j].points)) {
+            const v1 = Math.abs(p[0] - q[0]) < 0.5
+            const v2 = Math.abs(r[0] - s[0]) < 0.5
+            if (v1 !== v2) continue
+            if (v1) {
+              if (Math.abs(p[0] - r[0]) > 1) continue
+              const a0 = Math.min(p[1], q[1])
+              const a1 = Math.max(p[1], q[1])
+              const b0 = Math.min(r[1], s[1])
+              const b1 = Math.max(r[1], s[1])
+              if (Math.min(a1, b1) - Math.max(a0, b0) > 8) n += 1
+            } else {
+              if (Math.abs(p[1] - r[1]) > 1) continue
+              const a0 = Math.min(p[0], q[0])
+              const a1 = Math.max(p[0], q[0])
+              const b0 = Math.min(r[0], s[0])
+              const b1 = Math.max(r[0], s[0])
+              if (Math.min(a1, b1) - Math.max(a0, b0) > 8) n += 1
+            }
+          }
+        }
+      }
+    }
+    return n
+  }
+
   const scoreGroup = (group) => {
     const ids = new Set(group.map((c) => c.id))
     let shared = 0
@@ -1666,12 +1699,13 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
       ]
       crosses += pathCrossCount(pts, others)
     }
-    return { shared, crosses: crosses / 2, bends, len }
+    return { shared, overlapSegs: sharedSegCount(group), crosses: crosses / 2, bends, len }
   }
 
-  /** Lexico: shared leave (ambiguous overlap) → crossings → bends → length. */
+  /** Lexico: shared leave → co-linear rail overlap → crossings → bends → length. */
   const better = (a, b) => {
     if (a.shared !== b.shared) return a.shared < b.shared
+    if ((a.overlapSegs || 0) !== (b.overlapSegs || 0)) return (a.overlapSegs || 0) < (b.overlapSegs || 0)
     if (a.crosses !== b.crosses) return a.crosses < b.crosses
     if (a.bends !== b.bends) return a.bends < b.bends
     return a.len + 1e-6 < b.len
@@ -1805,23 +1839,21 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
       if (new Set(portKeys).size !== portKeys.length) continue
 
       // Bounded joint search: try top-K routes per edge (DFS) for shared-first lexico win.
-      /** @type {Map<object, number[][]> | null} */
-      let bestProposed = null
-      /** @type {{ shared: number, crosses: number, bends: number, len: number } | null} */
-      let bestScore = null
+      /** @type {{ map: Map<object, number[][]>, score: { shared: number, crosses: number, bends: number, len: number } }[]} */
+      const jointWins = []
       const dfs = (idx, proposed) => {
         if (idx >= order.length) {
           const trialGroup = group.map((c) => ({ ...c, points: proposed.get(c) }))
           const nextScore = scoreGroup(trialGroup)
           if (nextScore.shared > 0) return
-          if (!bestScore || better(nextScore, bestScore)) {
-            bestScore = nextScore
-            bestProposed = new Map(proposed)
+          if (!jointWins.length || better(nextScore, jointWins[0].score)) {
+            jointWins.unshift({ map: new Map(proposed), score: nextScore })
+            if (jointWins.length > 1) jointWins.length = 1
           }
           return
         }
         // Prune if we already have a zero-cross shared-clear solution.
-        if (bestScore && bestScore.shared === 0 && bestScore.crosses === 0) return
+        if (jointWins[0] && jointWins[0].score.shared === 0 && jointWins[0].score.crosses === 0) return
         const c = order[idx]
         const port = /** @type {number[]} */ (portsByConn.get(c))
         const cands = routesFromPort(port, c, [...proposed.values()], groupIds, 6)
@@ -1832,10 +1864,11 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
         }
       }
       dfs(0, new Map())
-      if (!bestProposed || !bestScore || !better(bestScore, baseline)) continue
+      const win = jointWins[0]
+      if (!win || !better(win.score, baseline)) continue
 
       for (const c of group) {
-        c.points = /** @type {number[][]} */ (bestProposed.get(c))
+        c.points = /** @type {number[][]} */ (win.map.get(c))
       }
     }
 
@@ -1860,7 +1893,10 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
     for (const c of leaves) {
       if (trunkParked.includes(c) || !c.points?.length) continue
       const f = faceOf(c.points[0])
-      if (f && freeOcc.has(f)) freeOcc.get(f).push(c)
+      if (f && freeOcc.has(f)) {
+        const occ = freeOcc.get(f)
+        if (occ) occ.push(c)
+      }
     }
     const groupIds = new Set(trunkParked.map((c) => c.id))
     // Count sharing against the live main leave port (not in trunkParked) as baseline debt.
@@ -1872,10 +1908,6 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
         if (keyPt(c.points[0]) === mainKey) baselineParked.shared += 1
       }
     }
-    /** @type {Map<object, number[][]> | null} */
-    let bestParked = null
-    /** @type {{ shared: number, crosses: number, bends: number, len: number } | null} */
-    let bestParkedScore = null
     // Existing leave anchors (main + free-face branches) — parked ports must not collide.
     const reservedPorts = new Set()
     for (const c of leaves) {
@@ -1917,19 +1949,21 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
         (a.c.points?.length || 0) - (b.c.points?.length || 0) ||
         String(a.c.id).localeCompare(String(b.c.id)),
     )
+    /** @type {{ map: Map<object, number[][]>, score: { shared: number, crosses: number, bends: number, len: number } }[]} */
+    const parkedWins = []
     const dfsPark = (idx, proposed) => {
       if (idx >= order.length) {
         const trial = trunkParked.map((c) => ({ ...c, points: proposed.get(c) }))
         const sc = scoreGroup(trial)
         if (sc.shared > 0) return
         if (mainKey && [...proposed.values()].some((pts) => keyPt(pts[0]) === mainKey)) return
-        if (!bestParkedScore || better(sc, bestParkedScore)) {
-          bestParkedScore = sc
-          bestParked = new Map(proposed)
+        if (!parkedWins.length || better(sc, parkedWins[0].score)) {
+          parkedWins.unshift({ map: new Map(proposed), score: sc })
+          if (parkedWins.length > 1) parkedWins.length = 1
         }
         return
       }
-      if (bestParkedScore && bestParkedScore.shared === 0 && bestParkedScore.crosses === 0) return
+      if (parkedWins[0] && parkedWins[0].score.shared === 0 && parkedWins[0].score.crosses === 0) return
       const { c, port } = order[idx]
       const cands = routesFromPort(port, c, [...proposed.values()], groupIds, 6)
       for (const route of cands) {
@@ -1940,14 +1974,14 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
     }
     dfsPark(0, new Map())
     // Accept any shared-clear relocation off the trunk face (ownership > tiny bend/len delta).
+    const parkedWin = parkedWins[0]
     if (
-      bestParked &&
-      bestParkedScore &&
-      (better(bestParkedScore, baselineParked) ||
-        (baselineParked.shared > 0 && bestParkedScore.shared === 0))
+      parkedWin &&
+      (better(parkedWin.score, baselineParked) ||
+        (baselineParked.shared > 0 && parkedWin.score.shared === 0))
     ) {
       for (const c of trunkParked) {
-        c.points = /** @type {number[][]} */ (bestParked.get(c))
+        c.points = /** @type {number[][]} */ (parkedWin.map.get(c))
       }
     }
   }
