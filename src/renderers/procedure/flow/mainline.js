@@ -93,7 +93,7 @@ function finishMainline(gen) {
 
 /**
  * @param {object} args same shape as layoutColumns, plus `spine: string[]`
- * @returns {{ placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object }}
+ * @returns {{ placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object, spineIds?: string[] }}
  */
 export function layoutMainline(args) {
   return finishMainline(layoutMainlineGen(args))
@@ -101,7 +101,7 @@ export function layoutMainline(args) {
 
 /**
  * Mainline-first column layout as a generator (yields between heavy routing steps).
- * @returns {Generator<void, { placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object }, unknown>}
+ * @returns {Generator<void, { placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object, spineIds?: string[] }, unknown>}
  */
 export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, spine, spines, fields }) {
   const byId = new Map(nodes.map((n) => [n.id, n]))
@@ -131,7 +131,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   const outG = new Map(nodes.map((n) => [n.id, []]))
   for (const g of groups) outG.get(g.from)?.push(g)
 
-  /** @type {Array<{ st: object, ids: Set<string>, spineIds: string[], placed: Map, connections: object[], width: number, height: number }>} */
+  /** @type {Array<{ st: object, ids: Set<string>, spineIds: string[], spineAxes?: string[][], placed: Map, connections: object[], width: number, height: number }>} */
   const segments = []
 
   for (let si = 0; si < stages.length; si += 1) {
@@ -303,6 +303,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
 
 /**
  * Lay out one stage: spine first, then branch lanes, then pockets.
+ * @param {any} args
  */
 function layoutStageMainline({
   own,
@@ -311,7 +312,7 @@ function layoutStageMainline({
   outG,
   spineAt,
   spineList,
-  spinesList = [],
+  spinesList = /** @type {string[][]} */ ([]),
   frameSize,
   diamonds,
   branchSign,
@@ -327,7 +328,8 @@ function layoutStageMainline({
    * rather than a pocket pile. Prefer stage-entry nodes that receive cross-stage mains.
    */
   const discoverLocalTrunk = () => {
-    const inOwn = new Map([...ownIds].map((id) => [id, []]))
+    /** @type {Map<string, object[]>} */
+    const inOwn = new Map([...ownIds].map((id) => [id, /** @type {object[]} */ ([])]))
     for (const g of groups) {
       if (ownIds.has(g.to)) inOwn.get(g.to)?.push(g)
     }
@@ -533,8 +535,9 @@ function layoutStageMainline({
   const intervals = hangs
     .filter((h) => h.boxes.length)
     .map((h) => {
-      const a = spineAt.has(h.from) ? spineAt.get(h.from) : spineAt.get(hangs.find((p) => p.boxes.includes(h.from))?.from) ?? 0
-      const b = h.rejoin && spineAt.has(h.rejoin) ? spineAt.get(h.rejoin) : a + Math.max(1, h.boxes.length)
+      const a =
+        (spineAt.has(h.from) ? spineAt.get(h.from) : spineAt.get(hangs.find((p) => p.boxes.includes(h.from))?.from)) ?? 0
+      const b = (h.rejoin && spineAt.has(h.rejoin) ? spineAt.get(h.rejoin) : undefined) ?? a + Math.max(1, h.boxes.length)
       return { h, a: Math.min(a, b), b: Math.max(a, b) }
     })
 
@@ -1125,6 +1128,7 @@ function separateSpineAxes(placed, spineAxes, connections = []) {
     let half = 0
     for (const id of live) {
       const r = placed.get(id)
+      if (!r) continue
       sum += r.x + r.w / 2
       half = Math.max(half, r.w / 2)
     }
