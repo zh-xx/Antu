@@ -512,6 +512,31 @@ test('strict collinear: V11a H stages-on cascade rails must clear', async () => 
   )
 })
 
+test('rect multi-leave: B02 V stages-on must not share one face-centre leave', () => {
+  // Independent audit: n-8→n-9 and n-8→n-3 both left S@560,144 after stages packing.
+  const path = join(STRICT_FIX, 'B02-multioutlet-shared.zh-CN.json')
+  const g = buildProcedureGraph(JSON.parse(readFileSync(path, 'utf8')), { engine: 'mainline', stages: true }, undefined, 'vertical')
+  assert.deepEqual(g.errors, [])
+  assert.deepEqual(foreignHits(g), [])
+  assert.deepEqual(edgeCrossings(g), [])
+  const leaves = g.connections.filter((c) => c.from === 'n-8' && c.kind !== 'main')
+  assert.ok(leaves.length >= 2)
+  const ports = new Set(leaves.map((c) => `${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`))
+  assert.equal(ports.size, leaves.length, `shared rect leave ports: ${[...ports].join('|')}`)
+})
+
+test('rect multi-leave: B09 V stages-off must not share one face-centre leave', () => {
+  const path = join(STRICT_FIX, 'B09-nested-hang-rejoin.zh-CN.json')
+  const g = buildProcedureGraph(JSON.parse(readFileSync(path, 'utf8')), fields, undefined, 'vertical')
+  assert.deepEqual(g.errors, [])
+  assert.deepEqual(foreignHits(g), [])
+  assert.deepEqual(edgeCrossings(g), [])
+  const leaves = g.connections.filter((c) => c.from === 'n-11' && c.kind !== 'main')
+  assert.ok(leaves.length >= 2)
+  const ports = new Set(leaves.map((c) => `${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`))
+  assert.equal(ports.size, leaves.length, `shared rect leave ports: ${[...ports].join('|')}`)
+})
+
 test('strict collinear: V08b V same-source distinct ports must not share a long rail', async () => {
   // Independent audit: n-b2→n-b3 and n-b2→n-b4 shared x=211 for 155.44u after distinct diamond ports.
   const { findCollinearAmbiguities } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')

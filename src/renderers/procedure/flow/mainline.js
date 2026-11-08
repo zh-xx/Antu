@@ -1486,6 +1486,7 @@ function crossingRepairAlts(c, placed, diamonds, spineIds, others) {
 function settleGeometryPasses(placed, connections, diamonds, spineIds) {
   for (let i = 0; i < 3; i += 1) {
     resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds)
+    resolveSharedRectLeaves(placed, connections, diamonds, spineIds)
     separateAmbiguousCorridors(placed, connections, diamonds, spineIds)
     repairEdgeCrossings(placed, connections, diamonds, spineIds)
   }
@@ -2648,6 +2649,209 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
     }
   }
   void spineIds
+}
+
+/**
+ * Stagger leave points along a rect face. index/count are 0-based among siblings.
+ * @param {{ x: number, y: number, w: number, h: number }} box
+ * @param {'N'|'E'|'S'|'W'} face
+ * @param {number} index
+ * @param {number} count
+ * @returns {number[]}
+ */
+function staggerOnRectSide(box, face, index, count) {
+  if (count <= 1) {
+    if (face === 'E') return [box.x + box.w, box.y + box.h / 2]
+    if (face === 'W') return [box.x, box.y + box.h / 2]
+    if (face === 'N') return [box.x + box.w / 2, box.y]
+    return [box.x + box.w / 2, box.y + box.h]
+  }
+  const pad = 10
+  if (face === 'N' || face === 'S') {
+    const y = face === 'N' ? box.y : box.y + box.h
+    const span = Math.max(0, box.w - 2 * pad)
+    const x = box.x + pad + ((index + 0.5) / count) * span
+    return [x, y]
+  }
+  const x = face === 'W' ? box.x : box.x + box.w
+  const span = Math.max(0, box.h - 2 * pad)
+  const y = box.y + pad + ((index + 0.5) / count) * span
+  return [x, y]
+}
+
+/**
+ * Non-decision multi-leave: stages packing / face-centre restore can collapse two branch
+ * outs onto one rect face centre (B02 V-on n-8; B09 V-off n-11). Stagger along that face
+ * and rebuild from the new ports without raising hits/crosses.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ * @param {Set<string>} spineIds
+ */
+function resolveSharedRectLeaves(placed, connections, diamonds, spineIds) {
+  /** @type {Map<string, object[]>} */
+  const byRect = new Map()
+  for (const c of connections) {
+    if (diamonds.has(c.from) || !c.points?.length) continue
+    // Main trunk keep face centres; only branch/back multi-outs need distinct ports.
+    if (c.kind === 'main') continue
+    const list = byRect.get(c.from)
+    if (list) list.push(c)
+    else byRect.set(c.from, [c])
+  }
+  const keyPt = (p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`
+  const faceOf = (box, p) => {
+    const tol = 1.5
+    const cx = box.x + box.w / 2
+    const cy = box.y + box.h / 2
+    if (Math.abs(p[0] - box.x) <= tol && p[1] >= box.y - tol && p[1] <= box.y + box.h + tol) return 'W'
+    if (
+      Math.abs(p[0] - (box.x + box.w)) <= tol &&
+      p[1] >= box.y - tol &&
+      p[1] <= box.y + box.h + tol
+    ) {
+      return 'E'
+    }
+    if (Math.abs(p[1] - box.y) <= tol && p[0] >= box.x - tol && p[0] <= box.x + box.w + tol) return 'N'
+    if (
+      Math.abs(p[1] - (box.y + box.h)) <= tol &&
+      p[0] >= box.x - tol &&
+      p[0] <= box.x + box.w + tol
+    ) {
+      return 'S'
+    }
+    // Near face-centre fallback (sharedPorts report uses centres).
+    if (Math.abs(p[0] - box.x) < tol && Math.abs(p[1] - cy) < 2) return 'W'
+    if (Math.abs(p[0] - (box.x + box.w)) < tol && Math.abs(p[1] - cy) < 2) return 'E'
+    if (Math.abs(p[1] - box.y) < tol && Math.abs(p[0] - cx) < 2) return 'N'
+    if (Math.abs(p[1] - (box.y + box.h)) < tol && Math.abs(p[0] - cx) < 2) return 'S'
+    return null
+  }
+
+  for (const [id, leaves] of byRect) {
+    if (leaves.length < 2) continue
+    const box = placed.get(id)
+    if (!box) continue
+    /** @type {Map<string, object[]>} */
+    const byKey = new Map()
+    for (const c of leaves) {
+      const k = keyPt(c.points[0])
+      const list = byKey.get(k)
+      if (list) list.push(c)
+      else byKey.set(k, [c])
+    }
+    for (const group of byKey.values()) {
+      if (group.length < 2) continue
+      const face = faceOf(box, group[0].points[0])
+      if (!face) continue
+      group.sort((a, b) => String(a.id).localeCompare(String(b.id)))
+      const beforeShared = group.length
+      const beforeCross = group.reduce(
+        (n, c) =>
+          n +
+          pathCrossCount(
+            c.points,
+            connections.filter((o) => o !== c).map((o) => o.points),
+          ),
+        0,
+      )
+      /** @type {Map<object, number[][]>} */
+      const best = new Map()
+      let bestCross = beforeCross
+      let bestBends = Infinity
+      let bestLen = Infinity
+      // Try stagger orderings: natural + reversed.
+      const orders = [group, [...group].reverse()]
+      for (const order of orders) {
+        /** @type {Map<object, number[][]>} */
+        const proposed = new Map()
+        let ok = true
+        for (let i = 0; i < order.length; i += 1) {
+          const c = order[i]
+          const port = staggerOnRectSide(box, face, i, order.length)
+          const toBox = placed.get(c.to)
+          if (!toBox) {
+            ok = false
+            break
+          }
+          const others = [
+            ...connections.filter((o) => o !== c && !order.includes(o)).map((o) => o.points),
+            ...[...proposed.values()],
+          ]
+          let chosen = null
+          let chosenKey = /** @type {[number, number, number]} */ ([Infinity, Infinity, Infinity])
+          for (const gap of [20, 36, 56, 80]) {
+            for (const cand of orthoRoutesFromPort(port, toBox, box, gap)) {
+              if (!cand || cand.length < 2) continue
+              if (!pathClear(cand, placed, c.from, c.to)) continue
+              if (diamonds.has(c.to) && !onDiamondOutline(toBox, cand[cand.length - 1])) continue
+              const cross = pathCrossCount(cand, others)
+              const key = /** @type {[number, number, number]} */ ([
+                cross,
+                pathBendCount(cand),
+                pathLength(cand),
+              ])
+              if (
+                key[0] < chosenKey[0] ||
+                (key[0] === chosenKey[0] && key[1] < chosenKey[1]) ||
+                (key[0] === chosenKey[0] && key[1] === chosenKey[1] && key[2] + 1e-6 < chosenKey[2])
+              ) {
+                chosenKey = key
+                chosen = cand
+              }
+            }
+          }
+          if (!chosen) {
+            ok = false
+            break
+          }
+          proposed.set(c, chosen)
+        }
+        if (!ok || proposed.size !== order.length) continue
+        // Distinct ports required.
+        const ports = [...proposed.values()].map((pts) => keyPt(pts[0]))
+        if (new Set(ports).size !== ports.length) continue
+        const cross = order.reduce(
+          (n, c) =>
+            n +
+            pathCrossCount(
+              /** @type {number[][]} */ (proposed.get(c)),
+              [
+                ...connections.filter((o) => o !== c && !order.includes(o)).map((o) => o.points),
+                ...order.filter((o) => o !== c).map((o) => /** @type {number[][]} */ (proposed.get(o))),
+              ],
+            ),
+          0,
+        )
+        if (cross > beforeCross) continue
+        const bends = order.reduce(
+          (n, c) => n + pathBendCount(/** @type {number[][]} */ (proposed.get(c))),
+          0,
+        )
+        const len = order.reduce(
+          (n, c) => n + pathLength(/** @type {number[][]} */ (proposed.get(c))),
+          0,
+        )
+        if (
+          cross < bestCross ||
+          (cross === bestCross && bends < bestBends) ||
+          (cross === bestCross && bends === bestBends && len < bestLen)
+        ) {
+          bestCross = cross
+          bestBends = bends
+          bestLen = len
+          best.clear()
+          for (const [c, pts] of proposed) best.set(c, pts)
+        }
+      }
+      if (best.size === group.length) {
+        for (const c of group) c.points = /** @type {number[][]} */ (best.get(c))
+      } else {
+        void beforeShared
+        void spineIds
+      }
+    }
+  }
 }
 
 /**

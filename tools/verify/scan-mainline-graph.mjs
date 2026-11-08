@@ -97,15 +97,19 @@ function sha256(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex')
 }
 
-/** Bounding-box face centres (= diamond vertices for decision nodes). */
+/** Bounding-box face (centre or anywhere on the edge) / diamond outline. */
 function faceOf(n, [x, y], tol = 1.5) {
   const cx = n.position.x + n.data.w / 2
   const cy = n.position.y + n.data.h / 2
-  // Axis-aligned face centres (rectangles + diamond vertices).
-  if (Math.abs(x - n.position.x) < tol && Math.abs(y - cy) < 2) return 'W'
-  if (Math.abs(x - (n.position.x + n.data.w)) < tol && Math.abs(y - cy) < 2) return 'E'
-  if (Math.abs(y - n.position.y) < tol && Math.abs(x - cx) < 2) return 'N'
-  if (Math.abs(y - (n.position.y + n.data.h)) < tol && Math.abs(x - cx) < 2) return 'S'
+  const left = n.position.x
+  const right = n.position.x + n.data.w
+  const top = n.position.y
+  const bot = n.position.y + n.data.h
+  // Rect multi-leave (B02/B09): ports may sit anywhere on a face, not only the mid-point.
+  if (Math.abs(x - left) < tol && y >= top - tol && y <= bot + tol) return 'W'
+  if (Math.abs(x - right) < tol && y >= top - tol && y <= bot + tol) return 'E'
+  if (Math.abs(y - top) < tol && x >= left - tol && x <= right + tol) return 'N'
+  if (Math.abs(y - bot) < tol && x >= left - tol && x <= right + tol) return 'S'
   // Decision multi-attach (S2): ports may sit on a painted outline *edge* between vertices.
   // Classify by nearest cardinal vertex — still requires onDiamondOutline separately.
   if (isDecisionNode(n) && typeof onDiamondOutline === 'function' && onDiamondOutline(n, [x, y])) {
@@ -122,6 +126,8 @@ function faceOf(n, [x, y], tol = 1.5) {
     }
     return best
   }
+  void cx
+  void cy
   return '?'
 }
 
