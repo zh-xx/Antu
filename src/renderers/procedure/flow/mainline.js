@@ -1702,11 +1702,11 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
     return { shared, overlapSegs: sharedSegCount(group), crosses: crosses / 2, bends, len }
   }
 
-  /** Lexico: shared leave → co-linear rail overlap → crossings → bends → length. */
+  /** Lexico: shared leave → crossings → co-linear rail overlap → bends → length. */
   const better = (a, b) => {
     if (a.shared !== b.shared) return a.shared < b.shared
-    if ((a.overlapSegs || 0) !== (b.overlapSegs || 0)) return (a.overlapSegs || 0) < (b.overlapSegs || 0)
     if (a.crosses !== b.crosses) return a.crosses < b.crosses
+    if ((a.overlapSegs || 0) !== (b.overlapSegs || 0)) return (a.overlapSegs || 0) < (b.overlapSegs || 0)
     if (a.bends !== b.bends) return a.bends < b.bends
     return a.len + 1e-6 < b.len
   }
