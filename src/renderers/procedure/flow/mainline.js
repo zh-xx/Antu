@@ -63,6 +63,7 @@ import {
   diamondOuterSide,
   firstClearPath,
 } from './hangSpineRoute.js'
+import { diamondVertices, onDiamondOutline, staggerOnDiamondSide } from './diamondPorts.js'
 
 /** Gap between the spine column and the first branch lane (room for a condition label on the hop) */
 const LANE_GAP = 112
@@ -481,6 +482,30 @@ function layoutStageMainline({
     }
   }
 
+  // Rejoin-facing adapt (C4): multi-box hang that rejoins a *later* spine station, when another
+  // root hang already shares this side (even with non-overlapping spine intervals). Same-side
+  // stacks can block the hang→spine corridor (L4 n-10 wrap) though C4 overlap flip does not
+  // fire. Prefer a free opposite face — placement-first, not more U-family loops. Solitary
+  // hangs keep the preferred face; loop/back (rejoin ≤ leave) and opp-busy stay put.
+  for (const it of intervals) {
+    if (!it.h.rootOnSpine || isLoopHang(it.h)) continue
+    if (!it.h.rejoin || !spineAt.has(it.h.rejoin) || !spineAt.has(it.h.from)) continue
+    const leaveIdx = /** @type {number} */ (spineAt.get(it.h.from))
+    const rejoinIdx = /** @type {number} */ (spineAt.get(it.h.rejoin))
+    if (rejoinIdx <= leaveIdx) continue
+    if (it.h.boxes.length < 2) continue
+    const sign = /** @type {number} */ (signOf.get(it.h))
+    const sameSideOther = intervals.some(
+      (o) => o !== it && o.h.rootOnSpine && signOf.get(o.h) === sign,
+    )
+    if (!sameSideOther) continue
+    const opp = -sign
+    const oppBusy = intervals.some(
+      (o) => o !== it && o.h.rootOnSpine && signOf.get(o.h) === opp && regionOverlaps(it, o),
+    )
+    if (!oppBusy) signOf.set(it.h, opp)
+  }
+
   // Preview / experiment override: force hang side by spine fork id (e.g. { 'n-4': -1 } = left).
   if (forceHangSide && typeof forceHangSide === 'object') {
     for (const it of intervals) {
@@ -809,7 +834,8 @@ function layoutStageMainline({
             ]
     } else if (sameRowLink(a, b)) {
       points =
-        clearSideHorizontal(a, b, placed, g.from, g.to, 16, others) || sideHorizontal(a, b)
+        clearSideHorizontal(a, b, placed, g.from, g.to, 16, others) ||
+        acceptClear(sideHorizontal(a, b), placed, g.from, g.to)
     } else {
       points = routeCentered(a, b, diamonds.has(g.from), placed, g.from, g.to, spineIdSet, others)
     }
@@ -872,6 +898,9 @@ function layoutStageMainline({
   // Crossing repair must be last geometry pass: restoreSameRowLinks can still rewrite ink
   // (even crossing-aware) and must not leave a higher-cross state than repair achieved.
   repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
+  // 07 / side-port exhaustion (S2): stagger sibling branch leaves that share one diamond
+  // vertex onto free outline edges — never move trunk N/S (V) or E/W (H) mains.
+  staggerSharedDiamondLeaves(placed, connections, diamonds, spineIdSet)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -1568,9 +1597,124 @@ function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
  * @param {Set<string> | null | undefined} [spineIds]
  * @param {number[][][] | null | undefined} [others]
  */
+/**
+ * Accept a polyline only when clear (or when placement is unknown). Never return known-unsafe
+ * ink as a routing success — caller stubs + routeExhausted → layout boundary fallback.
+ * @param {number[][] | null | undefined} pts
+ * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} placed
+ * @param {string | null | undefined} fromId
+ * @param {string | null | undefined} toId
+ */
+function acceptClear(pts, placed, fromId, toId) {
+  if (!pts?.length) return null
+  if (!placed) return pts
+  return pathClear(pts, placed, fromId, toId) ? pts : null
+}
+
+/**
+ * issue 190 S2 — multi-attach on free diamond outline sides when sibling branch leaves share one
+ * vertex. Trunk main enter/leave keep N/S (vertical flow) or E/W (horizontal); only branch
+ * leaves on a free cardinal side are staggered. Rejects any rewrite that leaves outline,
+ * hits a box, or increases crossings.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ * @param {Set<string>} spineIds
+ */
+function staggerSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
+  /** @type {Map<string, object[]>} */
+  const byDiamond = new Map()
+  for (const c of connections) {
+    if (c.kind !== 'branch' || !diamonds.has(c.from) || !c.points?.length) continue
+    const list = byDiamond.get(c.from)
+    if (list) list.push(c)
+    else byDiamond.set(c.from, [c])
+  }
+  for (const [id, leaves] of byDiamond) {
+    if (leaves.length < 2) continue
+    const box = placed.get(id)
+    if (!box) continue
+    const node = { x: box.x, y: box.y, w: box.w, h: box.h }
+    const v = diamondVertices(node)
+    const faceOf = (p) => {
+      let best = /** @type {'N'|'E'|'S'|'W'|null} */ (null)
+      let bestD = Infinity
+      for (const f of /** @type {const} */ (['N', 'E', 'S', 'W'])) {
+        const pt = /** @type {[number, number]} */ (v[f])
+        const d = Math.hypot(p[0] - pt[0], p[1] - pt[1])
+        if (d < bestD) {
+          bestD = d
+          best = f
+        }
+      }
+      return bestD <= 2 ? best : null
+    }
+    // Trunk faces occupied by main enter/leave — never stagger onto them.
+    const trunk = new Set()
+    for (const c of connections) {
+      if (c.kind !== 'main' || !c.points?.length) continue
+      if (c.from === id) {
+        const f = faceOf(c.points[0])
+        if (f) trunk.add(f)
+      }
+      if (c.to === id) {
+        const f = faceOf(c.points[c.points.length - 1])
+        if (f) trunk.add(f)
+      }
+    }
+    /** @type {Map<string, object[]>} */
+    const byFace = new Map()
+    for (const c of leaves) {
+      const f = faceOf(c.points[0])
+      if (!f || trunk.has(f)) continue
+      const list = byFace.get(f)
+      if (list) list.push(c)
+      else byFace.set(f, [c])
+    }
+    for (const [face, group] of byFace) {
+      if (group.length < 2) continue
+      group.sort((a, b) => String(a.id).localeCompare(String(b.id)))
+      group.forEach((c, i) => {
+        const next = staggerOnDiamondSide(node, /** @type {'E'|'W'|'N'|'S'} */ (face), i, group.length)
+        if (!onDiamondOutline(node, next)) return
+        const old = c.points
+        const trial = [next, ...old.slice(1)]
+        if (trial.length < 2) return
+        if (!pathClear(trial, placed, c.from, c.to)) return
+        const others = connections.filter((o) => o !== c).map((o) => o.points)
+        if (pathCrossCount(trial, others) > pathCrossCount(old, others)) return
+        // Keep orthogonal first leg when possible: snap second point to axis through `next`.
+        if (trial.length >= 2) {
+          const [, q] = trial
+          if (Math.abs(old[0][0] - old[1][0]) < 0.5) trial[1] = [next[0], q[1]]
+          else if (Math.abs(old[0][1] - old[1][1]) < 0.5) trial[1] = [q[0], next[1]]
+          if (!pathClear(trial, placed, c.from, c.to)) return
+          if (pathCrossCount(trial, others) > pathCrossCount(old, others)) return
+        }
+        c.points = trial
+      })
+    }
+  }
+  void spineIds
+}
+
+/**
+ * @param {{ x: number, y: number, w: number, h: number }} a
+ * @param {{ x: number, y: number, w: number, h: number }} b
+ * @param {boolean} [fromDiamond]
+ * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} [placed]
+ * @param {string | null | undefined} [fromId]
+ * @param {string | null | undefined} [toId]
+ * @param {Set<string> | null | undefined} [spineIds]
+ * @param {number[][][] | null | undefined} [others]
+ * @returns {number[][] | null}
+ */
 function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, toId = null, spineIds = null, others = null) {
   if (sameRowLink(a, b)) {
-    return clearSideHorizontal(a, b, placed, fromId, toId) || sideHorizontal(a, b)
+    return (
+      clearSideHorizontal(a, b, placed, fromId, toId) ||
+      acceptClear(sideHorizontal(a, b), placed, fromId, toId)
+    )
   }
   const acx = a.x + a.w / 2
   const acy = a.y + a.h / 2
@@ -1594,7 +1738,16 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
     candidates.push(clearSideChannel(a, b, acx > 40, placed, fromId, toId))
     const hit = firstClearPath(candidates, placed, fromId, toId, others)
     if (hit) return hit
-    return clearSideChannel(a, b, acx > 40, placed, fromId, toId) || candidates.find(Boolean) || sideHorizontal(a, b)
+    return (
+      clearSideChannel(a, b, acx > 40, placed, fromId, toId) ||
+      acceptClear(
+        candidates.find((p) => p && p.length >= 2 && pathClear(p, placed, fromId, toId)) || null,
+        placed,
+        fromId,
+        toId,
+      ) ||
+      acceptClear(sideHorizontal(a, b), placed, fromId, toId)
+    )
   }
   // Hang → spine
   if (!fromSpine && toSpine) {
@@ -1672,14 +1825,11 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
   if (clear) return clear
   // Exhausted: only accept a pathClear side channel — never an unchecked mid-column cut.
   const side = clearSideChannel(a, b, acx > bcx, placed, fromId, toId, 64)
-  // Exhausted non-hang corridors: keep the historic sideHorizontal last resort.
-  // mainlineInkInvalid only rejects missing polylines / explicit routeExhausted stubs
-  // (hang→spine null via routeHangToSpine); it does NOT blanket-reject residual !pathClear
-  // on this last-resort ink — that residual track stays separate from C.
   if (side) return side
   const anyClear = candidates.find((p) => p && p.length >= 2 && pathClear(p, placed, fromId, toId))
   if (anyClear) return anyClear
-  return sideHorizontal(a, b)
+  // Last resort: sideHorizontal only if clear when placed is known; else null → routeExhausted.
+  return acceptClear(sideHorizontal(a, b), placed, fromId, toId)
 }
 
 function fallbackRoute(a, b) {

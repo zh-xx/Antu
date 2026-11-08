@@ -9,6 +9,8 @@ import {
   segHitsBox,
   pathClear,
   pathCrossCount,
+  pathLength,
+  pathBendCount,
   orthoSegsCross,
   clearSideHorizontal,
   sideHorizontal,
@@ -220,10 +222,10 @@ test('production exhausted both-blocked: no unchecked gutter; returned path is p
   assert.equal(pathClear(pts, placed, 'hang', 'spine'), true)
 })
 
-test('07 decision: preexisting shared leave among sibling branches (corpus WARN; not silently zeroed)', () => {
-  // Baseline de0ec80 and current production share an n-3 leave among branches when four
-  // incident edges already occupy N/E/S/W (incoming trunk + main out + two sides). Free
-  // outgoing pixel ≠ free port. Fan-out onto N while trunk enters N is rejected; keep WARN.
+test('07 decision: shared leave WARN until S2 joint re-route clears both siblings without extra crosses', () => {
+  // Semantic choice (issue 190 S2): multi-attach on free painted-outline sides — not trunk-face
+  // steal, not bbox fan-out. Naive per-edge stagger of one E sibling can raise crossings
+  // (n-6 trial); keep corpus WARN until a joint re-route lands. Scanner must stay honest.
   const spec = JSON.parse(readFileSync('examples/procedure/07-share-acquisition-agreement.zh-CN.json', 'utf8'))
   for (const dir of ['vertical', 'horizontal']) {
     const g = buildProcedureGraph(spec, fields, undefined, dir)
@@ -243,15 +245,29 @@ test('07 decision: preexisting shared leave among sibling branches (corpus WARN;
       }
     }
     const shared = [...leave.entries()].filter(([, ids]) => ids.length > 1)
-    assert.ok(shared.length >= 1, `${dir}: expected preexisting shared leave WARN class`)
-    // Ownership among ALL incident edges (incoming trunk + outgoing): four diamond vertices.
+    assert.ok(shared.length >= 1, `${dir}: expected shared leave WARN class until S2 joint clear`)
     assert.ok(incident.some((e) => e.end === 'enter'), `${dir}: missing incoming trunk enter on n-3`)
     assert.ok(incident.filter((e) => e.end === 'leave').length >= 3, `${dir}: expected ≥3 leaves from n-3`)
+    // Trunk face never stolen: exactly one main leave from n-3.
+    assert.equal(incident.filter((e) => e.end === 'leave' && e.kind === 'main').length, 1, dir)
   }
 })
 
+test('L4 V n-10→n-11 rejoin-facing adapt: shorter than wrap residual without new crosses/hits', () => {
+  // Freeze b7068f4 had len≈2188 / 4 bends (wrap). Placement-first side adapt — not U-family necessity.
+  const path = 'preview/synthetic-rejoin/fixtures/L4-enforcement-objection-nested.zh-CN.json'
+  const r = scanFile(path, 'vertical')
+  assert.deepEqual(r.hits, [])
+  assert.deepEqual(r.crossings, [])
+  assert.deepEqual(r.gaps, [])
+  const e = r.g.connections.find((c) => c.id === 'c:n-10->n-11')
+  assert.ok(e, 'missing n-10→n-11')
+  assert.ok(pathLength(e.points) < 1000, `expected short rejoin, got len=${pathLength(e.points)}`)
+  assert.ok(pathBendCount(e.points) <= 2, `expected ≤2 bends, got ${pathBendCount(e.points)}`)
+})
+
 test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex passes', async () => {
-  const { onDiamondOutline, distDiamondOutline, diamondVertices } = await import(
+  const { onDiamondOutline, distDiamondOutline, diamondVertices, staggerOnDiamondSide } = await import(
     '../src/renderers/procedure/flow/diamondPorts.js',
   )
   const n = {
@@ -269,6 +285,13 @@ test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex pass
   // On bbox right edge mid-height but shifted off E vertex along the side.
   const bboxEOff = [n.position.x + n.data.w, n.position.y + 8]
   assert.equal(onDiamondOutline(n, bboxEOff), false)
+  // S2 helpers: staggered side ports stay on outline and are distinct from the vertex.
+  const s0 = staggerOnDiamondSide(n, 'E', 0, 2)
+  const s1 = staggerOnDiamondSide(n, 'E', 1, 2)
+  assert.equal(onDiamondOutline(n, s0), true)
+  assert.equal(onDiamondOutline(n, s1), true)
+  assert.ok(Math.hypot(s0[0] - s1[0], s0[1] - s1[1]) > 1)
+  assert.ok(Math.hypot(s0[0] - v.E[0], s0[1] - v.E[1]) > 1)
 })
 
 test('production exhausted absolute: routeHangToSpine returns null — never unsafe outer as success', () => {
@@ -538,4 +561,193 @@ test('pathCrossCount / orthoSegsCross audit', () => {
     ),
     1,
   )
+})
+
+test('adversarial: disconnected second start→end keeps primary graph complete', () => {
+  // Valid supported form: two weakly-connected components (each start→end). Orphans are
+  // schema-invalid and must not be “fixed” by dropping edges.
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: 'adv-disconnected',
+    nodes: [
+      { id: 'a', kind: 'start', label: 'A' },
+      { id: 'b', kind: 'end', label: 'B' },
+      { id: 's2', kind: 'start', label: 'S2' },
+      { id: 'e2', kind: 'end', label: 'E2' },
+    ],
+    edges: [
+      { from: 'a', to: 'b', main: true },
+      { from: 's2', to: 'e2', main: true },
+    ],
+  }
+  for (const dir of ['vertical', 'horizontal']) {
+    const g = buildProcedureGraph(spec, fields, undefined, dir)
+    assert.deepEqual(g.errors, [])
+    const ids = new Set(g.nodes.map((n) => n.id))
+    for (const id of ['a', 'b', 's2', 'e2']) assert.ok(ids.has(id), `${dir} lost ${id}`)
+    const pairs = new Set(g.connections.map((c) => `${c.from}->${c.to}`))
+    assert.ok(pairs.has('a->b') && pairs.has('s2->e2'), dir)
+    assert.deepEqual(foreignHits(g), [])
+    assert.deepEqual(endpointGaps(g), [])
+  }
+})
+
+test('adversarial: multiple back-edges + nested-ish hangs — finite, complete, 0 hits', () => {
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: 'adv-multi-back',
+    nodes: [
+      { id: 's', kind: 'start', label: 'S' },
+      { id: 'd1', kind: 'decision', label: 'D1' },
+      { id: 'h1', kind: 'step', label: 'H1' },
+      { id: 'h2', kind: 'step', label: 'H2' },
+      { id: 'm', kind: 'step', label: 'M' },
+      { id: 'd2', kind: 'decision', label: 'D2' },
+      { id: 'h3', kind: 'step', label: 'H3' },
+      { id: 'e', kind: 'end', label: 'E' },
+    ],
+    edges: [
+      { from: 's', to: 'd1', main: true },
+      { from: 'd1', to: 'h1', condition: '支' },
+      { from: 'h1', to: 'h2' },
+      { from: 'h2', to: 'm', condition: '回' },
+      { from: 'd1', to: 'm', condition: '是', main: true },
+      { from: 'm', to: 'd2', main: true },
+      { from: 'd2', to: 'h3', condition: '支2' },
+      { from: 'h3', to: 'm', condition: '回2' },
+      { from: 'd2', to: 'e', condition: '是', main: true },
+      { from: 'h2', to: 'd1', condition: '再' },
+    ],
+  }
+  for (const dir of ['vertical', 'horizontal']) {
+    const t0 = Date.now()
+    const g = buildProcedureGraph(spec, fields, undefined, dir)
+    const ms = Date.now() - t0
+    assert.ok(ms < 5000, `${dir}: runtime budget exceeded ${ms}ms`)
+    assert.deepEqual(g.errors, [])
+    const pairs = new Set(g.connections.map((c) => `${c.from}->${c.to}`))
+    for (const e of spec.edges) assert.ok(pairs.has(`${e.from}->${e.to}`), `${dir} missing ${e.from}->${e.to}`)
+    assert.deepEqual(foreignHits(g), [], `${dir} hits`)
+    assert.deepEqual(endpointGaps(g), [], `${dir} gaps`)
+  }
+})
+
+test('adversarial: huge + tiny labels — chips placed, ink complete', () => {
+  const huge = '超长标签'.repeat(24)
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: 'adv-labels',
+    nodes: [
+      { id: 's', kind: 'start', label: 'S' },
+      { id: 'd', kind: 'decision', label: 'D' },
+      { id: 'h', kind: 'step', label: 'H' },
+      { id: 'e', kind: 'end', label: 'E' },
+    ],
+    edges: [
+      { from: 's', to: 'd', main: true },
+      { from: 'd', to: 'h', condition: huge },
+      { from: 'h', to: 'e' },
+      { from: 'd', to: 'e', condition: '是', main: true },
+    ],
+  }
+  for (const dir of ['vertical', 'horizontal']) {
+    const g = buildProcedureGraph(spec, fields, undefined, dir)
+    assert.deepEqual(g.errors, [])
+    assert.deepEqual(missingLabels(g), [])
+    assert.deepEqual(foreignHits(g), [])
+    assert.deepEqual(endpointGaps(g), [])
+    const pairs = new Set(g.connections.map((c) => `${c.from}->${c.to}`))
+    for (const e of spec.edges) assert.ok(pairs.has(`${e.from}->${e.to}`))
+  }
+})
+
+test('adversarial: port crowding at decision — trunk faces kept; graph complete V/H', () => {
+  // Four leaves from one decision: main + three branches (crowding beyond E/W).
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: 'adv-port-crowd',
+    nodes: [
+      { id: 's', kind: 'start', label: 'S' },
+      { id: 'd', kind: 'decision', label: 'D' },
+      { id: 'a', kind: 'end', label: 'A' },
+      { id: 'b', kind: 'end', label: 'B' },
+      { id: 'c', kind: 'end', label: 'C' },
+      { id: 'e', kind: 'end', label: 'E' },
+    ],
+    edges: [
+      { from: 's', to: 'd', main: true },
+      { from: 'd', to: 'e', condition: '主', main: true },
+      { from: 'd', to: 'a', condition: '1' },
+      { from: 'd', to: 'b', condition: '2' },
+      { from: 'd', to: 'c', condition: '3' },
+    ],
+  }
+  for (const dir of ['vertical', 'horizontal']) {
+    const g = buildProcedureGraph(spec, fields, undefined, dir)
+    assert.deepEqual(g.errors, [])
+    const pairs = new Set(g.connections.map((c) => `${c.from}->${c.to}`))
+    for (const e of spec.edges) assert.ok(pairs.has(`${e.from}->${e.to}`), `${dir} lost ${e.from}->${e.to}`)
+    assert.deepEqual(foreignHits(g), [], dir)
+    assert.deepEqual(endpointGaps(g), [], dir)
+    const mainLeave = g.connections.filter((c) => c.from === 'd' && c.kind === 'main')
+    assert.equal(mainLeave.length, 1, `${dir}: trunk leave stolen or duplicated`)
+  }
+})
+
+test('adversarial: unrelated insertion — prior spine + pairs preserved (packing may shift)', () => {
+  // Input-order permutation of the *same* component is pixel-stable (tests above). A second
+  // valid start→end component is supported and must not lose prior edges / spine membership;
+  // whole-frame packing may still shift — residual under issue 190, not greenwashed here.
+  const base = JSON.parse(
+    readFileSync('preview/synthetic-rejoin/fixtures/L2-labour-arbitration-nested.zh-CN.json', 'utf8'),
+  )
+  const g0 = buildProcedureGraph(base, fields, undefined, 'vertical')
+  const inserted = {
+    ...base,
+    nodes: [
+      ...base.nodes,
+      { id: 'zz-s', kind: 'start', label: '无关起' },
+      { id: 'zz-e', kind: 'end', label: '无关终' },
+    ],
+    edges: [...base.edges, { from: 'zz-s', to: 'zz-e', main: true }],
+  }
+  const g1 = buildProcedureGraph(inserted, fields, undefined, 'vertical')
+  assert.deepEqual(g0.errors, [])
+  assert.deepEqual(g1.errors, [])
+  assert.deepEqual(
+    g1.spine.filter((id) => !String(id).startsWith('zz-')),
+    g0.spine,
+  )
+  const priorPairs = new Set(g0.connections.map((c) => `${c.from}->${c.to}`))
+  const nextPairs = new Set(g1.connections.map((c) => `${c.from}->${c.to}`))
+  for (const p of priorPairs) assert.ok(nextPairs.has(p), `lost prior pair ${p}`)
+  assert.ok(nextPairs.has('zz-s->zz-e'))
+  assert.deepEqual(foreignHits(g1), [])
+  assert.deepEqual(endpointGaps(g1), [])
+})
+
+test('adversarial: runtime budget + determinism on L4', () => {
+  const path = 'preview/synthetic-rejoin/fixtures/L4-enforcement-objection-nested.zh-CN.json'
+  const spec = JSON.parse(readFileSync(path, 'utf8'))
+  const run = () => {
+    const t0 = Date.now()
+    const g = buildProcedureGraph(spec, fields, undefined, 'vertical')
+    return {
+      ms: Date.now() - t0,
+      dig: JSON.stringify({
+        spine: g.spine,
+        nodes: g.nodes.map((n) => [n.id, Math.round(n.position.x), Math.round(n.position.y)]),
+        edges: g.connections.map((c) => [c.id, c.points]),
+      }),
+    }
+  }
+  const a = run()
+  const b = run()
+  assert.ok(a.ms < 5000, `L4 runtime ${a.ms}ms`)
+  assert.ok(b.ms < 5000, `L4 runtime2 ${b.ms}ms`)
+  assert.equal(a.dig, b.dig, 'non-deterministic layout')
 })

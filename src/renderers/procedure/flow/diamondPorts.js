@@ -6,17 +6,17 @@
  * @param {{ position?: { x: number, y: number }, x?: number, y?: number, data?: { w: number, h: number }, w?: number, h?: number }} n
  */
 export function diamondVertices(n) {
-  const x = n.position?.x ?? n.x
-  const y = n.position?.y ?? n.y
-  const w = n.data?.w ?? n.w
-  const h = n.data?.h ?? n.h
+  const x = /** @type {number} */ (n.position?.x ?? n.x)
+  const y = /** @type {number} */ (n.position?.y ?? n.y)
+  const w = /** @type {number} */ (n.data?.w ?? n.w)
+  const h = /** @type {number} */ (n.data?.h ?? n.h)
   const cx = x + w / 2
   const cy = y + h / 2
   return {
-    N: [cx, y],
-    E: [x + w, cy],
-    S: [cx, y + h],
-    W: [x, cy],
+    N: /** @type {[number, number]} */ ([cx, y]),
+    E: /** @type {[number, number]} */ ([x + w, cy]),
+    S: /** @type {[number, number]} */ ([cx, y + h]),
+    W: /** @type {[number, number]} */ ([x, cy]),
   }
 }
 
@@ -63,4 +63,61 @@ export function distDiamondOutline(n, p) {
  */
 export function onDiamondOutline(n, p, tol = 1.5) {
   return distDiamondOutline(n, p) <= tol
+}
+
+/**
+ * Point on a painted diamond edge (vertex→vertex), t∈[0,1].
+ * @param {{ position?: { x: number, y: number }, x?: number, y?: number, data?: { w: number, h: number }, w?: number, h?: number }} n
+ * @param {'N'|'E'|'S'|'W'} fromVert
+ * @param {'N'|'E'|'S'|'W'} toVert
+ * @param {number} t
+ * @returns {number[]}
+ */
+export function diamondEdgePoint(n, fromVert, toVert, t) {
+  const v = diamondVertices(n)
+  const a = /** @type {[number, number]} */ (v[fromVert])
+  const b = /** @type {[number, number]} */ (v[toVert])
+  const u = Math.max(0, Math.min(1, t))
+  return /** @type {[number, number]} */ ([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u])
+}
+
+/**
+ * Multi-attach on a free cardinal *side* (issue 190 S2): stagger along the two outline
+ * edges that meet at that vertex. Never returns the opposite trunk pair (N/S for E/W side).
+ * index/count are 0-based among siblings sharing this side.
+ * @param {{ position?: { x: number, y: number }, x?: number, y?: number, data?: { w: number, h: number }, w?: number, h?: number }} n
+ * @param {'E'|'W'|'N'|'S'} side
+ * @param {number} index
+ * @param {number} count
+ * @returns {number[]}
+ */
+export function staggerOnDiamondSide(n, side, index, count) {
+  const v = diamondVertices(n)
+  if (count <= 1) return /** @type {number[]} */ (v[side])
+  // Pair edges meeting at `side`; alternate edges so two siblings split NE/SE (etc.).
+  /** @type {Record<'E'|'W'|'N'|'S', ['N'|'E'|'S'|'W', 'N'|'E'|'S'|'W'][]>} */
+  const edges = {
+    E: [
+      ['N', 'E'],
+      ['S', 'E'],
+    ],
+    W: [
+      ['N', 'W'],
+      ['S', 'W'],
+    ],
+    N: [
+      ['W', 'N'],
+      ['E', 'N'],
+    ],
+    S: [
+      ['W', 'S'],
+      ['E', 'S'],
+    ],
+  }
+  const pair = edges[side]
+  const edge = pair[index % pair.length]
+  // Stay near the side vertex (t→1) but not on it when count>1 — distinct outline ports.
+  const slot = Math.floor(index / pair.length)
+  const t = 1 - (0.28 + slot * 0.12)
+  return diamondEdgePoint(n, edge[0], edge[1], Math.max(0.45, Math.min(0.92, t)))
 }
