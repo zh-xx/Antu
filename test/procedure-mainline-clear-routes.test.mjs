@@ -378,6 +378,89 @@ test('L4 V n-10→n-11 rejoin-facing adapt: shorter than wrap residual without n
   assert.ok(pathBendCount(e.points) <= 2, `expected ≤2 bends, got ${pathBendCount(e.points)}`)
 })
 
+test('strict collinear: B12 H unrelated long rail overlap must be cleared (not fixture whitelist)', async () => {
+  // Independent audit: n-11→n-20 and n-21→n-10 overlapped 334u at y=264 with no shared endpoint.
+  const { findCollinearAmbiguities } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
+  const path = '/cursor/stores/self/antu-synthetic-lab/inputs/base/B12-stages-plus-loops.zh-CN.json'
+  const spec = JSON.parse(readFileSync(path, 'utf8'))
+  const g = buildProcedureGraph(spec, fields, undefined, 'horizontal')
+  assert.deepEqual(g.errors, [])
+  assert.deepEqual(foreignHits(g), [])
+  assert.deepEqual(edgeCrossings(g), [])
+  const amb = findCollinearAmbiguities(g.connections)
+  assert.deepEqual(
+    amb.unrelatedOverlaps,
+    [],
+    `unrelated collinear overlaps remain: ${amb.unrelatedOverlaps.join('|')}`,
+  )
+  // Label ownership: each condition label must map to a unique destination when present.
+  const labeled = g.connections.filter((c) => c.from === 'n-11' || c.from === 'n-21')
+  for (const c of labeled) {
+    if (!c.label) continue
+    assert.ok(c.labelAt, `missing labelAt for ${c.id}`)
+  }
+})
+
+test('strict collinear: B10 V stages-on must clear cascade-exposed unrelated rails', async () => {
+  // Fixing n-2→n-5 coincidences first exposed n-8→n-9 ~ n-6→n-2 at 132u; multi-pass required.
+  const { findCollinearAmbiguities } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
+  const path = '/cursor/stores/self/antu-synthetic-lab/inputs/base/B10-multi-backedges.zh-CN.json'
+  const spec = JSON.parse(readFileSync(path, 'utf8'))
+  const g = buildProcedureGraph(spec, { engine: 'mainline', stages: true }, undefined, 'vertical')
+  assert.deepEqual(g.errors, [])
+  assert.deepEqual(foreignHits(g), [])
+  assert.deepEqual(edgeCrossings(g), [])
+  const amb = findCollinearAmbiguities(g.connections)
+  assert.deepEqual(
+    amb.unrelatedOverlaps,
+    [],
+    `unrelated collinear overlaps remain: ${amb.unrelatedOverlaps.join('|')}`,
+  )
+  assert.deepEqual(amb.branchSharedRails, [])
+  assert.deepEqual(amb.sharedEndpointCorridors, [])
+})
+
+test('strict collinear: V08b V same-source distinct ports must not share a long rail', async () => {
+  // Independent audit: n-b2→n-b3 and n-b2→n-b4 shared x=211 for 155.44u after distinct diamond ports.
+  const { findCollinearAmbiguities } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
+  const path =
+    '/cursor/stores/self/antu-synthetic-lab/inputs/variants/V08-multi-componentsb-extra.zh-CN.json'
+  const spec = JSON.parse(readFileSync(path, 'utf8'))
+  const g = buildProcedureGraph(spec, fields, undefined, 'vertical')
+  assert.deepEqual(g.errors, [])
+  assert.deepEqual(foreignHits(g), [])
+  assert.deepEqual(edgeCrossings(g), [])
+  const amb = findCollinearAmbiguities(g.connections)
+  assert.deepEqual(
+    amb.branchSharedRails,
+    [],
+    `branch shared rails remain: ${amb.branchSharedRails.join('|')}`,
+  )
+  const leaves = g.connections.filter((c) => c.from === 'n-b2')
+  const ports = new Set(leaves.map((c) => `${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`))
+  assert.equal(ports.size, leaves.length, 'leave ports must stay distinct')
+})
+
+test('L4 V settlement: outgoing and return must not share a long opposite-dir corridor', async () => {
+  const { findCollinearAmbiguities, pathBendCount: bends, pathLength: len } = await import(
+    '../src/renderers/procedure/flow/hangSpineRoute.js'
+  )
+  const path = 'preview/synthetic-rejoin/fixtures/L4-enforcement-objection-nested.zh-CN.json'
+  const g = buildProcedureGraph(JSON.parse(readFileSync(path, 'utf8')), fields, undefined, 'vertical')
+  assert.deepEqual(foreignHits(g), [])
+  assert.deepEqual(edgeCrossings(g), [])
+  const out = g.connections.find((c) => c.id === 'c:n-13->n-14')
+  const ret = g.connections.find((c) => c.id === 'c:n-15->n-13')
+  assert.ok(out && ret)
+  const rejoin = g.connections.find((c) => c.id === 'c:n-10->n-11')
+  assert.ok(rejoin && len(rejoin.points) < 1000 && bends(rejoin.points) <= 2)
+  const amb = findCollinearAmbiguities(g.connections)
+  const pair = amb.sharedEndpointCorridors.filter(
+    (t) => t.includes('c:n-13->n-14') && t.includes('c:n-15->n-13'),
+  )
+  assert.deepEqual(pair, [], `L4 settlement corridor still shared: ${pair.join('|')}`)
+})
+
 test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex passes', async () => {
   const { onDiamondOutline, distDiamondOutline, diamondVertices, staggerOnDiamondSide, orthoRoutesFromPort } =
     await import('../src/renderers/procedure/flow/diamondPorts.js')

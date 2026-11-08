@@ -62,6 +62,9 @@ import {
   clearWrapAround,
   diamondOuterSide,
   firstClearPath,
+  findCollinearAmbiguities,
+  collinearOverlapLen,
+  COLLINEAR_AMBIGUOUS_MIN,
 } from './hangSpineRoute.js'
 import {
   diamondVertices,
@@ -259,6 +262,9 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   // Combined-frame polish/restore can re-collapse sibling leaves onto one diamond vertex
   // (undoing the per-stage S2 resolve). Re-run joint multi-attach as the last geometry pass.
   resolveSharedDiamondLeaves(placed, connections, diamonds, allSpine)
+  // Separate long unrelated / same-source rail coincidences that joint leave-resolve missed.
+  separateAmbiguousCorridors(placed, connections, diamonds, allSpine)
+  snapDiamondEndpoints(placed, connections, diamonds)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
   yield
@@ -909,6 +915,8 @@ function layoutStageMainline({
   // 07 / side-port exhaustion (S2): jointly re-port sibling branch leaves that share one
   // diamond vertex onto free outline edges — never move trunk N/S (V) or E/W (H) mains.
   resolveSharedDiamondLeaves(placed, connections, diamonds, spineIdSet)
+  separateAmbiguousCorridors(placed, connections, diamonds, spineIdSet)
+  snapDiamondEndpoints(placed, connections, diamonds)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -1620,6 +1628,245 @@ function acceptClear(pts, placed, fromId, toId) {
 }
 
 /**
+ * Project endpoints that miss the painted diamond onto the nearest outline point.
+ * Stage assembly / same-row rect helpers can leave main ports on the bbox mid-line
+ * interior or short of the W/E vertices (B10 H stages-on).
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ */
+function snapDiamondEndpoints(placed, connections, diamonds) {
+  const snap = (box, p, toward) => {
+    if (onDiamondOutline(box, p)) return p
+    const v = diamondVertices(box)
+    // Prefer cardinal vertex when nearly axis-aligned with centre (main trunk ports).
+    const cx = box.x + box.w / 2
+    const cy = box.y + box.h / 2
+    /** @type {[number, number] | null} */
+    let best = null
+    let bestD = Infinity
+    for (const f of /** @type {const} */ (['N', 'E', 'S', 'W'])) {
+      const pt = /** @type {[number, number]} */ (v[f])
+      const d = Math.hypot(p[0] - pt[0], p[1] - pt[1])
+      if (d < bestD) {
+        bestD = d
+        best = pt
+      }
+    }
+    // Also try projection onto each outline edge toward the next polyline point.
+    if (toward) {
+      for (const [a, b] of [
+        [v.N, v.E],
+        [v.E, v.S],
+        [v.S, v.W],
+        [v.W, v.N],
+      ]) {
+        const dx = b[0] - a[0]
+        const dy = b[1] - a[1]
+        const len2 = dx * dx + dy * dy
+        if (len2 < 1e-8) continue
+        let t = ((toward[0] - a[0]) * dx + (toward[1] - a[1]) * dy) / len2
+        t = Math.max(0, Math.min(1, t))
+        const proj = /** @type {[number, number]} */ ([a[0] + t * dx, a[1] + t * dy])
+        const d = Math.hypot(p[0] - proj[0], p[1] - proj[1])
+        if (d < bestD) {
+          bestD = d
+          best = proj
+        }
+      }
+    }
+    // Only snap when reasonably close (avoid yanking a far mis-route).
+    if (!best || bestD > Math.max(box.w, box.h)) return p
+    return best
+  }
+  for (const c of connections) {
+    if (!c.points || c.points.length < 2) continue
+    if (diamonds.has(c.from)) {
+      const box = placed.get(c.from)
+      if (box) c.points[0] = snap(box, c.points[0], c.points[1])
+    }
+    if (diamonds.has(c.to)) {
+      const box = placed.get(c.to)
+      if (box) c.points[c.points.length - 1] = snap(box, c.points[c.points.length - 1], c.points[c.points.length - 2])
+    }
+  }
+}
+
+/**
+ * Separate long collinear coincidences that confuse edge ownership:
+ * - unrelated edges sharing a rail with no common endpoint (B12H)
+ * - same-source branches with distinct ports but a long shared rail (V08b)
+ * - opposite-direction shared-endpoint corridors when a clearer alt exists (L4V return)
+ * Prefers re-routing back/branch edges via crossingRepairAlts; never raises crossings or hits.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ * @param {Set<string>} spineIds
+ */
+function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
+  /** Prefer moving back/branch over main; stable by id. */
+  const rank = (c) => (c.kind === 'main' ? 2 : c.kind === 'back' ? 0 : 1)
+
+  const overlapAgainst = (pts, skipId) => {
+    let n = 0
+    for (const o of connections) {
+      if (o.id === skipId || !o.points?.length) continue
+      for (let u = 0; u < pts.length - 1; u += 1) {
+        for (let v = 0; v < o.points.length - 1; v += 1) {
+          if (
+            collinearOverlapLen(pts[u], pts[u + 1], o.points[v], o.points[v + 1]) >=
+            COLLINEAR_AMBIGUOUS_MIN
+          ) {
+            n += 1
+          }
+        }
+      }
+    }
+    return n
+  }
+
+  // Re-scan after each successful move: fixing one coincidence can expose another
+  // (B10V stages-on: clearing n-2→n-5 rails left n-8→n-9 ~ n-6→n-2 at 132u).
+  for (let pass = 0; pass < 6; pass += 1) {
+    const amb = findCollinearAmbiguities(connections)
+    const targets = new Set()
+    for (const tag of [
+      ...amb.unrelatedOverlaps,
+      ...amb.branchSharedRails,
+      ...amb.sharedEndpointCorridors,
+    ]) {
+      const m = tag.match(/^(c:[^~]+)~(c:[^:]+):/)
+      if (!m) continue
+      targets.add(m[1])
+      targets.add(m[2])
+    }
+    if (targets.size === 0) return
+
+    const movers = connections
+      .filter((c) => targets.has(c.id) && c.kind !== 'main')
+      .sort((a, b) => rank(a) - rank(b) || String(a.id).localeCompare(String(b.id)))
+    let moved = false
+    for (const c of movers) {
+      const beforePts = c.points
+      if (!beforePts?.length) continue
+      const others = connections.filter((o) => o !== c).map((o) => o.points)
+      const beforeCross = pathCrossCount(beforePts, others)
+      const beforeOverlap = overlapAgainst(beforePts, c.id)
+      if (beforeOverlap === 0) continue
+      let best = null
+      let bestKey = /** @type {[number, number, number, number]} */ ([
+        beforeOverlap,
+        beforeCross,
+        pathBendCount(beforePts),
+        pathLength(beforePts),
+      ])
+      /** @type {(number[][] | null | undefined)[]} */
+      const alts = [...crossingRepairAlts(c, placed, diamonds, spineIds, others)]
+      // Nudge one overlapping interior rail at a time (keep endpoints; don't mix V/H in one trial).
+      if (beforePts.length >= 4) {
+        for (let i = 1; i < beforePts.length - 2; i += 1) {
+          const p0 = beforePts[i]
+          const q0 = beforePts[i + 1]
+          const isVert = Math.abs(p0[0] - q0[0]) < 0.5
+          const isHoriz = Math.abs(p0[1] - q0[1]) < 0.5
+          if (!isVert && !isHoriz) continue
+          // Only nudge rails that currently coincide with a foreign segment.
+          let hitsForeign = false
+          for (const o of connections) {
+            if (o.id === c.id || !o.points) continue
+            for (let v = 0; v < o.points.length - 1; v += 1) {
+              if (
+                collinearOverlapLen(p0, q0, o.points[v], o.points[v + 1]) >= COLLINEAR_AMBIGUOUS_MIN
+              ) {
+                hitsForeign = true
+                break
+              }
+            }
+            if (hitsForeign) break
+          }
+          if (!hitsForeign) continue
+          for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
+            const trial = beforePts.map((p) => /** @type {number[]} */ ([p[0], p[1]]))
+            if (isVert) {
+              trial[i][0] += delta
+              trial[i + 1][0] += delta
+            } else {
+              trial[i][1] += delta
+              trial[i + 1][1] += delta
+            }
+            alts.push(trial)
+          }
+          // Jog: keep the near end of the rail, offset only the overlapping span.
+          // Whole-rail nudge often raises a cross; a mid-rail jog can clear coincidence
+          // without sweeping into neighbouring edges (B10V stages-on n-8→n-9 ~ n-6→n-2).
+          const lo = isVert ? Math.min(p0[1], q0[1]) : Math.min(p0[0], q0[0])
+          const hi = isVert ? Math.max(p0[1], q0[1]) : Math.max(p0[0], q0[0])
+          const span = hi - lo
+          if (span >= COLLINEAR_AMBIGUOUS_MIN) {
+            for (const frac of [0.25, 0.4, 0.5, 0.6, 0.75]) {
+              const split = lo + span * frac
+              for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
+                /** @type {number[][]} */
+                const trial = []
+                for (let k = 0; k <= i; k += 1) trial.push([beforePts[k][0], beforePts[k][1]])
+                if (isVert) {
+                  const x = p0[0]
+                  trial.push([x, split])
+                  trial.push([x + delta, split])
+                  trial.push([x + delta, q0[1]])
+                } else {
+                  const y = p0[1]
+                  trial.push([split, y])
+                  trial.push([split, y + delta])
+                  trial.push([q0[0], y + delta])
+                }
+                for (let k = i + 2; k < beforePts.length; k += 1) {
+                  trial.push([beforePts[k][0], beforePts[k][1]])
+                }
+                alts.push(trial)
+              }
+            }
+          }
+        }
+      }
+      for (const pts of alts) {
+        if (!pts || pts.length < 2) continue
+        if (!pathClear(pts, placed, c.from, c.to)) continue
+        // Keep diamond leave/enter on outline when applicable.
+        const fromBox = placed.get(c.from)
+        const toBox = placed.get(c.to)
+        if (diamonds.has(c.from) && fromBox && !onDiamondOutline(fromBox, pts[0])) continue
+        if (diamonds.has(c.to) && toBox && !onDiamondOutline(toBox, pts[pts.length - 1])) continue
+        const cross = pathCrossCount(pts, others)
+        if (cross > beforeCross) continue
+        const overlap = overlapAgainst(pts, c.id)
+        const bends = pathBendCount(pts)
+        const len = pathLength(pts)
+        const key = /** @type {[number, number, number, number]} */ ([overlap, cross, bends, len])
+        if (
+          key[0] < bestKey[0] ||
+          (key[0] === bestKey[0] && key[1] < bestKey[1]) ||
+          (key[0] === bestKey[0] && key[1] === bestKey[1] && key[2] < bestKey[2]) ||
+          (key[0] === bestKey[0] &&
+            key[1] === bestKey[1] &&
+            key[2] === bestKey[2] &&
+            key[3] + 1e-6 < bestKey[3])
+        ) {
+          bestKey = key
+          best = pts
+        }
+      }
+      if (best && bestKey[0] < beforeOverlap) {
+        c.points = best
+        moved = true
+        break // re-scan; a move can introduce a new coincidence elsewhere
+      }
+    }
+    if (!moved) return
+  }
+}
+
+/**
  * issue 190 S2 — joint multi-attach on free diamond outline sides when sibling branch leaves
  * share one vertex (or share a source-stem prefix). Trunk faces (main enter/leave) stay reserved.
  * Per-edge first-point mutation is insufficient: 2-point same-row siblings raise crosses and can
@@ -1634,13 +1881,13 @@ function acceptClear(pts, placed, fromId, toId) {
 function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
   /** @type {Map<string, object[]>} */
   const byDiamond = new Map()
+  // ALL outgoing edges (main/branch/back) — shared leave with trunk or back is the defect.
   for (const c of connections) {
-    if (c.kind !== 'branch' || !diamonds.has(c.from) || !c.points?.length) continue
+    if (!diamonds.has(c.from) || !c.points?.length) continue
     const list = byDiamond.get(c.from)
     if (list) list.push(c)
     else byDiamond.set(c.from, [c])
   }
-
   const keyPt = (p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`
 
   /** Count near-coincident ortho segment pairs (shared rail / ambiguous overlap). */
@@ -1676,6 +1923,11 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
     return n
   }
 
+  /**
+   * @typedef {{ shared: number, overlapSegs: number, crosses: number, bends: number, len: number }} S2Score
+   * @param {object[]} group
+   * @returns {S2Score}
+   */
   const scoreGroup = (group) => {
     const ids = new Set(group.map((c) => c.id))
     let shared = 0
@@ -1703,10 +1955,11 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
   }
 
   /** Lexico: shared leave → crossings → co-linear rail overlap → bends → length. */
+  /** @param {S2Score} a @param {S2Score} b */
   const better = (a, b) => {
     if (a.shared !== b.shared) return a.shared < b.shared
     if (a.crosses !== b.crosses) return a.crosses < b.crosses
-    if ((a.overlapSegs || 0) !== (b.overlapSegs || 0)) return (a.overlapSegs || 0) < (b.overlapSegs || 0)
+    if (a.overlapSegs !== b.overlapSegs) return a.overlapSegs < b.overlapSegs
     if (a.bends !== b.bends) return a.bends < b.bends
     return a.len + 1e-6 < b.len
   }
@@ -1785,6 +2038,8 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
     /** @type {Map<string, object[]>} */
     const byFace = new Map()
     for (const c of leaves) {
+      // Never stagger the main leave itself — only branch/back siblings on free faces.
+      if (c.kind === 'main') continue
       const f = faceOf(c.points[0])
       if (!f || trunk.has(f)) continue
       const list = byFace.get(f)
@@ -1796,7 +2051,7 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
       group.sort((a, b) => String(a.id).localeCompare(String(b.id)))
       const baseline = scoreGroup(group)
       if (baseline.shared === 0) {
-        // Still repair co-linear shared stems: identical first segment direction from same face.
+        // Still repair: co-linear first-leg direction OR long shared rail after distinct ports.
         const stems = group.filter((c) => c.points.length >= 2)
         const stemKey = (c) => {
           const a = c.points[0]
@@ -1811,7 +2066,8 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
           if (!byStem.has(k)) byStem.set(k, [])
           byStem.get(k).push(c)
         }
-        if (![...byStem.values()].some((g) => g.length > 1)) continue
+        const sharedStem = [...byStem.values()].some((g) => g.length > 1)
+        if (!sharedStem && (baseline.overlapSegs || 0) === 0) continue
       }
 
       // Route shorter / same-row first so outer U siblings see them in `extraOthers`.
@@ -1840,6 +2096,7 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
 
       // Bounded joint search: try top-K routes per edge (DFS) for shared-first lexico win.
       /** @type {{ map: Map<object, number[][]>, score: { shared: number, crosses: number, bends: number, len: number } }[]} */
+      /** @type {{ map: Map<object, number[][]>, score: S2Score }[]} */
       const jointWins = []
       const dfs = (idx, proposed) => {
         if (idx >= order.length) {
@@ -1852,11 +2109,18 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
           }
           return
         }
-        // Prune if we already have a zero-cross shared-clear solution.
-        if (jointWins[0] && jointWins[0].score.shared === 0 && jointWins[0].score.crosses === 0) return
+        // Prune only when we already have a clean shared/cross/rail-overlap win.
+        if (
+          jointWins[0] &&
+          jointWins[0].score.shared === 0 &&
+          jointWins[0].score.crosses === 0 &&
+          jointWins[0].score.overlapSegs === 0
+        ) {
+          return
+        }
         const c = order[idx]
         const port = /** @type {number[]} */ (portsByConn.get(c))
-        const cands = routesFromPort(port, c, [...proposed.values()], groupIds, 6)
+        const cands = routesFromPort(port, c, [...proposed.values()], groupIds, 8)
         for (const route of cands) {
           proposed.set(c, route)
           dfs(idx + 1, proposed)
@@ -1950,6 +2214,7 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
         String(a.c.id).localeCompare(String(b.c.id)),
     )
     /** @type {{ map: Map<object, number[][]>, score: { shared: number, crosses: number, bends: number, len: number } }[]} */
+    /** @type {{ map: Map<object, number[][]>, score: S2Score }[]} */
     const parkedWins = []
     const dfsPark = (idx, proposed) => {
       if (idx >= order.length) {
@@ -1963,9 +2228,16 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
         }
         return
       }
-      if (parkedWins[0] && parkedWins[0].score.shared === 0 && parkedWins[0].score.crosses === 0) return
+      if (
+        parkedWins[0] &&
+        parkedWins[0].score.shared === 0 &&
+        parkedWins[0].score.crosses === 0 &&
+        parkedWins[0].score.overlapSegs === 0
+      ) {
+        return
+      }
       const { c, port } = order[idx]
-      const cands = routesFromPort(port, c, [...proposed.values()], groupIds, 6)
+      const cands = routesFromPort(port, c, [...proposed.values()], groupIds, 8)
       for (const route of cands) {
         proposed.set(c, route)
         dfsPark(idx + 1, proposed)

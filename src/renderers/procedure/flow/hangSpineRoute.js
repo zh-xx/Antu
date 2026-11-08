@@ -545,6 +545,140 @@ export function pathCrossCount(pts, others = []) {
   return n
 }
 
+/** Max length treated as a short face stub / necessary attachment (not ambiguous ownership). */
+export const COLLINEAR_ATTACH_TOL = 24
+/** Overlaps at or above this length are reported when not a short attachment. */
+export const COLLINEAR_AMBIGUOUS_MIN = 48
+
+/**
+ * Length of collinear axis-aligned overlap between two orthogonal segments (0 if not collinear).
+ * @param {number[]} p
+ * @param {number[]} q
+ * @param {number[]} r
+ * @param {number[]} s
+ */
+export function collinearOverlapLen(p, q, r, s) {
+  const v1 = Math.abs(p[0] - q[0]) < 0.5
+  const v2 = Math.abs(r[0] - s[0]) < 0.5
+  if (v1 !== v2) return 0
+  if (v1) {
+    if (Math.abs(p[0] - r[0]) > 1) return 0
+    const a0 = Math.min(p[1], q[1])
+    const a1 = Math.max(p[1], q[1])
+    const b0 = Math.min(r[1], s[1])
+    const b1 = Math.max(r[1], s[1])
+    return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0))
+  }
+  if (Math.abs(p[1] - r[1]) > 1) return 0
+  const a0 = Math.min(p[0], q[0])
+  const a1 = Math.max(p[0], q[0])
+  const b0 = Math.min(r[0], s[0])
+  const b1 = Math.max(r[0], s[0])
+  return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0))
+}
+
+/**
+ * Distance from point to the overlapping interval of two collinear segments (∞ if no overlap).
+ * Used to recognize short necessary attachments near a shared endpoint.
+ * @param {number[]} pt
+ * @param {number[]} p
+ * @param {number[]} q
+ * @param {number[]} r
+ * @param {number[]} s
+ */
+export function distToCollinearOverlap(pt, p, q, r, s) {
+  const len = collinearOverlapLen(p, q, r, s)
+  if (len <= 0) return Infinity
+  const v = Math.abs(p[0] - q[0]) < 0.5
+  if (v) {
+    if (Math.abs(pt[0] - p[0]) > 1.5) return Infinity
+    const lo = Math.max(Math.min(p[1], q[1]), Math.min(r[1], s[1]))
+    const hi = Math.min(Math.max(p[1], q[1]), Math.max(r[1], s[1]))
+    if (pt[1] >= lo - 0.5 && pt[1] <= hi + 0.5) return 0
+    return Math.min(Math.abs(pt[1] - lo), Math.abs(pt[1] - hi))
+  }
+  if (Math.abs(pt[1] - p[1]) > 1.5) return Infinity
+  const lo = Math.max(Math.min(p[0], q[0]), Math.min(r[0], s[0]))
+  const hi = Math.min(Math.max(p[0], q[0]), Math.max(r[0], s[0]))
+  if (pt[0] >= lo - 0.5 && pt[0] <= hi + 0.5) return 0
+  return Math.min(Math.abs(pt[0] - lo), Math.abs(pt[0] - hi))
+}
+
+/**
+ * Scan connection polylines for ambiguous collinear overlaps.
+ * Distinguishes:
+ * - shortNecessaryAttachment: shared endpoint + overlap near that point (≤ COLLINEAR_ATTACH_TOL)
+ * - unrelatedOverlap: no shared endpoint, long coincidence (ownership unclear)
+ * - branchSharedRail: same source, distinct leave ports, long shared segment
+ * - sharedEndpointCorridor: shared endpoint but long overlap far from that point (e.g. opposite
+ *   dir on same rail) — reported for readability, optional hard-fail via `strictCorridor`
+ * @param {{ id: string, from: string, to: string, points: number[][] }[]} connections
+ * @param {{ ambiguousMin?: number, attachTol?: number }} [opts]
+ */
+export function findCollinearAmbiguities(connections, opts = {}) {
+  const ambiguousMin = opts.ambiguousMin ?? COLLINEAR_AMBIGUOUS_MIN
+  const attachTol = opts.attachTol ?? COLLINEAR_ATTACH_TOL
+  /** @type {string[]} */
+  const unrelatedOverlaps = []
+  /** @type {string[]} */
+  const branchSharedRails = []
+  /** @type {string[]} */
+  const sharedEndpointCorridors = []
+  /** @type {string[]} */
+  const shortAttachments = []
+  const cs = connections.filter((c) => c.points?.length >= 2)
+  for (let i = 0; i < cs.length; i += 1) {
+    for (let j = i + 1; j < cs.length; j += 1) {
+      const a = cs[i]
+      const b = cs[j]
+      const a0 = a.points[0]
+      const a1 = a.points[a.points.length - 1]
+      const b0 = b.points[0]
+      const b1 = b.points[b.points.length - 1]
+      const near = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 1.5
+      /** @type {number[] | null} */
+      let sharedPt = null
+      if (near(a0, b0) || near(a0, b1)) sharedPt = a0
+      else if (near(a1, b0) || near(a1, b1)) sharedPt = a1
+      const sameSource = a.from === b.from
+      const distinctLeave = sameSource && !near(a0, b0)
+      for (let u = 0; u < a.points.length - 1; u += 1) {
+        for (let v = 0; v < b.points.length - 1; v += 1) {
+          const p = a.points[u]
+          const q = a.points[u + 1]
+          const r = b.points[v]
+          const s = b.points[v + 1]
+          const len = collinearOverlapLen(p, q, r, s)
+          if (len < ambiguousMin) continue
+          const tag = `${a.id}~${b.id}:${len.toFixed(1)}`
+          if (sharedPt) {
+            const d = distToCollinearOverlap(sharedPt, p, q, r, s)
+            if (d <= attachTol) {
+              shortAttachments.push(tag)
+              continue
+            }
+            sharedEndpointCorridors.push(tag)
+            continue
+          }
+          if (sameSource && distinctLeave) {
+            branchSharedRails.push(tag)
+            continue
+          }
+          unrelatedOverlaps.push(tag)
+        }
+      }
+    }
+  }
+  return {
+    unrelatedOverlaps: [...new Set(unrelatedOverlaps)],
+    branchSharedRails: [...new Set(branchSharedRails)],
+    sharedEndpointCorridors: [...new Set(sharedEndpointCorridors)],
+    shortAttachments: [...new Set(shortAttachments)],
+    /** Scanner tolerances for independent recomputation. */
+    tolerances: { ambiguousMin, attachTol },
+  }
+}
+
 /**
  * Wrap-around hang→spine: leave hang outer, rail above/below the whole placed set, run to the
  * far side of the spine, enter the opposite face. Used when same-side U corridors cannot avoid

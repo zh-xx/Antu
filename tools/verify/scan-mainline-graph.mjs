@@ -15,8 +15,9 @@ const REPO = resolve(process.env.SCAN_REPO || resolve(__dirname, '../..'))
 let segHitsBox
 let orthoSegsCross
 let pathCrossCount
+let findCollinearAmbiguities
 try {
-  ;({ segHitsBox, orthoSegsCross, pathCrossCount } = await import(
+  ;({ segHitsBox, orthoSegsCross, pathCrossCount, findCollinearAmbiguities } = await import(
     resolve(REPO, 'src/renderers/procedure/flow/hangSpineRoute.js')
   ))
 } catch {
@@ -58,6 +59,18 @@ try {
     }
     return n
   }
+  findCollinearAmbiguities = () => ({
+    unrelatedOverlaps: [],
+    branchSharedRails: [],
+    sharedEndpointCorridors: [],
+    shortAttachments: [],
+    tolerances: { ambiguousMin: 48, attachTol: 24 },
+  })
+}
+if (typeof findCollinearAmbiguities !== 'function') {
+  ;({ findCollinearAmbiguities } = await import(
+    resolve(REPO, 'src/renderers/procedure/flow/hangSpineRoute.js'),
+  ))
 }
 
 const { buildProcedureGraph } = await import(resolve(REPO, 'src/renderers/procedure/flow/layout.js'))
@@ -318,6 +331,14 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     }
   }
 
+  // Strict collinear ambiguity (not covered by sharedPorts / sharedStems alone).
+  const collinear = findCollinearAmbiguities(g.connections)
+  const unrelatedOverlaps = collinear.unrelatedOverlaps
+  const branchSharedRails = collinear.branchSharedRails
+  const sharedEndpointCorridors = collinear.sharedEndpointCorridors
+  const shortNecessaryAttachments = collinear.shortAttachments
+  const collinearTolerances = collinear.tolerances
+
   // Spec may list duplicate from→to pairs; compare unique pairs to painted connections.
   const specEdgeUniq = new Set((spec.edges || []).map((e) => `${e.from}->${e.to}`))
   const connUniq = new Set(g.connections.map((c) => `${c.from}->${c.to}`))
@@ -360,8 +381,10 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
             'aesthetic-balance',
             'stages-frame-gutter-semantics',
             'permitted-rect-face-centre-multi-leave',
-            'permitted-parallel-distinct-port-stems',
+            'permitted-parallel-distinct-port-stems-under-attachTol',
           ],
+          collinearTolerances,
+          shortNecessaryAttachments,
         }
       : undefined
 
@@ -390,11 +413,18 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     sharedPortsDecision,
     sharedStems,
     sharedStemsDecision,
+    unrelatedOverlaps,
+    branchSharedRails,
+    sharedEndpointCorridors,
+    shortNecessaryAttachments,
+    collinearTolerances,
     labelOverlaps,
     edgeCountMatch,
     geometry,
-    // Hard geometric ok clears decision shared leave/stem. Rect multi-leave + label overlaps
-    // are reported (not hard-fail): often permitted or stages-limited.
+    // Hard geometric ok: decision shared leave/stem + long unrelated/same-source rail
+    // coincidence. Short attachments near shared endpoints are permitted (see tolerances).
+    // sharedEndpointCorridors reported for readability; not blanket-hard-fail (fix L4 locally).
+    // Label overlaps reported; rect multi-leave permitted.
     ok:
       !g.errors?.length &&
       hitList.length === 0 &&
@@ -409,7 +439,9 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
       badPorts.length === 0 &&
       edgeCountMatch &&
       sharedPortsDecision.length === 0 &&
-      sharedStemsDecision.length === 0,
+      sharedStemsDecision.length === 0 &&
+      unrelatedOverlaps.length === 0 &&
+      branchSharedRails.length === 0,
   }
 }
 
