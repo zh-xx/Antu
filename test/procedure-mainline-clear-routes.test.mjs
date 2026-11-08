@@ -3,7 +3,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { buildProcedureGraph } from '../src/renderers/procedure/flow/layout.js'
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 import { bendsOf } from '../src/renderers/procedure/flow/straighten.js'
 import {
   segHitsBox,
@@ -378,10 +382,14 @@ test('L4 V n-10→n-11 rejoin-facing adapt: shorter than wrap residual without n
   assert.ok(pathBendCount(e.points) <= 2, `expected ≤2 bends, got ${pathBendCount(e.points)}`)
 })
 
+// In-repo pins of lab inputs so CI (no synthetic-lab mount) still enforces the
+// #190 strict-collinear regressions. Lab originals remain the immutable audit corpus.
+const STRICT_FIX = join(ROOT, 'test/fixtures/mainline-strict')
+
 test('strict collinear: B12 H unrelated long rail overlap must be cleared (not fixture whitelist)', async () => {
   // Independent audit: n-11→n-20 and n-21→n-10 overlapped 334u at y=264 with no shared endpoint.
   const { findCollinearAmbiguities } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
-  const path = '/cursor/stores/self/antu-synthetic-lab/inputs/base/B12-stages-plus-loops.zh-CN.json'
+  const path = join(STRICT_FIX, 'B12-stages-plus-loops.zh-CN.json')
   const spec = JSON.parse(readFileSync(path, 'utf8'))
   const g = buildProcedureGraph(spec, fields, undefined, 'horizontal')
   assert.deepEqual(g.errors, [])
@@ -404,7 +412,7 @@ test('strict collinear: B12 H unrelated long rail overlap must be cleared (not f
 test('strict collinear: B10 V stages-on must clear cascade-exposed unrelated rails', async () => {
   // Fixing n-2→n-5 coincidences first exposed n-8→n-9 ~ n-6→n-2 at 132u; multi-pass required.
   const { findCollinearAmbiguities } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
-  const path = '/cursor/stores/self/antu-synthetic-lab/inputs/base/B10-multi-backedges.zh-CN.json'
+  const path = join(STRICT_FIX, 'B10-multi-backedges.zh-CN.json')
   const spec = JSON.parse(readFileSync(path, 'utf8'))
   const g = buildProcedureGraph(spec, { engine: 'mainline', stages: true }, undefined, 'vertical')
   assert.deepEqual(g.errors, [])
@@ -422,10 +430,10 @@ test('strict collinear: B10 V stages-on must clear cascade-exposed unrelated rai
 
 test('corridor separation must not introduce diagonal polylines (B12 H / B02 V-on)', () => {
   const paths = [
-    ['/cursor/stores/self/antu-synthetic-lab/inputs/base/B12-stages-plus-loops.zh-CN.json', 'horizontal', false],
-    ['/cursor/stores/self/antu-synthetic-lab/inputs/base/B02-multioutlet-shared.zh-CN.json', 'vertical', true],
-    ['/cursor/stores/self/antu-synthetic-lab/inputs/base/B10-multi-backedges.zh-CN.json', 'horizontal', true],
-    ['/cursor/stores/self/antu-synthetic-lab/inputs/base/B04-correction-retrial-loop.zh-CN.json', 'vertical', true],
+    [join(STRICT_FIX, 'B12-stages-plus-loops.zh-CN.json'), 'horizontal', false],
+    [join(STRICT_FIX, 'B02-multioutlet-shared.zh-CN.json'), 'vertical', true],
+    [join(STRICT_FIX, 'B10-multi-backedges.zh-CN.json'), 'horizontal', true],
+    [join(STRICT_FIX, 'B04-correction-retrial-loop.zh-CN.json'), 'vertical', true],
   ]
   for (const [path, orient, stages] of paths) {
     const g = buildProcedureGraph(JSON.parse(readFileSync(path, 'utf8')), { engine: 'mainline', stages }, undefined, orient)
@@ -445,11 +453,69 @@ test('corridor separation must not introduce diagonal polylines (B12 H / B02 V-o
   }
 })
 
+test('rect endpoints: B04 H stages-on main ports must sit on box faces after packing', () => {
+  // Independent audit: stage pack shifted n-2 by 11.5u while c:n-1→n-2 / c:n-2→n-3 stayed put.
+  const path = join(STRICT_FIX, 'B04-correction-retrial-loop.zh-CN.json')
+  const g = buildProcedureGraph(JSON.parse(readFileSync(path, 'utf8')), { engine: 'mainline', stages: true }, undefined, 'horizontal')
+  assert.deepEqual(g.errors, [])
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  const onFace = (n, p) => {
+    const tol = 1.5
+    const { x, y } = n.position
+    const w = n.data.w
+    const h = n.data.h
+    return (
+      (Math.abs(p[0] - x) <= tol && p[1] >= y - tol && p[1] <= y + h + tol) ||
+      (Math.abs(p[0] - (x + w)) <= tol && p[1] >= y - tol && p[1] <= y + h + tol) ||
+      (Math.abs(p[1] - y) <= tol && p[0] >= x - tol && p[0] <= x + w + tol) ||
+      (Math.abs(p[1] - (y + h)) <= tol && p[0] >= x - tol && p[0] <= x + w + tol)
+    )
+  }
+  for (const id of ['c:n-1->n-2', 'c:n-2->n-3']) {
+    const c = g.connections.find((x) => x.id === id)
+    assert.ok(c?.points?.length >= 2, id)
+    const from = byId.get(c.from)
+    const to = byId.get(c.to)
+    assert.ok(onFace(from, c.points[0]), `${id} leave off face ${JSON.stringify(c.points[0])}`)
+    assert.ok(onFace(to, c.points.at(-1)), `${id} enter off face ${JSON.stringify(c.points.at(-1))}`)
+  }
+})
+
+test('strict collinear: V10a H stages-on unrelated long rail must clear', async () => {
+  // Independent audit: n-8→n-9 ~ n-6→n-2 shared y=614 for 184u; mid-jog needs near-end split.
+  const { findCollinearAmbiguities } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
+  const path = join(STRICT_FIX, 'V10-multi-backedgesa-permute.zh-CN.json')
+  const g = buildProcedureGraph(JSON.parse(readFileSync(path, 'utf8')), { engine: 'mainline', stages: true }, undefined, 'horizontal')
+  assert.deepEqual(g.errors, [])
+  assert.deepEqual(foreignHits(g), [])
+  assert.deepEqual(edgeCrossings(g), [])
+  const amb = findCollinearAmbiguities(g.connections)
+  assert.deepEqual(
+    amb.unrelatedOverlaps,
+    [],
+    `unrelated collinear overlaps remain: ${amb.unrelatedOverlaps.join('|')}`,
+  )
+})
+
+test('strict collinear: V11a H stages-on cascade rails must clear', async () => {
+  const { findCollinearAmbiguities } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
+  const path = join(STRICT_FIX, 'V11-exception-cascadea-permute.zh-CN.json')
+  const g = buildProcedureGraph(JSON.parse(readFileSync(path, 'utf8')), { engine: 'mainline', stages: true }, undefined, 'horizontal')
+  assert.deepEqual(g.errors, [])
+  assert.deepEqual(foreignHits(g), [])
+  assert.deepEqual(edgeCrossings(g), [])
+  const amb = findCollinearAmbiguities(g.connections)
+  assert.deepEqual(
+    amb.unrelatedOverlaps,
+    [],
+    `unrelated collinear overlaps remain: ${amb.unrelatedOverlaps.join('|')}`,
+  )
+})
+
 test('strict collinear: V08b V same-source distinct ports must not share a long rail', async () => {
   // Independent audit: n-b2→n-b3 and n-b2→n-b4 shared x=211 for 155.44u after distinct diamond ports.
   const { findCollinearAmbiguities } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
-  const path =
-    '/cursor/stores/self/antu-synthetic-lab/inputs/variants/V08-multi-componentsb-extra.zh-CN.json'
+  const path = join(STRICT_FIX, 'V08-multi-componentsb-extra.zh-CN.json')
   const spec = JSON.parse(readFileSync(path, 'utf8'))
   const g = buildProcedureGraph(spec, fields, undefined, 'vertical')
   assert.deepEqual(g.errors, [])

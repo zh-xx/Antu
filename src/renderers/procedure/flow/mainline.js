@@ -1490,6 +1490,9 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds) {
     repairEdgeCrossings(placed, connections, diamonds, spineIds)
   }
   snapDiamondEndpoints(placed, connections, diamonds)
+  // Stage packing / pin / prefer-centered can shift rect boxes without rewriting main
+  // ink (B04 H stages-on: n-2 left by 11.5u while c:n-1→n-2 / c:n-2→n-3 stayed put).
+  snapRectEndpoints(placed, connections, diamonds)
   // Snap elbow insertion can clip a foreign box (V11 H n-2→n-10 through n-12).
   for (const c of connections) {
     if (c.kind === 'main' || !c.points?.length) continue
@@ -1826,6 +1829,96 @@ function snapDiamondEndpoints(placed, connections, diamonds) {
 }
 
 /**
+ * Project leave/enter points that miss a rect face onto the nearest face.
+ * Diamonds are handled by snapDiamondEndpoints; this covers step/start/end boxes
+ * whose main routes were left stale after a later box shift.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ */
+function snapRectEndpoints(placed, connections, diamonds) {
+  const onFace = (box, p) => {
+    const tol = 1.5
+    const onL = Math.abs(p[0] - box.x) <= tol && p[1] >= box.y - tol && p[1] <= box.y + box.h + tol
+    const onR =
+      Math.abs(p[0] - (box.x + box.w)) <= tol && p[1] >= box.y - tol && p[1] <= box.y + box.h + tol
+    const onT = Math.abs(p[1] - box.y) <= tol && p[0] >= box.x - tol && p[0] <= box.x + box.w + tol
+    const onB =
+      Math.abs(p[1] - (box.y + box.h)) <= tol && p[0] >= box.x - tol && p[0] <= box.x + box.w + tol
+    return onL || onR || onT || onB
+  }
+  /** @param {{ x: number, y: number, w: number, h: number }} box @param {number[]} p @param {number[] | null} toward */
+  const snap = (box, p, toward) => {
+    if (onFace(box, p)) return /** @type {number[]} */ (p)
+    const cx = box.x + box.w / 2
+    const cy = box.y + box.h / 2
+    // Prefer the face implied by the outgoing/incoming ortho run.
+    if (toward) {
+      const horiz = Math.abs(toward[1] - p[1]) < 0.5
+      const vert = Math.abs(toward[0] - p[0]) < 0.5
+      if (horiz) {
+        const y = Math.max(box.y, Math.min(box.y + box.h, p[1]))
+        // `toward` is the adjacent polyline point: the face the segment uses is the one
+        // between p and toward (or the near face when p already overshoots the box).
+        const towardRight = toward[0] > p[0]
+        if (towardRight && p[0] > box.x + box.w + 0.5) return [box.x + box.w, y]
+        if (!towardRight && p[0] < box.x - 0.5) return [box.x, y]
+        if (towardRight && p[0] < box.x - 0.5) return [box.x, y]
+        if (!towardRight && p[0] > box.x + box.w + 0.5) return [box.x + box.w, y]
+        return [towardRight ? box.x + box.w : box.x, y]
+      }
+      if (vert) {
+        const x = Math.max(box.x, Math.min(box.x + box.w, p[0]))
+        const leaveDown = toward[1] > p[1]
+        if (leaveDown && p[1] > box.y + box.h + 0.5) return [x, box.y + box.h]
+        if (!leaveDown && p[1] < box.y - 0.5) return [x, box.y]
+        if (leaveDown && p[1] < box.y - 0.5) return [x, box.y]
+        if (!leaveDown && p[1] > box.y + box.h + 0.5) return [x, box.y + box.h]
+        const y = leaveDown ? box.y + box.h : box.y
+        return [x, y]
+      }
+    }
+    // Fallback: nearest point on the bbox outline.
+    const x = Math.max(box.x, Math.min(box.x + box.w, p[0]))
+    const y = Math.max(box.y, Math.min(box.y + box.h, p[1]))
+    const candidates = [
+      [box.x, y],
+      [box.x + box.w, y],
+      [x, box.y],
+      [x, box.y + box.h],
+    ]
+    let best = candidates[0]
+    let bestD = Infinity
+    for (const c of candidates) {
+      const d = Math.hypot(p[0] - c[0], p[1] - c[1])
+      if (d < bestD) {
+        bestD = d
+        best = c
+      }
+    }
+    if (bestD > Math.max(box.w, box.h) + Math.hypot(cx - p[0], cy - p[1])) return p
+    return best
+  }
+  for (const c of connections) {
+    if (!c.points || c.points.length < 2) continue
+    if (!diamonds.has(c.from)) {
+      const box = placed.get(c.from)
+      if (box) c.points[0] = snap(box, c.points[0], c.points[1])
+    }
+    if (!diamonds.has(c.to)) {
+      const box = placed.get(c.to)
+      if (box) {
+        c.points[c.points.length - 1] = snap(
+          box,
+          c.points[c.points.length - 1],
+          c.points[c.points.length - 2],
+        )
+      }
+    }
+  }
+}
+
+/**
  * Separate long collinear coincidences that confuse edge ownership:
  * - unrelated edges sharing a rail with no common endpoint (B12H)
  * - same-source branches with distinct ports but a long shared rail (V08b)
@@ -1962,7 +2055,35 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
           const hi = isVert ? Math.max(p0[1], q0[1]) : Math.max(p0[0], q0[0])
           const span = hi - lo
           if (span >= COLLINEAR_AMBIGUOUS_MIN && i >= 1 && !isEnterSeg) {
-            for (const frac of [0.25, 0.4, 0.5, 0.6, 0.75]) {
+            // Include near-end splits: V10a H-on shared y=614 needs ~0.9 so the stub
+            // past the foreign rail stays under ambiguousMin (0.75 left 49u residual).
+            const fracs = [0.1, 0.15, 0.25, 0.4, 0.5, 0.6, 0.75, 0.85, 0.9]
+            // Also pin splits that truncate foreign overlap to just under ambiguousMin.
+            for (const o of connections) {
+              if (o.id === c.id || !o.points) continue
+              for (let v = 0; v < o.points.length - 1; v += 1) {
+                if (
+                  collinearOverlapLen(p0, q0, o.points[v], o.points[v + 1]) <
+                  COLLINEAR_AMBIGUOUS_MIN
+                ) {
+                  continue
+                }
+                const [r, s] = [o.points[v], o.points[v + 1]]
+                const flo = isVert ? Math.min(r[1], s[1]) : Math.min(r[0], s[0])
+                const fhi = isVert ? Math.max(r[1], s[1]) : Math.max(r[0], s[0])
+                const oLo = Math.max(lo, flo)
+                const oHi = Math.min(hi, fhi)
+                if (oHi - oLo < COLLINEAR_AMBIGUOUS_MIN) continue
+                // From p0: cut after (ambiguousMin - 1) of overlap so residual < threshold.
+                const fromP0 = isVert ? p0[1] : p0[0]
+                const towardQ = (isVert ? q0[1] : q0[0]) >= fromP0
+                const cut = towardQ
+                  ? Math.min(oHi, oLo + COLLINEAR_AMBIGUOUS_MIN - 1)
+                  : Math.max(oLo, oHi - (COLLINEAR_AMBIGUOUS_MIN - 1))
+                if (cut > lo + 1 && cut < hi - 1) fracs.push((cut - lo) / span)
+              }
+            }
+            for (const frac of fracs) {
               const split = lo + span * frac
               for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
                 /** @type {number[][]} */

@@ -1,0 +1,159 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "合成·资格审查 · 多出口共享决策面",
+  "domain": "approval",
+  "meta": {
+    "synthetic": true,
+    "notLegalAdvice": true,
+    "labId": "B02-multioutlet-shared",
+    "focus": "multioutlet",
+    "disclaimer": "【合成样本 · 非法律意见】本文件为 Antu 布局/引擎压力测试用虚构流程结构，不构成法律意见，不描述真实案件或真实当事人，不含真实案号、裁判文书引用或权威出处。",
+    "seed": "antu-synthetic-lab-v1-2026-11-08",
+    "labVersion": "1.0.0"
+  },
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "甲方（合成）",
+      "role": "相对方甲"
+    },
+    {
+      "id": "a-2",
+      "name": "乙方（合成）",
+      "role": "相对方乙"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-syn",
+      "type": "note",
+      "name": "合成样本说明（非合同/非判决）",
+      "loc": {
+        "file": "B02-multioutlet-shared.zh-CN.json"
+      }
+    }
+  ],
+  "stages": [
+    {
+      "id": "st-1",
+      "label": "审查"
+    },
+    {
+      "id": "st-2",
+      "label": "分流"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "提交资格材料",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-2",
+      "kind": "decision",
+      "label": "资格审查结论",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-3",
+      "kind": "step",
+      "label": "进入详评",
+      "stageId": "st-1",
+      "actorIds": [
+        "a-1"
+      ]
+    },
+    {
+      "id": "n-4",
+      "kind": "end",
+      "label": "详评完成",
+      "stageId": "st-1",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-5",
+      "kind": "end",
+      "label": "形式不符·退回",
+      "stageId": "st-2",
+      "outcome": "negative"
+    },
+    {
+      "id": "n-6",
+      "kind": "end",
+      "label": "实质不符·否决",
+      "stageId": "st-2",
+      "outcome": "negative"
+    },
+    {
+      "id": "n-7",
+      "kind": "end",
+      "label": "不可抗力·中止",
+      "stageId": "st-2",
+      "outcome": "negative"
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "补正窗口",
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-9",
+      "kind": "end",
+      "label": "逾期未补正",
+      "stageId": "st-2",
+      "outcome": "negative"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n-1",
+      "to": "n-2",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-3",
+      "condition": "通过",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-5",
+      "condition": "形式不符"
+    },
+    {
+      "from": "n-2",
+      "to": "n-6",
+      "condition": "实质不符"
+    },
+    {
+      "from": "n-2",
+      "to": "n-7",
+      "condition": "不可抗力"
+    },
+    {
+      "from": "n-2",
+      "to": "n-8",
+      "condition": "可补正"
+    },
+    {
+      "from": "n-3",
+      "to": "n-4",
+      "main": true
+    },
+    {
+      "from": "n-8",
+      "to": "n-3",
+      "condition": "补正后通过"
+    },
+    {
+      "from": "n-8",
+      "to": "n-9",
+      "condition": "逾期"
+    }
+  ]
+}

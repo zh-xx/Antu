@@ -1,0 +1,156 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "合成·仲裁裁决 · 撤销申请与重裁环",
+  "domain": "other",
+  "meta": {
+    "synthetic": true,
+    "notLegalAdvice": true,
+    "labId": "B12-stages-plus-loops",
+    "focus": "stages-loops",
+    "disclaimer": "【合成样本 · 非法律意见】本文件为 Antu 布局/引擎压力测试用虚构流程结构，不构成法律意见，不描述真实案件或真实当事人，不含真实案号、裁判文书引用或权威出处。",
+    "seed": "antu-synthetic-lab-v1-2026-11-08",
+    "labVersion": "1.0.0"
+  },
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "甲方（合成）",
+      "role": "相对方甲"
+    },
+    {
+      "id": "a-2",
+      "name": "乙方（合成）",
+      "role": "相对方乙"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-syn",
+      "type": "note",
+      "name": "合成样本说明（非合同/非判决）",
+      "loc": {
+        "file": "B12-stages-plus-loops.zh-CN.json"
+      }
+    }
+  ],
+  "stages": [
+    {
+      "id": "st-1",
+      "label": "裁决"
+    },
+    {
+      "id": "st-2",
+      "label": "撤销审查"
+    },
+    {
+      "id": "st-3",
+      "label": "重裁"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "裁决作出",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-2",
+      "kind": "decision",
+      "label": "是否申请撤销",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-3",
+      "kind": "end",
+      "label": "裁决生效履行",
+      "stageId": "st-1",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-10",
+      "kind": "step",
+      "label": "法院审查（合成）",
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-11",
+      "kind": "decision",
+      "label": "是否裁定撤销",
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-12",
+      "kind": "end",
+      "label": "驳回撤销申请",
+      "stageId": "st-2",
+      "outcome": "negative"
+    },
+    {
+      "id": "n-20",
+      "kind": "step",
+      "label": "重新仲裁",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-21",
+      "kind": "decision",
+      "label": "重裁后是否再申请撤销",
+      "stageId": "st-3"
+    },
+    {
+      "id": "n-22",
+      "kind": "end",
+      "label": "重裁后结案",
+      "stageId": "st-3",
+      "outcome": "positive"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n-1",
+      "to": "n-2",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-3",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-10",
+      "condition": "是"
+    },
+    {
+      "from": "n-10",
+      "to": "n-11"
+    },
+    {
+      "from": "n-11",
+      "to": "n-12",
+      "condition": "否"
+    },
+    {
+      "from": "n-11",
+      "to": "n-20",
+      "condition": "是"
+    },
+    {
+      "from": "n-20",
+      "to": "n-21"
+    },
+    {
+      "from": "n-21",
+      "to": "n-22",
+      "condition": "否"
+    },
+    {
+      "from": "n-21",
+      "to": "n-10",
+      "condition": "是"
+    }
+  ]
+}
