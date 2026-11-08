@@ -236,7 +236,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
 
   const stageById = new Map((spec.stages ?? []).map((s) => [s.id, s]))
   // ① back edges and ② the main line (shared with Mainline-first and route; spine.js)
-  const { byId, back, ruleEnds, spine, spineSet, groups } = analyseProcedureGraph(spec)
+  const { byId, back, ruleEnds, spine, spines, spineSet, groups } = analyseProcedureGraph(spec)
   // Ends reached only through rules have no flow edges. Painting them as islands on the
   // canvas confuses readers (no arrow in or out). They stay addressable for the rules table
   // via byId; they are not laid out or drawn.
@@ -445,7 +445,44 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   const useMainline = fields?.engine === 'mainline'
   const foldMainline =
     showStages && presentStages.length >= 1 && nodes.every((n) => stageById.has(n.stageId))
-  const mainlineStages = foldMainline ? presentStages : [{ id: '__implicit__', label: '' }]
+  // Mainline packs stage columns in spine-encounter order so cross-stage mains stay
+  // short adjacent hops (L3: suspension/joinder sit where the trunk actually visits them,
+  // not where the author listed the bands). Off-spine stages (B04 纠正 hang) insert
+  // just after the spine stage they leave from — not dumped at the end. Author JSON unchanged.
+  const orderStagesBySpine = (stagesList, spineIds) => {
+    const stageOf = new Map(nodes.map((n) => [n.id, n.stageId]))
+    const byIdStage = new Map(stagesList.map((st) => [st.id, st]))
+    const seen = new Set()
+    /** @type {typeof stagesList} */
+    const ordered = []
+    for (const id of spineIds) {
+      const sid = stageOf.get(id)
+      if (!sid || seen.has(sid) || !byIdStage.has(sid)) continue
+      seen.add(sid)
+      ordered.push(byIdStage.get(sid))
+    }
+    /** @type {typeof stagesList} */
+    const off = stagesList.filter((st) => !seen.has(st.id))
+    for (const st of off) {
+      // Prefer the spine stage that owns an outbound edge into this stage.
+      let insertAt = ordered.length
+      for (const g of groups) {
+        if (stageOf.get(g.to) !== st.id) continue
+        const fromSt = stageOf.get(g.from)
+        const idx = ordered.findIndex((s) => s.id === fromSt)
+        if (idx >= 0) {
+          insertAt = Math.min(insertAt, idx + 1)
+          break
+        }
+      }
+      ordered.splice(insertAt, 0, st)
+      seen.add(st.id)
+    }
+    return ordered
+  }
+  const mainlineStages = foldMainline
+    ? orderStagesBySpine(presentStages, spine)
+    : [{ id: '__implicit__', label: '' }]
   const mainlineNodes =
     mainlineStages.length === 1 && mainlineStages[0].id === '__implicit__'
       ? nodes.map((n) => ({ ...n, stageId: '__implicit__' }))
@@ -463,6 +500,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       labelBox,
       vertical,
       spine,
+      spines,
       fields,
     })
     layoutEngine = 'mainline'
@@ -568,6 +606,12 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   // the nodes go to React Flow. Sizes travel in data (the same convention as fact's cards)
   const actorById = new Map((spec.actors ?? []).map((a) => [a.id, a]))
   const sourceById = new Map((spec.sources ?? []).map((s) => [s.id, s]))
+  // Mainline may invent a local stage trunk (02 st-3) or pin secondary component spines (B08);
+  // paint those as spine too so scanners/UI match input main:true / column trunks.
+  const drawnSpine = new Set(spineSet)
+  if (layoutEngine === 'mainline' && Array.isArray(best?.spineIds)) {
+    for (const id of best.spineIds) drawnSpine.add(id)
+  }
   const rfNodes = nodes.map((n) => {
     const p = placed.get(n.id)
     return {
@@ -581,7 +625,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
         // the width of the text column the size was computed for; the node draws its text in it
         textW: sizeOf(n).textW,
         cut: sizeOf(n).cut,
-        isSpine: spineSet.has(n.id),
+        isSpine: drawnSpine.has(n.id),
         stageLabel: stageById.get(n.stageId)?.label ?? '',
         actorNames: (n.actorIds ?? []).map((id) => actorById.get(id)?.name ?? id),
         sources: (n.sourceIds ?? []).map((id) => sourceById.get(id)).filter(Boolean),
@@ -616,6 +660,8 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     connections,
     rows,
     spine,
+    /** Every component spine (primary first). Same as `spine` wrapped when only one entry. */
+    spines,
     stageBoxes,
     ruleTable,
     // Whole pixels: ELK places on fractions, and the canvas and the exported image want integers

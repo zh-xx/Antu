@@ -103,7 +103,7 @@ export function layoutMainline(args) {
  * Mainline-first column layout as a generator (yields between heavy routing steps).
  * @returns {Generator<void, { placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object }, unknown>}
  */
-export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, spine, fields }) {
+export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, spine, spines, fields }) {
   const byId = new Map(nodes.map((n) => [n.id, n]))
   const PAD_A0 = vertical ? STAGE_PAD_TOP : STAGE_PAD
   const PAD_C0 = vertical ? STAGE_PAD : STAGE_PAD_TOP
@@ -118,7 +118,16 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   }
 
   const spineList = spine ?? []
+  /** All component spines (primary first). Falls back to a single list when older callers omit it. */
+  const spinesList = Array.isArray(spines) && spines.length ? spines : spineList.length ? [spineList] : []
   const spineAt = new Map(spineList.map((id, i) => [id, i]))
+  // Secondary component spines get their own index maps so hang [leave, rejoin] works per trunk.
+  const spineAtAll = new Map()
+  for (const path of spinesList) {
+    path.forEach((id, i) => {
+      if (!spineAtAll.has(id)) spineAtAll.set(id, i)
+    })
+  }
   const outG = new Map(nodes.map((n) => [n.id, []]))
   for (const g of groups) outG.get(g.from)?.push(g)
 
@@ -137,8 +146,9 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
       ownIds,
       groups,
       outG,
-      spineAt,
+      spineAt: spineAtAll,
       spineList,
+      spinesList,
       frameSize,
       diamonds,
       branchSign,
@@ -158,7 +168,8 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   const placed = new Map()
   const boxes = []
   const connections = []
-  const spineByStage = new Map()
+  /** @type {Map<string, string[][]>} stage → independent trunk id lists (never merge for pin) */
+  const spineAxesByStage = new Map()
   let cx = PAD
   for (const st of stages) {
     const segs = segments.filter((seg) => seg.st === st)
@@ -172,7 +183,8 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
     boxes.push({ stageId: st.id, label: st.label, x: cx, y: PAD, w, h })
     let ox = cx + padC + (w - padC - STAGE_PAD - content) / 2
     const oy = PAD + padA
-    const spineIds = []
+    /** @type {string[][]} */
+    const axes = []
     for (const seg of segs) {
       for (const [id, r] of seg.placed) placed.set(id, { ...r, x: r.x + ox, y: r.y + oy })
       for (const c of seg.connections) {
@@ -182,10 +194,13 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
           labelAt: c.labelAt ? { x: c.labelAt.x + ox, y: c.labelAt.y + oy } : null,
         })
       }
-      spineIds.push(...seg.spineIds)
+      const segAxes = Array.isArray(seg.spineAxes) && seg.spineAxes.length ? seg.spineAxes : [seg.spineIds]
+      for (const axis of segAxes) {
+        if (axis?.length) axes.push([...axis])
+      }
       ox += seg.width + COLUMN_GAP
     }
-    spineByStage.set(st.id, spineIds)
+    spineAxesByStage.set(st.id, axes)
     cx += w + COLUMN_GAP
   }
   const tallest = Math.max(...boxes.map((b) => b.h), 0)
@@ -244,15 +259,18 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   const all = straighten(connections, placed, titles, true, diamonds, { borders, within })
   connections.splice(0, connections.length, ...all)
   polishLinks(ctx)
-  // Polish may shove trunk nodes aside to clear a branch: put the axis back, branches yield.
-  for (const ids of spineByStage.values()) {
-    pinSpineAxis(placed, ids, connections)
-    pushBranchesOffSpine(placed, ids)
+  // Polish may shove trunk nodes aside to clear a branch: put each trunk axis back
+  // independently (multi-component spines must not share one averaged axis), then
+  // re-separate columns if polish dragged whole trunks together.
+  for (const axes of spineAxesByStage.values()) {
+    for (const ids of axes) pinSpineAxis(placed, ids, connections)
+    separateSpineAxes(placed, axes, connections)
+    pushBranchesOffSpine(placed, axes.flat())
   }
   // straighten/polish prefer diamond-point routes; same-row forks stay side-horizontal.
   restoreSameRowLinks(placed, connections, diamonds)
   // Final: linked boxes share centres; every port on a face centre (after polish skew).
-  const allSpine = new Set([...spineByStage.values()].flat())
+  const allSpine = new Set([...spineAxesByStage.values()].flat(2))
   preferCenteredLinks(placed, connections, diamonds, allSpine)
   // straighten/polish above can reintroduce edge crossings that per-stage repair already
   // cleared (L4 horizontal n-7→n-8 vs settlement). Crossing repair must run on the combined
@@ -280,7 +298,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   }
 
   const frame = { boxes, placed, connections, titles, borders, width, height, diamonds }
-  return { frame, ...toReal(frame, vertical) }
+  return { frame, ...toReal(frame, vertical), spineIds: [...allSpine] }
 }
 
 /**
@@ -293,6 +311,7 @@ function layoutStageMainline({
   outG,
   spineAt,
   spineList,
+  spinesList = [],
   frameSize,
   diamonds,
   branchSign,
@@ -302,7 +321,70 @@ function layoutStageMainline({
   const placed = new Map()
   const drawn = new Set()
 
-  const spineHere = spineList.filter((id) => ownIds.has(id))
+  /**
+   * When stages fold a hang chain into its own column (02 st-3: n-7…n-12 with no global
+   * spine members), invent a local trunk so the column is still a straight Mainline stack
+   * rather than a pocket pile. Prefer stage-entry nodes that receive cross-stage mains.
+   */
+  const discoverLocalTrunk = () => {
+    const inOwn = new Map([...ownIds].map((id) => [id, []]))
+    for (const g of groups) {
+      if (ownIds.has(g.to)) inOwn.get(g.to)?.push(g)
+    }
+    const entries = [...ownIds].filter((id) => {
+      const ins = inOwn.get(id) ?? []
+      return !ins.some((g) => ownIds.has(g.from))
+    })
+    const ranked = [...entries].sort((a, b) => {
+      const aCross = (inOwn.get(a) ?? []).some((g) => !ownIds.has(g.from) && g.isMain) ? 0 : 1
+      const bCross = (inOwn.get(b) ?? []).some((g) => !ownIds.has(g.from) && g.isMain) ? 0 : 1
+      if (aCross !== bCross) return aCross - bCross
+      const aAny = (inOwn.get(a) ?? []).some((g) => !ownIds.has(g.from)) ? 0 : 1
+      const bAny = (inOwn.get(b) ?? []).some((g) => !ownIds.has(g.from)) ? 0 : 1
+      return aAny - bAny || String(a).localeCompare(String(b))
+    })
+    /** @type {string[]} */
+    const path = []
+    const guard = new Set()
+    let cur = ranked[0]
+    while (cur && ownIds.has(cur) && !guard.has(cur)) {
+      guard.add(cur)
+      path.push(cur)
+      if (byId.get(cur)?.kind === 'end') break
+      const outs = (outG.get(cur) ?? [])
+        .filter((e) => !e.isBack && ownIds.has(e.to) && !guard.has(e.to))
+        .sort(
+          (p, q) =>
+            Number(!!q.isMain) - Number(!!p.isMain) || String(p.to).localeCompare(String(q.to)),
+        )
+      const next = outs.find((e) => e.isMain) ?? outs[0]
+      if (!next) break
+      cur = next.to
+    }
+    return path
+  }
+
+  // Component spines that intersect this stage (primary first). Empty → local trunk.
+  const componentSpines = (spinesList.length ? spinesList : spineList.length ? [spineList] : [])
+    .map((path) => path.filter((id) => ownIds.has(id)))
+    .filter((path) => path.length > 0)
+  let spineHere = componentSpines[0] ? [...componentSpines[0]] : spineList.filter((id) => ownIds.has(id))
+  /** @type {string[][]} */
+  const extraSpines = componentSpines.slice(1)
+  /** Local trunk edges (not necessarily global isMain) stay straight like a spine. */
+  /** @type {Map<string, string>} */
+  const localSpineNext = new Map()
+  if (!spineHere.length) {
+    spineHere = discoverLocalTrunk()
+    for (let i = 0; i < spineHere.length - 1; i += 1) {
+      localSpineNext.set(spineHere[i], spineHere[i + 1])
+    }
+    // Expose local trunk indices so hang leave/rejoin math still works.
+    spineHere.forEach((id, i) => {
+      if (!spineAt.has(id)) spineAt.set(id, i)
+    })
+  }
+
   let y = 0
   let spineW = 0
   for (const id of spineHere) {
@@ -319,14 +401,45 @@ function layoutStageMainline({
   }
   const spineH = y > 0 ? y - LAYER_GAP : 0
 
+  // Secondary disconnected-component spines (B08 n-b*): parallel straight columns.
+  // Leave a full hang-lane gap between trunks so a decision on the secondary column can
+  // still open an inward corridor without exhausting (V08 H-off n-b2→n-x-end).
+  /** @type {string[]} */
+  const extraSpineIds = []
+  {
+    let colX = spineW + (spineW ? COLUMN_GAP + LANE_GAP : 0)
+    for (const path of extraSpines) {
+      let ey = 0
+      let colW = 0
+      for (const id of path) {
+        if (drawn.has(id)) continue
+        const { w, h } = frameSize(byId.get(id))
+        colW = Math.max(colW, w)
+        placed.set(id, { x: colX, y: ey, w, h })
+        drawn.add(id)
+        extraSpineIds.push(id)
+        if (!spineAt.has(id)) spineAt.set(id, path.indexOf(id))
+        ey += h + LAYER_GAP
+      }
+      const axisX = colX + colW / 2
+      for (const id of path) {
+        if (!placed.has(id)) continue
+        const r = placed.get(id)
+        placed.set(id, { ...r, x: axisX - r.w / 2 })
+      }
+      colX += colW + COLUMN_GAP
+      spineW = Math.max(spineW, colX - COLUMN_GAP)
+    }
+  }
+
   // Hangs: leave the spine, follow until spine / end / already drawn (no cut).
   // Outgoing leave order is sorted by target id so input edge order cannot flip sides/lanes.
   const hangs = []
-  for (const u of spineHere) {
+  for (const u of [...spineHere, ...extraSpineIds]) {
     const leaves = [...(outG.get(u) ?? [])].sort((p, q) => String(p.to).localeCompare(String(q.to)))
     for (const g of leaves) {
       if (!ownIds.has(g.to) && !g.isBack) continue // cross-stage later
-      if (g.isMain || g.isBack) continue
+      if (g.isMain || g.isBack || localSpineNext.get(g.from) === g.to) continue
       if (spineAt.has(g.to) && ownIds.has(g.to)) continue // arc / jump along or to spine — routed later
       if (drawn.has(g.to) && !spineAt.has(g.to)) continue
       const boxes = []
@@ -400,7 +513,9 @@ function layoutStageMainline({
   /** @type {string[]} */
   const endTerminus = []
   {
-    const claimed = new Set([...spineHere, ...hangs.flatMap((h) => h.boxes)])
+    // Include secondary component spines so their ends are not re-listed as primary
+    // terminus (V08: n-b3 was pinned onto the a-column via a duplicated axis membership).
+    const claimed = new Set([...spineHere, ...extraSpineIds, ...hangs.flatMap((h) => h.boxes)])
     for (const n of own) {
       if (n.kind !== 'end' || claimed.has(n.id)) continue
       endTerminus.push(n.id)
@@ -515,6 +630,31 @@ function layoutStageMainline({
       (o) => o !== it && o.h.rootOnSpine && signOf.get(o.h) === opp && regionOverlaps(it, o),
     )
     if (!oppBusy) signOf.set(it.h, opp)
+  }
+
+  // Same-decision root hangs must not share a face after later flips (V08: both leaves
+  // collapsed inward toward the sibling component trunk and exhausted the outer corridor).
+  for (const its of forkIntervals.values()) {
+    if (its.length < 2) continue
+    const ordered = [...its].sort((p, q) =>
+      String(p.h.leave?.to ?? '').localeCompare(String(q.h.leave?.to ?? '')),
+    )
+    const seen = new Map()
+    for (const it of ordered) {
+      if (isLoopHang(it.h)) continue
+      let sign = /** @type {number} */ (signOf.get(it.h))
+      if (seen.has(sign)) {
+        const opp = -sign
+        const oppBusy = ordered.some(
+          (o) => o !== it && !isLoopHang(o.h) && signOf.get(o.h) === opp,
+        )
+        if (!oppBusy) {
+          signOf.set(it.h, opp)
+          sign = opp
+        }
+      }
+      seen.set(sign, it)
+    }
   }
 
   // Preview / experiment override: force hang side by spine fork id (e.g. { 'n-4': -1 } = left).
@@ -787,7 +927,7 @@ function layoutStageMainline({
     drawn.add(id)
     endY += h + LAYER_GAP
   }
-  const spineColumn = [...spineHere, ...endTerminus.filter((id) => placed.has(id))]
+  const spineColumn = [...spineHere, ...extraSpineIds, ...endTerminus.filter((id) => placed.has(id))]
   const spineIdSet = new Set(spineColumn)
 
   // Pockets: remaining own nodes not drawn (branch ends already sit in hang boxes)
@@ -826,7 +966,8 @@ function layoutStageMainline({
     if (!a || !b) continue
     const others = connections.map((c) => c.points)
     let points
-    if (g.isMain) {
+    // Global main OR local stage trunk (hang folded into its own column) stay straight.
+    if (g.isMain || localSpineNext.get(g.from) === g.to) {
       const x0 = a.x + a.w / 2
       const x1 = b.x + b.w / 2
       const y0 = a.y + a.h
@@ -857,11 +998,14 @@ function layoutStageMainline({
       points = fallbackRoute(a, b)
       routeExhausted = true
     }
+    const onLocalTrunk = localSpineNext.get(g.from) === g.to
     connections.push({
       id: `c:${g.from}->${g.to}`,
       from: g.from,
       to: g.to,
-      kind: g.isBack ? 'back' : g.isMain ? 'main' : 'branch',
+      // Local stage trunks (hang folded into its own column) count as main ink for straighten/
+      // pin/spine-bend reporting — they are the column's straight trunk even without global main.
+      kind: g.isBack ? 'back' : g.isMain || onLocalTrunk ? 'main' : 'branch',
       merged: g.merged,
       points,
       routeExhausted,
@@ -879,8 +1023,15 @@ function layoutStageMainline({
     within: () => ({ x: -1e6, y: -1e6, w: 2e6, h: 2e6 }),
     boxOf: () => null,
   })
-  // Hard constraint: the trunk axis stays fixed; polish may have shoved spine nodes for a branch.
-  pinSpineAxis(placed, spineColumn, connections)
+  // Hard constraint: each trunk keeps its own axis. Never average primary + secondary
+  // component spines onto one line (that collapsed B08/V08 stages-off). Pin each axis by
+  // its current members' mean, then push trunks apart if polish dragged them together.
+  const spineAxes = [
+    [...spineHere, ...endTerminus.filter((id) => placed.has(id))],
+    ...extraSpines.map((path) => path.filter((id) => placed.has(id))),
+  ].filter((ids) => ids.length > 0)
+  for (const axis of spineAxes) pinSpineAxis(placed, axis, connections)
+  separateSpineAxes(placed, spineAxes, connections)
   pushBranchesOffSpine(placed, spineColumn)
   // Polish / pin can rewrite side links; put same-row decision branches and backs back to 0-bend.
   restoreSameRowLinks(placed, connections, diamonds)
@@ -947,14 +1098,59 @@ function layoutStageMainline({
     placed,
     connections,
     spineIds: spineColumn,
+    /** Independent trunks for pinSpineAxis — primary (+ terminus), then secondary components. */
+    spineAxes,
     width: Math.max(spineW, x1 - x0),
     height: Math.max(spineH, y1 - y0),
   }
 }
 
 /**
+ * After per-trunk pin, ensure independent component spines stay at least COLUMN_GAP apart
+ * (centre-to-centre ≥ half-widths + gap). Translates later trunks as rigid columns and
+ * rebuilds their main links — fixes B08/V08 stages-off collapse without freezing axis x
+ * (which fought hang packing on L3).
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {string[][]} spineAxes
+ * @param {object[]} [connections]
+ */
+function separateSpineAxes(placed, spineAxes, connections = []) {
+  if (!spineAxes || spineAxes.length < 2) return
+  /** @type {{ ids: string[], cx: number, half: number }[]} */
+  const cols = []
+  for (const ids of spineAxes) {
+    const live = ids.filter((id) => placed.has(id))
+    if (!live.length) continue
+    let sum = 0
+    let half = 0
+    for (const id of live) {
+      const r = placed.get(id)
+      sum += r.x + r.w / 2
+      half = Math.max(half, r.w / 2)
+    }
+    cols.push({ ids: live, cx: sum / live.length, half })
+  }
+  cols.sort((a, b) => a.cx - b.cx || String(a.ids[0]).localeCompare(String(b.ids[0])))
+  for (let i = 1; i < cols.length; i += 1) {
+    const prev = cols[i - 1]
+    const cur = cols[i]
+    const minCx = prev.cx + prev.half + COLUMN_GAP + LANE_GAP + cur.half
+    const dx = minCx - cur.cx
+    if (dx <= 0.5) continue
+    for (const id of cur.ids) {
+      const r = placed.get(id)
+      if (r) placed.set(id, { ...r, x: r.x + dx })
+    }
+    cur.cx += dx
+    // Rebuild mains on this trunk; nudge incident non-main ends.
+    pinSpineAxis(placed, cur.ids, connections)
+  }
+}
+
+/**
  * Pin every spine node to one vertical axis (shared centre x). Rebuild main links as straight;
  * nudge other link ends that left a moved spine node. Branches must yield — never the trunk.
+ * Call once per independent trunk — never average primary + secondary component spines together.
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {string[]} spineIds
  * @param {object[]} [connections]
@@ -963,12 +1159,14 @@ function pinSpineAxis(placed, spineIds, connections = []) {
   const ids = spineIds.filter((id) => placed.has(id))
   if (ids.length === 0) return
   let axisSum = 0
+  let axisN = 0
   for (const id of ids) {
     const r = placed.get(id)
     if (!r) continue
     axisSum += r.x + r.w / 2
+    axisN += 1
   }
-  const axis = axisSum / ids.length
+  const axis = axisN ? axisSum / axisN : 0
   /** @type {Map<string, number>} */
   const dxOf = new Map()
   for (const id of ids) {
@@ -1148,7 +1346,6 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
   if (spineN) spineCx /= spineN
   for (const c of connections) {
     if (!c.labelSize || !c.points?.length) continue
-    // DEBUG
     const { width: lw, height: lh } = c.labelSize
     const a = placed.get(c.from)
     const b = placed.get(c.to)

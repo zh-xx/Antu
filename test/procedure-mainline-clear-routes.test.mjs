@@ -601,6 +601,66 @@ test('strict collinear: V08b V same-source distinct ports must not share a long 
   assert.equal(ports.size, leaves.length, 'leave ports must stay distinct')
 })
 
+test('audit #190: B08/V08 input main:true stays straight on every component spine', () => {
+  // Independent review a837: 12 cells bent n-b2→n-b3 as branch on a disconnected component.
+  const paths = [join(STRICT_FIX, 'V08-multi-componentsb-extra.zh-CN.json')]
+  const b08Alt = '/tmp/lab-slim/antu-synthetic-lab/inputs/base/B08-multi-components.zh-CN.json'
+  try {
+    readFileSync(b08Alt)
+    paths.push(b08Alt)
+  } catch {
+    /* optional lab fixture */
+  }
+  for (const path of paths) {
+    const spec = JSON.parse(readFileSync(path, 'utf8'))
+    for (const stages of [false, true]) {
+      for (const dir of ['vertical', 'horizontal']) {
+        const g = buildProcedureGraph(spec, { engine: 'mainline', stages }, undefined, dir)
+        assert.equal(g.stats.layoutEngine, 'mainline', `${path} ${dir} stages=${stages}`)
+        assert.deepEqual(foreignHits(g), [], `${path} ${dir} stages=${stages}`)
+        assert.deepEqual(edgeCrossings(g), [], `${path} ${dir} stages=${stages}`)
+        for (const e of spec.edges.filter((x) => x.main === true)) {
+          const c = g.connections.find((x) => x.from === e.from && x.to === e.to)
+          assert.ok(c, `${path} missing ${e.from}->${e.to}`)
+          assert.equal(c.kind, 'main', `${path} ${e.from}->${e.to} kind`)
+          assert.equal(
+            bendsOf(c.points),
+            0,
+            `${path} ${dir} stages=${stages} ${e.from}->${e.to} bends=${bendsOf(c.points)}`,
+          )
+        }
+        const b3 = g.nodes.find((n) => n.id === 'n-b3')
+        assert.equal(b3?.data?.isSpine, true, `${path} n-b3 must paint as spine`)
+      }
+    }
+  }
+})
+
+test('audit #190: L3/02 stages-on — no hits/cross; cross-stage mains may jog', () => {
+  const matrix = [
+    ['preview/synthetic-rejoin/fixtures/L3-admin-reconsider-nested.zh-CN.json', true],
+    ['examples/procedure/02-purchase-contract.zh-CN.json', true],
+  ]
+  for (const [rel, stages] of matrix) {
+    const spec = JSON.parse(readFileSync(join(ROOT, rel), 'utf8'))
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(spec, { engine: 'mainline', stages }, undefined, dir)
+      assert.equal(g.stats.layoutEngine, 'mainline', `${rel} ${dir}`)
+      assert.deepEqual(foreignHits(g), [], `${rel} ${dir} hits`)
+      assert.deepEqual(edgeCrossings(g), [], `${rel} ${dir} cross`)
+      // Within-stage input mains stay straight; cross-stage jogs are the documented fold limit.
+      for (const e of spec.edges.filter((x) => x.main === true)) {
+        const a = spec.nodes.find((n) => n.id === e.from)
+        const b = spec.nodes.find((n) => n.id === e.to)
+        if (!a || !b || a.stageId !== b.stageId) continue
+        const c = g.connections.find((x) => x.from === e.from && x.to === e.to)
+        assert.ok(c)
+        assert.equal(bendsOf(c.points), 0, `${rel} ${dir} within ${e.from}->${e.to}`)
+      }
+    }
+  }
+})
+
 test('L4 V settlement: outgoing and return must not share a long opposite-dir corridor', async () => {
   const { findCollinearAmbiguities, pathBendCount: bends, pathLength: len } = await import(
     '../src/renderers/procedure/flow/hangSpineRoute.js'

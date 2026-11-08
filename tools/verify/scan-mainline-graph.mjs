@@ -167,7 +167,10 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
   const g = buildProcedureGraph(spec, { ...engineFields }, undefined, dir)
   const ms = Date.now() - t0
   const byId = new Map(g.nodes.map((n) => [n.id, n]))
-  const spine = new Set(g.spine)
+  // All component spines (B08 secondary) + nodes painted isSpine (local stage trunks).
+  const spine = new Set(g.spine ?? [])
+  if (Array.isArray(g.spines)) for (const path of g.spines) for (const id of path) spine.add(id)
+  for (const n of g.nodes) if (n.data?.isSpine) spine.add(n.id)
   const hits = []
   const badOrtho = []
   const diagonals = []
@@ -175,10 +178,29 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
   const badPorts = []
   const spineBends = []
   const stagesSpineLimitation = []
+  /** Input edges with main:true that still bend — independent of scanner spine selection. */
+  const inputMainBends = []
   const crossings = []
   const endpointGaps = []
   const missingLabels = []
   let bendTotal = 0
+  const connByEnds = new Map(g.connections.map((c) => [`${c.from}|${c.to}`, c]))
+  for (const e of spec.edges || []) {
+    if (e.main !== true) continue
+    const c = connByEnds.get(`${e.from}|${e.to}`)
+    if (!c?.points?.length) {
+      inputMainBends.push(`${e.from}->${e.to}:missing`)
+      continue
+    }
+    const b = bendsOf(c.points)
+    if (b !== 0) {
+      const sf = byId.get(e.from)?.data?.node?.stageId
+      const st = byId.get(e.to)?.data?.node?.stageId
+      // Cross-stage main:true jogs are the stages fold limitation — still listed, tagged.
+      const tag = sf != null && st != null && sf !== st ? 'cross-stage' : 'within'
+      inputMainBends.push(`${e.from}->${e.to}:${b}:${tag}`)
+    }
+  }
   for (const c of g.connections) {
     if (!c.points?.length) {
       zeroLen.push(c.id)
@@ -417,6 +439,9 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     specEdgeUniq: specEdgeUniq.size,
     spineBends,
     stagesSpineLimitation,
+    inputMainBends,
+    /** Within-column input main:true bends only (cross-stage listed under inputMainBends). */
+    inputMainBendsWithin: inputMainBends.filter((t) => t.endsWith(':within') || t.endsWith(':missing')),
     hits: hitList,
     crossings: crossList,
     overlaps,
@@ -454,6 +479,7 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
       crossList.length === 0 &&
       overlaps.length === 0 &&
       spineBends.length === 0 &&
+      inputMainBends.filter((t) => t.endsWith(':within') || t.endsWith(':missing')).length === 0 &&
       badOrtho.length === 0 &&
       missingNodes.length === 0 &&
       missingEdges.length === 0 &&
