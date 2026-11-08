@@ -65,6 +65,7 @@ import {
   findCollinearAmbiguities,
   collinearOverlapLen,
   COLLINEAR_AMBIGUOUS_MIN,
+  COLLINEAR_ATTACH_TOL,
   COLLINEAR_UNRELATED_READABILITY_MIN,
 } from './hangSpineRoute.js'
 import {
@@ -406,10 +407,14 @@ function layoutStageMainline({
   // Secondary disconnected-component spines (B08 n-b*): parallel straight columns.
   // Leave a full hang-lane gap between trunks so a decision on the secondary column can
   // still open an inward corridor without exhausting (V08 H-off n-b2→n-x-end).
+  // Keep `spineW` as the *primary* column width only — inflating it with extras made
+  // spineX0 centre primary nodes inside the combined span and let hang packing shove the
+  // primary past the secondary (V08b branch then wrapped over the sibling trunk).
+  const primarySpineW = spineW
   /** @type {string[]} */
   const extraSpineIds = []
   {
-    let colX = spineW + (spineW ? COLUMN_GAP + LANE_GAP : 0)
+    let colX = primarySpineW + (primarySpineW ? COLUMN_GAP + LANE_GAP : 0)
     for (const path of extraSpines) {
       let ey = 0
       let colW = 0
@@ -430,7 +435,6 @@ function layoutStageMainline({
         placed.set(id, { ...r, x: axisX - r.w / 2 })
       }
       colX += colW + COLUMN_GAP
-      spineW = Math.max(spineW, colX - COLUMN_GAP)
     }
   }
 
@@ -1110,9 +1114,10 @@ function layoutStageMainline({
 
 /**
  * After per-trunk pin, ensure independent component spines stay at least COLUMN_GAP apart
- * (centre-to-centre ≥ half-widths + gap). Translates later trunks as rigid columns and
- * rebuilds their main links — fixes B08/V08 stages-off collapse without freezing axis x
- * (which fought hang packing on L3).
+ * (centre-to-centre ≥ half-widths + gap). Keeps *declared* axis order (primary leftmost,
+ * then extras) — sorting by current cx let a left-shifted primary land right of its
+ * secondary and forced V08b branches to wrap over the sibling trunk. Translates each later
+ * trunk *and its reachable hang/end boxes* as a rigid component, then rebuilds mains.
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {string[][]} spineAxes
  * @param {object[]} [connections]
@@ -1132,16 +1137,55 @@ function separateSpineAxes(placed, spineAxes, connections = []) {
       sum += r.x + r.w / 2
       half = Math.max(half, r.w / 2)
     }
+    // Preserve spineAxes order (primary first). Do not re-sort by cx.
     cols.push({ ids: live, cx: sum / live.length, half })
   }
-  cols.sort((a, b) => a.cx - b.cx || String(a.ids[0]).localeCompare(String(b.ids[0])))
+  /** Reachable non-spine boxes for one trunk (disconnected-component hangs/ends). */
+  const reachableOf = (axisIds) => {
+    const set = new Set(axisIds)
+    let grew = true
+    while (grew) {
+      grew = false
+      for (const c of connections) {
+        if (!c?.from || !c?.to) continue
+        if (set.has(c.from) && placed.has(c.to) && !set.has(c.to)) {
+          set.add(c.to)
+          grew = true
+        }
+        if (set.has(c.to) && placed.has(c.from) && !set.has(c.from)) {
+          set.add(c.from)
+          grew = true
+        }
+      }
+    }
+    return set
+  }
+  /** Spine ids claimed by other trunks — never drag those with this column. */
+  const foreignSpine = (except) => {
+    const s = new Set()
+    for (const col of cols) {
+      if (col === except) continue
+      for (const id of col.ids) s.add(id)
+    }
+    return s
+  }
   for (let i = 1; i < cols.length; i += 1) {
     const prev = cols[i - 1]
     const cur = cols[i]
-    const minCx = prev.cx + prev.half + COLUMN_GAP + LANE_GAP + cur.half
+    // Use the right extent of the previous *component* (spine + hangs already placed).
+    let prevRight = prev.cx + prev.half
+    const prevReach = reachableOf(prev.ids)
+    for (const id of prevReach) {
+      const r = placed.get(id)
+      if (r) prevRight = Math.max(prevRight, r.x + r.w)
+    }
+    const minCx = prevRight + COLUMN_GAP + LANE_GAP + cur.half
     const dx = minCx - cur.cx
     if (dx <= 0.5) continue
-    for (const id of cur.ids) {
+    const foreign = foreignSpine(cur)
+    const reach = reachableOf(cur.ids)
+    for (const id of reach) {
+      if (foreign.has(id)) continue
       const r = placed.get(id)
       if (r) placed.set(id, { ...r, x: r.x + dx })
     }
@@ -2500,6 +2544,20 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
     ]) {
       const m = tag.match(/^(c:[^~]+)~(c:[^:]+):/)
       if (!m) continue
+      targets.add(m[1])
+      targets.add(m[2])
+    }
+    // Long non-reciprocal "shortNecessary" rails (L4 return riding 是): still separate them
+    // without reclassifying into sharedEndpointCorridors (that broke 08 H-on hardAmbCount).
+    for (const tag of amb.shortAttachments) {
+      const m = tag.match(/^(c:[^~]+)~(c:[^:]+):([\d.]+)/)
+      if (!m) continue
+      const len = Number(m[3])
+      if (!(len > COLLINEAR_ATTACH_TOL)) continue
+      const ca = connections.find((c) => c.id === m[1])
+      const cb = connections.find((c) => c.id === m[2])
+      if (!ca || !cb) continue
+      if (ca.from === cb.to && ca.to === cb.from) continue // reciprocal face hop
       targets.add(m[1])
       targets.add(m[2])
     }

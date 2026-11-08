@@ -77,6 +77,28 @@ export function hangLaneRejoin(a, b, hangOnRight) {
 }
 
 /**
+ * Count ≥minLen collinear segment coincidences of `pts` against other polylines.
+ * Used so hang→spine scoring prefers corridors that do not ride an outgoing rail
+ * (L4 return vs 是) without stealing the trunk's N/S faces.
+ * @param {number[][]} pts
+ * @param {number[][][]} others
+ * @param {number} [minLen]
+ */
+export function pathCollinearOverlapCount(pts, others, minLen = COLLINEAR_AMBIGUOUS_MIN) {
+  if (!pts?.length || !others?.length) return 0
+  let n = 0
+  for (const o of others) {
+    if (!o?.length) continue
+    for (let u = 0; u < pts.length - 1; u += 1) {
+      for (let v = 0; v < o.length - 1; v += 1) {
+        if (collinearOverlapLen(pts[u], pts[u + 1], o[v], o[v + 1]) >= minLen) n += 1
+      }
+    }
+  }
+  return n
+}
+
+/**
  * Inward gutter: leave the face toward the spine, run between hang and trunk, enter spine side.
  * @param {{ x: number, y: number, w: number, h: number }} a
  * @param {{ x: number, y: number, w: number, h: number }} b
@@ -554,6 +576,8 @@ export const COLLINEAR_AMBIGUOUS_MIN = 48
  * are separated for ownership readability. Hard scanner fail stays at COLLINEAR_AMBIGUOUS_MIN;
  * this floor does not raise that threshold — it only drives repair of short residual jogs
  * left just under 48 (V10a H 29.4, B10 V 36, …).
+ * Micro stubs below this floor (B09 V-on 1.84u / V09b V-on 3u) are reported honestly; every
+ * single-edge jog either raises a crossing or trades the stub for a longer coincidence.
  */
 export const COLLINEAR_UNRELATED_READABILITY_MIN = 4
 
@@ -614,11 +638,14 @@ export function distToCollinearOverlap(pt, p, q, r, s) {
 /**
  * Scan connection polylines for ambiguous collinear overlaps.
  * Distinguishes:
- * - shortNecessaryAttachment: shared endpoint + overlap near that point (≤ COLLINEAR_ATTACH_TOL)
+ * - shortNecessaryAttachment: shared endpoint + overlap near that point (≤ COLLINEAR_ATTACH_TOL).
+ *   Classification keeps this historical rule so hardAmbCount / settle refusal stay stable
+ *   (reclassifying long near-endpoint rails as corridors broke 08 H-on). Long non-reciprocal
+ *   stubs (L4 85u return on 是) are still separated via separateAmbiguousCorridors, which
+ *   also targets those shortAttachments.
  * - unrelatedOverlap: no shared endpoint, long coincidence (ownership unclear)
  * - branchSharedRail: same source, distinct leave ports, long shared segment
- * - sharedEndpointCorridor: shared endpoint but long overlap far from that point (e.g. opposite
- *   dir on same rail) — reported for readability, optional hard-fail via `strictCorridor`
+ * - sharedEndpointCorridor: shared endpoint but long overlap far from that point
  * @param {{ id: string, from: string, to: string, points: number[][] }[]} connections
  * @param {{ ambiguousMin?: number, attachTol?: number }} [opts]
  */
@@ -802,6 +829,9 @@ export function pathBendCount(pts) {
  * Best pathClear candidate among `candidates`, else null.
  * When `others` is provided: fewer crossings, then fewer bends, then shorter length
  * (rule-engine direction: validity first, then crossing, bend, length).
+ * Long shared-endpoint corridors (L4 return on 是 rail) are separated afterward by
+ * separateAmbiguousCorridors once classified — do not rank collinear overlap here or
+ * same-row bidirectional backs lose their intentional shared face.
  * Without `others`: first clear candidate (legacy).
  * @param {Array<number[][] | null | undefined>} candidates
  * @param {number[][][] | null | undefined} [others] other edge polylines already routed
@@ -894,6 +924,7 @@ export function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDi
   // Prefer outer-face E/W leave (same helper as diamond) before N/S outer U: for a left hang
   // that is the free W face, which avoids crossing the parent's same-row leave (user S3 note;
   // also L1 step rejoins). Mirrored right hangs use E. Not fixture-hardcoded — hangOnRight.
+  // Opposite-side outer is included so firstClearPath can drop same-rail returns (L4).
   candidates.push(diamondOuterSide(a, b, hangOnRight, placed, fromId, toId, 12, others))
   candidates.push(clearOuterCorridor(a, b, hangOnRight, placed, fromId, toId, 16, others))
   candidates.push(interLaneCorridor(a, b, hangOnRight, placed, fromId, toId, others))

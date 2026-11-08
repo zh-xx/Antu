@@ -583,7 +583,9 @@ test('rect multi-leave: B09 V stages-off must not share one face-centre leave', 
 
 test('strict collinear: V08b V same-source distinct ports must not share a long rail', async () => {
   // Independent audit: n-b2→n-b3 and n-b2→n-b4 shared x=211 for 155.44u after distinct diamond ports.
-  const { findCollinearAmbiguities } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
+  const { findCollinearAmbiguities, pathLength } = await import(
+    '../src/renderers/procedure/flow/hangSpineRoute.js'
+  )
   const path = join(STRICT_FIX, 'V08-multi-componentsb-extra.zh-CN.json')
   const spec = JSON.parse(readFileSync(path, 'utf8'))
   const g = buildProcedureGraph(spec, fields, undefined, 'vertical')
@@ -599,6 +601,64 @@ test('strict collinear: V08b V same-source distinct ports must not share a long 
   const leaves = g.connections.filter((c) => c.from === 'n-b2')
   const ports = new Set(leaves.map((c) => `${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`))
   assert.equal(ports.size, leaves.length, 'leave ports must stay distinct')
+  // bf19 independent: straight mainline must not buy a branch that rails above the sibling trunk.
+  const br = g.connections.find((c) => c.id === 'c:n-b2->n-b4')
+  assert.ok(br)
+  const aNodes = g.nodes.filter((n) => String(n.id).startsWith('n-a'))
+  for (let i = 0; i < br.points.length - 1; i += 1) {
+    const p = br.points[i]
+    const q = br.points[i + 1]
+    if (Math.abs(p[1] - q[1]) >= 0.5) continue
+    const lo = Math.min(p[0], q[0])
+    const hi = Math.max(p[0], q[0])
+    for (const n of aNodes) {
+      const top = n.position.y
+      const left = n.position.x
+      const right = n.position.x + n.data.w
+      if (p[1] < top - 0.5 && lo < right && hi > left) {
+        assert.fail(
+          `V08b branch rails above sibling ${n.id} at y=${p[1]} (box top ${top}); len=${pathLength(br.points).toFixed(0)}`,
+        )
+      }
+    }
+  }
+})
+
+test('short unrelated readability: B09/V09b V-on — ≥4 clear; ≥1 micro stubs recorded', async () => {
+  // Independent bf19 audit: report wrongly claimed short unrel ≥1 = 0. ≥4 is clear;
+  // B09 1.84u / V09b ~3u remain — every single-edge jog raises a cross or a longer rail.
+  const { findCollinearAmbiguities, COLLINEAR_UNRELATED_READABILITY_MIN } = await import(
+    '../src/renderers/procedure/flow/hangSpineRoute.js'
+  )
+  const lab = '/cursor/stores/self/antu-synthetic-lab'
+  /** @type {string[]} */
+  const micro = []
+  for (const rel of [
+    'inputs/base/B09-nested-hang-rejoin.zh-CN.json',
+    'inputs/variants/V09-nested-hang-rejoinb-extra.zh-CN.json',
+  ]) {
+    await assertShortUnrelatedCleared(join(lab, rel), 'vertical')
+    const g = buildProcedureGraph(
+      JSON.parse(readFileSync(join(lab, rel), 'utf8')),
+      { engine: 'mainline', stages: true },
+      undefined,
+      'vertical',
+    )
+    const amb1 = findCollinearAmbiguities(g.connections, { ambiguousMin: 1 })
+    const belowFloor = amb1.unrelatedOverlaps.filter((t) => {
+      const m = t.match(/:([\d.]+)$/)
+      return m && Number(m[1]) < COLLINEAR_UNRELATED_READABILITY_MIN
+    })
+    micro.push(...belowFloor.map((t) => `${rel.split('/').pop()}:${t}`))
+  }
+  assert.ok(
+    micro.length >= 1,
+    'expected documented ≥1 micro stubs on B09/V09b; if cleared, drop this ledger assert',
+  )
+  for (const t of micro) {
+    const m = t.match(/:([\d.]+)$/)
+    assert.ok(m && Number(m[1]) < COLLINEAR_UNRELATED_READABILITY_MIN, t)
+  }
 })
 
 test('audit #190: B08/V08 input main:true stays straight on every component spine', () => {
@@ -662,9 +722,13 @@ test('audit #190: L3/02 stages-on — no hits/cross; cross-stage mains may jog',
 })
 
 test('L4 V settlement: outgoing and return must not share a long opposite-dir corridor', async () => {
-  const { findCollinearAmbiguities, pathBendCount: bends, pathLength: len } = await import(
-    '../src/renderers/procedure/flow/hangSpineRoute.js'
-  )
+  const {
+    findCollinearAmbiguities,
+    collinearOverlapLen,
+    pathBendCount: bends,
+    pathLength: len,
+    COLLINEAR_ATTACH_TOL,
+  } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
   const path = 'preview/synthetic-rejoin/fixtures/L4-enforcement-objection-nested.zh-CN.json'
   const g = buildProcedureGraph(JSON.parse(readFileSync(path, 'utf8')), fields, undefined, 'vertical')
   assert.deepEqual(foreignHits(g), [])
@@ -679,6 +743,24 @@ test('L4 V settlement: outgoing and return must not share a long opposite-dir co
     (t) => t.includes('c:n-13->n-14') && t.includes('c:n-15->n-13'),
   )
   assert.deepEqual(pair, [], `L4 settlement corridor still shared: ${pair.join('|')}`)
+  // Classification may still tag a cleared rail as shortNecessary; measure geometry.
+  let maxOv = 0
+  for (let u = 0; u < out.points.length - 1; u += 1) {
+    for (let v = 0; v < ret.points.length - 1; v += 1) {
+      maxOv = Math.max(
+        maxOv,
+        collinearOverlapLen(out.points[u], out.points[u + 1], ret.points[v], ret.points[v + 1]),
+      )
+    }
+  }
+  assert.ok(
+    maxOv <= COLLINEAR_ATTACH_TOL,
+    `L4 out~ret collinear overlap ${maxOv.toFixed(1)} exceeds stub tol ${COLLINEAR_ATTACH_TOL}`,
+  )
+  const shortPair = amb.shortAttachments.filter(
+    (t) => t.includes('c:n-13->n-14') && t.includes('c:n-15->n-13'),
+  )
+  assert.deepEqual(shortPair, [], `L4 settlement still short-tagged after repair: ${shortPair.join('|')}`)
 })
 
 test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex passes', async () => {
