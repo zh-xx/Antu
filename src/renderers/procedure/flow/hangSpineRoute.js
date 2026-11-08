@@ -549,6 +549,13 @@ export function pathCrossCount(pts, others = []) {
 export const COLLINEAR_ATTACH_TOL = 24
 /** Overlaps at or above this length are reported when not a short attachment. */
 export const COLLINEAR_AMBIGUOUS_MIN = 48
+/**
+ * Unrelated edges (no shared endpoint) that still share a rail for at least this long
+ * are separated for ownership readability. Hard scanner fail stays at COLLINEAR_AMBIGUOUS_MIN;
+ * this floor does not raise that threshold — it only drives repair of short residual jogs
+ * left just under 48 (V10a H 29.4, B10 V 36, …).
+ */
+export const COLLINEAR_UNRELATED_READABILITY_MIN = 4
 
 /**
  * Length of collinear axis-aligned overlap between two orthogonal segments (0 if not collinear).

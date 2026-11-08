@@ -174,6 +174,7 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
   const zeroLen = []
   const badPorts = []
   const spineBends = []
+  const stagesSpineLimitation = []
   const crossings = []
   const endpointGaps = []
   const missingLabels = []
@@ -210,7 +211,15 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     if (c.label && !c.labelAt) missingLabels.push(c.id)
     if (c.kind === 'main' && spine.has(c.from) && spine.has(c.to)) {
       const b = bendsOf(c.points)
-      if (b !== 0) spineBends.push(`${c.id}:${b}`)
+      if (b !== 0) {
+        const sf = from?.data?.node?.stageId
+        const st = to?.data?.node?.stageId
+        // Cross-stage mains must jog between columns when stages fold the spine — report
+        // as stagesSpineLimitation, not a within-column spine defect. Geometric class,
+        // not a fixture whitelist.
+        if (sf != null && st != null && sf !== st) stagesSpineLimitation.push(`${c.id}:${b}`)
+        else spineBends.push(`${c.id}:${b}`)
+      }
     }
     for (let i = 0; i < c.points.length - 1; i += 1) {
       const [p, q] = [c.points[i], c.points[i + 1]]
@@ -344,6 +353,12 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
   const sharedEndpointCorridors = collinear.sharedEndpointCorridors
   const shortNecessaryAttachments = collinear.shortAttachments
   const collinearTolerances = collinear.tolerances
+  // Report unrelated overlaps under multiple floors without changing the hard-fail
+  // threshold (ambiguousMin=48). Zero hard warnings ≠ zero polyline coincidence.
+  const unrelatedByThreshold = {}
+  for (const t of [48, 36, 24, 12, 8, 4, 1]) {
+    unrelatedByThreshold[t] = findCollinearAmbiguities(g.connections, { ambiguousMin: t }).unrelatedOverlaps
+  }
 
   // Spec may list duplicate from→to pairs; compare unique pairs to painted connections.
   const specEdgeUniq = new Set((spec.edges || []).map((e) => `${e.from}->${e.to}`))
@@ -401,6 +416,7 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     edges: g.connections.length,
     specEdgeUniq: specEdgeUniq.size,
     spineBends,
+    stagesSpineLimitation,
     hits: hitList,
     crossings: crossList,
     overlaps,
@@ -420,6 +436,7 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     sharedStems,
     sharedStemsDecision,
     unrelatedOverlaps,
+    unrelatedByThreshold,
     branchSharedRails,
     sharedEndpointCorridors,
     shortNecessaryAttachments,

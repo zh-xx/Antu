@@ -512,6 +512,50 @@ test('strict collinear: V11a H stages-on cascade rails must clear', async () => 
   )
 })
 
+async function assertShortUnrelatedCleared(path, dir) {
+  const { findCollinearAmbiguities, COLLINEAR_UNRELATED_READABILITY_MIN } = await import(
+    '../src/renderers/procedure/flow/hangSpineRoute.js'
+  )
+  const g = buildProcedureGraph(
+    JSON.parse(readFileSync(path, 'utf8')),
+    { engine: 'mainline', stages: true },
+    undefined,
+    dir,
+  )
+  assert.deepEqual(g.errors, [])
+  assert.deepEqual(foreignHits(g), [])
+  assert.deepEqual(edgeCrossings(g), [])
+  const amb48 = findCollinearAmbiguities(g.connections)
+  assert.deepEqual(amb48.unrelatedOverlaps, [])
+  const ambRead = findCollinearAmbiguities(g.connections, {
+    ambiguousMin: COLLINEAR_UNRELATED_READABILITY_MIN,
+  })
+  assert.deepEqual(
+    ambRead.unrelatedOverlaps,
+    [],
+    `short unrelated remain (≥${COLLINEAR_UNRELATED_READABILITY_MIN}): ${ambRead.unrelatedOverlaps.join('|')}`,
+  )
+}
+
+test('short unrelated readability: V10a H stages-on residual under 48 must clear (≥4u)', async () => {
+  // Independent audit: after 48-cut, n-8→n-9 ~ n-6→n-2 still shared 29.4u at y=614.
+  await assertShortUnrelatedCleared(
+    join(STRICT_FIX, 'V10-multi-backedgesa-permute.zh-CN.json'),
+    'horizontal',
+  )
+})
+
+test('short unrelated readability: B10 V stages-on residual under 48 must clear (≥4u)', async () => {
+  await assertShortUnrelatedCleared(join(STRICT_FIX, 'B10-multi-backedges.zh-CN.json'), 'vertical')
+})
+
+test('short unrelated readability: V11a H stages-on residual under 48 must clear (≥4u)', async () => {
+  await assertShortUnrelatedCleared(
+    join(STRICT_FIX, 'V11-exception-cascadea-permute.zh-CN.json'),
+    'horizontal',
+  )
+})
+
 test('rect multi-leave: B02 V stages-on must not share one face-centre leave', () => {
   // Independent audit: n-8→n-9 and n-8→n-3 both left S@560,144 after stages packing.
   const path = join(STRICT_FIX, 'B02-multioutlet-shared.zh-CN.json')

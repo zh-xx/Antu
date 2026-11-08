@@ -65,6 +65,7 @@ import {
   findCollinearAmbiguities,
   collinearOverlapLen,
   COLLINEAR_AMBIGUOUS_MIN,
+  COLLINEAR_UNRELATED_READABILITY_MIN,
 } from './hangSpineRoute.js'
 import {
   diamondVertices,
@@ -1452,13 +1453,23 @@ function crossingRepairAlts(c, placed, diamonds, spineIds, others) {
     alts.push(routeCentered(a, b, fromDiamond, placed, c.from, c.to, spineIds, others))
     alts.push(clearWrapAround(a, b, hangOnRight, placed, c.from, c.to, 48, others))
     // Far below/above U between any two boxes (helps horizontal dense hangs).
+    // Cross-stage mains (L3 n-12→n-13): leave from a SIDE face first so the vertical
+    // run to the outer rail does not climb through a same-column neighbour (n-11).
     {
       const acy = a.y + a.h / 2
       const bcy = b.y + b.h / 2
+      let worldTop = Infinity
+      let worldBot = -Infinity
+      for (const r of placed.values()) {
+        worldTop = Math.min(worldTop, r.y)
+        worldBot = Math.max(worldBot, r.y + r.h)
+      }
       for (const preferAbove of [false, true]) {
         for (let d = 0; d <= 24; d += 1) {
           const gap = 40 + d * 20
-          const rail = preferAbove ? Math.min(a.y, b.y) - gap : Math.max(a.y + a.h, b.y + b.h) + gap
+          const rail = preferAbove
+            ? Math.min(worldTop, a.y, b.y) - gap
+            : Math.max(worldBot, a.y + a.h, b.y + b.h) + gap
           alts.push([
             [a.x + a.w / 2, preferAbove ? a.y : a.y + a.h],
             [a.x + a.w / 2, rail],
@@ -1471,6 +1482,26 @@ function crossingRepairAlts(c, placed, diamonds, spineIds, others) {
             [acx > bcx ? b.x + b.w : b.x, rail],
             [acx > bcx ? b.x + b.w : b.x, bcy],
           ])
+          // Side-egress then outer rail (clear same-column blockers above/below).
+          for (const outRight of [true, false]) {
+            const leaveX = outRight ? a.x + a.w : a.x
+            const enterX = bcx >= acx ? b.x : b.x + b.w
+            const egress = outRight ? leaveX + gap : leaveX - gap
+            alts.push([
+              [leaveX, acy],
+              [egress, acy],
+              [egress, rail],
+              [enterX, rail],
+              [enterX, bcy],
+            ])
+            alts.push([
+              [leaveX, acy],
+              [egress, acy],
+              [egress, rail],
+              [b.x + b.w / 2, rail],
+              [b.x + b.w / 2, preferAbove ? b.y : b.y + b.h],
+            ])
+          }
         }
       }
     }
@@ -1494,12 +1525,23 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds) {
   // Stage packing / pin / prefer-centered can shift rect boxes without rewriting main
   // ink (B04 H stages-on: n-2 left by 11.5u while c:n-1→n-2 / c:n-2→n-3 stayed put).
   snapRectEndpoints(placed, connections, diamonds)
+  /** Refuse hit-repair alts that create new ≥48 coincidences (08 H-on 110u rail). */
+  const hardAmbCount = (skipId, pts) => {
+    const fake = connections.map((c) => (c.id === skipId ? { ...c, points: pts } : c))
+    const a = findCollinearAmbiguities(fake)
+    return (
+      a.unrelatedOverlaps.length + a.branchSharedRails.length + a.sharedEndpointCorridors.length
+    )
+  }
   // Snap elbow insertion can clip a foreign box (V11 H n-2→n-10 through n-12).
+  // Also repair cross-stage mains that route through the destination column (08/L2/L3
+  // stages-on); within-stage spine that already clears is left alone.
   for (const c of connections) {
-    if (c.kind === 'main' || !c.points?.length) continue
+    if (!c.points?.length) continue
     if (pathClear(c.points, placed, c.from, c.to)) continue
     const others = connections.filter((o) => o !== c).map((o) => o.points)
     const before = pathCrossCount(c.points, others)
+    const beforeHard = hardAmbCount(c.id, c.points)
     let best = null
     let bestKey = /** @type {[number, number, number]} */ ([Infinity, Infinity, Infinity])
     for (const pts of crossingRepairAlts(c, placed, diamonds, spineIds, others)) {
@@ -1529,6 +1571,7 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds) {
       }
       const cross = pathCrossCount(pts, others)
       if (cross > before) continue
+      if (hardAmbCount(c.id, pts) > beforeHard) continue
       const key = /** @type {[number, number, number]} */ ([
         cross,
         pathBendCount(pts),
@@ -1555,6 +1598,7 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds) {
             if (diamonds.has(c.to) && !onDiamondOutline(toBox, cand[cand.length - 1])) continue
             const cross = pathCrossCount(cand, others)
             if (cross > before) continue
+            if (hardAmbCount(c.id, cand) > beforeHard) continue
             const key = /** @type {[number, number, number]} */ ([
               cross,
               pathBendCount(cand),
@@ -1576,6 +1620,299 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds) {
   }
   resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds)
   separateAmbiguousCorridors(placed, connections, diamonds, spineIds)
+  // Hit-repair on cross-stage mains can introduce new crosses with hang branches (L3).
+  repairEdgeCrossings(placed, connections, diamonds, spineIds)
+  // One more hit pass: crossing repair may reintroduce a box clip.
+  for (const c of connections) {
+    if (!c.points?.length) continue
+    if (pathClear(c.points, placed, c.from, c.to)) continue
+    const others = connections.filter((o) => o !== c).map((o) => o.points)
+    const before = pathCrossCount(c.points, others)
+    const beforeHard = hardAmbCount(c.id, c.points)
+    let best = null
+    let bestKey = /** @type {[number, number, number]} */ ([Infinity, Infinity, Infinity])
+    for (const pts of crossingRepairAlts(c, placed, diamonds, spineIds, others)) {
+      if (!pts || pts.length < 2) continue
+      let ortho = true
+      for (let i = 0; i < pts.length - 1; i += 1) {
+        const [p, q] = [pts[i], pts[i + 1]]
+        if (Math.abs(p[0] - q[0]) >= 0.5 && Math.abs(p[1] - q[1]) >= 0.5) {
+          ortho = false
+          break
+        }
+      }
+      if (!ortho) continue
+      if (!pathClear(pts, placed, c.from, c.to)) continue
+      const fromBox = placed.get(c.from)
+      const toBox = placed.get(c.to)
+      if (diamonds.has(c.from) && fromBox && !onDiamondOutline(fromBox, pts[0])) continue
+      if (diamonds.has(c.to) && toBox && !onDiamondOutline(toBox, pts[pts.length - 1])) continue
+      const cross = pathCrossCount(pts, others)
+      if (cross > before) continue
+      if (hardAmbCount(c.id, pts) > beforeHard) continue
+      const key = /** @type {[number, number, number]} */ ([
+        cross,
+        pathBendCount(pts),
+        pathLength(pts),
+      ])
+      if (
+        key[0] < bestKey[0] ||
+        (key[0] === bestKey[0] && key[1] < bestKey[1]) ||
+        (key[0] === bestKey[0] && key[1] === bestKey[1] && key[2] + 1e-6 < bestKey[2])
+      ) {
+        bestKey = key
+        best = pts
+      }
+    }
+    if (best) c.points = best
+  }
+  // Corridor separation first; post-hit/cross repair can reintroduce ≥48 rails —
+  // re-separate before the short-readability pass.
+  separateAmbiguousCorridors(placed, connections, diamonds, spineIds)
+  // Final readability pass: graph-non-incident short overlaps in [READABILITY, 48).
+  // Conservative — refuse any move that creates a new ≥48 coincidence or raises crosses.
+  separateShortUnrelatedReadability(placed, connections, diamonds, spineIds)
+}
+
+/**
+ * Conservative mid-rail jog for graph-unrelated overlaps below ambiguousMin.
+ * Mirrors separateAmbiguousCorridors jogs at READABILITY_MIN, but only accepts a move
+ * that strictly shrinks the partner pair overlap and does not create new ≥48 coincidences
+ * or raise crossings. Does not raise the hard scanner threshold.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ * @param {Set<string>} spineIds
+ */
+function separateShortUnrelatedReadability(placed, connections, diamonds, spineIds) {
+  const near = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 1.5
+  const pairMax = (ca, cb) => {
+    let best = 0
+    if (!ca.points || !cb.points) return 0
+    for (let u = 0; u < ca.points.length - 1; u += 1) {
+      for (let v = 0; v < cb.points.length - 1; v += 1) {
+        best = Math.max(
+          best,
+          collinearOverlapLen(ca.points[u], ca.points[u + 1], cb.points[v], cb.points[v + 1]),
+        )
+      }
+    }
+    return best
+  }
+  /** Count ≥48 coincidences that findCollinearAmbiguities would flag as hard. */
+  const hardAmbCount = (skipId, pts) => {
+    const fake = connections.map((c) => (c.id === skipId ? { ...c, points: pts } : c))
+    const a = findCollinearAmbiguities(fake)
+    return (
+      a.unrelatedOverlaps.length + a.branchSharedRails.length + a.sharedEndpointCorridors.length
+    )
+  }
+  const rank = (c) => (c.kind === 'main' ? 2 : c.kind === 'back' ? 0 : 1)
+
+  for (let pass = 0; pass < 6; pass += 1) {
+    const amb = findCollinearAmbiguities(connections, {
+      ambiguousMin: COLLINEAR_UNRELATED_READABILITY_MIN,
+    })
+    /** @type {{ a: object, b: object, len: number }[]} */
+    const pairs = []
+    for (const tag of amb.unrelatedOverlaps) {
+      const m = tag.match(/^(c:[^~]+)~(c:[^:]+):([\d.]+)/)
+      if (!m) continue
+      const len = Number(m[3])
+      if (!(len >= COLLINEAR_UNRELATED_READABILITY_MIN && len < COLLINEAR_AMBIGUOUS_MIN)) continue
+      const ca = connections.find((c) => c.id === m[1])
+      const cb = connections.find((c) => c.id === m[2])
+      if (!ca?.points || !cb?.points) continue
+      // Geometric "unrelated" from finder; also require no shared graph endpoint.
+      if (
+        ca.from === cb.from ||
+        ca.from === cb.to ||
+        ca.to === cb.from ||
+        ca.to === cb.to
+      ) {
+        continue
+      }
+      pairs.push({ a: ca, b: cb, len })
+    }
+    pairs.sort((x, y) => y.len - x.len)
+    let moved = false
+    for (const { a, b } of pairs) {
+      const movers = [a, b]
+        .filter((c) => c.kind !== 'main')
+        .sort((x, y) => rank(x) - rank(y) || String(x.id).localeCompare(String(y.id)))
+      for (const c of movers) {
+        const partner = c === a ? b : a
+        const beforePts = c.points
+        const beforePair = pairMax(c, partner)
+        if (beforePair < COLLINEAR_UNRELATED_READABILITY_MIN) continue
+        const others = connections.filter((o) => o !== c).map((o) => o.points)
+        const beforeCross = pathCrossCount(beforePts, others)
+        const beforeHard = hardAmbCount(c.id, beforePts)
+        /** @type {(number[][] | null | undefined)[]} */
+        const alts = [...crossingRepairAlts(c, placed, diamonds, spineIds, others)]
+        if (beforePts.length >= 3) {
+          for (let i = 0; i <= beforePts.length - 2; i += 1) {
+            const p0 = beforePts[i]
+            const q0 = beforePts[i + 1]
+            const isVert = Math.abs(p0[0] - q0[0]) < 0.5
+            const isHoriz = Math.abs(p0[1] - q0[1]) < 0.5
+            if (!isVert && !isHoriz) continue
+            let hitsPartner = false
+            for (let v = 0; v < partner.points.length - 1; v += 1) {
+              if (
+                collinearOverlapLen(p0, q0, partner.points[v], partner.points[v + 1]) >=
+                COLLINEAR_UNRELATED_READABILITY_MIN
+              ) {
+                hitsPartner = true
+                break
+              }
+            }
+            if (!hitsPartner) continue
+            const isEnterSeg = i === beforePts.length - 2
+            if (i >= 1 && !isEnterSeg) {
+              for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
+                const trial = beforePts.map((p) => /** @type {number[]} */ ([p[0], p[1]]))
+                if (isVert) {
+                  trial[i][0] += delta
+                  trial[i + 1][0] += delta
+                } else {
+                  trial[i][1] += delta
+                  trial[i + 1][1] += delta
+                }
+                alts.push(trial)
+              }
+            }
+            if (i === 0 || isEnterSeg) {
+              for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
+                /** @type {number[][]} */
+                const trial = []
+                for (let k = 0; k <= i; k += 1) trial.push([beforePts[k][0], beforePts[k][1]])
+                if (isHoriz) {
+                  trial.push([p0[0], p0[1] + delta])
+                  trial.push([q0[0], p0[1] + delta])
+                  trial.push([q0[0], q0[1]])
+                } else {
+                  trial.push([p0[0] + delta, p0[1]])
+                  trial.push([p0[0] + delta, q0[1]])
+                  trial.push([q0[0], q0[1]])
+                }
+                for (let k = i + 2; k < beforePts.length; k += 1) {
+                  trial.push([beforePts[k][0], beforePts[k][1]])
+                }
+                alts.push(trial)
+              }
+            }
+            const lo = isVert ? Math.min(p0[1], q0[1]) : Math.min(p0[0], q0[0])
+            const hi = isVert ? Math.max(p0[1], q0[1]) : Math.max(p0[0], q0[0])
+            const span = hi - lo
+            if (span >= COLLINEAR_UNRELATED_READABILITY_MIN && i >= 1 && !isEnterSeg) {
+              const fracs = [0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.85, 0.9]
+              for (let v = 0; v < partner.points.length - 1; v += 1) {
+                const r = partner.points[v]
+                const s = partner.points[v + 1]
+                if (
+                  collinearOverlapLen(p0, q0, r, s) < COLLINEAR_UNRELATED_READABILITY_MIN
+                ) {
+                  continue
+                }
+                const flo = isVert ? Math.min(r[1], s[1]) : Math.min(r[0], s[0])
+                const fhi = isVert ? Math.max(r[1], s[1]) : Math.max(r[0], s[0])
+                const oLo = Math.max(lo, flo)
+                const oHi = Math.min(hi, fhi)
+                if (oHi - oLo < COLLINEAR_UNRELATED_READABILITY_MIN) continue
+                const fromP0 = isVert ? p0[1] : p0[0]
+                const towardQ = (isVert ? q0[1] : q0[0]) >= fromP0
+                // Cut just past the foreign overlap so residual with partner drops below floor.
+                const cut = towardQ ? Math.min(hi - 1, oHi + 1) : Math.max(lo + 1, oLo - 1)
+                if (cut > lo + 0.5 && cut < hi - 0.5) fracs.push((cut - lo) / span)
+                const cutEarly = towardQ
+                  ? Math.min(oHi, oLo + COLLINEAR_UNRELATED_READABILITY_MIN - 1)
+                  : Math.max(oLo, oHi - (COLLINEAR_UNRELATED_READABILITY_MIN - 1))
+                if (cutEarly > lo + 0.5 && cutEarly < hi - 0.5) {
+                  fracs.push((cutEarly - lo) / span)
+                }
+              }
+              for (const frac of fracs) {
+                const split = lo + span * frac
+                for (const delta of [24, 40, 56, 72, 96, -24, -40, -56, -72, -96]) {
+                  /** @type {number[][]} */
+                  const trial = []
+                  for (let k = 0; k <= i; k += 1) trial.push([beforePts[k][0], beforePts[k][1]])
+                  if (isVert) {
+                    trial.push([p0[0], split])
+                    trial.push([p0[0] + delta, split])
+                    trial.push([p0[0] + delta, q0[1]])
+                  } else {
+                    trial.push([split, p0[1]])
+                    trial.push([split, p0[1] + delta])
+                    trial.push([q0[0], p0[1] + delta])
+                  }
+                  for (let k = i + 2; k < beforePts.length; k += 1) {
+                    trial.push([beforePts[k][0], beforePts[k][1]])
+                  }
+                  alts.push(trial)
+                }
+              }
+            }
+          }
+        }
+        /** @type {number[][] | null} */
+        let best = null
+        let bestPair = beforePair
+        let bestKey = /** @type {[number, number, number]} */ ([
+          beforePair,
+          beforeCross,
+          pathLength(beforePts),
+        ])
+        for (const pts of alts) {
+          if (!pts || pts.length < 2) continue
+          let ortho = true
+          for (let i = 0; i < pts.length - 1; i += 1) {
+            const [p, q] = [pts[i], pts[i + 1]]
+            if (Math.abs(p[0] - q[0]) >= 0.5 && Math.abs(p[1] - q[1]) >= 0.5) {
+              ortho = false
+              break
+            }
+          }
+          if (!ortho) continue
+          if (!pathClear(pts, placed, c.from, c.to)) continue
+          const fromBox = placed.get(c.from)
+          const toBox = placed.get(c.to)
+          if (diamonds.has(c.from) && fromBox && !onDiamondOutline(fromBox, pts[0])) continue
+          if (diamonds.has(c.to) && toBox && !onDiamondOutline(toBox, pts[pts.length - 1])) continue
+          // Keep leave/enter ports fixed on the original face.
+          if (!near(pts[0], beforePts[0])) continue
+          if (!near(pts[pts.length - 1], beforePts[beforePts.length - 1])) continue
+          const cross = pathCrossCount(pts, others)
+          if (cross > beforeCross) continue
+          if (hardAmbCount(c.id, pts) > beforeHard) continue
+          const rem = pairMax({ ...c, points: pts }, partner)
+          if (rem >= beforePair) continue
+          const key = /** @type {[number, number, number]} */ ([
+            rem,
+            cross,
+            pathLength(pts),
+          ])
+          if (
+            key[0] < bestKey[0] ||
+            (key[0] === bestKey[0] && key[1] < bestKey[1]) ||
+            (key[0] === bestKey[0] && key[1] === bestKey[1] && key[2] + 1e-6 < bestKey[2])
+          ) {
+            bestKey = key
+            bestPair = rem
+            best = pts
+          }
+        }
+        if (best && bestPair < beforePair) {
+          c.points = best
+          moved = true
+          break
+        }
+      }
+      if (moved) break
+    }
+    if (!moved) break
+  }
 }
 
 /**
@@ -1744,8 +2081,6 @@ function snapDiamondEndpoints(placed, connections, diamonds) {
     if (onDiamondOutline(box, p)) return p
     const v = diamondVertices(box)
     // Prefer cardinal vertex when nearly axis-aligned with centre (main trunk ports).
-    const cx = box.x + box.w / 2
-    const cy = box.y + box.h / 2
     /** @type {[number, number] | null} */
     let best = null
     let bestD = Infinity
