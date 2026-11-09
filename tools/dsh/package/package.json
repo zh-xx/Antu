@@ -60,7 +60,7 @@
   },
   "engines": {
     "node": ">=18",
-    "dsh": ">=0.2.0-rc.2 <0.3.0"
+    "dsh": "^0.2.0-rc.2 || ^0.2.1-rc.0 || ^0.2.2-rc.0"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-client-ui-primitives": "0.2.0-rc.2",

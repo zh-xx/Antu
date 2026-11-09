@@ -162,7 +162,13 @@ function copyHost() {
   writeClientEntry()
 }
 
-/** The DSH versions the plugin is tested on: 0.2.0-rc.2 and 0.2.1-rc.2, then any release of 0.2 */
+/**
+ * DSH versions the plugin declares (LexCab `engines.dsh` + npm peers).
+ * Do not use `>=0.2.0-rc.2 <0.3.0`: npm semver keeps prereleases on one x.y.z tuple,
+ * so 0.2.1-rc.x and 0.2.2-rc.x would read as incompatible.
+ * Session-tested (Node 24.9, DSH 0.2.2-rc.1): install + Host exports; see test/dsh-engines-compatibility.test.mjs.
+ * 0.2.0-rc.2 / 0.2.1-rc.x: build devDeps + repo history (#360 reports 0.18.0 on 0.2.2-rc.1), not re-installed here.
+ */
 const DSH_RANGE = '^0.2.0-rc.2 || ^0.2.1-rc.0 || ^0.2.2-rc.0'
 
 function syncPackageJson() {
@@ -192,6 +198,11 @@ function syncPackageJson() {
   pkg.peerDependencies = {
     '@deepseek-ai/dsh-tools': DSH_RANGE,
     '@deepseek-ai/dsh-skill': DSH_RANGE,
+  }
+  // engines.dsh must match peerDependencies for LexCab format 1 compatibility range
+  pkg.engines = {
+    ...(pkg.engines || {}),
+    dsh: DSH_RANGE,
   }
   pkg.peerDependenciesMeta = {
     '@deepseek-ai/dsh-tools': { optional: true },
