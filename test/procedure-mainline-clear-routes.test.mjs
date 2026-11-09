@@ -825,6 +825,14 @@ test('L4 V settlement: outgoing and return must not share a long opposite-dir co
     `L4 是 leave face ${outFace} and 回并 enter face ${retFace} still share a side; pts out=${JSON.stringify(out.points[0])} ret=${JSON.stringify(ret.points.at(-1))}`,
   )
   assert.equal(retFace, 'W', `L4 回并 should enter W; got ${retFace} pts=${JSON.stringify(ret.points)}`)
+  // tipFace W alone is not enough: a chord from the east hang can end on W tip while ink
+  // first hits the SE outline. Require the last approach segment to come from outside W.
+  const retPrev = ret.points[ret.points.length - 2]
+  const retEnd = ret.points[ret.points.length - 1]
+  assert.ok(
+    retPrev[0] < retEnd[0] - 0.5,
+    `L4 回并 must approach W from the west bay; prev=${JSON.stringify(retPrev)} end=${JSON.stringify(retEnd)} pts=${JSON.stringify(ret.points)}`,
+  )
 })
 
 test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex passes', async () => {

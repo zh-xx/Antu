@@ -3288,6 +3288,14 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
         // Never land on a face that still hosts a leave (false merge with 是).
         if (enterFace && leaveFaces.has(enterFace)) return
         if (enterFace && trunk.has(enterFace)) return
+        // Last approach must come from outside the enter face. Otherwise a short
+        // horizontal from the east hang chords through the diamond and lands on W
+        // tip while ink first hits SE (L4 回并 visual E-enter vs tipFace W).
+        const prev = pts[pts.length - 2]
+        if (enterFace === 'W' && prev[0] >= enter[0] - 0.5) return
+        if (enterFace === 'E' && prev[0] <= enter[0] + 0.5) return
+        if (enterFace === 'N' && prev[1] >= enter[1] - 0.5) return
+        if (enterFace === 'S' && prev[1] <= enter[1] + 0.5) return
         const k = keyPt(enter)
         if (reserved.has(k)) return
         if (incidents.some((o) => o.c !== c && keyPt(o.pt) === k)) return
@@ -3324,20 +3332,26 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
             Math.abs(acx - port[0]) >= Math.abs(acy - port[1])
               ? /** @type {number[]} */ ([acx > port[0] ? a.x : a.x + a.w, acy])
               : /** @type {number[]} */ ([acx, acy > port[1] ? a.y : a.y + a.h])
-          // Via mid corner toward port.
-          tryPts([leave, [leave[0], port[1]], port])
-          tryPts([leave, [port[0], leave[1]], port])
-          // Hang-lane style: vertical then horizontal in the open bay beside the diamond.
+          // Hang-lane bay first: approach from outside the free face (avoids chord-through-diamond).
           const bayX =
             face === 'W' || port[0] <= box.x + 1
               ? box.x - 28
               : face === 'E' || port[0] >= box.x + box.w - 1
                 ? box.x + box.w + 28
                 : leave[0]
+          const bayY =
+            face === 'N' || port[1] <= box.y + 1
+              ? box.y - 28
+              : face === 'S' || port[1] >= box.y + box.h - 1
+                ? box.y + box.h + 28
+                : leave[1]
           tryPts([leave, [bayX, leave[1]], [bayX, port[1]], port])
           tryPts([leave, [leave[0], port[1]], [bayX, port[1]], port])
-          // From hang top: up then around west/east bay into the free tip.
+          tryPts([leave, [leave[0], bayY], [port[0], bayY], port])
+          tryPts([leave, [port[0], leave[1]], [port[0], bayY], port])
+          // Via mid corner toward port (rejected by tryPts if approach is from inside).
           tryPts([leave, [leave[0], port[1]], port])
+          tryPts([leave, [port[0], leave[1]], port])
         }
       }
       // Also consider generic repair alts filtered by free enter port.
