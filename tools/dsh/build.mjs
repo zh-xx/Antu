@@ -166,8 +166,8 @@ function copyHost() {
  * DSH versions the plugin declares (LexCab `engines.dsh` + npm peers).
  * Do not use `>=0.2.0-rc.2 <0.3.0`: npm semver keeps prereleases on one x.y.z tuple,
  * so 0.2.1-rc.x and 0.2.2-rc.x would read as incompatible.
- * Session-tested (Node 24.9, DSH 0.2.2-rc.1): install + Host exports; see test/dsh-engines-compatibility.test.mjs.
- * 0.2.0-rc.2 / 0.2.1-rc.x: build devDeps + repo history (#360 reports 0.18.0 on 0.2.2-rc.1), not re-installed here.
+ * Host-smoke (Node 24.9, isolated npm, antu_validate/layout/render on procedure 1-minimal): 0.2.0-rc.2, 0.2.1-rc.1, 0.2.1-rc.5, 0.2.2-rc.1 (evidence: agent store issue-360-evidence).
+ * Future 0.2.x stable releases: accepted by caret ranges only — not host-smoke-tested until someone re-runs the matrix.
  */
 const DSH_RANGE = '^0.2.0-rc.2 || ^0.2.1-rc.0 || ^0.2.2-rc.0'
 
