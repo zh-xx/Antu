@@ -163,7 +163,7 @@ function copyHost() {
 }
 
 /** The DSH versions the plugin is tested on: 0.2.0-rc.2 and 0.2.1-rc.2, then any release of 0.2 */
-const DSH_RANGE = '^0.2.0-rc.2 || ^0.2.1-rc.0'
+const DSH_RANGE = '^0.2.0-rc.2 || ^0.2.1-rc.0 || ^0.2.2-rc.0'
 
 function syncPackageJson() {
   const path = join(PKG, 'package.json')
@@ -176,7 +176,7 @@ function syncPackageJson() {
   pkg.license = 'AGPL-3.0-or-later'
   pkg.author = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).author
   pkg.homepage = `${REPO_URL}/tree/main/tools/dsh`
-  pkg.repository = { type: 'git', url: `git+${REPO_URL}.git`, directory: 'tools/dsh' }
+  pkg.repository = { type: 'git', url: `git+${REPO_URL}.git`, directory: 'tools/dsh/package' }
   pkg.bugs = { url: `${REPO_URL}/issues` }
   pkg.keywords = ['deepseek-harness', 'dsh-plugin', 'legal', 'diagram', 'antu']
   pkg.description =
