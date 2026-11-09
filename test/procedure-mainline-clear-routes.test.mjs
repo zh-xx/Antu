@@ -2,7 +2,7 @@
 // Gates fail on de0ec80 baseline for L3/L4/07 box hits and S3/L3 crossings; production layout only.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildProcedureGraph } from '../src/renderers/procedure/flow/layout.js'
@@ -11,6 +11,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 import { bendsOf } from '../src/renderers/procedure/flow/straighten.js'
 import {
   segHitsBox,
+  segRunsOnBoxEdge,
   pathClear,
   pathCrossCount,
   pathLength,
@@ -35,6 +36,8 @@ function foreignHits(g) {
         if (n.id === c.from || n.id === c.to) continue
         const box = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
         if (segHitsBox(c.points[i], c.points[i + 1], box)) hits.push(`${c.id}@${n.id}`)
+        // Foreign rim rides are false connections (L4 return along next-node top).
+        if (segRunsOnBoxEdge(c.points[i], c.points[i + 1], box)) hits.push(`${c.id}@${n.id}:edge`)
       }
     }
   }
@@ -627,19 +630,25 @@ test('strict collinear: V08b V same-source distinct ports must not share a long 
 test('short unrelated readability: B09/V09b V-on — ≥4 clear; ≥1 micro stubs recorded', async () => {
   // Independent bf19 audit: report wrongly claimed short unrel ≥1 = 0. ≥4 is clear;
   // B09 1.84u / V09b ~3u remain — every single-edge jog raises a cross or a longer rail.
+  // Resolve lab path when present (cloud agent); else repo fixtures so CI is not lab-coupled.
   const { findCollinearAmbiguities, COLLINEAR_UNRELATED_READABILITY_MIN } = await import(
     '../src/renderers/procedure/flow/hangSpineRoute.js'
   )
   const lab = '/cursor/stores/self/antu-synthetic-lab'
+  /** @type {{ label: string, path: string }[]} */
+  const inputs = []
+  const b09Lab = join(lab, 'inputs/base/B09-nested-hang-rejoin.zh-CN.json')
+  const b09Repo = join(STRICT_FIX, 'B09-nested-hang-rejoin.zh-CN.json')
+  inputs.push({ label: 'B09', path: existsSync(b09Lab) ? b09Lab : b09Repo })
+  const v09Lab = join(lab, 'inputs/variants/V09-nested-hang-rejoinb-extra.zh-CN.json')
+  if (existsSync(v09Lab)) inputs.push({ label: 'V09b', path: v09Lab })
+  assert.ok(inputs.length >= 1, 'B09 fixture must resolve (lab or test/fixtures)')
   /** @type {string[]} */
   const micro = []
-  for (const rel of [
-    'inputs/base/B09-nested-hang-rejoin.zh-CN.json',
-    'inputs/variants/V09-nested-hang-rejoinb-extra.zh-CN.json',
-  ]) {
-    await assertShortUnrelatedCleared(join(lab, rel), 'vertical')
+  for (const { label, path } of inputs) {
+    await assertShortUnrelatedCleared(path, 'vertical')
     const g = buildProcedureGraph(
-      JSON.parse(readFileSync(join(lab, rel), 'utf8')),
+      JSON.parse(readFileSync(path, 'utf8')),
       { engine: 'mainline', stages: true },
       undefined,
       'vertical',
@@ -649,12 +658,10 @@ test('short unrelated readability: B09/V09b V-on — ≥4 clear; ≥1 micro stub
       const m = t.match(/:([\d.]+)$/)
       return m && Number(m[1]) < COLLINEAR_UNRELATED_READABILITY_MIN
     })
-    micro.push(...belowFloor.map((t) => `${rel.split('/').pop()}:${t}`))
+    micro.push(...belowFloor.map((t) => `${label}:${t}`))
   }
-  assert.ok(
-    micro.length >= 1,
-    'expected documented ≥1 micro stubs on B09/V09b; if cleared, drop this ledger assert',
-  )
+  // ≥4 clear is the hard bar (assertShortUnrelatedCleared). Under-floor micro stubs were a
+  // documented residual; if a generic clearance pass removes them, the ledger may be empty.
   for (const t of micro) {
     const m = t.match(/:([\d.]+)$/)
     assert.ok(m && Number(m[1]) < COLLINEAR_UNRELATED_READABILITY_MIN, t)
@@ -761,6 +768,38 @@ test('L4 V settlement: outgoing and return must not share a long opposite-dir co
     (t) => t.includes('c:n-13->n-14') && t.includes('c:n-15->n-13'),
   )
   assert.deepEqual(shortPair, [], `L4 settlement still short-tagged after repair: ${shortPair.join('|')}`)
+  // Independent 6785 review: return must not ride n-17「制作分配方案」top / 否 enter tip
+  // (edge-graze / false connection). Corridor clear alone is not enough.
+  const plan = g.nodes.find((n) => n.id === 'n-17')
+  assert.ok(plan)
+  const planBox = { x: plan.position.x, y: plan.position.y, w: plan.data.w, h: plan.data.h }
+  for (let i = 0; i < ret.points.length - 1; i += 1) {
+    assert.equal(
+      segRunsOnBoxEdge(ret.points[i], ret.points[i + 1], planBox),
+      false,
+      `L4 return seg ${i} grazes n-17 edge: ${JSON.stringify(ret.points)}`,
+    )
+  }
+  const noMain = g.connections.find((c) => c.id === 'c:n-13->n-17')
+  assert.ok(noMain?.points?.length)
+  const tip = noMain.points[noMain.points.length - 1]
+  for (let i = 0; i < ret.points.length - 1; i += 1) {
+    const p = ret.points[i]
+    const q = ret.points[i + 1]
+    if (Math.abs(p[1] - q[1]) >= 0.5) continue
+    const lo = Math.min(p[0], q[0])
+    const hi = Math.max(p[0], q[0])
+    if (tip[0] >= lo - 0.5 && tip[0] <= hi + 0.5) {
+      assert.ok(
+        Math.abs(p[1] - tip[1]) > 0.5,
+        `L4 return shares 否 enter tip ${tip} at y=${p[1]}`,
+      )
+    }
+  }
+  // Must not share the diamond outline port with 是 leave (false merge at E).
+  const outPort = `${out.points[0][0].toFixed(1)},${out.points[0][1].toFixed(1)}`
+  const retPort = `${ret.points[ret.points.length - 1][0].toFixed(1)},${ret.points[ret.points.length - 1][1].toFixed(1)}`
+  assert.notEqual(outPort, retPort, `L4 是 leave and 回并 enter share port ${outPort}`)
 })
 
 test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex passes', async () => {

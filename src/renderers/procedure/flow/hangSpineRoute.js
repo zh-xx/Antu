@@ -39,7 +39,43 @@ export function segHitsBox(p, q, box, pad = 0.5) {
 }
 
 /**
- * Every segment of an orthogonal polyline must clear every foreign placed box.
+ * Ortho segment lies on a box edge (top/bottom/left/right) with positive span overlap.
+ * Interior-only {@link segHitsBox} misses this; riding a foreign rim creates false
+ * connections (L4 return at y=top of next spine node, coinciding with main enter tip).
+ * Endpoint attachments on from/to faces are excluded by pathClear's id filter — this
+ * only rejects foreign edge-runs.
+ * @param {number[]} p
+ * @param {number[]} q
+ * @param {{ x: number, y: number, w: number, h: number }} box
+ * @param {number} [eps]
+ */
+export function segRunsOnBoxEdge(p, q, box, eps = 0.5) {
+  const [x1, y1] = p
+  const [x2, y2] = q
+  const bx1 = box.x
+  const by1 = box.y
+  const bx2 = box.x + box.w
+  const by2 = box.y + box.h
+  if (Math.abs(y1 - y2) < 0.5) {
+    const y = y1
+    const lo = Math.min(x1, x2)
+    const hi = Math.max(x1, x2)
+    if (Math.abs(y - by1) > eps && Math.abs(y - by2) > eps) return false
+    return Math.min(hi, bx2) - Math.max(lo, bx1) > eps
+  }
+  if (Math.abs(x1 - x2) < 0.5) {
+    const x = x1
+    const lo = Math.min(y1, y2)
+    const hi = Math.max(y1, y2)
+    if (Math.abs(x - bx1) > eps && Math.abs(x - bx2) > eps) return false
+    return Math.min(hi, by2) - Math.max(lo, by1) > eps
+  }
+  return false
+}
+
+/**
+ * Every segment of an orthogonal polyline must clear every foreign placed box
+ * (interior penetration and foreign edge-runs).
  * @param {number[][]} pts
  * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} placed
  * @param {string | null | undefined} fromId
@@ -52,6 +88,7 @@ export function pathClear(pts, placed, fromId, toId, pad = 0.5) {
     for (const [id, r] of placed) {
       if (id === fromId || id === toId) continue
       if (segHitsBox(pts[i], pts[i + 1], r, pad)) return false
+      if (segRunsOnBoxEdge(pts[i], pts[i + 1], r)) return false
     }
   }
   return true

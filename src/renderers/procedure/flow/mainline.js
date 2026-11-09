@@ -1762,6 +1762,7 @@ function crossingRepairAlts(c, placed, diamonds, spineIds, others) {
 function settleGeometryPasses(placed, connections, diamonds, spineIds) {
   for (let i = 0; i < 3; i += 1) {
     resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds)
+    resolveSharedDiamondEnters(placed, connections, diamonds, spineIds)
     resolveSharedRectLeaves(placed, connections, diamonds, spineIds)
     separateAmbiguousCorridors(placed, connections, diamonds, spineIds)
     repairEdgeCrossings(placed, connections, diamonds, spineIds)
@@ -2848,6 +2849,146 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
       }
     }
     if (!moved) return
+  }
+}
+
+/**
+ * Non-main enters that share a diamond outline port with another incident edge
+ * (leave or enter) create false connections — e.g. L4 回并 landing on the same E
+ * vertex as 是 after corridor separation. Re-route those enters onto a free outline
+ * slot (stagger / free face) with pathClear + no new crossings when possible.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ * @param {Set<string>} spineIds
+ */
+function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
+  const keyPt = (p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`
+  for (const id of diamonds) {
+    const box = placed.get(id)
+    if (!box) continue
+    const node = { x: box.x, y: box.y, w: box.w, h: box.h }
+    const v = diamondVertices(node)
+    const faceOf = (p) => {
+      let best = /** @type {'N'|'E'|'S'|'W'|null} */ (null)
+      let bestD = Infinity
+      for (const f of /** @type {const} */ (['N', 'E', 'S', 'W'])) {
+        const pt = /** @type {[number, number]} */ (v[f])
+        const d = Math.hypot(p[0] - pt[0], p[1] - pt[1])
+        if (d < bestD) {
+          bestD = d
+          best = f
+        }
+      }
+      return bestD <= 2.5 ? best : null
+    }
+    /** @type {{ c: object, kind: 'leave'|'enter', pt: number[] }[]} */
+    const incidents = []
+    for (const c of connections) {
+      if (!c.points?.length) continue
+      if (c.from === id) incidents.push({ c, kind: 'leave', pt: c.points[0] })
+      if (c.to === id) incidents.push({ c, kind: 'enter', pt: c.points[c.points.length - 1] })
+    }
+    if (incidents.length < 2) continue
+    /** @type {Map<string, typeof incidents>} */
+    const byPort = new Map()
+    for (const inc of incidents) {
+      const k = keyPt(inc.pt)
+      const list = byPort.get(k)
+      if (list) list.push(inc)
+      else byPort.set(k, [inc])
+    }
+    const reserved = new Set()
+    for (const inc of incidents) {
+      if (inc.c.kind === 'main' || inc.kind === 'leave') reserved.add(keyPt(inc.pt))
+    }
+    // Trunk faces stay reserved for main enter/leave.
+    const trunk = new Set()
+    for (const inc of incidents) {
+      if (inc.c.kind !== 'main') continue
+      const f = faceOf(inc.pt)
+      if (f) trunk.add(f)
+    }
+    const freeFaces = /** @type {('N'|'E'|'S'|'W')[]} */ (
+      ['E', 'W', 'N', 'S'].filter((f) => !trunk.has(f))
+    )
+    for (const [, group] of byPort) {
+      if (group.length < 2) continue
+      const movers = group.filter((inc) => inc.kind === 'enter' && inc.c.kind !== 'main')
+      for (const inc of movers) {
+        const c = inc.c
+        const a = placed.get(c.from)
+        if (!a) continue
+        const others = connections.filter((o) => o !== c).map((o) => o.points)
+        const beforeCross = pathCrossCount(c.points, others)
+        let bestPts = /** @type {number[][] | null} */ (null)
+        let bestCross = Infinity
+        let bestBends = Infinity
+        let bestLen = Infinity
+        /** @param {number[][] | null | undefined} pts */
+        const tryPts = (pts) => {
+          if (!pts || pts.length < 2) return
+          if (!pathClear(pts, placed, c.from, c.to)) return
+          const enter = pts[pts.length - 1]
+          if (!onDiamondOutline(node, enter)) return
+          const k = keyPt(enter)
+          if (reserved.has(k)) return
+          if (incidents.some((o) => o.c !== c && keyPt(o.pt) === k)) return
+          const cross = pathCrossCount(pts, others)
+          if (cross > beforeCross) return
+          const bends = pathBendCount(pts)
+          const len = pathLength(pts)
+          if (
+            cross < bestCross ||
+            (cross === bestCross && bends < bestBends) ||
+            (cross === bestCross && bends === bestBends && len < bestLen)
+          ) {
+            bestCross = cross
+            bestBends = bends
+            bestLen = len
+            bestPts = pts
+          }
+        }
+        // Prefer staggered ports on free faces (including current face if not trunk-only).
+        const faces = freeFaces.length ? freeFaces : /** @type {('N'|'E'|'S'|'W')[]} */ (['E', 'W', 'N', 'S'])
+        for (const face of faces) {
+          for (let slot = 0; slot < 4; slot += 1) {
+            const port = staggerOnDiamondSide(node, face, slot, Math.max(slot + 1, 2))
+            if (!onDiamondOutline(node, port)) continue
+            if (reserved.has(keyPt(port))) continue
+            // Orthogonal approach: last bend at port's outward axis then into port.
+            const acx = a.x + a.w / 2
+            const acy = a.y + a.h / 2
+            const leave =
+              Math.abs(acx - port[0]) >= Math.abs(acy - port[1])
+                ? /** @type {number[]} */ ([acx > port[0] ? a.x : a.x + a.w, acy])
+                : /** @type {number[]} */ ([acx, acy > port[1] ? a.y : a.y + a.h])
+            // Via mid corner toward port.
+            tryPts([leave, [leave[0], port[1]], port])
+            tryPts([leave, [port[0], leave[1]], port])
+            // Hang-lane style: vertical then horizontal in the open bay beside the diamond.
+            const bayX =
+              face === 'W' || port[0] <= box.x + 1
+                ? box.x - 28
+                : face === 'E' || port[0] >= box.x + box.w - 1
+                  ? box.x + box.w + 28
+                  : leave[0]
+            tryPts([leave, [bayX, leave[1]], [bayX, port[1]], port])
+            tryPts([leave, [leave[0], port[1]], [bayX, port[1]], port])
+          }
+        }
+        // Also consider generic repair alts filtered by free enter port.
+        for (const pts of crossingRepairAlts(c, placed, diamonds, spineIds, others)) {
+          tryPts(pts)
+        }
+        if (bestPts) {
+          c.points = bestPts
+          reserved.add(keyPt(bestPts[bestPts.length - 1]))
+          // Refresh incident pt for subsequent movers on this diamond.
+          inc.pt = bestPts[bestPts.length - 1]
+        }
+      }
+    }
   }
 }
 
