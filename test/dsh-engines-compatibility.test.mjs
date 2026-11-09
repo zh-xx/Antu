@@ -22,7 +22,7 @@ const shouldSupport = [
   '0.2.1-rc.0',
   '0.2.1-rc.5',
   '0.2.2-rc.1',
-  '0.2.0',
+  '0.2.0', // semver-only: stable 0.2.x not host-smoke-tested (#360)
   '0.2.1',
   '0.2.2',
 ]
