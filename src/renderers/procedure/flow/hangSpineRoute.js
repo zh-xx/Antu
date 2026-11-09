@@ -75,7 +75,10 @@ export function segRunsOnBoxEdge(p, q, box, eps = 0.5) {
 
 /**
  * Every segment of an orthogonal polyline must clear every foreign placed box
- * (interior penetration and foreign edge-runs).
+ * (interior penetration). Foreign rim rides that also meet another edge's port on
+ * that rim are false connections — repaired in settle (repairRimFalseConnections),
+ * not here: B02 stages-on multi-outlet stagger routes legitimately skim neighbour
+ * tops and must remain pathClear for leave resolve.
  * @param {number[][]} pts
  * @param {Map<string, { x: number, y: number, w: number, h: number }> | null | undefined} placed
  * @param {string | null | undefined} fromId
@@ -88,10 +91,38 @@ export function pathClear(pts, placed, fromId, toId, pad = 0.5) {
     for (const [id, r] of placed) {
       if (id === fromId || id === toId) continue
       if (segHitsBox(pts[i], pts[i + 1], r, pad)) return false
-      if (segRunsOnBoxEdge(pts[i], pts[i + 1], r)) return false
     }
   }
   return true
+}
+
+/**
+ * True when ortho segment rides a box rim and a foreign port lies on that same rim
+ * inside the segment span (L4 return on 制作分配方案 top meeting 否 enter tip).
+ * @param {number[]} p
+ * @param {number[]} q
+ * @param {{ x: number, y: number, w: number, h: number }} box
+ * @param {number[]} port
+ * @param {number} [eps]
+ */
+export function segFalseConnectsPortOnBoxEdge(p, q, box, port, eps = 0.5) {
+  if (!segRunsOnBoxEdge(p, q, box, eps)) return false
+  const [px, py] = port
+  if (Math.abs(p[1] - q[1]) < 0.5) {
+    const y = p[1]
+    if (Math.abs(py - y) > eps) return false
+    const lo = Math.min(p[0], q[0])
+    const hi = Math.max(p[0], q[0])
+    return px >= lo - eps && px <= hi + eps
+  }
+  if (Math.abs(p[0] - q[0]) < 0.5) {
+    const x = p[0]
+    if (Math.abs(px - x) > eps) return false
+    const lo = Math.min(p[1], q[1])
+    const hi = Math.max(p[1], q[1])
+    return py >= lo - eps && py <= hi + eps
+  }
+  return false
 }
 
 /**

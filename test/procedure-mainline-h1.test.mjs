@@ -50,22 +50,25 @@ test('segHitsBox audit: known hit / no-hit / edge-touch', () => {
   assert.equal(segHitsBox([50, 0], [50, 40], box), false, 'beside box')
 })
 
-test('segRunsOnBoxEdge / pathClear: foreign rim ride is not clear', async () => {
-  const { segRunsOnBoxEdge, pathClear } = await import('../src/renderers/procedure/flow/hangSpineRoute.js')
+test('segRunsOnBoxEdge / false-connect: rim∩port is the L4 defect class', async () => {
+  const { segRunsOnBoxEdge, segFalseConnectsPortOnBoxEdge, pathClear } = await import(
+    '../src/renderers/procedure/flow/hangSpineRoute.js'
+  )
   const box = { x: 10, y: 10, w: 20, h: 20 }
   assert.equal(segRunsOnBoxEdge([0, 10], [40, 10], box), true, 'top edge run')
   assert.equal(segRunsOnBoxEdge([0, 30], [40, 30], box), true, 'bottom edge run')
   assert.equal(segRunsOnBoxEdge([10, 0], [10, 40], box), true, 'left edge run')
   assert.equal(segRunsOnBoxEdge([0, 5], [40, 5], box), false, 'parallel above, not on rim')
   assert.equal(segRunsOnBoxEdge([0, 10], [5, 10], box), false, 'no span overlap with box')
+  // Bare rim skim stays pathClear (B02 stagger); false-connect needs a port on the rim.
   const placed = new Map([
     ['from', { x: 50, y: 0, w: 10, h: 10 }],
     ['to', { x: 0, y: 0, w: 10, h: 10 }],
     ['foreign', box],
   ])
-  // Riding foreign top is blocked even though interior segHitsBox is false.
-  assert.equal(pathClear([[0, 10], [40, 10]], placed, 'from', 'to'), false)
-  assert.equal(pathClear([[0, 5], [40, 5]], placed, 'from', 'to'), true)
+  assert.equal(pathClear([[0, 10], [40, 10]], placed, 'from', 'to'), true)
+  assert.equal(segFalseConnectsPortOnBoxEdge([0, 10], [40, 10], box, [20, 10]), true)
+  assert.equal(segFalseConnectsPortOnBoxEdge([0, 10], [40, 10], box, [20, 5]), false)
 })
 
 test('H1 production: both-blocked fromDiamond never returns blocked gutter path', () => {

@@ -64,6 +64,8 @@ import {
   firstClearPath,
   findCollinearAmbiguities,
   collinearOverlapLen,
+  segRunsOnBoxEdge,
+  segFalseConnectsPortOnBoxEdge,
   COLLINEAR_AMBIGUOUS_MIN,
   COLLINEAR_ATTACH_TOL,
   COLLINEAR_UNRELATED_READABILITY_MIN,
@@ -1765,6 +1767,7 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds) {
     resolveSharedDiamondEnters(placed, connections, diamonds, spineIds)
     resolveSharedRectLeaves(placed, connections, diamonds, spineIds)
     separateAmbiguousCorridors(placed, connections, diamonds, spineIds)
+    repairRimFalseConnections(placed, connections, diamonds, spineIds)
     repairEdgeCrossings(placed, connections, diamonds, spineIds)
   }
   snapDiamondEndpoints(placed, connections, diamonds)
@@ -2849,6 +2852,124 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
       }
     }
     if (!moved) return
+  }
+}
+
+/**
+ * Rim false connection: a non-main rail rides a foreign box edge and another edge's
+ * port sits on that same rim inside the span (L4 return on n-17 top ∩ 否 tip).
+ * Re-route the rider without raising crossings or losing pathClear.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ * @param {Set<string>} spineIds
+ */
+function repairRimFalseConnections(placed, connections, diamonds, spineIds) {
+  /** @type {Map<string, number[][]>} */
+  const portsOn = new Map()
+  for (const c of connections) {
+    if (!c.points?.length) continue
+    for (const end of [c.points[0], c.points[c.points.length - 1]]) {
+      for (const [id, box] of placed) {
+        const onRim =
+          (Math.abs(end[1] - box.y) <= 0.5 || Math.abs(end[1] - (box.y + box.h)) <= 0.5) &&
+          end[0] >= box.x - 0.5 &&
+          end[0] <= box.x + box.w + 0.5
+        const onSide =
+          (Math.abs(end[0] - box.x) <= 0.5 || Math.abs(end[0] - (box.x + box.w)) <= 0.5) &&
+          end[1] >= box.y - 0.5 &&
+          end[1] <= box.y + box.h + 0.5
+        if (!onRim && !onSide) continue
+        const list = portsOn.get(id)
+        if (list) list.push(end)
+        else portsOn.set(id, [end])
+      }
+    }
+  }
+  for (const c of connections) {
+    if (c.kind === 'main' || !c.points?.length) continue
+    let guilty = false
+    for (let i = 0; i < c.points.length - 1 && !guilty; i += 1) {
+      for (const [id, box] of placed) {
+        if (id === c.from || id === c.to) continue
+        if (!segRunsOnBoxEdge(c.points[i], c.points[i + 1], box)) continue
+        for (const port of portsOn.get(id) || []) {
+          if (segFalseConnectsPortOnBoxEdge(c.points[i], c.points[i + 1], box, port)) {
+            guilty = true
+            break
+          }
+        }
+        if (guilty) break
+      }
+    }
+    if (!guilty) continue
+    const others = connections.filter((o) => o !== c).map((o) => o.points)
+    const beforeCross = pathCrossCount(c.points, others)
+    let best = /** @type {number[][] | null} */ (null)
+    let bestCross = Infinity
+    let bestBends = Infinity
+    let bestLen = Infinity
+    const consider = (pts) => {
+      if (!pts || pts.length < 2) return
+      if (!pathClear(pts, placed, c.from, c.to)) return
+      // Must not recreate a rim∩port false connection.
+      for (let i = 0; i < pts.length - 1; i += 1) {
+        for (const [id, box] of placed) {
+          if (id === c.from || id === c.to) continue
+          if (!segRunsOnBoxEdge(pts[i], pts[i + 1], box)) continue
+          for (const port of portsOn.get(id) || []) {
+            if (segFalseConnectsPortOnBoxEdge(pts[i], pts[i + 1], box, port)) return
+          }
+        }
+      }
+      const cross = pathCrossCount(pts, others)
+      if (cross > beforeCross) return
+      const bends = pathBendCount(pts)
+      const len = pathLength(pts)
+      if (
+        cross < bestCross ||
+        (cross === bestCross && bends < bestBends) ||
+        (cross === bestCross && bends === bestBends && len < bestLen)
+      ) {
+        bestCross = cross
+        bestBends = bends
+        bestLen = len
+        best = pts
+      }
+    }
+    for (const pts of crossingRepairAlts(c, placed, diamonds, spineIds, others)) consider(pts)
+    // Nudge the guilty horizontal/vertical rail off the rim.
+    if (c.points.length >= 3) {
+      for (let i = 0; i < c.points.length - 1; i += 1) {
+        const p0 = c.points[i]
+        const q0 = c.points[i + 1]
+        const isH = Math.abs(p0[1] - q0[1]) < 0.5
+        const isV = Math.abs(p0[0] - q0[0]) < 0.5
+        if (!isH && !isV) continue
+        for (const delta of [-16, 16, -28, 28, -40, 40, -56, 56, -72, 72]) {
+          const trial = c.points.map((p) => /** @type {number[]} */ ([p[0], p[1]]))
+          if (i === 0) {
+            // keep leave port; jog after leave
+            if (trial.length < 3) continue
+            if (isH) trial[1][1] += delta
+            else trial[1][0] += delta
+          } else if (i === c.points.length - 2) {
+            if (isH) trial[i][1] += delta
+            else trial[i][0] += delta
+          } else {
+            if (isH) {
+              trial[i][1] += delta
+              trial[i + 1][1] += delta
+            } else {
+              trial[i][0] += delta
+              trial[i + 1][0] += delta
+            }
+          }
+          consider(trial)
+        }
+      }
+    }
+    if (best) c.points = best
   }
 }
 

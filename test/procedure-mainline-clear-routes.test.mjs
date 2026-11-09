@@ -36,8 +36,6 @@ function foreignHits(g) {
         if (n.id === c.from || n.id === c.to) continue
         const box = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
         if (segHitsBox(c.points[i], c.points[i + 1], box)) hits.push(`${c.id}@${n.id}`)
-        // Foreign rim rides are false connections (L4 return along next-node top).
-        if (segRunsOnBoxEdge(c.points[i], c.points[i + 1], box)) hits.push(`${c.id}@${n.id}:edge`)
       }
     }
   }
