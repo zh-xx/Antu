@@ -3184,8 +3184,9 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
     if (!box) continue
     const node = { x: box.x, y: box.y, w: box.w, h: box.h }
     const v = diamondVertices(node)
-    const faceOf = (p) => {
-      let best = /** @type {'N'|'E'|'S'|'W'|null} */ (null)
+    /** Nearest tip — tight for tip ports; loose for staggered outline attaches on a side. */
+    const nearestFace = (p) => {
+      let best = /** @type {'N'|'E'|'S'|'W'} */ ('E')
       let bestD = Infinity
       for (const f of /** @type {const} */ (['N', 'E', 'S', 'W'])) {
         const pt = /** @type {[number, number]} */ (v[f])
@@ -3195,7 +3196,16 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
           best = f
         }
       }
-      return bestD <= 2.5 ? best : null
+      return { face: best, d: bestD }
+    }
+    const faceOf = (p) => {
+      const { face, d } = nearestFace(p)
+      return d <= 2.5 ? face : null
+    }
+    /** Outline attach → cardinal side (staggered E ports still classify as E). */
+    const faceOfOutline = (p) => {
+      if (!onDiamondOutline(node, p, 2.5) && !onDiamondOutline(node, p, 4)) return null
+      return nearestFace(p).face
     }
     /** @type {{ c: object, kind: 'leave'|'enter', pt: number[] }[]} */
     const incidents = []
@@ -3221,91 +3231,129 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
     const trunk = new Set()
     for (const inc of incidents) {
       if (inc.c.kind !== 'main') continue
-      const f = faceOf(inc.pt)
+      const f = faceOfOutline(inc.pt) ?? faceOf(inc.pt)
       if (f) trunk.add(f)
     }
+    // Faces that already host a leave (e.g. 是 on E) — non-main enters must not share them
+    // even when staggered to a different outline point (L4 回并 vs 是).
+    const leaveFaces = new Set()
+    for (const inc of incidents) {
+      if (inc.kind !== 'leave') continue
+      const f = faceOfOutline(inc.pt) ?? faceOf(inc.pt)
+      if (f) leaveFaces.add(f)
+    }
     const freeFaces = /** @type {('N'|'E'|'S'|'W')[]} */ (
-      ['E', 'W', 'N', 'S'].filter((f) => !trunk.has(f))
+      ['W', 'E', 'N', 'S'].filter((f) => !trunk.has(f) && !leaveFaces.has(f))
     )
+    const fallbackFaces = /** @type {('N'|'E'|'S'|'W')[]} */ (
+      ['W', 'E', 'N', 'S'].filter((f) => !trunk.has(f))
+    )
+    /** Movers: identical port cluster, or non-main enter on a face that already has a leave. */
+    /** @type {typeof incidents} */
+    const movers = []
+    const seen = new Set()
+    const addMover = (inc) => {
+      if (seen.has(inc)) return
+      seen.add(inc)
+      movers.push(inc)
+    }
     for (const [, group] of byPort) {
       if (group.length < 2) continue
-      const movers = group.filter((inc) => inc.kind === 'enter' && inc.c.kind !== 'main')
-      for (const inc of movers) {
-        const c = inc.c
-        const a = placed.get(c.from)
-        if (!a) continue
-        const others = connections.filter((o) => o !== c).map((o) => o.points)
-        const beforeCross = pathCrossCount(c.points, others)
-        let bestPts = /** @type {number[][] | null} */ (null)
-        let bestCross = Infinity
-        let bestBends = Infinity
-        let bestLen = Infinity
-        /** @param {number[][] | null | undefined} pts */
-        const tryPts = (pts) => {
-          if (!pts || pts.length < 2) return
-          if (!pathClear(pts, placed, c.from, c.to)) return
-          const enter = pts[pts.length - 1]
-          if (!onDiamondOutline(node, enter)) return
-          const k = keyPt(enter)
-          if (reserved.has(k)) return
-          if (incidents.some((o) => o.c !== c && keyPt(o.pt) === k)) return
-          const cross = pathCrossCount(pts, others)
-          if (cross > beforeCross) return
-          const bends = pathBendCount(pts)
-          const len = pathLength(pts)
-          if (
-            cross < bestCross ||
-            (cross === bestCross && bends < bestBends) ||
-            (cross === bestCross && bends === bestBends && len < bestLen)
-          ) {
-            bestCross = cross
-            bestBends = bends
-            bestLen = len
-            bestPts = pts
-          }
+      for (const inc of group) {
+        if (inc.kind === 'enter' && inc.c.kind !== 'main') addMover(inc)
+      }
+    }
+    for (const inc of incidents) {
+      if (inc.kind !== 'enter' || inc.c.kind === 'main') continue
+      const f = faceOfOutline(inc.pt) ?? faceOf(inc.pt)
+      if (f && leaveFaces.has(f)) addMover(inc)
+    }
+    for (const inc of movers) {
+      const c = inc.c
+      const a = placed.get(c.from)
+      if (!a) continue
+      const others = connections.filter((o) => o !== c).map((o) => o.points)
+      const beforeCross = pathCrossCount(c.points, others)
+      let bestPts = /** @type {number[][] | null} */ (null)
+      let bestCross = Infinity
+      let bestBends = Infinity
+      let bestLen = Infinity
+      /** @param {number[][] | null | undefined} pts */
+      const tryPts = (pts) => {
+        if (!pts || pts.length < 2) return
+        if (!pathClear(pts, placed, c.from, c.to)) return
+        const enter = pts[pts.length - 1]
+        if (!onDiamondOutline(node, enter)) return
+        const enterFace = faceOfOutline(enter) ?? faceOf(enter)
+        // Never land on a face that still hosts a leave (false merge with 是).
+        if (enterFace && leaveFaces.has(enterFace)) return
+        if (enterFace && trunk.has(enterFace)) return
+        const k = keyPt(enter)
+        if (reserved.has(k)) return
+        if (incidents.some((o) => o.c !== c && keyPt(o.pt) === k)) return
+        const cross = pathCrossCount(pts, others)
+        if (cross > beforeCross) return
+        const bends = pathBendCount(pts)
+        const len = pathLength(pts)
+        if (
+          cross < bestCross ||
+          (cross === bestCross && bends < bestBends) ||
+          (cross === bestCross && bends === bestBends && len < bestLen)
+        ) {
+          bestCross = cross
+          bestBends = bends
+          bestLen = len
+          bestPts = pts
         }
-        // Prefer staggered ports on free faces (including current face if not trunk-only).
-        const faces = freeFaces.length ? freeFaces : /** @type {('N'|'E'|'S'|'W')[]} */ (['E', 'W', 'N', 'S'])
-        for (const face of faces) {
-          for (let slot = 0; slot < 4; slot += 1) {
-            const port = staggerOnDiamondSide(node, face, slot, Math.max(slot + 1, 2))
-            if (!onDiamondOutline(node, port)) continue
-            if (reserved.has(keyPt(port))) continue
-            // Orthogonal approach: last bend at port's outward axis then into port.
-            const acx = a.x + a.w / 2
-            const acy = a.y + a.h / 2
-            const leave =
-              Math.abs(acx - port[0]) >= Math.abs(acy - port[1])
-                ? /** @type {number[]} */ ([acx > port[0] ? a.x : a.x + a.w, acy])
-                : /** @type {number[]} */ ([acx, acy > port[1] ? a.y : a.y + a.h])
-            // Via mid corner toward port.
-            tryPts([leave, [leave[0], port[1]], port])
-            tryPts([leave, [port[0], leave[1]], port])
-            // Hang-lane style: vertical then horizontal in the open bay beside the diamond.
-            const bayX =
-              face === 'W' || port[0] <= box.x + 1
-                ? box.x - 28
-                : face === 'E' || port[0] >= box.x + box.w - 1
-                  ? box.x + box.w + 28
-                  : leave[0]
-            tryPts([leave, [bayX, leave[1]], [bayX, port[1]], port])
-            tryPts([leave, [leave[0], port[1]], [bayX, port[1]], port])
-          }
+      }
+      // Prefer faces free of trunk + leaves; fall back to non-trunk if needed.
+      const faces = freeFaces.length
+        ? freeFaces
+        : fallbackFaces.length
+          ? fallbackFaces
+          : /** @type {('N'|'E'|'S'|'W')[]} */ (['W', 'E', 'N', 'S'])
+      for (const face of faces) {
+        for (let slot = 0; slot < 4; slot += 1) {
+          const port = staggerOnDiamondSide(node, face, slot, Math.max(slot + 1, 2))
+          if (!onDiamondOutline(node, port)) continue
+          if (reserved.has(keyPt(port))) continue
+          // Orthogonal approach: last bend at port's outward axis then into port.
+          const acx = a.x + a.w / 2
+          const acy = a.y + a.h / 2
+          const leave =
+            Math.abs(acx - port[0]) >= Math.abs(acy - port[1])
+              ? /** @type {number[]} */ ([acx > port[0] ? a.x : a.x + a.w, acy])
+              : /** @type {number[]} */ ([acx, acy > port[1] ? a.y : a.y + a.h])
+          // Via mid corner toward port.
+          tryPts([leave, [leave[0], port[1]], port])
+          tryPts([leave, [port[0], leave[1]], port])
+          // Hang-lane style: vertical then horizontal in the open bay beside the diamond.
+          const bayX =
+            face === 'W' || port[0] <= box.x + 1
+              ? box.x - 28
+              : face === 'E' || port[0] >= box.x + box.w - 1
+                ? box.x + box.w + 28
+                : leave[0]
+          tryPts([leave, [bayX, leave[1]], [bayX, port[1]], port])
+          tryPts([leave, [leave[0], port[1]], [bayX, port[1]], port])
+          // From hang top: up then around west/east bay into the free tip.
+          tryPts([leave, [leave[0], port[1]], port])
         }
-        // Also consider generic repair alts filtered by free enter port.
-        for (const pts of crossingRepairAlts(c, placed, diamonds, spineIds, others)) {
-          tryPts(pts)
-        }
-        if (bestPts) {
-          c.points = bestPts
-          reserved.add(keyPt(bestPts[bestPts.length - 1]))
-          // Refresh incident pt for subsequent movers on this diamond.
-          inc.pt = bestPts[bestPts.length - 1]
-        }
+      }
+      // Also consider generic repair alts filtered by free enter port.
+      for (const pts of crossingRepairAlts(c, placed, diamonds, spineIds, others)) {
+        tryPts(pts)
+      }
+      if (bestPts) {
+        c.points = bestPts
+        reserved.add(keyPt(bestPts[bestPts.length - 1]))
+        // Refresh incident pt for subsequent movers on this diamond.
+        inc.pt = bestPts[bestPts.length - 1]
       }
     }
   }
 }
+
 
 /**
  * issue 190 S2 — joint multi-attach on free diamond outline sides when sibling branch leaves

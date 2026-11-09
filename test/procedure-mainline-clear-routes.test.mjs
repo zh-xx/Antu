@@ -798,6 +798,33 @@ test('L4 V settlement: outgoing and return must not share a long opposite-dir co
   const outPort = `${out.points[0][0].toFixed(1)},${out.points[0][1].toFixed(1)}`
   const retPort = `${ret.points[ret.points.length - 1][0].toFixed(1)},${ret.points[ret.points.length - 1][1].toFixed(1)}`
   assert.notEqual(outPort, retPort, `L4 是 leave and 回并 enter share port ${outPort}`)
+  // Staggered points on the same E face still read as one merge in the PNG — require
+  // opposite free face (W) for 回并 enter vs 是 leave (independent review of 9daf62e crop).
+  const { diamondVertices: dv } = await import('../src/renderers/procedure/flow/diamondPorts.js')
+  const n13 = g.nodes.find((n) => n.id === 'n-13')
+  assert.ok(n13)
+  const tips = dv({ x: n13.position.x, y: n13.position.y, w: n13.data.w, h: n13.data.h })
+  const tipFace = (p) => {
+    let best = 'E'
+    let bestD = Infinity
+    for (const f of /** @type {const} */ (['N', 'E', 'S', 'W'])) {
+      const t = tips[f]
+      const d = Math.hypot(p[0] - t[0], p[1] - t[1])
+      if (d < bestD) {
+        bestD = d
+        best = f
+      }
+    }
+    return best
+  }
+  const outFace = tipFace(out.points[0])
+  const retFace = tipFace(ret.points[ret.points.length - 1])
+  assert.notEqual(
+    outFace,
+    retFace,
+    `L4 是 leave face ${outFace} and 回并 enter face ${retFace} still share a side; pts out=${JSON.stringify(out.points[0])} ret=${JSON.stringify(ret.points.at(-1))}`,
+  )
+  assert.equal(retFace, 'W', `L4 回并 should enter W; got ${retFace} pts=${JSON.stringify(ret.points)}`)
 })
 
 test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex passes', async () => {
