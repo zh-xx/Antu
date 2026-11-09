@@ -833,6 +833,15 @@ test('L4 V settlement: outgoing and return must not share a long opposite-dir co
     retPrev[0] < retEnd[0] - 0.5,
     `L4 回并 must approach W from the west bay; prev=${JSON.stringify(retPrev)} end=${JSON.stringify(retEnd)} pts=${JSON.stringify(ret.points)}`,
   )
+  // Non-final segments must stay outside n-13 bbox (no SE→SW chord before the W stub).
+  const n13box = { x: n13.position.x, y: n13.position.y, w: n13.data.w, h: n13.data.h }
+  for (let i = 0; i < ret.points.length - 2; i += 1) {
+    assert.equal(
+      segHitsBox(ret.points[i], ret.points[i + 1], n13box),
+      false,
+      `L4 回并 non-final seg ${i} chords through n-13: ${JSON.stringify(ret.points)}`,
+    )
+  }
 })
 
 test('diamond outline hardgate: bbox-edge off-diamond fails; diamond vertex passes', async () => {

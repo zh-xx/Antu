@@ -2115,6 +2115,10 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds) {
   // Final readability pass: graph-non-incident short overlaps in [READABILITY, 48).
   // Conservative — refuse any move that creates a new ≥48 coincidence or raises crosses.
   separateShortUnrelatedReadability(placed, connections, diamonds, spineIds)
+  // Crossing repair can re-pick a 0-cross rim graze after a clean W-bay enter (+1 cross).
+  // Re-apply enter face/approach/rim rules last so browser ink matches tipFace.
+  resolveSharedDiamondEnters(placed, connections, diamonds, spineIds)
+  repairRimFalseConnections(placed, connections, diamonds, spineIds)
 }
 
 /**
@@ -3267,6 +3271,50 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
       if (inc.kind !== 'enter' || inc.c.kind === 'main') continue
       const f = faceOfOutline(inc.pt) ?? faceOf(inc.pt)
       if (f && leaveFaces.has(f)) addMover(inc)
+      // Already on a free face can still be wrong: chord-through-diamond or foreign
+      // rim graze (L4 回并 W tip with east→west ink / n-17 top ride).
+      const pts = inc.c.points
+      if (!pts || pts.length < 2) continue
+      const prev = pts[pts.length - 2]
+      const enter = pts[pts.length - 1]
+      const badApproach =
+        (f === 'W' && prev[0] >= enter[0] - 0.5) ||
+        (f === 'E' && prev[0] <= enter[0] + 0.5) ||
+        (f === 'N' && prev[1] >= enter[1] - 0.5) ||
+        (f === 'S' && prev[1] <= enter[1] + 0.5)
+      let grazeOrChord = false
+      for (let i = 0; i < pts.length - 1; i += 1) {
+        for (const [oid, r] of placed) {
+          if (oid === inc.c.from || oid === inc.c.to) continue
+          if (segRunsOnBoxEdge(pts[i], pts[i + 1], r)) grazeOrChord = true
+        }
+        if (i < pts.length - 2) {
+          const p = pts[i]
+          const q = pts[i + 1]
+          const pad = 0.5
+          const minx = Math.min(p[0], q[0])
+          const maxx = Math.max(p[0], q[0])
+          const miny = Math.min(p[1], q[1])
+          const maxy = Math.max(p[1], q[1])
+          const crosses =
+            maxx >= box.x + pad &&
+            minx <= box.x + box.w - pad &&
+            maxy >= box.y + pad &&
+            miny <= box.y + box.h - pad &&
+            ((Math.abs(p[1] - q[1]) < 0.5 &&
+              p[1] > box.y + pad &&
+              p[1] < box.y + box.h - pad &&
+              maxx > box.x + pad &&
+              minx < box.x + box.w - pad) ||
+              (Math.abs(p[0] - q[0]) < 0.5 &&
+                p[0] > box.x + pad &&
+                p[0] < box.x + box.w - pad &&
+                maxy > box.y + pad &&
+                miny < box.y + box.h - pad))
+          if (crosses) grazeOrChord = true
+        }
+      }
+      if (badApproach || grazeOrChord) addMover(inc)
     }
     for (const inc of movers) {
       const c = inc.c
@@ -3274,6 +3322,29 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
       if (!a) continue
       const others = connections.filter((o) => o !== c).map((o) => o.points)
       const beforeCross = pathCrossCount(c.points, others)
+      // Graze/chord repairs often must cross the 否 trunk once to reach the west bay;
+      // allow a +1 bump only while curing those defects (never for face-only movers).
+      const curPts = c.points
+      let curingDefect = false
+      if (curPts?.length >= 2) {
+        const prev0 = curPts[curPts.length - 2]
+        const enter0 = curPts[curPts.length - 1]
+        const f0 = faceOfOutline(enter0) ?? faceOf(enter0)
+        if (
+          (f0 === 'W' && prev0[0] >= enter0[0] - 0.5) ||
+          (f0 === 'E' && prev0[0] <= enter0[0] + 0.5) ||
+          (f0 === 'N' && prev0[1] >= enter0[1] - 0.5) ||
+          (f0 === 'S' && prev0[1] <= enter0[1] + 0.5)
+        )
+          curingDefect = true
+        for (let i = 0; i < curPts.length - 1; i += 1) {
+          for (const [oid, r] of placed) {
+            if (oid === c.from || oid === c.to) continue
+            if (segRunsOnBoxEdge(curPts[i], curPts[i + 1], r)) curingDefect = true
+          }
+        }
+      }
+      const crossBudget = beforeCross + (curingDefect ? 1 : 0)
       let bestPts = /** @type {number[][] | null} */ (null)
       let bestCross = Infinity
       let bestBends = Infinity
@@ -3282,6 +3353,13 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
       const tryPts = (pts) => {
         if (!pts || pts.length < 2) return
         if (!pathClear(pts, placed, c.from, c.to)) return
+        // Reject rim∩edge rides on foreign boxes (pathClear interior pad misses exact rims).
+        for (let i = 0; i < pts.length - 1; i += 1) {
+          for (const [oid, r] of placed) {
+            if (oid === c.from || oid === c.to) continue
+            if (segRunsOnBoxEdge(pts[i], pts[i + 1], r)) return
+          }
+        }
         const enter = pts[pts.length - 1]
         if (!onDiamondOutline(node, enter)) return
         const enterFace = faceOfOutline(enter) ?? faceOf(enter)
@@ -3296,11 +3374,37 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
         if (enterFace === 'E' && prev[0] <= enter[0] + 0.5) return
         if (enterFace === 'N' && prev[1] >= enter[1] - 0.5) return
         if (enterFace === 'S' && prev[1] <= enter[1] + 0.5) return
+        // Non-final segments must not cut the target diamond (pathClear skips toId).
+        // Otherwise bayX can still be reached via a chord across SE→SW before the
+        // final outside stub (browser first-outline-hit stays E).
+        const diamHit = (p, q) => {
+          const pad = 0.5
+          const minx = Math.min(p[0], q[0])
+          const maxx = Math.max(p[0], q[0])
+          const miny = Math.min(p[1], q[1])
+          const maxy = Math.max(p[1], q[1])
+          if (maxx < box.x + pad || minx > box.x + box.w - pad || maxy < box.y + pad || miny > box.y + box.h - pad)
+            return false
+          // Ortho segment through bbox: treat as hit if it crosses interior (not merely
+          // touching a tip from outside on the final attach — those are last-seg only).
+          if (Math.abs(p[1] - q[1]) < 0.5) {
+            const y = p[1]
+            return y > box.y + pad && y < box.y + box.h - pad && maxx > box.x + pad && minx < box.x + box.w - pad
+          }
+          if (Math.abs(p[0] - q[0]) < 0.5) {
+            const x = p[0]
+            return x > box.x + pad && x < box.x + box.w - pad && maxy > box.y + pad && miny < box.y + box.h - pad
+          }
+          return true
+        }
+        for (let i = 0; i < pts.length - 2; i += 1) {
+          if (diamHit(pts[i], pts[i + 1])) return
+        }
         const k = keyPt(enter)
         if (reserved.has(k)) return
         if (incidents.some((o) => o.c !== c && keyPt(o.pt) === k)) return
         const cross = pathCrossCount(pts, others)
-        if (cross > beforeCross) return
+        if (cross > crossBudget) return
         const bends = pathBendCount(pts)
         const len = pathLength(pts)
         if (
@@ -3349,6 +3453,39 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
           tryPts([leave, [leave[0], port[1]], [bayX, port[1]], port])
           tryPts([leave, [leave[0], bayY], [port[0], bayY], port])
           tryPts([leave, [port[0], leave[1]], [port[0], bayY], port])
+          // Leave from source top/bottom then west/east bay — avoids riding neighbour rims
+          // at the source row (L4 n-17 top when leaveY == plan.y).
+          const leaveTop = /** @type {number[]} */ ([acx, a.y])
+          const leaveBot = /** @type {number[]} */ ([acx, a.y + a.h])
+          tryPts([leaveTop, [bayX, leaveTop[1]], [bayX, port[1]], port])
+          tryPts([leaveBot, [bayX, leaveBot[1]], [bayX, port[1]], port])
+          tryPts([leaveTop, [leaveTop[0], port[1]], [bayX, port[1]], port])
+          // Mid-gap rail between diamond bottom and lower hang neighbours.
+          const gapY = box.y + box.h + 28
+          tryPts([leave, [leave[0], gapY], [bayX, gapY], [bayX, port[1]], port])
+          tryPts([leaveTop, [leaveTop[0], gapY], [bayX, gapY], [bayX, port[1]], port])
+          // Far bottom→west wrap: keeps 0 crosses when mid-gap would cut the 否 trunk
+          // (L4 n-15 east of spine; horizontal in the diamond↔plan gap crosses n-13→n-17).
+          let bottomY = a.y + a.h + 40
+          for (const [, r] of placed) bottomY = Math.max(bottomY, r.y + r.h + 40)
+          const rightX = a.x + a.w + 80
+          for (const farBay of [bayX, box.x - 62, box.x - 100, box.x - 140]) {
+            tryPts([
+              [a.x + a.w, acy],
+              [rightX, acy],
+              [rightX, bottomY],
+              [farBay, bottomY],
+              [farBay, port[1]],
+              port,
+            ])
+            tryPts([
+              leaveBot,
+              [leaveBot[0], bottomY],
+              [farBay, bottomY],
+              [farBay, port[1]],
+              port,
+            ])
+          }
           // Via mid corner toward port (rejected by tryPts if approach is from inside).
           tryPts([leave, [leave[0], port[1]], port])
           tryPts([leave, [port[0], leave[1]], port])
