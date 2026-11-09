@@ -3353,8 +3353,8 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
       const twinFace = twinLeave
         ? faceOfOutline(twinLeave.pt) ?? faceOf(twinLeave.pt)
         : null
-      // Graze/chord repairs often must cross the 否 trunk once to reach the west bay;
-      // allow a +1 bump only while curing those defects (never for face-only movers).
+      // Graze/chord / leave-face repairs. Far-west wrap keeps 0 crosses on L4; do not
+      // allow a +1 cross bump — multi-backedge fixtures (B10/V10) would share a rim rail.
       const curPts = c.points
       let curingDefect = false
       if (curPts?.length >= 2) {
@@ -3375,7 +3375,7 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
           }
         }
       }
-      const crossBudget = beforeCross + (curingDefect ? 1 : 0)
+      const crossBudget = beforeCross
       let bestPts = /** @type {number[][] | null} */ (null)
       let bestCross = Infinity
       let bestBends = Infinity
