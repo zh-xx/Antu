@@ -3440,6 +3440,14 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
         if (incidents.some((o) => o.c !== c && keyPt(o.pt) === k) && !twinPort) return
         const cross = pathCrossCount(pts, others)
         if (cross > crossBudget) return
+        // Refuse alts that create new ≥48 unrelated collinear rails (H1/S3 H-off y=64).
+        const beforeAmb = findCollinearAmbiguities(
+          connections.map((o) => (o === c ? { ...o, points: c.points } : o)),
+        ).unrelatedOverlaps.length
+        const afterAmb = findCollinearAmbiguities(
+          connections.map((o) => (o === c ? { ...o, points: pts } : o)),
+        ).unrelatedOverlaps.length
+        if (afterAmb > beforeAmb) return
         const bends = pathBendCount(pts)
         const len = pathLength(pts)
         if (
@@ -3514,27 +3522,30 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
           const gapY = box.y + box.h + 28
           tryPts([leave, [leave[0], gapY], [bayX, gapY], [bayX, port[1]], port])
           tryPts([leaveTop, [leaveTop[0], gapY], [bayX, gapY], [bayX, port[1]], port])
-          // Far bottom→west wrap: keeps 0 crosses when mid-gap would cut the 否 trunk
-          // (L4 n-15 east of spine; horizontal in the diamond↔plan gap crosses n-13→n-17).
-          let bottomY = a.y + a.h + 40
-          for (const [, r] of placed) bottomY = Math.max(bottomY, r.y + r.h + 40)
-          const rightX = a.x + a.w + 80
-          for (const farBay of [bayX, box.x - 62, box.x - 100, box.x - 140]) {
-            tryPts([
-              [a.x + a.w, acy],
-              [rightX, acy],
-              [rightX, bottomY],
-              [farBay, bottomY],
-              [farBay, port[1]],
-              port,
-            ])
-            tryPts([
-              leaveBot,
-              [leaveBot[0], bottomY],
-              [farBay, bottomY],
-              [farBay, port[1]],
-              port,
-            ])
+          // Far bottom→west wrap: only while curing a non-twin defect. Keeps 0 crosses when
+          // mid-gap would cut the 否 trunk (L4). Do not offer on ordinary hops — the wrap
+          // rail at the canvas rim creates ≥48 unrelated overlaps (H1/S3 H-off).
+          if (curingDefect && !twinFace) {
+            let bottomY = a.y + a.h + 40
+            for (const [, r] of placed) bottomY = Math.max(bottomY, r.y + r.h + 40)
+            const rightX = a.x + a.w + 80
+            for (const farBay of [bayX, box.x - 62, box.x - 100, box.x - 140]) {
+              tryPts([
+                [a.x + a.w, acy],
+                [rightX, acy],
+                [rightX, bottomY],
+                [farBay, bottomY],
+                [farBay, port[1]],
+                port,
+              ])
+              tryPts([
+                leaveBot,
+                [leaveBot[0], bottomY],
+                [farBay, bottomY],
+                [farBay, port[1]],
+                port,
+              ])
+            }
           }
           // Via mid corner toward port (rejected by tryPts if approach is from inside).
           tryPts([leave, [leave[0], port[1]], port])
