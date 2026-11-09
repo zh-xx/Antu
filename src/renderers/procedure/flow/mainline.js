@@ -3270,7 +3270,25 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
     for (const inc of incidents) {
       if (inc.kind !== 'enter' || inc.c.kind === 'main') continue
       const f = faceOfOutline(inc.pt) ?? faceOf(inc.pt)
-      if (f && leaveFaces.has(f)) addMover(inc)
+      // Bidirectional same-row hop (leave A→B + back B→A) may share one side — do not
+      // treat the twin leave as a blocked face (01 不合格 E leave + back enter).
+      const twinLeaveEdge = incidents.find(
+        (o) => o.kind === 'leave' && o.c.from === inc.c.to && o.c.to === inc.c.from,
+      )
+      const twinLeaveFace = twinLeaveEdge
+        ? faceOfOutline(twinLeaveEdge.pt) ?? faceOf(twinLeaveEdge.pt)
+        : null
+      const leavesOnFace = incidents.filter((o) => {
+        if (o.kind !== 'leave') return false
+        const lf = faceOfOutline(o.pt) ?? faceOf(o.pt)
+        return lf === f
+      })
+      const onlyTwinLeave =
+        !!twinLeaveEdge &&
+        leavesOnFace.every(
+          (o) => o.c.from === inc.c.to && o.c.to === inc.c.from,
+        )
+      if (f && leaveFaces.has(f) && !onlyTwinLeave) addMover(inc)
       // Already on a free face can still be wrong: chord-through-diamond or foreign
       // rim graze (L4 回并 W tip with east→west ink / n-17 top ride).
       const pts = inc.c.points
@@ -3314,7 +3332,13 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
           if (crosses) grazeOrChord = true
         }
       }
-      if (badApproach || grazeOrChord) addMover(inc)
+      if ((badApproach || grazeOrChord) && !twinLeaveEdge) addMover(inc)
+      // Twin back wrongly sent the long way around after a prior W-prefer pass — restore.
+      if (
+        twinLeaveEdge &&
+        (pathBendCount(pts) > 1 || (twinLeaveFace && f !== twinLeaveFace))
+      )
+        addMover(inc)
     }
     for (const inc of movers) {
       const c = inc.c
@@ -3322,6 +3346,13 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
       if (!a) continue
       const others = connections.filter((o) => o !== c).map((o) => o.points)
       const beforeCross = pathCrossCount(c.points, others)
+      const twinLeave = incidents.find(
+        (o) =>
+          o.kind === 'leave' && o.c.from === c.to && o.c.to === c.from,
+      )
+      const twinFace = twinLeave
+        ? faceOfOutline(twinLeave.pt) ?? faceOf(twinLeave.pt)
+        : null
       // Graze/chord repairs often must cross the 否 trunk once to reach the west bay;
       // allow a +1 bump only while curing those defects (never for face-only movers).
       const curPts = c.points
@@ -3363,8 +3394,9 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
         const enter = pts[pts.length - 1]
         if (!onDiamondOutline(node, enter)) return
         const enterFace = faceOfOutline(enter) ?? faceOf(enter)
-        // Never land on a face that still hosts a leave (false merge with 是).
-        if (enterFace && leaveFaces.has(enterFace)) return
+        // Never land on a face that still hosts a leave (false merge with 是),
+        // except the twin leave of a bidirectional same-row hop.
+        if (enterFace && leaveFaces.has(enterFace) && enterFace !== twinFace) return
         if (enterFace && trunk.has(enterFace)) return
         // Last approach must come from outside the enter face. Otherwise a short
         // horizontal from the east hang chords through the diamond and lands on W
@@ -3401,8 +3433,11 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
           if (diamHit(pts[i], pts[i + 1])) return
         }
         const k = keyPt(enter)
-        if (reserved.has(k)) return
-        if (incidents.some((o) => o.c !== c && keyPt(o.pt) === k)) return
+        const twinPort =
+          twinLeave && keyPt(twinLeave.pt) === k
+        // Twin bidirectional hop may share the leave port; other reserved ports stay blocked.
+        if (reserved.has(k) && !twinPort) return
+        if (incidents.some((o) => o.c !== c && keyPt(o.pt) === k) && !twinPort) return
         const cross = pathCrossCount(pts, others)
         if (cross > crossBudget) return
         const bends = pathBendCount(pts)
@@ -3419,16 +3454,31 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
         }
       }
       // Prefer faces free of trunk + leaves; fall back to non-trunk if needed.
-      const faces = freeFaces.length
-        ? freeFaces
-        : fallbackFaces.length
-          ? fallbackFaces
-          : /** @type {('N'|'E'|'S'|'W')[]} */ (['W', 'E', 'N', 'S'])
+      // Twin bidirectional hop: try the shared leave face first (straight same-row).
+      const faces = /** @type {('N'|'E'|'S'|'W')[]} */ (
+        [
+          ...(twinFace ? [twinFace] : []),
+          ...(freeFaces.length ? freeFaces : fallbackFaces.length ? fallbackFaces : ['W', 'E', 'N', 'S']),
+        ].filter((f, i, arr) => arr.indexOf(f) === i)
+      )
       for (const face of faces) {
+        // Exact twin leave port first (0-bend same-row share).
+        if (twinFace && face === twinFace && twinLeave?.pt) {
+          const port = twinLeave.pt
+          const acx0 = a.x + a.w / 2
+          const acy0 = a.y + a.h / 2
+          const leave0 =
+            Math.abs(acx0 - port[0]) >= Math.abs(acy0 - port[1])
+              ? /** @type {number[]} */ ([acx0 > port[0] ? a.x : a.x + a.w, acy0])
+              : /** @type {number[]} */ ([acx0, acy0 > port[1] ? a.y : a.y + a.h])
+          tryPts([leave0, port])
+          tryPts([leave0, [leave0[0], port[1]], port])
+          tryPts([leave0, [port[0], leave0[1]], port])
+        }
         for (let slot = 0; slot < 4; slot += 1) {
           const port = staggerOnDiamondSide(node, face, slot, Math.max(slot + 1, 2))
           if (!onDiamondOutline(node, port)) continue
-          if (reserved.has(keyPt(port))) continue
+          if (reserved.has(keyPt(port)) && !(twinLeave && keyPt(twinLeave.pt) === keyPt(port))) continue
           // Orthogonal approach: last bend at port's outward axis then into port.
           const acx = a.x + a.w / 2
           const acy = a.y + a.h / 2
