@@ -250,6 +250,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
       from: g.from,
       to: g.to,
       kind: g.isBack ? 'back' : g.isMain ? 'main' : 'branch',
+      inputMain: !!g.inputMain,
       merged: g.merged,
       points,
       label: g.label,
@@ -268,21 +269,25 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   for (const axes of spineAxesByStage.values()) {
     for (const ids of axes) pinSpineAxis(placed, ids, connections)
     separateSpineAxes(placed, axes, connections)
-    pushBranchesOffSpine(placed, axes.flat())
+    pushBranchesOffSpine(placed, axes.flat(), connections)
   }
   // straighten/polish prefer diamond-point routes; same-row forks stay side-horizontal.
   restoreSameRowLinks(placed, connections, diamonds)
   // Final: linked boxes share centres; every port on a face centre (after polish skew).
   const allSpine = new Set([...spineAxesByStage.values()].flat(2))
+  restoreInputMainStraight(placed, connections, allSpine)
   preferCenteredLinks(placed, connections, diamonds, allSpine)
   // straighten/polish above can reintroduce edge crossings that per-stage repair already
   // cleared (L4 horizontal n-7→n-8 vs settlement). Crossing repair must run on the combined
   // frame before labels lock geometry.
   repairEdgeCrossings(placed, connections, diamonds, allSpine)
   restoreSameRowLinks(placed, connections, diamonds)
+  restoreInputMainStraight(placed, connections, allSpine)
   repairEdgeCrossings(placed, connections, diamonds, allSpine)
+  restoreInputMainStraight(placed, connections, allSpine)
   // Iterate S2 → corridor-separate → cross-repair until port/rail/cross settle (stages-on).
   settleGeometryPasses(placed, connections, diamonds, allSpine)
+  restoreInputMainStraight(placed, connections, allSpine)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
   yield
@@ -805,6 +810,8 @@ function layoutStageMainline({
     for (let i = 0; i < lane; i += 1) acc += (widths[i] ?? 0) + LANE_SEP
     return acc
   }
+  /** Input main:true pairs (incl. hang→spine rejoins that are not spineNext). */
+  const inputMainAt = new Set(groups.filter((g) => g.inputMain).map((g) => `${g.from}|${g.to}`))
   const placeHang = (it) => {
     const sign = /** @type {number} */ (signOf.get(it.h))
     const lane = /** @type {number} */ (laneOf.get(it.h))
@@ -882,6 +889,67 @@ function layoutStageMainline({
     }
     const sameRow = Boolean(it.h.rootOnSpine && fork?.kind === 'decision' && leave && it.h.boxes.length)
     const key = laneKey(sign, lane)
+    const lx =
+      sign < 0
+        ? spineX0 - hopGap - laneOffset(sign, lane) - (widths[lane] ?? 0)
+        : spineX0 + spineW + hopGap + laneOffset(sign, lane)
+    // Hang→spine rejoin marked main:true in input must stay 0-bend. Align the last hang box
+    // with the rejoin spine node (same row) so the rejoin is a side-horizontal; unmarked leave
+    // from the fork may bend ≤1. Fork same-row is the default only when the rejoin is not input-main.
+    const lastHangId = it.h.boxes.length ? it.h.boxes[it.h.boxes.length - 1] : null
+    const rejoinBox = it.h.rejoin ? placed.get(it.h.rejoin) : null
+    const preferRejoinRow = Boolean(
+      lastHangId &&
+        rejoinBox &&
+        inputMainAt.has(`${lastHangId}|${it.h.rejoin}`),
+    )
+    if (preferRejoinRow) {
+      const sizes = it.h.boxes.map((id) => frameSize(byId.get(id)))
+      const last = sizes[sizes.length - 1]
+      const ys = new Array(it.h.boxes.length)
+      ys[ys.length - 1] = rejoinBox.y + rejoinBox.h / 2 - last.h / 2
+      for (let i = ys.length - 2; i >= 0; i -= 1) {
+        ys[i] = ys[i + 1] - LAYER_GAP - sizes[i].h
+      }
+      // Keep clear of earlier lane content: if the stack collides, shift the whole chain down.
+      const overlapsAt = (id, x0, y0, w0, h0) => {
+        for (const [oid, r] of placed) {
+          if (oid === id) continue
+          if (x0 + 0.5 < r.x + r.w && r.x + 0.5 < x0 + w0 && y0 + 0.5 < r.y + r.h && r.y + 0.5 < y0 + h0)
+            return true
+        }
+        return false
+      }
+      for (let shift = 0; shift < 24; shift += 1) {
+        const dy = shift * (LAYER_GAP / 2)
+        let hit = false
+        for (let i = 0; i < it.h.boxes.length; i += 1) {
+          const id = it.h.boxes[i]
+          if (drawn.has(id)) continue
+          const { w, h } = sizes[i]
+          const x = lx + ((widths[lane] ?? w) - w) / 2
+          if (overlapsAt(id, x, ys[i] + dy, w, h)) {
+            hit = true
+            break
+          }
+        }
+        if (!hit) {
+          for (let i = 0; i < it.h.boxes.length; i += 1) ys[i] += dy
+          break
+        }
+      }
+      let bottom = laneCursorY.get(key) ?? -Infinity
+      for (let i = 0; i < it.h.boxes.length; i += 1) {
+        const id = it.h.boxes[i]
+        if (drawn.has(id)) continue
+        const { w, h } = sizes[i]
+        placed.set(id, { x: lx + ((widths[lane] ?? w) - w) / 2, y: ys[i], w, h })
+        drawn.add(id)
+        bottom = Math.max(bottom, ys[i] + h + LAYER_GAP)
+      }
+      laneCursorY.set(key, bottom)
+      return
+    }
     let by
     if (sameRow) {
       const h0 = frameSize(byId.get(it.h.boxes[0])).h
@@ -889,10 +957,6 @@ function layoutStageMainline({
       by = Math.max(laneCursorY.get(key) ?? -Infinity, forkY)
     } else if (laneCursorY.has(key)) by = /** @type {number} */ (laneCursorY.get(key))
     else by = leave ? leave.y + leave.h + LAYER_GAP : 0
-    const lx =
-      sign < 0
-        ? spineX0 - hopGap - laneOffset(sign, lane) - (widths[lane] ?? 0)
-        : spineX0 + spineW + hopGap + laneOffset(sign, lane)
     for (const id of it.h.boxes) {
       if (drawn.has(id)) continue
       const { w, h } = frameSize(byId.get(id))
@@ -1015,6 +1079,8 @@ function layoutStageMainline({
       // Local stage trunks (hang folded into its own column) count as main ink for straighten/
       // pin/spine-bend reporting — they are the column's straight trunk even without global main.
       kind: g.isBack ? 'back' : g.isMain || onLocalTrunk ? 'main' : 'branch',
+      /** Input main:true — may be a hang rejoin that is not spineNext / kind main. */
+      inputMain: !!g.inputMain,
       merged: g.merged,
       points,
       routeExhausted,
@@ -1041,15 +1107,17 @@ function layoutStageMainline({
   ].filter((ids) => ids.length > 0)
   for (const axis of spineAxes) pinSpineAxis(placed, axis, connections)
   separateSpineAxes(placed, spineAxes, connections)
-  pushBranchesOffSpine(placed, spineColumn)
+  pushBranchesOffSpine(placed, spineColumn, connections)
   // Polish / pin can rewrite side links; put same-row decision branches and backs back to 0-bend.
   restoreSameRowLinks(placed, connections, diamonds)
+  restoreInputMainStraight(placed, connections, spineIdSet)
   // Linked boxes prefer shared centres; every port sits on a face centre (polish must not leave a skew).
   preferCenteredLinks(placed, connections, diamonds, spineIdSet)
   // Labelled hops shorter than their text: after centres settle (same-row hang↔hang can be only
   // LANE_SEP wide), push so the chip still leaves a stub of ink on each side.
   lengthenLabeledHops(placed, connections, spineIdSet, diamonds)
   restoreSameRowLinks(placed, connections, diamonds)
+  restoreInputMainStraight(placed, connections, spineIdSet)
   // Side-channel / outer-corridor backs: push the vertical run outward until an on-ink label fits.
   clearCorridorForLabels(placed, connections)
   // Final gate: repair foreign-box cuts, then reduce edge crossings without reintroducing hits.
@@ -1066,11 +1134,14 @@ function layoutStageMainline({
   }
   repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
   restoreSameRowLinks(placed, connections, diamonds)
+  restoreInputMainStraight(placed, connections, spineIdSet)
   // Crossing repair must be last geometry pass: restoreSameRowLinks can still rewrite ink
   // (even crossing-aware) and must not leave a higher-cross state than repair achieved.
   repairEdgeCrossings(placed, connections, diamonds, spineIdSet)
+  restoreInputMainStraight(placed, connections, spineIdSet)
   // Iterate S2 → corridor-separate → cross-repair until port/rail/cross settle.
   settleGeometryPasses(placed, connections, diamonds, spineIdSet)
+  restoreInputMainStraight(placed, connections, spineIdSet)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 
@@ -1270,8 +1341,9 @@ function pinSpineAxis(placed, spineIds, connections = []) {
  * If a non-spine node overlaps the pinned trunk, shove it into the nearer side lane.
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {string[]} spineIds
+ * @param {object[]} [connections] optional — inputMain same-row rejoins keep a readable hop gap
  */
-function pushBranchesOffSpine(placed, spineIds) {
+function pushBranchesOffSpine(placed, spineIds, connections = []) {
   const spineSet = new Set(spineIds)
   /** @type {{ x: number, y: number, w: number, h: number }[]} */
   const spines = []
@@ -1281,15 +1353,47 @@ function pushBranchesOffSpine(placed, spineIds) {
   }
   if (!spines.length) return
   const axis = spines.reduce((s, r) => s + r.x + r.w / 2, 0) / spines.length
-  const clear = 10
+  /** Hang ids that intentionally share a row with an input-main spine rejoin target. */
+  const inputMainHang = new Set()
+  for (const c of connections) {
+    if (!c.inputMain || c.kind === 'main') continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b || !sameRowLink(a, b)) continue
+    if (spineSet.has(c.from) && !spineSet.has(c.to)) inputMainHang.add(c.to)
+    if (spineSet.has(c.to) && !spineSet.has(c.from)) inputMainHang.add(c.from)
+  }
+  const clearDefault = 10
+  const clearMain = LANE_GAP
   for (const [id, r] of [...placed]) {
     if (spineSet.has(id)) continue
     for (const s of spines) {
       if (!(r.x < s.x + s.w - 0.5 && s.x < r.x + r.w - 0.5 && r.y < s.y + s.h - 0.5 && s.y < r.y + r.h - 0.5)) continue
+      const clear = inputMainHang.has(id) ? clearMain : clearDefault
       const next = r.x + r.w / 2 < axis ? { ...r, x: s.x - clear - r.w } : { ...r, x: s.x + s.w + clear }
       placed.set(id, next)
       break
     }
+  }
+  // Same-row inputMain rejoin: even without bbox overlap, keep ≥ LANE_GAP so the 0-bend hop is readable.
+  for (const c of connections) {
+    if (!c.inputMain || c.kind === 'main') continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b || !sameRowLink(a, b)) continue
+    const fromSpine = spineSet.has(c.from)
+    const toSpine = spineSet.has(c.to)
+    if (fromSpine === toSpine) continue
+    const hangId = fromSpine ? c.to : c.from
+    const spineId = fromSpine ? c.from : c.to
+    const hang = placed.get(hangId)
+    const spine = placed.get(spineId)
+    if (!hang || !spine) continue
+    const hangRight = hang.x >= spine.x + spine.w / 2
+    const gap = hangRight ? hang.x - (spine.x + spine.w) : spine.x - (hang.x + hang.w)
+    if (gap >= clearMain - 0.5) continue
+    const need = clearMain - gap
+    placed.set(hangId, { ...hang, x: hang.x + (hangRight ? need : -need) })
   }
 }
 
@@ -1345,6 +1449,16 @@ function preferCenteredLinks(placed, connections, diamonds, spineIds) {
     const hangCy = hang.y + hang.h / 2
     // Already centred, or a deep stack — leave the stack alone.
     if (Math.abs(forkCy - hangCy) < 2 || Math.abs(forkCy - hangCy) > fork.h) continue
+    // Input main:true rejoin (hang→spine) already sits on the rejoin row for a 0-bend.
+    // Do not snap that hang back onto the fork row for leave centering (08 n-14→n-15).
+    const holdsInputMainRow = connections.some((o) => {
+      if (!o.inputMain || o.kind === 'main') return false
+      if (o.from !== hangId && o.to !== hangId) return false
+      const otherId = o.from === hangId ? o.to : o.from
+      const other = placed.get(otherId)
+      return !!(other && sameRowLink(hang, other))
+    })
+    if (holdsInputMainRow) continue
     const next = { ...hang, y: forkCy - hang.h / 2 }
     if ([...placed].some(([id, r]) => id !== hangId && overlaps(next, r))) continue
     placed.set(hangId, next)
@@ -1618,6 +1732,11 @@ function sameRowLink(a, b) {
   return Math.abs(a.y + a.h / 2 - (b.y + b.h / 2)) < 2
 }
 
+/** Two boxes share a column when their horizontal centres align. */
+function sameColLink(a, b) {
+  return Math.abs(a.x + a.w / 2 - (b.x + b.w / 2)) < 2
+}
+
 /**
  * After polish/straighten, put decision↔same-row neighbour links back to a clear side route.
  * Never force a 0-bend that cuts through a foreign box (L3/L4 nested ends, 07 same-row).
@@ -1643,6 +1762,81 @@ function restoreSameRowLinks(placed, connections, diamonds) {
     // Keep existing when the restore candidate is strictly worse on crossings.
     if (after > before) continue
     c.points = clear
+  }
+}
+
+/**
+ * Re-pin hang boxes that carry an input main:true rejoin onto the rejoin node's row when
+ * polish / lengthen / preferCentered drifted them. Only moves the non-spine end; spine stays.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string> | undefined} [spineIds]
+ */
+function alignInputMainRejoinRows(placed, connections, spineIds) {
+  const overlaps = (a, b) =>
+    a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5
+  for (const c of connections) {
+    if (!c.inputMain || c.kind === 'main') continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b) continue
+    if (sameRowLink(a, b)) continue
+    const fromSpine = spineIds?.has(c.from)
+    const toSpine = spineIds?.has(c.to)
+    // Hang → spine rejoin: move the hang onto the spine node's row.
+    if (fromSpine === toSpine) continue
+    const hangId = fromSpine ? c.to : c.from
+    const spineId = fromSpine ? c.from : c.to
+    const hang = placed.get(hangId)
+    const spine = placed.get(spineId)
+    if (!hang || !spine) continue
+    const next = { ...hang, y: spine.y + spine.h / 2 - hang.h / 2 }
+    if ([...placed].some(([id, r]) => id !== hangId && overlaps(next, r))) continue
+    placed.set(hangId, next)
+  }
+}
+
+/**
+ * Input main:true edges that are not spineNext still must stay 0-bend when place put the
+ * ends on one row/column (hang→spine rejoin). Restore after polish / settle without raising
+ * crossings or cutting boxes. May first re-align hang→rejoin rows when they drifted.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string> | undefined} [spineIds]
+ */
+function restoreInputMainStraight(placed, connections, spineIds) {
+  if (spineIds) alignInputMainRejoinRows(placed, connections, spineIds)
+  for (const c of connections) {
+    if (!c.inputMain || c.kind === 'main') continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b) continue
+    const others = connections.filter((o) => o !== c).map((o) => o.points)
+    const beforeCross = c.points?.length ? pathCrossCount(c.points, others) : Infinity
+    const beforeBends = c.points?.length ? pathBendCount(c.points) : Infinity
+    /** @type {number[][] | null} */
+    let cand = null
+    if (sameRowLink(a, b)) {
+      cand =
+        clearSideHorizontal(a, b, placed, c.from, c.to, 16, others) ||
+        acceptClear(sideHorizontal(a, b), placed, c.from, c.to)
+    } else if (sameColLink(a, b) && !columnBlocked(a, b, placed, c.from, c.to)) {
+      const x = (a.x + a.w / 2 + b.x + b.w / 2) / 2
+      const y0 = a.y < b.y ? a.y + a.h : a.y
+      const y1 = a.y < b.y ? b.y : b.y + b.h
+      const pts = [
+        [x, y0],
+        [x, y1],
+      ]
+      if (pathClear(pts, placed, c.from, c.to)) cand = pts
+    }
+    if (!cand?.length) continue
+    if (pathBendCount(cand) !== 0) continue
+    const afterCross = pathCrossCount(cand, others)
+    if (afterCross > beforeCross) continue
+    // Prefer any 0-bend clear candidate over a bent path; allow equal crossings.
+    if (beforeBends === 0 && afterCross > beforeCross) continue
+    c.points = cand
   }
 }
 

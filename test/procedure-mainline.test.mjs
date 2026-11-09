@@ -498,7 +498,6 @@ test('mainline: hang→spine rejoin uses hang lane (leave N/S, 1 bend, spine sid
     { file: '03-labour-outsourcing-contract.zh-CN.json', id: 'c:n-7->n-2', leave: 'N' }, // upward distant
     { file: '07-share-acquisition-agreement.zh-CN.json', id: 'c:n-13->n-14', leave: 'S' }, // downward distant
     { file: '05-premises-lease.zh-CN.json', id: 'c:n-25->n-22', leave: 'N' }, // upward rejoin
-    { file: '08-work-injury-recognition.zh-CN.json', id: 'c:n-14->n-15', leave: 'S' }, // near downward
   ]
   for (const { file, id, leave } of cases) {
     const spec = load(file)
@@ -517,6 +516,27 @@ test('mainline: hang→spine rejoin uses hang lane (leave N/S, 1 bend, spine sid
     assert.ok(bendsOf(c.points) <= 1, `${file} ${id} hang-lane ≤1 bend, got ${bendsOf(c.points)}`)
     const hangCx = hang.position.x + hang.data.w / 2
     assert.ok(Math.abs(c.points[1][0] - hangCx) < 1, `${file} ${id} vertical on hang centre`)
+  }
+  // 08 n-14→n-15 is input main:true hang→spine rejoin: place aligns hang with rejoin row so
+  // the edge stays 0-bend side-horizontal (not the unmarked hang-lane S→side pattern above).
+  {
+    const spec = load('08-work-injury-recognition.zh-CN.json')
+    const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+    const byId = new Map(g.nodes.map((n) => [n.id, n]))
+    const c = g.connections.find((e) => e.id === 'c:n-14->n-15')
+    assert.ok(c)
+    const hang = byId.get('n-14')
+    const spineN = byId.get('n-15')
+    assert.ok(hang && spineN)
+    assert.equal(bendsOf(c.points), 0, 'input main:true rejoin must be straight')
+    const leaveFace = face(hang, c.points[0])
+    const enter = face(spineN, c.points[c.points.length - 1])
+    assert.ok(leaveFace === 'E' || leaveFace === 'W', `same-row leave on side face, got ${leaveFace}`)
+    assert.ok(enter === 'E' || enter === 'W', `same-row enter on spine side, got ${enter}`)
+    assert.ok(
+      Math.abs(hang.position.y + hang.data.h / 2 - (spineN.position.y + spineN.data.h / 2)) < 2,
+      'hang shares rejoin row',
+    )
   }
   // Trunk N/S on the upward target stay free of the rejoin.
   {

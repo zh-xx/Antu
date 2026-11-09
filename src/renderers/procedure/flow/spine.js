@@ -118,7 +118,17 @@ export function analyseProcedureGraph(spec) {
     const labels = group.map((e) => e.condition).filter(Boolean)
     // Main on any component spine (not only the primary entry's chain).
     const isMain = !isBack && spineNext.get(from) === to
-    return { from, to, isBack, isMain, merged: group.length, label: labels.length ? labels.join(' / ') : '' }
+    // Input main:true (may be a hang→spine rejoin that is not on spineNext).
+    const inputMain = group.some((e) => e.main === true)
+    return {
+      from,
+      to,
+      isBack,
+      isMain,
+      inputMain,
+      merged: group.length,
+      label: labels.length ? labels.join(' / ') : '',
+    }
   })
 
   return { byId, outE, inE, back, ruleEnds, entries, spine, spines, spineSet, spineNext, groups }
