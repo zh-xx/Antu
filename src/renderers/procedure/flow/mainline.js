@@ -164,6 +164,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
       branchSign,
       byId,
       forceHangSide: fields?.mainlineHangSide ?? null,
+      vertical,
     })
     segments.push({ st, ids: ownIds, ...seg })
     yield
@@ -293,7 +294,7 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   repairEdgeCrossings(placed, connections, diamonds, allSpine)
   restoreInputMainStraight(placed, connections, allSpine)
   // Iterate S2 → corridor-separate → cross-repair until port/rail/cross settle (stages-on).
-  settleGeometryPasses(placed, connections, diamonds, allSpine, pills)
+  settleGeometryPasses(placed, connections, diamonds, allSpine, pills, vertical)
   restoreInputMainStraight(placed, connections, allSpine)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
@@ -333,6 +334,7 @@ function layoutStageMainline({
   branchSign,
   byId,
   forceHangSide = null,
+  vertical = true,
 }) {
   const placed = new Map()
   const drawn = new Set()
@@ -1153,7 +1155,7 @@ function layoutStageMainline({
       return k === 'start' || k === 'end'
     }),
   )
-  settleGeometryPasses(placed, connections, diamonds, spineIdSet, pills)
+  settleGeometryPasses(placed, connections, diamonds, spineIdSet, pills, vertical)
   restoreInputMainStraight(placed, connections, spineIdSet)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
@@ -1968,7 +1970,7 @@ function crossingRepairAlts(c, placed, diamonds, spineIds, others) {
  * crossing repair, then snap diamond endpoints and one last S2+separate. Avoids the
  * oscillation where each single pass undoes another constraint.
  */
-function settleGeometryPasses(placed, connections, diamonds, spineIds, pills = new Set()) {
+function settleGeometryPasses(placed, connections, diamonds, spineIds, pills = new Set(), vertical = true) {
   for (let i = 0; i < 3; i += 1) {
     resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds)
     resolveSharedDiamondEnters(placed, connections, diamonds, spineIds)
@@ -1982,8 +1984,9 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds, pills = n
   // ink (B04 H stages-on: n-2 left by 11.5u while c:n-1→n-2 / c:n-2→n-3 stayed put).
   snapRectEndpoints(placed, connections, diamonds)
   // Capsule start/end only: last run must approach along the outward normal into the
-  // E/W pole (V08b vertical face-ride meets the pill NE arc). Do not rewrite step rects.
-  ensureRectOutwardApproach(placed, connections, diamonds, pills)
+  // stadium arc poles (V08b vertical face-ride meets the pill NE arc). Do not rewrite step rects.
+  // Arc poles are E/W when vertical; after horizontal polish swap they are frame N/S.
+  ensureRectOutwardApproach(placed, connections, diamonds, pills, vertical)
   /** Refuse hit-repair alts that create new ≥48 coincidences (08 H-on 110u rail). */
   const hardAmbCount = (skipId, pts) => {
     const fake = connections.map((c) => (c.id === skipId ? { ...c, points: pts } : c))
@@ -2135,7 +2138,7 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds, pills = n
   // Re-apply enter face/approach/rim rules last so browser ink matches tipFace.
   resolveSharedDiamondEnters(placed, connections, diamonds, spineIds)
   repairRimFalseConnections(placed, connections, diamonds, spineIds)
-  ensureRectOutwardApproach(placed, connections, diamonds, pills)
+  ensureRectOutwardApproach(placed, connections, diamonds, pills, vertical)
 }
 
 /**
@@ -2629,17 +2632,19 @@ function snapDiamondEndpoints(placed, connections, diamonds) {
 }
 
 /**
- * Start/end stadium poles (E/W) are arcs: a vertical face-ride into the E mid meets the
- * NE arc in the browser (V08b). Rewrite those enters so the last run is outward into a
- * cardinal mid. When the current E/W face has no 0-cross outward stub, try other face
- * mids rather than installing a crossing stub. Skips diamonds and ordinary step rects
- * (B04/B09 regressions). Requires `pills` = start/end ids.
+ * Start/end stadium arc poles: a face-parallel ride into the arc mid meets the pill arc
+ * in the browser (V08b). Rewrite those enters so the last run is outward into a cardinal
+ * mid. When the current arc face has no 0-cross outward stub, try other face mids rather
+ * than installing a crossing stub. Skips diamonds and ordinary step rects (B04/B09
+ * regressions). Requires `pills` = start/end ids.
+ * Arc faces: E/W when `vertical`; N/S when horizontal (frame axes before polish swap).
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {object[]} connections
  * @param {Set<string>} diamonds
  * @param {Set<string>} [pills]
+ * @param {boolean} [vertical]
  */
-function ensureRectOutwardApproach(placed, connections, diamonds, pills = new Set()) {
+function ensureRectOutwardApproach(placed, connections, diamonds, pills = new Set(), vertical = true) {
   const midOf = (box, face) => {
     if (face === 'E') return /** @type {number[]} */ ([box.x + box.w, box.y + box.h / 2])
     if (face === 'W') return /** @type {number[]} */ ([box.x, box.y + box.h / 2])
@@ -2731,9 +2736,11 @@ function ensureRectOutwardApproach(placed, connections, diamonds, pills = new Se
     const prev = c.points[c.points.length - 2]
     const face = faceOfMid(box, p)
     if (!face) continue
-    // Pill arcs are the E/W poles; N/S are flat. Only rewrite E/W face-parallel rides.
-    if (face !== 'E' && face !== 'W') continue
-    const alongFace = Math.abs(prev[0] - p[0]) < 0.5
+    // Pill arcs: E/W when vertical; N/S in horizontal frame (polish swaps them to painted E/W).
+    const arcFaces = vertical ? ['E', 'W'] : ['N', 'S']
+    if (!arcFaces.includes(face)) continue
+    // Face-parallel = last run collinear with the arc face (vertical into E/W, horizontal into N/S).
+    const alongFace = vertical ? Math.abs(prev[0] - p[0]) < 0.5 : Math.abs(prev[1] - p[1]) < 0.5
     if (!alongFace) continue
     const others = connections.filter((o) => o !== c).map((o) => o.points)
     const beforeCross = pathCrossCount(c.points, others)

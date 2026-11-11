@@ -177,6 +177,39 @@ test('V08b V: capsule enter on cardinal mid with outward approach; n-b2 W tip le
   assert.equal(pathCrossCount(c.points, others), 0)
 })
 
+test('B02 H: capsule end enter uses outward stub (not face-parallel into painted E arc)', () => {
+  // Horizontal frame maps painted E/W arcs to N/S before polish; rewrite must cover those faces.
+  const spec = JSON.parse(
+    readFileSync(join(ROOT, 'test/fixtures/mainline-strict/B02-multioutlet-shared.zh-CN.json'), 'utf8'),
+  )
+  const g = buildProcedureGraph(spec, fields, undefined, 'horizontal')
+  const c = g.connections.find((x) => x.id === 'c:n-2->n-7')
+  assert.ok(c, 'c:n-2->n-7')
+  const endBox = boxOf(g, 'n-7')
+  const end = c.points.at(-1)
+  const prev = c.points.at(-2)
+  const face = faceOfMid(endBox, end)
+  assert.ok(face === 'E' || face === 'W', `enter must sit on painted E/W mid, got ${face} @ ${end}`)
+  assert.ok(outwardOk(face, prev, end), `last run must be outward into ${face}, prev=${prev} end=${end}`)
+  assert.equal(pathCrossCount(c.points, g.connections.filter((o) => o !== c).map((o) => o.points)), 0)
+})
+
+test('B09 V: S mid occupied by sibling → second leave may stagger on S (not free-mid skip)', () => {
+  // Documented same-face multi-leave: S mid held by n-11→n-12; n-11→n-5 at non-mid S is intentional.
+  const spec = JSON.parse(
+    readFileSync(join(ROOT, 'test/fixtures/mainline-strict/B09-nested-hang-rejoin.zh-CN.json'), 'utf8'),
+  )
+  const g = buildProcedureGraph(spec, fields, undefined, 'vertical')
+  const box = boxOf(g, 'n-11')
+  const sMid = midOf(box, 'S')
+  const to12 = g.connections.find((c) => c.from === 'n-11' && c.to === 'n-12')
+  const to5 = g.connections.find((c) => c.from === 'n-11' && c.to === 'n-5')
+  assert.ok(to12 && to5)
+  assert.ok(Math.hypot(to12.points[0][0] - sMid[0], to12.points[0][1] - sMid[1]) <= 2.5, 'sibling owns S mid')
+  assert.equal(faceOfMid(box, to5.points[0]), null, 'second leave is non-mid on S')
+  assert.ok(Math.abs(to5.points[0][1] - (box.y + box.h)) <= 2.5, 'still on S face')
+})
+
 test('08 V: inputMain routes stay straight (no port4 regression)', () => {
   const spec = JSON.parse(
     readFileSync(join(ROOT, 'examples/procedure/08-work-injury-recognition.zh-CN.json'), 'utf8'),
