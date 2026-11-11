@@ -10,6 +10,7 @@ import { buildProcedureGraph } from '../src/renderers/procedure/flow/layout.js'
 import {
   diamondVertices,
   isCardinalDiamondTip,
+  betterDiamondEnterCandidate,
   diamondSidePortCandidates,
   staggerOnDiamondSide,
   onDiamondOutline,
@@ -61,6 +62,38 @@ test('diamondPorts: isCardinalDiamondTip vs face/slant; candidates tip-first', (
   assert.equal(isCardinalDiamondTip(n, cands[0]), true)
   assert.deepEqual(cands[0], v.N)
   assert.ok(cands.slice(1).every((p) => !isCardinalDiamondTip(n, p)))
+})
+
+test('enter rank: free tip class beats fewer-bend slant at same cross (non-flat)', () => {
+  // Policy unit: not S1/L4-specific. A 3-bend tip must win over a 1-bend slant when cross ties.
+  const tip = { cross: 0, tipRank: 0, bends: 3, len: 900 }
+  const slant = { cross: 0, tipRank: 1, bends: 1, len: 200 }
+  assert.equal(betterDiamondEnterCandidate(tip, slant), true, 'tip class before bends')
+  assert.equal(betterDiamondEnterCandidate(slant, tip), false)
+  // Among tips, fewer bends still wins.
+  assert.equal(
+    betterDiamondEnterCandidate(
+      { cross: 0, tipRank: 0, bends: 1, len: 400 },
+      { cross: 0, tipRank: 0, bends: 3, len: 200 },
+    ),
+    true,
+  )
+  // Cross remains hard: tip with +1 cross loses to 0-cross slant.
+  assert.equal(
+    betterDiamondEnterCandidate(
+      { cross: 1, tipRank: 0, bends: 1, len: 100 },
+      { cross: 0, tipRank: 1, bends: 4, len: 800 },
+    ),
+    false,
+  )
+  // No tip available: among slants, bends then length.
+  assert.equal(
+    betterDiamondEnterCandidate(
+      { cross: 0, tipRank: 1, bends: 2, len: 500 },
+      { cross: 0, tipRank: 1, bends: 3, len: 100 },
+    ),
+    true,
+  )
 })
 
 test('S1 V: free N tip preferred over NW slant for branch-merge enter', () => {

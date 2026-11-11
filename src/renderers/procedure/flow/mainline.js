@@ -76,6 +76,7 @@ import {
   staggerOnDiamondSide,
   diamondSidePortCandidates,
   isCardinalDiamondTip,
+  betterDiamondEnterCandidate,
   orthoRoutesFromPort,
 } from './diamondPorts.js'
 
@@ -3651,16 +3652,19 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
         if (afterAmb > beforeAmb) return
         const bends = pathBendCount(pts)
         const len = pathLength(pts)
-        // Prefer cardinal tip over slant when cross/bends tie (four-point priority). A free
-        // feasible tip must beat a slant even if the slant is slightly shorter.
+        // Four-point class-first (see betterDiamondEnterCandidate): tip class beats slant
+        // at equal cross even with more bends; hard filters above already refuse illegal alts.
         const tipRank = isCardinalDiamondTip(node, enter) ? 0 : 1
-        const bestTipRank = bestPts ? (isCardinalDiamondTip(node, bestPts[bestPts.length - 1]) ? 0 : 1) : 1
-        if (
-          cross < bestCross ||
-          (cross === bestCross && bends < bestBends) ||
-          (cross === bestCross && bends === bestBends && tipRank < bestTipRank) ||
-          (cross === bestCross && bends === bestBends && tipRank === bestTipRank && len + 1e-6 < bestLen)
-        ) {
+        const cand = { cross, tipRank, bends, len }
+        const best = bestPts
+          ? {
+              cross: bestCross,
+              tipRank: isCardinalDiamondTip(node, bestPts[bestPts.length - 1]) ? 0 : 1,
+              bends: bestBends,
+              len: bestLen,
+            }
+          : null
+        if (!best || betterDiamondEnterCandidate(cand, best)) {
           bestCross = cross
           bestBends = bends
           bestLen = len

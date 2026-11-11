@@ -140,6 +140,21 @@ export function isCardinalDiamondTip(n, p, tol = 2.5) {
 }
 
 /**
+ * Enter-port ranking after hard filters (clear / reserved / trunk / cross budget / collinear).
+ * Lexico: cross → tipRank (0 = cardinal tip, 1 = slant) → bends → length.
+ * Tip is a class: a free legal tip beats any same-cross slant even when the tip needs more
+ * bends. Callers must already refuse illegal / occupied / crossing / pierce candidates.
+ * @param {{ cross: number, tipRank: number, bends: number, len: number }} a
+ * @param {{ cross: number, tipRank: number, bends: number, len: number }} b
+ */
+export function betterDiamondEnterCandidate(a, b) {
+  if (a.cross !== b.cross) return a.cross < b.cross
+  if (a.tipRank !== b.tipRank) return a.tipRank < b.tipRank
+  if (a.bends !== b.bends) return a.bends < b.bends
+  return a.len + 1e-6 < b.len
+}
+
+/**
  * Port candidates for one cardinal side: exact tip first (when free), then slant
  * stagger slots for multi-attach / fifth-edge exceptions. Callers filter by reservation.
  * @param {{ position?: { x: number, y: number }, x?: number, y?: number, data?: { w: number, h: number }, w?: number, h?: number }} n
