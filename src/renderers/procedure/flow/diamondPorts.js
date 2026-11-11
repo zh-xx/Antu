@@ -124,6 +124,45 @@ export function staggerOnDiamondSide(n, side, index, count) {
 }
 
 /**
+ * True when `p` sits on a painted diamond cardinal tip (N/E/S/W vertex), not a slant.
+ * Face/side classification alone is insufficient — a SW-edge attach still "faces W".
+ * @param {{ position?: { x: number, y: number }, x?: number, y?: number, data?: { w: number, h: number }, w?: number, h?: number }} n
+ * @param {number[]} p
+ * @param {number} [tol]
+ */
+export function isCardinalDiamondTip(n, p, tol = 2.5) {
+  const v = diamondVertices(n)
+  for (const f of /** @type {const} */ (['N', 'E', 'S', 'W'])) {
+    const t = /** @type {[number, number]} */ (v[f])
+    if (Math.hypot(p[0] - t[0], p[1] - t[1]) <= tol) return true
+  }
+  return false
+}
+
+/**
+ * Port candidates for one cardinal side: exact tip first (when free), then slant
+ * stagger slots for multi-attach / fifth-edge exceptions. Callers filter by reservation.
+ * @param {{ position?: { x: number, y: number }, x?: number, y?: number, data?: { w: number, h: number }, w?: number, h?: number }} n
+ * @param {'N'|'E'|'S'|'W'} side
+ * @param {{ includeTip?: boolean, staggerSlots?: number }} [opts]
+ * @returns {number[][]}
+ */
+export function diamondSidePortCandidates(n, side, opts = {}) {
+  const includeTip = opts.includeTip !== false
+  const staggerSlots = opts.staggerSlots ?? 4
+  /** @type {number[][]} */
+  const out = []
+  const v = diamondVertices(n)
+  if (includeTip) out.push(/** @type {number[]} */ (v[side]))
+  for (let slot = 0; slot < staggerSlots; slot += 1) {
+    // count≥2 forces slant ports (never the tip) — used only after tip is considered.
+    const p = staggerOnDiamondSide(n, side, slot, Math.max(slot + 1, 2))
+    out.push(p)
+  }
+  return out
+}
+
+/**
  * Orthogonal candidates from a diamond outline port to a target box.
  * Enter is recomputed on a target face (side / top / bottom) — never by rewriting an old
  * 2-point path's second vertex in place.

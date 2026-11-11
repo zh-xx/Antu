@@ -74,6 +74,8 @@ import {
   diamondVertices,
   onDiamondOutline,
   staggerOnDiamondSide,
+  diamondSidePortCandidates,
+  isCardinalDiamondTip,
   orthoRoutesFromPort,
 } from './diamondPorts.js'
 
@@ -1968,6 +1970,9 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds) {
   // Stage packing / pin / prefer-centered can shift rect boxes without rewriting main
   // ink (B04 H stages-on: n-2 left by 11.5u while c:n-1→n-2 / c:n-2→n-3 stayed put).
   snapRectEndpoints(placed, connections, diamonds)
+  // Capsule/rect: last run must approach along the outward normal into the face mid
+  // (V08b vertical run along the east face visually meets the NE arc of a pill).
+  ensureRectOutwardApproach(placed, connections, diamonds)
   /** Refuse hit-repair alts that create new ≥48 coincidences (08 H-on 110u rail). */
   const hardAmbCount = (skipId, pts) => {
     const fake = connections.map((c) => (c.id === skipId ? { ...c, points: pts } : c))
@@ -2119,6 +2124,7 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds) {
   // Re-apply enter face/approach/rim rules last so browser ink matches tipFace.
   resolveSharedDiamondEnters(placed, connections, diamonds, spineIds)
   repairRimFalseConnections(placed, connections, diamonds, spineIds)
+  ensureRectOutwardApproach(placed, connections, diamonds)
 }
 
 /**
@@ -2608,6 +2614,162 @@ function snapDiamondEndpoints(placed, connections, diamonds) {
     }
     if (c.points.length >= 2) fixSeg(0, 1)
     if (c.points.length >= 2) fixSeg(c.points.length - 2, c.points.length - 1)
+  }
+}
+
+/**
+ * If a rect/capsule endpoint sits on a face mid but the previous vertex approaches
+ * along that face (parallel to the edge), rewrite so the final run is along the
+ * outward normal into a cardinal mid. Capsule arcs make face-parallel ink look like a
+ * non-standard attach (V08b NE arc). When the current face has no 0-cross outward
+ * stub (flush neighbour + foreign spine in the gutter), try other face mids rather
+ * than installing a crossing stub that cross-repair later replaces. Skips diamonds.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ */
+function ensureRectOutwardApproach(placed, connections, diamonds) {
+  const midOf = (box, face) => {
+    if (face === 'E') return /** @type {number[]} */ ([box.x + box.w, box.y + box.h / 2])
+    if (face === 'W') return /** @type {number[]} */ ([box.x, box.y + box.h / 2])
+    if (face === 'N') return /** @type {number[]} */ ([box.x + box.w / 2, box.y])
+    return /** @type {number[]} */ ([box.x + box.w / 2, box.y + box.h])
+  }
+  const faceOfMid = (box, p) => {
+    for (const f of /** @type {const} */ (['N', 'E', 'S', 'W'])) {
+      const m = midOf(box, f)
+      if (Math.hypot(p[0] - m[0], p[1] - m[1]) <= 2.5) return f
+    }
+    return null
+  }
+  const outwardOk = (face, a, b) =>
+    (face === 'E' && Math.abs(a[1] - b[1]) < 0.5 && a[0] > b[0] + 0.5) ||
+    (face === 'W' && Math.abs(a[1] - b[1]) < 0.5 && a[0] < b[0] - 0.5) ||
+    (face === 'N' && Math.abs(a[0] - b[0]) < 0.5 && a[1] < b[1] - 0.5) ||
+    (face === 'S' && Math.abs(a[0] - b[0]) < 0.5 && a[1] > b[1] + 0.5)
+  const cleanPts = (trial) => {
+    const clean = /** @type {number[][]} */ ([trial[0]])
+    for (let i = 1; i < trial.length; i += 1) {
+      const a = clean[clean.length - 1]
+      const b = trial[i]
+      if (Math.hypot(a[0] - b[0], a[1] - b[1]) > 0.5) clean.push(b)
+    }
+    return clean
+  }
+  /** @param {'N'|'E'|'S'|'W'} face @param {number[]} mid @param {object} c @param {{ x: number, y: number, w: number, h: number }} box */
+  const candidatesForFace = (face, mid, c, box) => {
+    /** @type {number[][][]} */
+    const trials = []
+    const leave = /** @type {number[]} */ ([c.points[0][0], c.points[0][1]])
+    const src = placed.get(c.from)
+    if (!src) return trials
+    const gaps = [8, 10, 14, 20, 28, 40]
+    /** @type {number[]} */
+    const rails = []
+    for (const [oid, r] of placed) {
+      if (oid === c.from || oid === c.to) continue
+      rails.push(r.y - 14, r.y + r.h + 14, r.x - 14, r.x + r.w + 14)
+    }
+    // Bottom / top canvas wraps (0-cross when gutter spine blocks same-face stubs).
+    let minY = Infinity
+    let maxY = -Infinity
+    for (const r of placed.values()) {
+      minY = Math.min(minY, r.y)
+      maxY = Math.max(maxY, r.y + r.h)
+    }
+    rails.push(minY - 40, maxY + 40)
+    for (const gap of gaps) {
+      const bay =
+        face === 'E'
+          ? /** @type {number[]} */ ([mid[0] + gap, mid[1]])
+          : face === 'W'
+            ? /** @type {number[]} */ ([mid[0] - gap, mid[1]])
+            : face === 'N'
+              ? /** @type {number[]} */ ([mid[0], mid[1] - gap])
+              : /** @type {number[]} */ ([mid[0], mid[1] + gap])
+      if (face === 'E' || face === 'W') {
+        for (const railY of rails) {
+          if (typeof railY !== 'number' || Number.isNaN(railY)) continue
+          trials.push(
+            cleanPts([leave, [leave[0], railY], [bay[0], railY], bay, mid]),
+            cleanPts([leave, [bay[0], leave[1]], bay, mid]),
+          )
+        }
+      } else {
+        for (const railX of rails) {
+          if (typeof railX !== 'number' || Number.isNaN(railX)) continue
+          trials.push(
+            cleanPts([leave, [railX, leave[1]], [railX, bay[1]], bay, mid]),
+            cleanPts([leave, [leave[0], bay[1]], bay, mid]),
+          )
+        }
+      }
+    }
+    return trials
+  }
+  for (const c of connections) {
+    if (!c.points || c.points.length < 2) continue
+    // Enter-side only: leave ports on diamonds stay tip-owned (V08b n-b2 W tip).
+    const id = c.to
+    if (diamonds.has(id)) continue
+    const box = placed.get(id)
+    if (!box) continue
+    const p = c.points[c.points.length - 1]
+    const prev = c.points[c.points.length - 2]
+    const face = faceOfMid(box, p)
+    if (!face) continue
+    const alongFace =
+      (face === 'E' || face === 'W') && Math.abs(prev[0] - p[0]) < 0.5
+        ? true
+        : (face === 'N' || face === 'S') && Math.abs(prev[1] - p[1]) < 0.5
+    if (!alongFace) continue
+    const others = connections.filter((o) => o !== c).map((o) => o.points)
+    const beforeCross = pathCrossCount(c.points, others)
+    const leave = c.points[0]
+    /** @type {number[][] | null} */
+    let best = null
+    let bestCross = Infinity
+    let bestBends = Infinity
+    let bestLen = Infinity
+    let bestFaceRank = Infinity
+    // Prefer repairing the current face; fall back to other cardinal mids when the
+    // gutter is blocked (V08b E flush vs A-spine → W mid wrap).
+    const faces = /** @type {('N'|'E'|'S'|'W')[]} */ (
+      [face, ...['W', 'E', 'N', 'S'].filter((f) => f !== face)]
+    )
+    for (let fi = 0; fi < faces.length; fi += 1) {
+      const f = faces[fi]
+      const mid = midOf(box, f)
+      for (const trial of candidatesForFace(f, mid, c, box)) {
+        if (!trial || trial.length < 2) continue
+        // Keep diamond/source leave port when already tip-aligned.
+        if (Math.hypot(trial[0][0] - leave[0], trial[0][1] - leave[1]) > 0.5) continue
+        if (!pathClear(trial, placed, c.from, c.to)) continue
+        const a = trial[trial.length - 2]
+        const b = trial[trial.length - 1]
+        if (!outwardOk(f, a, b)) continue
+        if (Math.hypot(b[0] - mid[0], b[1] - mid[1]) > 0.5) continue
+        const cross = pathCrossCount(trial, others)
+        if (cross > beforeCross) continue
+        const bends = pathBendCount(trial)
+        const len = pathLength(trial)
+        if (
+          cross < bestCross ||
+          (cross === bestCross && fi < bestFaceRank) ||
+          (cross === bestCross && fi === bestFaceRank && bends < bestBends) ||
+          (cross === bestCross && fi === bestFaceRank && bends === bestBends && len + 1e-6 < bestLen)
+        ) {
+          bestCross = cross
+          bestFaceRank = fi
+          bestBends = bends
+          bestLen = len
+          best = trial
+        }
+      }
+      // Stop early when current face already has a 0-cross outward repair.
+      if (fi === 0 && best && bestCross <= beforeCross && bestCross === 0) break
+    }
+    if (best) c.points = best
   }
 }
 
@@ -3339,6 +3501,24 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
         (pathBendCount(pts) > 1 || (twinLeaveFace && f !== twinLeaveFace))
       )
         addMover(inc)
+      // Four-point priority: slant/outline attach while a cardinal tip is free must re-resolve
+      // (S1 NW-slant enter with empty N tip). Tips-full fifth edges stay non-movers only when
+      // every tip is already taken — then slant is the legitimate exception (07 leave).
+      if (!twinLeaveEdge && !isCardinalDiamondTip(node, enter)) {
+        const tipTaken = (face) => {
+          const tip = /** @type {[number, number]} */ (v[face])
+          return incidents.some(
+            (o) =>
+              o.c !== inc.c &&
+              Math.hypot(o.pt[0] - tip[0], o.pt[1] - tip[1]) <= 2.5,
+          )
+        }
+        const faceTipFree = f ? !tipTaken(f) && !trunk.has(f) : false
+        const anyFreeTip = /** @type {const} */ (['N', 'E', 'S', 'W']).some(
+          (face) => !tipTaken(face) && !trunk.has(face),
+        )
+        if (faceTipFree || anyFreeTip) addMover(inc)
+      }
     }
     for (const inc of movers) {
       const c = inc.c
@@ -3450,10 +3630,15 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
         if (afterAmb > beforeAmb) return
         const bends = pathBendCount(pts)
         const len = pathLength(pts)
+        // Prefer cardinal tip over slant when cross/bends tie (four-point priority). A free
+        // feasible tip must beat a slant even if the slant is slightly shorter.
+        const tipRank = isCardinalDiamondTip(node, enter) ? 0 : 1
+        const bestTipRank = bestPts ? (isCardinalDiamondTip(node, bestPts[bestPts.length - 1]) ? 0 : 1) : 1
         if (
           cross < bestCross ||
           (cross === bestCross && bends < bestBends) ||
-          (cross === bestCross && bends === bestBends && len < bestLen)
+          (cross === bestCross && bends === bestBends && tipRank < bestTipRank) ||
+          (cross === bestCross && bends === bestBends && tipRank === bestTipRank && len + 1e-6 < bestLen)
         ) {
           bestCross = cross
           bestBends = bends
@@ -3483,10 +3668,16 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
           tryPts([leave0, [leave0[0], port[1]], port])
           tryPts([leave0, [port[0], leave0[1]], port])
         }
-        for (let slot = 0; slot < 4; slot += 1) {
-          const port = staggerOnDiamondSide(node, face, slot, Math.max(slot + 1, 2))
+        // Tip-first then slant stagger. Free cardinal tips must beat slant ports when clear
+        // (S1 N-enter / L4 W-enter). Slants remain for multi-share and tips-full exceptions (07).
+        const portCands = diamondSidePortCandidates(node, face, { includeTip: true, staggerSlots: 4 })
+        const seenPort = new Set()
+        for (const port of portCands) {
           if (!onDiamondOutline(node, port)) continue
-          if (reserved.has(keyPt(port)) && !(twinLeave && keyPt(twinLeave.pt) === keyPt(port))) continue
+          const pk = keyPt(port)
+          if (seenPort.has(pk)) continue
+          seenPort.add(pk)
+          if (reserved.has(pk) && !(twinLeave && keyPt(twinLeave.pt) === pk)) continue
           // Orthogonal approach: last bend at port's outward axis then into port.
           const acx = a.x + a.w / 2
           const acy = a.y + a.h / 2
@@ -3890,15 +4081,27 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
         )[0]
       )
       let placedPort = /** @type {number[] | null} */ (null)
-      for (let slot = occCount.get(face) || 0; slot < (occCount.get(face) || 0) + 8; slot += 1) {
-        const count = Math.max(slot + 1, 2)
-        const port = staggerOnDiamondSide(node, face, slot, count)
-        if (!onDiamondOutline(node, port)) continue
-        const k = keyPt(port)
-        if (reservedPorts.has(k)) continue
-        if (assign.some((a) => keyPt(a.port) === k)) continue
-        placedPort = port
-        break
+      // Free face with no occupants: use the cardinal tip before slant stagger.
+      const tip = /** @type {number[]} */ (diamondVertices(node)[face])
+      const tipKey = keyPt(tip)
+      if (
+        (occCount.get(face) || 0) === 0 &&
+        !reservedPorts.has(tipKey) &&
+        !assign.some((a) => keyPt(a.port) === tipKey)
+      ) {
+        placedPort = tip
+      }
+      if (!placedPort) {
+        for (let slot = occCount.get(face) || 0; slot < (occCount.get(face) || 0) + 8; slot += 1) {
+          const count = Math.max(slot + 1, 2)
+          const port = staggerOnDiamondSide(node, face, slot, count)
+          if (!onDiamondOutline(node, port)) continue
+          const k = keyPt(port)
+          if (reservedPorts.has(k)) continue
+          if (assign.some((a) => keyPt(a.port) === k)) continue
+          placedPort = port
+          break
+        }
       }
       if (!placedPort) {
         assign.length = 0
