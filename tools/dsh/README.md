@@ -1,158 +1,51 @@
-# DSH plugin (`@zh-xx/antu-dsh`)
+# 案图 · 诉讼可视化（`@zh-xx/antu-dsh`）
 
-English is authoritative; Chinese: [README.zh-CN.md](./README.zh-CN.md).
+DeepSeek Harness 插件：在对话里用 Host 工具校验、排版并渲染法律图，聊天卡片可直接看图、打开全屏视图。产出是一份可离线打开、可归档转发的自包含 HTML（约 2.3 MB，不依赖服务器）。
 
-Plan: [docs/dsh/dsh-plugin.md](../../docs/dsh/dsh-plugin.md) (中文 [docs/dsh/dsh-plugin.zh-CN.md](../../docs/dsh/dsh-plugin.zh-CN.md)).
-DSH conventions (resource addresses, providers, seats): [docs/dsh/dsh-conventions.md](../../docs/dsh/dsh-conventions.md)
-(中文 [docs/dsh/dsh-conventions.zh-CN.md](../../docs/dsh/dsh-conventions.zh-CN.md)).
-Umbrella issue: [#79](https://github.com/zh-xx/Antu/issues/79).
+当前为 **0.x**。事实图与程序图可日常使用；关系图、证成图的数据格式仍是草案，**证成图暂不发展**。许可证 [AGPL-3.0-or-later](https://github.com/zh-xx/Antu/blob/main/LICENSE)。
 
-**On npm as `@zh-xx/antu-dsh`** (from 0.16.1; the plugin has the same version number as the repository and depends on exactly the same version of `@zh-xx/antu`): `dsh plugin --profile <name> add @zh-xx/antu-dsh`, then restart DSH. To try a build of your own, use the **tarball** (`npm run build:dsh`, below).
+产品总览（引擎、JSON 规范、命令行）：[案图 README（中文）](https://github.com/zh-xx/Antu/blob/main/README.zh-CN.md) · [在线演示](https://zh-xx.github.io/Antu/)
 
-## Requirements
+## 能画什么
 
-| Side | Needs |
-| --- | --- |
-| Host tools / skill | DSH that can resolve `@deepseek-ai/dsh-tools` / `@deepseek-ai/dsh-skill` (peer `^0.2.0-rc.2 || ^0.2.1-rc.0`) and `@zh-xx/antu` |
-| Client chat card + full view | **DeepSeek Harness ≥ 0.2.0-rc.2** — the lazy embed chunk uses ModuleLoader `require.async('./client.embed.js')`. DSH **0.1.x** has no `require.async` and no Host route for package-local chunks; on those hosts the card shows a clear upgrade message instead of crashing the slot |
+四类法律内容，同一份 JSON 可在页面里切换多种画法：
 
-Peers are marked optional so a Host-only profile can still install; the Client half will not render a diagram until the host provides `require.async`.
+<table>
+<tr><th rowspan="2" align="left" valign="middle">关系图</th><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/relationship/marketplace-parties.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/graph.svg" width="88" alt="关系图"><br>关系图</a></td><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/relationship/marketplace-parties.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/focus.svg" width="88" alt="聚焦图"><br>聚焦图</a></td><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/relationship/marketplace-parties.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/matrix.svg" width="88" alt="关系矩阵"><br>关系矩阵</a></td><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/relationship/marketplace-parties.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/equity.svg" width="88" alt="股权图"><br>股权图</a></td></tr>
+<tr><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/relationship/marketplace-parties.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/authority.svg" width="88" alt="控制与任职图"><br>控制与任职图</a></td><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/relationship/marketplace-parties.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/related.svg" width="88" alt="关联方清单"><br>关联方清单</a></td><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/relationship/marketplace-parties.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/path.svg" width="88" alt="关系路径图"><br>关系路径图</a></td></tr>
+<tr><th align="left" valign="middle">事实图</th><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/fact/neighbour-corridor-charging.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/timeline.svg" width="88" alt="时间图"><br>时间图</a></td><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/fact/neighbour-corridor-charging.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/chronicle.svg" width="88" alt="大事记"><br>大事记</a></td><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/fact/neighbour-corridor-charging.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/scale.svg" width="88" alt="比例时间轴"><br>比例时间轴</a></td></tr>
+<tr><th align="left" valign="middle">程序图</th><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/procedure/05-premises-lease.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/flow.svg" width="88" alt="流程图"><br>流程图</a></td><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/procedure/05-premises-lease.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/route.svg" width="88" alt="路线图"><br>路线图</a></td></tr>
+<tr><th align="left" valign="middle">证成图</th><td align="center"><a href="https://github.com/zh-xx/Antu/blob/main/examples/justification/fang-yuan-defense-excess.zh-CN.json"><img src="https://raw.githubusercontent.com/zh-xx/Antu/main/assets/kinds/tree.svg" width="88" alt="说理树"><br>说理树</a></td></tr>
+</table>
 
-## Layout
+- **程序图**：程序路径与可能分支
+- **事实图**：时间、参与人、事件经过
+- **关系图**：主体、角色与法律关系（七种画法；格式仍为草案）
+- **证成图**：规范与事实到结论的推演（草案；暂不发展）
 
-```
-tools/dsh/
-  README.md           this file
-  build.mjs           assemble package/ + npm pack tarball
-  src/                Host / Client / skill sources (committed)
-  package/            package root — committed: package.json, cordis.patch.yml, locale/
-  zh-xx-antu-dsh-*.tgz   produced by build:dsh (gitignored)
-  .gitignore          generated Host/Client/embed + tgz stay out of git
-```
+## 安装
 
-`npm run build:dsh` always rebuilds the embed, writes `package/index.js`, `package/client.js`,
-`package/lib/*`, `package/client.embed.js`, and packs `tools/dsh/zh-xx-antu-dsh-<version>.tgz`.
-Generated files under `package/` and the tarball are not committed (`docs/dsh/dsh-plugin.md`).
+npm 包：[`@zh-xx/antu-dsh`](https://www.npmjs.com/package/@zh-xx/antu-dsh)，版本与 [`@zh-xx/antu`](https://www.npmjs.com/package/@zh-xx/antu) **同号**。
 
-## Tested on
-
-| DSH | Where | Result |
-| --- | --- | --- |
-| 0.2.0-rc.2 | Linux container, headless Chromium (light and dark, Chinese and English) | all P2 checks and the chat card strip pass |
-| 0.2.1-rc.2 | the maintainer's Mac | passes (reported 2026-10-18, issue #219) |
-
-The peer range lists both: a prerelease only satisfies a range that names a prerelease of the same `x.y.z`, so `^0.2.0-rc.2` alone would leave out `0.2.1-rc.2`.
-
-## Install into DSH
-
-**From npm**: `dsh plugin --profile <name> add @zh-xx/antu-dsh`, then restart DSH.
-
-**Or the tarball** (peers resolve inside the DSH profile):
+在 DeepSeek Harness 中安装该包（插件管理 / Discover 选版本安装，或 CLI）：
 
 ```bash
-npm run build:dsh
-# then install tools/dsh/zh-xx-antu-dsh-<version>.tgz
-# Desktop: plugin_manager → install_bundle → absolute path of the .tgz
-# CLI:    dsh plugin --profile web add /abs/path/to/zh-xx-antu-dsh-<version>.tgz
+dsh plugin --profile <配置名> add @zh-xx/antu-dsh
 ```
 
-Installing the bare `tools/dsh/package/` directory with a `link:` style add often fails with
-`failed to import` because that folder has no `node_modules` for `@deepseek-ai/dsh-tools`.
-Use the tgz (or a published npm package) instead.
+**要求**：DeepSeek Harness **≥ 0.2.0-rc.2**（聊天卡片依赖宿主的包内异步加载能力；更旧的 0.1.x 上 Host 工具仍可用，卡片会提示升级而不是白屏崩溃）。
 
-### After you change the plugin
+也可从 [法橱 · LexCab](https://lexcab.nervonly.cn/) 的索引订阅后，在 Discover 里找到「案图 · 诉讼可视化」再安装。
 
-The tarball name only carries the version, so a rebuilt tgz with the same version looks unchanged to
-pnpm: `add` prints `Already up to date` and keeps the old code. To test a new build:
+## 装好之后
 
-```bash
-npm run build:dsh                                  # a failed pack keeps the last good tgz and prints why
-ls tools/dsh/zh-xx-antu-dsh-*.tgz                  # the file must exist before you install it
-dsh plugin --profile <name> remove @zh-xx/antu-dsh
-dsh plugin --profile <name> add /abs/path/to/zh-xx-antu-dsh-<version>.tgz
-```
-
-Then **restart DSH**: plugins load when it starts, so a running session keeps the old code.
-If `add` fails with only an exit code (for example `254`), check first that the tgz path exists;
-DSH's plugin log does not include pnpm's error text.
-
-## What it registers
-
-| Side | Capability |
+| 能力 | 说明 |
 | --- | --- |
-| Host | Native tools `antu_validate`, `antu_layout`, `antu_render` (HTML under the session cwd) |
-| Host | Reference tools `antu_schema` (field table), `antu_guide` (mechanism notes), `antu_examples` (list or fetch one) — read from the installed `@zh-xx/antu` package, so no filesystem search is needed |
-| Host | Memory skill `antu-diagram` (teaches Host wire names, not the CLI) |
-| Client | `tool.call.toolview` for `antu_render` and `mcp__antu__antu_render` (one compact line: title, status, **Open full view**) when the turn tail is there; the full card otherwise |
-| Client | Words follow DSH's language: the `antuDsh` locale namespace ships English and 简体中文; a language switch updates open cards without a reload. The embedded page speaks the same language: the dictionary key `embed.lang` (`zh` / `en`) is read through `t`, passed as `mount({ lang })` and applied with `setLang` on a switch |
-| Client | `conversation.chat.turnTail` data `antu-diagrams`: the fitted diagram after DSH's "Completed in Ns" fold; a `ResizeObserver` refits it whenever the fold opens |
-| Client | A bar of small sketches on top of a turn-tail diagram that has more than one way of drawing, in the same frame as the picture (relationship 7, flowchart 2, fact timeline 3): the current one highlighted, one click redraws the diagram in that kind without remounting it. The choice is memory only, so a reload puts the card back in the call's own kind; **Open full view** opens in the chosen kind. A diagram with one way of drawing has no strip |
-| Client | Right-panel resource type `antu-diagram` (full embed, fullscreen); a click on the card opens its `dsh-resource://antu/…` address, and the tab restores itself from Session history after a reload |
-| Client | The diagram follows DSH's light / dark mode through the theme service: a dark host draws it in the `dark` theme, a light host in the theme the call asked for (or the full view's last pick while light); a switch redraws open cards and the full view without a reload |
+| Host 工具 | `antu_validate`（校验）、`antu_layout`（排版预估）、`antu_render`（写出 HTML） |
+| 参考工具 | `antu_schema` / `antu_guide` / `antu_examples`（字段表、机制说明、示例） |
+| 技能 | `antu-diagram`（教模型按案图约定出图） |
+| 聊天卡片 | `antu_render` 完成后，对话里直接展示整图；可点开右侧全屏，切换画法与主题，导出 |
 
-The diagram is drawn in the turn tail (`conversation.chat.turnTail`), after DSH collapses a finished turn's tool
-steps into their fold, so it stays visible without opening that fold. The card reads `spec` from the tool-call
-**arguments** (`argsRaw`) and shows only the picture — plus, for a diagram with more than one way of drawing, the
-kind strip — the whole diagram fitted (`cardUi`). A `ResizeObserver` calls the embed's `fitView()` when the host grows,
-so a card mounted while hidden is never blank.
-A click opens the full view, fullscreen in the right panel, with kind and theme switches, detail cards and export.
-It has no **Open HTML** button: the file path is in the `antu_render` result in the chat, and the button used to
-vanish after a reload (#224). The tab is saved by its `dsh-resource://antu/…` address only; a resource
-provider re-reads the `antu_render` call from Session history, so a reload needs no private cache. On a DSH without
-the conversation service the full card stays in the tool row.
+典型用法：把案件材料放进会话，请助手「画一张事实时间线 / 程序图 / 关系图」。助手调用工具写出 JSON 并渲染后，卡片出现在对话中；需要细看时打开全屏视图。界面语言跟随 DSH（中文 / English）；图内容本身不翻译。
 
-## Interim: MCP on a machine that already has Node
-
-Until `@zh-xx/antu-dsh` is published to your profile, a DSH profile can still attach the
-existing MCP server with a **configuration-only** bundle (official template:
-`cordis-plugin-development` → `templates/mcp/`).
-
-`package.json`:
-
-```json
-{
-  "name": "@local/antu-mcp",
-  "version": "0.14.0",
-  "private": true,
-  "type": "module",
-  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
-}
-```
-
-`cordis.patch.yml`:
-
-```yaml
-- insert:
-    - id: antu-mcp
-      name: '@deepseek-ai/dsh-mcp-client'
-      config:
-        serverName: antu
-        transport: stdio
-        command: npx
-        args: ['-y', '-p', '@zh-xx/antu@0.19.0', 'antu-mcp']
-        failOnStartupError: true
-```
-
-Install with DSH's `plugin_manager` → `install_bundle` and the **absolute** path of that folder.
-
-### Limits of this stopgap (read before relying on it)
-
-- Needs **system Node and network** for `npx` (Desktop's embedded Node is not enough by itself).
-- Pin the package version (`@0.19.0` above); `@latest` drifts per machine.
-- Tools appear as `mcp__antu__antu_validate`, … — not the final Host names.
-- For `antu_render`, pass an **absolute `outPath` inside the session workspace**. The default relative path
-  follows the MCP process cwd, which is not the session folder.
-- `antu_preview` needs a Chromium-based browser on the machine; set `ANTU_CHROME` in the row's `env` if needed.
-  A PNG in the chat reaches the **model** only when that model accepts images.
-- The Client half of `@zh-xx/antu-dsh` also keys `mcp__antu__antu_render`, so a stopgap MCP row can still
-  show the interactive card once this plugin's Client is installed.
-
-## Maintainer check (P2 acceptance)
-
-On Desktop without system Node, with **DSH ≥ 0.2.0-rc.2**: `npm run build:dsh` → `install_bundle` on the **tgz** →
-`application: applied`; a turn that calls `antu_render` shows the whole diagram in the chat;
-a click opens it fullscreen and readable, with kind and theme switches; light and dark host themes stay readable; uninstall leaves
-no rows. Record DSH version and model used (#53-style).
-
-On DSH 0.1.x the Host tools still run, but the card must show the ≥ 0.2 upgrade message (not a blank
-`tool.call.toolview` crash).
+主题可与宿主明暗模式配合：深色宿主用深色图；浅色宿主可用文书 / 现代 / 法律等主题。详见 [主题说明](https://github.com/zh-xx/Antu/blob/main/spec/theme.md)。

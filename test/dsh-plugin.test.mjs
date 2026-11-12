@@ -314,14 +314,34 @@ test('package manifest matches root version and DSH bundle shape', () => {
   assert.equal(pkg.publishConfig.access, 'public')
   assert.equal(pkg.license, root.license)
   for (const f of ['README.md', 'LICENSE', 'THIRD-PARTY-NOTICES.md']) assert.ok(pkg.files.includes(f), f)
-  // A prerelease only satisfies a range naming a prerelease of the same x.y.z, so both tested lines are listed
+  // A prerelease only satisfies a range naming a prerelease of the same x.y.z, so each 0.2.y-rc line is listed
+  const dshRange = '^0.2.0-rc.2 || ^0.2.1-rc.0 || ^0.2.2-rc.0'
   for (const peer of ['@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-skill']) {
-    assert.equal(pkg.peerDependencies[peer], '^0.2.0-rc.2 || ^0.2.1-rc.0', peer)
+    assert.equal(pkg.peerDependencies[peer], dshRange, peer)
   }
+  assert.equal(pkg.engines?.dsh, dshRange, 'engines.dsh must match peers for LexCab format 1 (#360)')
+  assert.equal(pkg.repository?.directory, 'tools/dsh/package')
 
   const patch = readFileSync(join(pkgDir, 'cordis.patch.yml'), 'utf8')
   assert.match(patch, /id:\s*antu-dsh/)
   assert.match(patch, /@zh-xx\/antu-dsh/)
+})
+
+/** npm package README (#367 B): English short page, absolute links, no stale install/restart story */
+test('README.npm.md is the npm package README contract', () => {
+  const npmReadme = readFileSync('tools/dsh/README.npm.md', 'utf8')
+  assert.match(npmReadme, /@zh-xx\/antu-dsh/)
+  assert.match(npmReadme, /dsh plugin --profile/)
+  assert.match(npmReadme, /0\.2\.0-rc\.2/)
+  assert.match(npmReadme, /antu_validate/)
+  assert.match(npmReadme, /https:\/\/github\.com\/zh-xx\/Antu/)
+  assert.doesNotMatch(npmReadme, /\]\(\.\.?\//)
+  assert.doesNotMatch(npmReadme, /restart DSH|Restart DSH|重启/)
+  assert.doesNotMatch(npmReadme, /Not published|MCP stopgap|Maintainer check|P2 acceptance/)
+  // Distinct from the Chinese Discover landing page
+  const landing = readFileSync('tools/dsh/README.md', 'utf8')
+  assert.notEqual(npmReadme, landing)
+  assert.match(landing, /案图/)
 })
 
 test('resolveRequireAsync accepts DSH 0.2 require.async and refuses 0.1-shaped require', async () => {
@@ -448,8 +468,13 @@ test('build.mjs writes Host entry, Client entry, and ModuleLoader embed chunk', 
 
   const tgz = readdirSync('tools/dsh').find((n) => n.startsWith('zh-xx-antu-dsh-') && n.endsWith('.tgz'))
   assert.ok(tgz, 'build:dsh should pack zh-xx-antu-dsh-*.tgz')
-})
 
+  // npm page ships README.npm.md as package/README.md (issue #367), not the Discover landing page
+  const packedReadme = readFileSync(join(pkgDir, 'README.md'), 'utf8')
+  assert.equal(packedReadme, readFileSync('tools/dsh/README.npm.md', 'utf8'))
+  assert.doesNotMatch(packedReadme, /\]\(\.\.?\//)
+  assert.doesNotMatch(packedReadme, /restart DSH|Restart DSH|重启/)
+})
 test('build.mjs keeps the last good tarball when npm pack fails', { skip: process.platform === 'win32' && 'needs a POSIX fake npm on PATH' }, () => {
   const isTgz = (n) => n.startsWith('zh-xx-antu-dsh-') && n.endsWith('.tgz')
   let tgz = readdirSync('tools/dsh').find(isTgz)

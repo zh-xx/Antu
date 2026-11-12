@@ -25,5 +25,12 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
+    # A workflow that uses github/codeql-action must use the same version in every step, or CodeQL stops with
+    # "Loaded a configuration file for version X, but running version Y" and the analysis is a configuration error.
+    # Grouping keeps init, analyze and upload-sarif in one pull request, so they move together.
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
     commit-message:
       prefix: ci
