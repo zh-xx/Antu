@@ -14,7 +14,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { SPEC_MARKER, buildHtml, buildViewerHtml, engineVersion, escapeForScript } from '../tools/lib/make-html.mjs'
+import { SPEC_MARKER, buildHtml, buildViewerHtml, engineVersion, escapeForScript, sourceSha } from '../tools/lib/make-html.mjs'
 import { checkSkill, skillFiles } from '../tools/build-skill.mjs'
 
 const fakeEngine = { js: 'window.__engine = 1', css: '' }
@@ -31,6 +31,15 @@ test('the viewer template is the page buildHtml makes, with the marker where the
   const body = (html) => html.slice(html.indexOf('</style>'))
   assert.equal(body(filled), body(direct))
   assert.ok(direct.includes(`<meta name="generator" content="antu ${engineVersion()}">`))
+})
+
+test('offline HTML embeds source SHA when resolvable (provenance, not assertion-only)', () => {
+  const sha = sourceSha()
+  assert.ok(sha && /^[0-9a-f]{7,40}$/i.test(sha), 'sourceSha resolves in repo checkout')
+  const html = buildHtml({ type: 'fact', title: 'sha', actors: [], events: [] }, fakeEngine)
+  assert.ok(html.includes(`<meta name="antu-source-sha" content="${sha}">`))
+  assert.ok(html.includes('window.__ANTU_BUILD__'))
+  assert.ok(html.includes(sha))
 })
 
 test('an unfilled template is valid JavaScript for the data: the page says no data was found', () => {

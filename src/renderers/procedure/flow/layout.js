@@ -236,7 +236,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
 
   const stageById = new Map((spec.stages ?? []).map((s) => [s.id, s]))
   // ① back edges and ② the main line (shared with Mainline-first and route; spine.js)
-  const { byId, back, ruleEnds, spine, spineSet, groups } = analyseProcedureGraph(spec)
+  const { byId, back, ruleEnds, spine, spines, spineSet, groups } = analyseProcedureGraph(spec)
   // Ends reached only through rules have no flow edges. Painting them as islands on the
   // canvas confuses readers (no arrow in or out). They stay addressable for the rules table
   // via byId; they are not laid out or drawn.
@@ -445,7 +445,44 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   const useMainline = fields?.engine === 'mainline'
   const foldMainline =
     showStages && presentStages.length >= 1 && nodes.every((n) => stageById.has(n.stageId))
-  const mainlineStages = foldMainline ? presentStages : [{ id: '__implicit__', label: '' }]
+  // Mainline packs stage columns in spine-encounter order so cross-stage mains stay
+  // short adjacent hops (L3: suspension/joinder sit where the trunk actually visits them,
+  // not where the author listed the bands). Off-spine stages (B04 纠正 hang) insert
+  // just after the spine stage they leave from — not dumped at the end. Author JSON unchanged.
+  const orderStagesBySpine = (stagesList, spineIds) => {
+    const stageOf = new Map(nodes.map((n) => [n.id, n.stageId]))
+    const byIdStage = new Map(stagesList.map((st) => [st.id, st]))
+    const seen = new Set()
+    /** @type {typeof stagesList} */
+    const ordered = []
+    for (const id of spineIds) {
+      const sid = stageOf.get(id)
+      if (!sid || seen.has(sid) || !byIdStage.has(sid)) continue
+      seen.add(sid)
+      ordered.push(byIdStage.get(sid))
+    }
+    /** @type {typeof stagesList} */
+    const off = stagesList.filter((st) => !seen.has(st.id))
+    for (const st of off) {
+      // Prefer the spine stage that owns an outbound edge into this stage.
+      let insertAt = ordered.length
+      for (const g of groups) {
+        if (stageOf.get(g.to) !== st.id) continue
+        const fromSt = stageOf.get(g.from)
+        const idx = ordered.findIndex((s) => s.id === fromSt)
+        if (idx >= 0) {
+          insertAt = Math.min(insertAt, idx + 1)
+          break
+        }
+      }
+      ordered.splice(insertAt, 0, st)
+      seen.add(st.id)
+    }
+    return ordered
+  }
+  const mainlineStages = foldMainline
+    ? orderStagesBySpine(presentStages, spine)
+    : [{ id: '__implicit__', label: '' }]
   const mainlineNodes =
     mainlineStages.length === 1 && mainlineStages[0].id === '__implicit__'
       ? nodes.map((n) => ({ ...n, stageId: '__implicit__' }))
@@ -453,6 +490,8 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   // The column layout has no `cost` / `stageTitles`, the single graph has; both are read below
   /** @type {any} */
   let best = null
+  /** @type {'mainline' | 'columns' | 'elk'} */
+  let layoutEngine
   if (useMainline) {
     best = yield* layoutMainlineGen({
       nodes: mainlineNodes,
@@ -461,10 +500,47 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       labelBox,
       vertical,
       spine,
+      spines,
       fields,
     })
+    layoutEngine = 'mainline'
+    // Hard validity: never accept known-unsafe mainline ink as a successful layout.
+    // Production chain: routeHangToSpine null → layoutStage stub + routeExhausted → stage
+    // assembly spreads the flag → straighten ({...c}) keeps it → mainlineInkInvalid →
+    // fall back to current engine (columns when stage data folds, else ELK). Completeness
+    // and clearance of that fallback are measured post-return in tests — not assumed hardsafe.
+    // ANTU_FORCE_MAINLINE_EXHAUSTION=1 (CI only): stamp one routeExhausted on the assembled
+    // mainline result so the real mainlineInkInvalid path runs (does not bypass the flag).
+    const forceExhaust =
+      typeof globalThis !== 'undefined' &&
+      /** @type {{ process?: { env?: Record<string, string | undefined> } }} */ (globalThis).process
+        ?.env?.ANTU_FORCE_MAINLINE_EXHAUSTION === '1'
+    if (forceExhaust && best?.connections?.length) {
+      const i = best.connections.findIndex((c) => c.points?.length >= 2)
+      const at = i >= 0 ? i : 0
+      best.connections[at] = { ...best.connections[at], routeExhausted: true }
+    }
+    if (mainlineInkInvalid(best)) {
+      hints.push(
+        'mainline hang→spine exhausted without a clear corridor; fell back to current (ELK/columns) layout — residual mainline ink was not accepted as valid',
+      )
+      if (hasStageColumns) {
+        best = yield* layoutColumnsGen({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
+        layoutEngine = 'columns'
+      } else {
+        best = null
+        for (const placement of PLACEMENTS) {
+          const tried = place(placement)
+          const cost = tried.connections.reduce((n, c) => n + linkCost(c, tried.placed, diamonds), 0)
+          if (!best || cost < best.cost) best = { ...tried, cost }
+          yield
+        }
+        layoutEngine = 'elk'
+      }
+    }
   } else if (hasStageColumns) {
     best = yield* layoutColumnsGen({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
+    layoutEngine = 'columns'
   } else {
     for (const placement of PLACEMENTS) {
       const tried = place(placement)
@@ -472,9 +548,10 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       if (!best || cost < best.cost) best = { ...tried, cost }
       yield
     }
+    layoutEngine = 'elk'
   }
   // The last passes over the links (polish.js), as in the column layout
-  if (!useMainline && !hasStageColumns) {
+  if (layoutEngine === 'elk') {
     polishSingle(best, diamonds, vertical, byId)
     yield
   }
@@ -529,6 +606,12 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   // the nodes go to React Flow. Sizes travel in data (the same convention as fact's cards)
   const actorById = new Map((spec.actors ?? []).map((a) => [a.id, a]))
   const sourceById = new Map((spec.sources ?? []).map((s) => [s.id, s]))
+  // Mainline may invent a local stage trunk (02 st-3) or pin secondary component spines (B08);
+  // paint those as spine too so scanners/UI match input main:true / column trunks.
+  const drawnSpine = new Set(spineSet)
+  if (layoutEngine === 'mainline' && Array.isArray(best?.spineIds)) {
+    for (const id of best.spineIds) drawnSpine.add(id)
+  }
   const rfNodes = nodes.map((n) => {
     const p = placed.get(n.id)
     return {
@@ -542,7 +625,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
         // the width of the text column the size was computed for; the node draws its text in it
         textW: sizeOf(n).textW,
         cut: sizeOf(n).cut,
-        isSpine: spineSet.has(n.id),
+        isSpine: drawnSpine.has(n.id),
         stageLabel: stageById.get(n.stageId)?.label ?? '',
         actorNames: (n.actorIds ?? []).map((id) => actorById.get(id)?.name ?? id),
         sources: (n.sourceIds ?? []).map((id) => sourceById.get(id)).filter(Boolean),
@@ -565,6 +648,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     decisions: nodes.filter((n) => n.kind === 'decision').length,
     ends: nodes.filter((n) => n.kind === 'end').length,
     groupedEdges: spec.edges.length - connections.length,
+    layoutEngine,
   }
 
   return {
@@ -576,12 +660,31 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     connections,
     rows,
     spine,
+    /** Every component spine (primary first). Same as `spine` wrapped when only one entry. */
+    spines,
     stageBoxes,
     ruleTable,
     // Whole pixels: ELK places on fractions, and the canvas and the exported image want integers
     size: { width: Math.ceil(size.width), height: Math.ceil(size.height) },
     stats,
   }
+}
+
+/**
+ * True when Mainline must not be accepted: missing polylines or explicit routeExhausted
+ * stubs from hang→spine corridor exhaustion. Does not reopen preexisting residual
+ * pathClear hits as a blanket reject — those stay a separate residual track; C only
+ * closes "absolute fallback emitted as clearance success".
+ * Exported for forced-exhaustion contract tests at the layout boundary.
+ * @param {{ placed?: Map<string, { x: number, y: number, w: number, h: number }>, connections?: Array<{ points?: number[][], from?: string, to?: string, routeExhausted?: boolean }> } | null | undefined} best
+ */
+export function mainlineInkInvalid(best) {
+  if (!best?.placed || !Array.isArray(best.connections)) return true
+  for (const c of best.connections) {
+    if (!c.points?.length) return true
+    if (c.routeExhausted) return true
+  }
+  return false
 }
 
 /**

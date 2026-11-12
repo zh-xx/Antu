@@ -1,0 +1,76 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "海城电子厂加班工资劳动争议仲裁示意",
+  "domain": "litigation",
+  "actors": [
+    { "id": "a-1", "name": "申请人", "role": "劳动者（示意）" },
+    { "id": "a-2", "name": "被申请人", "role": "海城电子厂" },
+    { "id": "a-3", "name": "仲裁委员会", "role": "劳动人事争议仲裁机构" }
+  ],
+  "sources": [
+    {
+      "id": "s-1",
+      "type": "statute",
+      "name": "劳动争议调解仲裁法（示意）",
+      "loc": { "file": "L2-labour-arbitration-nested.zh-CN.json" }
+    }
+  ],
+  "stages": [
+    { "id": "st-1", "label": "申请与受理" },
+    { "id": "st-2", "label": "管辖与保全" },
+    { "id": "st-3", "label": "审理裁决" },
+    { "id": "st-4", "label": "裁决后衔接" }
+  ],
+  "nodes": [
+    { "id": "n-1", "kind": "start", "label": "申请仲裁", "stageId": "st-1", "actorIds": ["a-1"] },
+    { "id": "n-2", "kind": "decision", "label": "是否符合受理条件", "stageId": "st-1", "actorIds": ["a-3"] },
+    { "id": "n-3", "kind": "step", "label": "受理立案", "stageId": "st-1", "actorIds": ["a-3"] },
+    { "id": "n-4", "kind": "step", "label": "组庭", "stageId": "st-1", "actorIds": ["a-3"] },
+    { "id": "n-5", "kind": "decision", "label": "是否提出管辖异议", "stageId": "st-2", "actorIds": ["a-2"] },
+    { "id": "n-6", "kind": "decision", "label": "是否申请财产保全", "stageId": "st-2", "actorIds": ["a-1"] },
+    { "id": "n-7", "kind": "step", "label": "开庭审理", "stageId": "st-3", "actorIds": ["a-3"] },
+    { "id": "n-8", "kind": "step", "label": "作出裁决", "stageId": "st-3", "actorIds": ["a-3"] },
+    { "id": "n-9", "kind": "decision", "label": "是否在期限内起诉", "stageId": "st-4" },
+    { "id": "n-10", "kind": "end", "label": "裁决生效", "stageId": "st-4", "outcome": "positive" },
+
+    { "id": "n-30", "kind": "end", "label": "不予受理", "stageId": "st-1", "outcome": "negative", "actorIds": ["a-3"] },
+
+    { "id": "n-11", "kind": "step", "label": "提出管辖异议", "stageId": "st-2", "actorIds": ["a-2"] },
+    { "id": "n-12", "kind": "step", "label": "管辖异议审查", "stageId": "st-2", "actorIds": ["a-3"] },
+    { "id": "n-13", "kind": "decision", "label": "异议是否成立", "stageId": "st-2", "actorIds": ["a-3"] },
+    { "id": "n-14", "kind": "step", "label": "决定移送其他仲裁委", "stageId": "st-2", "actorIds": ["a-3"] },
+    { "id": "n-15", "kind": "end", "label": "本院程序移出", "stageId": "st-2", "outcome": "negative", "actorIds": ["a-3"] },
+
+    { "id": "n-16", "kind": "step", "label": "提交保全申请", "stageId": "st-2", "actorIds": ["a-1"] },
+    { "id": "n-17", "kind": "step", "label": "仲裁委移送法院审查", "stageId": "st-2", "actorIds": ["a-3"] },
+    { "id": "n-18", "kind": "step", "label": "保全审查完毕", "stageId": "st-2" },
+
+    { "id": "n-22", "kind": "end", "label": "转入诉讼（裁决不生效）", "stageId": "st-4", "outcome": "positive" }
+  ],
+  "edges": [
+    { "from": "n-1", "to": "n-2", "main": true },
+    { "from": "n-2", "to": "n-3", "condition": "是", "main": true },
+    { "from": "n-2", "to": "n-30", "condition": "否" },
+    { "from": "n-3", "to": "n-4", "main": true },
+    { "from": "n-4", "to": "n-5", "main": true },
+    { "from": "n-5", "to": "n-6", "condition": "否", "main": true },
+    { "from": "n-5", "to": "n-11", "condition": "是" },
+    { "from": "n-6", "to": "n-7", "condition": "否", "main": true },
+    { "from": "n-6", "to": "n-16", "condition": "是" },
+    { "from": "n-7", "to": "n-8", "main": true },
+    { "from": "n-8", "to": "n-9", "main": true },
+    { "from": "n-9", "to": "n-10", "condition": "否", "main": true },
+    { "from": "n-9", "to": "n-22", "condition": "是" },
+
+    { "from": "n-11", "to": "n-12" },
+    { "from": "n-12", "to": "n-13" },
+    { "from": "n-13", "to": "n-14", "condition": "是" },
+    { "from": "n-14", "to": "n-15" },
+    { "from": "n-13", "to": "n-6", "condition": "否" },
+
+    { "from": "n-16", "to": "n-17" },
+    { "from": "n-17", "to": "n-18" },
+    { "from": "n-18", "to": "n-7", "condition": "回并" }
+  ]
+}

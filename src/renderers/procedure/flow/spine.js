@@ -23,6 +23,7 @@ export const edgeKey = (e) => `${e.from}|${e.to}|${e.condition ?? ''}`
  *   ruleEnds: Set<string>,
  *   entries: string[],
  *   spine: string[],
+ *   spines: string[][],
  *   spineSet: Set<string>,
  *   spineNext: Map<string, string>,
  *   groups: Array<{ from: string, to: string, isBack: boolean, isMain: boolean, merged: number, label: string }>,
@@ -57,25 +58,53 @@ export function analyseProcedureGraph(spec) {
   const ruleEnds = new Set([...ruleEndIds(spec)].filter((id) => byId.has(id) && inE.get(id).length === 0))
   const entries = ids.filter((id) => inE.get(id).length === 0 && !ruleEnds.has(id))
 
-  const spine = []
-  const spineSet = new Set()
-  {
-    let cur = entries[0]
+  /**
+   * Walk one main chain from an entry, preferring `main:true` then unmarked forward edges.
+   * Used for the primary spine and for each additional disconnected component (B08).
+   * @param {string | undefined} start
+   * @param {Set<string>} claimed
+   */
+  const walkSpine = (start, claimed) => {
+    /** @type {string[]} */
+    const path = []
+    let cur = start
     const guard = new Set()
-    while (cur !== undefined && !guard.has(cur)) {
+    while (cur !== undefined && !guard.has(cur) && !claimed.has(cur)) {
       guard.add(cur)
-      spine.push(cur)
-      spineSet.add(cur)
+      path.push(cur)
       if (byId.get(cur).kind === 'end') break
       const outs = outE.get(cur)
       const pick =
-        outs.find((e) => e.main === true) ??
-        outs.find((e) => !e.condition && !guard.has(e.to)) ??
+        outs.find((e) => e.main === true && !guard.has(e.to) && !claimed.has(e.to)) ??
+        outs.find((e) => e.main === true && !guard.has(e.to)) ??
+        outs.find((e) => !e.condition && !guard.has(e.to) && !claimed.has(e.to)) ??
+        outs.find((e) => !guard.has(e.to) && !claimed.has(e.to)) ??
         outs.find((e) => !guard.has(e.to))
       cur = pick?.to
     }
+    return path
   }
-  const spineNext = new Map(spine.slice(0, -1).map((id, i) => [id, spine[i + 1]]))
+
+  /** @type {string[][]} */
+  const spines = []
+  const spineSet = new Set()
+  const claimed = new Set()
+  for (const entry of entries) {
+    if (claimed.has(entry)) continue
+    const path = walkSpine(entry, claimed)
+    if (!path.length) continue
+    spines.push(path)
+    for (const id of path) {
+      spineSet.add(id)
+      claimed.add(id)
+    }
+  }
+  const spine = spines[0] ?? []
+  /** @type {Map<string, string>} */
+  const spineNext = new Map()
+  for (const path of spines) {
+    for (let i = 0; i < path.length - 1; i += 1) spineNext.set(path[i], path[i + 1])
+  }
 
   const grouped = new Map()
   for (const e of spec.edges) {
@@ -87,9 +116,20 @@ export function analyseProcedureGraph(spec) {
     const { from, to } = group[0]
     const isBack = back.has(edgeKey(group[0]))
     const labels = group.map((e) => e.condition).filter(Boolean)
+    // Main on any component spine (not only the primary entry's chain).
     const isMain = !isBack && spineNext.get(from) === to
-    return { from, to, isBack, isMain, merged: group.length, label: labels.length ? labels.join(' / ') : '' }
+    // Input main:true (may be a hang→spine rejoin that is not on spineNext).
+    const inputMain = group.some((e) => e.main === true)
+    return {
+      from,
+      to,
+      isBack,
+      isMain,
+      inputMain,
+      merged: group.length,
+      label: labels.length ? labels.join(' / ') : '',
+    }
   })
 
-  return { byId, outE, inE, back, ruleEnds, entries, spine, spineSet, spineNext, groups }
+  return { byId, outE, inE, back, ruleEnds, entries, spine, spines, spineSet, spineNext, groups }
 }
