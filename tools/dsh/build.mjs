@@ -169,8 +169,14 @@ function copyHost() {
   writeClientEntry()
 }
 
-/** The DSH versions the plugin is tested on: 0.2.0-rc.2 and 0.2.1-rc.2, then any release of 0.2 */
-const DSH_RANGE = '^0.2.0-rc.2 || ^0.2.1-rc.0'
+/**
+ * DSH versions the plugin declares (LexCab `engines.dsh` + npm peers).
+ * Do not use `>=0.2.0-rc.2 <0.3.0`: npm semver keeps prereleases on one x.y.z tuple,
+ * so 0.2.1-rc.x and 0.2.2-rc.x would read as incompatible.
+ * Host-smoke (Node 24.9, isolated npm, antu_validate/layout/render on procedure 1-minimal): 0.2.0-rc.2, 0.2.1-rc.1, 0.2.1-rc.5, 0.2.2-rc.1 (evidence: agent store issue-360-evidence).
+ * Future 0.2.x stable releases: accepted by caret ranges only — not host-smoke-tested until someone re-runs the matrix.
+ */
+const DSH_RANGE = '^0.2.0-rc.2 || ^0.2.1-rc.0 || ^0.2.2-rc.0'
 
 function syncPackageJson() {
   const path = join(PKG, 'package.json')
@@ -183,7 +189,7 @@ function syncPackageJson() {
   pkg.license = 'AGPL-3.0-or-later'
   pkg.author = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8')).author
   pkg.homepage = `${REPO_URL}/tree/main/tools/dsh`
-  pkg.repository = { type: 'git', url: `git+${REPO_URL}.git`, directory: 'tools/dsh' }
+  pkg.repository = { type: 'git', url: `git+${REPO_URL}.git`, directory: 'tools/dsh/package' }
   pkg.bugs = { url: `${REPO_URL}/issues` }
   pkg.keywords = ['deepseek-harness', 'dsh-plugin', 'legal', 'diagram', 'antu']
   pkg.description =
@@ -199,6 +205,11 @@ function syncPackageJson() {
   pkg.peerDependencies = {
     '@deepseek-ai/dsh-tools': DSH_RANGE,
     '@deepseek-ai/dsh-skill': DSH_RANGE,
+  }
+  // engines.dsh must match peerDependencies for LexCab format 1 compatibility range
+  pkg.engines = {
+    ...(pkg.engines || {}),
+    dsh: DSH_RANGE,
   }
   pkg.peerDependenciesMeta = {
     '@deepseek-ai/dsh-tools': { optional: true },

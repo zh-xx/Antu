@@ -314,10 +314,13 @@ test('package manifest matches root version and DSH bundle shape', () => {
   assert.equal(pkg.publishConfig.access, 'public')
   assert.equal(pkg.license, root.license)
   for (const f of ['README.md', 'LICENSE', 'THIRD-PARTY-NOTICES.md']) assert.ok(pkg.files.includes(f), f)
-  // A prerelease only satisfies a range naming a prerelease of the same x.y.z, so both tested lines are listed
+  // A prerelease only satisfies a range naming a prerelease of the same x.y.z, so each 0.2.y-rc line is listed
+  const dshRange = '^0.2.0-rc.2 || ^0.2.1-rc.0 || ^0.2.2-rc.0'
   for (const peer of ['@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-skill']) {
-    assert.equal(pkg.peerDependencies[peer], '^0.2.0-rc.2 || ^0.2.1-rc.0', peer)
+    assert.equal(pkg.peerDependencies[peer], dshRange, peer)
   }
+  assert.equal(pkg.engines?.dsh, dshRange, 'engines.dsh must match peers for LexCab format 1 (#360)')
+  assert.equal(pkg.repository?.directory, 'tools/dsh/package')
 
   const patch = readFileSync(join(pkgDir, 'cordis.patch.yml'), 'utf8')
   assert.match(patch, /id:\s*antu-dsh/)
