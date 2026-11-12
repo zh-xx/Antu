@@ -142,9 +142,16 @@ function writeClientEntry() {
   writeFileSync(join(PKG, 'client.js'), out)
 }
 
-/** What npm shows and what the licence asks for: the readme, the licence and the notices of the code bundled in client.embed.js */
+/**
+ * What npm shows and what the licence asks for: the npm package README (not the Chinese Discover
+ * landing page in README.md — issue #367 option B), the licence, and the notices of code in client.embed.js.
+ */
 function writeDocs() {
-  cpSync(join(HERE, 'README.md'), join(PKG, 'README.md'))
+  const npmReadme = join(HERE, 'README.npm.md')
+  if (!existsSync(npmReadme)) {
+    throw new Error('tools/dsh/build.mjs: missing README.npm.md (npm package README, issue #367)')
+  }
+  cpSync(npmReadme, join(PKG, 'README.md'))
   cpSync(join(REPO, 'LICENSE'), join(PKG, 'LICENSE'))
   writeFileSync(join(PKG, 'THIRD-PARTY-NOTICES.md'), thirdPartyNotices())
 }
