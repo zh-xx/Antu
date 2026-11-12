@@ -110,7 +110,7 @@ THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 Licence: ISC. Source: https://github.com/d3/d3-color
 
 ````text
-Copyright 2010-2022 Mike Bostock
+Copyright 2010-2026 Mike Bostock
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
@@ -130,7 +130,7 @@ THIS SOFTWARE.
 Licence: ISC. Source: https://github.com/d3/d3-dispatch
 
 ````text
-Copyright 2010-2021 Mike Bostock
+Copyright 2010-2026 Mike Bostock
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
@@ -150,7 +150,7 @@ THIS SOFTWARE.
 Licence: ISC. Source: https://github.com/d3/d3-drag
 
 ````text
-Copyright 2010-2021 Mike Bostock
+Copyright 2010-2026 Mike Bostock
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
@@ -170,7 +170,7 @@ THIS SOFTWARE.
 Licence: BSD-3-Clause. Source: https://github.com/d3/d3-ease
 
 ````text
-Copyright 2010-2021 Mike Bostock
+Copyright 2010-2026 Mike Bostock
 Copyright 2001 Robert Penner
 All rights reserved.
 
@@ -205,7 +205,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Licence: ISC. Source: https://github.com/d3/d3-interpolate
 
 ````text
-Copyright 2010-2021 Mike Bostock
+Copyright 2010-2026 Mike Bostock
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
@@ -225,7 +225,7 @@ THIS SOFTWARE.
 Licence: ISC. Source: https://github.com/d3/d3-selection
 
 ````text
-Copyright 2010-2021 Mike Bostock
+Copyright 2010-2026 Mike Bostock
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
@@ -245,7 +245,7 @@ THIS SOFTWARE.
 Licence: ISC. Source: https://github.com/d3/d3-timer
 
 ````text
-Copyright 2010-2021 Mike Bostock
+Copyright 2010-2026 Mike Bostock
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
@@ -265,7 +265,7 @@ THIS SOFTWARE.
 Licence: ISC. Source: https://github.com/d3/d3-transition
 
 ````text
-Copyright 2010-2021 Mike Bostock
+Copyright 2010-2026 Mike Bostock
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
@@ -285,7 +285,7 @@ THIS SOFTWARE.
 Licence: ISC. Source: https://github.com/d3/d3-zoom
 
 ````text
-Copyright 2010-2021 Mike Bostock
+Copyright 2010-2026 Mike Bostock
 
 Permission to use, copy, modify, and/or distribute this software for any purpose
 with or without fee is hereby granted, provided that the above copyright notice
