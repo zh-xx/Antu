@@ -612,11 +612,13 @@ function layoutStageMainline({
   )
   for (const it of byLeave) {
     if (isLoopHang(it.h) || !it.h.rootOnSpine) continue
-    // If this hang links directly into another hang's box (e.g. branch-to-branch merge),
-    // keep it on the target hang's side so the link does not have to wrap over the spine.
+    // If this hang links directly into an earlier spine-rooted hang's box (branch-to-branch
+    // merge), keep it on the target hang's side so the link does not wrap over the spine.
     const linkedHang = intervals.find(
       (o) =>
         o !== it &&
+        o.h.rootOnSpine &&
+        o.a < it.a &&
         it.h.boxes.some((id) =>
           (outG.get(id) ?? []).some((e) => o.h.boxes.includes(e.to)),
         ),
