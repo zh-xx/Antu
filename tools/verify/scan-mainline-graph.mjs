@@ -218,7 +218,11 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
       const p1 = c.points[c.points.length - 1]
       const lf = faceOf(from, p0)
       const ef = faceOf(to, p1)
-      if (lf === '?' || ef === '?') badPorts.push(`${c.id}:${lf}->${ef}`)
+      // A diamond also accepts links at its four slanted-edge midpoints: those are inside the
+      // bbox, so faceOf returns '?'. Legal ports are not only the bbox faces (ports.js).
+      const lfOk = lf !== '?' || (isDecisionNode(from) && onDiamondOutline(from, p0))
+      const efOk = ef !== '?' || (isDecisionNode(to) && onDiamondOutline(to, p1))
+      if (!lfOk || !efOk) badPorts.push(`${c.id}:${lf}->${ef}`)
       // Decision nodes: hard-gate against bbox-edge anchors that miss the painted diamond.
       if (isDecisionNode(from) && !onDiamondOutline(from, p0)) {
         badPorts.push(`${c.id}:leave-off-diamond`)
@@ -315,9 +319,89 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
       leavePortsBranch.get(key).push(c.id)
     }
   }
-  const sharedPorts = [...leavePorts.entries()]
-    .filter(([, ids]) => ids.length > 1)
+  // A bundled stem: several links leave the SAME port, ride the SAME short stub (identical
+  // second point), and only then split. That is one visible stroke out of the node, not two
+  // lines leaving from one point, so it is allowed on a decision (whose four vertices cannot
+  // carry five or six links otherwise). Anything else sharing a leave point stays a defect.
+  const stubOf = new Map()
+  for (const c of g.connections) {
+    if (!c.points?.length) continue
+    const k = `${c.from}@${c.points[0][0].toFixed(1)},${c.points[0][1].toFixed(1)}`
+    if (!stubOf.has(k)) stubOf.set(k, [])
+    stubOf.get(k).push(c)
+  }
+  const isBundle = (list) => {
+    // One visible stroke out of the node: every link leaves the same point in the same
+    // direction and overlaps for at least STUB_MIN px before the first one splits off.
+    // (A decision has four vertices; five or six links cannot get a vertex each.)
+    const STUB_MIN = 24
+    if (list.length < 2) return false
+    const p0 = list[0].points[0]
+    let axis = null
+    let sign = 0
+    let minLeg = Infinity
+    for (const c of list) {
+      const p1 = c.points[1]
+      if (!p1) return false
+      const dx = p1[0] - p0[0]
+      const dy = p1[1] - p0[1]
+      const a = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+      const sgn = a === 'x' ? Math.sign(dx) : Math.sign(dy)
+      if (axis === null) { axis = a; sign = sgn } else if (axis !== a || sgn !== sign) return false
+      const leg = a === 'x' ? Math.abs(dx) : Math.abs(dy)
+      minLeg = Math.min(minLeg, leg)
+    }
+    return minLeg >= STUB_MIN && axis !== null
+  }
+  const bundledPorts = [...leavePorts.entries()]
+    .filter(([, ids]) => isBundle(ids.map((id) => g.connections.find((c) => c.id === id)).filter(Boolean)))
     .map(([k, ids]) => `${k}:{${ids.join(',')}}`)
+  const sharedPorts = [...leavePorts.entries()]
+    .filter(([, ids]) => ids.length > 1 && !isBundle(ids.map((id) => g.connections.find((c) => c.id === id)).filter(Boolean)))
+    .map(([k, ids]) => `${k}:{${ids.join(',')}}`)
+  // Crowding: two ports closer than 20px on one node are one port in effect, whatever their
+  // number. That (plus leaving the painted outline) is the hard port defect; merely sharing a
+  // legal port is a preference issue, not a failure.
+  // Crowding: two endpoints closer than 20px on one node are one port in effect. Legal when
+  // they are a merge/fan: same point, both links arriving (or leaving) along the SAME axis
+  // and from the SAME side — the reader sees one stroke into the node. A link arriving on a
+  // different axis at the same point is the "two lines out of one dot" look: that stays a
+  // defect. (A decision has four vertices; a fifth link merges, it does not get a new vertex.)
+  const crowded = []
+  const merges = []
+  {
+    const ends = new Map()
+    for (const c of g.connections) {
+      if (!c.points?.length) continue
+      const push = (id, pt, adj) => {
+        if (!byId.has(id)) return
+        if (!ends.has(id)) ends.set(id, [])
+        ends.get(id).push({ id: c.id, pt, adj })
+      }
+      push(c.from, c.points[0], c.points[1])
+      push(c.to, c.points[c.points.length - 1], c.points[c.points.length - 2])
+    }
+    const mergeOf = (a, b) => {
+      if (!a.adj || !b.adj) return false
+      const [ax, ay] = [a.adj[0] - a.pt[0], a.adj[1] - a.pt[1]]
+      const [bx, by] = [b.adj[0] - b.pt[0], b.adj[1] - b.pt[1]]
+      const sameAxis = (Math.abs(ax) < 1.5 && Math.abs(bx) < 1.5) || (Math.abs(ay) < 1.5 && Math.abs(by) < 1.5)
+      if (!sameAxis) return false
+      const sameSide = (ax * bx >= 0) && (ay * by >= 0)
+      return sameSide
+    }
+    for (const [id, list] of ends) {
+      for (let i = 0; i < list.length; i += 1) {
+        for (let j = i + 1; j < list.length; j += 1) {
+          const d = Math.hypot(list[i].pt[0] - list[j].pt[0], list[i].pt[1] - list[j].pt[1])
+          if (d >= 20) continue
+          const ids = [list[i].id, list[j].id].sort()
+          if (mergeOf(list[i], list[j])) merges.push(`${id}:${ids.join('+')}`)
+          else crowded.push(`${id}:${ids.join('+')}`)
+        }
+      }
+    }
+  }
   const sharedPortsBranch = [...leavePortsBranch.entries()]
     .filter(([, ids]) => ids.length > 1)
     .map(([k, ids]) => `${k}:{${ids.join(',')}}`)
@@ -340,6 +424,7 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
   }
   const sharedStems = [...stemMap.entries()]
     .filter(([, ids]) => ids.length > 1)
+    .filter(([_k, ids]) => !isBundle(ids.map((id) => g.connections.find((c) => c.id === id)).filter(Boolean)))
     .map(([k, ids]) => `${k}:{${ids.join(',')}}`)
   const sharedStemsDecision = sharedStems.filter((s) => {
     const id = s.split('@')[0]
@@ -458,6 +543,9 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
     sharedPorts,
     sharedPortsBranch,
     sharedPortsDecision,
+    crowded,
+    merges,
+    bundledPorts,
     sharedStems,
     sharedStemsDecision,
     unrelatedOverlaps,
@@ -487,7 +575,7 @@ function scan(spec, dir = 'vertical', engineFields = fields) {
       missingLabels.length === 0 &&
       badPorts.length === 0 &&
       edgeCountMatch &&
-      sharedPortsDecision.length === 0 &&
+      crowded.length === 0 &&
       sharedStemsDecision.length === 0 &&
       unrelatedOverlaps.length === 0 &&
       branchSharedRails.length === 0,

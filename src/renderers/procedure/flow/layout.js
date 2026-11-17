@@ -30,7 +30,7 @@ import { validateProcedure, hintsOfProcedure } from './rules.js'
 import { elkLayoutSync } from './elk.js'
 import { straighten, linkCost } from './straighten.js'
 import { layoutColumnsGen } from './columns.js'
-import { layoutMainlineGen } from './mainline.js'
+import { layoutMainlineGen, economyRepath, spreadRectPorts, ensureConnectionLabels } from './mainline.js'
 import { analyseProcedureGraph, edgeKey } from './spine.js'
 import { polishLinks } from './polish.js'
 import { edgesOf } from './router.js'
@@ -558,6 +558,23 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   const { placed, size } = best
   // Paint only: hide bands when Stages is off, and never paint the synthetic implicit stage
   const stageBoxes = (showStages ? best.stageBoxes : []).filter((b) => b.stageId !== '__implicit__')
+  if (layoutEngine === 'mainline' && best?.connections?.length) {
+    // Last-mile economy: an edge that still wraps the world for a short join is re-routed
+    // to the direct gap/rail path when that costs no crossings. Runs after every other pass,
+    // so no later repair can undo it; labels are re-placed on the new ink below.
+    // Ports are a budget, not a fixed four: the four cardinals are preferred, the rest of
+    // the node outline is equally legal (ports.js). Assign ports before the economy pass so a
+    // link that was stacking on an occupied vertex moves to a free one nearby.
+    // Port-aware ink repair is opt-in (preset field `mainlinePorts` / ANTU_MAINLINE_PORTS=1).
+    // The four-port contracts asserted by test/procedure-mainline*.test.mjs are still the
+    // default behaviour; this flag is the place to measure the wider port model against them.
+    const portAware = fields?.mainlinePorts === true
+    if (portAware) {
+      economyRepath(best.placed, best.connections, spineSet, diamonds, vertical)
+      spreadRectPorts(best.placed, best.connections, diamonds)
+    }
+    ensureConnectionLabels(best.connections, [...best.placed.values()], [], [], { force: true, preferOnLine: true })
+  }
   const connections = best.connections.map((c) => ({ ...c, d: toPathD(c.points), dCurve: toCurveD(c.points) }))
 
   // Boxes in along/across coordinates (along = the direction the layers run)

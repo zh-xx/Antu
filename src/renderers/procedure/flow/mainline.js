@@ -31,6 +31,7 @@
 //  implicit stage (`__implicit__`) so the whole graph is a single straight trunk.
 // ============================================================
 
+import { legalPorts } from './ports.js'
 import { straighten } from './straighten.js'
 import { edgesOf } from './router.js'
 import { ownPart } from './merge.js'
@@ -611,6 +612,19 @@ function layoutStageMainline({
   )
   for (const it of byLeave) {
     if (isLoopHang(it.h) || !it.h.rootOnSpine) continue
+    // If this hang links directly into another hang's box (e.g. branch-to-branch merge),
+    // keep it on the target hang's side so the link does not have to wrap over the spine.
+    const linkedHang = intervals.find(
+      (o) =>
+        o !== it &&
+        it.h.boxes.some((id) =>
+          (outG.get(id) ?? []).some((e) => o.h.boxes.includes(e.to)),
+        ),
+    )
+    if (linkedHang) {
+      signOf.set(it.h, /** @type {number} */ (signOf.get(linkedHang.h)))
+      continue
+    }
     const sign = /** @type {number} */ (signOf.get(it.h))
     for (const other of byLeave) {
       if (other === it || other.a > it.a || !other.h.rootOnSpine) continue
@@ -1460,6 +1474,9 @@ function preferCenteredLinks(placed, connections, diamonds, spineIds) {
     const hang = diamonds.has(c.from) ? placed.get(c.to) : placed.get(c.from)
     const hangId = diamonds.has(c.from) ? c.to : c.from
     if (!fork || !hang) continue
+    // Spine nodes stay pinned to their layer spacing — a hang diamond rejoining a spine
+    // box must never drag the spine box onto the hang's row (crushes spine gap).
+    if (spineIds?.has(hangId)) continue
     const forkCy = fork.y + fork.h / 2
     const hangCy = hang.y + hang.h / 2
     // Already centred, or a deep stack — leave the stack alone.
@@ -1716,7 +1733,7 @@ function clearCorridorForLabels(placed, connections) {
  * @param {object[]} [borders]
  * @param {{ force?: boolean, preferOnLine?: boolean }} [opts]
  */
-function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = [], opts = {}) {
+export function ensureConnectionLabels(connections, nodeRects, blocks = [], borders = [], opts = {}) {
   if (opts.force) {
     for (const c of connections) {
       if (c.labelSize) c.labelAt = null
@@ -1855,6 +1872,270 @@ function restoreInputMainStraight(placed, connections, spineIds) {
   }
 }
 
+/**
+ * Economy pass: when a non-main edge's ink is bent/longer than needed, try a short
+ * orthogonal route (straight across a free gap, or one rail with two bends) and adopt it
+ * only when it does not raise crossings. Fixes hang→spine rejoins that leave from N/S and
+ * wrap the world (real 法条 samples: 行政处罚「不要求」、民事二审「不开行裁判」).
+ */
+export { spreadRectPorts }
+
+export function economyRepath(placed, connections, spineIds, diamonds, _vertical = true) {
+  const pad = 24
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+  for (const c of connections) {
+    if (c.kind === 'main' || c.inputMain) continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b || !c.points?.length) continue
+    const others = connections.filter((o) => o !== c).map((o) => o.points)
+    const curB = pathBendCount(c.points)
+    const curLen = pathLength(c.points)
+    if (curB < 2) continue
+    const curCross = pathCrossCount(c.points, others)
+    const acy = a.y + a.h / 2
+    const acx = a.x + a.w / 2
+    const bcy = b.y + b.h / 2
+    const bcx = b.x + b.w / 2
+    /** @type {number[][][]} */
+    const cands = []
+    const push = (pts) => {
+      if (!pts || pts.length < 2) return
+      for (let i = 1; i < pts.length; i += 1) {
+        const [p, q] = [pts[i - 1], pts[i]]
+        if (Math.abs(p[0] - q[0]) > 0.5 && Math.abs(p[1] - q[1]) > 0.5) return
+      }
+      cands.push(pts)
+    }
+    // 1) Same-row straight between facing sides.
+    const yOverlapLo = Math.max(a.y, b.y)
+    const yOverlapHi = Math.min(a.y + a.h, b.y + b.h)
+    if (yOverlapHi - yOverlapLo > 2) {
+      const y = clamp(acy, yOverlapLo + 1, yOverlapHi - 1)
+      if (a.x + a.w < b.x) push([[a.x + a.w, y], [b.x, y]])
+      if (b.x + b.w < a.x) push([[a.x, y], [b.x + b.w, y]])
+    }
+    // 2) One rail with two bends: leave a facing side, run a clear vertical rail between
+    //    the boxes, enter b's facing side.
+    const aRightOfB = acx > bcx
+    const leaveX = aRightOfB ? a.x : a.x + a.w
+    const enterXRight = aRightOfB ? b.x + b.w : b.x
+    const enterXLeft = aRightOfB ? b.x : b.x + b.w
+    for (let rail = 0; rail <= 220; rail += 12) {
+      const rx1 = aRightOfB ? enterXRight + pad + rail : enterXRight - pad - rail
+      const rx2 = aRightOfB ? enterXLeft + pad + rail : enterXLeft - pad - rail
+      // A decision's port must sit on its outline: E/W vertex, not any point on the bbox face.
+      const y1 = diamonds?.has(c.to) ? bcy : clamp(acy, b.y + 1, b.y + b.h - 1)
+      push([[leaveX, acy], [rx1, acy], [rx1, y1], [enterXRight, y1]])
+      push([[leaveX, acy], [rx2, acy], [rx2, y1], [enterXLeft, y1]])
+    }
+    // 3) Same for a vertical rail: leave a's bottom/top, run a clear horizontal rail
+    //    between the boxes, enter b's top/bottom.
+    const aBelowB = acy > bcy
+    const leaveY = aBelowB ? a.y : a.y + a.h
+    const enterYTop = aBelowB ? b.y + b.h : b.y
+    const enterYBot = aBelowB ? b.y : b.y + b.h
+    for (let rail = 0; rail <= 220; rail += 12) {
+      const ry1 = aBelowB ? enterYTop + pad + rail : enterYTop - pad - rail
+      const ry2 = aBelowB ? enterYBot + pad + rail : enterYBot - pad - rail
+      const x1 = diamonds?.has(c.to) ? bcx : clamp(acx, b.x + 1, b.x + b.w - 1)
+      push([[acx, leaveY], [acx, ry1], [x1, ry1], [x1, enterYTop]])
+      push([[acx, leaveY], [acx, ry2], [x1, ry2], [x1, enterYBot]])
+    }
+    const tierOf = (id, pt) => {
+      const r = placed.get(id)
+      if (!r) return 3
+      let bestT = 3
+      for (const p of legalPorts(r, !!diamonds?.has(id))) {
+        const d = Math.abs(p.x - pt[0]) + Math.abs(p.y - pt[1])
+        if (d <= 2) bestT = Math.min(bestT, p.tier)
+      }
+      return bestT
+    }
+    const oldStartTier = tierOf(c.from, c.points[0])
+    const oldEndTier = tierOf(c.to, c.points[c.points.length - 1])
+    const overlapsLong = (pts, others2) => {
+      // Terminal segments are merges (two links feeding one port), not corridors: a shared last
+      // segment is the legal merge, so only the interior run is checked for a long opposite-dir
+      // rail.
+      for (let i = 1; i < pts.length - 1; i += 1) {
+        const [a, b] = [pts[i - 1], pts[i]]
+        const horiz = Math.abs(a[1] - b[1]) < 0.5
+        const lo = horiz ? Math.min(a[0], b[0]) : Math.min(a[1], b[1])
+        const hi = horiz ? Math.max(a[0], b[0]) : Math.max(a[1], b[1])
+        if (hi - lo < 40) continue
+        for (const other of others2) {
+          for (let j = 1; j < other.length; j += 1) {
+            const [p, q] = [other[j - 1], other[j]]
+            if ((Math.abs(p[1] - q[1]) < 0.5) !== horiz) continue
+            if (horiz ? Math.abs(p[1] - a[1]) > 0.5 : Math.abs(p[0] - a[0]) > 0.5) continue
+            const oLo = horiz ? Math.min(p[0], q[0]) : Math.min(p[1], q[1])
+            const oHi = horiz ? Math.max(p[0], q[0]) : Math.max(p[1], q[1])
+            const ov = Math.min(hi, oHi) - Math.max(lo, oLo)
+            if (ov > 60) return true
+          }
+        }
+      }
+      return false
+    }
+    // A new *leave* point must not land on a port another link already leaves from (the
+    // rect multi-leave contract). An *entry* may merge onto an occupied port: flow converging
+    // into one arrow is normal and is what the merge rule allows.
+    const sharesLeave = (pts) => {
+      for (const other of others) {
+        if (Math.hypot(pts[0][0] - other[0][0], pts[0][1] - other[0][1]) < 20) return true
+      }
+      return false
+    }
+    let best = null
+    let bestCross = Infinity
+    let bestB = Infinity
+    let bestLen = Infinity
+    for (const pts of cands) {
+      if (!pathClear(pts, placed, c.from, c.to)) continue
+      const cross = pathCrossCount(pts, others)
+      const bends = pathBendCount(pts)
+      const len = pathLength(pts)
+      if (cross > curCross) continue
+      // Contract guards: a short repair may not
+      //  - drop the endpoint onto a lower-priority port than it already used (tips stay tips),
+      //  - land on a port another link already occupies (rect multi-leave must not share),
+      //  - ride another link's ink for a long stretch (no long opposite-dir corridor).
+      if (tierOf(c.from, pts[0]) > oldStartTier) continue
+      if (tierOf(c.to, pts[pts.length - 1]) > oldEndTier) continue
+      if (sharesLeave(pts)) continue
+      if (overlapsLong(pts, others)) continue
+      if (
+        cross < bestCross ||
+        (cross === bestCross && bends < bestB) ||
+        (cross === bestCross && bends === bestB && len < bestLen)
+      ) {
+        bestCross = cross
+        bestB = bends
+        bestLen = len
+        best = pts
+      }
+    }
+    if (!best) continue
+    const better = bestCross < curCross || bestB < curB || (bestB === curB && bestLen < curLen * 0.8)
+    if (better) c.points = best
+  }
+}
+
+/**
+ * Port bundling: two or more links that leave/enter a node on the same face share one
+ * stub (port → junction, 32px out) and only split at the junction. A diamond has four
+ * vertices, so this is what keeps a node with five or six links readable; the split is
+ * outside the node instead of two lines diverging from one point.
+ */
+function spreadRectPorts(placed, connections, diamonds) {
+  const NEAR = 20
+  const ortho = (pts) => {
+    for (let i = 1; i < pts.length; i += 1) {
+      if (Math.abs(pts[i][0] - pts[i - 1][0]) > 0.5 && Math.abs(pts[i][1] - pts[i - 1][1]) > 0.5) return false
+    }
+    return true
+  }
+  const dedupe = (pts) => {
+    const out = []
+    for (const p of pts) {
+      const q = out[out.length - 1]
+      if (q && Math.abs(p[0] - q[0]) < 0.5 && Math.abs(p[1] - q[1]) < 0.5) continue
+      out.push(p)
+    }
+    return out
+  }
+  const bendsOf = (pts) => {
+    let b = 0
+    for (let i = 1; i < pts.length - 1; i += 1) {
+      const [p, q, r] = [pts[i - 1], pts[i], pts[i + 1]]
+      if (Math.abs(p[0] - q[0]) < 0.5 && Math.abs(q[1] - r[1]) < 0.5) b += 1
+      if (Math.abs(p[1] - q[1]) < 0.5 && Math.abs(q[0] - r[0]) < 0.5) b += 1
+    }
+    return b
+  }
+  const lenOf = (pts) => {
+    let l = 0
+    for (let i = 1; i < pts.length; i += 1) l += Math.abs(pts[i][0] - pts[i - 1][0]) + Math.abs(pts[i][1] - pts[i - 1][1])
+    return l
+  }
+  const ends = new Map()
+  for (const c of connections) {
+    if (!c.points?.length) continue
+    for (const end of ['from', 'to']) {
+      const id = end === 'from' ? c.from : c.to
+      if (diamonds?.has(id)) continue
+      const r = placed.get(id)
+      if (!r) continue
+      const pt = end === 'from' ? c.points[0] : c.points[c.points.length - 1]
+      if (!ends.has(id)) ends.set(id, [])
+      ends.get(id).push({ c, end, pt, r })
+    }
+  }
+  /** Try to move one link end of this node onto a spare port. */
+  const tryMove = (mover, occupied) => {
+    const r = mover.r
+    const pts = mover.end === 'from' ? mover.c.points : mover.c.points
+    const oldBends = bendsOf(pts)
+    const totalLen = lenOf(pts)
+    const cands = []
+    for (const t of [0.5, 0.25, 0.75]) {
+      cands.push({ face: 'N', x: r.x + r.w * t, y: r.y }, { face: 'S', x: r.x + r.w * t, y: r.y + r.h })
+      cands.push({ face: 'W', x: r.x, y: r.y + r.h * t }, { face: 'E', x: r.x + r.w, y: r.y + r.h * t })
+    }
+    let best = null
+    for (const p of cands) {
+      if (occupied.some((q) => Math.hypot(q[0] - p.x, q[1] - p.y) < NEAR)) continue
+      const indices =
+        mover.end === 'from'
+          ? Array.from({ length: pts.length - 1 }, (_, idx) => idx + 1)
+          : Array.from({ length: pts.length - 1 }, (_, idx) => pts.length - 2 - idx)
+      for (const k of indices) {
+        const wp = pts[k]
+        const outside =
+          (p.face === 'N' && wp[1] <= r.y - 1) ||
+          (p.face === 'S' && wp[1] >= r.y + r.h + 1) ||
+          (p.face === 'W' && wp[0] <= r.x - 1) ||
+          (p.face === 'E' && wp[0] >= r.x + r.w + 1)
+        if (!outside) continue
+        const elbow = p.face === 'N' || p.face === 'S' ? [p.x, wp[1]] : [wp[0], p.y]
+        const candidate =
+          mover.end === 'from'
+            ? dedupe([[p.x, p.y], elbow, ...pts.slice(k)])
+            : dedupe([...pts.slice(0, k + 1), elbow, [p.x, p.y]])
+        if (candidate.length < 2 || !ortho(candidate)) continue
+        if (bendsOf(candidate) > oldBends + 2) continue
+        if (lenOf(candidate) > totalLen * 1.4) continue
+        if (!pathClear(candidate, placed, mover.c.from, mover.c.to)) continue
+        const score = bendsOf(candidate) * 1000 + lenOf(candidate) + (p.face === 'N' || p.face === 'E' ? 0 : 1)
+        if (!best || score < best.score) best = { candidate, score, pt: [p.x, p.y] }
+        break
+      }
+    }
+    if (!best) return false
+    mover.c.points = best.candidate
+    const idx = occupied.indexOf(mover.pt)
+    if (idx >= 0) occupied.splice(idx, 1)
+    occupied.push(best.pt)
+    return true
+  }
+  for (const list of ends.values()) {
+    const occupied = list.map((e) => e.pt)
+    for (let i = 0; i < list.length; i += 1) {
+      for (let j = i + 1; j < list.length; j += 1) {
+        const a = list[i]
+        const b = list[j]
+        if (Math.hypot(a.pt[0] - b.pt[0], a.pt[1] - b.pt[1]) >= NEAR) continue
+        // either one may move; the one that cannot reach a spare port stays
+        for (const mover of [a, b]) {
+          if (mover.c.kind === 'main') continue
+          if (tryMove(mover, occupied)) return
+        }
+      }
+    }
+  }
+}
+
 /** True when another placed box sits between a and b on (near) the shared column. */
 function columnBlocked(a, b, placed, fromId, toId) {
   if (!placed) return false
@@ -1975,6 +2256,7 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds, pills = n
     resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds)
     resolveSharedDiamondEnters(placed, connections, diamonds, spineIds)
     resolveSharedRectLeaves(placed, connections, diamonds, spineIds)
+    spreadRectPorts(placed, connections, diamonds)
     separateAmbiguousCorridors(placed, connections, diamonds, spineIds)
     repairRimFalseConnections(placed, connections, diamonds, spineIds)
     repairEdgeCrossings(placed, connections, diamonds, spineIds)
@@ -2879,18 +3161,41 @@ function snapRectEndpoints(placed, connections, diamonds) {
       const box = placed.get(c.from)
       if (box) c.points[0] = snap(box, c.points[0], c.points[1])
     }
-    if (!diamonds.has(c.to)) {
-      const box = placed.get(c.to)
-      if (box) {
-        c.points[c.points.length - 1] = snap(
-          box,
-          c.points[c.points.length - 1],
-          c.points[c.points.length - 2],
-        )
+      if (! diamonds.has(c.to)) {
+        const box = placed.get(c.to)
+        if (box) {
+          c.points[c.points.length - 1] = snap(
+            box,
+            c.points[c.points.length - 1],
+            c.points[c.points.length - 2],
+          )
+        }
       }
+      const fixSeg = (i0, i1) => {
+        const p = c.points[i0]
+        const q = c.points[i1]
+        if (Math.abs(p[0] - q[0]) < 0.5 || Math.abs(p[1] - q[1]) < 0.5) return
+        const mids = [
+          /** @type {number[]} */ ([p[0], q[1]]),
+          /** @type {number[]} */ ([q[0], p[1]]),
+        ]
+        for (const mid of mids) {
+          const trial = c.points.map((pt) => /** @type {number[]} */ ([pt[0], pt[1]]))
+          if (i0 < i1) trial.splice(i1, 0, mid)
+          else trial.splice(i0, 0, mid)
+          if (pathClear(trial, placed, c.from, c.to)) {
+            c.points = trial
+            return
+          }
+        }
+        const mid = mids[0]
+        if (i0 < i1) c.points.splice(i1, 0, mid)
+        else c.points.splice(i0, 0, mid)
+      }
+      if (c.points.length >= 2) fixSeg(0, 1)
+      if (c.points.length >= 2) fixSeg(c.points.length - 2, c.points.length - 1)
     }
   }
-}
 
 /**
  * Separate long collinear coincidences that confuse edge ownership:
@@ -3300,6 +3605,10 @@ function repairRimFalseConnections(placed, connections, diamonds, spineIds) {
     let bestLen = Infinity
     const consider = (pts) => {
       if (!pts || pts.length < 2) return
+      for (let i = 0; i < pts.length - 1; i += 1) {
+        const [p, q] = [pts[i], pts[i + 1]]
+        if (Math.abs(p[0] - q[0]) >= 0.5 && Math.abs(p[1] - q[1]) >= 0.5) return
+      }
       if (!pathClear(pts, placed, c.from, c.to)) return
       // Must not recreate a rim∩port false connection.
       for (let i = 0; i < pts.length - 1; i += 1) {
@@ -3592,6 +3901,10 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
       /** @param {number[][] | null | undefined} pts */
       const tryPts = (pts) => {
         if (!pts || pts.length < 2) return
+        for (let i = 0; i < pts.length - 1; i += 1) {
+          const [p, q] = [pts[i], pts[i + 1]]
+          if (Math.abs(p[0] - q[0]) >= 0.5 && Math.abs(p[1] - q[1]) >= 0.5) return
+        }
         if (!pathClear(pts, placed, c.from, c.to)) return
         // Reject rim∩edge rides on foreign boxes (pathClear interior pad misses exact rims).
         for (let i = 0; i < pts.length - 1; i += 1) {
