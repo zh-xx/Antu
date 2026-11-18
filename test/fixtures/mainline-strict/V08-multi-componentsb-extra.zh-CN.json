@@ -1,0 +1,137 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "合成·双起点并列 · 互不连通组件 · 变体加支",
+  "domain": "other",
+  "meta": {
+    "synthetic": true,
+    "notLegalAdvice": true,
+    "labId": "V08-multi-componentsb-extra",
+    "focus": "multi-components",
+    "disclaimer": "【合成样本 · 非法律意见】本文件为 Antu 布局/引擎压力测试用虚构流程结构，不构成法律意见，不描述真实案件或真实当事人，不含真实案号、裁判文书引用或权威出处。",
+    "seed": "antu-synthetic-lab-v1-2026-11-08",
+    "labVersion": "1.0.0",
+    "componentHint": 2,
+    "variantOf": "B08-multi-components",
+    "variantKind": "extra-end-branch"
+  },
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "甲方（合成）",
+      "role": "相对方甲"
+    },
+    {
+      "id": "a-2",
+      "name": "乙方（合成）",
+      "role": "相对方乙"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-syn",
+      "type": "note",
+      "name": "合成样本说明（非合同/非判决）",
+      "loc": {
+        "file": "V08-multi-componentsb-extra.zh-CN.json"
+      }
+    }
+  ],
+  "stages": [
+    {
+      "id": "st-a",
+      "label": "组件甲"
+    },
+    {
+      "id": "st-b",
+      "label": "组件乙"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-a1",
+      "kind": "start",
+      "label": "组件甲开始",
+      "stageId": "st-a"
+    },
+    {
+      "id": "n-a2",
+      "kind": "step",
+      "label": "组件甲处理",
+      "stageId": "st-a"
+    },
+    {
+      "id": "n-a3",
+      "kind": "end",
+      "label": "组件甲结束",
+      "stageId": "st-a",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-b1",
+      "kind": "start",
+      "label": "组件乙开始",
+      "stageId": "st-b"
+    },
+    {
+      "id": "n-b2",
+      "kind": "decision",
+      "label": "组件乙是否分支",
+      "stageId": "st-b"
+    },
+    {
+      "id": "n-b3",
+      "kind": "end",
+      "label": "组件乙主终",
+      "stageId": "st-b",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-b4",
+      "kind": "end",
+      "label": "组件乙支终",
+      "stageId": "st-b",
+      "outcome": "negative"
+    },
+    {
+      "id": "n-x-end",
+      "kind": "end",
+      "label": "变体附加终止出口",
+      "stageId": "st-b",
+      "outcome": "negative"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n-a1",
+      "to": "n-a2",
+      "main": true
+    },
+    {
+      "from": "n-a2",
+      "to": "n-a3",
+      "main": true
+    },
+    {
+      "from": "n-b1",
+      "to": "n-b2",
+      "main": true
+    },
+    {
+      "from": "n-b2",
+      "to": "n-b3",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-b2",
+      "to": "n-b4",
+      "condition": "是"
+    },
+    {
+      "from": "n-b2",
+      "to": "n-x-end",
+      "condition": "变体附加条件"
+    }
+  ]
+}

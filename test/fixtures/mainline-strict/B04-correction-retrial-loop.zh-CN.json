@@ -1,0 +1,175 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "合成·行政复议 · 纠正与再审环",
+  "domain": "administrative",
+  "meta": {
+    "synthetic": true,
+    "notLegalAdvice": true,
+    "labId": "B04-correction-retrial-loop",
+    "focus": "retrial-loop",
+    "disclaimer": "【合成样本 · 非法律意见】本文件为 Antu 布局/引擎压力测试用虚构流程结构，不构成法律意见，不描述真实案件或真实当事人，不含真实案号、裁判文书引用或权威出处。",
+    "seed": "antu-synthetic-lab-v1-2026-11-08",
+    "labVersion": "1.0.0"
+  },
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "甲方（合成）",
+      "role": "相对方甲"
+    },
+    {
+      "id": "a-2",
+      "name": "乙方（合成）",
+      "role": "相对方乙"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-syn",
+      "type": "note",
+      "name": "合成样本说明（非合同/非判决）",
+      "loc": {
+        "file": "B04-correction-retrial-loop.zh-CN.json"
+      }
+    }
+  ],
+  "stages": [
+    {
+      "id": "st-1",
+      "label": "复议"
+    },
+    {
+      "id": "st-2",
+      "label": "纠正"
+    },
+    {
+      "id": "st-3",
+      "label": "后续"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "申请行政复议",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-2",
+      "kind": "step",
+      "label": "书面审查",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-3",
+      "kind": "decision",
+      "label": "是否需要补正材料",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "作出复议决定",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-5",
+      "kind": "decision",
+      "label": "决定种类",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-6",
+      "kind": "end",
+      "label": "维持原行为",
+      "stageId": "st-3",
+      "outcome": "negative"
+    },
+    {
+      "id": "n-7",
+      "kind": "step",
+      "label": "责令重作",
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-8",
+      "kind": "decision",
+      "label": "重作是否再次被申请复议",
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-9",
+      "kind": "end",
+      "label": "重作后结案",
+      "stageId": "st-3",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-10",
+      "kind": "step",
+      "label": "补正材料",
+      "stageId": "st-1",
+      "actorIds": [
+        "a-2"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "n-1",
+      "to": "n-2",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-3",
+      "main": true
+    },
+    {
+      "from": "n-3",
+      "to": "n-4",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-3",
+      "to": "n-10",
+      "condition": "是"
+    },
+    {
+      "from": "n-10",
+      "to": "n-2"
+    },
+    {
+      "from": "n-4",
+      "to": "n-5",
+      "main": true
+    },
+    {
+      "from": "n-5",
+      "to": "n-6",
+      "condition": "维持",
+      "main": true
+    },
+    {
+      "from": "n-5",
+      "to": "n-7",
+      "condition": "责令重作"
+    },
+    {
+      "from": "n-7",
+      "to": "n-8"
+    },
+    {
+      "from": "n-8",
+      "to": "n-9",
+      "condition": "否"
+    },
+    {
+      "from": "n-8",
+      "to": "n-2",
+      "condition": "是"
+    }
+  ]
+}

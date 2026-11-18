@@ -104,6 +104,9 @@ export default function ProcedureFlow({ spec }) {
   const specKey = specKeyOf(spec)
   // Preview-only override (not a dock switch): force hang side by spine fork id.
   const mainlineHangSide = preset?.fields?.mainlineHangSide ?? null
+  // Opt-in port-aware ink repair (ports.js): the wider port model is measured against the
+  // four-port contracts before it becomes the default.
+  const mainlinePorts = preset?.fields?.mainlinePorts === true
   const hasStages = Array.isArray(spec?.stages) && spec.stages.length > 0
   const hasRules = Array.isArray(spec?.rules) && spec.rules.length > 0
 
@@ -177,7 +180,7 @@ export default function ProcedureFlow({ spec }) {
     let cancelled = false
     layoutProcedureAsync(
       spec,
-      { detail: fields.detail, stages: fields.stages, rules: fields.rules, engine, mainlineHangSide },
+      { detail: fields.detail, stages: fields.stages, rules: fields.rules, engine, mainlineHangSide, mainlinePorts },
       orientation,
     ).then((next) => {
       if (!cancelled && id === layoutReq.current) setLayout(next)
@@ -185,7 +188,7 @@ export default function ProcedureFlow({ spec }) {
     return () => {
       cancelled = true
     }
-  }, [spec, fields.detail, fields.stages, fields.rules, engine, mainlineHangSide, orientation])
+  }, [spec, fields.detail, fields.stages, fields.rules, engine, mainlineHangSide, mainlinePorts, orientation])
 
   const [hoveredId, setHoveredId] = useState(/** @type {string | null} */ (null))
   const [pinnedId, setPinnedId] = useState(/** @type {string | null} */ (null))

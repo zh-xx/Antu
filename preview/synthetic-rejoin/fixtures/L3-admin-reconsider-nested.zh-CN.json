@@ -1,0 +1,389 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "江北涂料公司不服市生态环境局罚款申请行政复议·行政处罚复议·环保罚款示意",
+  "domain": "litigation",
+  "actors": [
+    {
+      "id": "a-applicant",
+      "name": "申请人",
+      "role": "江北涂料公司"
+    },
+    {
+      "id": "a-respondent",
+      "name": "被申请人",
+      "role": "市生态环境局"
+    },
+    {
+      "id": "a-reviewer",
+      "name": "复议机关",
+      "role": "行政复议审理机构"
+    },
+    {
+      "id": "a-third-party",
+      "name": "第三人",
+      "role": "与罚款决定有利害关系的第三方"
+    }
+  ],
+  "sources": [
+    {
+      "id": "src-statute-1",
+      "type": "statute",
+      "name": "《中华人民共和国行政复议法》相关条文（示意）",
+      "loc": {
+        "file": "示意条文，仅用于结构展示"
+      }
+    },
+    {
+      "id": "src-statute-2",
+      "type": "statute",
+      "name": "《中华人民共和国行政诉讼法》相关条文（示意）",
+      "loc": {
+        "file": "示意条文，仅用于结构展示"
+      }
+    }
+  ],
+  "stages": [
+    {
+      "id": "s-application",
+      "label": "申请复议"
+    },
+    {
+      "id": "s-acceptance",
+      "label": "受理审查"
+    },
+    {
+      "id": "s-hearing",
+      "label": "审理"
+    },
+    {
+      "id": "s-decision",
+      "label": "复议决定"
+    },
+    {
+      "id": "s-litigation",
+      "label": "诉讼衔接"
+    },
+    {
+      "id": "s-suspension",
+      "label": "停止执行审查"
+    },
+    {
+      "id": "s-joinder",
+      "label": "第三人追加"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "江北涂料公司申请行政复议",
+      "stageId": "s-application",
+      "actorIds": [
+        "a-applicant"
+      ]
+    },
+    {
+      "id": "n-2",
+      "kind": "step",
+      "label": "提交复议申请书及证据",
+      "stageId": "s-application",
+      "actorIds": [
+        "a-applicant"
+      ]
+    },
+    {
+      "id": "n-3",
+      "kind": "decision",
+      "label": "复议机关审查受理条件",
+      "stageId": "s-acceptance",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-4",
+      "kind": "step",
+      "label": "受理并送达复议材料",
+      "stageId": "s-acceptance",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-5",
+      "kind": "decision",
+      "label": "是否停止执行罚款决定",
+      "stageId": "s-suspension",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-6",
+      "kind": "step",
+      "label": "组织听证",
+      "stageId": "s-suspension",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-7",
+      "kind": "step",
+      "label": "要求提供担保",
+      "stageId": "s-suspension",
+      "actorIds": [
+        "a-applicant"
+      ]
+    },
+    {
+      "id": "n-8",
+      "kind": "step",
+      "label": "停止执行条件审查",
+      "stageId": "s-suspension",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-9",
+      "kind": "decision",
+      "label": "是否准许停止执行",
+      "stageId": "s-suspension",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-10",
+      "kind": "end",
+      "label": "停止执行枝终结（负面）",
+      "stageId": "s-suspension",
+      "actorIds": [
+        "a-reviewer"
+      ],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-11",
+      "kind": "step",
+      "label": "审理前准备与阅卷",
+      "stageId": "s-hearing",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-12",
+      "kind": "step",
+      "label": "调查取证与听取意见",
+      "stageId": "s-hearing",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-13",
+      "kind": "decision",
+      "label": "是否追加第三人",
+      "stageId": "s-joinder",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-14",
+      "kind": "decision",
+      "label": "是否准许追加第三人",
+      "stageId": "s-joinder",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-15",
+      "kind": "step",
+      "label": "通知第三人参加复议",
+      "stageId": "s-joinder",
+      "actorIds": [
+        "a-third-party"
+      ]
+    },
+    {
+      "id": "n-16",
+      "kind": "end",
+      "label": "不准追加第三人枝终结（负面）",
+      "stageId": "s-joinder",
+      "actorIds": [
+        "a-reviewer"
+      ],
+      "outcome": "negative"
+    },
+    {
+      "id": "n-17",
+      "kind": "step",
+      "label": "复议审理（含第三人意见）",
+      "stageId": "s-hearing",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-18",
+      "kind": "step",
+      "label": "作出复议决定",
+      "stageId": "s-decision",
+      "actorIds": [
+        "a-reviewer"
+      ]
+    },
+    {
+      "id": "n-19",
+      "kind": "decision",
+      "label": "是否提起行政诉讼",
+      "stageId": "s-litigation",
+      "actorIds": [
+        "a-applicant"
+      ]
+    },
+    {
+      "id": "n-20",
+      "kind": "end",
+      "label": "复议终结",
+      "stageId": "s-decision",
+      "actorIds": [
+        "a-reviewer"
+      ],
+      "outcome": "positive"
+    },
+    {
+      "id": "n-21",
+      "kind": "end",
+      "label": "提起行政诉讼",
+      "stageId": "s-litigation",
+      "actorIds": [
+        "a-applicant"
+      ],
+      "outcome": "positive"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n-1",
+      "to": "n-2",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-3",
+      "main": true
+    },
+    {
+      "from": "n-3",
+      "to": "n-4",
+      "condition": "符合受理条件",
+      "main": true
+    },
+    {
+      "from": "n-3",
+      "to": "n-10",
+      "condition": "不符合受理条件"
+    },
+    {
+      "from": "n-4",
+      "to": "n-5",
+      "main": true
+    },
+    {
+      "from": "n-5",
+      "to": "n-6",
+      "condition": "是"
+    },
+    {
+      "from": "n-5",
+      "to": "n-11",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-6",
+      "to": "n-7"
+    },
+    {
+      "from": "n-7",
+      "to": "n-8"
+    },
+    {
+      "from": "n-8",
+      "to": "n-9"
+    },
+    {
+      "from": "n-9",
+      "to": "n-10",
+      "condition": "不准"
+    },
+    {
+      "from": "n-9",
+      "to": "n-10",
+      "condition": "准许后仍终结"
+    },
+    {
+      "from": "n-11",
+      "to": "n-12",
+      "main": true
+    },
+    {
+      "from": "n-12",
+      "to": "n-13",
+      "main": true
+    },
+    {
+      "from": "n-13",
+      "to": "n-14",
+      "condition": "是"
+    },
+    {
+      "from": "n-13",
+      "to": "n-17",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-14",
+      "to": "n-15",
+      "condition": "准许"
+    },
+    {
+      "from": "n-14",
+      "to": "n-16",
+      "condition": "不准"
+    },
+    {
+      "from": "n-15",
+      "to": "n-12",
+      "condition": "回并"
+    },
+    {
+      "from": "n-17",
+      "to": "n-18",
+      "main": true
+    },
+    {
+      "from": "n-18",
+      "to": "n-19",
+      "main": true
+    },
+    {
+      "from": "n-19",
+      "to": "n-20",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-19",
+      "to": "n-21",
+      "condition": "是"
+    }
+  ]
+}

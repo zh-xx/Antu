@@ -1,0 +1,152 @@
+{
+  "type": "procedure",
+  "specVersion": 1,
+  "title": "合成·不可抗力 · 分层例外级联 · 变体边序",
+  "domain": "contract-performance",
+  "meta": {
+    "synthetic": true,
+    "notLegalAdvice": true,
+    "labId": "V11-exception-cascadea-permute",
+    "focus": "exception-cascade",
+    "disclaimer": "【合成样本 · 非法律意见】本文件为 Antu 布局/引擎压力测试用虚构流程结构，不构成法律意见，不描述真实案件或真实当事人，不含真实案号、裁判文书引用或权威出处。",
+    "seed": "antu-synthetic-lab-v1-2026-11-08",
+    "labVersion": "1.0.0",
+    "variantOf": "B11-exception-cascade",
+    "variantKind": "permute-nonmain-edges"
+  },
+  "actors": [
+    {
+      "id": "a-1",
+      "name": "甲方（合成）",
+      "role": "相对方甲"
+    },
+    {
+      "id": "a-2",
+      "name": "乙方（合成）",
+      "role": "相对方乙"
+    }
+  ],
+  "sources": [
+    {
+      "id": "s-syn",
+      "type": "note",
+      "name": "合成样本说明（非合同/非判决）",
+      "loc": {
+        "file": "V11-exception-cascadea-permute.zh-CN.json"
+      }
+    }
+  ],
+  "stages": [
+    {
+      "id": "st-1",
+      "label": "履约"
+    },
+    {
+      "id": "st-2",
+      "label": "例外层"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n-1",
+      "kind": "start",
+      "label": "约定交货日临近",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-2",
+      "kind": "decision",
+      "label": "是否发生障碍事件",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-3",
+      "kind": "step",
+      "label": "按期交货",
+      "stageId": "st-1"
+    },
+    {
+      "id": "n-4",
+      "kind": "end",
+      "label": "履约完成",
+      "stageId": "st-1",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-10",
+      "kind": "decision",
+      "label": "是否属于不可抗力层",
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-11",
+      "kind": "decision",
+      "label": "通知是否及时",
+      "stageId": "st-2"
+    },
+    {
+      "id": "n-12",
+      "kind": "end",
+      "label": "免责并延期",
+      "stageId": "st-2",
+      "outcome": "positive"
+    },
+    {
+      "id": "n-13",
+      "kind": "end",
+      "label": "未及时通知·不免责",
+      "stageId": "st-2",
+      "outcome": "negative"
+    },
+    {
+      "id": "n-14",
+      "kind": "end",
+      "label": "非不可抗力·承担迟延",
+      "stageId": "st-2",
+      "outcome": "negative"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n-1",
+      "to": "n-2",
+      "main": true
+    },
+    {
+      "from": "n-2",
+      "to": "n-3",
+      "condition": "否",
+      "main": true
+    },
+    {
+      "from": "n-3",
+      "to": "n-4",
+      "main": true
+    },
+    {
+      "from": "n-11",
+      "to": "n-13",
+      "condition": "否"
+    },
+    {
+      "from": "n-11",
+      "to": "n-12",
+      "condition": "是"
+    },
+    {
+      "from": "n-10",
+      "to": "n-14",
+      "condition": "否"
+    },
+    {
+      "from": "n-10",
+      "to": "n-11",
+      "condition": "是"
+    },
+    {
+      "from": "n-2",
+      "to": "n-10",
+      "condition": "是"
+    }
+  ]
+}

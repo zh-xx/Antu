@@ -48,7 +48,11 @@ JS
 |------|------------|----------------------|
 | `S1-hang-lane-clear` | n-5→n-3「回并」 | hang-lane (clear) |
 | `S2-gutter-blocked-lane` | n-9→n-6「是」 | inward gutter |
-| `S3-outer-gutter-blocked` | n-21→n-3「回并」 | branch regions + between-lane corridor: leave E into lane gap (was far-outer cutting boxes) |
+| `S3-outer-gutter-blocked` | n-21→n-3「回并」 | nested auto side-flip: 外挂 left, 内挂 right; 回并 leaves west (was same-side / far-outer cutting boxes) |
+| `L1-litigation-nested-hang` | n-19→n-4「回并」 | DeepSeek-authored 买卖合同一审: 管辖异议 long dead hang (right) contains 财产保全 short rejoin hang (auto-flips left); upward back-edge rejoin |
+| `L2-labour-arbitration-nested` | n-19→n-5「回并」 | DeepSeek: 劳动争议仲裁·加班工资 — nested hang + side-end |
+| `L3-admin-reconsider-nested` | n-15→n-12「回并」 | DeepSeek: 行政处罚复议·环保罚款 — nested hang + side-end |
+| `L4-enforcement-objection-nested` | n-15→n-13「回并」 | DeepSeek: 执行异议·房屋买卖 — nested hang + side-end |
 | `S4-hang-lane-upward` | n-7→n-2 | hang-lane upward |
 
 ## HTML outputs
@@ -56,6 +60,10 @@ JS
 - `html/S1-hang-lane-clear-mainline.html`
 - `html/S2-gutter-blocked-lane-mainline.html`
 - `html/S3-outer-gutter-blocked-mainline.html`
+- `html/L1-litigation-nested-hang-mainline.html` (local)
+- `html/L2-labour-arbitration-nested-mainline.html` (local)
+- `html/L3-admin-reconsider-nested-mainline.html` (local)
+- `html/L4-enforcement-objection-nested-mainline.html` (local)
 - `html/S4-hang-lane-upward-mainline.html`
 
 ## Same-row demo (manual)
