@@ -576,6 +576,14 @@ function layoutStageMainline({
     if (!to) return false
     return (outG.get(to) ?? []).some((e) => e.isBack && e.to === h.from)
   }
+  const mergesIntoSiblingOffSpineHang = (it, other) =>
+    it !== other &&
+    it.h.rootOnSpine &&
+    other.h.rootOnSpine &&
+    it.a === other.a &&
+    !it.h.rejoin &&
+    !other.h.rejoin &&
+    it.h.boxes.some((id) => (outG.get(id) ?? []).some((e) => other.h.boxes.includes(e.to)))
   /** @type {Map<object, number>} hang → ±1 */
   const signOf = new Map()
   /** @type {Map<string, object[]>} decision id → hang intervals */
@@ -623,7 +631,7 @@ function layoutStageMainline({
       (o) =>
         o !== it &&
         o.h.rootOnSpine &&
-        o.a < it.a &&
+        (o.a < it.a || mergesIntoSiblingOffSpineHang(it, o)) &&
         it.h.boxes.some((id) =>
           (outG.get(id) ?? []).some((e) => o.h.boxes.includes(e.to)),
         ),
@@ -686,6 +694,7 @@ function layoutStageMainline({
     const seen = new Map()
     for (const it of ordered) {
       if (isLoopHang(it.h)) continue
+      if (ordered.some((o) => mergesIntoSiblingOffSpineHang(it, o))) continue
       let sign = /** @type {number} */ (signOf.get(it.h))
       if (seen.has(sign)) {
         const opp = -sign
@@ -2048,7 +2057,40 @@ export function applyTreeForkBus(placed, connections, spineIds, diamonds, stageB
       }
     }
 
-    // 3. Rebuild spine main links so shifted spine boxes stay straight 0-bend
+    // 3. If an upstream hang box rejoins dId itself (whose E/W tips now carry the tree-fork
+    //    distribution rail), route its rejoin from its S centre into dId's N tip merge point
+    //    and restore its own same-row fork link (e.g. 二审不开庭审理 → 二审如何裁判).
+    for (const c of connections) {
+      if (c.to !== dId || c.kind === 'main' || spineIds.has(c.from)) continue
+      const a = placed.get(c.from)
+      if (!a || a.y + a.h >= d.y) continue
+      const acx = a.x + a.w / 2
+      const mainIn = connections.find((o) => o.to === dId && o.kind === 'main')
+      const prevSpine = mainIn ? placed.get(mainIn.from) : null
+      const mergeY = prevSpine ? Math.round((prevSpine.y + prevSpine.h + d.y) / 2) : d.y - 28
+      const cand = [
+        [acx, a.y + a.h],
+        [acx, mergeY],
+        [dcx, mergeY],
+        [dcx, d.y],
+      ]
+      if (pathClear(cand, placed, c.from, dId)) {
+        c.points = cand
+        for (const cIn of connections) {
+          if (cIn.to !== c.from || cIn.kind === 'main') continue
+          const fBox = placed.get(cIn.from)
+          if (fBox && sameRowLink(fBox, a)) {
+            const straight = sideHorizontal(fBox, a)
+            if (pathClear(straight, placed, cIn.from, cIn.to)) {
+              cIn.points = straight
+              cIn.pinLabelSeg = 0
+            }
+          }
+        }
+      }
+    }
+
+    // 4. Rebuild spine main links so shifted spine boxes stay straight 0-bend
     for (const c of connections) {
       if (c.kind !== 'main' || !spineIds.has(c.from) || !spineIds.has(c.to)) continue
       const a = placed.get(c.from)
