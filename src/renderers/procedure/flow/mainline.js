@@ -297,12 +297,17 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   // Iterate S2 → corridor-separate → cross-repair until port/rail/cross settle (stages-on).
   settleGeometryPasses(placed, connections, diamonds, allSpine, pills, vertical)
   restoreInputMainStraight(placed, connections, allSpine)
+  applyTreeForkBus(placed, connections, allSpine, diamonds, boxes, vertical)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
   yield
 
   let width = cx - COLUMN_GAP + PAD
   let height = PAD + tallest + PAD
+  for (const r of placed.values()) {
+    width = Math.max(width, r.x + r.w + PAD)
+    height = Math.max(height, r.y + r.h + PAD)
+  }
   for (const c of connections) {
     for (const [x, y] of c.points) {
       width = Math.max(width, x + PAD)
@@ -1743,6 +1748,15 @@ export function ensureConnectionLabels(connections, nodeRects, blocks = [], bord
   }
   for (const c of connections) {
     if (!c.labelSize || c.labelAt) continue
+    if (typeof c.pinLabelSeg === 'number' && c.points?.length > c.pinLabelSeg + 1) {
+      const p = c.points[c.pinLabelSeg]
+      const q = c.points[c.pinLabelSeg + 1]
+      c.labelAt = {
+        x: (p[0] + q[0]) / 2 - c.labelSize.width / 2,
+        y: (p[1] + q[1]) / 2 - c.labelSize.height / 2,
+      }
+      continue
+    }
     const others = connections.filter((o) => o !== c)
     const labels = others
       .filter((o) => o.labelAt && o.labelSize)
@@ -1881,6 +1895,173 @@ function restoreInputMainStraight(placed, connections, spineIds) {
  * wrap the world (real 法条 samples: 行政处罚「不要求」、民事二审「不开行裁判」).
  */
 export { spreadRectPorts }
+
+/**
+ * Method 1 (1-Bend Tree-Fork Distribution + Aligned Sibling Tier + 1-Bend Bus Merge):
+ * When a spine decision fans out into ≥3 non-main sibling outcome steps (so total outgoing
+ * edges ≥ 4 and total incident edges ≥ 5, exhausting the 4 cardinal diamond tips) and those
+ * sibling steps all converge into a common downstream spine node:
+ * 1. Align all sibling outcome boxes (left branches, main spine continuation, right branches)
+ *    on one horizontal tier below the decision diamond.
+ * 2. Route each side's branches from the diamond's E / W cardinal tip straight horizontally
+ *    along `y = dcy` (shared trunk stub on the tip row), turning 90° down (1 bend) into each
+ *    branch box's Top-Centre (N) port, with its condition label pinned to its dedicated
+ *    vertical entry stem.
+ * 3. Route each branch's rejoin from its Bottom-Centre (S) port straight down to the common
+ *    spine target's centre row (`y = tcy`) and 90° horizontally (1 bend) into the target's
+ *    W / E centre port.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} spineIds
+ * @param {Set<string>} diamonds
+ * @param {Array<{ stageId: string, x: number, y: number, w: number, h: number }>} [stageBoxes]
+ * @param {boolean} [vertical]
+ */
+export function applyTreeForkBus(placed, connections, spineIds, diamonds, stageBoxes = [], vertical = true) {
+  for (const dId of diamonds) {
+    if (!spineIds.has(dId)) continue
+    const d = placed.get(dId)
+    if (!d) continue
+    const dcx = d.x + d.w / 2
+    const dcy = d.y + d.h / 2
+    const outs = connections.filter((c) => c.from === dId && c.kind !== 'main' && !spineIds.has(c.to))
+    if (outs.length < 3) continue
+
+    const mainOut = connections.find((c) => c.from === dId && c.kind === 'main')
+    const mainStepId = mainOut?.to ?? null
+    if (!mainStepId || !spineIds.has(mainStepId)) continue
+    const mainRejoinEdge = connections.find((c) => c.from === mainStepId && c.kind === 'main')
+    const rejoinTargetId = mainRejoinEdge?.to ?? null
+    if (!rejoinTargetId || !spineIds.has(rejoinTargetId)) continue
+
+    // Verify all non-main branches are single-step outcomes converging into rejoinTargetId
+    const allConverge = outs.every((c) => {
+      if (diamonds.has(c.to)) return false
+      const bOuts = connections.filter((o) => o.from === c.to)
+      return bOuts.length === 1 && bOuts[0].to === rejoinTargetId
+    })
+    if (!allConverge) continue
+
+    const leftOuts = outs
+      .filter((c) => {
+        const b = placed.get(c.to)
+        return b && b.x + b.w / 2 < dcx
+      })
+      .sort((a, b) => (placed.get(b.to)?.x ?? 0) - (placed.get(a.to)?.x ?? 0))
+    const rightOuts = outs
+      .filter((c) => {
+        const b = placed.get(c.to)
+        return b && b.x + b.w / 2 >= dcx
+      })
+      .sort((a, b) => (placed.get(a.to)?.x ?? 0) - (placed.get(b.to)?.x ?? 0))
+
+    if (leftOuts.length < 2 && rightOuts.length < 2) continue
+
+    const peerIds = new Set(outs.map((c) => c.to))
+    peerIds.add(mainStepId)
+
+    let minDownstreamY = Infinity
+    for (const id of peerIds) {
+      const r = placed.get(id)
+      if (r) minDownstreamY = Math.min(minDownstreamY, r.y)
+    }
+    const allLeave = mainOut ? [mainOut, ...outs] : outs
+    const maxLabelAlong = Math.max(
+      0,
+      ...allLeave.map((c) =>
+        vertical
+          ? (c.labelSize?.height ?? 0)
+          : Math.max(c.labelSize?.width ?? 0, c.labelSize?.height ?? 0),
+      ),
+    )
+    const peerGap = Math.max(56, maxLabelAlong + 32)
+    const peerRowY = d.y + d.h + peerGap
+    let maxPeerH = 0
+    for (const id of peerIds) {
+      const r = placed.get(id)
+      if (!r) continue
+      maxPeerH = Math.max(maxPeerH, r.h)
+      placed.set(id, { ...r, y: peerRowY })
+    }
+
+    const minRejoinY = peerRowY + maxPeerH + Math.max(56, LAYER_GAP)
+    const rejoinRect = placed.get(rejoinTargetId)
+    if (rejoinRect && rejoinRect.y < minRejoinY) {
+      const dy = minRejoinY - rejoinRect.y
+      const cutY = rejoinRect.y - 2
+      for (const [id, r] of placed) {
+        if (id === dId || peerIds.has(id)) continue
+        if (r.y >= cutY) placed.set(id, { ...r, y: r.y + dy })
+      }
+      for (const sb of stageBoxes) {
+        if (sb.y + sb.h >= cutY) sb.h += dy
+      }
+    } else if (Number.isFinite(minDownstreamY)) {
+      for (const sb of stageBoxes) {
+        for (const r of placed.values()) {
+          if (r.x >= sb.x && r.x + r.w <= sb.x + sb.w) {
+            sb.h = Math.max(sb.h, r.y + r.h + STAGE_PAD - sb.y)
+          }
+        }
+      }
+    }
+
+    // 1. Route 1-bend tree-fork distribution out of E / W cardinal tips
+    if (rightOuts.length >= 1) {
+      const tipE = [d.x + d.w, dcy]
+      for (const c of rightOuts) {
+        const b = placed.get(c.to)
+        if (!b) continue
+        const bx = b.x + b.w / 2
+        c.points = [tipE, [bx, dcy], [bx, b.y]]
+        c.pinLabelSeg = 1
+      }
+    }
+    if (leftOuts.length >= 1) {
+      const tipW = [d.x, dcy]
+      for (const c of leftOuts) {
+        const b = placed.get(c.to)
+        if (!b) continue
+        const bx = b.x + b.w / 2
+        c.points = [tipW, [bx, dcy], [bx, b.y]]
+        c.pinLabelSeg = 1
+      }
+    }
+
+    // 2. Route 1-bend bus merge into rejoinTargetId's W / E centre ports
+    const t = placed.get(rejoinTargetId)
+    if (t) {
+      const tcx = t.x + t.w / 2
+      const tcy = t.y + t.h / 2
+      for (const c of connections) {
+        if (c.to !== rejoinTargetId || c.kind === 'main' || !peerIds.has(c.from)) continue
+        const a = placed.get(c.from)
+        if (!a) continue
+        const ax = a.x + a.w / 2
+        const ay = a.y + a.h
+        const faceX = ax < tcx ? t.x : t.x + t.w
+        c.points = [
+          [ax, ay],
+          [ax, tcy],
+          [faceX, tcy],
+        ]
+      }
+    }
+
+    // 3. Rebuild spine main links so shifted spine boxes stay straight 0-bend
+    for (const c of connections) {
+      if (c.kind !== 'main' || !spineIds.has(c.from) || !spineIds.has(c.to)) continue
+      const a = placed.get(c.from)
+      const b = placed.get(c.to)
+      if (!a || !b) continue
+      const x = a.x + a.w / 2
+      c.points = [
+        [x, a.y + a.h],
+        [x, b.y],
+      ]
+    }
+  }
+}
 
 export function economyRepath(placed, connections, spineIds, diamonds, _vertical = true) {
   const pad = 24

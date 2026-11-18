@@ -814,3 +814,54 @@ test('mainline: stages-off hang→spine never enters trunk N/S (corpus)', () => 
   }
   assert.ok(hops >= 4, `expected several hang→spine hops, got ${hops}`)
 })
+
+test('mainline: >4 incident parallel fan-out & merge uses 1-bend tree-fork rail and aligned sibling row', () => {
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: '行政复议五路并列决定与合并送达',
+    domain: 'administrative',
+    nodes: [
+      { id: 'n-1', kind: 'start', label: '立案受理' },
+      { id: 'n-2', kind: 'step', label: '全面审查' },
+      { id: 'n-3', kind: 'decision', label: '作出何种行政复议决定？' },
+      { id: 'n-4', kind: 'step', label: '决定维持原行政行为' },
+      { id: 'n-5', kind: 'step', label: '决定变更原行政行为' },
+      { id: 'n-6', kind: 'step', label: '决定撤销并责令重作' },
+      { id: 'n-7', kind: 'step', label: '决定确认行为违法或无效' },
+      { id: 'n-8', kind: 'step', label: '决定限期履行法定职责' },
+      { id: 'n-9', kind: 'document', label: '制作复议决定书并送达' },
+      { id: 'n-10', kind: 'end', label: '发生法律效力' },
+    ],
+    edges: [
+      { from: 'n-1', to: 'n-2', main: true },
+      { from: 'n-2', to: 'n-3', main: true },
+      { from: 'n-3', to: 'n-4', condition: '合法适当', main: true },
+      { from: 'n-3', to: 'n-5', condition: '内容不当' },
+      { from: 'n-3', to: 'n-6', condition: '事实不清/违法' },
+      { from: 'n-3', to: 'n-7', condition: '确认违法/无效' },
+      { from: 'n-3', to: 'n-8', condition: '不履行职责' },
+      { from: 'n-4', to: 'n-9', main: true },
+      { from: 'n-5', to: 'n-9' },
+      { from: 'n-6', to: 'n-9' },
+      { from: 'n-7', to: 'n-9' },
+      { from: 'n-8', to: 'n-9' },
+      { from: 'n-9', to: 'n-10', main: true },
+    ],
+  }
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  const peers = ['n-4', 'n-5', 'n-6', 'n-7', 'n-8'].map((id) => byId.get(id))
+  const rowY = peers[0].position.y
+  for (const p of peers) {
+    assert.ok(Math.abs(p.position.y - rowY) < 1, `sibling ${p.id} aligned on row y=${rowY}`)
+  }
+  for (const c of g.connections) {
+    if (c.kind === 'main') {
+      assert.equal(bendsOf(c.points), 0, `main ${c.id} should be 0-bend`)
+    } else {
+      assert.equal(bendsOf(c.points), 1, `branch/rejoin ${c.id} should be 1-bend`)
+    }
+  }
+})
+

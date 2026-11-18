@@ -57,19 +57,19 @@ outcome  paint:   positive (heavier line) / negative (dashed line) / neutral (pl
 ## Edges
 
 - **The main line** is the path when everything goes as agreed. Mark its edges
-  `"main": true`, one chain from the start to an end. Unmarked, the engine guesses (the
-  first unconditional edge out of each node): mark it.
+  `"main": true`, one chain from start to end. Unmarked, the engine guesses (first
+  unconditional edge out of each node): mark it.
 - **A decision** needs two or more outgoing edges, **each with a `condition`**. One way
-  out means it is a `step`. On the main line, mark which answer continues it.
+  out means it is a `step`. Mark which answer continues the main line. For 4+ sequential
+  checks, split into chained `decision` nodes; keep parallel statutory outcomes on one.
 - **A loop is an ordinary edge back** ("rectify" -> "inspect again"). Do not copy nodes
   to avoid it; it is drawn dashed.
 - Edges may rejoin one node; two edges between the same pair need different conditions.
 
 **Every node must lead somewhere**: all but `end` and `note` need an outgoing edge, and all
-must be reachable from the start. A step that leads nowhere is almost always a
-consequence that belongs in `rules` (the error says so). Only a `start` may have no
-incoming edge (a `note`, and a rule's `endId`, aside): any other node without one is an
-error, since nothing leads to it. Several `start` nodes are allowed, with a hint.
+must be reachable from the start. A step that leads nowhere belongs in `rules`. Only a
+`start` may have no incoming edge (aside from `note` and a rule's `endId`): any other node
+without one is an error. Several `start` nodes are allowed, with a hint.
 
 ## Stages
 
