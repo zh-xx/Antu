@@ -1934,6 +1934,163 @@ export function applyTreeForkBus(placed, connections, spineIds, diamonds, stageB
     const dcx = d.x + d.w / 2
     const dcy = d.y + d.h / 2
     const outs = connections.filter((c) => c.from === dId && c.kind !== 'main' && !spineIds.has(c.to))
+    if (outs.length < 2) continue
+
+    const leftOuts = outs
+      .filter((c) => {
+        const b = placed.get(c.to)
+        return b && b.x + b.w / 2 < dcx
+      })
+      .sort((a, b) => (placed.get(b.to)?.x ?? 0) - (placed.get(a.to)?.x ?? 0))
+    const rightOuts = outs
+      .filter((c) => {
+        const b = placed.get(c.to)
+        return b && b.x + b.w / 2 >= dcx
+      })
+      .sort((a, b) => (placed.get(a.to)?.x ?? 0) - (placed.get(b.to)?.x ?? 0))
+
+    if (leftOuts.length < 2 && rightOuts.length < 2) continue
+
+    // Case B: ≥2 same-side branches off a spine decision that converge into a shared off-spine
+    // node (e.g. 实测2 n-3 → n-4, n-5 → n-6 本法院不作受理). Align the same-side siblings below
+    // the diamond tip and route a 1-bend tree-fork rail + clean merge into the shared target.
+    for (const sideOuts of [leftOuts, rightOuts]) {
+      if (sideOuts.length < 2) continue
+      const firstTargetOut = connections.filter((o) => o.from === sideOuts[0].to)
+      if (firstTargetOut.length !== 1) continue
+      const sharedTargetId = firstTargetOut[0].to
+      if (!sharedTargetId || spineIds.has(sharedTargetId)) continue
+      const allToShared = sideOuts.every((c) => {
+        if (diamonds.has(c.to)) return false
+        const bOuts = connections.filter((o) => o.from === c.to)
+        return bOuts.length === 1 && bOuts[0].to === sharedTargetId
+      })
+      if (!allToShared) continue
+
+      const maxLabelAlong = Math.max(
+        0,
+        ...sideOuts.map((c) =>
+          vertical
+            ? (c.labelSize?.height ?? 0)
+            : Math.max(c.labelSize?.width ?? 0, c.labelSize?.height ?? 0),
+        ),
+      )
+      const stemGap = Math.max(64, maxLabelAlong + 36)
+      const peerRowY = Math.round(dcy + stemGap)
+      let maxPeerH = 0
+      for (const c of sideOuts) {
+        const r = placed.get(c.to)
+        if (!r) continue
+        maxPeerH = Math.max(maxPeerH, r.h)
+        placed.set(c.to, { ...r, y: peerRowY })
+      }
+      const isRight = sideOuts === rightOuts
+      // Compact horizontal x positions of same-side siblings right next to the spine
+      // (undoes any over-wide stepAside push from polishLinks before tree-fork routing).
+      let curX = isRight ? d.x + d.w + LANE_GAP : d.x - LANE_GAP
+      for (let i = 0; i < sideOuts.length; i += 1) {
+        const c = sideOuts[i]
+        const r = placed.get(c.to)
+        if (!r) continue
+        const nx = isRight ? curX : curX - r.w
+        placed.set(c.to, { ...r, x: nx, y: peerRowY })
+        curX = isRight ? nx + r.w + LANE_SEP : nx - LANE_SEP
+      }
+      const firstPeer = placed.get(sideOuts[0].to)
+      const sharedRect = placed.get(sharedTargetId)
+      if (sharedRect && firstPeer) {
+        const targetX = Math.round(firstPeer.x + firstPeer.w / 2 - sharedRect.w / 2)
+        const targetY = peerRowY + maxPeerH + 36
+        placed.set(sharedTargetId, {
+          ...sharedRect,
+          x: targetX,
+          y: targetY,
+        })
+        // Shift downstream spine/hang nodes below this branch block so vertical bands never overlap
+        const mainOutEdge = connections.find((o) => o.from === dId && o.kind === 'main')
+        const nextSpine = mainOutEdge ? placed.get(mainOutEdge.to) : null
+        const minNextY = targetY + sharedRect.h + 36
+        if (nextSpine && nextSpine.y < minNextY) {
+          const dy = minNextY - nextSpine.y
+          const cutY = nextSpine.y - 2
+          const branchIds = new Set([dId, sharedTargetId, ...sideOuts.map((o) => o.to)])
+          for (const [id, r] of placed) {
+            if (branchIds.has(id)) continue
+            if (r.y >= cutY) placed.set(id, { ...r, y: r.y + dy })
+          }
+          for (const c of connections) {
+            if (branchIds.has(c.from) || branchIds.has(c.to)) continue
+            if (c.points?.length && c.points.every((p) => p[1] >= cutY)) {
+              c.points = c.points.map(([x, y]) => [x, y + dy])
+              if (c.labelAt) c.labelAt = { x: c.labelAt.x, y: c.labelAt.y + dy }
+            }
+          }
+          for (const sb of stageBoxes) {
+            if (sb.y + sb.h >= cutY) sb.h += dy
+          }
+        }
+      }
+      const tip = [isRight ? d.x + d.w : d.x, dcy]
+      for (const c of sideOuts) {
+        const b = placed.get(c.to)
+        if (!b) continue
+        const bx = b.x + b.w / 2
+        c.points = [tip, [bx, dcy], [bx, b.y]]
+        c.pinLabelSeg = 1
+      }
+      const t = placed.get(sharedTargetId)
+      if (t) {
+        const tcx = t.x + t.w / 2
+        const tcy = t.y + t.h / 2
+        for (const c of sideOuts) {
+          const mergeEdge = connections.find((o) => o.from === c.to && o.to === sharedTargetId)
+          const a = placed.get(c.to)
+          if (!mergeEdge || !a) continue
+          const ax = a.x + a.w / 2
+          const ay = a.y + a.h
+          if (Math.abs(ax - tcx) < 2) {
+            mergeEdge.points = [
+              [tcx, ay],
+              [tcx, t.y],
+            ]
+          } else {
+            const faceX = ax < tcx ? t.x : t.x + t.w
+            mergeEdge.points = [
+              [ax, ay],
+              [ax, tcy],
+              [faceX, tcy],
+            ]
+          }
+        }
+      }
+      // Rebuild spine main links after shifting downstream spine boxes
+      for (const c of connections) {
+        if (c.kind !== 'main' || !spineIds.has(c.from) || !spineIds.has(c.to)) continue
+        const a = placed.get(c.from)
+        const b = placed.get(c.to)
+        if (!a || !b) continue
+        const x = a.x + a.w / 2
+        c.points = [
+          [x, a.y + a.h],
+          [x, b.y],
+        ]
+      }
+      // Trim surplus left margin if compacting left-side siblings pulled minX > PAD
+      let minX = Infinity
+      for (const r of placed.values()) minX = Math.min(minX, r.x)
+      for (const c of connections) {
+        for (const [x] of c.points ?? []) minX = Math.min(minX, x)
+      }
+      if (Number.isFinite(minX) && minX > PAD + 1) {
+        const dx = minX - PAD
+        for (const [id, r] of placed) placed.set(id, { ...r, x: r.x - dx })
+        for (const c of connections) {
+          c.points = (c.points ?? []).map(([x, y]) => [x - dx, y])
+          if (c.labelAt) c.labelAt = { x: c.labelAt.x - dx, y: c.labelAt.y }
+        }
+      }
+    }
+
     if (outs.length < 3) continue
 
     const mainOut = connections.find((c) => c.from === dId && c.kind === 'main')
@@ -1950,21 +2107,6 @@ export function applyTreeForkBus(placed, connections, spineIds, diamonds, stageB
       return bOuts.length === 1 && bOuts[0].to === rejoinTargetId
     })
     if (!allConverge) continue
-
-    const leftOuts = outs
-      .filter((c) => {
-        const b = placed.get(c.to)
-        return b && b.x + b.w / 2 < dcx
-      })
-      .sort((a, b) => (placed.get(b.to)?.x ?? 0) - (placed.get(a.to)?.x ?? 0))
-    const rightOuts = outs
-      .filter((c) => {
-        const b = placed.get(c.to)
-        return b && b.x + b.w / 2 >= dcx
-      })
-      .sort((a, b) => (placed.get(a.to)?.x ?? 0) - (placed.get(b.to)?.x ?? 0))
-
-    if (leftOuts.length < 2 && rightOuts.length < 2) continue
 
     const peerIds = new Set(outs.map((c) => c.to))
     peerIds.add(mainStepId)
