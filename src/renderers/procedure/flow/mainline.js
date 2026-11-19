@@ -22,13 +22,13 @@
 //       mid-height, then enter the side (1 bend). If blocked: between-lane corridor (leave away
 //       from the spine into the next-lane gap) → inward gutter → far outer;
 //    5. stack leftover "pocket" nodes beside the hangs;
-//    6. set stage boxes side by side; route cross-stage links with router.js;
+//    6. pack the (usually single) stage frame; route any remaining cross-segment links;
 //    7. light polish, then re-pin the spine axis (polish must not leave the trunk bent).
 //
 //  Does not cut branches (unlike route). Does not call ELK on the main path.
 //  Enabled with fields.engine === 'mainline' (About-panel switch + preset; not a schema field).
-//  Stages only fold the spine into columns; with no usable stage data the caller passes one
-//  implicit stage (`__implicit__`) so the whole graph is a single straight trunk.
+//  Caller always passes one implicit stage (`__implicit__`) for a straight trunk; stacked
+//  stage bands are applied afterward in layout.js when Stages are on (issue 190).
 // ============================================================
 
 import { legalPorts } from './ports.js'
@@ -1903,7 +1903,7 @@ function restoreInputMainStraight(placed, connections, spineIds) {
  * only when it does not raise crossings. Fixes hang→spine rejoins that leave from N/S and
  * wrap the world (real 法条 samples: 行政处罚「不要求」、民事二审「不开行裁判」).
  */
-export { spreadRectPorts }
+export { spreadRectPorts, settleGeometryPasses }
 
 /**
  * Method 1 (1-Bend Tree-Fork Distribution + Aligned Sibling Tier + 1-Bend Bus Merge):

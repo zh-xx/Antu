@@ -815,6 +815,95 @@ test('mainline: stages-off hang→spine never enters trunk N/S (corpus)', () => 
   assert.ok(hops >= 4, `expected several hang→spine hops, got ${hops}`)
 })
 
+test('mainline: stages on → stacked bands; all mains 0-bend; whole spine straight', () => {
+  let checked = 0
+  for (const f of files) {
+    const spec = load(f)
+    const present = (spec.stages ?? []).filter((st) => spec.nodes.some((n) => n.stageId === st.id))
+    const ids = new Set((spec.stages ?? []).map((s) => s.id))
+    if (present.length < 1 || !spec.nodes.every((n) => n.stageId && ids.has(n.stageId))) continue
+    checked += 1
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(spec, { ...fields, stages: true }, undefined, dir)
+      assert.equal(g.stats.layoutEngine, 'mainline', `${f} / ${dir}`)
+      const byId = new Map(g.nodes.map((n) => [n.id, n]))
+      const vals = g.spine.map((id) => centre(byId.get(id), dir))
+      assert.ok(vals.length >= 2, `${f} / ${dir}: expected a spine`)
+      const span = Math.max(...vals) - Math.min(...vals)
+      assert.ok(span <= 2, `${f} / ${dir}: whole-spine centre span ${span.toFixed(2)}px > 2`)
+      const spineSet = new Set(g.spine)
+      for (const c of g.connections) {
+        if (c.kind !== 'main' || !spineSet.has(c.from) || !spineSet.has(c.to)) continue
+        assert.equal(bendsOf(c.points), 0, `${f} / ${dir}: main ${c.id} bends`)
+      }
+    }
+  }
+  assert.ok(checked > 0, 'expected staged examples')
+})
+
+test('mainline: stages on → stageBoxes non-overlapping, contain members, uniform cross span', () => {
+  const overlap = (a, b) => a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5
+  let checked = 0
+  for (const f of files) {
+    const spec = load(f)
+    const present = (spec.stages ?? []).filter((st) => spec.nodes.some((n) => n.stageId === st.id))
+    const ids = new Set((spec.stages ?? []).map((s) => s.id))
+    if (present.length < 2 || !spec.nodes.every((n) => n.stageId && ids.has(n.stageId))) continue
+    checked += 1
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(spec, { ...fields, stages: true }, undefined, dir)
+      const used = new Set(g.nodes.map((n) => n.data?.node?.stageId).filter(Boolean))
+      assert.ok(g.stageBoxes.length >= used.size, `${f} / ${dir}: at least one box per used canvas stage`)
+      for (let i = 0; i < g.stageBoxes.length; i += 1) {
+        for (let j = i + 1; j < g.stageBoxes.length; j += 1) {
+          assert.ok(!overlap(g.stageBoxes[i], g.stageBoxes[j]), `${f} / ${dir}: boxes overlap`)
+        }
+      }
+      if (dir === 'vertical') {
+        const w0 = g.stageBoxes[0].w
+        for (const b of g.stageBoxes) assert.ok(Math.abs(b.w - w0) < 0.5, `${f}: uniform width`)
+      } else {
+        const h0 = g.stageBoxes[0].h
+        for (const b of g.stageBoxes) assert.ok(Math.abs(b.h - h0) < 0.5, `${f}: uniform height`)
+      }
+      const boxOf = new Map(g.stageBoxes.map((b) => [b.stageId, b]))
+      for (const n of g.nodes) {
+        const sid = n.data?.node?.stageId ?? spec.nodes.find((x) => x.id === n.id)?.stageId
+        const b = boxOf.get(sid)
+        assert.ok(b, `${f} / ${dir}: missing box for ${sid}`)
+        assert.ok(
+          n.position.x >= b.x - 0.5 &&
+            n.position.y >= b.y - 0.5 &&
+            n.position.x + n.data.w <= b.x + b.w + 0.5 &&
+            n.position.y + n.data.h <= b.y + b.h + 0.5,
+          `${f} / ${dir}: ${n.id} not inside stage box ${sid}`,
+        )
+      }
+    }
+  }
+  assert.ok(checked > 0, 'expected multi-stage examples')
+})
+
+test('mainline: stages off → stageBoxes empty on straight spine', () => {
+  let checked = 0
+  for (const f of files) {
+    const spec = load(f)
+    const present = (spec.stages ?? []).filter((st) => spec.nodes.some((n) => n.stageId === st.id))
+    if (present.length < 1) continue
+    checked += 1
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, dir)
+      assert.equal(g.stageBoxes.length, 0, `${f} / ${dir}: stages off → no boxes`)
+      const byId = new Map(g.nodes.map((n) => [n.id, n]))
+      const vals = g.spine.map((id) => centre(byId.get(id), dir))
+      if (vals.length < 2) continue
+      const span = Math.max(...vals) - Math.min(...vals)
+      assert.ok(span <= 2, `${f} / ${dir}: stages-off spine span ${span.toFixed(2)}`)
+    }
+  }
+  assert.ok(checked > 0, 'expected staged examples')
+})
+
 test('mainline: >4 incident parallel fan-out & merge uses 1-bend tree-fork rail and aligned sibling row', () => {
   const spec = {
     type: 'procedure',
