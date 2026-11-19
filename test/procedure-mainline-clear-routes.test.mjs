@@ -701,7 +701,7 @@ test('audit #190: B08/V08 input main:true stays straight on every component spin
   }
 })
 
-test('audit #190: L3/02 stages-on — no hits/cross; cross-stage mains may jog', () => {
+test('audit #190: L3/02 stages-on — no hits/cross; all mains 0-bend (stacked bands)', () => {
   const matrix = [
     ['preview/synthetic-rejoin/fixtures/L3-admin-reconsider-nested.zh-CN.json', true],
     ['examples/procedure/02-purchase-contract.zh-CN.json', true],
@@ -713,14 +713,14 @@ test('audit #190: L3/02 stages-on — no hits/cross; cross-stage mains may jog',
       assert.equal(g.stats.layoutEngine, 'mainline', `${rel} ${dir}`)
       assert.deepEqual(foreignHits(g), [], `${rel} ${dir} hits`)
       assert.deepEqual(edgeCrossings(g), [], `${rel} ${dir} cross`)
-      // Within-stage input mains stay straight; cross-stage jogs are the documented fold limit.
+      // Stacked stage bands keep one straight spine: mains stay 0-bend across stage boundaries.
       for (const e of spec.edges.filter((x) => x.main === true)) {
         const a = spec.nodes.find((n) => n.id === e.from)
         const b = spec.nodes.find((n) => n.id === e.to)
-        if (!a || !b || a.stageId !== b.stageId) continue
+        if (!a || !b) continue
         const c = g.connections.find((x) => x.from === e.from && x.to === e.to)
-        assert.ok(c)
-        assert.equal(bendsOf(c.points), 0, `${rel} ${dir} within ${e.from}->${e.to}`)
+        assert.ok(c, `${rel} ${dir} missing ${e.from}->${e.to}`)
+        assert.equal(bendsOf(c.points), 0, `${rel} ${dir} main ${e.from}->${e.to}`)
       }
     }
   }

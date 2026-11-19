@@ -29,8 +29,10 @@
 import { validateProcedure, hintsOfProcedure } from './rules.js'
 import { elkLayoutSync } from './elk.js'
 import { straighten, linkCost } from './straighten.js'
-import { layoutColumnsGen } from './columns.js'
-import { layoutMainlineGen, economyRepath, spreadRectPorts, ensureConnectionLabels } from './mainline.js'
+import { layoutColumnsGen, titleBoxOf } from './columns.js'
+import { layoutMainlineGen, economyRepath, spreadRectPorts, settleGeometryPasses, ensureConnectionLabels } from './mainline.js'
+import { pathClear, pathCrossCount } from './hangSpineRoute.js'
+import { applyStackedStageBands } from './stackedStages.js'
 import { analyseProcedureGraph, edgeKey } from './spine.js'
 import { polishLinks } from './polish.js'
 import { edgesOf } from './router.js'
@@ -437,56 +439,12 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     { 'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF' },
   ]
   // Current (ELK): stage *data* decides the column path; the Stages *switch* only paints boxes.
-  // Coupling those made "turn off bands" silently leave columns for Mainline too (issue 190) —
-  // Mainline treats Stages as the fold switch: off / no stage data → one straight trunk.
+  // Mainline-first (issue 190): always one straight spine (implicit stage). Stages on → stacked
+  // stage bands along the flow after layout (no side-by-side column fold — that broke the spine).
   const hasStageColumns = presentStages.length > 1 && nodes.every((n) => stageById.has(n.stageId))
-  // Mainline-first (issue 190): opt-in via dock / preset. Stages fold the spine into columns when
-  // the reader keeps them on and the data has them; otherwise one implicit stage (straight spine).
   const useMainline = fields?.engine === 'mainline'
-  const foldMainline =
-    showStages && presentStages.length >= 1 && nodes.every((n) => stageById.has(n.stageId))
-  // Mainline packs stage columns in spine-encounter order so cross-stage mains stay
-  // short adjacent hops (L3: suspension/joinder sit where the trunk actually visits them,
-  // not where the author listed the bands). Off-spine stages (B04 纠正 hang) insert
-  // just after the spine stage they leave from — not dumped at the end. Author JSON unchanged.
-  const orderStagesBySpine = (stagesList, spineIds) => {
-    const stageOf = new Map(nodes.map((n) => [n.id, n.stageId]))
-    const byIdStage = new Map(stagesList.map((st) => [st.id, st]))
-    const seen = new Set()
-    /** @type {typeof stagesList} */
-    const ordered = []
-    for (const id of spineIds) {
-      const sid = stageOf.get(id)
-      if (!sid || seen.has(sid) || !byIdStage.has(sid)) continue
-      seen.add(sid)
-      ordered.push(byIdStage.get(sid))
-    }
-    /** @type {typeof stagesList} */
-    const off = stagesList.filter((st) => !seen.has(st.id))
-    for (const st of off) {
-      // Prefer the spine stage that owns an outbound edge into this stage.
-      let insertAt = ordered.length
-      for (const g of groups) {
-        if (stageOf.get(g.to) !== st.id) continue
-        const fromSt = stageOf.get(g.from)
-        const idx = ordered.findIndex((s) => s.id === fromSt)
-        if (idx >= 0) {
-          insertAt = Math.min(insertAt, idx + 1)
-          break
-        }
-      }
-      ordered.splice(insertAt, 0, st)
-      seen.add(st.id)
-    }
-    return ordered
-  }
-  const mainlineStages = foldMainline
-    ? orderStagesBySpine(presentStages, spine)
-    : [{ id: '__implicit__', label: '' }]
-  const mainlineNodes =
-    mainlineStages.length === 1 && mainlineStages[0].id === '__implicit__'
-      ? nodes.map((n) => ({ ...n, stageId: '__implicit__' }))
-      : nodes
+  const mainlineStages = [{ id: '__implicit__', label: '' }]
+  const mainlineNodes = nodes.map((n) => ({ ...n, stageId: '__implicit__' }))
   // The column layout has no `cost` / `stageTitles`, the single graph has; both are read below
   /** @type {any} */
   let best = null
@@ -556,6 +514,62 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     yield
   }
   const { placed, size } = best
+  if (layoutEngine === 'mainline' && best) {
+    const canStack =
+      showStages && presentStages.length >= 1 && nodes.every((n) => stageById.has(n.stageId))
+    if (canStack) {
+      const { stageBoxes: bands } = applyStackedStageBands({
+        placed: best.placed,
+        connections: best.connections,
+        size: best.size,
+        nodes,
+        stages: presentStages,
+        spine,
+        vertical,
+        groups,
+      })
+      // If stage-band separation dragged any cross-stage rail across a box or sibling edge,
+      // re-settle geometry so 0-hit / 0-cross / 0-collinear invariants hold after the shift.
+      const needsSettle = best.connections.some((c) => {
+        if (!c.points?.length) return false
+        if (!pathClear(c.points, best.placed, c.from, c.to)) return true
+        const others = best.connections.filter((o) => o !== c).map((o) => o.points)
+        return pathCrossCount(c.points, others) > 0
+      })
+      if (needsSettle) {
+        const pills = new Set(nodes.filter((n) => n.kind === 'start' || n.kind === 'end').map((n) => n.id))
+        const allSpine = new Set(best.spineIds ?? spine)
+        settleGeometryPasses(best.placed, best.connections, diamonds, allSpine, pills, vertical)
+        // Re-grow stageBoxes / size if settle pushed an outer corridor past the band edge
+        let minC = Infinity
+        let maxC = -Infinity
+        for (const r of best.placed.values()) {
+          minC = Math.min(minC, vertical ? r.x : r.y)
+          maxC = Math.max(maxC, vertical ? r.x + r.w : r.y + r.h)
+        }
+        for (const c of best.connections) {
+          for (const [x, y] of c.points ?? []) {
+            minC = Math.min(minC, vertical ? x : y)
+            maxC = Math.max(maxC, vertical ? x : y)
+          }
+        }
+        const bandC0 = Math.max(16, minC - 28)
+        const bandSpan = maxC + 28 - bandC0
+        for (const b of bands) {
+          if (vertical) {
+            b.x = bandC0
+            b.w = bandSpan
+          } else {
+            b.y = bandC0
+            b.h = bandSpan
+          }
+          best.size.width = Math.max(best.size.width, b.x + b.w + PAD)
+          best.size.height = Math.max(best.size.height, b.y + b.h + PAD)
+        }
+      }
+      best.stageBoxes = bands
+    }
+  }
   // Paint only: hide bands when Stages is off, and never paint the synthetic implicit stage
   const stageBoxes = (showStages ? best.stageBoxes : []).filter((b) => b.stageId !== '__implicit__')
   if (layoutEngine === 'mainline' && best?.connections?.length) {
@@ -573,7 +587,13 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       economyRepath(best.placed, best.connections, spineSet, diamonds, vertical)
       spreadRectPorts(best.placed, best.connections, diamonds)
     }
-    ensureConnectionLabels(best.connections, [...best.placed.values()], [], [], { force: true, preferOnLine: true })
+    const titles = (best.stageBoxes ?? [])
+      .filter((b) => b.stageId !== '__implicit__')
+      .map((b) => titleBoxOf(b, b.label, vertical))
+    ensureConnectionLabels(best.connections, [...best.placed.values()], titles, [], {
+      force: true,
+      preferOnLine: true,
+    })
   }
   const connections = best.connections.map((c) => ({ ...c, d: toPathD(c.points), dCurve: toCurveD(c.points) }))
 
