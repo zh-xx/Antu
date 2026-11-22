@@ -735,12 +735,12 @@ export function placeLabel(points, size, nodeRects, blocks, links, borders = [],
   // next (a label that "belongs on the segment" must stay near it); over another link or label,
   // or on a box's edge, then; touching its own link, least.
   const badness = (r) =>
-    (r.x < PAD / 2 || r.y < PAD / 2 ? 100 : 0) +
-    nodeRects.filter((n) => overlaps(r, n, 3)).length * 50 +
+    (r.x < PAD / 2 || r.y < PAD / 2 ? 250 : 0) +
+    nodeRects.filter((n) => overlaps(r, n, 3)).length * 200 +
     Math.max(0, distToRoute(r) - 22) * 3 +
-    blocks.filter((b) => overlaps(r, b, 3)).length * 20 +
+    blocks.filter((b) => overlaps(r, b, 3)).length * 160 +
     links.filter((c) => segsOf(c.points).some((s) => segHits(s, r, 3))).length * 10 +
-    borders.filter((s) => segHits(s, r, 3)).length * 5 +
+    borders.filter((s) => segHits(s, r, 3)).length * 15 +
     (segsOf(points).some((s) => segHits(s, r, 1)) ? 30 : 0)
   // Every spot beside every segment: the middle first, then near the ends, then every few pixels
   // along; tight to the line, then a little further off. Short hops (Mainline same-row branches)
@@ -836,15 +836,24 @@ export function placeLabel(points, size, nodeRects, blocks, links, borders = [],
         ? { x: (p[0] + q[0]) / 2 - w / 2, y: (p[1] + q[1]) / 2 - h / 2, w, h }
         : { x: (p[0] + q[0]) / 2 - w / 2, y: (p[1] + q[1]) / 2 - h / 2, w, h }
       // Drop the "touches own link" cost — sitting on the line is the point.
+      // Do not let an on-line chip that covers a node or title/label block beat a clear beside spot.
+      if (nodeRects.some((n) => overlaps(r, n, 3)) || blocks.some((b) => overlaps(r, b, 3))) continue
       const bad = badness(r) - 30 + 4
       const dist = distToRoute(r)
       if (!best || bad < best.bad || (bad === best.bad && dist < best.dist)) best = { bad, dist, len, x: r.x, y: r.y }
     }
   }
-  // Prefer a spot clear of nodes and still near the ink. Never pick a node-overlapping
-  // placement when a clear one exists — floating far is better than sitting under a box,
-  // but both beat an on-line hit that covers a node.
-  if (best && best.bad < 50 && best.dist <= 40) return { x: best.x, y: best.y }
+  // Prefer a spot clear of nodes/blocks and still near the ink. Never pick a node-overlapping
+  // placement when a clear one exists — floating far is better than sitting under a box.
+  // Wide chips beside a vertical run need dist ≳ w/2 + off, so do not use a flat "bad < 50"
+  // cut (distance alone can exceed 50 without hitting a node).
+  const hitsNode = (x, y) => nodeRects.some((n) => overlaps({ x, y, w, h }, n, 3))
+  const hitsBlock = (x, y) => blocks.some((b) => overlaps({ x, y, w, h }, b, 3))
+  // Wide-label slack: centre sits ~w/2 off a vertical run when the chip is flush beside it.
+  const nearInk = Math.max(48, Math.ceil(w / 2 + 28))
+  if (best && !hitsNode(best.x, best.y) && !hitsBlock(best.x, best.y) && best.dist <= nearInk) {
+    return { x: best.x, y: best.y }
+  }
   const [p, q] = segsOf(points).sort(
     (a, b) => Math.abs(b[1][0] - b[0][0]) + Math.abs(b[1][1] - b[0][1]) - (Math.abs(a[1][0] - a[0][0]) + Math.abs(a[1][1] - a[0][1])),
   )[0]
@@ -874,12 +883,17 @@ export function placeLabel(points, size, nodeRects, blocks, links, borders = [],
     const bad = badness(r)
     const dist = distToRoute(r)
     if (bad === 0 && dist <= 22) return { x: r.x, y: r.y }
-    if (bad < 50 && dist <= 48 && (!clear || bad < clear.bad || (bad === clear.bad && dist < clear.dist))) {
+    if (
+      !hitsNode(r.x, r.y) &&
+      !hitsBlock(r.x, r.y) &&
+      dist <= nearInk &&
+      (!clear || bad < clear.bad || (bad === clear.bad && dist < clear.dist))
+    ) {
       clear = { bad, dist, x: r.x, y: r.y }
     }
   }
   if (clear) return { x: clear.x, y: clear.y }
-  if (best && best.bad < 50) return { x: best.x, y: best.y }
+  if (best && !hitsNode(best.x, best.y)) return { x: best.x, y: best.y }
   // Last resort: centre on the longest segment (still near the ink). Caller may still overlap
   // a box on a hopeless hop; layout should leave room (Mainline LANE_GAP) so this is rare.
   return { x: Math.max(PAD / 2, mx - w / 2), y: Math.max(PAD / 2, my - h / 2) }

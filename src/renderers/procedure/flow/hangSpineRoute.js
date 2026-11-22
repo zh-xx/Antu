@@ -327,12 +327,31 @@ export function diamondOuterSide(a, b, hangOnRight, placed = null, fromId = null
     const gap = 20 + k * 16
     rails.push(Math.min(a.y, b.y) - gap, Math.max(a.y + a.h, b.y + b.h) + gap)
   }
+  const yLo = Math.min(a.y, b.y) - 1
+  const yHi = Math.max(a.y + a.h, b.y + b.h) + 1
+  /** @type {number[]} */
+  const outerXs = []
+  if (placed) {
+    for (const [id, r] of placed) {
+      if (id === fromId || id === toId) continue
+      if (r.y + r.h < yLo || r.y > yHi) continue
+      if (hangOnRight) {
+        if (r.x >= leaveX - 1) outerXs.push(r.x + r.w + OUTER_GAP)
+      } else if (r.x + r.w <= leaveX + 1) {
+        outerXs.push(r.x - OUTER_GAP)
+      }
+    }
+  }
+  for (let d = 0; d <= maxDepth; d += 1) {
+    outerXs.push(hangOnRight ? leaveX + OUTER_GAP + d * 16 : leaveX - OUTER_GAP - d * 16)
+  }
+  const uniq = [...new Set(outerXs.map((x) => Math.round(x * 1000) / 1000))]
+  uniq.sort((p, q) => Math.abs(p - leaveX) - Math.abs(q - leaveX))
   /** @type {number[][] | null} */
   let best = null
   let bestCross = Infinity
   for (const railY of rails) {
-    for (let d = 0; d <= maxDepth; d += 1) {
-      const outer = hangOnRight ? leaveX + OUTER_GAP + d * 16 : leaveX - OUTER_GAP - d * 16
+    for (const outer of uniq) {
       const raw =
         Math.abs(railY - bcy) < 0.5
           ? [
@@ -781,6 +800,17 @@ export function findCollinearAmbiguities(connections, opts = {}) {
   }
 }
 
+function segOverlapsOthers(p1, p2, others) {
+  if (!others?.length) return false
+  for (const o of others) {
+    if (!o?.length) continue
+    for (let v = 0; v < o.length - 1; v += 1) {
+      if (collinearOverlapLen(p1, p2, o[v], o[v + 1]) >= 2) return true
+    }
+  }
+  return false
+}
+
 /**
  * Wrap-around hang→spine: leave hang outer, rail above/below the whole placed set, run to the
  * far side of the spine, enter the opposite face. Used when same-side U corridors cannot avoid
@@ -809,58 +839,66 @@ export function clearWrapAround(a, b, hangOnRight, placed, fromId, toId, maxDept
   const leaveBot = a.y + a.h
   const hangOuter = hangOnRight ? a.x + a.w : a.x
   const farFace = hangOnRight ? b.x : b.x + b.w // enter from the side opposite the hang
-  /** @type {number[][] | null} */
-  let best = null
-  let bestCross = Infinity
-  for (const preferAbove of [true, false]) {
-    for (let d = 0; d <= maxDepth; d += 1) {
-      // Keep wrap rails well clear of the placed bbox so downward/upward leaves of
-      // neighbouring hangs are not pinned against the wrap (L4 horizontal n-7→n-8).
-      const gap = 48 + d * 20
-      const railY = preferAbove ? minY - gap : maxY + gap
-      const outerHang = hangOnRight ? hangOuter + OUTER_GAP + d * 8 : hangOuter - OUTER_GAP - d * 8
-      const outerFar = hangOnRight ? minX - OUTER_GAP - d * 8 : maxX + OUTER_GAP + d * 8
-      const leaveY = preferAbove ? leaveTop : leaveBot
-      const pts = [
-        [acx, leaveY],
-        [outerHang, leaveY],
-        [outerHang, railY],
-        [outerFar, railY],
-        [outerFar, bcy],
-        [farFace, bcy],
-      ]
-      if (!pathClear(pts, placed, fromId, toId)) continue
-      if (!others) return pts
-      const cross = pathCrossCount(pts, others)
-      if (cross === 0) return pts
-      if (cross < bestCross) {
-        bestCross = cross
-        best = pts
-      }
+  const entryYs = [bcy]
+  if (b.h >= 36) {
+    for (const dy of [-14, 14, -24, 24]) {
+      const y = bcy + dy
+      if (y >= b.y + 10 && y <= b.y + b.h - 10) entryYs.push(y)
     }
   }
-  // Also try leaving from the outer side face (helps when N/S leave skims a neighbor).
-  for (const preferAbove of [true, false]) {
-    for (let d = 0; d <= maxDepth; d += 1) {
-      const gap = 48 + d * 20
-      const railY = preferAbove ? minY - gap : maxY + gap
-      const outerHang = hangOnRight ? hangOuter + OUTER_GAP + d * 8 : hangOuter - OUTER_GAP - d * 8
-      const outerFar = hangOnRight ? minX - OUTER_GAP - d * 8 : maxX + OUTER_GAP + d * 8
-      const pts = [
+  const makeWrapPts = (sideFirst, preferAbove, outerHang, outerFar, railY, entryY) => {
+    if (sideFirst) {
+      return [
         [hangOuter, acy],
         [outerHang, acy],
         [outerHang, railY],
         [outerFar, railY],
-        [outerFar, bcy],
-        [farFace, bcy],
+        [outerFar, entryY],
+        [farFace, entryY],
       ]
-      if (!pathClear(pts, placed, fromId, toId)) continue
-      if (!others) return pts
-      const cross = pathCrossCount(pts, others)
-      if (cross === 0) return pts
-      if (cross < bestCross) {
-        bestCross = cross
-        best = pts
+    }
+    const leaveY = preferAbove ? leaveTop : leaveBot
+    const stubY = preferAbove ? leaveTop - 16 : leaveBot + 16
+    return [
+      [acx, leaveY],
+      [acx, stubY],
+      [outerHang, stubY],
+      [outerHang, railY],
+      [outerFar, railY],
+      [outerFar, entryY],
+      [farFace, entryY],
+    ]
+  }
+  /** @type {number[][] | null} */
+  let best = null
+  let bestCross = Infinity
+  let bestTotalOverlap = Infinity
+  const preferBottom = (a.y + a.h / 2 + b.y + b.h / 2) / 2 > (minY + maxY) / 2
+  const sides = preferBottom ? [false, true] : [true, false]
+  for (const sideFirst of [true, false]) {
+    for (const preferAbove of sides) {
+      for (let d = 0; d <= maxDepth; d += 1) {
+        // Keep wrap rails well clear of the placed bbox so downward/upward leaves of
+        // neighbouring hangs are not pinned against the wrap (L4 horizontal n-7→n-8).
+        const gap = 48 + d * 20
+        const railY = preferAbove ? minY - gap : maxY + gap
+        const outerHang = hangOnRight ? hangOuter + OUTER_GAP + d * 8 : hangOuter - OUTER_GAP - d * 8
+        const outerFar = hangOnRight ? minX - OUTER_GAP - d * 8 : maxX + OUTER_GAP + d * 8
+        for (const entryY of entryYs) {
+          const pts = makeWrapPts(sideFirst, preferAbove, outerHang, outerFar, railY, entryY)
+          if (!pathClear(pts, placed, fromId, toId)) continue
+          if (!others) return pts
+          const cross = pathCrossCount(pts, others)
+          const leaveOverlap = segOverlapsOthers(pts[0], pts[1], others) ? 1 : 0
+          const entryOverlap = segOverlapsOthers(pts[pts.length - 2], pts[pts.length - 1], others) ? 1 : 0
+          const totalOverlap = leaveOverlap + entryOverlap
+          if (cross === 0 && totalOverlap === 0) return pts
+          if (cross < bestCross || (cross === bestCross && totalOverlap < bestTotalOverlap)) {
+            bestCross = cross
+            bestTotalOverlap = totalOverlap
+            best = pts
+          }
+        }
       }
     }
   }
@@ -951,9 +989,12 @@ export function firstClearPath(candidates, placed, fromId, toId, others = null) 
  * @param {string | null | undefined} toId
  * @param {boolean} [fromDiamond]
  * @param {number[][][] | null | undefined} [others] already-routed polylines (crossing preference)
+ * @param {{ allowWrap?: boolean }} [opts]
  * @returns {number[][] | null}
  */
-export function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDiamond = false, others = null) {
+export function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDiamond = false, others = null, opts = {}) {
+  const forwardDown = !fromDiamond && b.y > a.y + a.h - 2
+  const allowWrap = opts?.allowWrap !== false && !forwardDown
   if (fromDiamond) {
     const candidates = []
     if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
@@ -966,14 +1007,14 @@ export function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDi
     candidates.push(interLaneCorridor(a, b, hangOnRight, placed, fromId, toId, others))
     candidates.push(clearOuterCorridor(a, b, !hangOnRight, placed, fromId, toId, 16, others))
     candidates.push(diamondOuterSide(a, b, !hangOnRight, placed, fromId, toId, 12, others))
-    candidates.push(clearWrapAround(a, b, hangOnRight, placed, fromId, toId, 24, others))
+    if (allowWrap) candidates.push(clearWrapAround(a, b, hangOnRight, placed, fromId, toId, 24, others))
     const clear = firstClearPath(candidates, placed, fromId, toId, others)
     if (clear) return clear
     // Exhausted primary depths: escalate until pathClear (no unchecked placeholder).
     const deep =
       diamondOuterSide(a, b, hangOnRight, placed, fromId, toId, 64, others) ||
       clearOuterCorridor(a, b, hangOnRight, placed, fromId, toId, 64, others) ||
-      clearWrapAround(a, b, hangOnRight, placed, fromId, toId, 64, others) ||
+      (allowWrap ? clearWrapAround(a, b, hangOnRight, placed, fromId, toId, 64, others) : null) ||
       diamondOuterSide(a, b, !hangOnRight, placed, fromId, toId, 64, others) ||
       clearOuterCorridor(a, b, !hangOnRight, placed, fromId, toId, 64, others)
     if (deep && pathClear(deep, placed, fromId, toId)) return deep
@@ -997,17 +1038,55 @@ export function routeHangToSpine(a, b, hangOnRight, placed, fromId, toId, fromDi
   candidates.push(clearOuterCorridor(a, b, hangOnRight, placed, fromId, toId, 16, others))
   candidates.push(interLaneCorridor(a, b, hangOnRight, placed, fromId, toId, others))
   if (!gutterBlocked(a, b, hangOnRight, placed, fromId, toId)) {
-    candidates.push(gutterRejoin(a, b, hangOnRight))
+    const gr = gutterRejoin(a, b, hangOnRight)
+    const grOverlaps =
+      forwardDown &&
+      Boolean(others?.length) &&
+      (segOverlapsOthers(gr[0], gr[1], others) || segOverlapsOthers(gr[gr.length - 2], gr[gr.length - 1], others))
+    if (!grOverlaps) candidates.push(gr)
+  }
+  if (forwardDown) {
+    const acx = a.x + a.w / 2
+    const ax = hangOnRight ? a.x : a.x + a.w
+    const bx = hangOnRight ? b.x + b.w : b.x
+    const gutterX = (ax + bx) / 2
+    const stubY = a.y + a.h + 20
+    const candXs = [gutterX, hangOnRight ? bx + 56 : bx - 56, hangOnRight ? bx + 72 : bx - 72]
+    const entryYs = [bcy]
+    if (b.h >= 36) {
+      for (const dy of [-14, 14]) {
+        const y = bcy + dy
+        if (y >= b.y + 10 && y <= b.y + b.h - 10) entryYs.push(y)
+      }
+    }
+    let foundForwardInward = false
+    for (const candX of candXs) {
+      for (const entryY of entryYs) {
+        const cand = [
+          [acx, a.y + a.h],
+          [acx, stubY],
+          [candX, stubY],
+          [candX, entryY],
+          [bx, entryY],
+        ]
+        if (pathClear(cand, placed, fromId, toId) && !segOverlapsOthers([candX, entryY], [bx, entryY], others)) {
+          candidates.push(cand)
+          foundForwardInward = true
+          break
+        }
+      }
+      if (foundForwardInward) break
+    }
   }
   candidates.push(clearOuterCorridor(a, b, !hangOnRight, placed, fromId, toId, 16, others))
   candidates.push(diamondOuterSide(a, b, !hangOnRight, placed, fromId, toId, 12, others))
-  candidates.push(clearWrapAround(a, b, hangOnRight, placed, fromId, toId, 24, others))
+  if (allowWrap) candidates.push(clearWrapAround(a, b, hangOnRight, placed, fromId, toId, 24, others))
   const clear = firstClearPath(candidates, placed, fromId, toId, others)
   if (clear) return clear
   const deep =
     diamondOuterSide(a, b, hangOnRight, placed, fromId, toId, 64, others) ||
     clearOuterCorridor(a, b, hangOnRight, placed, fromId, toId, 64, others) ||
-    clearWrapAround(a, b, hangOnRight, placed, fromId, toId, 64, others) ||
+    (allowWrap ? clearWrapAround(a, b, hangOnRight, placed, fromId, toId, 64, others) : null) ||
     clearOuterCorridor(a, b, !hangOnRight, placed, fromId, toId, 64, others) ||
     clearSideChannel(a, b, !hangOnRight, placed, fromId, toId, 64)
   if (deep && pathClear(deep, placed, fromId, toId)) return deep

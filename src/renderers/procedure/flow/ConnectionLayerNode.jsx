@@ -16,10 +16,36 @@
 
 import { memo } from 'react'
 import { linkPaint } from './palette.js'
+import { wordsOf } from './metrics.js'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 /** The three link kinds. Each has its own arrowhead, so the head takes the line's colour. */
 const KINDS = ['main', 'branch', 'back']
+
+/** Opening marks that must stay glued to the following word (never stranded at a line end). */
+const OPENS = /^[（(「『“]+$/
+
+/**
+ * Word chunks for a condition label: same segmentation as wrapLines / FlowNode, with opening
+ * punctuation merged onto the next token so `（第48条）` stays one break unit.
+ * @param {string} text
+ * @returns {string[]}
+ */
+export function labelChunks(text) {
+  const words = wordsOf(text)
+  /** @type {string[]} */
+  const out = []
+  for (let i = 0; i < words.length; i += 1) {
+    const w = words[i]
+    if (OPENS.test(w) && i + 1 < words.length) {
+      out.push(w + words[i + 1])
+      i += 1
+    } else {
+      out.push(w)
+    }
+  }
+  return out
+}
 
 /**
  * @typedef {{
@@ -97,7 +123,9 @@ const ConnectionLayerNode = memo(function ConnectionLayerNode({ data }) {
               className={`antu-plabel k-${c.kind}`}
               style={{ left: c.labelAt.x, top: c.labelAt.y, width: c.labelSize.width, height: c.labelSize.height }}
             >
-              {c.label}
+              {labelChunks(String(c.label)).map((chunk, i) => (
+                <span key={i} className="antu-plabel-word">{chunk}</span>
+              ))}
             </span>
           ))}
     </div>

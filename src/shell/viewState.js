@@ -27,6 +27,7 @@ const FLOW = {
   mainLine: { bool: true },
   stages: { bool: true },
   rules: { bool: true },
+  grid: { bool: true },
   orientation: { enum: ['vertical', 'horizontal'] },
   linkStyle: { enum: ['straight', 'curved'] },
   // Mainline-first trial (issue 190): only diverges in columnMode; default is current (ELK)
@@ -101,7 +102,7 @@ export const PERSIST_KEY_NAME = {
   flowFieldsByDiagram: 'view.flow',
   procedureRouteFieldsByDiagram: 'view.route',
   fields: 'view.fact',
-  showGrid: 'view.fact',
+  showGrid: ['view.fact', 'view.flow'],
   staggers: 'view.fact',
   scaleByParty: 'view.fact',
   relationshipFieldsByDiagram: 'view.relationship',
@@ -125,6 +126,7 @@ export function presetAt(preset, path) {
   if (path === 'view.fact.stagger') return preset.stagger
   if (path === 'view.fact.byParty') return preset.byParty
   if (path === 'view.fact.grid') return preset.grid ?? preset.showGrid
+  if (path === 'view.flow.grid') return preset.grid ?? preset.showGrid ?? getPath(preset.fields, 'grid')
   if (path.startsWith('view.flow.')) return getPath(preset.fields, path.slice('view.flow.'.length))
   if (path.startsWith('view.route.')) return getPath(preset.fields, path.slice('view.route.'.length))
   if (path.startsWith('view.fact.')) return getPath(preset.fields, path.slice('view.fact.'.length))

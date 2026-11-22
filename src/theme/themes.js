@@ -112,8 +112,8 @@ export const THEMES = {
       // theme carries meaning by colour, with the line style still saying it in black and white
       state: { warn: { stroke: '#a16207', fill: '#fef3c7' }, stop: { stroke: '#b91c1c', fill: '#fee2e2' }, done: { stroke: '#15803d', fill: '#dcfce7' } },
       note: { stroke: 'none', fill: '#f5f5f5', fold: '#767676' },
-      stage: { fill: '#f5f5f5', stroke: '#8a8a8a', title: '#111111' },
-      stageLit: { fill: '#e2e2e2', stroke: '#111111', title: '#111111' },
+      stage: { fill: '#f5f5f5', stroke: '#8a8a8a', title: '#111111', bandEven: '#ffffff', bandOdd: '#f5f5f5', divider: '#c2c2c2', bookmarkBg: '#e2e2e2', bookmarkFg: '#111111' },
+      stageLit: { fill: '#e2e2e2', stroke: '#111111', title: '#111111', bookmarkBg: '#111111', bookmarkFg: '#ffffff' },
       link: draw(FLOW_LINK_LINE, { main: { stroke: '#111111' }, plain: { stroke: '#2b2b2b' }, back: { stroke: '#4d4d4d' } }),
     },
     justify: {
@@ -153,8 +153,8 @@ export const THEMES = {
       start: { stroke: '#334155', fill: '#e2e8f0' },
       state: { warn: { stroke: '#b45309', fill: '#fffbeb' }, stop: { stroke: '#be123c', fill: '#fff1f2' }, done: { stroke: '#047857', fill: '#ecfdf5' } },
       note: { stroke: 'none', fill: '#f1f5f9', fold: '#94a3b8' },
-      stage: { fill: '#f8fafc', stroke: '#e2e8f0', title: '#475569' },
-      stageLit: { fill: '#f1f5f9', stroke: '#64748b', title: '#334155' },
+      stage: { fill: '#f8fafc', stroke: '#e2e8f0', title: '#475569', bandEven: '#fbfcfd', bandOdd: '#f3f6fa', divider: '#dbe3ec', bookmarkBg: '#0f172a', bookmarkFg: '#ffffff' },
+      stageLit: { fill: '#f1f5f9', stroke: '#64748b', title: '#334155', bookmarkBg: '#0f172a', bookmarkFg: '#ffffff' },
       link: draw(FLOW_LINK_LINE, { main: { stroke: '#0f172a' }, plain: { stroke: '#475569' }, back: { stroke: '#64748b' } }),
     },
     justify: {
@@ -204,8 +204,8 @@ export const THEMES = {
       start: { stroke: '#13233f', fill: '#dbe5f5' },
       state: { warn: { stroke: '#a16207', fill: '#fdf6e3' }, stop: { stroke: '#9a1b1b', fill: '#fbecec' }, done: { stroke: '#1f6f43', fill: '#e8f4ec' } },
       note: { stroke: 'none', fill: '#f4f7fc', fold: '#8aa0c4' },
-      stage: { fill: '#f4f7fc', stroke: '#c7d2e4', title: '#2d4366' },
-      stageLit: { fill: '#eaf0fb', stroke: '#1f3f7f', title: '#1f3f7f' },
+      stage: { fill: '#f4f7fc', stroke: '#c7d2e4', title: '#2d4366', bandEven: '#ffffff', bandOdd: '#f4f7fc', divider: '#c7d2e4', bookmarkBg: '#1f3f7f', bookmarkFg: '#ffffff' },
+      stageLit: { fill: '#eaf0fb', stroke: '#1f3f7f', title: '#1f3f7f', bookmarkBg: '#13233f', bookmarkFg: '#ffffff' },
       link: draw(FLOW_LINK_LINE, { main: { stroke: '#13233f' }, plain: { stroke: '#2d4366' }, back: { stroke: '#5b6f8f' } }),
     },
     justify: {
@@ -248,8 +248,8 @@ export const THEMES = {
       // The four states keep the colour a procedure's state carries (with the line style saying it too), lifted for a dark ground
       state: { warn: { stroke: '#e0a63a', fill: '#2e2410' }, stop: { stroke: '#f0707a', fill: '#33161a' }, done: { stroke: '#4cc38a', fill: '#10281d' } },
       note: { stroke: 'none', fill: '#1f2733', fold: '#6b778a' },
-      stage: { fill: '#1a2029', stroke: '#2f3846', title: '#b6c0cf' },
-      stageLit: { fill: '#232c3a', stroke: '#8b97a9', title: '#e6ebf2' },
+      stage: { fill: '#1a2029', stroke: '#2f3846', title: '#b6c0cf', bandEven: '#14181f', bandOdd: '#1a2029', divider: '#2f3846', bookmarkBg: '#7aa2f7', bookmarkFg: '#0f172a' },
+      stageLit: { fill: '#232c3a', stroke: '#8b97a9', title: '#e6ebf2', bookmarkBg: '#93b4f9', bookmarkFg: '#0f172a' },
       link: draw(FLOW_LINK_LINE, { main: { stroke: '#e6ebf2' }, plain: { stroke: '#b6c0cf' }, back: { stroke: '#8b97a9' } }),
     },
     justify: {

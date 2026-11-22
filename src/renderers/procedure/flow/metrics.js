@@ -68,7 +68,9 @@ export const PAD = 32
 export const LABEL_FONT = TYPE.label.size
 export const LABEL_LINE = 16
 export const LABEL_PAD_X = 6
-export const LABEL_MAX_W = 150
+export const LABEL_MAX_W = 126
+/** Chromium CJK+digit/paren measure slack (same idea as TABLE_SLACK / BOLD_SLACK). */
+export const LABEL_SLACK = 1.12
 
 /**
  * Cap on the orthogonal router's A* expansions per link (issue 330, same idea as relationship
@@ -149,11 +151,11 @@ const BOLD_SLACK = 1.07
  * How many lines a label takes in a text column of `colW` px when a line breaks only between words: a greedy wrap by
  * the same measure the boxes use. A word wider than a column takes the lines it needs.
  */
-export function wrapLines(label, colW, font = NODE_FONT) {
+export function wrapLines(label, colW, font = NODE_FONT, slack = BOLD_SLACK) {
   let lines = 1
   let used = 0
   for (const word of wordsOf(label)) {
-    const w = textEm(word) * font * BOLD_SLACK
+    const w = textEm(word) * font * slack
     if (used > 0 && used + w > colW + 0.5) {
       lines += 1
       used = 0
@@ -173,11 +175,12 @@ export const labelCut = (label, kind) => wrapLines(label, kind === 'decision' ? 
  * The single source of node sizes. The rendering layer must not write a second copy.
  * Returns { w, h, textW }: textW is the width of the text column the node draws its text in.
  */
-export function sizeOf(node) {
+export function sizeOf(node, showDetail = false) {
   const label = String(node?.label ?? '')
   // A note is an explanation, and its detail is most of what it says: it shows up to two lines of it
   const isNote = node?.kind === 'note'
-  const short = node?.detail ? (isNote ? { text: String(node.detail).replace(/\s*\n\s*/g, ' '), cut: false } : shortDetail(node.detail)) : { text: '', cut: false }
+  const hasDetail = Boolean(node?.detail) && (isNote || showDetail)
+  const short = hasDetail ? (isNote ? { text: String(node.detail).replace(/\s*\n\s*/g, ' '), cut: false } : shortDetail(node.detail)) : { text: '', cut: false }
   const detail = short.text
   const cap = node?.kind === 'decision' ? DIAMOND_TEXT_MAX_W : TEXT_MAX_W
   const labelW = textEm(label) * NODE_FONT
@@ -185,32 +188,63 @@ export function sizeOf(node) {
   const detailW = detail ? textEm(detail) * DETAIL_FONT : 0
   // A diamond is widest in the middle and pointed at both ends, so a long single line makes a
   // flat, squashed one; its text is folded into a roughly square block instead
-  const want = node?.kind === 'decision' ? Math.sqrt(labelW * NODE_LINE * 2.2) : labelW
-  const textW = Math.ceil(Math.min(cap, Math.max(TEXT_MIN_W, want, Math.min(detailW, cap))))
-  const wanted = wrapLines(label, textW)
+  const want = node?.kind === 'decision' ? Math.sqrt(labelW * NODE_LINE * 3.2) : labelW
+  let textW = Math.ceil(Math.min(cap, Math.max(TEXT_MIN_W, want, Math.min(detailW, cap))))
   const maxLines = node?.kind === 'decision' ? DIAMOND_MAX_LINES : NODE_MAX_LINES
+  // Compact long single-line step labels onto 2 balanced lines (e.g. 不裁定重整… → ~114px textW).
+  if (
+    !showDetail &&
+    node?.kind !== 'decision' &&
+    !isNote &&
+    !label.includes('\n') &&
+    textW > 118
+  ) {
+    const start = Math.max(112, Math.ceil(labelW * 0.56))
+    let found = null
+    for (let wTry = start; wTry <= cap; wTry += 8) {
+      if (wrapLines(label, wTry) <= maxLines) {
+        found = wTry
+        break
+      }
+    }
+    if (found != null) textW = Math.min(cap, found + 2)
+  }
+  const wanted = wrapLines(label, textW)
   const lines = Math.min(maxLines, Math.max(1, wanted))
   // Whether the node leaves out something its text does not say so itself (the ⋯ mark)
-  // Only text that looks whole but is not: a detail with a second line. A label or a detail cut short shows its own “…”
-  const cut = node?.kind !== 'note' && Boolean(node?.detail) && String(node.detail).includes('\n') && !short.text.endsWith('…')
+  // Only when details are shown: a detail with a second line. Hover/click already opens the popover.
+  const cut = showDetail && node?.kind !== 'note' && Boolean(node?.detail) && String(node.detail).includes('\n') && !short.text.endsWith('…')
   const detailLines = !detail ? 0 : isNote ? Math.min(NOTE_DETAIL_LINES, wrapLines(detail, textW, DETAIL_FONT)) : 1
   const textH = lines * NODE_LINE + (detail ? detailLines * DETAIL_LINE + 2 : 0)
+  const padY = showDetail ? NODE_PAD_Y : 10
+  const padX = showDetail ? NODE_PAD_X : 14
+  const pillExtra = showDetail ? PILL_EXTRA_X : 8
+  /** Floor + width steps of 16 so the uniform cell grid looks regular (showDetail=false path). */
+  const floorQuant = (w0, h0, minW, minH) => {
+    const h = Math.max(h0, minH)
+    const w = Math.ceil(Math.max(w0, minW) / 16) * 16
+    return { cut, w, h, textW }
+  }
   switch (node?.kind) {
     case 'start':
-    case 'end':
-      return { cut, w: textW + (NODE_PAD_X + PILL_EXTRA_X) * 2, h: textH + NODE_PAD_Y * 2, textW }
+      return floorQuant(textW + (padX + pillExtra) * 2, textH + padY * 2, 136, 56)
+    case 'end': {
+      // Double inner ring (INSET + 4) needs extra height for 2-line end pills.
+      const endMinH = lines >= 2 ? Math.max(56, textH + 24) : 56
+      return floorQuant(textW + (padX + pillExtra) * 2, textH + padY * 2, 136, endMinH)
+    }
     case 'decision':
       // The text rectangle (textW × textH) fits inside a diamond W × H when
       // textW / W + textH / H <= 1; these proportions keep it just inside
-      return { cut, w: Math.round(textW * 1.7 + 24), h: Math.round(textH * 2.4 + 16), textW }
+      return floorQuant(Math.round(textW * 1.6 + 20), Math.round(textH * 2.05 + 10), 160, 84)
     case 'document':
       // The wavy bottom edge takes a strip the text must stay out of
-      return { cut, w: textW + NODE_PAD_X * 2, h: textH + NODE_PAD_Y * 2 + DOC_WAVE, textW }
+      return floorQuant(textW + padX * 2, textH + padY * 2 + DOC_WAVE, 136, 56)
     case 'note':
       // The small tag in the top left corner takes a strip of its own
-      return { cut, w: textW + NODE_PAD_X * 2, h: textH + NODE_PAD_Y * 2 + NOTE_TAG_H, textW }
+      return floorQuant(textW + padX * 2, textH + padY * 2 + NOTE_TAG_H, 136, 56)
     default:
-      return { cut, w: textW + NODE_PAD_X * 2, h: textH + NODE_PAD_Y * 2, textW }
+      return floorQuant(textW + padX * 2, textH + padY * 2, 136, 56)
   }
 }
 

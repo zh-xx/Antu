@@ -29,6 +29,7 @@ import FlowNode from './FlowNode.jsx'
 import RuleTableNode from './RuleTableNode.jsx'
 import ConnectionLayerNode from './ConnectionLayerNode.jsx'
 import StageBoxNode from './StageBoxNode.jsx'
+import FlowCellLayerNode from './FlowCellLayerNode.jsx'
 import FlowDock from './FlowDock.jsx'
 import { layoutProcedureAsync } from './layoutAsync.js'
 import { useSelectEvent } from '../../../shell/useSelectEvent.js'
@@ -47,6 +48,7 @@ import { useSelectEvent } from '../../../shell/useSelectEvent.js'
  *   spine: any[],
  *   stageBoxes: any[],
  *   ruleTable: any,
+ *   cellGrid: any,
  *   size: { width: number, height: number },
  *   stats: Record<string, number>,
  * }}
@@ -62,6 +64,7 @@ const EMPTY_LAYOUT = {
   spine: [],
   stageBoxes: [],
   ruleTable: null,
+  cellGrid: null,
   size: { width: 0, height: 0 },
   stats: { nodes: 0, edges: 0, connections: 0, layers: 0, widest: 0, backEdges: 0, decisions: 0, ends: 0, groupedEdges: 0 },
 }
@@ -72,6 +75,7 @@ const nodeTypes = {
   prtable: RuleTableNode,
   plinks: ConnectionLayerNode,
   pstages: StageBoxNode,
+  pcells: FlowCellLayerNode,
 }
 
 /** Wide flows open at this zoom from the left (same floor as the route map; issue 166) */
@@ -83,7 +87,7 @@ const OPEN_MIN_ZOOM = 0.7
  * from the timeline's card fields: the two sets share no switch, and one key for both would make each overwrite
  * the other.
  */
-const FIELD_DEFAULTS = { conditions: true, detail: true, mainLine: true, stages: true, rules: false }
+const FIELD_DEFAULTS = { conditions: true, detail: false, mainLine: true, stages: true, rules: false }
 /** The States switch starts on in every theme (issue 235); kept as a function so a caller's shape does not change */
 export const statesByDefault = () => true
 
@@ -170,6 +174,10 @@ export default function ProcedureFlow({ spec }) {
     setLinkStyle(next)
   }
 
+  const [storedGrid] = useSpecPref('showGrid', specKey)
+  const gridView = useViewValue('view.flow.grid', storedGrid, false)
+  const showGrid = gridView.value === true
+
   // Geometry yields to the event loop while it runs (issue 330). Keep the last layout on
   // screen while a toggle recomputes, so the page stays interactive. Detail / stages / rules /
   // engine move geometry; condition labels and the main-line highlight are paint only.
@@ -225,6 +233,15 @@ export default function ProcedureFlow({ spec }) {
         data: { boxes: layout.stageBoxes, width, height, lit: litStages },
       })
     }
+    if (layout.cellGrid) {
+      deco.push({
+        ...DECORATION,
+        id: '__pcells__',
+        type: 'pcells',
+        position: { x: 0, y: 0 },
+        data: { ...layout.cellGrid, stageBoxes: layout.stageBoxes },
+      })
+    }
     deco.push({
       ...DECORATION,
       id: '__plinks__',
@@ -266,6 +283,7 @@ export default function ProcedureFlow({ spec }) {
     ...Object.fromEntries(Object.entries(fieldView).filter(([, view]) => view.locked).map(([key]) => [key, true])),
     orientation: orientationView.locked,
     linkStyle: linkStyleView.locked,
+    grid: gridView.locked,
   }
 
   return (
@@ -277,6 +295,7 @@ export default function ProcedureFlow({ spec }) {
           fitKey={layout}
           fitMinZoom={OPEN_MIN_ZOOM}
           nodeTypes={nodeTypes}
+          showGrid={showGrid && Boolean(layout.cellGrid)}
           onNodeMouseEnter={(_, n) => {
             if (n.type === 'pnode') setHoveredId(n.id)
           }}

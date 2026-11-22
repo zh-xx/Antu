@@ -2480,7 +2480,7 @@ async function checkTimelineStagger(sampleFile, otherFile) {
     await click()
     await settle()
     const off = await state()
-    truthy('stagger: a click turns it off and the grid chip is back', !off.on && off.grid)
+    truthy('stagger: a click turns it off (grid chip stays hidden)', !off.on && !off.grid)
     eq('stagger: every card is still drawn', off.cards, on.cards)
     truthy(`stagger: staggered, the cards are drawn larger (${off.cardH.toFixed(0)} -> ${on.cardH.toFixed(0)} px high)`, on.cardH > off.cardH * 1.3)
     await browser.open(`file://${html}?lang=en`)

@@ -36,7 +36,7 @@ import { straighten } from './straighten.js'
 import { edgesOf } from './router.js'
 import { ownPart } from './merge.js'
 import { polishLinks, linkRouting, placeLabel } from './polish.js'
-import { titleBoxOf, toReal } from './columns.js'
+import { titleBoxOf, bookmarkBoxOf, toReal } from './columns.js'
 import { textEm } from '../../fact/cardGeometry.js'
 import {
   LAYER_GAP,
@@ -65,6 +65,8 @@ import {
   firstClearPath,
   findCollinearAmbiguities,
   collinearOverlapLen,
+  pathCollinearOverlapCount,
+  segHitsBox,
   segRunsOnBoxEdge,
   segFalseConnectsPortOnBoxEdge,
   COLLINEAR_AMBIGUOUS_MIN,
@@ -85,6 +87,16 @@ import {
 const LANE_GAP = 112
 /** Extra room between two branch lanes */
 const LANE_SEP = 28
+
+/**
+ * Cross-axis x for a box centred in integer column `col` with pitch `cellW`.
+ * @param {number} col
+ * @param {number} cellW
+ * @param {number} w
+ */
+function columnX(col, cellW, w) {
+  return col * cellW + (cellW - w) / 2
+}
 /** Centre-to-centre span above which spine→hang prefers the hang-lane / corridor helper */
 const DISTANT_DY = 280
 
@@ -100,7 +112,7 @@ function finishMainline(gen) {
 
 /**
  * @param {object} args same shape as layoutColumns, plus `spine: string[]`
- * @returns {{ placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object, spineIds?: string[] }}
+ * @returns {{ placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object, spineIds?: string[], cellCross?: number, cellAlong?: number }}
  */
 export function layoutMainline(args) {
   return finishMainline(layoutMainlineGen(args))
@@ -108,9 +120,20 @@ export function layoutMainline(args) {
 
 /**
  * Mainline-first column layout as a generator (yields between heavy routing steps).
- * @returns {Generator<void, { placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object, spineIds?: string[] }, unknown>}
+ * @param {{
+ *   nodes: object[],
+ *   groups: object[],
+ *   stages: object[],
+ *   labelBox: (text: string) => { width: number, height: number },
+ *   vertical: boolean,
+ *   spine?: string[],
+ *   spines?: string[][],
+ *   fields?: object,
+ *   realStageById?: Map<string, string> | null,
+ * }} args
+ * @returns {Generator<void, { placed: Map, stageBoxes: object[], connections: object[], size: {width:number,height:number}, frame: object, spineIds?: string[], cellCross?: number, cellAlong?: number }, unknown>}
  */
-export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, spine, spines, fields }) {
+export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, spine, spines, fields, realStageById = null }) {
   const byId = new Map(nodes.map((n) => [n.id, n]))
   const PAD_A0 = vertical ? STAGE_PAD_TOP : STAGE_PAD
   const PAD_C0 = vertical ? STAGE_PAD : STAGE_PAD_TOP
@@ -119,8 +142,9 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   const pills = new Set(
     nodes.filter((n) => n.kind === 'start' || n.kind === 'end').map((n) => n.id),
   )
+  const showDetail = fields?.detail === true
   const frameSize = (n) => {
-    const { w, h } = sizeOf(n)
+    const { w, h } = sizeOf(n, showDetail)
     return vertical ? { w, h } : { w: h, h: w }
   }
   const frameLabel = (text) => {
@@ -131,7 +155,6 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   const spineList = spine ?? []
   /** All component spines (primary first). Falls back to a single list when older callers omit it. */
   const spinesList = Array.isArray(spines) && spines.length ? spines : spineList.length ? [spineList] : []
-  const spineAt = new Map(spineList.map((id, i) => [id, i]))
   // Secondary component spines get their own index maps so hang [leave, rejoin] works per trunk.
   const spineAtAll = new Map()
   for (const path of spinesList) {
@@ -139,10 +162,11 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
       if (!spineAtAll.has(id)) spineAtAll.set(id, i)
     })
   }
-  const outG = new Map(nodes.map((n) => [n.id, []]))
+  /** @type {Map<string, object[]>} */
+  const outG = new Map(nodes.map((n) => [n.id, /** @type {object[]} */ ([])]))
   for (const g of groups) outG.get(g.from)?.push(g)
 
-  /** @type {Array<{ st: object, ids: Set<string>, spineIds: string[], spineAxes?: string[][], placed: Map, connections: object[], width: number, height: number }>} */
+  /** @type {Array<{ st: object, ids: Set<string>, spineIds: string[], spineAxes?: string[][], placed: Map, connections: object[], width: number, height: number, cellW?: number, cellH?: number }>} */
   const segments = []
 
   for (let si = 0; si < stages.length; si += 1) {
@@ -161,11 +185,13 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
       spineList,
       spinesList,
       frameSize,
+      frameLabel,
       diamonds,
       branchSign,
       byId,
       forceHangSide: fields?.mainlineHangSide ?? null,
       vertical,
+      realStageById,
     })
     segments.push({ st, ids: ownIds, ...seg })
     yield
@@ -272,13 +298,15 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   const all = straighten(connections, placed, titles, true, diamonds, { borders, within })
   connections.splice(0, connections.length, ...all)
   polishLinks(ctx)
+  const cellCross = Math.max(0, ...segments.map((s) => s.cellW ?? 0))
+  const cellAlong = Math.max(0, ...segments.map((s) => s.cellH ?? 0))
   // Polish may shove trunk nodes aside to clear a branch: put each trunk axis back
   // independently (multi-component spines must not share one averaged axis), then
   // re-separate columns if polish dragged whole trunks together.
   for (const axes of spineAxesByStage.values()) {
     for (const ids of axes) pinSpineAxis(placed, ids, connections)
-    separateSpineAxes(placed, axes, connections)
-    pushBranchesOffSpine(placed, axes.flat(), connections)
+    separateSpineAxes(placed, axes, connections, cellCross)
+    pushBranchesOffSpine(placed, axes.flat(), connections, cellCross)
   }
   // straighten/polish prefer diamond-point routes; same-row forks stay side-horizontal.
   restoreSameRowLinks(placed, connections, diamonds)
@@ -297,9 +325,11 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
   // Iterate S2 → corridor-separate → cross-repair until port/rail/cross settle (stages-on).
   settleGeometryPasses(placed, connections, diamonds, allSpine, pills, vertical)
   restoreInputMainStraight(placed, connections, allSpine)
-  applyTreeForkBus(placed, connections, allSpine, diamonds, boxes, vertical)
+  applyTreeForkBus(placed, connections, allSpine, diamonds, boxes, vertical, cellCross, cellAlong)
+  separateBidirectionalSameRowLinks(placed, connections, diamonds)
   // Routes moved after the per-stage label pass: drop stale spots and place again.
   ensureConnectionLabels(connections, [...placed.values()], titles, borders, { force: true, preferOnLine: true })
+  separateBidirectionalLabels(placed, connections)
   yield
 
   let width = cx - COLUMN_GAP + PAD
@@ -319,8 +349,8 @@ export function* layoutMainlineGen({ nodes, groups, stages, labelBox, vertical, 
     }
   }
 
-  const frame = { boxes, placed, connections, titles, borders, width, height, diamonds }
-  return { frame, ...toReal(frame, vertical), spineIds: [...allSpine] }
+  const frame = { boxes, placed, connections, titles, borders, width, height, diamonds, cellCross, cellAlong }
+  return { frame, ...toReal(frame, vertical), spineIds: [...allSpine], cellCross, cellAlong }
 }
 
 /**
@@ -336,14 +366,43 @@ function layoutStageMainline({
   spineList,
   spinesList = /** @type {string[][]} */ ([]),
   frameSize,
+  frameLabel,
   diamonds,
   branchSign,
   byId,
   forceHangSide = null,
   vertical = true,
+  realStageById = null,
 }) {
   const placed = new Map()
   const drawn = new Set()
+
+  /** @type {Map<string, object[]>} non-back incoming edges by target */
+  const realInFeeders = new Map()
+  for (const g of groups) {
+    if (g.isBack) continue
+    if (!realInFeeders.has(g.to)) realInFeeders.set(g.to, [])
+    realInFeeders.get(g.to)?.push(g)
+  }
+  /**
+   * Defer claiming a cross-stage shared sink when an in-stage feeder also reaches it,
+   * so stacked stage bands do not freeze a vertical chasm from foreign discovery.
+   * @param {string} fromId
+   * @param {string} toId
+   */
+  const shouldDeferCrossStageConverge = (fromId, toId) => {
+    if (!realStageById) return false
+    const fs = realStageById.get(fromId)
+    const ts = realStageById.get(toId)
+    if (!fs || !ts || fs === ts) return false
+    const feeders = realInFeeders.get(toId) ?? []
+    if (feeders.length < 2) return false
+    return feeders.some(
+      (other) => other.from !== fromId && realStageById.get(other.from) === ts,
+    )
+  }
+  /** @type {Array<{ from: string, to: string, leave: object }>} */
+  const deferredCrossClaims = []
 
   /**
    * When stages fold a hang chain into its own column (02 st-3: n-7…n-12 with no global
@@ -410,21 +469,62 @@ function layoutStageMainline({
     })
   }
 
-  let y = 0
+  const maxBoxH = Math.max(0, ...[...ownIds].map((id) => frameSize(byId.get(id)).h))
+  // Tree-fork Case B: spine main from a decision whose ≥2 non-main peers converge on a shared
+  // off-spine node spans 3 rows — skip that spine edge so it does not inflate every row's cellH.
+  /** @type {Set<string>} */
+  const treeForkSpineSkip = new Set()
+  for (const g of groups) {
+    if (!g.isMain || !ownIds.has(g.from) || !ownIds.has(g.to)) continue
+    if (byId.get(g.from)?.kind !== 'decision') continue
+    const nonMain = (outG.get(g.from) ?? []).filter(
+      (e) => !e.isMain && !e.isBack && ownIds.has(e.to),
+    )
+    if (nonMain.length < 2) continue
+    /** @type {Map<string, number>} */
+    const sharedHits = new Map()
+    for (const e of nonMain) {
+      const outs = (outG.get(e.to) ?? []).filter((o) => !o.isBack && ownIds.has(o.to))
+      if (outs.length !== 1) continue
+      const shared = outs[0].to
+      if (spineAt.has(shared) || !ownIds.has(shared)) continue
+      sharedHits.set(shared, (sharedHits.get(shared) ?? 0) + 1)
+    }
+    if ([...sharedHits.values()].some((n) => n >= 2)) {
+      treeForkSpineSkip.add(`${g.from}|${g.to}`)
+    }
+  }
+  let maxVertNeed = 0
+  for (const g of groups) {
+    if (!ownIds.has(g.from) || !ownIds.has(g.to)) continue
+    if (treeForkSpineSkip.has(`${g.from}|${g.to}`)) continue
+    const sequentialHang = !spineAt.has(g.from) && !spineAt.has(g.to) && !g.isBack
+    if (!(g.isMain || localSpineNext.get(g.from) === g.to || sequentialHang)) continue
+    const ha = frameSize(byId.get(g.from)).h
+    const hb = frameSize(byId.get(g.to)).h
+    const lh = g.label ? frameLabel(g.label).height : 0
+    // Vertical spine labels sit on the corridor ink (preferOnLine). Reserve full chip
+    // height plus vertical ink stubs so lengthenLabeledHops never needs +cellH blank rows.
+    const INK_PAD_V = 6
+    maxVertNeed = Math.max(maxVertNeed, Math.ceil((ha + hb) / 2 + lh + (lh ? 2 * INK_PAD_V + 2 : 22)))
+  }
+  const cellH = Math.ceil(Math.max(maxBoxH + 34, maxVertNeed, 120))
+  const rowY = (row, h) => row * cellH + (cellH - h) / 2
+  const rowOfY = (y, h) => Math.round((y + h / 2) / cellH - 0.5)
+
   let spineW = 0
-  for (const id of spineHere) {
+  spineHere.forEach((id, i) => {
     const { w, h } = frameSize(byId.get(id))
-    placed.set(id, { x: 0, y, w, h })
+    placed.set(id, { x: 0, y: rowY(i, h), w, h })
     drawn.add(id)
     spineW = Math.max(spineW, w)
-    y += h + LAYER_GAP
-  }
+  })
   // Centre spine boxes on a shared axis
   for (const id of spineHere) {
     const r = placed.get(id)
     placed.set(id, { ...r, x: (spineW - r.w) / 2 })
   }
-  const spineH = y > 0 ? y - LAYER_GAP : 0
+  const spineH = spineHere.length ? spineHere.length * cellH : 0
 
   // Secondary disconnected-component spines (B08 n-b*): parallel straight columns.
   // Leave a full hang-lane gap between trunks so a decision on the secondary column can
@@ -438,17 +538,17 @@ function layoutStageMainline({
   {
     let colX = primarySpineW + (primarySpineW ? COLUMN_GAP + LANE_GAP : 0)
     for (const path of extraSpines) {
-      let ey = 0
       let colW = 0
+      let ri = 0
       for (const id of path) {
         if (drawn.has(id)) continue
         const { w, h } = frameSize(byId.get(id))
         colW = Math.max(colW, w)
-        placed.set(id, { x: colX, y: ey, w, h })
+        placed.set(id, { x: colX, y: rowY(ri, h), w, h })
         drawn.add(id)
         extraSpineIds.push(id)
         if (!spineAt.has(id)) spineAt.set(id, path.indexOf(id))
-        ey += h + LAYER_GAP
+        ri += 1
       }
       const axisX = colX + colW / 2
       for (const id of path) {
@@ -470,6 +570,10 @@ function layoutStageMainline({
       if (g.isMain || g.isBack || localSpineNext.get(g.from) === g.to) continue
       if (spineAt.has(g.to) && ownIds.has(g.to)) continue // arc / jump along or to spine — routed later
       if (drawn.has(g.to) && !spineAt.has(g.to)) continue
+      if (shouldDeferCrossStageConverge(u, g.to)) {
+        deferredCrossClaims.push({ from: u, to: g.to, leave: g })
+        continue
+      }
       const boxes = []
       let cur = g.to
       const seen = new Set()
@@ -491,11 +595,61 @@ function layoutStageMainline({
         for (const o of outs) {
           if (o === next) continue
           if (spineAt.has(o.to) || drawn.has(o.to) || boxes.includes(o.to)) continue
+          if (shouldDeferCrossStageConverge(cur, o.to)) {
+            deferredCrossClaims.push({ from: cur, to: o.to, leave: o })
+            continue
+          }
           hangs.push({ from: cur, rootOnSpine: false, leave: o, boxes: [], rejoin: null, parent: true })
+        }
+        if (shouldDeferCrossStageConverge(cur, next.to)) {
+          deferredCrossClaims.push({ from: cur, to: next.to, leave: next })
+          break
         }
         cur = next.to
       }
       hangs.push({ from: u, rootOnSpine: true, leave: g, boxes, rejoin, parent: false })
+    }
+  }
+
+  // Safety: deferred cross-stage sinks that nobody claimed must still be discovered.
+  {
+    const claimed = new Set([
+      ...spineHere,
+      ...extraSpineIds,
+      ...hangs.flatMap((h) => h.boxes),
+      ...hangs.map((h) => h.leave?.to).filter(Boolean),
+    ])
+    for (const def of deferredCrossClaims) {
+      if (claimed.has(def.to) || drawn.has(def.to) || spineAt.has(def.to)) continue
+      if (!ownIds.has(def.to)) continue
+      const boxes = []
+      let cur = def.to
+      const seen = new Set()
+      let rejoin = null
+      while (cur && ownIds.has(cur) && !seen.has(cur)) {
+        if (spineAt.has(cur)) {
+          rejoin = cur
+          break
+        }
+        seen.add(cur)
+        boxes.push(cur)
+        claimed.add(cur)
+        if (byId.get(cur)?.kind === 'end') break
+        const outs = (outG.get(cur) ?? [])
+          .filter((e) => !e.isBack && ownIds.has(e.to))
+          .sort((p, q) => Number(!!q.isMain) - Number(!!p.isMain) || String(p.to).localeCompare(String(q.to)))
+        const next = outs.find((e) => e.isMain) ?? outs[0]
+        if (!next) break
+        cur = next.to
+      }
+      hangs.push({
+        from: def.from,
+        rootOnSpine: spineAt.has(def.from),
+        leave: def.leave,
+        boxes,
+        rejoin,
+        parent: !spineAt.has(def.from),
+      })
     }
   }
 
@@ -566,6 +720,23 @@ function layoutStageMainline({
       const b = (h.rejoin && spineAt.has(h.rejoin) ? spineAt.get(h.rejoin) : undefined) ?? a + Math.max(1, h.boxes.length)
       return { h, a: Math.min(a, b), b: Math.max(a, b) }
     })
+  // Shared-convergence dead-end hangs (e.g. a sink reached from several distant branches/spine
+  // stations) span every non-back feeder so opposite-side overlap checks see the full region.
+  for (const it of intervals) {
+    if (it.h.rejoin) continue
+    const boxSet = new Set(it.h.boxes)
+    for (const g of groups) {
+      if (g.isBack || !boxSet.has(g.to)) continue
+      const idx =
+        spineAt.has(g.from)
+          ? spineAt.get(g.from)
+          : spineAt.get(hangs.find((p) => p.boxes.includes(g.from))?.from)
+      if (idx !== undefined) {
+        it.a = Math.min(it.a, idx)
+        it.b = Math.max(it.b, idx)
+      }
+    }
+  }
 
   const regionOverlaps = (p, q) => !(p.b < q.a || q.b < p.a)
   const regionContains = (outer, inner) =>
@@ -718,15 +889,96 @@ function layoutStageMainline({
     }
   }
 
-  // Pack lanes per side: shorter / contained intervals claim inner lanes first.
+  // Identify which component trunk each spine node belongs to (0 = primary, 1.. = extraSpines).
+  /** @type {Map<string, number>} */
+  const trunkIdxOf = new Map()
+  for (const id of [...spineHere, ...endTerminus]) trunkIdxOf.set(id, 0)
+  extraSpines.forEach((path, ti) => {
+    for (const id of path) trunkIdxOf.set(id, ti + 1)
+  })
+  /** @type {Map<object, number>} */
+  const hangTrunk = new Map()
+  for (const it of intervals) {
+    if (it.h.rootOnSpine) hangTrunk.set(it.h, trunkIdxOf.get(it.h.from) ?? 0)
+  }
+  for (const it of intervals) {
+    if (hangTrunk.has(it.h)) continue
+    const parent = intervals.find((o) => o.h !== it.h && o.h.boxes.includes(it.h.from))
+    hangTrunk.set(it.h, parent ? (hangTrunk.get(parent.h) ?? 0) : 0)
+  }
+
+  // Pack lanes per (trunk, side): shorter / contained intervals claim inner lanes first.
   // Child hangs are packed with their parent (same column), not as extra competing regions.
+  // Occupied ranges are real intervals (not a single rightmost end) so a later shorter span
+  // before an earlier point-interval (e.g. [2,3] after [4,4]) still packs into lane 0.
+  /** Input main:true pairs (incl. hang→spine rejoins that are not spineNext). */
+  const inputMainAt = new Set(groups.filter((g) => g.inputMain).map((g) => `${g.from}|${g.to}`))
   /** @type {Map<object, number>} */
   const laneOf = new Map()
-  /** @type {Map<number, number[]>} sign → lane end spine-index */
-  const laneEndsBySign = new Map([
-    [1, []],
-    [-1, []],
-  ])
+  /** @type {Map<string, Array<Array<{ a: number, b: number, it: object }>>>} */
+  const laneIntervalsByTrunkSign = new Map()
+  const getIntervals = (trunk, sign) => {
+    const k = `${trunk}:${sign}`
+    if (!laneIntervalsByTrunkSign.has(k)) laneIntervalsByTrunkSign.set(k, [])
+    return /** @type {Array<Array<{ a: number, b: number, it: object }>>} */ (laneIntervalsByTrunkSign.get(k))
+  }
+  /**
+   * @param {{ a: number, b: number }} p
+   * @param {{ a: number, b: number }} q
+   */
+  const laneIntervalConflicts = (p, q) => {
+    const pPoint = p.a === p.b
+    const qPoint = q.a === q.b
+    if (pPoint && qPoint) return p.a === q.a
+    if (pPoint) return p.a >= q.a && p.a <= q.b
+    if (qPoint) return q.a >= p.a && q.a <= p.b
+    // Positive spans: endpoint touch allowed (rejoin at k, leave at k).
+    return !(p.b <= q.a || q.b <= p.a)
+  }
+  /** @param {{ h: object }} oIt */
+  const occupiedRowsOf = (oIt) => {
+    if (
+      oIt.h.rejoin &&
+      oIt.h.boxes.length &&
+      inputMainAt.has(`${oIt.h.boxes[oIt.h.boxes.length - 1]}|${oIt.h.rejoin}`)
+    ) {
+      const rEnd = spineAt.get(oIt.h.rejoin)
+      if (rEnd !== undefined) return { start: rEnd - oIt.h.boxes.length + 1, end: rEnd }
+    }
+    const oLeave = spineAt.get(oIt.h.from)
+    if (oLeave === undefined) return null
+    const oSameRow =
+      byId.get(oIt.h.from)?.kind === 'decision' ||
+      (oIt.h.boxes.length === 1 && !isLoopHang(oIt.h)) ||
+      isLoopHang(oIt.h)
+    const start = oSameRow ? oLeave : oLeave + 1
+    return { start, end: start + oIt.h.boxes.length - 1 }
+  }
+  /**
+   * @param {Array<{ a: number, b: number, it: object }>} laneList
+   * @param {{ h: object, a: number, b: number }} it
+   */
+  const canShareConvergenceLane = (laneList, it) => {
+    if (!it.h.rootOnSpine || it.h.rejoin || it.h.boxes.length !== 1) return false
+    const boxId = it.h.boxes[0]
+    const anchorRow = spineAt.get(it.h.from)
+    if (anchorRow === undefined) return false
+    if (
+      !laneList.some((o) =>
+        o.it.h.boxes.some((bid) => (outG.get(bid) ?? []).some((e) => !e.isBack && e.to === boxId)),
+      )
+    ) {
+      return false
+    }
+    for (const o of laneList) {
+      if (o.a === anchorRow && o.b === anchorRow && !o.it.h.rejoin && o.it.h.boxes.length === 1) {
+        return false
+      }
+      const occ = occupiedRowsOf(o.it)
+      if (!occ || (anchorRow >= occ.start && anchorRow <= occ.end)) return false
+    }
+    return true
+  }
   /** @type {Array<{ region: object, reason: string }>} */
   const spineOpenRequests = []
   const bySpan = [...intervals]
@@ -741,10 +993,25 @@ function layoutStageMainline({
     )
   for (const it of bySpan) {
     const sign = /** @type {number} */ (signOf.get(it.h))
-    const ends = /** @type {number[]} */ (laneEndsBySign.get(sign))
+    const trunk = hangTrunk.get(it.h) ?? 0
+    const lanes = getIntervals(trunk, sign)
     let lane = 0
-    while (ends[lane] !== undefined && ends[lane] > it.a) lane += 1
-    ends[lane] = Math.max(ends[lane] ?? it.b, it.b)
+    let shared = false
+    while (lanes[lane]) {
+      if (canShareConvergenceLane(lanes[lane], it)) {
+        shared = true
+        break
+      }
+      if (!lanes[lane].some((o) => laneIntervalConflicts(o, it))) break
+      lane += 1
+    }
+    if (!lanes[lane]) lanes[lane] = []
+    if (shared) {
+      const row = /** @type {number} */ (spineAt.get(it.h.from))
+      lanes[lane].push({ a: row, b: row, it })
+    } else {
+      lanes[lane].push({ a: it.a, b: it.b, it })
+    }
     laneOf.set(it.h, lane)
   }
   for (const it of intervals) {
@@ -801,140 +1068,216 @@ function layoutStageMainline({
   // an outer spur on that side.
   const isSideEndHang = (it) => {
     if (it.h.rootOnSpine || it.h.boxes.length !== 1) return false
-    if (byId.get(it.h.from)?.kind !== 'decision') return false
     const id = it.h.boxes[0]
     if (byId.get(id)?.kind !== 'end') return false
     // Shared terminus already owned by the parent hang chain stays in-lane.
-    return !intervals.some((o) => o.h.rootOnSpine && o.h.boxes.includes(id))
+    if (intervals.some((o) => o.h.rootOnSpine && o.h.boxes.includes(id))) return false
+    // Decision-sibling single ends sit on the fork's row.
+    if (byId.get(it.h.from)?.kind === 'decision') return true
+    // Multi-exit hang step → pure unshared dead-end leaf.
+    const outs = (outG.get(it.h.from) ?? []).filter((e) => !e.isBack && ownIds.has(e.to))
+    if (outs.length < 2) return false
+    return groups.filter((g) => !g.isBack && g.to === id).length === 1
   }
-  let sideEndInner = 0
-  for (const it of intervals) {
-    if (!isSideEndHang(it)) continue
-    const need = frameSize(byId.get(it.h.boxes[0])).w + LANE_SEP
-    const sign = /** @type {number} */ (signOf.get(it.h))
-    // Absolute-right of the diamond: left hang → into the spine gutter (widen hopGap).
-    // Right hang → past the lane (final bbox grows from the placed end).
-    if (sign < 0) sideEndInner = Math.max(sideEndInner, need)
+  /**
+   * True when a left-side side-end must sit inward toward the spine because its parent hang
+   * rejoins at or above its fork (keeping the outer west upward-loop channel clear).
+   */
+  const leftSideEndNeedsInward = (it) => {
+    const parentIt = intervals.find((o) => o.h !== it.h && o.h.boxes.includes(it.h.from))
+    if (!parentIt) return false
+    const fromIdx = spineAt.get(parentIt.h.from)
+    if (fromIdx === undefined) return false
+    if (parentIt.h.rejoin && spineAt.has(parentIt.h.rejoin)) {
+      const rejoinIdx = /** @type {number} */ (spineAt.get(parentIt.h.rejoin))
+      if (rejoinIdx <= fromIdx) return true
+    }
+    return groups.some(
+      (g) =>
+        parentIt.h.boxes.includes(g.from) &&
+        spineAt.has(g.to) &&
+        /** @type {number} */ (spineAt.get(g.to)) <= fromIdx,
+    )
   }
 
-  // Room on the leave hop for a condition label sitting ON the segment (not beside it).
-  let hopGap = LANE_GAP
+  // Pairwise column pitch: clear leave/sibling labels without the old LANE_GAP wasteland.
+  // Do not inflate for hang→spine rejoin labels: those prefer the long vertical corridor.
+  // Same-hang-chain consecutive boxes (e.g. n-15→n-16) also skip — they share a column.
+  /** @type {Set<string>} */
+  const sameHangChain = new Set()
   for (const it of intervals) {
-    const leave = it.h.leave
-    if (!leave?.label || !it.h.rootOnSpine) continue
-    const need = Math.min(120, textEm(leave.label) * 12 + 12) + 24
-    hopGap = Math.max(hopGap, need)
+    for (let k = 0; k < it.h.boxes.length - 1; k += 1) {
+      sameHangChain.add(`${it.h.boxes[k]}|${it.h.boxes[k + 1]}`)
+    }
   }
-  if (sideEndInner) hopGap = Math.max(hopGap, sideEndInner + 24)
+  const maxBoxW = Math.max(0, ...[...ownIds].map((id) => frameSize(byId.get(id)).w))
+  let cellW = Math.ceil(maxBoxW + 56)
+  for (const g of groups) {
+    if (!ownIds.has(g.from) || !ownIds.has(g.to)) continue
+    if (g.isMain || localSpineNext.get(g.from) === g.to) continue
+    if (!g.label) continue
+    if (sameHangChain.has(`${g.from}|${g.to}`)) continue
+    const fromOn = spineAt.has(g.from)
+    const toOn = spineAt.has(g.to)
+    // Hang→spine rejoins put their label on the vertical corridor — skip widening.
+    if (!fromOn && toOn) continue
+    const membershipDiffers = fromOn !== toOn
+    const bothHang = !fromOn && !toOn
+    if (!membershipDiffers && !bothHang) continue
+    // Same hang column (shared centre) — vertical corridor, do not widen cellW.
+    if (bothHang) {
+      const ra = placed.get(g.from)
+      const rb = placed.get(g.to)
+      if (ra && rb && Math.abs(ra.x + ra.w / 2 - (rb.x + rb.w / 2)) < 2) continue
+    }
+    const wa = frameSize(byId.get(g.from)).w
+    const wb = frameSize(byId.get(g.to)).w
+    cellW = Math.max(cellW, Math.ceil((wa + wb) / 2 + frameLabel(g.label).width + 28))
+  }
+  const trunkReserves = (ti) => {
+    let leftIn = 0
+    let leftOut = 0
+    let rightOut = 0
+    for (const it of intervals) {
+      if ((hangTrunk.get(it.h) ?? 0) !== ti || !isSideEndHang(it)) continue
+      const sign = /** @type {number} */ (signOf.get(it.h))
+      if (sign < 0) {
+        if (leftSideEndNeedsInward(it)) leftIn = 1
+        else leftOut = 1
+      } else {
+        rightOut = 1
+      }
+    }
+    return { leftIn, leftOut, rightOut }
+  }
+  const leftLaneCount = getIntervals(0, -1).length
+  const rightLaneCount = getIntervals(0, 1).length
+  const r0 = trunkReserves(0)
+  const spineCol = leftLaneCount + r0.leftIn + r0.leftOut
+  // Ensure vertical col-0 spines clear flush top-left stage bookmarks on narrow-label specs.
+  if (vertical && spineCol === 0 && realStageById?.size) {
+    cellW = Math.max(cellW, 288)
+  }
 
-  const spineX0 = leftW ? leftW + hopGap : 0
+  /** @type {number[]} */
+  const trunkCol = [spineCol]
+  let nextCol = spineCol + rightLaneCount + r0.rightOut + 1
+  for (let ti = 1; ti <= extraSpines.length; ti += 1) {
+    const exLeft = getIntervals(ti, -1).length
+    const exRight = getIntervals(ti, 1).length
+    const rTi = trunkReserves(ti)
+    const exCol = nextCol + exLeft + rTi.leftIn + rTi.leftOut
+    trunkCol[ti] = exCol
+    nextCol = exCol + exRight + rTi.rightOut + 1
+  }
+
   for (const id of spineHere) {
     const r = placed.get(id)
-    placed.set(id, { ...r, x: spineX0 + (spineW - r.w) / 2 })
+    if (r) placed.set(id, { ...r, x: columnX(spineCol, cellW, r.w) })
   }
+  extraSpines.forEach((path, ti) => {
+    const col = trunkCol[ti + 1]
+    let ri = 0
+    for (const id of path) {
+      if (!placed.has(id)) continue
+      const r = placed.get(id)
+      const { h } = frameSize(byId.get(id))
+      placed.set(id, { ...r, x: columnX(col, cellW, r.w), y: rowY(ri, h) })
+      ri += 1
+    }
+  })
 
   // Decision branches sit on the fork's row (centres aligned → 0-bend side link).
-  // Lane keys are scoped by side so opposite-face siblings do not stack on one cursor.
+  // Lane keys are scoped by (trunk, side) so opposite-face siblings do not stack on one cursor.
   //
   // Place spine-rooted hangs before child hangs. Hang discovery records a sibling leave as a
   // child hang *before* the parent hang object, so a naive intervals walk drew the child first
   // while `from` (a box still inside the parent) was unplaced → `by = 0` parked branch-exit
   // ends at the canvas top and forced cross-spine routes (L1 litigation / issue 190).
   /** @type {Map<string, number>} */
-  const laneCursorY = new Map()
-  const laneKey = (sign, lane) => `${sign}:${lane}`
-  const laneOffset = (sign, lane) => {
-    const widths = /** @type {number[]} */ (laneWBySign.get(sign))
-    let acc = 0
-    for (let i = 0; i < lane; i += 1) acc += (widths[i] ?? 0) + LANE_SEP
-    return acc
+  const laneCursorRow = new Map()
+  const laneKey = (trunk, sign, lane) => `${trunk}:${sign}:${lane}`
+  const overlapsAt = (id, x0, y0, w0, h0) => {
+    for (const [oid, r] of placed) {
+      if (oid === id) continue
+      if (x0 + 0.5 < r.x + r.w && r.x + 0.5 < x0 + w0 && y0 + 0.5 < r.y + r.h && r.y + 0.5 < y0 + h0)
+        return true
+    }
+    return false
   }
-  /** Input main:true pairs (incl. hang→spine rejoins that are not spineNext). */
-  const inputMainAt = new Set(groups.filter((g) => g.inputMain).map((g) => `${g.from}|${g.to}`))
   const placeHang = (it) => {
     const sign = /** @type {number} */ (signOf.get(it.h))
     const lane = /** @type {number} */ (laneOf.get(it.h))
-    const widths = /** @type {number[]} */ (laneWBySign.get(sign))
+    const trunk = hangTrunk.get(it.h) ?? 0
+    const baseCol = trunkCol[trunk] ?? spineCol
+    const reserve = trunkReserves(trunk).leftIn
     const leave = placed.get(it.h.from)
     const fork = byId.get(it.h.from)
-    // Sibling end off a hang decision: same row, prefer absolute-right of the diamond (0-bend).
-    // If that slot overlaps an already-placed box (e.g. left-hang end crossing into a right hang),
-    // nudge further right, then fall back to outward (away from spine) until clear.
+    // Sibling end off a hang decision: same row, mirror outward by side unless left needs inward for an upward loop.
     if (isSideEndHang(it) && leave) {
       const id = it.h.boxes[0]
       if (drawn.has(id)) return
       const { w, h } = frameSize(byId.get(id))
-      const y = leave.y + leave.h / 2 - h / 2
-      const overlaps = (x0) => {
-        for (const [oid, r] of placed) {
-          if (oid === id) continue
-          if (x0 + 0.5 < r.x + r.w && r.x + 0.5 < x0 + w && y + 0.5 < r.y + r.h && r.y + 0.5 < y + h) return true
-        }
-        return false
-      }
-      // Prefer the free same-row slot nearest the diamond. Interleave right/left. Never jump
-      // past a foreign same-row box to the far side — that packs an end beyond another hang
-      // column and forces rejoins to cross leave edges (L4 n-16 past n-10).
-      const jumpsPastForeign = (x0) => {
-        const cy = y + h / 2
-        for (const [oid, r] of placed) {
-          if (oid === id || oid === it.h.from) continue
-          if (Math.abs(r.y + r.h / 2 - cy) > Math.max(r.h, h) / 2 + 2) continue
-          if (leave.x + leave.w <= r.x + 0.5 && x0 + 0.5 >= r.x + r.w) return true
-          if (leave.x + 0.5 >= r.x + r.w && x0 + w <= r.x + 0.5) return true
-        }
-        return false
-      }
-      let x = leave.x + leave.w + LANE_SEP
-      let found = false
-      for (let i = 0; i < 12; i += 1) {
-        const right = leave.x + leave.w + LANE_SEP + i * (w + LANE_SEP)
-        const left = leave.x - LANE_SEP - w - i * (w + LANE_SEP)
-        if (!overlaps(right) && !jumpsPastForeign(right)) {
-          x = right
-          found = true
-          break
-        }
-        if (!overlaps(left) && !jumpsPastForeign(left)) {
-          x = left
-          found = true
-          break
-        }
-      }
-      if (!found) {
-        // No same-row gap without jumping a foreign hang: stack below the fork, preferring the
-        // inward (spine-facing) column so the outer rejoin corridor stays open.
-        let yStack = leave.y + leave.h + LAYER_GAP
-        const inward = sign > 0 ? leave.x - LANE_SEP - w : leave.x + leave.w + LANE_SEP
-        const under = leave.x + (leave.w - w) / 2
-        const overlapsAt = (x0, y0) => {
+      const forkRow = rowOfY(leave.y, leave.h)
+      const preferDir = sign < 0 && !leftSideEndNeedsInward(it) ? -1 : 1
+      const forkCol = Math.round((leave.x + leave.w / 2) / cellW - 0.5)
+      const tryAtRow = (row) => {
+        const y = rowY(row, h)
+        const jumpsPastForeign = (x0) => {
+          const cy = y + h / 2
           for (const [oid, r] of placed) {
-            if (oid === id) continue
-            if (x0 + 0.5 < r.x + r.w && r.x + 0.5 < x0 + w && y0 + 0.5 < r.y + r.h && r.y + 0.5 < y0 + h)
-              return true
+            if (oid === id || oid === it.h.from) continue
+            if (Math.abs(r.y + r.h / 2 - cy) > Math.max(r.h, h) / 2 + 2) continue
+            if (leave.x + leave.w <= r.x + 0.5 && x0 + 0.5 >= r.x + r.w) return true
+            if (leave.x + 0.5 >= r.x + r.w && x0 + w <= r.x + 0.5) return true
           }
           return false
         }
-        x = inward
-        if (overlapsAt(x, yStack)) x = under
-        for (let i = 0; i < 12 && overlapsAt(x, yStack); i += 1) yStack += h + LAYER_GAP
-        placed.set(id, { x, y: yStack, w, h })
-        drawn.add(id)
-        return
+        const tryCol = (col) => {
+          const x0 = columnX(col, cellW, w)
+          return !overlapsAt(id, x0, y, w, h) && !jumpsPastForeign(x0) ? x0 : null
+        }
+        for (let i = 1; i <= 12; i += 1) {
+          const primaryHit = tryCol(forkCol + preferDir * i)
+          if (primaryHit !== null) return { x: primaryHit, y }
+          const secondaryHit = tryCol(forkCol - preferDir * i)
+          if (secondaryHit !== null) return { x: secondaryHit, y }
+        }
+        return null
       }
-      placed.set(id, { x, y, w, h })
-      drawn.add(id)
+      let hit = tryAtRow(forkRow)
+      if (!hit) {
+        // Stack below the fork on the integer lattice.
+        const altCol = forkCol + preferDir
+        let x = columnX(altCol, cellW, w)
+        for (let rStack = forkRow + 1; rStack < forkRow + 14; rStack += 1) {
+          const y = rowY(rStack, h)
+          if (!overlapsAt(id, x, y, w, h)) {
+            hit = { x, y }
+            break
+          }
+          x = columnX(forkCol, cellW, w)
+          if (!overlapsAt(id, x, y, w, h)) {
+            hit = { x, y }
+            break
+          }
+        }
+      }
+      if (hit) {
+        placed.set(id, { x: hit.x, y: hit.y, w, h })
+        drawn.add(id)
+      }
       return
     }
-    const sameRow = Boolean(it.h.rootOnSpine && fork?.kind === 'decision' && leave && it.h.boxes.length)
-    const key = laneKey(sign, lane)
-    const lx =
-      sign < 0
-        ? spineX0 - hopGap - laneOffset(sign, lane) - (widths[lane] ?? 0)
-        : spineX0 + spineW + hopGap + laneOffset(sign, lane)
-    // Hang→spine rejoin marked main:true in input must stay 0-bend. Align the last hang box
-    // with the rejoin spine node (same row) so the rejoin is a side-horizontal; unmarked leave
-    // from the fork may bend ≤1. Fork same-row is the default only when the rejoin is not input-main.
+    // Decision fork, or a single-box short branch/end off a plain spine step (not a loop).
+    const sameRowWanted = Boolean(
+      it.h.rootOnSpine &&
+        leave &&
+        it.h.boxes.length &&
+        (fork?.kind === 'decision' || (it.h.boxes.length === 1 && !isLoopHang(it.h))),
+    )
+    const key = laneKey(trunk, sign, lane)
+    const hangCol = sign < 0 ? baseCol - 1 - reserve - lane : baseCol + 1 + lane
     const lastHangId = it.h.boxes.length ? it.h.boxes[it.h.boxes.length - 1] : null
     const rejoinBox = it.h.rejoin ? placed.get(it.h.rejoin) : null
     const preferRejoinRow = Boolean(
@@ -944,66 +1287,63 @@ function layoutStageMainline({
     )
     if (preferRejoinRow) {
       const sizes = it.h.boxes.map((id) => frameSize(byId.get(id)))
-      const last = sizes[sizes.length - 1]
-      const ys = new Array(it.h.boxes.length)
-      ys[ys.length - 1] = rejoinBox.y + rejoinBox.h / 2 - last.h / 2
-      for (let i = ys.length - 2; i >= 0; i -= 1) {
-        ys[i] = ys[i + 1] - LAYER_GAP - sizes[i].h
-      }
-      // Keep clear of earlier lane content: if the stack collides, shift the whole chain down.
-      const overlapsAt = (id, x0, y0, w0, h0) => {
-        for (const [oid, r] of placed) {
-          if (oid === id) continue
-          if (x0 + 0.5 < r.x + r.w && r.x + 0.5 < x0 + w0 && y0 + 0.5 < r.y + r.h && r.y + 0.5 < y0 + h0)
-            return true
-        }
-        return false
-      }
-      for (let shift = 0; shift < 24; shift += 1) {
-        const dy = shift * (LAYER_GAP / 2)
-        let hit = false
+      const k = sizes.length
+      const rEnd = rowOfY(rejoinBox.y, rejoinBox.h)
+      let rows = Array.from({ length: k }, (_, i) => rEnd - k + 1 + i)
+      const chainHits = (rowList) => {
         for (let i = 0; i < it.h.boxes.length; i += 1) {
           const id = it.h.boxes[i]
           if (drawn.has(id)) continue
           const { w, h } = sizes[i]
-          const x = lx + ((widths[lane] ?? w) - w) / 2
-          if (overlapsAt(id, x, ys[i] + dy, w, h)) {
-            hit = true
-            break
-          }
+          const x = columnX(hangCol, cellW, w)
+          const y = rowY(rowList[i], h)
+          if (overlapsAt(id, x, y, w, h)) return true
         }
-        if (!hit) {
-          for (let i = 0; i < it.h.boxes.length; i += 1) ys[i] += dy
-          break
-        }
+        return false
       }
-      let bottom = laneCursorY.get(key) ?? -Infinity
+      for (let shift = 0; shift < 24 && chainHits(rows); shift += 1) {
+        rows = rows.map((r) => r + 1)
+      }
+      let lastRow = laneCursorRow.get(key) ?? -Infinity
       for (let i = 0; i < it.h.boxes.length; i += 1) {
         const id = it.h.boxes[i]
         if (drawn.has(id)) continue
         const { w, h } = sizes[i]
-        placed.set(id, { x: lx + ((widths[lane] ?? w) - w) / 2, y: ys[i], w, h })
+        placed.set(id, { x: columnX(hangCol, cellW, w), y: rowY(rows[i], h), w, h })
         drawn.add(id)
-        bottom = Math.max(bottom, ys[i] + h + LAYER_GAP)
+        lastRow = Math.max(lastRow, rows[i])
       }
-      laneCursorY.set(key, bottom)
+      laneCursorRow.set(key, lastRow + 1)
       return
     }
-    let by
-    if (sameRow) {
-      const h0 = frameSize(byId.get(it.h.boxes[0])).h
-      const forkY = leave.y + leave.h / 2 - h0 / 2
-      by = Math.max(laneCursorY.get(key) ?? -Infinity, forkY)
-    } else if (laneCursorY.has(key)) by = /** @type {number} */ (laneCursorY.get(key))
-    else by = leave ? leave.y + leave.h + LAYER_GAP : 0
+    const localLoop = Boolean(it.h.rootOnSpine && leave && isLoopHang(it.h))
+    // Step-rooted single box: try leave row first; if that cell is taken, fall back below.
+    let sameRow = sameRowWanted
+    if (sameRowWanted && fork?.kind !== 'decision' && it.h.boxes.length === 1) {
+      const id = it.h.boxes[0]
+      if (!drawn.has(id)) {
+        const { w, h } = frameSize(byId.get(id))
+        const tryRow = Math.max(laneCursorRow.get(key) ?? -Infinity, rowOfY(leave.y, leave.h))
+        const x = columnX(hangCol, cellW, w)
+        const y = rowY(tryRow, h)
+        if (overlapsAt(id, x, y, w, h)) sameRow = false
+      }
+    }
+    let row
+    if (sameRow || localLoop) {
+      row = Math.max(laneCursorRow.get(key) ?? -Infinity, leave ? rowOfY(leave.y, leave.h) : 0)
+    } else {
+      const anchorRow = leave ? rowOfY(leave.y, leave.h) + 1 : 0
+      row = Math.max(laneCursorRow.get(key) ?? 0, anchorRow)
+    }
     for (const id of it.h.boxes) {
       if (drawn.has(id)) continue
       const { w, h } = frameSize(byId.get(id))
-      placed.set(id, { x: lx + ((widths[lane] ?? w) - w) / 2, y: by, w, h })
+      placed.set(id, { x: columnX(hangCol, cellW, w), y: rowY(row, h), w, h })
       drawn.add(id)
-      by += h + LAYER_GAP
+      row += 1
     }
-    laneCursorY.set(key, by)
+    laneCursorRow.set(key, row)
   }
   const pending = [...intervals]
   while (pending.length) {
@@ -1025,19 +1365,19 @@ function layoutStageMainline({
   }
 
   // Place terminus ends on the spine axis after the last spine node (stacked if several).
-  let endY =
+  let endRow =
     spineHere.length > 0
       ? (() => {
           const last = placed.get(spineHere[spineHere.length - 1])
-          return last ? last.y + last.h + LAYER_GAP : 0
+          return last ? rowOfY(last.y, last.h) + 1 : 0
         })()
       : 0
   for (const id of endTerminus) {
     if (drawn.has(id)) continue
     const { w, h } = frameSize(byId.get(id))
-    placed.set(id, { x: spineX0 + (spineW - w) / 2, y: endY, w, h })
+    placed.set(id, { x: columnX(spineCol, cellW, w), y: rowY(endRow, h), w, h })
     drawn.add(id)
-    endY += h + LAYER_GAP
+    endRow += 1
   }
   const spineColumn = [...spineHere, ...extraSpineIds, ...endTerminus.filter((id) => placed.has(id))]
   const spineIdSet = new Set(spineColumn)
@@ -1046,16 +1386,17 @@ function layoutStageMainline({
   const leftover = own.filter((n) => !drawn.has(n.id))
   if (leftover.length) {
     const pocketSign = rightW || !leftW ? 1 : -1
-    const pocketX =
+    const maxColEnd = nextCol
+    const pocketCol =
       pocketSign < 0
-        ? spineX0 - hopGap - leftW - hopGap
-        : spineX0 + spineW + hopGap + rightW + (rightW ? hopGap : 0)
-    let py = 0
+        ? spineCol - 1 - (r0.leftIn + r0.leftOut) - leftLaneCount - 1
+        : maxColEnd + 1
+    let prow = 0
     for (const n of leftover) {
       const { w, h } = frameSize(n)
-      placed.set(n.id, { x: pocketSign < 0 ? pocketX - w : pocketX, y: py, w, h })
+      placed.set(n.id, { x: columnX(pocketCol, cellW, w), y: rowY(prow, h), w, h })
       drawn.add(n.id)
-      py += h + LAYER_GAP
+      prow += 1
     }
   }
   // Shift everything if any box went negative
@@ -1126,7 +1467,7 @@ function layoutStageMainline({
       label: g.label,
       /** @type {{ x: number, y: number } | null} */
       labelAt: null,
-      labelSize: g.label ? { width: Math.min(120, textEm(g.label) * 12 + 12), height: 16 } : null,
+      labelSize: g.label ? frameLabel(g.label) : null,
     })
   }
 
@@ -1145,8 +1486,8 @@ function layoutStageMainline({
     ...extraSpines.map((path) => path.filter((id) => placed.has(id))),
   ].filter((ids) => ids.length > 0)
   for (const axis of spineAxes) pinSpineAxis(placed, axis, connections)
-  separateSpineAxes(placed, spineAxes, connections)
-  pushBranchesOffSpine(placed, spineColumn, connections)
+  separateSpineAxes(placed, spineAxes, connections, cellW)
+  pushBranchesOffSpine(placed, spineColumn, connections, cellW)
   // Polish / pin can rewrite side links; put same-row decision branches and backs back to 0-bend.
   restoreSameRowLinks(placed, connections, diamonds)
   restoreInputMainStraight(placed, connections, spineIdSet)
@@ -1154,7 +1495,7 @@ function layoutStageMainline({
   preferCenteredLinks(placed, connections, diamonds, spineIdSet)
   // Labelled hops shorter than their text: after centres settle (same-row hang↔hang can be only
   // LANE_SEP wide), push so the chip still leaves a stub of ink on each side.
-  lengthenLabeledHops(placed, connections, spineIdSet, diamonds)
+  lengthenLabeledHops(placed, connections, spineIdSet, diamonds, cellW, cellH)
   restoreSameRowLinks(placed, connections, diamonds)
   restoreInputMainStraight(placed, connections, spineIdSet)
   // Side-channel / outer-corridor backs: push the vertical run outward until an on-ink label fits.
@@ -1187,8 +1528,10 @@ function layoutStageMainline({
   )
   settleGeometryPasses(placed, connections, diamonds, spineIdSet, pills, vertical)
   restoreInputMainStraight(placed, connections, spineIdSet)
+  separateBidirectionalSameRowLinks(placed, connections, diamonds)
   // Prefer on-line labels (opaque chip covers the stroke); re-place after geometry settles.
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
+  separateBidirectionalLabels(placed, connections)
 
   // Normalise to 0,0 and measure
   let x0 = Infinity
@@ -1227,6 +1570,8 @@ function layoutStageMainline({
     spineAxes,
     width: Math.max(spineW, x1 - x0),
     height: Math.max(spineH, y1 - y0),
+    cellW,
+    cellH,
   }
 }
 
@@ -1239,8 +1584,9 @@ function layoutStageMainline({
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {string[][]} spineAxes
  * @param {object[]} [connections]
+ * @param {number} [cellW]
  */
-function separateSpineAxes(placed, spineAxes, connections = []) {
+function separateSpineAxes(placed, spineAxes, connections = [], cellW = 0) {
   if (!spineAxes || spineAxes.length < 2) return
   /** @type {{ ids: string[], cx: number, half: number }[]} */
   const cols = []
@@ -1298,8 +1644,9 @@ function separateSpineAxes(placed, spineAxes, connections = []) {
       if (r) prevRight = Math.max(prevRight, r.x + r.w)
     }
     const minCx = prevRight + COLUMN_GAP + LANE_GAP + cur.half
-    const dx = minCx - cur.cx
+    let dx = minCx - cur.cx
     if (dx <= 0.5) continue
+    if (cellW > 0) dx = Math.ceil(dx / cellW) * cellW
     const foreign = foreignSpine(cur)
     const reach = reachableOf(cur.ids)
     for (const id of reach) {
@@ -1324,15 +1671,31 @@ function separateSpineAxes(placed, spineAxes, connections = []) {
 function pinSpineAxis(placed, spineIds, connections = []) {
   const ids = spineIds.filter((id) => placed.has(id))
   if (ids.length === 0) return
-  let axisSum = 0
-  let axisN = 0
+  // Use the majority (mode) x-centre among spine members so a single outlier nudged by
+  // polishLinks snaps back onto the cell column lattice rather than dragging the whole trunk.
+  /** @type {Map<string, { count: number, sum: number }>} */
+  const buckets = new Map()
   for (const id of ids) {
     const r = placed.get(id)
     if (!r) continue
-    axisSum += r.x + r.w / 2
-    axisN += 1
+    const cx = r.x + r.w / 2
+    const key = String(Math.round(cx * 2) / 2)
+    const entry = buckets.get(key)
+    if (entry) {
+      entry.count += 1
+      entry.sum += cx
+    } else {
+      buckets.set(key, { count: 1, sum: cx })
+    }
   }
-  const axis = axisN ? axisSum / axisN : 0
+  let axis = 0
+  let bestCount = -1
+  for (const entry of buckets.values()) {
+    if (entry.count > bestCount) {
+      bestCount = entry.count
+      axis = entry.sum / entry.count
+    }
+  }
   /** @type {Map<string, number>} */
   const dxOf = new Map()
   for (const id of ids) {
@@ -1387,8 +1750,9 @@ function pinSpineAxis(placed, spineIds, connections = []) {
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {string[]} spineIds
  * @param {object[]} [connections] optional — inputMain same-row rejoins keep a readable hop gap
+ * @param {number} [cellW]
  */
-function pushBranchesOffSpine(placed, spineIds, connections = []) {
+function pushBranchesOffSpine(placed, spineIds, connections = [], cellW = 0) {
   const spineSet = new Set(spineIds)
   /** @type {{ x: number, y: number, w: number, h: number }[]} */
   const spines = []
@@ -1398,6 +1762,20 @@ function pushBranchesOffSpine(placed, spineIds, connections = []) {
   }
   if (!spines.length) return
   const axis = spines.reduce((s, r) => s + r.x + r.w / 2, 0) / spines.length
+  /** 0-bend fork-row sibling ends (diamond→end same row) — do not shove off the spine bbox. */
+  const forkRowEnds = new Set()
+  for (const c of connections) {
+    if (c.kind !== 'branch' && c.kind !== 'back') continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b || !sameRowLink(a, b) || spineSet.has(c.to) || spineSet.has(c.from)) continue
+    const fromDiamond = Math.abs(a.w - a.h) < 24 && a.w < 200
+    const toEnd = b.w > b.h * 1.35
+    const revDiamond = Math.abs(b.w - b.h) < 24 && b.w < 200
+    const revEnd = a.w > a.h * 1.35
+    if (fromDiamond && toEnd) forkRowEnds.add(c.to)
+    if (revDiamond && revEnd) forkRowEnds.add(c.from)
+  }
   /** Hang ids that intentionally share a row with an input-main spine rejoin target. */
   const inputMainHang = new Set()
   for (const c of connections) {
@@ -1412,11 +1790,19 @@ function pushBranchesOffSpine(placed, spineIds, connections = []) {
   const clearMain = LANE_GAP
   for (const [id, r] of [...placed]) {
     if (spineSet.has(id)) continue
+    if (forkRowEnds.has(id)) continue
     for (const s of spines) {
       if (!(r.x < s.x + s.w - 0.5 && s.x < r.x + r.w - 0.5 && r.y < s.y + s.h - 0.5 && s.y < r.y + r.h - 0.5)) continue
       const clear = inputMainHang.has(id) ? clearMain : clearDefault
-      const next = r.x + r.w / 2 < axis ? { ...r, x: s.x - clear - r.w } : { ...r, x: s.x + s.w + clear }
-      placed.set(id, next)
+      const away = r.x + r.w / 2 < axis ? -1 : 1
+      let nx = away < 0 ? s.x - clear - r.w : s.x + s.w + clear
+      if (cellW > 0) {
+        const sCx = s.x + s.w / 2
+        const dist = Math.abs(nx + r.w / 2 - sCx)
+        const step = Math.max(1, Math.ceil(dist / cellW))
+        nx = sCx + away * step * cellW - r.w / 2
+      }
+      placed.set(id, { ...r, x: nx })
       break
     }
   }
@@ -1438,7 +1824,8 @@ function pushBranchesOffSpine(placed, spineIds, connections = []) {
     const gap = hangRight ? hang.x - (spine.x + spine.w) : spine.x - (hang.x + hang.w)
     if (gap >= clearMain - 0.5) continue
     const need = clearMain - gap
-    placed.set(hangId, { ...hang, x: hang.x + (hangRight ? need : -need) })
+    const shift = cellW > 0 ? Math.ceil(need / cellW) * cellW : need
+    placed.set(hangId, { ...hang, x: hang.x + (hangRight ? shift : -shift) })
   }
 }
 
@@ -1514,6 +1901,7 @@ function preferCenteredLinks(placed, connections, diamonds, spineIds) {
   for (const c of connections) {
     // Spine mains keep their polished routes; only re-centre branch / back ports.
     if (c.kind === 'main') continue
+    if (c.biSeparated) continue
     const a = placed.get(c.from)
     const b = placed.get(c.to)
     if (!a || !b) continue
@@ -1541,10 +1929,14 @@ function preferCenteredLinks(placed, connections, diamonds, spineIds) {
  * @param {object[]} connections
  * @param {Set<string>} spineIds
  * @param {Set<string>} diamonds
+ * @param {number} [cellW]
  */
-function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()) {
+function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set(), cellW = 0, cellH = 0) {
   // On-line chips hide the stroke under the text; keep a short stub of ink on each side.
-  const INK_PAD = 20
+  // Horizontal needs more pad than vertical (wide chips); keep these in sync with
+  // layoutStageMainline's maxVertNeed (lh + 14 >= 2*INK_PAD_V) and pairwise cellW (+28 >= 2*INK_PAD_H).
+  const INK_PAD_H = 12
+  const INK_PAD_V = 6
   /** @type {Set<string>} */
   const moved = new Set()
   let spineCx = 0
@@ -1556,41 +1948,106 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
     spineN += 1
   }
   if (spineN) spineCx /= spineN
+  /** Shift a hang and every non-spine peer sharing its column centre (keep hang chains aligned). */
+  const shiftHangColumn = (hangId, dx) => {
+    const r = placed.get(hangId)
+    if (!r) return
+    const cx = r.x + r.w / 2
+    for (const [id, box] of placed) {
+      if (spineIds.has(id)) continue
+      if (Math.abs(box.x + box.w / 2 - cx) > 2) continue
+      placed.set(id, { ...box, x: box.x + dx })
+      moved.add(id)
+    }
+  }
   for (const c of connections) {
     if (!c.labelSize || !c.points?.length) continue
     const { width: lw, height: lh } = c.labelSize
     const a = placed.get(c.from)
     const b = placed.get(c.to)
     if (!a || !b) continue
-    // Longest axis-aligned run
+    // Longest axis-aligned run; also track whether any vertical run already fits the chip.
     let bestLen = 0
     let bestHoriz = true
+    let vertFit = false
     for (let i = 0; i < c.points.length - 1; i += 1) {
       const [p, q] = [c.points[i], c.points[i + 1]]
       const horiz = Math.abs(p[1] - q[1]) < 0.5
       const len = Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1])
+      if (!horiz && len >= lh + 2 * INK_PAD_V) vertFit = true
       if (len > bestLen) {
         bestLen = len
         bestHoriz = horiz
       }
     }
-    const need = (bestHoriz ? lw : lh) + 2 * INK_PAD
+    const need = bestHoriz ? lw + 2 * INK_PAD_H : lh + 2 * INK_PAD_V
     if (bestLen >= need) continue
+    // Prefer an existing vertical corridor over shoving a hang column for a short stub.
+    if (bestHoriz && vertFit) continue
 
     const deficit = need - bestLen
     if (bestHoriz) {
+      // 4-point horizontal S-jog whose mid vertical already spans enough for the chip:
+      // slide the jog near either end instead of shoving a whole hang column.
+      const pts = c.points
+      if (
+        pts.length === 4 &&
+        Math.abs(pts[0][1] - pts[1][1]) < 0.5 &&
+        Math.abs(pts[2][1] - pts[3][1]) < 0.5 &&
+        Math.abs(pts[1][0] - pts[2][0]) < 0.5
+      ) {
+        const totalSpan = Math.abs(pts[3][0] - pts[0][0])
+        if (totalSpan >= need + 20) {
+          const dir = Math.sign(pts[3][0] - pts[0][0]) || 1
+          const y0 = pts[0][1]
+          const y1 = pts[3][1]
+          const x0 = pts[0][0]
+          const x1 = pts[3][0]
+          /** @type {number[][][]} */
+          const cands = [
+            [
+              [x0, y0],
+              [x0 + dir * 20, y0],
+              [x0 + dir * 20, y1],
+              [x1, y1],
+            ],
+            [
+              [x0, y0],
+              [x1 - dir * 20, y0],
+              [x1 - dir * 20, y1],
+              [x1, y1],
+            ],
+          ]
+          const others = connections.filter((o) => o !== c).map((o) => o.points)
+          /** @type {number[][] | null} */
+          let best = null
+          let bestCross = Infinity
+          for (const cand of cands) {
+            if (!pathClear(cand, placed, c.from, c.to)) continue
+            const cross = pathCrossCount(cand, others)
+            if (cross < bestCross) {
+              bestCross = cross
+              best = cand
+            }
+          }
+          if (best) {
+            c.points = best
+            continue
+          }
+        }
+      }
+      const shiftX = cellW > 0 ? Math.ceil(deficit / cellW) * cellW : deficit
       const fromSpine = spineIds.has(c.from)
       const toSpine = spineIds.has(c.to)
       if (fromSpine !== toSpine) {
-        // Spine ↔ hang: push the hang away from the trunk so the side hop grows.
+        // Spine ↔ hang: push the hang (and its column peers) away from the trunk.
         const hangId = fromSpine ? c.to : c.from
         const spineId = fromSpine ? c.from : c.to
         const r = placed.get(hangId)
         const s = placed.get(spineId)
         if (!r || !s) continue
         const away = r.x + r.w / 2 >= s.x + s.w / 2 ? 1 : -1
-        placed.set(hangId, { ...r, x: r.x + away * deficit })
-        moved.add(hangId)
+        shiftHangColumn(hangId, away * shiftX)
       } else if (!fromSpine && !toSpine) {
         // Hang ↔ hang: grow the gap by pushing the outer box further from the spine.
         const leftId = a.x <= b.x ? c.from : c.to
@@ -1601,11 +2058,9 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
         const leftCx = left.x + left.w / 2
         const rightCx = right.x + right.w / 2
         if (Math.abs(rightCx - spineCx) >= Math.abs(leftCx - spineCx)) {
-          placed.set(rightId, { ...right, x: right.x + deficit })
-          moved.add(rightId)
+          shiftHangColumn(rightId, shiftX)
         } else {
-          placed.set(leftId, { ...left, x: left.x - deficit })
-          moved.add(leftId)
+          shiftHangColumn(leftId, -shiftX)
         }
       }
       // Both on the spine: never shove the trunk for a label.
@@ -1616,7 +2071,7 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
       const lower = a.y <= b.y ? b : a
       if (Math.abs(upper.x + upper.w / 2 - (lower.x + lower.w / 2)) > Math.max(upper.w, lower.w)) continue
       const cut = upper.y + upper.h
-      const dy = deficit
+      const dy = cellH > 0 ? Math.ceil(deficit / cellH) * cellH : deficit
       // Push every box at/below the gap — spine and hangs — so later same-row forks stay aligned.
       for (const [id, r] of placed) {
         if (r.y + 0.5 < cut) continue
@@ -1633,13 +2088,15 @@ function lengthenLabeledHops(placed, connections, spineIds, diamonds = new Set()
  * @param {number[][]} points
  * @param {{ width: number, height: number }} size
  * @param {{ x: number, y: number, w: number, h: number }[]} [nodeRects]
+ * @param {{ x: number, y: number, w: number, h: number }[]} [occupiedRects]
  * @returns {{ x: number, y: number } | null}
  */
-function labelOnLongestSegment(points, size, nodeRects = []) {
+function labelOnLongestSegment(points, size, nodeRects = [], occupiedRects = []) {
   const { width: w, height: h } = size
-  const overlaps = (r) =>
-    nodeRects.some((n) => r.x < n.x + n.w - 0.5 && n.x < r.x + r.w - 0.5 && r.y < n.y + n.h - 0.5 && n.y < r.y + r.h - 0.5)
-  /** @type {{ x: number, y: number, len: number, vert: boolean }[]} */
+  const hit = (r, list) =>
+    list.some((n) => r.x < n.x + n.w - 0.5 && n.x < r.x + r.w - 0.5 && r.y < n.y + n.h - 0.5 && n.y < r.y + r.h - 0.5)
+  const overlaps = (r) => hit(r, nodeRects) || hit(r, occupiedRects)
+  /** @type {{ x: number, y: number, len: number, vert: boolean, arrowTier: number, centerDist: number }[]} */
   const candidates = []
   for (let i = 0; i < points.length - 1; i += 1) {
     const [p, q] = [points[i], points[i + 1]]
@@ -1651,9 +2108,17 @@ function labelOnLongestSegment(points, size, nodeRects = []) {
     const need = horiz ? w : h
     if (len < need + 8) continue
     const room = len - need
-    // Mid first, then slide toward either end in steps.
+    const isLastSeg = i === points.length - 2
+    // Mid first, then fine scan + explicit arrowhead-clearing positions near target end.
+    const step = Math.max(2, Math.floor(room / 12))
+    const targetAlong = isLastSeg && room >= 7 ? Math.max(0, (room - 7) / 2) : room / 2
     const alongs = [room / 2]
-    for (let t = 4; t <= room - 4; t += Math.max(4, Math.floor(room / 6))) alongs.push(t)
+    for (let t = 4; t <= room - 4; t += step) alongs.push(t)
+    if (isLastSeg) {
+      for (const back of [9, 8, 7, 6, 4]) {
+        if (room >= back) alongs.push(room - back)
+      }
+    }
     alongs.push(0, Math.max(0, room))
     const seen = new Set()
     for (const along of alongs) {
@@ -1675,12 +2140,27 @@ function labelOnLongestSegment(points, size, nodeRects = []) {
             h,
           }
       if (overlaps(r)) continue
-      candidates.push({ x: r.x, y: r.y, len, vert: !horiz })
+      const endGap = isLastSeg ? room - a : Infinity
+      const arrowTier = endGap >= 7 ? 0 : endGap >= 5 ? 1 : endGap >= 3 ? 2 : 3
+      candidates.push({
+        x: r.x,
+        y: r.y,
+        len,
+        vert: !horiz,
+        arrowTier,
+        centerDist: Math.abs(a - targetAlong),
+      })
     }
   }
   if (!candidates.length) return null
-  // Prefer longer runs; on a tie, prefer a vertical corridor over a short stub.
-  candidates.sort((a, b) => b.len - a.len || Number(b.vert) - Number(a.vert))
+  // Prefer clear arrowhead room first, then longer runs, then vertical corridors, then centred spots.
+  candidates.sort(
+    (a, b) =>
+      a.arrowTier - b.arrowTier ||
+      b.len - a.len ||
+      Number(b.vert) - Number(a.vert) ||
+      a.centerDist - b.centerDist,
+  )
   return { x: candidates[0].x, y: candidates[0].y }
 }
 
@@ -1755,8 +2235,42 @@ export function ensureConnectionLabels(connections, nodeRects, blocks = [], bord
       if (c.labelSize) c.labelAt = null
     }
   }
+  /** Full padded bbox around each stage border segment [[x0,y0],[x1,y1]]. */
+  const borderBlocks = (borders || []).flatMap((seg) => {
+    if (!Array.isArray(seg) || seg.length < 2) return []
+    const [p, q] = seg
+    if (!Array.isArray(p) || !Array.isArray(q)) return []
+    return [
+      {
+        x: Math.min(p[0], q[0]) - 3,
+        y: Math.min(p[1], q[1]) - 3,
+        w: Math.abs(q[0] - p[0]) + 6,
+        h: Math.abs(q[1] - p[1]) + 6,
+      },
+    ]
+  })
+  /** Chip bbox overlaps a padded stage-border block → slide / reject. */
+  const nearStageBorder = (at, size) => {
+    if (!borderBlocks.length || !at) return false
+    const r = { x: at.x, y: at.y, w: size.width, h: size.height }
+    return borderBlocks.some(
+      (n) => r.x < n.x + n.w - 0.5 && n.x < r.x + r.w - 0.5 && r.y < n.y + n.h - 0.5 && n.y < r.y + r.h - 0.5,
+    )
+  }
+  const labelHits = (at, size, occupied) => {
+    if (!at) return true
+    const r = { x: at.x, y: at.y, w: size.width, h: size.height }
+    return occupied.some(
+      (n) => r.x < n.x + n.w - 0.5 && n.x < r.x + r.w - 0.5 && r.y < n.y + n.h - 0.5 && n.y < r.y + r.h - 0.5,
+    )
+  }
   for (const c of connections) {
     if (!c.labelSize || c.labelAt) continue
+    const others = connections.filter((o) => o !== c)
+    const labels = others
+      .filter((o) => o.labelAt && o.labelSize)
+      .map((o) => ({ x: o.labelAt.x, y: o.labelAt.y, w: o.labelSize.width, h: o.labelSize.height }))
+    const occupied = [...blocks, ...labels]
     if (typeof c.pinLabelSeg === 'number' && c.points?.length > c.pinLabelSeg + 1) {
       const p = c.points[c.pinLabelSeg]
       const q = c.points[c.pinLabelSeg + 1]
@@ -1764,23 +2278,76 @@ export function ensureConnectionLabels(connections, nodeRects, blocks = [], bord
         x: (p[0] + q[0]) / 2 - c.labelSize.width / 2,
         y: (p[1] + q[1]) / 2 - c.labelSize.height / 2,
       }
-      continue
+      if (!nearStageBorder(c.labelAt, c.labelSize) && !labelHits(c.labelAt, c.labelSize, occupied)) continue
+      c.labelAt = null
     }
-    const others = connections.filter((o) => o !== c)
-    const labels = others
-      .filter((o) => o.labelAt && o.labelSize)
-      .map((o) => ({ x: o.labelAt.x, y: o.labelAt.y, w: o.labelSize.width, h: o.labelSize.height }))
+    // Long labelled edges (>3 cell-rows of ink): prefer a vertical corridor inside a node column.
+    if (opts.preferOnLine && c.points?.length) {
+      const ys = c.points.map((pt) => pt[1])
+      const span = Math.max(...ys) - Math.min(...ys)
+      const longEdge = span > 3 * 136
+      if (longEdge) {
+        const colXs = [...new Set(nodeRects.map((r) => r.x + r.w / 2))]
+        /** Prefer vertical segments whose x is near a node column centre. */
+        let bestOn = null
+        let bestScore = -Infinity
+        for (let i = 0; i < c.points.length - 1; i += 1) {
+          const p = c.points[i]
+          const q = c.points[i + 1]
+          if (Math.abs(p[0] - q[0]) >= 0.5) continue
+          const len = Math.abs(p[1] - q[1])
+          if (len < c.labelSize.height + 8) continue
+          const nearCol = colXs.some((cx) => Math.abs(cx - p[0]) < 40)
+          const score = len + (nearCol ? 200 : 0)
+          if (score <= bestScore) continue
+          const at = {
+            x: p[0] - c.labelSize.width / 2,
+            y: (p[1] + q[1]) / 2 - c.labelSize.height / 2,
+          }
+          if (labelHits(at, c.labelSize, [...nodeRects, ...occupied, ...borderBlocks])) continue
+          bestScore = score
+          bestOn = at
+        }
+        if (bestOn) {
+          c.labelAt = bestOn
+          continue
+        }
+      }
+    }
     // Prefer sitting ON the longest clear run (opaque chip hides the stroke under the text).
+    // First try treats stage borders as occupied; if that yields nothing (narrow cross-stage
+    // gap), fall back without borderBlocks before placeLabel.
     if (opts.preferOnLine) {
-      const on = labelOnLongestSegment(c.points, c.labelSize, nodeRects)
-      if (on) {
+      const on = labelOnLongestSegment(c.points, c.labelSize, nodeRects, [...occupied, ...borderBlocks])
+      if (on && !nearStageBorder(on, c.labelSize) && !labelHits(on, c.labelSize, occupied)) {
         c.labelAt = on
         continue
       }
+      // Slide along segments when the first pick sits on a stage border.
+      if (on && nearStageBorder(on, c.labelSize)) {
+        const slid = labelOnLongestSegment(c.points, c.labelSize, nodeRects, [
+          ...occupied,
+          ...borderBlocks,
+          { x: on.x - 4, y: on.y - 4, w: c.labelSize.width + 8, h: c.labelSize.height + 8 },
+        ])
+        if (slid && !nearStageBorder(slid, c.labelSize)) {
+          c.labelAt = slid
+          continue
+        }
+      }
+      const fallback = labelOnLongestSegment(c.points, c.labelSize, nodeRects, occupied)
+      if (fallback && !nearStageBorder(fallback, c.labelSize) && !labelHits(fallback, c.labelSize, occupied)) {
+        c.labelAt = fallback
+        continue
+      }
     }
-    c.labelAt = placeLabel(c.points, c.labelSize, nodeRects, [...blocks, ...labels], others, borders, {
+    c.labelAt = placeLabel(c.points, c.labelSize, nodeRects, occupied, others, borders, {
       onLine: true,
     })
+    if (c.labelAt && nearStageBorder(c.labelAt, c.labelSize)) {
+      const slid = labelOnLongestSegment(c.points, c.labelSize, nodeRects, occupied)
+      if (slid && !nearStageBorder(slid, c.labelSize)) c.labelAt = slid
+    }
   }
 }
 
@@ -1807,10 +2374,32 @@ function sameColLink(a, b) {
 function restoreSameRowLinks(placed, connections, diamonds) {
   for (const c of connections) {
     if (c.kind !== 'branch' && c.kind !== 'back') continue
+    if (c.biSeparated) continue
     if (!diamonds.has(c.from) && !diamonds.has(c.to)) continue
     const a = placed.get(c.from)
     const b = placed.get(c.to)
     if (!a || !b || !sameRowLink(a, b)) continue
+    // Do not collapse an already-separated reciprocal back onto the forward centerline.
+    const partner = connections.find((o) => o !== c && o.from === c.to && o.to === c.from)
+    if (partner?.biSeparated || partner?.points?.length) {
+      const cy = (a.y + a.h / 2 + b.y + b.h / 2) / 2
+      const trackY = (pts) => {
+        if (!pts || pts.length < 2) return cy
+        let best = cy
+        let bestLen = 0
+        for (let i = 0; i < pts.length - 1; i += 1) {
+          const [p, q] = [pts[i], pts[i + 1]]
+          if (Math.abs(p[1] - q[1]) >= 0.5) continue
+          const len = Math.abs(q[0] - p[0])
+          if (len > bestLen) {
+            bestLen = len
+            best = (p[1] + q[1]) / 2
+          }
+        }
+        return best
+      }
+      if (Math.abs(trackY(c.points) - trackY(partner.points)) >= 10) continue
+    }
     const others = connections.filter((o) => o !== c).map((o) => o.points)
     const before = c.points?.length ? pathCrossCount(c.points, others) : Infinity
     const clear = clearSideHorizontal(a, b, placed, c.from, c.to, 16, others)
@@ -1819,6 +2408,204 @@ function restoreSameRowLinks(placed, connections, diamonds) {
     // Keep existing when the restore candidate is strictly worse on crossings.
     if (after > before) continue
     c.points = clear
+  }
+}
+
+/**
+ * Diamond outline x at a given y on the east or west side (strictly on outline for |y-cy| < hh).
+ * @param {{ x: number, y: number, w: number, h: number }} box
+ * @param {number} y
+ * @param {'E' | 'W'} side
+ */
+function diamondXAtY(box, y, side) {
+  const cx = box.x + box.w / 2
+  const cy = box.y + box.h / 2
+  const hw = box.w / 2
+  const hh = box.h / 2
+  const t = Math.min(1, Math.abs(y - cy) / Math.max(1e-6, hh))
+  const dx = hw * (1 - t)
+  return side === 'E' ? cx + dx : cx - dx
+}
+
+/**
+ * Separate same-row reciprocal pairs (A ⇄ B) onto parallel tracks so strokes and labels
+ * do not stack on the shared centerline.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ */
+function separateBidirectionalSameRowLinks(placed, connections, diamonds) {
+  /** @type {Set<string>} */
+  const seen = new Set()
+  /**
+   * @param {{ x: number, y: number, w: number, h: number }} from
+   * @param {{ x: number, y: number, w: number, h: number }} to
+   * @param {string} fromId
+   * @param {string} toId
+   * @param {number} y
+   * @param {boolean} fromDiamond
+   * @param {boolean} toDiamond
+   */
+  const horizAtY = (from, to, fromId, toId, y, fromDiamond, toDiamond) => {
+    const fromRight = from.x + from.w / 2 <= to.x + to.w / 2
+    const yClampedFrom = Math.max(from.y + 8, Math.min(from.y + from.h - 8, y))
+    const yClampedTo = Math.max(to.y + 8, Math.min(to.y + to.h - 8, y))
+    let x0
+    let x1
+    if (fromDiamond) {
+      x0 = diamondXAtY(from, yClampedFrom, fromRight ? 'E' : 'W')
+    } else {
+      x0 = fromRight ? from.x + from.w : from.x
+    }
+    if (toDiamond) {
+      x1 = diamondXAtY(to, yClampedTo, fromRight ? 'W' : 'E')
+    } else {
+      x1 = fromRight ? to.x : to.x + to.w
+    }
+    const pts = [
+      [x0, yClampedFrom],
+      [x1, yClampedTo],
+    ]
+    if (!pathClear(pts, placed, fromId, toId)) return null
+    if (fromDiamond && !onDiamondOutline(from, pts[0])) return null
+    if (toDiamond && !onDiamondOutline(to, pts[1])) return null
+    return pts
+  }
+  /** Max collinear overlap length between any segment pair of two polylines. */
+  const maxCollinearOverlap = (pa, pb) => {
+    let best = 0
+    for (let i = 0; i < pa.length - 1; i += 1) {
+      for (let j = 0; j < pb.length - 1; j += 1) {
+        best = Math.max(best, collinearOverlapLen(pa[i], pa[i + 1], pb[j], pb[j + 1]))
+      }
+    }
+    return best
+  }
+
+  for (const fwd of connections) {
+    if (seen.has(fwd.id)) continue
+    const ret = connections.find((o) => o !== fwd && o.from === fwd.to && o.to === fwd.from)
+    if (!ret || seen.has(ret.id)) continue
+    const a = placed.get(fwd.from)
+    const b = placed.get(fwd.to)
+    if (!a || !b || !sameRowLink(a, b)) continue
+    seen.add(fwd.id)
+    seen.add(ret.id)
+
+    // Prefer non-back as forward so diamond cardinal tip stays on the branch.
+    let f = fwd
+    let r = ret
+    if (fwd.kind === 'back' && ret.kind !== 'back') {
+      f = ret
+      r = fwd
+    }
+    const fa = placed.get(f.from)
+    const fb = placed.get(f.to)
+    if (!fa || !fb) continue
+    const cy = (fa.y + fa.h / 2 + fb.y + fb.h / 2) / 2
+    const minH = Math.min(fa.h, fb.h)
+    const lh1 = f.labelSize?.height ?? 18
+    const lh2 = r.labelSize?.height ?? 18
+    const needSep = Math.max(18, Math.ceil((lh1 + lh2) / 2 + 4))
+    const maxDy = Math.max(0, minH / 2 - 8)
+    const fDiamond = diamonds.has(f.from)
+    const fToDiamond = diamonds.has(f.to)
+    const rDiamond = diamonds.has(r.from)
+    const rToDiamond = diamonds.has(r.to)
+    const othersF = connections.filter((o) => o !== f).map((o) => o.points)
+    const othersR = connections.filter((o) => o !== r).map((o) => o.points)
+
+    /** @type {number[][] | null} */
+    let fPts = null
+    /** @type {number[][] | null} */
+    let rPts = null
+
+    // Parallel offset tracks for all same-row reciprocal pairs (rect↔rect, diamond↔rect,
+    // diamond↔diamond): 0-bend horizontals; diamond endpoints snap onto the outline.
+    const trySymmetric = (dy) => {
+      const aPts = horizAtY(fa, fb, f.from, f.to, cy - dy, fDiamond, fToDiamond)
+      const bPts = horizAtY(fb, fa, r.from, r.to, cy + dy, rDiamond, rToDiamond)
+      if (aPts && bPts && maxCollinearOverlap(aPts, bPts) <= COLLINEAR_ATTACH_TOL) {
+        return { aPts, bPts }
+      }
+      return null
+    }
+
+    if (minH >= 56 && 30 >= needSep && 15 <= maxDy) {
+      const got = trySymmetric(15)
+      if (got) {
+        fPts = got.aPts
+        rPts = got.bPts
+      }
+    }
+
+    if (!fPts || !rPts) {
+      const dyCandidates = [14, 13, 15, 16, 18, 12, 20, 10]
+        .filter((d) => d <= maxDy && 2 * d >= needSep)
+        .sort((a, b) => b - a)
+      for (const dy of dyCandidates) {
+        const got = trySymmetric(dy)
+        if (got) {
+          fPts = got.aPts
+          rPts = got.bPts
+          break
+        }
+      }
+    }
+
+    if (!fPts || !rPts) {
+      // Fallback: keep forward on the centerline (cardinal tip); offset return only.
+      fPts = horizAtY(fa, fb, f.from, f.to, cy, fDiamond, fToDiamond)
+      rPts = null
+      const dyCandidates = [14, 13, 15, 16, 18, 12, 20, 10].filter((d) => d <= maxDy && 2 * d >= needSep)
+      for (const dy of dyCandidates) {
+        for (const sign of [1, -1]) {
+          const cand = horizAtY(fb, fa, r.from, r.to, cy + sign * dy, rDiamond, rToDiamond)
+          if (!cand) continue
+          if (fPts && maxCollinearOverlap(fPts, cand) > COLLINEAR_ATTACH_TOL) continue
+          rPts = cand
+          break
+        }
+        if (rPts) break
+      }
+    }
+
+    if (!fPts || !rPts) continue
+    if (!pathClear(fPts, placed, f.from, f.to)) continue
+    if (!pathClear(rPts, placed, r.from, r.to)) continue
+    if (pathCrossCount(fPts, othersF) > pathCrossCount(f.points ?? fPts, othersF)) continue
+    if (pathCrossCount(rPts, othersR) > pathCrossCount(r.points ?? rPts, othersR)) continue
+
+    f.points = fPts
+    r.points = rPts
+    f.biSeparated = true
+    r.biSeparated = true
+  }
+}
+
+/**
+ * After labels are placed: push overlapping reciprocal same-row chips apart vertically.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ */
+function separateBidirectionalLabels(placed, connections) {
+  for (const c of connections) {
+    if (!c.labelAt || !c.labelSize) continue
+    const ret = connections.find((o) => o !== c && o.from === c.to && o.to === c.from)
+    if (!ret?.labelAt || !ret.labelSize) continue
+    if (String(c.id) > String(ret.id)) continue
+    const a = placed.get(c.from)
+    const b = placed.get(c.to)
+    if (!a || !b || !sameRowLink(a, b)) continue
+    const overlap =
+      c.labelAt.x < ret.labelAt.x + ret.labelSize.width - 0.5 &&
+      ret.labelAt.x < c.labelAt.x + c.labelSize.width - 0.5 &&
+      c.labelAt.y < ret.labelAt.y + ret.labelSize.height - 0.5 &&
+      ret.labelAt.y < c.labelAt.y + c.labelSize.height - 0.5
+    if (!overlap) continue
+    const gap = Math.ceil((c.labelSize.height + ret.labelSize.height) / 2 + 4)
+    c.labelAt = { ...c.labelAt, y: c.labelAt.y - gap / 2 }
+    ret.labelAt = { ...ret.labelAt, y: ret.labelAt.y + gap / 2 }
   }
 }
 
@@ -1903,7 +2690,7 @@ function restoreInputMainStraight(placed, connections, spineIds) {
  * only when it does not raise crossings. Fixes hang→spine rejoins that leave from N/S and
  * wrap the world (real 法条 samples: 行政处罚「不要求」、民事二审「不开行裁判」).
  */
-export { spreadRectPorts, settleGeometryPasses }
+export { spreadRectPorts, settleGeometryPasses, separateNearParallelCorridors }
 
 /**
  * Method 1 (1-Bend Tree-Fork Distribution + Aligned Sibling Tier + 1-Bend Bus Merge):
@@ -1925,8 +2712,10 @@ export { spreadRectPorts, settleGeometryPasses }
  * @param {Set<string>} diamonds
  * @param {Array<{ stageId: string, x: number, y: number, w: number, h: number }>} [stageBoxes]
  * @param {boolean} [vertical]
+ * @param {number} [cellW]
+ * @param {number} [cellH] uniform along-cell; when >0 peers/shared sit on the lattice
  */
-export function applyTreeForkBus(placed, connections, spineIds, diamonds, stageBoxes = [], vertical = true) {
+export function applyTreeForkBus(placed, connections, spineIds, diamonds, stageBoxes = [], vertical = true, cellW = 0, cellH = 0) {
   for (const dId of diamonds) {
     if (!spineIds.has(dId)) continue
     const d = placed.get(dId)
@@ -1976,31 +2765,46 @@ export function applyTreeForkBus(placed, connections, spineIds, diamonds, stageB
         ),
       )
       const stemGap = Math.max(64, maxLabelAlong + 36)
-      const peerRowY = Math.round(dcy + stemGap)
+      // Lattice: peer centres at dcy+cellH, shared at dcy+2*cellH; else free float.
+      const peerCy = cellH > 0 ? dcy + cellH : dcy + stemGap
       let maxPeerH = 0
       for (const c of sideOuts) {
         const r = placed.get(c.to)
         if (!r) continue
         maxPeerH = Math.max(maxPeerH, r.h)
-        placed.set(c.to, { ...r, y: peerRowY })
+        placed.set(c.to, { ...r, y: peerCy - r.h / 2 })
       }
       const isRight = sideOuts === rightOuts
       // Compact horizontal x positions of same-side siblings right next to the spine
       // (undoes any over-wide stepAside push from polishLinks before tree-fork routing).
-      let curX = isRight ? d.x + d.w + LANE_GAP : d.x - LANE_GAP
-      for (let i = 0; i < sideOuts.length; i += 1) {
-        const c = sideOuts[i]
-        const r = placed.get(c.to)
-        if (!r) continue
-        const nx = isRight ? curX : curX - r.w
-        placed.set(c.to, { ...r, x: nx, y: peerRowY })
-        curX = isRight ? nx + r.w + LANE_SEP : nx - LANE_SEP
+      if (cellW > 0) {
+        for (let i = 0; i < sideOuts.length; i += 1) {
+          const c = sideOuts[i]
+          const r = placed.get(c.to)
+          if (!r) continue
+          const sibCx = dcx + (isRight ? 1 : -1) * (i + 1) * cellW
+          placed.set(c.to, { ...r, x: sibCx - r.w / 2, y: peerCy - r.h / 2 })
+        }
+      } else {
+        let curX = isRight ? d.x + d.w + LANE_GAP : d.x - LANE_GAP
+        for (let i = 0; i < sideOuts.length; i += 1) {
+          const c = sideOuts[i]
+          const r = placed.get(c.to)
+          if (!r) continue
+          const nx = isRight ? curX : curX - r.w
+          placed.set(c.to, { ...r, x: nx, y: peerCy - r.h / 2 })
+          curX = isRight ? nx + r.w + LANE_SEP : nx - LANE_SEP
+        }
       }
       const firstPeer = placed.get(sideOuts[0].to)
       const sharedRect = placed.get(sharedTargetId)
       if (sharedRect && firstPeer) {
-        const targetX = Math.round(firstPeer.x + firstPeer.w / 2 - sharedRect.w / 2)
-        const targetY = peerRowY + maxPeerH + 36
+        const targetCy = cellH > 0 ? dcy + 2 * cellH : peerCy + maxPeerH / 2 + 36 + sharedRect.h / 2
+        const targetX =
+          cellW > 0
+            ? Math.round(firstPeer.x + firstPeer.w / 2 - sharedRect.w / 2)
+            : Math.round(firstPeer.x + firstPeer.w / 2 - sharedRect.w / 2)
+        const targetY = targetCy - sharedRect.h / 2
         placed.set(sharedTargetId, {
           ...sharedRect,
           x: targetX,
@@ -2009,9 +2813,10 @@ export function applyTreeForkBus(placed, connections, spineIds, diamonds, stageB
         // Shift downstream spine/hang nodes below this branch block so vertical bands never overlap
         const mainOutEdge = connections.find((o) => o.from === dId && o.kind === 'main')
         const nextSpine = mainOutEdge ? placed.get(mainOutEdge.to) : null
-        const minNextY = targetY + sharedRect.h + 36
+        const minNextY = targetY + sharedRect.h + (cellH > 0 ? 0 : 36)
         if (nextSpine && nextSpine.y < minNextY) {
-          const dy = minNextY - nextSpine.y
+          let dy = minNextY - nextSpine.y
+          if (cellH > 0) dy = Math.max(cellH, Math.ceil(dy / cellH) * cellH)
           const cutY = nextSpine.y - 2
           const branchIds = new Set([dId, sharedTargetId, ...sideOuts.map((o) => o.to)])
           for (const [id, r] of placed) {
@@ -2126,26 +2931,54 @@ export function applyTreeForkBus(placed, connections, spineIds, diamonds, stageB
       ),
     )
     const peerGap = Math.max(56, maxLabelAlong + 32)
-    const peerRowY = d.y + d.h + peerGap
+    const peerCyOrTop = cellH > 0 ? dcy + cellH : d.y + d.h + peerGap
     let maxPeerH = 0
     for (const id of peerIds) {
       const r = placed.get(id)
       if (!r) continue
       maxPeerH = Math.max(maxPeerH, r.h)
-      placed.set(id, { ...r, y: peerRowY })
+      placed.set(id, { ...r, y: cellH > 0 ? peerCyOrTop - r.h / 2 : peerCyOrTop })
     }
+    const peerTop =
+      cellH > 0 ? Math.min(...[...peerIds].map((id) => placed.get(id)?.y ?? Infinity)) : peerCyOrTop
 
-    const minRejoinY = peerRowY + maxPeerH + Math.max(56, LAYER_GAP)
     const rejoinRect = placed.get(rejoinTargetId)
-    if (rejoinRect && rejoinRect.y < minRejoinY) {
-      const dy = minRejoinY - rejoinRect.y
-      const cutY = rejoinRect.y - 2
-      for (const [id, r] of placed) {
-        if (id === dId || peerIds.has(id)) continue
-        if (r.y >= cutY) placed.set(id, { ...r, y: r.y + dy })
-      }
-      for (const sb of stageBoxes) {
-        if (sb.y + sb.h >= cutY) sb.h += dy
+    const minRejoinY =
+      cellH > 0 && rejoinRect
+        ? dcy + 2 * cellH - rejoinRect.h / 2
+        : peerTop + maxPeerH + Math.max(56, LAYER_GAP)
+    if (rejoinRect && rejoinRect.y < minRejoinY - 0.5) {
+      if (cellH > 0) {
+        placed.set(rejoinTargetId, { ...rejoinRect, y: minRejoinY })
+        const newRejoin = /** @type {{ x: number, y: number, w: number, h: number }} */ (placed.get(rejoinTargetId))
+        const belowNeed = newRejoin.y + newRejoin.h
+        const cutY = rejoinRect.y - 2
+        let commonDy = 0
+        for (const [id, r] of placed) {
+          if (id === dId || peerIds.has(id) || id === rejoinTargetId) continue
+          if (r.y >= cutY && r.y < belowNeed) {
+            commonDy = Math.max(commonDy, Math.max(cellH, Math.ceil((belowNeed - r.y) / cellH) * cellH))
+          }
+        }
+        if (commonDy > 0) {
+          for (const [id, r] of placed) {
+            if (id === dId || peerIds.has(id) || id === rejoinTargetId) continue
+            if (r.y >= cutY) placed.set(id, { ...r, y: r.y + commonDy })
+          }
+          for (const sb of stageBoxes) {
+            if (sb.y + sb.h >= cutY) sb.h += commonDy
+          }
+        }
+      } else {
+        const dy = minRejoinY - rejoinRect.y
+        const cutY = rejoinRect.y - 2
+        for (const [id, r] of placed) {
+          if (id === dId || peerIds.has(id)) continue
+          if (r.y >= cutY) placed.set(id, { ...r, y: r.y + dy })
+        }
+        for (const sb of stageBoxes) {
+          if (sb.y + sb.h >= cutY) sb.h += dy
+        }
       }
     } else if (Number.isFinite(minDownstreamY)) {
       for (const sb of stageBoxes) {
@@ -2493,9 +3326,12 @@ function spreadRectPorts(placed, connections, diamonds) {
         const a = list[i]
         const b = list[j]
         if (Math.hypot(a.pt[0] - b.pt[0], a.pt[1] - b.pt[1]) >= NEAR) continue
-        // either one may move; the one that cannot reach a spare port stays
-        for (const mover of [a, b]) {
+        // Bent edges move off the shared port first; keep 0-bend straights pinned.
+        const movers = [a, b].sort((p, q) => bendsOf(q.c.points) - bendsOf(p.c.points))
+        for (const mover of movers) {
           if (mover.c.kind === 'main') continue
+          const other = mover === a ? b : a
+          if (bendsOf(mover.c.points) === 0 && bendsOf(other.c.points) > 0) continue
           if (tryMove(mover, occupied)) return
         }
       }
@@ -2530,6 +3366,8 @@ function crossingRepairAlts(c, placed, diamonds, spineIds, others) {
   if (!a || !b) return []
   const acx = a.x + a.w / 2
   const bcx = b.x + b.w / 2
+  const acy = a.y + a.h / 2
+  const bcy = b.y + b.h / 2
   const hangOnRight = acx > bcx
   const fromDiamond = diamonds.has(c.from)
   const fromSpine = spineIds?.has(c.from)
@@ -2542,15 +3380,97 @@ function crossingRepairAlts(c, placed, diamonds, spineIds, others) {
     alts.push(clearOuterCorridor(a, b, hangOnRight, placed, c.from, c.to, 32, others))
     alts.push(clearOuterCorridor(a, b, !hangOnRight, placed, c.from, c.to, 32, others))
     alts.push(diamondOuterSide(a, b, !hangOnRight, placed, c.from, c.to, 32, others))
-    alts.push(clearWrapAround(a, b, hangOnRight, placed, c.from, c.to, 48, others))
+    if (!(c.kind !== 'back' && !fromDiamond && b.y > a.y + a.h - 2)) {
+      alts.push(clearWrapAround(a, b, hangOnRight, placed, c.from, c.to, 48, others))
+    }
+    if (!fromDiamond) {
+      const leaveY = bcy >= acy ? a.y + a.h : a.y
+      const dir = bcy >= acy ? 1 : -1
+      const portX = hangOnRight ? a.x + a.w * 0.78 : a.x + a.w * 0.22
+      const stepY = leaveY + dir * 10
+      const faceX = hangOnRight ? b.x + b.w : b.x
+      const yLo = Math.min(a.y, b.y)
+      const yHi = Math.max(a.y + a.h, b.y + b.h)
+      let nearestInner = hangOnRight ? Infinity : -Infinity
+      let foundOuter = false
+      for (const [id, r] of placed) {
+        if (id === c.from || id === c.to) continue
+        if (r.y + r.h < yLo - 0.5 || r.y > yHi + 0.5) continue
+        const onOuter = hangOnRight ? r.x >= a.x + a.w - 1 : r.x + r.w <= a.x + 1
+        if (!onOuter) continue
+        foundOuter = true
+        nearestInner = hangOnRight ? Math.min(nearestInner, r.x) : Math.max(nearestInner, r.x + r.w)
+      }
+      let pushedMid = false
+      if (foundOuter) {
+        const gap = hangOnRight ? nearestInner - (a.x + a.w) : a.x - nearestInner
+        if (gap >= 48) {
+          const outerX = hangOnRight ? a.x + a.w + gap / 2 : a.x - gap / 2
+          const midPts = [
+            [portX, leaveY],
+            [portX, stepY],
+            [outerX, stepY],
+            [outerX, bcy],
+            [faceX, bcy],
+          ]
+          if (pathClear(midPts, placed, c.from, c.to)) {
+            alts.push(midPts)
+            pushedMid = true
+          }
+        }
+      }
+      if (!pushedMid) {
+        for (let d = 0; d <= 8; d += 1) {
+          const outerX = hangOnRight ? a.x + a.w + OUTER_GAP + d * 16 : a.x - OUTER_GAP - d * 16
+          alts.push([
+            [portX, leaveY],
+            [portX, stepY],
+            [outerX, stepY],
+            [outerX, bcy],
+            [faceX, bcy],
+          ])
+        }
+      }
+    }
   } else if (fromSpine && !toSpine) {
-    const rev = routeHangToSpine(b, a, bcx > acx, placed, c.to, c.from, diamonds.has(c.to), others)
-    if (rev) alts.push(rev.slice().reverse())
-    const outerRev = clearOuterCorridor(b, a, bcx > acx, placed, c.to, c.from, 32, others)
-    if (outerRev) alts.push(outerRev.slice().reverse())
-    alts.push(clearSideChannel(a, b, acx > bcx, placed, c.from, c.to, 32, others))
-    const wrapRev = clearWrapAround(b, a, bcx > acx, placed, c.to, c.from, 48, others)
-    if (wrapRev) alts.push(wrapRev.slice().reverse())
+    if (c.kind !== 'back') {
+      const rev = routeHangToSpine(
+        b,
+        a,
+        bcx > acx,
+        placed,
+        c.to,
+        c.from,
+        diamonds.has(c.to),
+        others,
+        { allowWrap: false },
+      )
+      const dSideRev = diamondOuterSide(b, a, bcx > acx, placed, c.to, c.from, 32, others)
+      const outerRev = clearOuterCorridor(b, a, bcx > acx, placed, c.to, c.from, 32, others)
+      const sideChan = clearSideChannel(a, b, acx > bcx, placed, c.from, c.to, 32, others)
+      const inBounds = [
+        rev ? rev.slice().reverse() : null,
+        dSideRev ? dSideRev.slice().reverse() : null,
+        outerRev ? outerRev.slice().reverse() : null,
+        sideChan,
+      ]
+      for (const p of inBounds) {
+        if (p) alts.push(p)
+      }
+      // Still offer wrap for crossing repair; applyBest prefers fewer crossings then length.
+      const wrapRev = clearWrapAround(b, a, bcx > acx, placed, c.to, c.from, 48, others)
+      if (wrapRev) alts.push(wrapRev.slice().reverse())
+    } else {
+      const rev = routeHangToSpine(b, a, bcx > acx, placed, c.to, c.from, diamonds.has(c.to), others)
+      if (rev) alts.push(rev.slice().reverse())
+      const outerRev = clearOuterCorridor(b, a, bcx > acx, placed, c.to, c.from, 32, others)
+      if (outerRev) alts.push(outerRev.slice().reverse())
+      alts.push(clearSideChannel(a, b, acx > bcx, placed, c.from, c.to, 32, others))
+      const wrapRev = clearWrapAround(b, a, bcx > acx, placed, c.to, c.from, 48, others)
+      if (wrapRev) alts.push(wrapRev.slice().reverse())
+      const dSideRev = diamondOuterSide(b, a, bcx > acx, placed, c.to, c.from, 32, others)
+      if (dSideRev) alts.push(dSideRev.slice().reverse())
+    }
   } else {
     alts.push(clearSideChannel(a, b, acx > bcx, placed, c.from, c.to, 48, others))
     alts.push(clearSideHorizontal(a, b, placed, c.from, c.to, 48, others))
@@ -2636,6 +3556,7 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds, pills = n
   // stadium arc poles (V08b vertical face-ride meets the pill NE arc). Do not rewrite step rects.
   // Arc poles are E/W when vertical; after horizontal polish swap they are frame N/S.
   ensureRectOutwardApproach(placed, connections, diamonds, pills, vertical)
+  separateBidirectionalSameRowLinks(placed, connections, diamonds)
   /** Refuse hit-repair alts that create new ≥48 coincidences (08 H-on 110u rail). */
   const hardAmbCount = (skipId, pts) => {
     const fake = connections.map((c) => (c.id === skipId ? { ...c, points: pts } : c))
@@ -2788,6 +3709,130 @@ function settleGeometryPasses(placed, connections, diamonds, spineIds, pills = n
   resolveSharedDiamondEnters(placed, connections, diamonds, spineIds)
   repairRimFalseConnections(placed, connections, diamonds, spineIds)
   ensureRectOutwardApproach(placed, connections, diamonds, pills, vertical)
+  separateNearParallelCorridors(placed, connections, diamonds, spineIds)
+}
+
+/** Minimum gap between unrelated parallel corridor runs (px). */
+const PARALLEL_CORRIDOR_GAP = 16
+
+/**
+ * Push unrelated near-parallel V/H corridor runs at least PARALLEL_CORRIDOR_GAP apart,
+ * preferring lattice-friendly gutters (empty column centres / col boundary ±18).
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Set<string>} diamonds
+ * @param {Set<string>} spineIds
+ */
+function separateNearParallelCorridors(placed, connections, diamonds, spineIds) {
+  const shareEndpoint = (a, b) =>
+    a.from === b.from || a.from === b.to || a.to === b.from || a.to === b.to
+  const rank = (c) => (c.kind === 'main' ? 2 : spineIds.has(c.from) && spineIds.has(c.to) ? 2 : c.kind === 'back' ? 0 : 1)
+
+  /** @type {Array<{ c: object, vert: boolean, x: number, lo: number, hi: number, i: number }>} */
+  const segs = []
+  for (const c of connections) {
+    const pts = c.points
+    if (!pts || pts.length < 2) continue
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      const p = pts[i]
+      const q = pts[i + 1]
+      const vert = Math.abs(p[0] - q[0]) < 0.5
+      const horiz = Math.abs(p[1] - q[1]) < 0.5
+      if (!vert && !horiz) continue
+      const lo = vert ? Math.min(p[1], q[1]) : Math.min(p[0], q[0])
+      const hi = vert ? Math.max(p[1], q[1]) : Math.max(p[0], q[0])
+      if (hi - lo < 24) continue
+      segs.push({ c, vert, x: vert ? p[0] : p[1], lo, hi, i })
+    }
+  }
+
+  // Lattice lane candidates from placed centres and column gutters.
+  /** @type {number[]} */
+  const laneXs = []
+  /** @type {number[]} */
+  const laneYs = []
+  const centres = [...placed.values()]
+  for (const r of centres) {
+    laneXs.push(r.x + r.w / 2, r.x - 18, r.x + r.w + 18)
+    laneYs.push(r.y + r.h / 2, r.y - 18, r.y + r.h + 18)
+  }
+
+  for (let pass = 0; pass < 4; pass += 1) {
+    let moved = false
+    for (let i = 0; i < segs.length; i += 1) {
+      for (let j = i + 1; j < segs.length; j += 1) {
+        const A = segs[i]
+        const B = segs[j]
+        if (A.vert !== B.vert) continue
+        if (A.c === B.c || shareEndpoint(A.c, B.c)) continue
+        const overlap = Math.min(A.hi, B.hi) - Math.max(A.lo, B.lo)
+        if (overlap < 16) continue
+        const gap = Math.abs(A.x - B.x)
+        if (!(gap > 0.5 && gap < PARALLEL_CORRIDOR_GAP)) continue
+        const mover = rank(A.c) <= rank(B.c) ? A : B
+        const other = mover === A ? B : A
+        const lanes = mover.vert ? laneXs : laneYs
+        const dir = mover.x >= other.x ? 1 : -1
+        /** @type {number[]} */
+        const candidates = []
+        for (const lane of lanes) {
+          if ((lane - other.x) * dir > 0 && Math.abs(lane - other.x) >= PARALLEL_CORRIDOR_GAP) {
+            candidates.push(lane)
+          }
+        }
+        // Also try other.x ± 18/24/36.
+        for (const d of [18, 24, 36, 48]) candidates.push(other.x + dir * d)
+        candidates.sort((a, b) => Math.abs(a - mover.x) - Math.abs(b - mover.x))
+        const pts = mover.c.points
+        if (!pts) continue
+        const axis = mover.vert ? 0 : 1
+        const old = mover.x
+        const fromBox = placed.get(mover.c.from)
+        const toBox = placed.get(mover.c.to)
+        // Never move source/target port endpoints; only nudge interior corridor segments.
+        if (
+          Math.abs(pts[0][axis] - old) < 0.5 ||
+          Math.abs(pts[pts.length - 1][axis] - old) < 0.5
+        ) {
+          continue
+        }
+        if (!(mover.i >= 1 && mover.i <= pts.length - 3)) continue
+        for (const lane of candidates) {
+          const trial = pts.map((pt) => /** @type {number[]} */ ([pt[0], pt[1]]))
+          for (let k = 0; k < trial.length; k += 1) {
+            if (Math.abs(pts[k][axis] - old) < 0.5) trial[k][axis] = lane
+          }
+          if (!pathClear(trial, placed, mover.c.from, mover.c.to)) continue
+          if (
+            (fromBox &&
+              !diamonds.has(mover.c.from) &&
+              segRunsOnBoxEdge(trial[0], trial[1], fromBox)) ||
+            (toBox &&
+              !diamonds.has(mover.c.to) &&
+              segRunsOnBoxEdge(trial[trial.length - 2], trial[trial.length - 1], toBox))
+          ) {
+            continue
+          }
+          const others = connections.filter((o) => o !== mover.c).map((o) => o.points)
+          if (pathCrossCount(trial, others) > pathCrossCount(pts, others)) continue
+          mover.c.points = trial
+          mover.x = lane
+          for (const s of segs) {
+            if (s.c !== mover.c) continue
+            const sp = mover.c.points[s.i]
+            const sq = mover.c.points[s.i + 1]
+            if (!sp || !sq) continue
+            s.x = s.vert ? sp[0] : sp[1]
+            s.lo = s.vert ? Math.min(sp[1], sq[1]) : Math.min(sp[0], sq[0])
+            s.hi = s.vert ? Math.max(sp[1], sq[1]) : Math.max(sp[0], sq[0])
+          }
+          moved = true
+          break
+        }
+      }
+    }
+    if (!moved) break
+  }
 }
 
 /**
@@ -2994,6 +4039,13 @@ function separateShortUnrelatedReadability(placed, connections, diamonds, spineI
           if (!pathClear(pts, placed, c.from, c.to)) continue
           const fromBox = placed.get(c.from)
           const toBox = placed.get(c.to)
+          // Reject leave/enter jogs that ride the rectangle border (diamonds use tip ports on the AABB).
+          if (
+            (fromBox && !diamonds.has(c.from) && segRunsOnBoxEdge(pts[0], pts[1], fromBox)) ||
+            (toBox && !diamonds.has(c.to) && segRunsOnBoxEdge(pts[pts.length - 2], pts[pts.length - 1], toBox))
+          ) {
+            continue
+          }
           if (diamonds.has(c.from) && fromBox && !onDiamondOutline(fromBox, pts[0])) continue
           if (diamonds.has(c.to) && toBox && !onDiamondOutline(toBox, pts[pts.length - 1])) continue
           // Keep leave/enter ports fixed on the original face.
@@ -3047,13 +4099,59 @@ function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
     }
     return false
   }
+  let worldMinY = Infinity
+  let worldMaxY = -Infinity
+  for (const r of placed.values()) {
+    worldMinY = Math.min(worldMinY, r.y)
+    worldMaxY = Math.max(worldMaxY, r.y + r.h)
+  }
+  const wrapsBeyondWorldY = (pts) =>
+    pts.some((p) => p[1] < worldMinY - 24 || p[1] > worldMaxY + 24)
+  const wouldShareRectStraightPort = (c, pts) => {
+    if (diamonds.has(c.from) || !pts?.length) return false
+    const k = leaveKey(pts)
+    for (const o of connections) {
+      if (o === c || !o.points || o.points.length !== 2 || pathBendCount(o.points) !== 0) continue
+      if (o.from === c.from && leaveKey(o.points) === k) return true
+      if (o.to === c.from && leaveKey([o.points[o.points.length - 1]]) === k) return true
+    }
+    return false
+  }
   const applyBest = (c, others, before, { allowLengthImprove = false } = {}) => {
+    const ridesBorder = (pts) => {
+      const fromBox = placed.get(c.from)
+      const toBox = placed.get(c.to)
+      return Boolean(
+        (fromBox && !diamonds.has(c.from) && segRunsOnBoxEdge(pts[0], pts[1], fromBox)) ||
+          (toBox &&
+            !diamonds.has(c.to) &&
+            segRunsOnBoxEdge(pts[pts.length - 2], pts[pts.length - 1], toBox)),
+      )
+    }
     let best = null
     let bestCross = before
+    const beforeBorder = c.points?.length && ridesBorder(c.points) ? 1 : 0
+    let bestBorder = beforeBorder
     let bestBends = Infinity
     let bestLen = Infinity
     const beforeBends = c.points?.length ? pathBendCount(c.points) : Infinity
     const beforeLen = c.points?.length ? pathLength(c.points) : Infinity
+    const allOthers = connections.filter((o) => o !== c).map((o) => o.points)
+    const realBefore = c.points?.length ? pathCrossCount(c.points, allOthers) : before
+    const isForwardSpineToHang = Boolean(
+      spineIds?.has(c.from) && !spineIds?.has(c.to) && c.kind !== 'back',
+    )
+    const singleBranchSpine =
+      connections.filter((o) => o.from === c.from && o.kind !== 'main').length === 1
+    const keepInBounds = Boolean(
+      isForwardSpineToHang &&
+        c.points?.length >= 2 &&
+        pathClear(c.points, placed, c.from, c.to) &&
+        !wouldShareLeave(c, c.points) &&
+        !wrapsBeyondWorldY(c.points) &&
+        (realBefore === 0 || (singleBranchSpine && realBefore <= 1)) &&
+        beforeBends <= 2,
+    )
     for (const pts of crossingRepairAlts(c, placed, diamonds, spineIds, others)) {
       if (!pts || pts.length < 2) continue
       // Reject non-orthogonal polylines (diagonal false friends from sideHorizontal).
@@ -3068,16 +4166,23 @@ function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
       if (!ortho) continue
       if (!pathClear(pts, placed, c.from, c.to)) continue
       if (wouldShareLeave(c, pts)) continue
+      if (keepInBounds && wrapsBeyondWorldY(pts)) continue
       const cross = pathCrossCount(pts, others)
+      if (cross >= realBefore && wouldShareRectStraightPort(c, pts)) continue
+      const border = ridesBorder(pts) ? 1 : 0
+      // Allow border-riding only when it strictly beats the search threshold (crossing cut).
+      if (border && cross >= before) continue
       const bends = pathBendCount(pts)
       const len = pathLength(pts)
-      // Prefer fewer crossings; then fewer bends; then shorter length (no gratuitous wrap).
+      // Prefer fewer crossings; then clear border; then fewer bends; then shorter.
       if (
         cross < bestCross ||
-        (cross === bestCross && bends < bestBends) ||
-        (cross === bestCross && bends === bestBends && len < bestLen)
+        (cross === bestCross && border < bestBorder) ||
+        (cross === bestCross && border === bestBorder && bends < bestBends) ||
+        (cross === bestCross && border === bestBorder && bends === bestBends && len < bestLen)
       ) {
         bestCross = cross
+        bestBorder = border
         bestBends = bends
         bestLen = len
         best = pts
@@ -3085,9 +4190,15 @@ function repairEdgeCrossings(placed, connections, diamonds, spineIds) {
     }
     if (!best) return false
     const betterCross = bestCross < before
-    const betterBend = bestCross === before && bestBends < beforeBends
-    const betterLen = allowLengthImprove && bestCross === before && bestBends <= beforeBends && bestLen < beforeLen - 0.5
-    if (betterCross || betterBend || betterLen) {
+    const betterBorder = bestCross === before && bestBorder < beforeBorder
+    const betterBend = bestCross === before && bestBorder === beforeBorder && bestBends < beforeBends
+    const betterLen =
+      allowLengthImprove &&
+      bestCross === before &&
+      bestBorder === beforeBorder &&
+      bestBends <= beforeBends &&
+      bestLen < beforeLen - 0.5
+    if (betterCross || betterBorder || betterBend || betterLen) {
       c.points = best
       return true
     }
@@ -3236,6 +4347,9 @@ function snapDiamondEndpoints(placed, connections, diamonds) {
   }
   for (const c of connections) {
     if (!c.points || c.points.length < 2) continue
+    // Already-separated bidirectional tracks sit off-centre on diamond E/W faces;
+    // do not yank them back onto a cardinal tip.
+    if (c.biSeparated) continue
     if (diamonds.has(c.from)) {
       const box = placed.get(c.from)
       if (box) c.points[0] = snap(box, c.points[0], c.points[1])
@@ -3321,8 +4435,8 @@ function ensureRectOutwardApproach(placed, connections, diamonds, pills = new Se
     }
     return clean
   }
-  /** @param {'N'|'E'|'S'|'W'} face @param {number[]} mid @param {object} c @param {{ x: number, y: number, w: number, h: number }} box */
-  const candidatesForFace = (face, mid, c, box) => {
+  /** @param {'N'|'E'|'S'|'W'} face @param {number[]} mid @param {object} c @param {{ x: number, y: number, w: number, h: number }} _box */
+  const candidatesForFace = (face, mid, c, _box) => {
     /** @type {number[][][]} */
     const trials = []
     const leave = /** @type {number[]} */ ([c.points[0][0], c.points[0][1]])
@@ -3408,10 +4522,24 @@ function ensureRectOutwardApproach(placed, connections, diamonds, pills = new Se
     for (let fi = 0; fi < faces.length; fi += 1) {
       const f = faces[fi]
       const mid = midOf(box, f)
+      const srcBox = placed.get(c.from)
       for (const trial of candidatesForFace(f, mid, c, box)) {
         if (!trial || trial.length < 2) continue
         // Keep diamond/source leave port when already tip-aligned.
         if (Math.hypot(trial[0][0] - leave[0], trial[0][1] - leave[1]) > 0.5) continue
+        // Reject first segment riding the source box edge, or any segment on a foreign edge.
+        if (srcBox && segRunsOnBoxEdge(trial[0], trial[1], srcBox)) continue
+        let ridesForeign = false
+        for (let i = 0; i < trial.length - 1 && !ridesForeign; i += 1) {
+          for (const [oid, r] of placed) {
+            if (oid === c.from || oid === c.to) continue
+            if (segRunsOnBoxEdge(trial[i], trial[i + 1], r)) {
+              ridesForeign = true
+              break
+            }
+          }
+        }
+        if (ridesForeign) continue
         if (!pathClear(trial, placed, c.from, c.to)) continue
         let ortho = true
         for (let i = 0; i < trial.length - 1; i += 1) {
@@ -3585,9 +4713,10 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
       if (o.id === skipId || !o.points?.length) continue
       for (let u = 0; u < pts.length - 1; u += 1) {
         for (let v = 0; v < o.points.length - 1; v += 1) {
+          // Count soft shared-endpoint rails too (ATTACH_TOL, AMBIGUOUS_MIN) — L4V ~40u.
           if (
-            collinearOverlapLen(pts[u], pts[u + 1], o.points[v], o.points[v + 1]) >=
-            COLLINEAR_AMBIGUOUS_MIN
+            collinearOverlapLen(pts[u], pts[u + 1], o.points[v], o.points[v + 1]) >
+            COLLINEAR_ATTACH_TOL
           ) {
             n += 1
           }
@@ -3626,6 +4755,32 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
       targets.add(m[1])
       targets.add(m[2])
     }
+    // Dead zone (ATTACH_TOL, AMBIGUOUS_MIN): scanner skips these, but L4V return on the hang-side
+    // tip can still ride n-13→n-14 for ~40u. Measure shared-endpoint pairs directly.
+    for (let i = 0; i < connections.length; i += 1) {
+      for (let j = i + 1; j < connections.length; j += 1) {
+        const ca = connections[i]
+        const cb = connections[j]
+        if (!ca.points?.length || !cb.points?.length) continue
+        const share =
+          ca.from === cb.from || ca.from === cb.to || ca.to === cb.from || ca.to === cb.to
+        if (!share) continue
+        if (ca.from === cb.to && ca.to === cb.from) continue
+        let maxOv = 0
+        for (let u = 0; u < ca.points.length - 1; u += 1) {
+          for (let v = 0; v < cb.points.length - 1; v += 1) {
+            maxOv = Math.max(
+              maxOv,
+              collinearOverlapLen(ca.points[u], ca.points[u + 1], cb.points[v], cb.points[v + 1]),
+            )
+          }
+        }
+        if (maxOv > COLLINEAR_ATTACH_TOL && maxOv < COLLINEAR_AMBIGUOUS_MIN) {
+          targets.add(ca.id)
+          targets.add(cb.id)
+        }
+      }
+    }
     if (targets.size === 0) return
 
     const movers = connections
@@ -3659,13 +4814,14 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
           const isVert = Math.abs(p0[0] - q0[0]) < 0.5
           const isHoriz = Math.abs(p0[1] - q0[1]) < 0.5
           if (!isVert && !isHoriz) continue
-          // Only nudge rails that currently coincide with a foreign segment.
+          // Only nudge rails that currently coincide with a foreign segment
+          // (soft floor: ATTACH_TOL, so L4V ~40u E-tip rides are eligible).
           let hitsForeign = false
           for (const o of connections) {
             if (o.id === c.id || !o.points) continue
             for (let v = 0; v < o.points.length - 1; v += 1) {
               if (
-                collinearOverlapLen(p0, q0, o.points[v], o.points[v + 1]) >= COLLINEAR_AMBIGUOUS_MIN
+                collinearOverlapLen(p0, q0, o.points[v], o.points[v + 1]) > COLLINEAR_ATTACH_TOL
               ) {
                 hitsForeign = true
                 break
@@ -3785,6 +4941,13 @@ function separateAmbiguousCorridors(placed, connections, diamonds, spineIds) {
         // Keep diamond leave/enter on outline when applicable.
         const fromBox = placed.get(c.from)
         const toBox = placed.get(c.to)
+        // Reject leave/enter jogs that ride the rectangle border (diamonds use tip ports on the AABB).
+        if (
+          (fromBox && !diamonds.has(c.from) && segRunsOnBoxEdge(pts[0], pts[1], fromBox)) ||
+          (toBox && !diamonds.has(c.to) && segRunsOnBoxEdge(pts[pts.length - 2], pts[pts.length - 1], toBox))
+        ) {
+          continue
+        }
         if (diamonds.has(c.from) && fromBox && !onDiamondOutline(fromBox, pts[0])) continue
         if (diamonds.has(c.to) && toBox && !onDiamondOutline(toBox, pts[pts.length - 1])) continue
         // Do not re-collapse distinct decision leave ports onto one vertex.
@@ -3977,6 +5140,12 @@ function repairRimFalseConnections(placed, connections, diamonds, spineIds) {
         if (Math.abs(p[0] - q[0]) >= 0.5 && Math.abs(p[1] - q[1]) >= 0.5) return
       }
       if (!pathClear(pts, placed, c.from, c.to)) return
+      const toBox = placed.get(c.to)
+      if (toBox) {
+        for (let k = 0; k < pts.length - 1; k += 1) {
+          if (segHitsBox(pts[k], pts[k + 1], toBox, 0.5)) return
+        }
+      }
       // Must not recreate a rim∩port false connection.
       for (let i = 0; i < pts.length - 1; i += 1) {
         for (const [id, box] of placed) {
@@ -4019,8 +5188,24 @@ function repairRimFalseConnections(placed, connections, diamonds, spineIds) {
             if (isH) trial[1][1] += delta
             else trial[1][0] += delta
           } else if (i === c.points.length - 2) {
-            if (isH) trial[i][1] += delta
-            else trial[i][0] += delta
+            const toBox = !diamonds.has(c.to) ? placed.get(c.to) : null
+            if (isH) {
+              trial[i][1] += delta
+              const endPt = trial[i + 1]
+              if (toBox) {
+                if (trial[i][1] < toBox.y) endPt[1] = toBox.y
+                else if (trial[i][1] > toBox.y + toBox.h) endPt[1] = toBox.y + toBox.h
+              }
+              trial.splice(i + 1, 0, [endPt[0], trial[i][1]])
+            } else {
+              trial[i][0] += delta
+              const endPt = trial[i + 1]
+              if (toBox) {
+                if (trial[i][0] < toBox.x) endPt[0] = toBox.x
+                else if (trial[i][0] > toBox.x + toBox.w) endPt[0] = toBox.x + toBox.w
+              }
+              trial.splice(i + 1, 0, [trial[i][0], endPt[1]])
+            }
           } else {
             if (isH) {
               trial[i][1] += delta
@@ -4098,12 +5283,20 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
     for (const inc of incidents) {
       if (inc.c.kind === 'main' || inc.kind === 'leave') reserved.add(keyPt(inc.pt))
     }
-    // Trunk faces stay reserved for main enter/leave.
+    // Trunk faces stay reserved for main enter/leave, and for vertical 2-point
+    // same-column links that already occupy the N/S tip.
     const trunk = new Set()
     for (const inc of incidents) {
-      if (inc.c.kind !== 'main') continue
+      const pts = inc.c.points
+      const sameColVert =
+        pts?.length === 2 &&
+        Math.abs(pts[0][0] - pts[1][0]) < 0.5 &&
+        Math.abs(pts[0][1] - pts[1][1]) >= 0.5
+      if (inc.c.kind !== 'main' && !sameColVert) continue
       const f = faceOfOutline(inc.pt) ?? faceOf(inc.pt)
-      if (f) trunk.add(f)
+      if (f === 'N' || f === 'S' || inc.c.kind === 'main') {
+        if (f) trunk.add(f)
+      }
     }
     // Faces that already host a leave (e.g. 是 on E) — non-main enters must not share them
     // even when staggered to a different outline point (L4 回并 vs 是).
@@ -4273,6 +5466,12 @@ function resolveSharedDiamondEnters(placed, connections, diamonds, spineIds) {
           if (Math.abs(p[0] - q[0]) >= 0.5 && Math.abs(p[1] - q[1]) >= 0.5) return
         }
         if (!pathClear(pts, placed, c.from, c.to)) return
+      const toBox = placed.get(c.to)
+      if (toBox) {
+        for (let k = 0; k < pts.length - 1; k += 1) {
+          if (segHitsBox(pts[k], pts[k + 1], toBox, 0.5)) return
+        }
+      }
         // Reject rim∩edge rides on foreign boxes (pathClear interior pad misses exact rims).
         for (let i = 0; i < pts.length - 1; i += 1) {
           for (const [oid, r] of placed) {
@@ -4626,17 +5825,23 @@ function resolveSharedDiamondLeaves(placed, connections, diamonds, spineIds) {
       }
       return bestD <= 2 ? best : null
     }
-    // All incident main edges reserve trunk faces — never stagger onto them.
+    // Main edges and vertical 2-point same-column links reserve N/S (and main any face).
     const trunk = new Set()
     for (const c of connections) {
-      if (c.kind !== 'main' || !c.points?.length) continue
+      if (!c.points?.length) continue
+      const pts = c.points
+      const sameColVert =
+        pts.length === 2 &&
+        Math.abs(pts[0][0] - pts[1][0]) < 0.5 &&
+        Math.abs(pts[0][1] - pts[1][1]) >= 0.5
+      if (c.kind !== 'main' && !sameColVert) continue
       if (c.from === id) {
         const f = faceOf(c.points[0])
-        if (f) trunk.add(f)
+        if (f && (c.kind === 'main' || f === 'N' || f === 'S')) trunk.add(f)
       }
       if (c.to === id) {
         const f = faceOf(c.points[c.points.length - 1])
-        if (f) trunk.add(f)
+        if (f && (c.kind === 'main' || f === 'N' || f === 'S')) trunk.add(f)
       }
     }
     /** @type {Map<string, object[]>} */
@@ -4967,6 +6172,9 @@ function resolveSharedRectLeaves(placed, connections, diamonds, spineIds) {
     }
     for (const group of byKey.values()) {
       if (group.length < 2) continue
+      const hasStraight = group.some((c) => c.points.length === 2 && pathBendCount(c.points) === 0)
+      const hasBent = group.some((c) => c.points.length > 2 || pathBendCount(c.points) > 0)
+      if (hasStraight && hasBent) continue
       const face = faceOf(box, group[0].points[0])
       if (!face) continue
       group.sort((a, b) => String(a.id).localeCompare(String(b.id)))
@@ -5143,7 +6351,13 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
     const scy = spine.y + spine.h / 2
     const leaveY = scy >= hcy ? hang.y + hang.h : hang.y
     if (Math.abs(scy - hcy) >= DISTANT_DY || hangLaneBlocked(hang, leaveY, scy, placed, toId, fromId)) {
-      const fwd = routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId, false, others)
+      const fwd =
+        routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId, false, others, {
+          allowWrap: false,
+        }) ||
+        routeHangToSpine(hang, spine, hangOnRight, placed, toId, fromId, false, others, {
+          allowWrap: true,
+        })
       return fwd?.length ? fwd.slice().reverse() : null
     }
   }
@@ -5173,6 +6387,15 @@ function routeCentered(a, b, fromDiamond = false, placed = null, fromId = null, 
   }
   // Source below target
   if (b.y + b.h <= a.y + 0.5) {
+    // Diamond leaving to an off-column target below: prefer 1-bend from the side tip
+    // before a 2-bend that leaves the N tip (keeps N reserved for same-column trunk).
+    if (fromDiamond && Math.abs(acx - bcx) >= 0.5) {
+      candidates.push([
+        [acx > bcx ? a.x : a.x + a.w, acy],
+        [bcx, acy],
+        [bcx, b.y + b.h],
+      ])
+    }
     if (!blocked) {
       const mid = (b.y + b.h + a.y) / 2
       candidates.push([
@@ -5229,4 +6452,126 @@ function fallbackRoute(a, b) {
     [mx, y1],
     [x1, y1],
   ]
+}
+
+/**
+ * Shift interior corridor segments that cross a stage band's corner title text onto
+ * a box-clear lane inside the stage perimeter (typically the margin left of the title)
+ * without introducing crossings, collinear overlaps, or border rides.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {Array<{ stageId?: string, label?: string, x: number, y: number, w: number, h: number }>} stageBoxes
+ * @param {Set<string>} [diamonds]
+ * @param {boolean} [vertical]
+ */
+export function clearStageTitleStrokes(placed, connections, stageBoxes, diamonds = new Set(), vertical = true) {
+  void vertical
+  const visible = (stageBoxes || []).filter((b) => b.stageId !== '__implicit__')
+  if (!visible.length || !connections?.length) return
+  // StageBoxNode renders Scheme C bookmarks flush in the top-left corner regardless of orientation.
+  const titleRects = visible.map((b) => {
+    const tb = bookmarkBoxOf(b, b.label ?? '')
+    return {
+      raw: tb,
+      pad: { x: tb.x - 4, y: tb.y - 2, w: tb.w + 8, h: tb.h + 4 },
+    }
+  })
+  const hitTitlesOf = (pts) => {
+    const hits = new Set()
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      for (const tr of titleRects) {
+        if (segHitsBox(pts[i], pts[i + 1], tr.pad, 0)) hits.add(tr)
+      }
+    }
+    return [...hits]
+  }
+  const parallelGapOk = (candPts, segIdx, horiz, otherPts) => {
+    const [p, q] = [candPts[segIdx], candPts[segIdx + 1]]
+    const pMin = horiz ? Math.min(p[0], q[0]) : Math.min(p[1], q[1])
+    const pMax = horiz ? Math.max(p[0], q[0]) : Math.max(p[1], q[1])
+    const pTrans = horiz ? p[1] : p[0]
+    for (const o of otherPts) {
+      if (!o?.length) continue
+      for (let j = 0; j < o.length - 1; j += 1) {
+        const [r, s] = [o[j], o[j + 1]]
+        const sameAxis = horiz ? Math.abs(r[1] - s[1]) < 0.5 : Math.abs(r[0] - s[0]) < 0.5
+        if (!sameAxis) continue
+        const oMin = horiz ? Math.min(r[0], s[0]) : Math.min(r[1], s[1])
+        const oMax = horiz ? Math.max(r[0], s[0]) : Math.max(r[1], s[1])
+        if (Math.min(pMax, oMax) - Math.max(pMin, oMin) <= 0.5) continue
+        const oTrans = horiz ? r[1] : r[0]
+        if (Math.abs(pTrans - oTrans) < 6) return false
+      }
+    }
+    return true
+  }
+  const stageMinX = Math.min(...visible.map((b) => b.x))
+  const stageMaxX = Math.max(...visible.map((b) => b.x + b.w))
+  const stageMinY = Math.min(...visible.map((b) => b.y))
+  const stageMaxY = Math.max(...visible.map((b) => b.y + b.h))
+
+  for (const c of connections) {
+    if (!c.points || c.points.length < 4) continue
+    if (!hitTitlesOf(c.points).length) continue
+    const otherPts = connections.filter((o) => o !== c).map((o) => o.points)
+    const aBox = placed.get(c.from)
+    const bBox = placed.get(c.to)
+    const fromD = diamonds.has(c.from)
+    const toD = diamonds.has(c.to)
+
+    for (let i = 1; i <= c.points.length - 3; i += 1) {
+      const pts = c.points
+      const p = pts[i]
+      const q = pts[i + 1]
+      const vert = Math.abs(p[0] - q[0]) < 0.5
+      const horiz = Math.abs(p[1] - q[1]) < 0.5
+      if (!vert && !horiz) continue
+      const segHits = titleRects.filter((tr) => segHitsBox(p, q, tr.pad, 0))
+      if (!segHits.length) continue
+
+      const curHits = hitTitlesOf(pts).length
+      const baseCross = pathCrossCount(pts, otherPts)
+      const baseColl = pathCollinearOverlapCount(pts, otherPts)
+      const coord = horiz ? 1 : 0
+      const candidates = horiz
+        ? (() => {
+            const minTop = Math.min(...segHits.map((tr) => tr.raw.y))
+            const maxBot = Math.max(...segHits.map((tr) => tr.raw.y + tr.raw.h))
+            return [maxBot + 6, maxBot + 10, minTop - 4].filter(
+              (y) => y >= stageMinY + 6 && y <= stageMaxY - 6,
+            )
+          })()
+        : (() => {
+            const maxRight = Math.max(...segHits.map((tr) => tr.raw.x + tr.raw.w))
+            return [
+              ...[stageMinX - 14, stageMinX - 18].filter((x) => x >= 14),
+              maxRight + 10,
+              maxRight + 14,
+              maxRight + 18,
+            ].filter((x) => x >= 14 && x <= stageMaxX - 6)
+          })()
+
+      let bestPts = null
+      let bestHits = curHits
+      for (const candVal of candidates) {
+        const trial = pts.map((pt) => [...pt])
+        trial[i][coord] = candVal
+        trial[i + 1][coord] = candVal
+        if (Math.abs(candVal - trial[i - 1][coord]) < 0.5 || Math.abs(candVal - trial[i + 2][coord]) < 0.5) continue
+        if (aBox && !fromD && segRunsOnBoxEdge(trial[0], trial[1], aBox)) continue
+        if (bBox && !toD && segRunsOnBoxEdge(trial[trial.length - 2], trial[trial.length - 1], bBox)) continue
+        if (!pathClear(trial, placed, c.from, c.to)) continue
+        if (pathCrossCount(trial, otherPts) > baseCross) continue
+        if (pathCollinearOverlapCount(trial, otherPts) > baseColl) continue
+        if (!parallelGapOk(trial, i, horiz, otherPts)) continue
+        const hitsAfter = hitTitlesOf(trial).length
+        if (hitsAfter < bestHits) {
+          bestHits = hitsAfter
+          bestPts = trial
+          if (hitsAfter === 0) break
+        }
+      }
+      if (bestPts) c.points = bestPts
+    }
+  }
 }

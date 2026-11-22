@@ -10,9 +10,12 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 
-import { buildProcedureGraph } from '../src/renderers/procedure/flow/layout.js'
+import { buildProcedureGraph, labelBox } from '../src/renderers/procedure/flow/layout.js'
 import { bendsOf } from '../src/renderers/procedure/flow/straighten.js'
 import { analyseProcedureGraph } from '../src/renderers/procedure/flow/spine.js'
+import { onDiamondOutline } from '../src/renderers/procedure/flow/diamondPorts.js'
+import { textEm } from '../src/renderers/fact/cardGeometry.js'
+import { LABEL_FONT, LABEL_PAD_X, LABEL_MAX_W, LABEL_LINE, PAD } from '../src/renderers/procedure/flow/metrics.js'
 
 const DIR = 'examples/procedure'
 const LANG = '.zh-CN.json'
@@ -98,6 +101,84 @@ test('default engine is unchanged when fields.engine is omitted', () => {
   for (let i = 0; i < a.nodes.length; i += 1) {
     assert.equal(a.nodes[i].position.x, b.nodes[i].position.x)
     assert.equal(a.nodes[i].position.y, b.nodes[i].position.y)
+  }
+})
+
+/** @param {ReturnType<typeof buildProcedureGraph>} g @param {string} f @param {string} dir */
+function assertMainlineCellGrid(g, f, dir) {
+  assert.ok(g.cellGrid, `${f} / ${dir}: expected cellGrid under mainline engine`)
+  const cg = g.cellGrid
+  assert.equal(cg.isH, dir === 'horizontal')
+  assert.ok(cg.cellCross > 0, 'cellCross')
+  assert.ok(cg.cols >= 1, 'cols')
+  assert.ok(cg.padColsLeft >= 1 && cg.padColsRight >= 1, 'pad columns')
+  assert.ok(Array.isArray(cg.rows) && cg.rows.length >= 1, 'rows')
+  const row0 = cg.rows[0].size
+  for (let i = 0; i < cg.rows.length; i += 1) {
+    assert.ok(
+      Math.abs(cg.rows[i].size - row0) < 0.01,
+      `${f} / ${dir}: row ${i} size ${cg.rows[i].size} ≠ uniform ${row0}`,
+    )
+  }
+  for (let i = 0; i < cg.rows.length - 1; i += 1) {
+    const a = cg.rows[i]
+    const b = cg.rows[i + 1]
+    assert.equal(b.start, a.start + a.size, `${f} / ${dir}: rows must be contiguous`)
+  }
+  const vertical = dir === 'vertical'
+  for (const n of g.nodes) {
+    const r = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
+    const cm = vertical ? r.x + r.w / 2 : r.y + r.h / 2
+    const col = Math.round((cm - cg.originCross) / cg.cellCross - 0.5)
+    const center = cg.originCross + (col + 0.5) * cg.cellCross
+    assert.ok(
+      Math.abs(center - cm) <= 1.5,
+      `${f} / ${dir}: ${n.id} centre ${cm.toFixed(2)} off column ${col} centre ${center.toFixed(2)}`,
+    )
+    const lo = cg.originCross + col * cg.cellCross
+    const hi = lo + cg.cellCross
+    const c0 = vertical ? r.x : r.y
+    const c1 = vertical ? r.x + r.w : r.y + r.h
+    assert.ok(c0 >= lo - 0.5 && c1 <= hi + 0.5, `${f} / ${dir}: ${n.id} outside column bounds`)
+    const a0 = vertical ? r.y : r.x
+    const a1 = vertical ? r.y + r.h : r.x + r.w
+    const am = (a0 + a1) / 2
+    const row = cg.rows.find((rw) => a0 >= rw.start - 0.5 && a1 <= rw.start + rw.size + 0.5)
+    assert.ok(row, `${f} / ${dir}: ${n.id} [${a0.toFixed(1)}, ${a1.toFixed(1)}] not contained within one cell row`)
+    const rowCenter = row.start + row.size / 2
+    assert.ok(
+      Math.abs(am - rowCenter) <= 1.5,
+      `${f} / ${dir}: ${n.id} along-centre ${am.toFixed(2)} off row centre ${rowCenter.toFixed(2)}`,
+    )
+  }
+}
+
+test('mainline: cellGrid present with valid shape (stages on)', () => {
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), { ...fields, stages: true }, undefined, dir)
+      assert.deepEqual(g.errors, [], `${f} / ${dir}`)
+      assertMainlineCellGrid(g, f, dir)
+    }
+  }
+})
+
+test('mainline: cellGrid present with valid shape (stages off)', () => {
+  for (const f of files) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), { ...fields, stages: false }, undefined, dir)
+      assert.deepEqual(g.errors, [], `${f} / ${dir}`)
+      assertMainlineCellGrid(g, f, dir)
+    }
+  }
+})
+
+test('default engine: cellGrid is null', () => {
+  for (const f of files.slice(0, 3)) {
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(load(f), { stages: true }, undefined, dir)
+      assert.equal(g.cellGrid, null, `${f} / ${dir}: ELK/current should not build a cell grid`)
+    }
   }
 })
 
@@ -362,6 +443,16 @@ test('mainline: free side faces are not shared when a decision has two exits', (
   const face = (n, [x, y]) => {
     const cx = n.position.x + n.data.w / 2
     const cy = n.position.y + n.data.h / 2
+    const box = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
+    // Split-track ports on diamond E/W faces (off the cardinal tip) still count as E/W.
+    if (
+      n.data?.node?.kind === 'decision' &&
+      onDiamondOutline(box, [x, y]) &&
+      Math.abs(y - cy) < n.data.h * 0.45
+    ) {
+      if (x > cx) return 'E'
+      if (x < cx) return 'W'
+    }
     const onL = Math.abs(x - n.position.x) < 1
     const onR = Math.abs(x - (n.position.x + n.data.w)) < 1
     const onT = Math.abs(y - n.position.y) < 1
@@ -432,7 +523,7 @@ test('mainline: side-corridor back label sits on the vertical ink (stages off)',
 
 test('mainline: labelled hang↔hang hop keeps ink stubs beside the chip', () => {
   // Synthetic S1: decision「支线是否回并」→ end「支线终止」on a neighbour hang lane used to be
-  // only LANE_SEP wide, so「结束」hid the whole stroke. Floor: longest run ≥ label + 2×20.
+  // only LANE_SEP wide, so「结束」hid the whole stroke. Floor: longest run ≥ label + 2×INK_PAD.
   const spec = {
     type: 'procedure',
     specVersion: 1,
@@ -472,7 +563,7 @@ test('mainline: labelled hang↔hang hop keeps ink stubs beside the chip', () =>
     const [p, q] = [c.points[i], c.points[i + 1]]
     bestLen = Math.max(bestLen, Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]))
   }
-  const INK_PAD = 20
+  const INK_PAD = 12
   const need = c.labelSize.width + 2 * INK_PAD
   assert.ok(bestLen + 0.5 >= need, `hang↔hang「结束」run ${bestLen} < floor ${need}`)
 })
@@ -771,6 +862,16 @@ test('mainline: stages-off hang→spine never enters trunk N/S (corpus)', () => 
   const face = (n, [x, y]) => {
     const cx = n.position.x + n.data.w / 2
     const cy = n.position.y + n.data.h / 2
+    const box = { x: n.position.x, y: n.position.y, w: n.data.w, h: n.data.h }
+    // Bidirectional split-track ports on diamond E/W faces (off cardinal tip).
+    if (
+      n.data?.node?.kind === 'decision' &&
+      onDiamondOutline(box, [x, y]) &&
+      Math.abs(y - cy) < n.data.h * 0.45
+    ) {
+      if (x > cx) return 'E'
+      if (x < cx) return 'W'
+    }
     if (Math.abs(x - n.position.x) < 1 && Math.abs(y - cy) < 1) return 'W'
     if (Math.abs(x - (n.position.x + n.data.w)) < 1 && Math.abs(y - cy) < 1) return 'E'
     if (Math.abs(y - n.position.y) < 1 && Math.abs(x - cx) < 1) return 'N'
@@ -952,5 +1053,237 @@ test('mainline: >4 incident parallel fan-out & merge uses 1-bend tree-fork rail 
       assert.equal(bendsOf(c.points), 1, `branch/rejoin ${c.id} should be 1-bend`)
     }
   }
+})
+
+/** Longest horizontal run's mid-y for a polyline (fallback: average y). */
+function trackY(points) {
+  if (!points?.length) return 0
+  let best = points[0][1]
+  let bestLen = 0
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const [p, q] = [points[i], points[i + 1]]
+    if (Math.abs(p[1] - q[1]) >= 0.5) continue
+    const len = Math.abs(q[0] - p[0])
+    if (len > bestLen) {
+      bestLen = len
+      best = (p[1] + q[1]) / 2
+    }
+  }
+  return best
+}
+
+test('mainline: bidirectional same-row A⇄B tracks and labels do not stack', () => {
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: '双向同排回路',
+    domain: 'litigation',
+    nodes: [
+      { id: 'n-1', kind: 'start', label: '起' },
+      { id: 'n-2', kind: 'decision', label: '是否受理？' },
+      { id: 'n-3', kind: 'step', label: '补正材料' },
+      { id: 'n-4', kind: 'step', label: '继续审查' },
+      { id: 'n-5', kind: 'end', label: '终' },
+    ],
+    edges: [
+      { from: 'n-1', to: 'n-2', main: true },
+      { from: 'n-2', to: 'n-3', condition: '材料不全' },
+      { from: 'n-3', to: 'n-2', condition: '补正后再次提交', back: true },
+      { from: 'n-2', to: 'n-4', condition: '可以受理', main: true },
+      { from: 'n-4', to: 'n-5', main: true },
+    ],
+  }
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  assert.deepEqual(g.errors, [])
+  const pairs = []
+  for (const c of g.connections) {
+    const ret = g.connections.find((o) => o !== c && o.from === c.to && o.to === c.from)
+    if (!ret) continue
+    const key = [c.from, c.to].sort().join('|')
+    if (pairs.includes(key)) continue
+    pairs.push(key)
+    const byId = new Map(g.nodes.map((n) => [n.id, n]))
+    const a = byId.get(c.from)
+    const b = byId.get(c.to)
+    assert.ok(a && b)
+    const sameRow = Math.abs(a.position.y + a.data.h / 2 - (b.position.y + b.data.h / 2)) < 2
+    if (!sameRow) continue
+    const trackSep = Math.abs(trackY(c.points) - trackY(ret.points))
+    let labelOverlap = false
+    if (c.labelAt && ret.labelAt && c.labelSize && ret.labelSize) {
+      labelOverlap =
+        c.labelAt.x < ret.labelAt.x + ret.labelSize.width - 0.5 &&
+        ret.labelAt.x < c.labelAt.x + c.labelSize.width - 0.5 &&
+        c.labelAt.y < ret.labelAt.y + ret.labelSize.height - 0.5 &&
+        ret.labelAt.y < c.labelAt.y + c.labelSize.height - 0.5
+      assert.ok(!labelOverlap, `${c.id} / ${ret.id}: label chips must not overlap`)
+    }
+    // Rect↔rect: parallel tracks. Diamond pairs may share the cardinal tip but labels must clear.
+    assert.ok(
+      trackSep >= 10 || !labelOverlap,
+      `${c.id} / ${ret.id}: need track separation or clear labels (sep=${trackSep})`,
+    )
+  }
+  assert.ok(pairs.length > 0, 'expected a reciprocal pair')
+})
+
+test('mainline: non-overlapping hang intervals pack into lane 0 without empty intermediate column', () => {
+  // Short later span before a later point-span must share lane 0 (not shove into col 2+).
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: '车道打包回归',
+    domain: 'administrative',
+    nodes: [
+      { id: 'n-1', kind: 'start', label: '起' },
+      { id: 'n-2', kind: 'step', label: '站2' },
+      { id: 'n-3', kind: 'step', label: '站3' },
+      { id: 'n-4', kind: 'step', label: '站4' },
+      { id: 'n-5', kind: 'step', label: '站5' },
+      { id: 'n-6', kind: 'end', label: '终' },
+      { id: 'n-a1', kind: 'step', label: '早挂一步' },
+      { id: 'n-a2', kind: 'step', label: '早挂二步' },
+      { id: 'n-b1', kind: 'end', label: '晚挂终点' },
+    ],
+    edges: [
+      { from: 'n-1', to: 'n-2', main: true },
+      { from: 'n-2', to: 'n-3', main: true },
+      { from: 'n-3', to: 'n-4', main: true },
+      { from: 'n-4', to: 'n-5', main: true },
+      { from: 'n-5', to: 'n-6', main: true },
+      // Hang A: leave n-2, two boxes, rejoin n-4 → longer span.
+      { from: 'n-2', to: 'n-a1' },
+      { from: 'n-a1', to: 'n-a2', main: true },
+      { from: 'n-a2', to: 'n-4' },
+      // Hang B: leave n-5, single end → short/point span packed first by bySpan.
+      { from: 'n-5', to: 'n-b1' },
+    ],
+  }
+  const g = buildProcedureGraph(spec, { ...fields, stages: false }, undefined, 'vertical')
+  assert.deepEqual(g.errors, [])
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  const cell = g.cellGrid?.cellCross ?? 112
+  const spineX = byId.get('n-3').position.x + byId.get('n-3').data.w / 2
+  const colOf = (id) => Math.round((byId.get(id).position.x + byId.get(id).data.w / 2 - spineX) / cell)
+  // Both hangs must share the first hang column (lane 0); no empty intermediate column.
+  assert.equal(Math.abs(colOf('n-a1')), 1, `n-a1 col≈${colOf('n-a1')}`)
+  assert.equal(Math.abs(colOf('n-a2')), 1, `n-a2 col≈${colOf('n-a2')}`)
+  assert.equal(Math.abs(colOf('n-b1')), 1, `n-b1 col≈${colOf('n-b1')}`)
+})
+
+test('mainline: cross-stage shared sink claimed by in-stage feeder (no vertical void)', () => {
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: '跨阶段汇合',
+    domain: 'litigation',
+    stages: [
+      { id: 'st-1', label: '仲裁' },
+      { id: 'st-2', label: '起诉' },
+    ],
+    nodes: [
+      { id: 'n-1', kind: 'start', label: '起', stageId: 'st-1' },
+      { id: 'n-2', kind: 'step', label: '仲裁裁决', stageId: 'st-1' },
+      { id: 'n-3', kind: 'decision', label: '是否起诉？', stageId: 'st-1' },
+      { id: 'n-4', kind: 'end', label: '裁决生效', stageId: 'st-1' },
+      { id: 'n-5', kind: 'step', label: '准备起诉材料', stageId: 'st-2' },
+      { id: 'n-6', kind: 'step', label: '向人民法院起诉', stageId: 'st-2' },
+      { id: 'n-7', kind: 'end', label: '立案', stageId: 'st-2' },
+    ],
+    edges: [
+      { from: 'n-1', to: 'n-2', main: true },
+      { from: 'n-2', to: 'n-3', main: true },
+      { from: 'n-3', to: 'n-4', condition: '不起诉' },
+      { from: 'n-3', to: 'n-5', condition: '起诉', main: true },
+      { from: 'n-5', to: 'n-6', main: true },
+      // Extra in-stage feeder into shared sink (together with cross-stage from earlier).
+      { from: 'n-5', to: 'n-7' },
+      { from: 'n-6', to: 'n-7', main: true },
+      // Cross-stage converge into n-6 as well (from st-1 step).
+      { from: 'n-2', to: 'n-6' },
+    ],
+  }
+  const g = buildProcedureGraph(spec, { ...fields, stages: true }, undefined, 'vertical')
+  assert.deepEqual(g.errors, [])
+  const byId = new Map(g.nodes.map((n) => [n.id, n]))
+  const st2 = g.stageBoxes.find((b) => b.stageId === 'st-2')
+  assert.ok(st2, 'st-2 box')
+  const n5 = byId.get('n-5')
+  const n6 = byId.get('n-6')
+  const n7 = byId.get('n-7')
+  const top = Math.min(n5.position.y, n6.position.y, n7.position.y)
+  const voidAbove = top - st2.y
+  assert.ok(voidAbove < 200, `st-2 void above first node too large: ${voidAbove.toFixed(1)}px`)
+  const span = Math.max(n5.position.y + n5.data.h, n6.position.y + n6.data.h, n7.position.y + n7.data.h) - top
+  assert.ok(span < 500, `st-2 member vertical span too large: ${span.toFixed(1)}px`)
+})
+
+test('labelBox applies width slack beyond raw textEm * LABEL_FONT', () => {
+  // Short chips stay under LABEL_MAX_W so slack is visible; long text is capped at LABEL_MAX_W.
+  for (const text of ['不符合', '第47条']) {
+    const raw = textEm(text) * LABEL_FONT + LABEL_PAD_X * 2
+    const box = labelBox(text)
+    assert.ok(box.width > raw, `labelBox('${text}') width ${box.width} should exceed raw ${raw}`)
+    assert.ok(box.width <= LABEL_MAX_W, `labelBox('${text}') width ${box.width} exceeds LABEL_MAX_W`)
+  }
+  // 8-char CJK at the cap stays 1 line (greedy uses rawW without the +6 pad); longer wraps.
+  {
+    const eight = labelBox('第47条以外的争议')
+    assert.equal(eight.width, LABEL_MAX_W, `labelBox('第47条以外的争议') should cap at LABEL_MAX_W`)
+    assert.equal(eight.height, LABEL_LINE + 2, `8-char CJK should stay 1 line, h=${eight.height}`)
+  }
+  {
+    const longer = labelBox('不符合第30条第1款')
+    assert.equal(longer.width, LABEL_MAX_W, `labelBox('不符合第30条第1款') should cap at LABEL_MAX_W`)
+    assert.ok(longer.height >= LABEL_LINE * 2, `longer label should wrap to ≥2 lines, h=${longer.height}`)
+  }
+})
+
+test('mainline: stages on → stageBoxes stay non-negative and enclose connection rails', () => {
+  let checked = 0
+  for (const f of files) {
+    const spec = load(f)
+    const present = (spec.stages ?? []).filter((st) => spec.nodes.some((n) => n.stageId === st.id))
+    const ids = new Set((spec.stages ?? []).map((s) => s.id))
+    if (present.length < 1 || !spec.nodes.every((n) => n.stageId && ids.has(n.stageId))) continue
+    checked += 1
+    for (const dir of ['vertical', 'horizontal']) {
+      const g = buildProcedureGraph(spec, { ...fields, stages: true }, undefined, dir)
+      assert.equal(g.stats.layoutEngine, 'mainline', `${f} / ${dir}`)
+      assert.ok(g.stageBoxes.length >= 1, `${f} / ${dir}: expected stage boxes`)
+      for (const b of g.stageBoxes) {
+        assert.ok(b.x >= 0 && b.y >= 0, `${f} / ${dir}: stageBox ${b.stageId} has negative origin (${b.x}, ${b.y})`)
+        assert.ok(b.x >= PAD - 0.5, `${f} / ${dir}: stageBox ${b.stageId} x ${b.x} < PAD`)
+        assert.ok(b.y >= PAD - 0.5, `${f} / ${dir}: stageBox ${b.stageId} y ${b.y} < PAD`)
+      }
+      const cg = g.cellGrid
+      assert.ok(cg, `${f} / ${dir}: cellGrid`)
+      const vertical = dir === 'vertical'
+      if (cg.hasStages) {
+        const cross0 = cg.originCross + (cg.stageColStart ?? 0) * cg.cellCross
+        const cross1 = cross0 + (cg.stageColCount ?? cg.cols) * cg.cellCross
+        for (const b of g.stageBoxes) {
+          const b0 = vertical ? b.x : b.y
+          const b1 = vertical ? b.x + b.w : b.y + b.h
+          assert.ok(Math.abs(b0 - cross0) < 0.5, `${f} / ${dir}: ${b.stageId} cross start vs grid`)
+          assert.ok(Math.abs(b1 - cross1) < 0.5, `${f} / ${dir}: ${b.stageId} cross end vs grid`)
+        }
+      }
+      if (vertical && g.stageBoxes.length) {
+        const byY = [...g.stageBoxes].sort((a, b) => a.y - b.y)
+        const y0 = byY[0].y
+        const y1 = byY[byY.length - 1].y + byY[byY.length - 1].h
+        for (const c of g.connections) {
+          for (const [, y] of c.points ?? []) {
+            assert.ok(
+              y >= y0 - 0.5 && y <= y1 + 0.5,
+              `${f}: ${c.id} point y=${y.toFixed(1)} outside stage span [${y0.toFixed(1)}, ${y1.toFixed(1)}]`,
+            )
+          }
+        }
+      }
+    }
+  }
+  assert.ok(checked > 0, 'expected staged examples')
 })
 
