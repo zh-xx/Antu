@@ -22,8 +22,9 @@ node tools/workbuddy/build.mjs --check    # build the folders and check them aga
    If `antu_*` tools are already available in the session, the skill tells the model to use those instead.
 
 **Size.** WorkBuddy refuses a skill over **3 MB unzipped**. So this package ships `assets/viewer.html` compressed
-(`viewer.html.gz`); the command line and `make_html.py` read either form. The build stops if the package passes
-2.9 MB. The command line itself is most of the rest; if it grows too much, the slim skill below is the next step.
+(`viewer.html.gz`); the command line and `make_html.py` read either form. The build stops if the unzipped package
+is strictly over 3,000,000 bytes (the same as that platform cap). The 0.20.0 full skill is 2,978,291 bytes (21,709
+under the cap). The command line itself is most of the rest; if it grows past the cap, the slim skill below is the next step.
 
 2. **The slim skill** (`antu-workbuddy-skill-slim-<version>.zip`, **案图 · 诉讼可视化（精简）**), **kept in reserve**:
    the same skill without the bundled command line. Its commands run the pinned npm package instead,

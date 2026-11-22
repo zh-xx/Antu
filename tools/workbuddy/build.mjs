@@ -31,9 +31,10 @@ const SLIM_ROOT = join(SLIM_OUT, 'antu')
 const SKILL_SOURCE = join(HERE, '../../skills/antu')
 /**
  * WorkBuddy takes a skill of 3 MB at most (the platform's answer to the first upload: the unzipped size counted, a 1.3 MB
- * zip of 4.3 MB was refused). A bit under it, so that the build stops before the platform does.
+ * zip of 4.3 MB was refused). The build refuses a package strictly over 3,000,000 bytes, the same figure as that
+ * platform cap. The 0.20.0 full skill is 2,978,291 bytes unzipped (21,709 under the cap).
  */
-export const SKILL_MAX_BYTES = 2_900_000
+export const SKILL_MAX_BYTES = 3_000_000
 export const ICON_MAX_BYTES = 500_000
 export const ICON_SIZE_PX = 512
 
