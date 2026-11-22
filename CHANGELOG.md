@@ -5,18 +5,25 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ## Unreleased
 
+## 0.20.0
+
+This is a **minor** release: an opt-in **Mainline** flowchart engine lands beside the default ELK path — a uniform cell grid, Scheme C stage bands, and a long run of routing and stage fixes (issue 190). The WorkBuddy skill zip is restored on the release, the `docs/` tree splits out of `spec/`, and the DSH plugin gains `engines.dsh` and a Discover / LexCab README. Nothing breaks a file or a tool call written for 0.19.x: the default ELK layout is unchanged, and Mainline is opt-in (`fields.engine = 'mainline'` / `view.flow.engine`, or the label-card **About** panel).
+
 ### Added
 
 - **Three non-contract procedure examples** for Mainline demos: work-injury recognition / labour-capacity appraisal (`administrative`), civil litigation first instance (`litigation`), and the fictional Lin Fang v Zhao Lei lending suit (pairs with the fact example). Each has `.zh-CN` / `.en`.
 - **WorkBuddy skill package restored** on the release (`antu-workbuddy-skill-<version>.zip`): platform header fields, `icon.png` avatar (512×512, ≤ 500 KB; SVG is rejected), gzipped viewer under 3 MB, same content as `skills/antu/`. Market names **案图 · 诉讼可视化** / **Antu · Legal Diagrams**; capability blurbs speak to non-technical users (four diagram kinds and what they clarify—no JSON jargon). The MCP connector zip stays retired. Slim skill remains a reserve build, not attached.
 - **`docs/` tree** (split from `spec/`): architecture, reference manuals (including layout engines), fact rendering essays, and DSH plan / conventions move out of `spec/` so that folder keeps **contracts** only. Indexes: `docs/README.md`, `spec/README.md` (EN + zh-CN).
 - **Mainline-first flowchart prototype** (#190): spine-first column layout beside the default ELK path (`src/renderers/procedure/flow/mainline.js`). Opt-in via the label-card **About** panel (**ELK / Mainline**; also `fields.engine = 'mainline'` / `view.flow.engine`) — not the everyday dock. Shared main-line walk in `spine.js`. Compare with `node tools/layout-scan/run.mjs`. Default layout unchanged.
+- **DSH `engines.dsh`** (#360 / #365): the plugin declares `engines.dsh` for LexCab format 1 and aligns the value with its peer / semver ranges.
 
 ### Changed
 
 - **Mainline stage presentation (issue 190)**: stacked stage bands alternate a light tint and carry a flush top-left numbered bookmark (`01 …`) in all four themes, vertical and horizontal, including rule-table hover highlight.
 - **Uniform cell grid for Mainline**: nodes sit on a shared row/column lattice (`cellGrid.js`, `FlowCellLayerNode.jsx`); stage boxes snap to it.
 - **Grid chip removed from the docks**: the `Grid / 格线` toggle is no longer offered in the timeline or flowchart dock (the view-state paths stay for hosts).
+- **DSH README for LexCab / Discover** (#366, #367): plugin README rewritten for LexCab / Discover, with the English npm README kept separate from the Discover landing page.
+- **WorkBuddy skill size budget**: the self-imposed unzipped cap is now 3,000,000 bytes, the same as the platform's 3 MB limit (a package strictly over that is still refused). The 0.20.0 full skill is 2,978,291 bytes (21,709 under the cap). The previous 2.9 MB margin was too tight after Mainline entered the bundled command line.
 
 ### Fixed
 
@@ -42,6 +49,7 @@ what breaks a file or a tool call written for the version before, with how to br
 - **Mainline corridor labels sit on the vertical run**: on-ink chips slide along the longest clear segment (preferring the side channel); if mid-corridor still hits a node, the vertical is pushed outward to lengthen the stubs until the chip fits.
 - **Rule-only ends stay off the flowchart**: an end reached only through `rules[].endId` (no flow edge) is named in the rules table and is no longer painted as an unlinked island.
 - **Mainline keeps branch-exit ends in the hang lane**: peeling every `kind:end` onto the spine left hang steps with a dangling stub and ends that looked unlinked; the leave→…→end chain stays one path.
+- **Mainline tip-class-first placement and bounded horizontal capsule arcs** (#359): a decision's enter is ranked cross → tip → bends → length, so a free cardinal tip wins over a slant or arc slot even when it needs more bends; horizontal stadium start/end arcs are rewritten to an outward cardinal mid so they stop riding the face.
 
 ## 0.19.0
 
