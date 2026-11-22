@@ -50,6 +50,9 @@ test('presetAt maps a view path to the preset shape the viewer page uses', () =>
   assert.equal(presetAt({ byParty: true }, 'view.fact.byParty'), true)
   assert.equal(presetAt({ fields: { labels: false }, linkStyle: 'straight' }, 'view.relationship.labels'), false)
   assert.equal(presetAt({ linkStyle: 'straight' }, 'view.relationship.linkStyle'), 'straight')
+  assert.equal(presetAt({ grid: true }, 'view.flow.grid'), true)
+  assert.equal(presetAt({ showGrid: false }, 'view.flow.grid'), false)
+  assert.equal(presetAt({ fields: { grid: true } }, 'view.flow.grid'), true)
   assert.equal(presetAt(null, 'view.flow.states'), undefined)
   assert.equal(presetAt({ fields: {} }, 'shell.dockFolded'), undefined, 'a fold is not a preset')
 })
@@ -76,7 +79,7 @@ test('an unknown key or a wrong value names the field and what is allowed', () =
   assert.equal(viewStateProblem({ view: { flow: { states: 1 } } }, 'options.locked'), 'options.locked.view.flow.states must be a boolean')
   assert.equal(viewStateProblem({ view: { flow: { orientation: 'diagonal' } } }, 'options.locked'), 'options.locked.view.flow.orientation must be one of: vertical, horizontal')
   assert.equal(viewStateProblem({ view: { flow: { linkStyle: 'wavy' } } }, 'options.locked'), 'options.locked.view.flow.linkStyle must be one of: straight, curved')
-  assert.equal(viewStateProblem({ view: { flow: { nope: true } } }, 'options.locked'), 'options.locked.view.flow.nope is not an option: states, conditions, detail, mainLine, stages, rules, orientation, linkStyle, engine')
+  assert.equal(viewStateProblem({ view: { flow: { nope: true } } }, 'options.locked'), 'options.locked.view.flow.nope is not an option: states, conditions, detail, mainLine, stages, rules, grid, orientation, linkStyle, engine')
   assert.equal(viewStateProblem({ view: { flow: { engine: 'elk' } } }, 'options.locked'), 'options.locked.view.flow.engine must be one of: current, mainline')
   assert.equal(viewStateProblem({ view: { route: { labels: 'x' } } }, 'options.locked'), 'options.locked.view.route.labels must be a boolean')
   assert.equal(viewStateProblem({ view: { route: { nope: true } } }, 'options.locked'), 'options.locked.view.route.nope is not an option: labels, states')
@@ -139,7 +142,7 @@ test('every prefs key the phase covers is mapped to a persist name', () => {
     flowFieldsByDiagram: 'view.flow',
     procedureRouteFieldsByDiagram: 'view.route',
     fields: 'view.fact',
-    showGrid: 'view.fact',
+    showGrid: ['view.fact', 'view.flow'],
     staggers: 'view.fact',
     scaleByParty: 'view.fact',
     relationshipFieldsByDiagram: 'view.relationship',

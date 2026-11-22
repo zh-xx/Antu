@@ -45,7 +45,18 @@ export function statePaint(state, theme) {
 }
 
 /** A stage box, and a stage box a looked-at rule applies in */
-export const stagePaint = (theme, lit) => (lit ? theme.flow.stageLit : theme.flow.stage)
+export const stagePaint = (theme, lit, idx = 0) => {
+  if (lit) {
+    const l = theme.flow.stageLit
+    return { ...l, bandFill: l.fill, divider: l.stroke }
+  }
+  const s = theme.flow.stage
+  return {
+    ...s,
+    bandFill: idx % 2 === 1 ? (s.bandOdd ?? s.fill) : (s.bandEven ?? theme.color.canvas),
+    divider: s.divider ?? s.stroke,
+  }
+}
 
 /**
  * Paint for one link. The main-line highlight is part of this, not a CSS state: with the switch on, the

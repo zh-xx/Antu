@@ -29,14 +29,23 @@
 import { validateProcedure, hintsOfProcedure } from './rules.js'
 import { elkLayoutSync } from './elk.js'
 import { straighten, linkCost } from './straighten.js'
-import { layoutColumnsGen, titleBoxOf } from './columns.js'
-import { layoutMainlineGen, economyRepath, spreadRectPorts, settleGeometryPasses, ensureConnectionLabels } from './mainline.js'
-import { pathClear, pathCrossCount } from './hangSpineRoute.js'
+import { layoutColumnsGen, titleBoxOf, bookmarkBoxOf } from './columns.js'
+import {
+  layoutMainlineGen,
+  economyRepath,
+  spreadRectPorts,
+  settleGeometryPasses,
+  ensureConnectionLabels,
+  separateNearParallelCorridors,
+  clearStageTitleStrokes,
+} from './mainline.js'
+import { pathClear, pathCrossCount, findCollinearAmbiguities } from './hangSpineRoute.js'
 import { applyStackedStageBands } from './stackedStages.js'
 import { analyseProcedureGraph, edgeKey } from './spine.js'
 import { polishLinks } from './polish.js'
 import { edgesOf } from './router.js'
 import { layoutRuleTable } from './ruleTable.js'
+import { buildFlowCellGrid, alignStageBoxesToCellGrid } from './cellGrid.js'
 // The same text measure the fact cards use, so a CJK character counts the same everywhere
 import { textEm } from '../../fact/cardGeometry.js'
 import {
@@ -52,8 +61,10 @@ import {
   LABEL_LINE,
   LABEL_PAD_X,
   LABEL_MAX_W,
+  LABEL_SLACK,
   sizeOf,
   TABLE_GAP,
+  wrapLines,
 } from './metrics.js'
 
 /**
@@ -151,12 +162,228 @@ const emptyStats = () => ({
 /**
  * The box a condition label needs: width capped at LABEL_MAX_W, text wrapped into lines of
  * LABEL_LINE. ELK reserves exactly this box; the stylesheet draws the label in it.
+ * Line count follows word-aware wrapLines (same chunks ConnectionLayerNode paints) and a
+ * slack-scaled greedy ceil, so Chromium scrollWidth/Height stay inside the chip.
  */
 export function labelBox(text) {
-  const textW = textEm(text) * LABEL_FONT
+  const str = String(text ?? '')
+  const rawW = textEm(str) * LABEL_FONT * LABEL_SLACK
+  const textW = rawW + 6
+  const innerMaxW = LABEL_MAX_W - LABEL_PAD_X * 2
   const width = Math.min(LABEL_MAX_W, Math.ceil(textW + LABEL_PAD_X * 2))
-  const lines = Math.max(1, Math.ceil(textW / (LABEL_MAX_W - LABEL_PAD_X * 2) - 1e-9))
+  // Pure CJK condition strings do not hit mixed-script/Latin expansion in Chromium, so 9 chars stay single-line.
+  const pureCjk = !/[0-9A-Za-z()（）]/.test(str)
+  const lineSlack = pureCjk ? 1.05 : LABEL_SLACK
+  const wordLines = wrapLines(str, innerMaxW, LABEL_FONT, pureCjk ? 1.05 : undefined)
+  const greedyLines = Math.max(1, Math.ceil((textEm(str) * LABEL_FONT * lineSlack) / innerMaxW - 1e-9))
+  const lines = Math.max(wordLines, greedyLines)
   return { width, height: lines * LABEL_LINE + 2 }
+}
+
+/**
+ * After stage-grid alignment, originCross / stageBoxes may sit left/above of PAD.
+ * Shift every piece of ink so the canvas origin stays non-negative with PAD inset.
+ * Mutates placed (=== best.placed), connections, stageBoxes, cellGrid, and size in place.
+ * @param {{
+ *   placed: Map<string, { x: number, y: number, w: number, h: number }>,
+ *   connections: Array<{ points?: number[][], labelAt?: { x: number, y: number }, labelSize?: { width: number, height: number }, d?: string, dCurve?: string }>,
+ *   stageBoxes: Array<{ x: number, y: number, w: number, h: number }>,
+ *   cellGrid: ReturnType<typeof buildFlowCellGrid> | null,
+ *   size: { width: number, height: number },
+ *   vertical: boolean,
+ * }} args
+ */
+/**
+ * Repair nodes whose centres drifted off the cell lattice (>1px). Snap to the nearest
+ * free cell centre, then re-route incident edges with settleGeometryPasses.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {{ originCross: number, cellCross: number, cellAlong?: number, rows: Array<{ start: number, size: number }> } | null} cellGrid
+ * @param {boolean} vertical
+ * @param {Set<string>} diamonds
+ * @param {Set<string>} pills
+ * @param {Set<string>} [spineIds]
+ */
+function snapNodesToCellGrid(placed, connections, cellGrid, vertical, diamonds, pills, spineIds = new Set()) {
+  if (!cellGrid?.rows?.length || !(cellGrid.cellCross > 0)) return
+  const cc = cellGrid.cellCross
+  const ca = typeof cellGrid.cellAlong === 'number' && cellGrid.cellAlong > 0 ? cellGrid.cellAlong : cellGrid.rows[0].size
+  if (!(ca > 0)) return
+  const originAlong = cellGrid.rows[0].start
+  const occupied = new Set()
+  const keyOf = (col, row) => `${col},${row}`
+  for (const r of placed.values()) {
+    const cm = vertical ? r.x + r.w / 2 : r.y + r.h / 2
+    const am = vertical ? r.y + r.h / 2 : r.x + r.w / 2
+    const col = Math.round((cm - cellGrid.originCross) / cc - 0.5)
+    const row = Math.round((am - originAlong) / ca - 0.5)
+    occupied.add(keyOf(col, row))
+  }
+  let moved = false
+  for (const [id, r] of placed) {
+    const cm = vertical ? r.x + r.w / 2 : r.y + r.h / 2
+    const am = vertical ? r.y + r.h / 2 : r.x + r.w / 2
+    const col = Math.round((cm - cellGrid.originCross) / cc - 0.5)
+    const row = Math.round((am - originAlong) / ca - 0.5)
+    const colC = cellGrid.originCross + (col + 0.5) * cc
+    const rowC = originAlong + (row + 0.5) * ca
+    const dCross = Math.abs(cm - colC)
+    const dAlong = Math.abs(am - rowC)
+    if (dCross <= 1 && dAlong <= 1) continue
+    // Search nearest free cell around the intended (col,row).
+    let bestCol = col
+    let bestRow = row
+    let bestDist = Infinity
+    let found = false
+    for (let rad = 0; rad <= 8 && !found; rad += 1) {
+      for (let dc = -rad; dc <= rad; dc += 1) {
+        for (let dr = -rad; dr <= rad; dr += 1) {
+          if (Math.max(Math.abs(dc), Math.abs(dr)) !== rad) continue
+          const c2 = col + dc
+          const r2 = row + dr
+          const k = keyOf(c2, r2)
+          // Allow keeping own cell when snapping in place.
+          if (occupied.has(k) && !(dc === 0 && dr === 0)) continue
+          const cx = cellGrid.originCross + (c2 + 0.5) * cc
+          const cy = originAlong + (r2 + 0.5) * ca
+          const dist = Math.hypot(cx - cm, cy - am)
+          if (dist < bestDist) {
+            bestDist = dist
+            bestCol = c2
+            bestRow = r2
+            found = true
+          }
+        }
+      }
+    }
+    if (!found) continue
+    occupied.delete(keyOf(col, row))
+    occupied.add(keyOf(bestCol, bestRow))
+    const newCross = cellGrid.originCross + (bestCol + 0.5) * cc
+    const newAlong = originAlong + (bestRow + 0.5) * ca
+    const oldX = r.x
+    const oldY = r.y
+    if (vertical) {
+      r.x = newCross - r.w / 2
+      r.y = newAlong - r.h / 2
+    } else {
+      r.x = newAlong - r.w / 2
+      r.y = newCross - r.h / 2
+    }
+    const dx = r.x - oldX
+    const dy = r.y - oldY
+    moved = true
+    // Translate incident route endpoints with the node; settle repairs the rest.
+    for (const c of connections) {
+      if (!c.points?.length) continue
+      if (c.from === id) {
+        c.points[0][0] += dx
+        c.points[0][1] += dy
+      }
+      if (c.to === id) {
+        const last = c.points[c.points.length - 1]
+        last[0] += dx
+        last[1] += dy
+      }
+    }
+  }
+  if (!moved) return
+  settleGeometryPasses(placed, connections, diamonds, spineIds, pills, vertical)
+  ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
+}
+
+function normalizeMainlinePositiveOrigin({ placed, connections, stageBoxes, cellGrid, size, vertical }) {
+  let minX = Infinity
+  let minY = Infinity
+  const consider = (x, y) => {
+    if (Number.isFinite(x)) minX = Math.min(minX, x)
+    if (Number.isFinite(y)) minY = Math.min(minY, y)
+  }
+  for (const r of placed.values()) consider(r.x, r.y)
+  for (const b of stageBoxes) consider(b.x, b.y)
+  for (const c of connections) {
+    for (const pt of c.points ?? []) consider(pt[0], pt[1])
+    if (c.labelAt) consider(c.labelAt.x, c.labelAt.y)
+  }
+  if (cellGrid?.rows?.length) {
+    const visibleCross0 = cellGrid.hasStages
+      ? cellGrid.originCross + (cellGrid.stageColStart ?? 0) * cellGrid.cellCross
+      : cellGrid.originCross
+    const visibleAlong0 = cellGrid.rows[0].start
+    if (vertical) consider(visibleCross0, visibleAlong0)
+    else consider(visibleAlong0, visibleCross0)
+  }
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return
+
+  const dx = minX < PAD ? PAD - minX : 0
+  const dy = minY < PAD ? PAD - minY : 0
+  if (dx !== 0 || dy !== 0) {
+    for (const r of placed.values()) {
+      r.x += dx
+      r.y += dy
+    }
+    for (const b of stageBoxes) {
+      b.x += dx
+      b.y += dy
+    }
+    for (const c of connections) {
+      for (const pt of c.points ?? []) {
+        pt[0] += dx
+        pt[1] += dy
+      }
+      if (c.labelAt) {
+        c.labelAt.x += dx
+        c.labelAt.y += dy
+      }
+      if (c.points?.length) {
+        c.d = toPathD(c.points)
+        c.dCurve = toCurveD(c.points)
+      }
+    }
+    if (cellGrid) {
+      cellGrid.originCross += vertical ? dx : dy
+      for (const row of cellGrid.rows) row.start += vertical ? dy : dx
+    }
+  }
+
+  let maxX = 0
+  let maxY = 0
+  for (const r of placed.values()) {
+    maxX = Math.max(maxX, r.x + r.w)
+    maxY = Math.max(maxY, r.y + r.h)
+  }
+  for (const b of stageBoxes) {
+    maxX = Math.max(maxX, b.x + b.w)
+    maxY = Math.max(maxY, b.y + b.h)
+  }
+  for (const c of connections) {
+    for (const pt of c.points ?? []) {
+      maxX = Math.max(maxX, pt[0])
+      maxY = Math.max(maxY, pt[1])
+    }
+    if (c.labelAt && c.labelSize) {
+      maxX = Math.max(maxX, c.labelAt.x + c.labelSize.width)
+      maxY = Math.max(maxY, c.labelAt.y + c.labelSize.height)
+    }
+  }
+  if (cellGrid?.rows?.length) {
+    const last = cellGrid.rows[cellGrid.rows.length - 1]
+    const alongEnd = last.start + last.size
+    const visibleCross1 = cellGrid.hasStages
+      ? cellGrid.originCross +
+        (cellGrid.stageColStart + (cellGrid.stageColCount > 0 ? cellGrid.stageColCount : cellGrid.cols)) *
+          cellGrid.cellCross
+      : cellGrid.originCross + cellGrid.cols * cellGrid.cellCross
+    if (vertical) {
+      maxX = Math.max(maxX, visibleCross1)
+      maxY = Math.max(maxY, alongEnd)
+    } else {
+      maxX = Math.max(maxX, alongEnd)
+      maxY = Math.max(maxY, visibleCross1)
+    }
+  }
+  size.width = maxX + PAD
+  size.height = maxY + PAD
 }
 
 /** Drain a layout generator without pausing (Node / MCP / tests). */
@@ -231,6 +458,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       spine: [],
       stageBoxes: [],
       ruleTable: null,
+      cellGrid: null,
       size: { width: 0, height: 0 },
       stats: emptyStats(),
     }
@@ -249,9 +477,10 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   // the grouping reads at a glance, and ELK routes links across the boxes and keeps labels
   // clear of them. A node with no stage stays outside every box.
   const showStages = fields?.stages !== false && stageById.size > 0
+  const showDetail = fields?.detail === true
   const presentStages = (spec.stages ?? []).filter((st) => nodes.some((n) => n.stageId === st.id))
   const leaf = (n) => {
-    const { w, h } = sizeOf(n)
+    const { w, h } = sizeOf(n, showDetail)
     return { id: n.id, width: w, height: h, layoutOptions: {} }
   }
   // Spacing is read per parent: without repeating it here, the inside of a box would fall
@@ -451,6 +680,10 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   /** @type {'mainline' | 'columns' | 'elk'} */
   let layoutEngine
   if (useMainline) {
+    const realStageById =
+      showStages && nodes.every((n) => n.stageId)
+        ? new Map(nodes.map((n) => [n.id, n.stageId]))
+        : null
     best = yield* layoutMainlineGen({
       nodes: mainlineNodes,
       groups,
@@ -460,6 +693,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       spine,
       spines,
       fields,
+      realStageById,
     })
     layoutEngine = 'mainline'
     // Hard validity: never accept known-unsafe mainline ink as a successful layout.
@@ -483,7 +717,15 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
         'mainline hang→spine exhausted without a clear corridor; fell back to current (ELK/columns) layout — residual mainline ink was not accepted as valid',
       )
       if (hasStageColumns) {
-        best = yield* layoutColumnsGen({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
+        best = yield* layoutColumnsGen({
+          nodes,
+          groups,
+          stages: presentStages,
+          ruleEnds,
+          labelBox,
+          vertical,
+          fields,
+        })
         layoutEngine = 'columns'
       } else {
         best = null
@@ -497,7 +739,15 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       }
     }
   } else if (hasStageColumns) {
-    best = yield* layoutColumnsGen({ nodes, groups, stages: presentStages, ruleEnds, labelBox, vertical })
+    best = yield* layoutColumnsGen({
+      nodes,
+      groups,
+      stages: presentStages,
+      ruleEnds,
+      labelBox,
+      vertical,
+      fields,
+    })
     layoutEngine = 'columns'
   } else {
     for (const placement of PLACEMENTS) {
@@ -527,15 +777,18 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
         spine,
         vertical,
         groups,
+        cellAlong: best.cellAlong,
       })
       // If stage-band separation dragged any cross-stage rail across a box or sibling edge,
+      // or left long unrelated collinear rails (leave + hang→spine rejoin sharing a gutter),
       // re-settle geometry so 0-hit / 0-cross / 0-collinear invariants hold after the shift.
-      const needsSettle = best.connections.some((c) => {
-        if (!c.points?.length) return false
-        if (!pathClear(c.points, best.placed, c.from, c.to)) return true
-        const others = best.connections.filter((o) => o !== c).map((o) => o.points)
-        return pathCrossCount(c.points, others) > 0
-      })
+      const needsSettle =
+        best.connections.some((c) => {
+          if (!c.points?.length) return false
+          if (!pathClear(c.points, best.placed, c.from, c.to)) return true
+          const others = best.connections.filter((o) => o !== c).map((o) => o.points)
+          return pathCrossCount(c.points, others) > 0
+        }) || findCollinearAmbiguities(best.connections).unrelatedOverlaps.length > 0
       if (needsSettle) {
         const pills = new Set(nodes.filter((n) => n.kind === 'start' || n.kind === 'end').map((n) => n.id))
         const allSpine = new Set(best.spineIds ?? spine)
@@ -572,30 +825,120 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   }
   // Paint only: hide bands when Stages is off, and never paint the synthetic implicit stage
   const stageBoxes = (showStages ? best.stageBoxes : []).filter((b) => b.stageId !== '__implicit__')
-  if (layoutEngine === 'mainline' && best?.connections?.length) {
-    // Last-mile economy: an edge that still wraps the world for a short join is re-routed
-    // to the direct gap/rail path when that costs no crossings. Runs after every other pass,
-    // so no later repair can undo it; labels are re-placed on the new ink below.
+  if (best?.connections?.length) {
+    // Last-mile economy (mainline only): an edge that still wraps the world for a short join is
+    // re-routed to the direct gap/rail path when that costs no crossings. Runs after every other
+    // pass, so no later repair can undo it; labels are re-placed on the new ink below.
     // Ports are a budget, not a fixed four: the four cardinals are preferred, the rest of
     // the node outline is equally legal (ports.js). Assign ports before the economy pass so a
     // link that was stacking on an occupied vertex moves to a free one nearby.
     // Port-aware ink repair is opt-in (preset field `mainlinePorts` / ANTU_MAINLINE_PORTS=1).
     // The four-port contracts asserted by test/procedure-mainline*.test.mjs are still the
     // default behaviour; this flag is the place to measure the wider port model against them.
-    const portAware = fields?.mainlinePorts === true
-    if (portAware) {
-      economyRepath(best.placed, best.connections, spineSet, diamonds, vertical)
-      spreadRectPorts(best.placed, best.connections, diamonds)
+    if (layoutEngine === 'mainline') {
+      const portAware = fields?.mainlinePorts === true
+      if (portAware) {
+        economyRepath(best.placed, best.connections, spineSet, diamonds, vertical)
+        spreadRectPorts(best.placed, best.connections, diamonds)
+      }
     }
+    // All engines: ELK/columns can leave a chip on a node after polish/size changes; force clear.
     const titles = (best.stageBoxes ?? [])
       .filter((b) => b.stageId !== '__implicit__')
-      .map((b) => titleBoxOf(b, b.label, vertical))
-    ensureConnectionLabels(best.connections, [...best.placed.values()], titles, [], {
-      force: true,
-      preferOnLine: true,
-    })
+      .map((b) => (layoutEngine === 'mainline' ? bookmarkBoxOf(b, b.label) : titleBoxOf(b, b.label, vertical)))
+    ensureConnectionLabels(
+      best.connections,
+      [...best.placed.values()],
+      titles,
+      stageBoxes.flatMap((b) => edgesOf(b)),
+      { force: true, preferOnLine: layoutEngine === 'mainline' },
+    )
   }
   const connections = best.connections.map((c) => ({ ...c, d: toPathD(c.points), dCurve: toCurveD(c.points) }))
+
+  // Cell grid + stage snap + positive-origin shift BEFORE rows / ruleTable / rfNodes, so those
+  // consumers inherit shifted coordinates (and ruleTable sits under the updated size).
+  /** @type {ReturnType<typeof buildFlowCellGrid> | null} */
+  let cellGrid = null
+  if (layoutEngine === 'mainline' && best?.placed) {
+    cellGrid = buildFlowCellGrid({
+      placed: [...best.placed.values()],
+      connections,
+      stageBoxes,
+      vertical,
+      cellCross: best.cellCross,
+      cellAlong: best.cellAlong,
+    })
+    if (stageBoxes.length) {
+      alignStageBoxesToCellGrid(stageBoxes, cellGrid, [...best.placed.values()], vertical)
+    }
+    // placed === best.placed (destructure above); shift both through the shared Map.
+    normalizeMainlinePositiveOrigin({
+      placed,
+      connections,
+      stageBoxes,
+      cellGrid,
+      size,
+      vertical,
+    })
+    // Sanity: every node centre must sit on a cell centre (±1px). Repair off-lattice leftovers
+    // from tree-fork / stage shifts, then rebuild the grid and re-route affected edges.
+    const snapPills = new Set(nodes.filter((n) => n.kind === 'start' || n.kind === 'end').map((n) => n.id))
+    const snapSpine = new Set(Array.isArray(best?.spineIds) ? best.spineIds : spine)
+    snapNodesToCellGrid(placed, connections, cellGrid, vertical, diamonds, snapPills, snapSpine)
+    // Stage-band / origin shifts can reintroduce near-parallel corridors — separate again.
+    separateNearParallelCorridors(placed, connections, diamonds, snapSpine)
+    cellGrid = buildFlowCellGrid({
+      placed: [...placed.values()],
+      connections,
+      stageBoxes,
+      vertical,
+      cellCross: best.cellCross,
+      cellAlong: best.cellAlong,
+    })
+    if (stageBoxes.length) {
+      alignStageBoxesToCellGrid(stageBoxes, cellGrid, [...placed.values()], vertical)
+      clearStageTitleStrokes(placed, connections, stageBoxes, diamonds, vertical)
+    }
+    // snap / corridor separation mutate points after the earlier ensureConnectionLabels —
+    // re-place chips and refresh path strings so RF sees the final geometry.
+    const snapTitles = stageBoxes
+      .filter((b) => b.stageId !== '__implicit__')
+      .map((b) => bookmarkBoxOf(b, b.label))
+    ensureConnectionLabels(
+      connections,
+      [...placed.values()],
+      snapTitles,
+      stageBoxes.flatMap((b) => edgesOf(b)),
+      { force: true, preferOnLine: true },
+    )
+    for (const c of connections) {
+      c.d = toPathD(c.points)
+      c.dCurve = toCurveD(c.points)
+    }
+    let maxX = 0
+    let maxY = 0
+    for (const r of placed.values()) {
+      maxX = Math.max(maxX, r.x + r.w)
+      maxY = Math.max(maxY, r.y + r.h)
+    }
+    for (const c of connections) {
+      for (const p of c.points ?? []) {
+        maxX = Math.max(maxX, p[0])
+        maxY = Math.max(maxY, p[1])
+      }
+      if (c.labelAt && c.labelSize) {
+        maxX = Math.max(maxX, c.labelAt.x + c.labelSize.width / 2)
+        maxY = Math.max(maxY, c.labelAt.y + c.labelSize.height / 2)
+      }
+    }
+    for (const b of stageBoxes) {
+      maxX = Math.max(maxX, b.x + b.w)
+      maxY = Math.max(maxY, b.y + b.h)
+    }
+    size.width = Math.max(size.width, Math.ceil(maxX + PAD))
+    size.height = Math.max(size.height, Math.ceil(maxY + PAD))
+  }
 
   // Boxes in along/across coordinates (along = the direction the layers run)
   const boxes = new Map(
@@ -651,6 +994,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
   }
   const rfNodes = nodes.map((n) => {
     const p = placed.get(n.id)
+    const sz = sizeOf(n, showDetail)
     return {
       id: n.id,
       type: 'pnode',
@@ -660,8 +1004,8 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
         w: p.w,
         h: p.h,
         // the width of the text column the size was computed for; the node draws its text in it
-        textW: sizeOf(n).textW,
-        cut: sizeOf(n).cut,
+        textW: sz.textW,
+        cut: sz.cut,
         isSpine: drawnSpine.has(n.id),
         stageLabel: stageById.get(n.stageId)?.label ?? '',
         actorNames: (n.actorIds ?? []).map((id) => actorById.get(id)?.name ?? id),
@@ -669,7 +1013,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
         sourceCount: (n.sourceIds ?? []).filter((id) => sourceById.has(id)).length,
         layer: layerOf(n.id),
         ruleCount: showRules ? (rulesInto.get(n.id) ?? 0) : 0,
-        showDetail: fields?.detail !== false,
+        showDetail,
         vertical,
       },
     }
@@ -701,6 +1045,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     spines,
     stageBoxes,
     ruleTable,
+    cellGrid,
     // Whole pixels: ELK places on fractions, and the canvas and the exported image want integers
     size: { width: Math.ceil(size.width), height: Math.ceil(size.height) },
     stats,

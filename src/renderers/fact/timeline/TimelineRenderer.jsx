@@ -72,13 +72,9 @@ export default function FactTimeline({ spec }) {
   }
 
   // Underlying grid lines: also a choice about this diagram now (issue 236)
-  const [storedGrid, setShowGrid] = useSpecPref('showGrid', specKey)
+  const [storedGrid] = useSpecPref('showGrid', specKey)
   const gridView = useViewValue('view.fact.grid', storedGrid, false)
   const showGrid = gridView.value === true
-  const toggleGrid = (value) => {
-    gridView.touch()
-    setShowGrid(value)
-  }
 
   // Staggered rows (vertical only, see rowTopsOf in metrics.js): on by default, and what the reader set is remembered
   // per diagram, like the orientation, so turning it off in one diagram does not change how another opens.
@@ -182,8 +178,6 @@ export default function FactTimeline({ spec }) {
             onToggleField={toggleField}
             orientation={orientation}
             onToggleOrientation={toggleOrientation}
-            showGrid={showGrid}
-            onToggleGrid={toggleGrid}
             stagger={stagger}
             onToggleStagger={toggleStagger}
             locked={locked}

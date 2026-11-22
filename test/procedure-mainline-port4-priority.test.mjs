@@ -116,6 +116,8 @@ test('S1 V: free N tip preferred over NW slant for branch-merge enter', () => {
 })
 
 test('L4 V: 回并 enter uses free W tip with west approach (not SW slant / not tipFace≠hit)', () => {
+  // Hang sits to the right of n-13, but E tip is occupied by n-13→n-14; settlement must keep the
+  // return on the free W tip so out/ret do not share a long opposite-dir corridor.
   const spec = JSON.parse(
     readFileSync(join(ROOT, 'preview/synthetic-rejoin/fixtures/L4-enforcement-objection-nested.zh-CN.json'), 'utf8'),
   )
@@ -195,7 +197,9 @@ test('B02 H: capsule end enter uses outward stub (not face-parallel into painted
 })
 
 test('B09 V: S mid occupied by sibling → second leave may stagger on S (not free-mid skip)', () => {
-  // Documented same-face multi-leave: S mid held by n-11→n-12; n-11→n-5 at non-mid S is intentional.
+  // Documented same-face multi-leave: S mid held by n-11→n-12; n-11→n-5 at non-mid S when the
+  // rejoin is not same-row. Uniform cellH can park the hang on the spine target's row → 0-bend
+  // E/W mid is then the correct leave (same-row mainline contract).
   const spec = JSON.parse(
     readFileSync(join(ROOT, 'test/fixtures/mainline-strict/B09-nested-hang-rejoin.zh-CN.json'), 'utf8'),
   )
@@ -206,8 +210,16 @@ test('B09 V: S mid occupied by sibling → second leave may stagger on S (not fr
   const to5 = g.connections.find((c) => c.from === 'n-11' && c.to === 'n-5')
   assert.ok(to12 && to5)
   assert.ok(Math.hypot(to12.points[0][0] - sMid[0], to12.points[0][1] - sMid[1]) <= 2.5, 'sibling owns S mid')
-  assert.equal(faceOfMid(box, to5.points[0]), null, 'second leave is non-mid on S')
-  assert.ok(Math.abs(to5.points[0][1] - (box.y + box.h)) <= 2.5, 'still on S face')
+  const face5 = faceOfMid(box, to5.points[0])
+  if (face5 === 'E' || face5 === 'W') {
+    assert.ok(
+      Math.abs(to5.points[0][1] - (box.y + box.h / 2)) <= 2.5,
+      'same-row rejoin leaves on E/W mid',
+    )
+  } else {
+    assert.equal(face5, null, 'second leave is non-mid on S')
+    assert.ok(Math.abs(to5.points[0][1] - (box.y + box.h)) <= 2.5, 'still on S face')
+  }
 })
 
 test('08 V: inputMain routes stay straight (no port4 regression)', () => {

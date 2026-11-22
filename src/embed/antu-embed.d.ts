@@ -81,8 +81,10 @@ export type AntuViewState = {
             mainLine?: boolean;
             stages?: boolean;
             rules?: boolean;
+            grid?: boolean;
             orientation?: "vertical" | "horizontal";
             linkStyle?: "straight" | "curved";
+            engine?: "current" | "mainline";
         };
         route?: {
             labels?: boolean;

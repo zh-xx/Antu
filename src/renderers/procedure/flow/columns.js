@@ -111,6 +111,12 @@ export const titleBoxOf = (box, label, vertical) => {
     : { x: box.x + 7, y: box.y + STAGE_PAD - 2, w: 18, h: w }
 }
 
+/** Flush top-left Scheme C bookmark bounding box for mainline stage bands. */
+export const bookmarkBoxOf = (box, label) => {
+  const w = Math.min(box.w - 8, Math.ceil(textEm(label) * 12) + 34)
+  return { x: box.x, y: box.y + 1, w, h: 22 }
+}
+
 /**
  * @param {object} p
  * @param {object[]} p.nodes        the spec's nodes
@@ -138,16 +144,17 @@ function finishColumns(gen) {
  * so the browser path can stay responsive (issue 330).
  * @returns {Generator<void, { placed: Map, stageBoxes: object[], connections: object[], size: {width,height}, frame: object }, unknown>}
  */
-export function* layoutColumnsGen({ nodes, groups, stages, ruleEnds, labelBox, vertical }) {
+export function* layoutColumnsGen({ nodes, groups, stages, ruleEnds, labelBox, vertical, fields }) {
   const byId = new Map(nodes.map((n) => [n.id, n]))
   // The title strip runs along the real top of a box: the frame's top when vertical, its left
   // when the picture is transposed
   const PAD_A0 = vertical ? STAGE_PAD_TOP : STAGE_PAD
   const PAD_C0 = vertical ? STAGE_PAD : STAGE_PAD_TOP
   const diamonds = new Set(nodes.filter((n) => n.kind === 'decision').map((n) => n.id))
+  const showDetail = fields?.detail === true
   // Sizes in the frame: transposed when the real picture runs left to right
   const frameSize = (n) => {
-    const { w, h } = sizeOf(n)
+    const { w, h } = sizeOf(n, showDetail)
     return vertical ? { w, h } : { w: h, h: w }
   }
   const frameLabel = (text) => {

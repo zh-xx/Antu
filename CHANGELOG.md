@@ -14,8 +14,15 @@ what breaks a file or a tool call written for the version before, with how to br
 
 ### Changed
 
+- **Mainline stage presentation (issue 190)**: stacked stage bands alternate a light tint and carry a flush top-left numbered bookmark (`01 …`) in all four themes, vertical and horizontal, including rule-table hover highlight.
+- **Uniform cell grid for Mainline**: nodes sit on a shared row/column lattice (`cellGrid.js`, `FlowCellLayerNode.jsx`); stage boxes snap to it.
+- **Grid chip removed from the docks**: the `Grid / 格线` toggle is no longer offered in the timeline or flowchart dock (the view-state paths stay for hosts).
+
 ### Fixed
 
+- **Mainline stage bands**: a later stage no longer drags a whole run of already-placed stages down (blank bands between stages); disconnected early-exit end nodes in the last stage compact onto one row.
+- **Mainline routing**: forward downward hang→spine links no longer wrap over the start node (blank top row); wrap-around routes leave perpendicular to the box and avoid occupied entry rails; rim-riding repairs now end in an orthogonal elbow on the target's near face.
+- **Mainline labels**: pure-CJK 9-character chips stay one line; cross-stage labels keep arrowhead room; corridor strokes clear the stage bookmarks.
 - **Mainline nested hangs flip to a free opposite side** (issue 190 C4): a contained rejoin hang moves off its container’s face when the other side is free (synthetic S3: 外挂 left, 内挂 right, without `mainlineHangSide`). Same-side containment lanes remain the fallback when the opposite face is busy.
 - **Mainline branch regions pick side/lane before routing** (issue 190 C4): each hang claims a spine-index interval `[leave, rejoin]` (back-edge rejoins included); overlapping regions prefer opposite sides when free; same-side fallback packs by containment (shorter/contained → inner lane).
 - **Mainline hang→spine can use the between-lane corridor**: when the hang lane is blocked and another hang column sits further out, leave away from the spine into the lane gap, run vertical there, then enter the spine side — clearer than a far-outer U that cuts the outer column (synthetic S3「回并」). If the hang sits alone on that side, the same outward leave still applies when the U clears (left-side hang → 回并左出).

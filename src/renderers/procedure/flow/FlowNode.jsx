@@ -129,7 +129,7 @@ const FlowNode = memo(function FlowNode({ id, data }) {
   const open = isPinned || showPreview
   const kind = node.kind
   const outcome = node.outcome || 'neutral'
-  const detail = showDetail && node.detail ? (kind === 'note' ? String(node.detail).replace(/\s*\n\s*/g, ' ') : shortDetail(node.detail).text) : ''
+  const detail = (showDetail || kind === 'note') && node.detail ? (kind === 'note' ? String(node.detail).replace(/\s*\n\s*/g, ' ') : shortDetail(node.detail).text) : ''
 
   // The overlay pops towards where there is room, the same rule as the fact card: the first
   // layer has nothing before it along the flow, so it opens after; the rest open before and

@@ -407,6 +407,7 @@
   fill: none;
   stroke: var(--antu-text-4);   /* 辅助线里最浅的一级，退到背景里 */
 }
+.antu-flow-cell { fill: none; }
 
 /* ---------- 事件卡片 ---------- */
 /* 悬停中的卡片连同它的浮层一起抬到最上层。
@@ -1289,8 +1290,14 @@
   line-height: 16px;
   color: var(--antu-text);
   text-align: center;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   overflow: hidden;
+  text-wrap: balance;
+}
+.antu-plabel-word {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 .antu-plabel.k-back { color: var(--antu-text-3); }
 
@@ -1301,9 +1308,25 @@
 .antu-pstages-svg { position: absolute; left: 0; top: 0; overflow: visible; }
 .antu-pstage-name {
   position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 12px 0 8px;
+  font-size: var(--antu-type-label);
   font-weight: 650;
-  line-height: 18px;
+  line-height: 1;
   white-space: nowrap;
+  overflow: hidden;
+}
+.antu-pstage-num {
+  font-size: var(--antu-type-tag);
+  font-weight: 700;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.antu-pstage-label {
   overflow: hidden;
   text-overflow: ellipsis;
 }
