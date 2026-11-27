@@ -554,6 +554,7 @@ export default function Canvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={allNodeTypes}
+        forceColorMode={dark ? 'dark' : 'light'}
         ariaLabelConfig={ariaLabels}
         nodesDraggable={false}
         nodesConnectable={false}

@@ -16,7 +16,7 @@
 // ============================================================
 
 import { memo } from 'react'
-import { useStore } from '@xyflow/react'
+import { useViewportStore } from '@xyflow/react'
 
 /** How many empty lanes to draw on each side of the content */
 const PAD_COLS = 1
@@ -37,7 +37,7 @@ const PAD_COLS = 1
 const CellLayerNode = memo(function CellLayerNode({ data }) {
   const { rows, cellW, cellH, originX, originY, isH, lanes = [] } = data
 
-  const zoom = useStore((s) => s.transform[2]) || 1
+  const zoom = useViewportStore((s) => s.transform[2]) || 1
   const k = 1 / zoom // reverse compensation factor
 
   // Line width on screen: slightly thinner than the card border, so it does not steal attention
