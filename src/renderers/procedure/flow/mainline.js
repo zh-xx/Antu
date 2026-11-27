@@ -2428,8 +2428,24 @@ function diamondXAtY(box, y, side) {
 }
 
 /**
- * Separate same-row reciprocal pairs (A ⇄ B) onto parallel tracks so strokes and labels
- * do not stack on the shared centerline.
+ * Diamond outline y at a given x on the north or south side (strictly on outline for |x-cx| < hw).
+ * @param {{ x: number, y: number, w: number, h: number }} box
+ * @param {number} x
+ * @param {'N' | 'S'} side
+ */
+function diamondYAtX(box, x, side) {
+  const cx = box.x + box.w / 2
+  const cy = box.y + box.h / 2
+  const hw = box.w / 2
+  const hh = box.h / 2
+  const t = Math.min(1, Math.abs(x - cx) / Math.max(1e-6, hw))
+  const dy = hh * (1 - t)
+  return side === 'S' ? cy + dy : cy - dy
+}
+
+/**
+ * Separate same-row and same-column reciprocal pairs (A ⇄ B) onto parallel tracks so strokes
+ * and labels do not stack on the shared centerline (issue #190 A.4 / #376).
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {object[]} connections
  * @param {Set<string>} diamonds
@@ -2471,6 +2487,41 @@ function separateBidirectionalSameRowLinks(placed, connections, diamonds) {
     if (toDiamond && !onDiamondOutline(to, pts[1])) return null
     return pts
   }
+  /**
+   * Vertical parallel track at x for a same-column reciprocal pair (A ⇄ B).
+   * @param {{ x: number, y: number, w: number, h: number }} from
+   * @param {{ x: number, y: number, w: number, h: number }} to
+   * @param {string} fromId
+   * @param {string} toId
+   * @param {number} x
+   * @param {boolean} fromDiamond
+   * @param {boolean} toDiamond
+   */
+  const vertAtX = (from, to, fromId, toId, x, fromDiamond, toDiamond) => {
+    const fromDown = from.y + from.h / 2 <= to.y + to.h / 2
+    const xClampedFrom = Math.max(from.x + 12, Math.min(from.x + from.w - 12, x))
+    const xClampedTo = Math.max(to.x + 12, Math.min(to.x + to.w - 12, x))
+    let y0
+    let y1
+    if (fromDiamond) {
+      y0 = diamondYAtX(from, xClampedFrom, fromDown ? 'S' : 'N')
+    } else {
+      y0 = fromDown ? from.y + from.h : from.y
+    }
+    if (toDiamond) {
+      y1 = diamondYAtX(to, xClampedTo, fromDown ? 'N' : 'S')
+    } else {
+      y1 = fromDown ? to.y : to.y + to.h
+    }
+    const pts = [
+      [xClampedFrom, y0],
+      [xClampedTo, y1],
+    ]
+    if (!pathClear(pts, placed, fromId, toId)) return null
+    if (fromDiamond && !onDiamondOutline(from, pts[0])) return null
+    if (toDiamond && !onDiamondOutline(to, pts[1])) return null
+    return pts
+  }
   /** Max collinear overlap length between any segment pair of two polylines. */
   const maxCollinearOverlap = (pa, pb) => {
     let best = 0
@@ -2488,7 +2539,10 @@ function separateBidirectionalSameRowLinks(placed, connections, diamonds) {
     if (!ret || seen.has(ret.id)) continue
     const a = placed.get(fwd.from)
     const b = placed.get(fwd.to)
-    if (!a || !b || !sameRowLink(a, b)) continue
+    if (!a || !b) continue
+    const isSameRow = sameRowLink(a, b)
+    const isSameCol = !isSameRow && sameColLink(a, b)
+    if (!isSameRow && !isSameCol) continue
     seen.add(fwd.id)
     seen.add(ret.id)
 
@@ -2502,12 +2556,6 @@ function separateBidirectionalSameRowLinks(placed, connections, diamonds) {
     const fa = placed.get(f.from)
     const fb = placed.get(f.to)
     if (!fa || !fb) continue
-    const cy = (fa.y + fa.h / 2 + fb.y + fb.h / 2) / 2
-    const minH = Math.min(fa.h, fb.h)
-    const lh1 = f.labelSize?.height ?? 18
-    const lh2 = r.labelSize?.height ?? 18
-    const needSep = Math.max(18, Math.ceil((lh1 + lh2) / 2 + 4))
-    const maxDy = Math.max(0, minH / 2 - 8)
     const fDiamond = diamonds.has(f.from)
     const fToDiamond = diamonds.has(f.to)
     const rDiamond = diamonds.has(r.from)
@@ -2520,53 +2568,99 @@ function separateBidirectionalSameRowLinks(placed, connections, diamonds) {
     /** @type {number[][] | null} */
     let rPts = null
 
-    // Parallel offset tracks for all same-row reciprocal pairs (rect↔rect, diamond↔rect,
-    // diamond↔diamond): 0-bend horizontals; diamond endpoints snap onto the outline.
-    const trySymmetric = (dy) => {
-      const aPts = horizAtY(fa, fb, f.from, f.to, cy - dy, fDiamond, fToDiamond)
-      const bPts = horizAtY(fb, fa, r.from, r.to, cy + dy, rDiamond, rToDiamond)
-      if (aPts && bPts && maxCollinearOverlap(aPts, bPts) <= COLLINEAR_ATTACH_TOL) {
-        return { aPts, bPts }
-      }
-      return null
-    }
+    if (isSameRow) {
+      const cy = (fa.y + fa.h / 2 + fb.y + fb.h / 2) / 2
+      const minH = Math.min(fa.h, fb.h)
+      const lh1 = f.labelSize?.height ?? 18
+      const lh2 = r.labelSize?.height ?? 18
+      const needSep = Math.max(18, Math.ceil((lh1 + lh2) / 2 + 4))
+      const maxDy = Math.max(0, minH / 2 - 8)
 
-    if (minH >= 56 && 30 >= needSep && 15 <= maxDy) {
-      const got = trySymmetric(15)
-      if (got) {
-        fPts = got.aPts
-        rPts = got.bPts
+      // Parallel offset tracks for all same-row reciprocal pairs (rect↔rect, diamond↔rect,
+      // diamond↔diamond): 0-bend horizontals; diamond endpoints snap onto the outline.
+      const trySymmetric = (dy) => {
+        const aPts = horizAtY(fa, fb, f.from, f.to, cy - dy, fDiamond, fToDiamond)
+        const bPts = horizAtY(fb, fa, r.from, r.to, cy + dy, rDiamond, rToDiamond)
+        if (aPts && bPts && maxCollinearOverlap(aPts, bPts) <= COLLINEAR_ATTACH_TOL) {
+          return { aPts, bPts }
+        }
+        return null
       }
-    }
 
-    if (!fPts || !rPts) {
-      const dyCandidates = [14, 13, 15, 16, 18, 12, 20, 10]
-        .filter((d) => d <= maxDy && 2 * d >= needSep)
-        .sort((a, b) => b - a)
-      for (const dy of dyCandidates) {
-        const got = trySymmetric(dy)
+      if (minH >= 56 && 30 >= needSep && 15 <= maxDy) {
+        const got = trySymmetric(15)
+        if (got) {
+          fPts = got.aPts
+          rPts = got.bPts
+        }
+      }
+
+      if (!fPts || !rPts) {
+        const dyCandidates = [14, 13, 15, 16, 18, 12, 20, 10]
+          .filter((d) => d <= maxDy && 2 * d >= needSep)
+          .sort((a, b) => b - a)
+        for (const dy of dyCandidates) {
+          const got = trySymmetric(dy)
+          if (got) {
+            fPts = got.aPts
+            rPts = got.bPts
+            break
+          }
+        }
+      }
+
+      if (!fPts || !rPts) {
+        // Fallback: keep forward on the centerline (cardinal tip); offset return only.
+        fPts = horizAtY(fa, fb, f.from, f.to, cy, fDiamond, fToDiamond)
+        rPts = null
+        const dyCandidates = [14, 13, 15, 16, 18, 12, 20, 10].filter((d) => d <= maxDy && 2 * d >= needSep)
+        for (const dy of dyCandidates) {
+          for (const sign of [1, -1]) {
+            const cand = horizAtY(fb, fa, r.from, r.to, cy + sign * dy, rDiamond, rToDiamond)
+            if (!cand) continue
+            if (fPts && maxCollinearOverlap(fPts, cand) > COLLINEAR_ATTACH_TOL) continue
+            rPts = cand
+            break
+          }
+          if (rPts) break
+        }
+      }
+    } else {
+      // Same-column reciprocal pair (A ⇄ B stacked vertically): keep forward on centerline or
+      // split symmetrically on cx ± dx when both fit inside the narrower box.
+      const cx = (fa.x + fa.w / 2 + fb.x + fb.w / 2) / 2
+      const minW = Math.min(fa.w, fb.w)
+      const maxDx = Math.max(0, minW / 2 - 14)
+      const trySymX = (dx) => {
+        const aPts = vertAtX(fa, fb, f.from, f.to, cx - dx, fDiamond, fToDiamond)
+        const bPts = vertAtX(fb, fa, r.from, r.to, cx + dx, rDiamond, rToDiamond)
+        if (aPts && bPts && maxCollinearOverlap(aPts, bPts) <= COLLINEAR_ATTACH_TOL) {
+          return { aPts, bPts }
+        }
+        return null
+      }
+      const dxCandidates = [24, 20, 18, 16, 14, 12].filter((d) => d <= maxDx)
+      for (const dx of dxCandidates) {
+        const got = trySymX(dx)
         if (got) {
           fPts = got.aPts
           rPts = got.bPts
           break
         }
       }
-    }
-
-    if (!fPts || !rPts) {
-      // Fallback: keep forward on the centerline (cardinal tip); offset return only.
-      fPts = horizAtY(fa, fb, f.from, f.to, cy, fDiamond, fToDiamond)
-      rPts = null
-      const dyCandidates = [14, 13, 15, 16, 18, 12, 20, 10].filter((d) => d <= maxDy && 2 * d >= needSep)
-      for (const dy of dyCandidates) {
-        for (const sign of [1, -1]) {
-          const cand = horizAtY(fb, fa, r.from, r.to, cy + sign * dy, rDiamond, rToDiamond)
-          if (!cand) continue
-          if (fPts && maxCollinearOverlap(fPts, cand) > COLLINEAR_ATTACH_TOL) continue
-          rPts = cand
-          break
+      if (!fPts || !rPts) {
+        fPts = vertAtX(fa, fb, f.from, f.to, cx, fDiamond, fToDiamond)
+        rPts = null
+        for (const dx of dxCandidates) {
+          for (const sign of [1, -1]) {
+            const cand = vertAtX(fb, fa, r.from, r.to, cx + sign * dx, rDiamond, rToDiamond)
+            if (!cand) continue
+            if (fPts && maxCollinearOverlap(fPts, cand) > COLLINEAR_ATTACH_TOL) continue
+            rPts = cand
+            break
+          }
+          if (rPts) break
         }
-        if (rPts) break
       }
     }
 
@@ -2584,7 +2678,7 @@ function separateBidirectionalSameRowLinks(placed, connections, diamonds) {
 }
 
 /**
- * After labels are placed: push overlapping reciprocal same-row chips apart vertically.
+ * After labels are placed: push overlapping reciprocal same-row or same-column chips apart.
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
  * @param {object[]} connections
  */
@@ -2596,16 +2690,25 @@ function separateBidirectionalLabels(placed, connections) {
     if (String(c.id) > String(ret.id)) continue
     const a = placed.get(c.from)
     const b = placed.get(c.to)
-    if (!a || !b || !sameRowLink(a, b)) continue
+    if (!a || !b) continue
+    const isRow = sameRowLink(a, b)
+    const isCol = !isRow && sameColLink(a, b)
+    if (!isRow && !isCol) continue
     const overlap =
       c.labelAt.x < ret.labelAt.x + ret.labelSize.width - 0.5 &&
       ret.labelAt.x < c.labelAt.x + c.labelSize.width - 0.5 &&
       c.labelAt.y < ret.labelAt.y + ret.labelSize.height - 0.5 &&
       ret.labelAt.y < c.labelAt.y + c.labelSize.height - 0.5
     if (!overlap) continue
-    const gap = Math.ceil((c.labelSize.height + ret.labelSize.height) / 2 + 4)
-    c.labelAt = { ...c.labelAt, y: c.labelAt.y - gap / 2 }
-    ret.labelAt = { ...ret.labelAt, y: ret.labelAt.y + gap / 2 }
+    if (isRow) {
+      const gap = Math.ceil((c.labelSize.height + ret.labelSize.height) / 2 + 4)
+      c.labelAt = { ...c.labelAt, y: c.labelAt.y - gap / 2 }
+      ret.labelAt = { ...ret.labelAt, y: ret.labelAt.y + gap / 2 }
+    } else {
+      const gap = Math.ceil((c.labelSize.width + ret.labelSize.width) / 2 + 6)
+      c.labelAt = { ...c.labelAt, x: c.labelAt.x - gap / 2 }
+      ret.labelAt = { ...ret.labelAt, x: ret.labelAt.x + gap / 2 }
+    }
   }
 }
 

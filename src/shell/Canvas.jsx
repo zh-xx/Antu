@@ -191,14 +191,18 @@ export default function Canvas({
       rfRef.current.setViewport({ x: area.left + (area.width - width * zoom) / 2, y, zoom }, { duration })
       return
     }
-    // A wide picture read left to right (fitMinZoom: the procedure route map and flowchart) does not shrink
-    // below a readable zoom on open: it opens at that zoom from the left, centred up and down, and the
-    // reader scrolls. An explicit fitView skips this so the whole diagram is on screen.
+    // A wide or tall picture (fitMinZoom: the procedure route map and flowchart) does not shrink
+    // below a readable zoom on open: whichever axis fits centres inside the safe area, and the
+    // overflowing axis starts from the leading edge so the reader scrolls. An explicit fitView
+    // skips this so the whole diagram is on screen.
     if (readable && fitMinZoom && width && height && area) {
       const whole = fitZoom(graph.size, area)
       if (whole < fitMinZoom) {
         const zoom = fitMinZoom
-        const x = area.left + (area.width * FIT_PADDING) / 4
+        const x =
+          width * zoom + 16 <= area.width
+            ? area.left + (area.width - width * zoom) / 2
+            : area.left + (area.width * FIT_PADDING) / 4
         const y =
           height * zoom + 16 <= area.height
             ? area.top + (area.height - height * zoom) / 2

@@ -61,6 +61,7 @@ import {
   LABEL_LINE,
   LABEL_PAD_X,
   LABEL_MAX_W,
+  MAINLINE_LABEL_MAX_W,
   LABEL_SLACK,
   sizeOf,
   TABLE_GAP,
@@ -165,12 +166,12 @@ const emptyStats = () => ({
  * Line count follows word-aware wrapLines (same chunks ConnectionLayerNode paints) and a
  * slack-scaled greedy ceil, so Chromium scrollWidth/Height stay inside the chip.
  */
-export function labelBox(text) {
+export function labelBox(text, maxW = LABEL_MAX_W) {
   const str = String(text ?? '')
   const rawW = textEm(str) * LABEL_FONT * LABEL_SLACK
   const textW = rawW + 6
-  const innerMaxW = LABEL_MAX_W - LABEL_PAD_X * 2
-  const width = Math.min(LABEL_MAX_W, Math.ceil(textW + LABEL_PAD_X * 2))
+  const innerMaxW = maxW - LABEL_PAD_X * 2
+  const width = Math.min(maxW, Math.ceil(textW + LABEL_PAD_X * 2))
   // Pure CJK condition strings do not hit mixed-script/Latin expansion in Chromium, so 9 chars stay single-line.
   const pureCjk = !/[0-9A-Za-z()（）]/.test(str)
   const lineSlack = pureCjk ? 1.05 : LABEL_SLACK
@@ -688,7 +689,7 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       nodes: mainlineNodes,
       groups,
       stages: mainlineStages,
-      labelBox,
+      labelBox: (text) => labelBox(text, MAINLINE_LABEL_MAX_W),
       vertical,
       spine,
       spines,

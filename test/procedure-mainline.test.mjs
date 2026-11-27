@@ -15,7 +15,7 @@ import { bendsOf } from '../src/renderers/procedure/flow/straighten.js'
 import { analyseProcedureGraph } from '../src/renderers/procedure/flow/spine.js'
 import { onDiamondOutline } from '../src/renderers/procedure/flow/diamondPorts.js'
 import { textEm } from '../src/renderers/fact/cardGeometry.js'
-import { LABEL_FONT, LABEL_PAD_X, LABEL_MAX_W, LABEL_LINE, PAD } from '../src/renderers/procedure/flow/metrics.js'
+import { LABEL_FONT, LABEL_PAD_X, LABEL_MAX_W, MAINLINE_LABEL_MAX_W, LABEL_LINE, PAD, sizeOf, wrapLines } from '../src/renderers/procedure/flow/metrics.js'
 
 const DIR = 'examples/procedure'
 const LANG = '.zh-CN.json'
@@ -942,6 +942,7 @@ test('mainline: stages on → stacked bands; all mains 0-bend; whole spine strai
   assert.ok(checked > 0, 'expected staged examples')
 })
 
+
 test('mainline: stages on → stageBoxes non-overlapping, contain members, uniform cross span', () => {
   const overlap = (a, b) => a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5
   let checked = 0
@@ -1004,6 +1005,7 @@ test('mainline: stages off → stageBoxes empty on straight spine', () => {
   }
   assert.ok(checked > 0, 'expected staged examples')
 })
+
 
 test('mainline: >4 incident parallel fan-out & merge uses 1-bend tree-fork rail and aligned sibling row', () => {
   const spec = {
@@ -1226,16 +1228,16 @@ test('labelBox applies width slack beyond raw textEm * LABEL_FONT', () => {
     assert.ok(box.width > raw, `labelBox('${text}') width ${box.width} should exceed raw ${raw}`)
     assert.ok(box.width <= LABEL_MAX_W, `labelBox('${text}') width ${box.width} exceeds LABEL_MAX_W`)
   }
-  // 8-char CJK at the cap stays 1 line (greedy uses rawW without the +6 pad); longer wraps.
+  // 8-char CJK at default cap stays 1 line; Mainline-first allows wider chips (MAINLINE_LABEL_MAX_W, issue #376).
   {
     const eight = labelBox('第47条以外的争议')
     assert.equal(eight.width, LABEL_MAX_W, `labelBox('第47条以外的争议') should cap at LABEL_MAX_W`)
     assert.equal(eight.height, LABEL_LINE + 2, `8-char CJK should stay 1 line, h=${eight.height}`)
   }
   {
-    const longer = labelBox('不符合第30条第1款')
-    assert.equal(longer.width, LABEL_MAX_W, `labelBox('不符合第30条第1款') should cap at LABEL_MAX_W`)
-    assert.ok(longer.height >= LABEL_LINE * 2, `longer label should wrap to ≥2 lines, h=${longer.height}`)
+    const longer = labelBox('属民事诉讼受案范围且本院有管辖权', MAINLINE_LABEL_MAX_W)
+    assert.equal(longer.width, MAINLINE_LABEL_MAX_W, `long condition should cap at MAINLINE_LABEL_MAX_W`)
+    assert.equal(longer.height, LABEL_LINE * 2 + 2, `16-char condition should wrap cleanly to 2 lines, h=${longer.height}`)
   }
 })
 
@@ -1287,3 +1289,66 @@ test('mainline: stages on → stageBoxes stay non-negative and enclose connectio
   assert.ok(checked > 0, 'expected staged examples')
 })
 
+
+
+test('issue #376: horizontal mainline condition labels stay horizontal (never vertically transposed)', () => {
+  for (const f of files) {
+    const spec = load(f)
+    const g = buildProcedureGraph(spec, fields, undefined, 'horizontal')
+    for (const c of g.connections) {
+      if (!c.label || !c.labelSize) continue
+      if (String(c.label).length >= 3) {
+        assert.ok(
+          c.labelSize.width > c.labelSize.height,
+          `${f}: horizontal label '${c.label}' looks vertically transposed (${c.labelSize.width}x${c.labelSize.height})`,
+        )
+      }
+    }
+  }
+})
+
+test('issue #376: 9-10 char step labels wrap onto balanced lines without orphan-char wrap', () => {
+  for (const label of ['乙方发货并随附单证', '甲方提出书面质量异议']) {
+    const sz = sizeOf({ kind: 'step', label }, false)
+    assert.ok(wrapLines(label, sz.textW) <= 2, `step '${label}' should fit in ≤2 lines`)
+    assert.ok(
+      sz.textW <= 104,
+      `step '${label}' should compact to a balanced 2-line width (got textW=${sz.textW}, avoiding 8+1 orphan wrap)`,
+    )
+  }
+})
+
+test('issue #376: same-column reciprocal rework loop separates onto two parallel vertical tracks', () => {
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: '同列单步补正回环',
+    domain: 'litigation',
+    stages: [{ id: 'st-1', label: '立案审查' }],
+    nodes: [
+      { id: 'n-1', kind: 'start', label: '提交起诉状', stageId: 'st-1' },
+      { id: 'n-2', kind: 'decision', label: '材料是否齐备', stageId: 'st-1' },
+      { id: 'n-3', kind: 'step', label: '一次性告知补正', stageId: 'st-1' },
+      { id: 'n-4', kind: 'end', label: '登记立案', stageId: 'st-1', outcome: 'positive' },
+    ],
+    edges: [
+      { from: 'n-1', to: 'n-2', main: true },
+      { from: 'n-2', to: 'n-3', condition: '材料欠缺' },
+      { from: 'n-3', to: 'n-2', condition: '补正后重审' },
+      { from: 'n-2', to: 'n-4', condition: '材料齐备', main: true },
+    ],
+  }
+  const g = buildProcedureGraph(spec, fields, undefined, 'vertical')
+  const fwd = g.connections.find((c) => c.from === 'n-2' && c.to === 'n-3')
+  const ret = g.connections.find((c) => c.from === 'n-3' && c.to === 'n-2')
+  assert.ok(fwd?.points?.length >= 2 && ret?.points?.length >= 2, 'both reciprocal edges should route')
+  // Whether same-row or same-column, reciprocal strokes must not stack on one shared line
+  const sameLine =
+    fwd.points.length === 2 &&
+    ret.points.length === 2 &&
+    Math.abs(fwd.points[0][0] - ret.points[1][0]) < 1 &&
+    Math.abs(fwd.points[0][1] - ret.points[1][1]) < 1 &&
+    Math.abs(fwd.points[1][0] - ret.points[0][0]) < 1 &&
+    Math.abs(fwd.points[1][1] - ret.points[0][1]) < 1
+  assert.equal(sameLine, false, 'reciprocal rework loop arrows must be separated onto parallel tracks')
+})

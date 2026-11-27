@@ -69,6 +69,8 @@ export const LABEL_FONT = TYPE.label.size
 export const LABEL_LINE = 16
 export const LABEL_PAD_X = 6
 export const LABEL_MAX_W = 126
+/** Mainline-first allows wider condition chips (~12 CJK chars/line) so legal conditions read cleanly without 3-line cramping (issue #376). */
+export const MAINLINE_LABEL_MAX_W = 168
 /** Chromium CJK+digit/paren measure slack (same idea as TABLE_SLACK / BOLD_SLACK). */
 export const LABEL_SLACK = 1.12
 
@@ -191,7 +193,8 @@ export function sizeOf(node, showDetail = false) {
   const want = node?.kind === 'decision' ? Math.sqrt(labelW * NODE_LINE * 3.2) : labelW
   let textW = Math.ceil(Math.min(cap, Math.max(TEXT_MIN_W, want, Math.min(detailW, cap))))
   const maxLines = node?.kind === 'decision' ? DIAMOND_MAX_LINES : NODE_MAX_LINES
-  // Compact long single-line step labels onto 2 balanced lines (e.g. 不裁定重整… → ~114px textW).
+  // Compact long single-line step labels onto 2 balanced lines (start ~54% so 9-char labels
+  // split 5+4 instead of an 8+1 orphan character; issue #376).
   if (
     !showDetail &&
     node?.kind !== 'decision' &&
@@ -199,7 +202,7 @@ export function sizeOf(node, showDetail = false) {
     !label.includes('\n') &&
     textW > 118
   ) {
-    const start = Math.max(112, Math.ceil(labelW * 0.56))
+    const start = Math.max(76, Math.ceil(labelW * 0.54))
     let found = null
     for (let wTry = start; wTry <= cap; wTry += 8) {
       if (wrapLines(label, wTry) <= maxLines) {
