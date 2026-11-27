@@ -59,6 +59,14 @@ const MAX_ZOOM = 3
 /** The pan range leaves this much on all four sides of the content: panning stops at the edge instead of sliding into blank space */
 const PAN_PAD = 160
 
+/**
+ * React Flow v13 treats a numeric `padding` as CSS pixels (not a ratio) and a `"N%"` string as per-side percentage
+ * of the viewport. Converting `FIT_PADDING` (total scale `1 / (1 + FIT_PADDING)`) to per-side percent keeps React
+ * Flow's `getViewportForBounds` / `fitBounds` / `fitView` aligned with `fitZoom` in `src/core/canvas.js`.
+ * @type {`${number}%`}
+ */
+const RF_FIT_PADDING = /** @type {`${number}%`} */ (`${((FIT_PADDING / (2 * (1 + FIT_PADDING))) * 100).toFixed(2)}%`)
+
 /** The whole picture as one empty node, for the minimap alone (see miniGhost below) */
 const MiniGhost = () => null
 const MINI_GHOST_ID = '__minimap__'
@@ -230,12 +238,12 @@ export default function Canvas({
     // either: minZoom is state that follows the same resize one render later, and a stale floor would clamp the fit.
     // Insets keep the fitted picture clear of the label card and the dock capsule (issue 166).
     if (width && height && area) {
-      const to = getViewportForBounds({ x: 0, y: 0, width, height }, area.width, area.height, 0.01, MAX_ZOOM, FIT_PADDING)
+      const to = getViewportForBounds({ x: 0, y: 0, width, height }, area.width, area.height, 0.01, MAX_ZOOM, RF_FIT_PADDING)
       rfRef.current.setViewport({ ...to, x: to.x + area.left, y: to.y + area.top }, { duration })
       return
     }
-    if (width && height) rfRef.current.fitBounds({ x: 0, y: 0, width, height }, { padding: FIT_PADDING, duration })
-    else rfRef.current.fitView({ padding: FIT_PADDING, duration })
+    if (width && height) rfRef.current.fitBounds({ x: 0, y: 0, width, height }, { padding: RF_FIT_PADDING, duration })
+    else rfRef.current.fitView({ padding: RF_FIT_PADDING, duration })
   }
   const firstFitRef = useRef(true)
   // whether the first fit has run: a host's select and focus wait for it (held by the command bus till then)
@@ -308,11 +316,11 @@ export default function Canvas({
     if (!rf || !area) return
     const { width, height } = graph.size
     if (width && height) {
-      const to = getViewportForBounds({ x: 0, y: 0, width, height }, area.width, area.height, 0.01, MAX_ZOOM, FIT_PADDING)
+      const to = getViewportForBounds({ x: 0, y: 0, width, height }, area.width, area.height, 0.01, MAX_ZOOM, RF_FIT_PADDING)
       rf.setViewport(to, { duration: 0 })
       return
     }
-    rf.fitView({ padding: FIT_PADDING, duration: 0 })
+    rf.fitView({ padding: RF_FIT_PADDING, duration: 0 })
   }
 
   // Why export lives here: it has to grab the .react-flow__viewport node, and this is
@@ -554,6 +562,7 @@ export default function Canvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={allNodeTypes}
+        forceColorMode={dark ? 'dark' : 'light'}
         ariaLabelConfig={ariaLabels}
         nodesDraggable={false}
         nodesConnectable={false}
@@ -587,7 +596,7 @@ export default function Canvas({
         // A width-fitted diagram is placed by fit() alone: React Flow's own initial fit runs once the nodes are
         // measured, which can come after fit() and would shrink a long column back to the whole
         fitView={!fitWidth && !fitSelf}
-        fitViewOptions={{ padding: FIT_PADDING, ...(fitMaxZoom ? { maxZoom: fitMaxZoom } : {}) }}
+        fitViewOptions={{ padding: RF_FIT_PADDING, ...(fitMaxZoom ? { maxZoom: fitMaxZoom } : {}) }}
         minZoom={minZoom}
         maxZoom={MAX_ZOOM}
       >

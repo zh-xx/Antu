@@ -8,7 +8,7 @@
 // ============================================================
 
 import { memo } from 'react'
-import { useStore } from '@xyflow/react'
+import { useViewportStore } from '@xyflow/react'
 import { useTheme } from '../../../theme/ThemeContext.jsx'
 
 /**
@@ -44,7 +44,7 @@ const FlowCellLayerNode = memo(function FlowCellLayerNode({ data }) {
   } = data
 
   const { theme } = useTheme()
-  const zoom = useStore((s) => s.transform[2]) || 1
+  const zoom = useViewportStore((s) => s.transform[2]) || 1
   const k = 1 / zoom
   const strokeW = 0.85 * k
   const strokeOpacity = theme.scheme === 'dark' ? 0.6 : theme.id === 'document' ? 0.55 : 0.72

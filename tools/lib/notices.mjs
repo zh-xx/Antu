@@ -63,6 +63,15 @@ function licenseFile(dir) {
   return readFileSync(join(dir, name), 'utf8').replace(/\r\n/g, '\n').trimEnd()
 }
 
+/**
+ * Packages published from a monorepo without a LICENSE file in their own tarball, whose source header points to the
+ * root LICENSE of the same repository — shipped verbatim in the named sibling package.
+ */
+const LICENSE_FROM_SIBLING = {
+  // facebook/react compiler/packages/react-compiler-runtime omits LICENSE from its npm "files" list
+  'react-compiler-runtime': 'react',
+}
+
 /** Every bundled package, with its licence and the text of its licence file: sorted by name */
 export function bundledPackages() {
   const seen = new Map()
@@ -70,7 +79,12 @@ export function bundledPackages() {
     const dir = packageDir(name, from)
     const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
     if (seen.has(pkg.name)) return
-    const text = licenseFile(dir)
+    let text = licenseFile(dir)
+    if (!text && LICENSE_FROM_SIBLING[pkg.name]) {
+      const siblingDir = packageDir(LICENSE_FROM_SIBLING[pkg.name], REPO)
+      const siblingPkg = JSON.parse(readFileSync(join(siblingDir, 'package.json'), 'utf8'))
+      if (licenseOf(pkg) === licenseOf(siblingPkg)) text = licenseFile(siblingDir)
+    }
     if (!text) throw new Error(`package "${pkg.name}" has no licence file: its notice cannot be shipped`)
     const repo = typeof pkg.repository === 'string' ? pkg.repository : pkg.repository?.url
     seen.set(pkg.name, { name: pkg.name, license: licenseOf(pkg), repository: String(repo ?? '').replace(/^git\+/, '').replace(/\.git$/, ''), text })
