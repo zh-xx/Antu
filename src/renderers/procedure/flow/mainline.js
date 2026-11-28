@@ -2819,8 +2819,159 @@ export { spreadRectPorts, settleGeometryPasses, separateNearParallelCorridors }
  * @param {number} [cellH] uniform along-cell; when >0 peers/shared sit on the lattice
  */
 export function applyTreeForkBus(placed, connections, spineIds, diamonds, stageBoxes = [], vertical = true, cellW = 0, cellH = 0) {
+  // Helper: spine cross-axis centre (used by Case C to extend off-spine fan-outs away from the spine).
+  /** @type {number[]} */
+  const spineXs = []
+  for (const id of spineIds) {
+    const r = placed.get(id)
+    if (r) spineXs.push(r.x + r.w / 2)
+  }
+  const spineCx = spineXs.length ? spineXs.reduce((a, b) => a + b, 0) / spineXs.length : 0
+
   for (const dId of diamonds) {
-    if (!spineIds.has(dId)) continue
+    if (!spineIds.has(dId)) {
+      // Case C: off-spine decision fanning out into ≥3 single-step parallel outcomes that all
+      // converge into one shared target (e.g. 行政复议法 n-35 → n-36..n-41 → n-42).
+      // Place all siblings on one horizontal row extending away from the spine, with a 1-bend
+      // fan-out rail above the row and a 1-bend collector bus below the row (0 crossings).
+      const d = placed.get(dId)
+      if (!d) continue
+      const outs = connections.filter((c) => c.from === dId && c.kind !== 'main' && !spineIds.has(c.to))
+      if (outs.length < 3) continue
+      const firstOut = connections.filter((o) => o.from === outs[0].to)
+      if (firstOut.length !== 1) continue
+      const sharedTargetId = firstOut[0].to
+      if (!sharedTargetId) continue
+      const t = placed.get(sharedTargetId)
+      if (!t) continue
+      const allConverge = outs.every((c) => {
+        if (diamonds.has(c.to)) return false
+        const bOuts = connections.filter((o) => o.from === c.to)
+        return bOuts.length === 1 && bOuts[0].to === sharedTargetId
+      })
+      if (!allConverge) continue
+
+      const dcx = d.x + d.w / 2
+      const dcy = d.y + d.h / 2
+      const tcx = t.x + t.w / 2
+      const tcy = t.y + t.h / 2
+      const outwardSign = dcx < (spineXs.length ? spineCx : tcx) ? -1 : 1
+      const colStep =
+        cellW > 0
+          ? cellW
+          : Math.max(...outs.map((c) => placed.get(c.to)?.w ?? 160)) + 48
+      const rowCy = cellH > 0 ? dcy + cellH : d.y + d.h + 88
+      const sibIds = new Set(outs.map((c) => c.to))
+
+      /** @type {Map<string, { x: number, y: number, w: number, h: number }>} */
+      const candPlaced = new Map(placed)
+      let maxSibBot = -Infinity
+      for (let i = 0; i < outs.length; i += 1) {
+        const id = outs[i].to
+        const r = placed.get(id)
+        if (!r) continue
+        const cx = dcx + outwardSign * i * colStep
+        const nr = { ...r, x: cx - r.w / 2, y: rowCy - r.h / 2 }
+        candPlaced.set(id, nr)
+        maxSibBot = Math.max(maxSibBot, nr.y + nr.h)
+      }
+      // Verify no candidate sibling overlaps any non-sibling box.
+      let overlap = false
+      for (const sid of sibIds) {
+        const a = candPlaced.get(sid)
+        if (!a) continue
+        for (const [oid, b] of candPlaced) {
+          if (oid === sid) continue
+          if (a.x < b.x + b.w - 0.5 && b.x < a.x + a.w - 0.5 && a.y < b.y + b.h - 0.5 && b.y < a.y + a.h - 0.5) {
+            overlap = true
+            break
+          }
+        }
+        if (overlap) break
+      }
+      if (overlap) continue
+
+      const busY = tcy >= maxSibBot + 16 ? tcy : maxSibBot + 24
+      const tipX = outwardSign < 0 ? d.x : d.x + d.w
+      const targetFaceX = dcx < tcx ? t.x : t.x + t.w
+      /** @type {Array<{ c: any, pts: number[][] }>} */
+      const candRoutes = []
+      let routesOk = true
+      for (let i = 0; i < outs.length; i += 1) {
+        const c = outs[i]
+        const a = candPlaced.get(c.to)
+        if (!a) {
+          routesOk = false
+          break
+        }
+        const ax = a.x + a.w / 2
+        const fanPts =
+          i === 0
+            ? [
+                [dcx, d.y + d.h],
+                [ax, a.y],
+              ]
+            : [
+                [tipX, dcy],
+                [ax, dcy],
+                [ax, a.y],
+              ]
+        if (!pathClear(fanPts, candPlaced, dId, c.to)) {
+          routesOk = false
+          break
+        }
+        candRoutes.push({ c, pts: fanPts })
+        const mergeEdge = connections.find((o) => o.from === c.to && o.to === sharedTargetId)
+        if (!mergeEdge) {
+          routesOk = false
+          break
+        }
+        const mergePts =
+          Math.abs(busY - tcy) < 1
+            ? [
+                [ax, a.y + a.h],
+                [ax, tcy],
+                [targetFaceX, tcy],
+              ]
+            : [
+                [ax, a.y + a.h],
+                [ax, busY],
+                [targetFaceX + outwardSign * 24, busY],
+                [targetFaceX + outwardSign * 24, tcy],
+                [targetFaceX, tcy],
+              ]
+        if (!pathClear(mergePts, candPlaced, c.to, sharedTargetId)) {
+          routesOk = false
+          break
+        }
+        candRoutes.push({ c: mergeEdge, pts: mergePts })
+      }
+      if (!routesOk) continue
+
+      for (const sid of sibIds) {
+        const nr = candPlaced.get(sid)
+        if (nr) placed.set(sid, nr)
+      }
+      for (const { c, pts } of candRoutes) {
+        c.points = pts
+        c.pinLabelSeg = pts.length >= 3 ? pts.length - 2 : 0
+      }
+      // Shift right if extending left pushed minX < PAD.
+      let minX = Infinity
+      for (const r of placed.values()) minX = Math.min(minX, r.x)
+      for (const c of connections) {
+        for (const [x] of c.points ?? []) minX = Math.min(minX, x)
+      }
+      if (Number.isFinite(minX) && minX < PAD) {
+        const shiftX = PAD - minX
+        for (const [id, r] of placed) placed.set(id, { ...r, x: r.x + shiftX })
+        for (const c of connections) {
+          c.points = (c.points ?? []).map(([x, y]) => [x + shiftX, y])
+          if (c.labelAt) c.labelAt = { x: c.labelAt.x + shiftX, y: c.labelAt.y }
+        }
+      }
+      continue
+    }
     const d = placed.get(dId)
     if (!d) continue
     const dcx = d.x + d.w / 2

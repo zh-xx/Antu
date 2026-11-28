@@ -40,18 +40,27 @@ export function orderStagesBySpine(stagesList, spineIds, nodes, groups = []) {
     seen.add(sid)
     ordered.push(st)
   }
+  const specOrderOf = new Map(stagesList.map((st, i) => [st.id, i]))
   const off = stagesList.filter((st) => !seen.has(st.id))
   for (const st of off) {
-    let insertAt = ordered.length
+    const mySpecIdx = specOrderOf.get(st.id) ?? Infinity
+    // Never splice an off-spine stage ahead of a spine stage that precedes it in spec.stages
+    // (otherwise the later off-spine stage tears a chasm in the main spine and inverts numbering).
+    let specFloor = 0
+    for (let i = 0; i < ordered.length; i += 1) {
+      if ((specOrderOf.get(ordered[i].id) ?? Infinity) < mySpecIdx) specFloor = i + 1
+    }
+    let feederAt = -1
     for (const g of groups) {
       if (stageOf.get(g.to) !== st.id) continue
       const fromSt = stageOf.get(g.from)
       const idx = ordered.findIndex((s) => s.id === fromSt)
       if (idx >= 0) {
-        insertAt = Math.min(insertAt, idx + 1)
+        feederAt = idx + 1
         break
       }
     }
+    const insertAt = feederAt >= 0 ? Math.max(feederAt, specFloor) : specFloor
     ordered.splice(insertAt, 0, st)
     seen.add(st.id)
   }
@@ -108,6 +117,8 @@ function buildStageRuns(placed, nodes, stages, spine, groups, vertical) {
     return { a0, a1, mid: (a0 + a1) / 2 }
   }
 
+  const specOrderOf = new Map(stages.map((st, i) => [st.id, i]))
+
   // Hang / off-spine members → nearest run of the same stage (else new run).
   for (const id of placed.keys()) {
     if (spineSet.has(id)) continue
@@ -120,17 +131,24 @@ function buildStageRuns(placed, nodes, stages, spine, groups, vertical) {
       const st = byIdStage.get(sid)
       if (!st) continue
       const run = { stageId: sid, label: st.label ?? '', memberIds: [id] }
-      // Insert after the spine stage that feeds this stage (same as orderStagesBySpine off).
-      let insertAt = runs.length
+      const mySpecIdx = specOrderOf.get(sid) ?? Infinity
+      // Respect spec.stages ordering so off-spine stages never splice ahead of an earlier spine
+      // stage and tear a vertical chasm in the main spine (issue #190).
+      let specFloor = 0
+      for (let i = 0; i < runs.length; i += 1) {
+        if ((specOrderOf.get(runs[i].stageId) ?? Infinity) < mySpecIdx) specFloor = i + 1
+      }
+      let feederAt = -1
       for (const g of groups) {
         if (stageOf.get(g.to) !== sid) continue
         const fromSt = stageOf.get(g.from)
         const fromRun = runs.findIndex((x) => x.stageId === fromSt)
         if (fromRun >= 0) {
-          insertAt = Math.min(insertAt, fromRun + 1)
+          feederAt = fromRun + 1
           break
         }
       }
+      const insertAt = feederAt >= 0 ? Math.max(feederAt, specFloor) : specFloor
       runs.splice(insertAt, 0, run)
       // Rebuild index map after splice.
       runsOf.clear()

@@ -1352,3 +1352,100 @@ test('issue #376: same-column reciprocal rework loop separates onto two parallel
     Math.abs(fwd.points[1][1] - ret.points[0][1]) < 1
   assert.equal(sameLine, false, 'reciprocal rework loop arrows must be separated onto parallel tracks')
 })
+
+test('issue #190: off-spine stages never splice ahead of an earlier spine stage', () => {
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: '离主干阶段顺序保序',
+    domain: 'contract-performance',
+    stages: [
+      { id: 'st-1', label: '签订与下单' },
+      { id: 'st-2', label: '交货与检验' },
+      { id: 'st-3', label: '付款' },
+      { id: 'st-4', label: '质量异议与协商' },
+      { id: 'st-5', label: '违约处理与终止' },
+    ],
+    nodes: [
+      { id: 'n-1', kind: 'start', label: '合同签订', stageId: 'st-1' },
+      { id: 'n-2', kind: 'decision', label: '检验是否合格', stageId: 'st-2' },
+      { id: 'n-3', kind: 'step', label: '甲方付款', stageId: 'st-3' },
+      { id: 'n-4', kind: 'end', label: '履行完毕', stageId: 'st-3', outcome: 'positive' },
+      { id: 'n-5', kind: 'step', label: '提出质量异议', stageId: 'st-4' },
+      { id: 'n-6', kind: 'decision', label: '协商是否成功', stageId: 'st-4' },
+      { id: 'n-7', kind: 'step', label: '按协议处理', stageId: 'st-4' },
+      { id: 'n-8', kind: 'end', label: '合同终止', stageId: 'st-5', outcome: 'negative' },
+    ],
+    edges: [
+      { from: 'n-1', to: 'n-2', main: true },
+      { from: 'n-2', to: 'n-3', condition: '合格', main: true },
+      { from: 'n-3', to: 'n-4', main: true },
+      { from: 'n-2', to: 'n-5', condition: '不合格' },
+      { from: 'n-5', to: 'n-6' },
+      { from: 'n-6', to: 'n-7', condition: '协商成功' },
+      { from: 'n-7', to: 'n-3' },
+      { from: 'n-6', to: 'n-8', condition: '协商不成' },
+    ],
+  }
+  const g = buildProcedureGraph(spec, fields, undefined, 'vertical')
+  assert.deepEqual(
+    g.stageBoxes.map((b) => b.stageId),
+    ['st-1', 'st-2', 'st-3', 'st-4', 'st-5'],
+    'stage bands must follow spec.stages order without splicing off-spine stages ahead of st-3',
+  )
+  const n2 = g.nodes.find((n) => n.id === 'n-2')
+  const n3 = g.nodes.find((n) => n.id === 'n-3')
+  assert.ok(n3.position.y - (n2.position.y + n2.data.h) < 150, 'main spine n-2→n-3 must not have a vertical chasm')
+  // Horizontal mode must also have zero 180-degree collinear spikes (overshoot-and-reverse stubs).
+  const gh = buildProcedureGraph(spec, fields, undefined, 'horizontal')
+  for (const c of gh.connections) {
+    const pts = c.points ?? []
+    for (let i = 0; i < pts.length - 2; i += 1) {
+      const [a, b, d] = [pts[i], pts[i + 1], pts[i + 2]]
+      const sameX = Math.abs(a[0] - b[0]) < 0.5 && Math.abs(b[0] - d[0]) < 0.5
+      const sameY = Math.abs(a[1] - b[1]) < 0.5 && Math.abs(b[1] - d[1]) < 0.5
+      assert.equal(sameX || sameY, false, `${c.id} has redundant collinear / hairpin point ${JSON.stringify([a, b, d])}`)
+    }
+  }
+})
+
+test('issue #190: off-spine 4-way fan-out & bus-merge aligns siblings on one row with 0 crossings', () => {
+  const spec = {
+    type: 'procedure',
+    specVersion: 1,
+    title: '离主干多路并列扇出汇流',
+    domain: 'administrative',
+    stages: [{ id: 'st-1', label: '作出决定' }],
+    nodes: [
+      { id: 'n-1', kind: 'start', label: '审理终结', stageId: 'st-1' },
+      { id: 'n-2', kind: 'decision', label: '行为是否合法适当', stageId: 'st-1' },
+      { id: 'n-3', kind: 'step', label: '决定维持', stageId: 'st-1' },
+      { id: 'n-4', kind: 'decision', label: '属于哪类违法', stageId: 'st-1' },
+      { id: 'n-5', kind: 'step', label: '决定变更', stageId: 'st-1' },
+      { id: 'n-6', kind: 'step', label: '决定撤销', stageId: 'st-1' },
+      { id: 'n-7', kind: 'step', label: '确认无效', stageId: 'st-1' },
+      { id: 'n-8', kind: 'step', label: '责令履行', stageId: 'st-1' },
+      { id: 'n-9', kind: 'end', label: '送达决定书', stageId: 'st-1', outcome: 'positive' },
+    ],
+    edges: [
+      { from: 'n-1', to: 'n-2', main: true },
+      { from: 'n-2', to: 'n-3', condition: '合法适当', main: true },
+      { from: 'n-3', to: 'n-9', main: true },
+      { from: 'n-2', to: 'n-4', condition: '违法或不当' },
+      { from: 'n-4', to: 'n-5', condition: '第63条' },
+      { from: 'n-4', to: 'n-6', condition: '第64条' },
+      { from: 'n-4', to: 'n-7', condition: '第67条' },
+      { from: 'n-4', to: 'n-8', condition: '第66条' },
+      { from: 'n-5', to: 'n-9' },
+      { from: 'n-6', to: 'n-9' },
+      { from: 'n-7', to: 'n-9' },
+      { from: 'n-8', to: 'n-9' },
+    ],
+  }
+  const g = buildProcedureGraph(spec, fields, undefined, 'vertical')
+  const sibYs = ['n-5', 'n-6', 'n-7', 'n-8'].map((id) => {
+    const n = g.nodes.find((x) => x.id === id)
+    return n.position.y + n.data.h / 2
+  })
+  assert.ok(Math.max(...sibYs) - Math.min(...sibYs) <= 2, `off-spine fan-out siblings should align on one row: ${sibYs}`)
+})
