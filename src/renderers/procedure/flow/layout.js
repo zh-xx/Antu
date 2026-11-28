@@ -195,6 +195,37 @@ export function labelBox(text, maxW = LABEL_MAX_W) {
  * }} args
  */
 /**
+ * Run a vertical-frame geometry pass (settleGeometryPasses / separateNearParallelCorridors)
+ * on real coordinates: when horizontal (`vertical === false`), transpose to vertical frame
+ * before running and transpose back afterward so flow/cross axes never invert.
+ * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
+ * @param {object[]} connections
+ * @param {boolean} vertical
+ * @param {(p: Map<string, { x: number, y: number, w: number, h: number }>, conns: object[]) => void} fn
+ */
+function runInVerticalFrame(placed, connections, vertical, fn) {
+  if (vertical) {
+    fn(placed, connections)
+    return
+  }
+  const flipBox = (r) => ({ ...r, x: r.y, y: r.x, w: r.h, h: r.w })
+  const flipPt = ([x, y]) => [y, x]
+  const vPlaced = new Map([...placed].map(([id, r]) => [id, flipBox(r)]))
+  for (const c of connections) {
+    c.points = (c.points ?? []).map(flipPt)
+    if (c.labelAt) c.labelAt = { x: c.labelAt.y, y: c.labelAt.x }
+    if (c.labelSize) c.labelSize = { width: c.labelSize.height, height: c.labelSize.width }
+  }
+  fn(vPlaced, connections)
+  for (const [id, r] of vPlaced) placed.set(id, flipBox(r))
+  for (const c of connections) {
+    c.points = (c.points ?? []).map(flipPt)
+    if (c.labelAt) c.labelAt = { x: c.labelAt.y, y: c.labelAt.x }
+    if (c.labelSize) c.labelSize = { width: c.labelSize.height, height: c.labelSize.width }
+  }
+}
+
+/**
  * Repair nodes whose centres drifted off the cell lattice (>1px). Snap to the nearest
  * free cell centre, then re-route incident edges with settleGeometryPasses.
  * @param {Map<string, { x: number, y: number, w: number, h: number }>} placed
@@ -289,7 +320,9 @@ function snapNodesToCellGrid(placed, connections, cellGrid, vertical, diamonds, 
     }
   }
   if (!moved) return
-  settleGeometryPasses(placed, connections, diamonds, spineIds, pills, vertical)
+  runInVerticalFrame(placed, connections, vertical, (p, conns) => {
+    settleGeometryPasses(p, conns, diamonds, spineIds, pills, vertical)
+  })
   ensureConnectionLabels(connections, [...placed.values()], [], [], { force: true, preferOnLine: true })
 }
 
@@ -793,7 +826,9 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       if (needsSettle) {
         const pills = new Set(nodes.filter((n) => n.kind === 'start' || n.kind === 'end').map((n) => n.id))
         const allSpine = new Set(best.spineIds ?? spine)
-        settleGeometryPasses(best.placed, best.connections, diamonds, allSpine, pills, vertical)
+        runInVerticalFrame(best.placed, best.connections, vertical, (p, conns) => {
+          settleGeometryPasses(p, conns, diamonds, allSpine, pills, vertical)
+        })
         // Re-grow stageBoxes / size if settle pushed an outer corridor past the band edge
         let minC = Infinity
         let maxC = -Infinity
@@ -888,7 +923,9 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
     const snapSpine = new Set(Array.isArray(best?.spineIds) ? best.spineIds : spine)
     snapNodesToCellGrid(placed, connections, cellGrid, vertical, diamonds, snapPills, snapSpine)
     // Stage-band / origin shifts can reintroduce near-parallel corridors — separate again.
-    separateNearParallelCorridors(placed, connections, diamonds, snapSpine)
+    runInVerticalFrame(placed, connections, vertical, (p, conns) => {
+      separateNearParallelCorridors(p, conns, diamonds, snapSpine)
+    })
     cellGrid = buildFlowCellGrid({
       placed: [...placed.values()],
       connections,
@@ -914,6 +951,30 @@ function* layOutProcedureGraph(spec, fields = {}, view, orientation = 'vertical'
       { force: true, preferOnLine: true },
     )
     for (const c of connections) {
+      if (Array.isArray(c.points) && c.points.length >= 3) {
+        const cleaned = [[c.points[0][0], c.points[0][1]]]
+        for (let i = 1; i < c.points.length; i += 1) {
+          const p = c.points[i]
+          const prev = cleaned[cleaned.length - 1]
+          if (Math.hypot(p[0] - prev[0], p[1] - prev[1]) < 0.5) continue
+          cleaned.push([p[0], p[1]])
+        }
+        let changed = true
+        while (changed && cleaned.length >= 3) {
+          changed = false
+          for (let i = 0; i < cleaned.length - 2; i += 1) {
+            const [a, b, d] = [cleaned[i], cleaned[i + 1], cleaned[i + 2]]
+            const sameX = Math.abs(a[0] - b[0]) < 0.5 && Math.abs(b[0] - d[0]) < 0.5
+            const sameY = Math.abs(a[1] - b[1]) < 0.5 && Math.abs(b[1] - d[1]) < 0.5
+            if (sameX || sameY) {
+              cleaned.splice(i + 1, 1)
+              changed = true
+              break
+            }
+          }
+        }
+        c.points = cleaned
+      }
       c.d = toPathD(c.points)
       c.dCurve = toCurveD(c.points)
     }
